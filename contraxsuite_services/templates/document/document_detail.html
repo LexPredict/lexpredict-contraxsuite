@@ -1,0 +1,1031 @@
+{% extends "base.html" %}
+{% load static pipeline %}
+
+{% block css_extra %}
+  {% stylesheet 'custom_jqwidgets_css' %}
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/jquery-confirm/3.1.1/jquery-confirm.min.css">
+  <style>
+    #tabs1>ul {
+      border-bottom: none;
+    }
+    #tabs1>ul>li {
+      border-bottom: 1px solid #DDD;
+      margin-bottom: 10px;
+    }
+  </style>
+  {{ block.super }}
+{% endblock %}
+
+{% block page_header %}Document Detail{% endblock %}
+
+{% block content %}
+  <div>
+    <a class="btn-u btn-sm" id="button_view_raw_document"
+       href="{% url "document:document-source" document.id %}" target="_blank">
+      View Source Document
+    </a>
+    <a class="btn-u btn-sm"
+       href="{% url "document:document-enhanced-view" document.id %}">
+      View Enhanced Document
+    </a>
+  </div>
+  <table class="table table-bordered table-striped">
+    <thead class="thead-inverse">
+    <tr>
+      <th>Name</th>
+      <th>Type</th>
+      <th>Description</th>
+      <th>Relations</th>
+    </tr>
+    </thead>
+    <tbody>
+    <tr>
+      <td>{{ document.name }}</td>
+      <td>{{ document.document_type }}</td>
+      <td>{{ document.description }}</td>
+      <td>{{ document.document_a_set.count|add:document.document_b_set.count }}</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="toggle">
+    <div class="togglet"><i class="toggle-closed icon-ok-circle"></i><i class="toggle-open icon-remove-circle"></i>Source Document Metadata</div>
+    <div class="togglec">
+      <table class="table table-bordered table-striped">
+        <thead class="thead-inverse">
+        <tr>
+          <th>Key</th>
+          <th>Value</th>
+        </tr>
+        </thead>
+        <tbody>
+        {% if document.metadata %}
+          {% for key, value in document.metadata.items %}
+            <tr>
+              <td>{{ key }}</td>
+              <td>{{ value }}</td>
+            </tr>
+          {% endfor %}
+        {% else %}
+          <tr>
+            <td colspan="2">No data</td>
+          </tr>
+        {% endif %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="tabs tabs-bb clearfix page-tabs" id="tabs1" data-speed="700" data-active="1"
+       style="margin-top: 50px;">
+
+    <ul class="tab-nav clearfix mb-10">
+      <li><a href="#tab-1">Text Units<span class="badge badge-s pull-right text-units-badge"></span></a></li>
+      <li><a href="#tab-2">Parties<span class="badge badge-s pull-right parties-badge"></span></a></li>
+      <li><a href="#tab-3">Terms<span class="badge badge-s pull-right terms-badge"></span></a></li>
+      <li><a href="#tab-4">Entities<span class="badge badge-s pull-right entities-badge"></span></a></li>
+      <li><a href="#tab-5">Notes<span class="badge badge-s pull-right notes-badge"></span></a></li>
+      <li><a href="#tab-6">Properties<span class="badge badge-s pull-right properties-badge"></span></a></li>
+      <li><a href="#tab-7">Dates<span class="badge badge-s pull-right dates-badge"></span></a></li>
+      <li><a href="#tab-8">Definitions<span class="badge badge-s pull-right definitions-badge"></span></a></li>
+      <li><a href="#tab-9">Date Durations<span class="badge badge-s pull-right durations-badge"></span></a></li>
+      <li><a href="#tab-10">Courts<span class="badge badge-s pull-right courts-badge"></span></a></li>
+    </ul>
+
+    <div class="tab-content clearfix" id="tab-1">
+      <div class="pull-right header-search-form highlight-container">
+        <div class="input-group">
+          <span class="input-group-btn">
+            <button class="btn btn-warning" type="button">Highlight</button>
+          </span>
+          <input type="text" class="form-control" id="highlight_term" name="highlight_term"
+                 value="{{ highlight|default:"" }}"
+                 placeholder="Term">
+        </div>
+      </div>
+      <div class="pull-right grid-controls">
+        {% include '_base_grid_buttons_block.html' %}
+      </div>
+      <div class="jqxgrid-container">
+        <div class="jqxgrid col-md-12 jqxgrid-text-units"></div>
+      </div>
+    </div>
+
+    <div class="tab-content clearfix" id="tab-2">
+      <div class="pull-right grid-controls">
+        {% include '_base_grid_buttons_block.html' %}
+      </div>
+      <div class="jqxgrid-container">
+        <div class="jqxgrid col-md-12 jqxgrid-top-party-usages"></div>
+      </div>
+    </div>
+
+    <div class="tab-content clearfix" id="tab-3">
+      <div class="pull-right grid-controls">
+        {% include '_base_grid_buttons_block.html' %}
+      </div>
+      <div class="jqxgrid-container">
+        <div class="jqxgrid col-md-12 jqxgrid-top-legal-term-usages"></div>
+      </div>
+    </div>
+
+    <div class="tab-content clearfix" id="tab-4">
+      <div class="pull-right grid-controls">
+        {% include '_base_grid_buttons_block.html' %}
+      </div>
+      <div class="jqxgrid-container">
+        <div class="jqxgrid col-md-12 jqxgrid-top-entity-usages"></div>
+      </div>
+    </div>
+
+    <div class="tab-content clearfix" id="tab-5">
+      <div class="pull-right grid-controls">
+        {% include '_base_grid_buttons_block.html' %}
+        <button type="button" class="btn-u btn-sm btn-s pull-right"
+                onclick="show_note_popup('.jqxgrid-notes', null, 'document', {{ document.pk }} )">Create</button>
+      </div>
+      <div class="jqxgrid-container">
+        <div class="jqxgrid col-md-12 jqxgrid-notes"></div>
+      </div>
+    </div>
+
+    <div class="tab-content clearfix" id="tab-6">
+      <div class="pull-right grid-controls">
+        {% include '_base_grid_buttons_block.html' %}
+        <a class="btn-u btn-sm btn-s pull-right"
+           href="{% url "document:document-property-add" document.pk %}?next={{ request.path }}#tab-1-5">
+          Create
+        </a>
+      </div>
+      <div class="jqxgrid-container">
+        <div class="jqxgrid col-md-12 jqxgrid-properties"></div>
+      </div>
+    </div>
+
+    <div class="tab-content clearfix" id="tab-7">
+      <div class="pull-right grid-controls">
+        {% include '_base_grid_buttons_block.html' %}
+      </div>
+      <div class="jqxgrid-container">
+        <div class="jqxgrid col-md-12 jqxgrid-dates"></div>
+      </div>
+    </div>
+
+    <div class="tab-content clearfix" id="tab-8">
+      <div class="pull-right grid-controls">
+        {% include '_base_grid_buttons_block.html' %}
+      </div>
+      <div class="jqxgrid-container">
+        <div class="jqxgrid col-md-12 jqxgrid-definitions"></div>
+      </div>
+    </div>
+
+    <div class="tab-content clearfix" id="tab-9">
+      <div class="pull-right grid-controls">
+        {% include '_base_grid_buttons_block.html' %}
+      </div>
+      <div class="jqxgrid-container">
+        <div class="jqxgrid col-md-12 jqxgrid-durations"></div>
+      </div>
+    </div>
+
+    <div class="tab-content clearfix" id="tab-10">
+      <div class="pull-right grid-controls">
+        {% include '_base_grid_buttons_block.html' %}
+      </div>
+      <div class="jqxgrid-container">
+        <div class="jqxgrid col-md-12 jqxgrid-courts"></div>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="tabs tabs-bb clearfix page-tabs" id="tabs2" data-speed="700" data-active="1"
+       style="margin-top: 50px;">
+
+    <ul class="tab-nav clearfix mb-40">
+      <li><a href="#tab-21">Task Queues<span class="badge badge-s pull-right task-queues-badge"></span></a></li>
+      <li><a href="#tab-22">Clusters<span class="badge badge-s pull-right clusters-badge"></span></a></li>
+      <li><a href="#tab-23">Document Similarity<span class="badge badge-s pull-right similarity-badge"></span></a></li>
+    </ul>
+
+    <div class="tab-content clearfix" id="tab-21">
+      <div class="pull-right grid-controls">
+        {% include '_base_grid_buttons_block.html' %}
+        <div class="btn-group text-center pull-right" style="margin-top: 5px;">
+          <button type="button" class="btn-u btn-sm dropdown-toggle"
+                  data-toggle="dropdown" aria-haspopup="true">
+            Add To Task Queue
+            <span class="caret"></span>
+          </button>
+          <ul class="dropdown-menu dropdown-menu-right">
+            {% for task_queue in extra_task_queue_list %}
+              <li>
+                <a href="{% url "project:add-to-task-queue" task_queue.pk document.pk %}#tab-2-2"
+                   class="add_to_task_queue">
+                  {{ task_queue }} / {{ task_queue.description }}</a>
+              </li>
+            {% endfor %}
+          </ul>
+        </div>
+      </div>
+      <div class="jqxgrid-container">
+        <div class="jqxgrid col-md-12 jqxgrid-task-queues"></div>
+      </div>
+    </div>
+
+    <div class="tab-content clearfix" id="tab-22">
+      <div class="pull-right grid-controls">
+        {% include '_base_grid_buttons_block.html' %}
+      </div>
+      <div class="jqxgrid-container">
+        <div class="jqxgrid col-md-12 jqxgrid-clusters"></div>
+      </div>
+    </div>
+
+    <div class="tab-content clearfix" id="tab-23">
+      <div class="pull-right grid-controls">
+        {% include '_base_grid_buttons_block.html' %}
+      </div>
+      <div class="jqxgrid-container">
+        <div class="jqxgrid col-md-12 jqxgrid-similarity"></div>
+      </div>
+    </div>
+
+  </div>
+
+{% endblock %}
+
+{% block js_extra %}
+  {% include "_base_jqxgrid_block.html" %}
+
+  <script type="text/javascript">
+    // TODO: Highlight in paginated view??
+    highlightTerms(".jqxgrid-text-units", 2);
+    highlightParties(".jqxgrid-text-units", {{ party_list|safe }});
+  </script>
+
+  <script type="text/javascript">
+    $(document).ready(function () {
+
+      // common text units nested table initialization
+      var text_units_nested_grid_data = function(nested_data_item_name){
+        var nested_grid_initrowdetails = function(index, parentElement, gridElement, record) {
+          var grid = $($(parentElement).children()[0]);
+          grid.attr('id', 'grid' + record.boundindex);
+          var details_source = {
+            datafields: [
+              { name: 'count', type: 'int' },
+              { name: 'text_unit__text', type: 'string' },
+              { name: 'detail_url', type: 'string' }
+            ],
+            localdata: record[nested_data_item_name]
+          };
+          var nestedGridAdapter = new $.jqx.dataAdapter(details_source);
+          if (grid != null) {
+            var menu_renderer = function(row) {
+              row = grid.jqxGrid('getrowdata', row);
+              var menu_data = [
+                { url: row.detail_url,
+                  icon: 'fa fa-info-circle',
+                  text: 'View Text Unit' }
+              ];
+              show_menu(menu_data, grid, row.pk);
+            };
+            grid.jqxGrid({
+              source: nestedGridAdapter,
+              altrows: true,
+              rowsheight: 40,
+              enabletooltips: true,
+              sortable: true,
+              filterable: true,
+              width: '98%',
+              height: 200,
+              columns: [
+                { text: 'Count', datafield: 'count', width: 60,
+                  align: 'center', cellsalign: 'center' },
+                { text: 'Text Unit', datafield: 'text_unit__text', width: 'auto',
+                  align: 'center', cellsalign: 'center' },
+                { text: 'Action', datafield: 'url', width: 60,
+                  align: 'center', exportable: false,
+                  columntype: 'button',
+                  sortable: false, filterable: false, menu: false,
+                  cellsrenderer: function(){ return 'Menu' },
+                  buttonclick: menu_renderer }
+              ]
+            });
+          }
+        };
+        return {
+          rowdetails: true,
+          initrowdetails: nested_grid_initrowdetails,
+          rowdetailstemplate: {
+            rowdetails: "<div id='grid' class='sub-grid' style='margin: 10px;'></div>",
+            rowdetailsheight: 220,
+            rowdetailshidden: true
+          }
+        };
+      };
+
+      // Text Units table
+      var text_units_datafields = [
+        { name: 'pk', type: 'int' },
+        { name: 'unit_type', type: 'string' },
+        { name: 'language', type: 'string' },
+        { name: 'text', type: 'string' },
+        { name: 'detail_url', type: 'string' }
+      ];
+      var text_units_menu_renderer = function(row) {
+        var grid = $('.jqxgrid-text-units');
+        row = grid.jqxGrid('getrowdata', row);
+        var menu_data = [
+          { url: row.detail_url,
+            icon: 'fa fa-info-circle',
+            text: 'View Text Unit'},
+          { icon: 'fa fa-tags',
+            cls: 'tag-text-unit',
+            text: 'Tag'},
+          { icon: 'fa fa-gavel',
+            cls: 'classify-text-unit',
+            text: 'Classify'}
+        ];
+        show_menu(menu_data, grid, row.pk);
+      };
+      var text_units_columns = [
+        { text: 'Unit Type', datafield: 'unit_type', width: 80,
+          align: 'center', cellsalign: 'center' },
+        { text: 'Language', datafield: 'language', width: 80,
+          align: 'center', cellsalign: 'center' },
+        { text: 'Text', datafield: 'text', width: 'auto',
+          align: 'center', cellsalign: 'center' },
+        { text: 'Action', datafield: 'edit_url', width: 60,
+          align: 'center', exportable: false,
+          columntype: 'button',
+          sortable: false, filterable: false, menu: false,
+          cellsrenderer: function(){return 'Menu'},
+          buttonclick: text_units_menu_renderer }
+      ];
+      var text_units_custom_source_data = {
+        url: '{% url "document:text-unit-list" %}',
+        data: {'document_pk': {{ document.pk }} },
+        badgeClass: 'text-units-badge'
+      };
+      draw_grid(".jqxgrid-text-units", text_units_datafields, text_units_columns, true, text_units_custom_source_data);
+
+      // Parties table
+      var parties_datafields = [
+        { name: 'party__name', type: 'string' },
+        { name: 'party__type', type: 'string' },
+        { name: 'count', type: 'int' },
+        { name: 'party_summary_url', type: 'string' },
+        { name: 'party_data' }
+      ];
+      var parties_menu_renderer = function(row_number) {
+        var grid = $('.jqxgrid-top-party-usages');
+        var row = grid.jqxGrid('getrowdata', row_number);
+        var menu_data = [
+          { icon: 'fa fa-folder-open-o',
+            onclick: "expand_row(event, '.jqxgrid-top-party-usages', " + row_number + ")",
+            text: 'Show Details' },
+          { icon: 'fa fa-bars',
+            onclick: "event.preventDefault(); apply_filter('.jqxgrid-text-units', 'text', '" + row.party__name + "', '#tabs1', 0)",
+            text: 'View Related Text Units' },
+          { icon: 'fa fa-search',
+            url:  '{% url "extract:party-usage-list" %}?party_search=' + row.party__name,
+            text: 'View Similar Party Usages' },
+          { icon: 'fa fa-cubes',
+            url:  row.party_summary_url,
+            text: 'View Party Summary' }
+        ];
+        show_menu(menu_data, grid, row.pk, 300);
+      };
+      var partyNameFormatter = function (index, columnfield, value, defaulthtml, columnproperties, row) {
+        return linkFormatter(defaulthtml, row.party_summary_url, value);
+      };
+      var parties_columns = [
+        { text: 'Name', datafield: 'party__name', width: 'auto',
+          align: 'center', cellsalign: 'center', columngroup: 'Party',
+          cellsrenderer: partyNameFormatter },
+        { text: 'Type', datafield: 'party__type', width: 'auto',
+          align: 'center', cellsalign: 'center', columngroup: 'Party' },
+        { text: 'Count', datafield: 'count', width: 150,
+          align: 'center', cellsalign: 'center' },
+        { text: 'Action', datafield: 'url', width: 60,
+          align: 'center', exportable: false,
+          columntype: 'button',
+          sortable: false, filterable: false, menu: false,
+          cellsrenderer: function(){return 'Menu'},
+          buttonclick: parties_menu_renderer }
+      ];
+      var parties_custom_source_data = {
+        url: '{% url "extract:top-party-usage-list" %}',
+        data: { 'document_pk': {{ document.pk }} },
+        badgeClass: 'parties-badge'
+      };
+      draw_grid(".jqxgrid-top-party-usages", parties_datafields, parties_columns, false,
+                parties_custom_source_data, text_units_nested_grid_data('party_data'));
+
+      // Top Legal Term Usages table
+      var terms_datafields = [
+        { name: 'term__term', type: 'string' },
+        { name: 'count', type: 'int' },
+        { name: 'term_data' }
+
+      ];
+      var terms_menu_renderer = function(row_number) {
+        var grid = $('.jqxgrid-top-legal-term-usages');
+        var row = grid.jqxGrid('getrowdata', row_number);
+        var menu_data = [
+          { icon: 'fa fa-folder-open-o',
+            onclick: "expand_row(event, '.jqxgrid-top-legal-term-usages', " + row_number + ")",
+            text: 'Show Details' },
+          { icon: 'fa fa-search',
+            url: '{% url "extract:legal-term-usage-list" %}?term_search=' + row.term__term,
+            text: 'View Similar Term Usages' }
+        ];
+        show_menu(menu_data, grid, row.pk, 300);
+      };
+      var terms_columns = [
+        { text: 'Term', datafield: 'term__term', width: 'auto',
+          align: 'center', cellsalign: 'center' },
+        { text: 'Count', datafield: 'count', width: 'auto',
+          align: 'center', cellsalign: 'center' },
+        { text: 'Action', datafield: 'url', width: 60,
+          align: 'center', exportable: false,
+          columntype: 'button',
+          sortable: false, filterable: false, menu: false,
+          cellsrenderer: function(){return 'Menu'},
+          buttonclick: terms_menu_renderer }
+      ];
+      var terms_custom_source_data = {
+        url: '{% url "extract:top-legal-term-usage-list" %}',
+        data: { 'document_pk': {{ document.pk }} },
+        badgeClass: 'terms-badge'
+      };
+      draw_grid(".jqxgrid-top-legal-term-usages", terms_datafields, terms_columns, false,
+                terms_custom_source_data, text_units_nested_grid_data('term_data'));
+
+      // Top Entity Usages table
+      var entities_datafields = [
+        { name: 'entity__name', type: 'string' },
+        { name: 'entity__category', type: 'string' },
+        { name: 'entity_data' },
+        { name: 'count', type: 'int' }
+      ];
+      var entities_menu_renderer = function(row_number) {
+        var grid = $('.jqxgrid-top-entity-usages');
+        var row = grid.jqxGrid('getrowdata', row_number);
+        var menu_data = [
+          { icon: 'fa fa-folder-open-o',
+            onclick: "expand_row(event, '.jqxgrid-top-entity-usages', " + row_number + ")",
+            text: 'Show Details' },
+          { icon: 'fa fa-search',
+            url:  '{% url "extract:geo-entity-usage-list" %}?entity_search=' + row.entity__name,
+            text: 'View Similar Entity Usages' }
+        ];
+        show_menu(menu_data, grid, row.pk, 300);
+      };
+      var entities_columns = [
+        { text: 'Entity Name', datafield: 'entity__name', width: 'auto',
+          align: 'center', cellsalign: 'center' },
+        { text: 'Entity Category', datafield: 'entity__category', width: 'auto',
+          align: 'center', cellsalign: 'center' },
+        { text: 'Count', datafield: 'count', width: 150,
+          align: 'center', cellsalign: 'center' },
+        { text: 'Action', datafield: 'url', width: 60,
+          align: 'center', exportable: false,
+          columntype: 'button',
+          sortable: false, filterable: false, menu: false,
+          cellsrenderer: function(){return 'Menu'},
+          buttonclick: entities_menu_renderer }
+      ];
+      var entities_custom_source_data = {
+        url: '{% url "extract:top-geo-entity-usage-list" %}',
+        data: { 'document_pk': {{ document.pk }} },
+        badgeClass: 'entities-badge'
+      };
+      draw_grid(".jqxgrid-top-entity-usages", entities_datafields, entities_columns, false,
+                entities_custom_source_data, text_units_nested_grid_data('entity_data'));
+
+      // Notes table
+      var notes_datafields = [
+        { name: 'pk', type: 'int' },
+        { name: 'document__pk', type: 'int' },
+        { name: 'note', type: 'string' },
+        { name: 'user', type: 'string' },
+        { name: 'timestamp', type: 'date' },
+        { name: 'history' },
+        { name: 'delete_url', type: 'string' }
+      ];
+      var notes_menu_renderer = function(row_number) {
+        var grid = $('.jqxgrid-notes');
+        var row = grid.jqxGrid('getrowdata', row_number);
+        var menu_data = [
+          { icon: 'fa fa-pencil',
+            onclick: "event.preventDefault();show_note_popup('.jqxgrid-notes', " + row_number + ", 'document', 'document__pk')",
+            text: 'Edit Note' },
+          { icon: 'fa fa-folder-open-o',
+            onclick: "expand_row(event, '.jqxgrid-notes', " + row_number + ")",
+            text: 'Show History' },
+          { url: row.delete_url + '?next={{ request.path }}',
+            icon: 'fa fa-remove',
+            cls: 'remove',
+            text: 'Remove' }
+        ];
+        show_menu(menu_data, grid, row.pk);
+      };
+      var notes_columns = [
+        { text: 'User', datafield: 'user', width: 120,
+          align: 'center', cellsalign: 'center' },
+        { text: 'Date', datafield: 'timestamp', width: 120,
+          filtertype: 'date', cellsformat: 'MM-dd-yyyy HH:mm',
+          align: 'center', cellsalign: 'center' },
+        { text: 'Note', datafield: 'note', width: 'auto',
+          cellsrenderer: note_renderer,
+          align: 'center', cellsalign: 'center' },
+        { text: 'Action', datafield: 'url', width: 60,
+          align: 'center', exportable: false,
+          columntype: 'button',
+          sortable: false, filterable: false, menu: false,
+          cellsrenderer: function(){return 'Menu'},
+          buttonclick: notes_menu_renderer }
+      ];
+      var notes_custom_source_data = {
+        url: '{% url "document:document-note-list" %}',
+        data: { 'document_pk': {{ document.pk }} },
+        badgeClass: 'notes-badge'
+      };
+      // create nested grid
+      var notes_initrowdetails = function(index, parentElement, gridElement, record) {
+        var grid = $($(parentElement).children()[1]);
+        var details_source = {
+          datafields: [
+            { name: 'document_id', type: 'int' },
+            { name: 'history_date', type: 'date' },
+            { name: 'history_user__username', type: 'string' },
+            { name: 'note', type: 'string' }
+          ],
+          localdata: record.history
+        };
+        var nestedGridAdapter = new $.jqx.dataAdapter(details_source);
+        if (grid != null) {
+          grid.jqxGrid({
+            source: nestedGridAdapter,
+            altrows: true,
+            rowsheight: 40,
+            enabletooltips: true,
+            sortable: true,
+            filterable: true,
+            width: '98%',
+            height: 200,
+            columns: [
+              { text: 'Created Date', datafield: 'history_date', width: 150,
+                filtertype: 'date', cellsformat: 'MM-dd-yyyy HH:mm',
+                align: 'center', cellsalign: 'center' },
+              { text: 'User', datafield: 'history_user__username', width: 150,
+                align: 'center', cellsalign: 'center' },
+              { text: 'Note', datafield: 'note', width: 'auto', minwidth: 300,
+                cellsrenderer: note_renderer,
+                align: 'center', cellsalign: 'center' }
+            ]
+          });
+        }
+      };
+      var notes_custom_grid_options = {
+        rowdetails: true,
+        initrowdetails: notes_initrowdetails,
+        rowdetailstemplate: {
+          rowdetails: "<div class='sub-grid-title'>History</div><div id='grid' class='sub-grid'></div>",
+          rowdetailsheight: 245,
+          rowdetailshidden: true
+        }
+      };
+      draw_grid(".jqxgrid-notes", notes_datafields, notes_columns, false, notes_custom_source_data, notes_custom_grid_options);
+
+      // Properties table
+      var properties_datafields = [
+        { name: 'pk', type: 'int' },
+        { name: 'key', type: 'string' },
+        { name: 'value', type: 'string' },
+        { name: 'edit_url', type: 'string' },
+        { name: 'delete_url', type: 'string' }
+      ];
+      var properties_menu_renderer = function(row) {
+        var grid = $('.jqxgrid-properties');
+        row = grid.jqxGrid('getrowdata', row);
+        var menu_data = [
+          { url: row.edit_url + '?next={{ request.path }}',
+            icon: 'fa fa-pencil',
+            text: 'Edit' },
+          { url: row.delete_url + '?next={{ request.path }}',
+            icon: 'fa fa-remove',
+            cls: 'remove',
+            text: 'Remove' }
+        ];
+        show_menu(menu_data, grid, row.pk);
+      };
+      var properties_columns = [
+        { text: 'Property Name', datafield: 'key', width: '50%',
+          align: 'center', cellsalign: 'center' },
+        { text: 'Property Value', datafield: 'value', width: 'auto',
+          align: 'center', cellsalign: 'center' },
+        { text: 'Action', datafield: 'edit_url', width: 60,
+          align: 'center', exportable: false,
+          columntype: 'button',
+          sortable: false, filterable: false, menu: false,
+          cellsrenderer: function(){return 'Menu'},
+          buttonclick: properties_menu_renderer }
+      ];
+      var properties_custom_source_data = {
+        url: '{% url "document:document-property-list" %}',
+        data: { 'document_pk': {{ document.pk }} },
+        badgeClass: 'properties-badge'
+      };
+      draw_grid(".jqxgrid-properties", properties_datafields, properties_columns, false, properties_custom_source_data);
+
+      // Top Date Usages table
+      var dates_datafields = [
+        { name: 'date', type: 'date' },
+        { name: 'count', type: 'int' },
+        { name: 'date_data' }
+      ];
+      var dates_menu_renderer = function(row_number) {
+        var grid = $('.jqxgrid-dates');
+        var row = grid.jqxGrid('getrowdata', row_number);
+        var date_str = row.date.getFullYear()+'-'+(row.date.getMonth()+1)+'-'+row.date.getDate();
+        var menu_data = [
+          { icon: 'fa fa-folder-open-o',
+            onclick: "expand_row(event, '.jqxgrid-dates', " + row_number + ")",
+            text: 'Show Details' },
+          { icon: 'fa fa-search',
+            url:  '{% url "extract:date-usage-list" %}?date_search=' + date_str,
+            text: 'View Similar Date Usages' }
+        ];
+        show_menu(menu_data, grid, row.pk, 300);
+      };
+      var dates_columns = [
+        { text: 'Date', datafield: 'date', width: 'auto',
+          align: 'center', cellsalign: 'center',
+          filtertype: 'date', format: 'yyyy-MM-dd', cellsformat: 'yyyy-MM-dd' },
+        { text: 'Count', datafield: 'count', width: 150,
+          align: 'center', cellsalign: 'center' },
+        { text: 'Action', datafield: 'url', width: 60,
+          align: 'center', exportable: false,
+          columntype: 'button',
+          sortable: false, filterable: false, menu: false,
+          cellsrenderer: function(){return 'Menu'},
+          buttonclick: dates_menu_renderer }
+      ];
+      var dates_custom_source_data = {
+        url: '{% url "extract:top-date-usage-list" %}',
+        data: { 'document_pk': {{ document.pk }} },
+        badgeClass: 'dates-badge'
+      };
+      draw_grid(".jqxgrid-dates", dates_datafields, dates_columns, false,
+                dates_custom_source_data, text_units_nested_grid_data('date_data'));
+
+      // Top Definition Usages table
+      var definitions_datafields = [
+        { name: 'definition', type: 'string' },
+        { name: 'count', type: 'int' },
+        { name: 'definition_data' }
+      ];
+      var definitions_menu_renderer = function(row_number) {
+        var grid = $('.jqxgrid-definitions');
+        var row = grid.jqxGrid('getrowdata', row_number);
+        var menu_data = [
+          { icon: 'fa fa-folder-open-o',
+            onclick: "expand_row(event, '.jqxgrid-definitions', " + row_number + ")",
+            text: 'Show Details' },
+          { icon: 'fa fa-search',
+            url:  '{% url "extract:definition-usage-list" %}?definition_search=' + encodeURIComponent(row.definition),
+            text: 'View Similar Definition Usages' }
+        ];
+        show_menu(menu_data, grid, row.pk, 300);
+      };
+      var definitions_columns = [
+        { text: 'Definition', datafield: 'definition', width: 'auto',
+          align: 'center', cellsalign: 'center' },
+        { text: 'Count', datafield: 'count', width: 150,
+          align: 'center', cellsalign: 'center' },
+        { text: 'Action', datafield: 'url', width: 60,
+          align: 'center', exportable: false,
+          columntype: 'button',
+          sortable: false, filterable: false, menu: false,
+          cellsrenderer: function(){return 'Menu'},
+          buttonclick: definitions_menu_renderer }
+      ];
+      var definitions_custom_source_data = {
+        url: '{% url "extract:top-definition-usage-list" %}',
+        data: { 'document_pk': {{ document.pk }} },
+        badgeClass: 'definitions-badge'
+      };
+      draw_grid(".jqxgrid-definitions", definitions_datafields, definitions_columns, false,
+                definitions_custom_source_data, text_units_nested_grid_data('definition_data'));
+
+      // Top Date Duration Usages table
+      var durations_datafields = [
+        { name: 'duration', type: 'int' },
+        { name: 'duration_str', type: 'string' },
+        { name: 'count', type: 'int' },
+        { name: 'duration_data' }
+      ];
+      var durations_menu_renderer = function(row_number) {
+        var grid = $('.jqxgrid-durations');
+        var row = grid.jqxGrid('getrowdata', row_number);
+        var menu_data = [
+          { icon: 'fa fa-folder-open-o',
+            onclick: "expand_row(event, '.jqxgrid-durations', " + row_number + ")",
+            text: 'Show Details' },
+          { icon: 'fa fa-search',
+            url:  '{% url "extract:date-duration-usage-list" %}?duration_search=' + row.duration_str,
+            text: 'View Similar Date Duration Usages' }
+        ];
+        show_menu(menu_data, grid, row.pk, 300);
+      };
+      var durations_columns = [
+        { text: 'Duration (days)', datafield: 'duration', width: 'auto',
+          align: 'center', cellsalign: 'center' },
+        { text: 'Duration (value)', datafield: 'duration_str', width: 'auto',
+          align: 'center', cellsalign: 'center' },
+        { text: 'Count', datafield: 'count', width: 150,
+          align: 'center', cellsalign: 'center' },
+        { text: 'Action', datafield: 'url', width: 60,
+          align: 'center', exportable: false,
+          columntype: 'button',
+          sortable: false, filterable: false, menu: false,
+          cellsrenderer: function(){return 'Menu'},
+          buttonclick: durations_menu_renderer }
+      ];
+      var durations_custom_source_data = {
+        url: '{% url "extract:top-date-duration-usage-list" %}',
+        data: { 'document_pk': {{ document.pk }} },
+        badgeClass: 'durations-badge'
+      };
+      draw_grid(".jqxgrid-durations", durations_datafields, durations_columns, false,
+                durations_custom_source_data, text_units_nested_grid_data('duration_data'));
+
+      // Top Court Usages table
+      var courts_datafields = [
+        { name: 'court__name', type: 'string' },
+        { name: 'court__abbreviation', type: 'string' },
+        { name: 'count', type: 'int' },
+        { name: 'court_data' }
+      ];
+      var courts_menu_renderer = function(row_number) {
+        var grid = $('.jqxgrid-courts');
+        var row = grid.jqxGrid('getrowdata', row_number);
+        var menu_data = [
+          { icon: 'fa fa-folder-open-o',
+            onclick: "expand_row(event, '.jqxgrid-courts', " + row_number + ")",
+            text: 'Show Details' },
+          { icon: 'fa fa-search',
+            url:  '{% url "extract:court-usage-list" %}?court=' + encodeURIComponent(row.court__name),
+            text: 'View Similar Court Usages' }
+        ];
+        show_menu(menu_data, grid, row.pk, 300);
+      };
+      var courts_columns = [
+        { text: 'Court Name', datafield: 'court__name', width: 'auto',
+          align: 'center', cellsalign: 'center' },
+        { text: 'Court Abbreviation', datafield: 'court__abbreviation', width: 'auto',
+          align: 'center', cellsalign: 'center' },
+        { text: 'Count', datafield: 'count', width: 150,
+          align: 'center', cellsalign: 'center' },
+        { text: 'Action', datafield: 'url', width: 60,
+          align: 'center', exportable: false,
+          columntype: 'button',
+          sortable: false, filterable: false, menu: false,
+          cellsrenderer: function(){return 'Menu'},
+          buttonclick: courts_menu_renderer }
+      ];
+      var courts_custom_source_data = {
+        url: '{% url "extract:top-court-usage-list" %}',
+        data: { 'document_pk': {{ document.pk }} },
+        badgeClass: 'courts-badge'
+      };
+      draw_grid(".jqxgrid-courts", courts_datafields, courts_columns, false,
+                courts_custom_source_data, text_units_nested_grid_data('court_data'));
+
+      // Task Queues table
+      var task_queues_datafields = [
+        { name: 'pk', type: 'int' },
+        { name: 'description', type: 'string' },
+        { name: 'complete_date', type: 'date' },
+        { name: 'complete_user', type: 'string' },
+        { name: 'open_url', type: 'string' },
+        { name: 'remove_url', type: 'string' }
+      ];
+      var task_queues_menu_renderer = function(row, event) {
+        var grid = $(event.currentTarget).parents('.jqxgrid');
+        row = grid.jqxGrid('getrowdata', row);
+        var menu_data = [
+          { url: row.open_url,
+            cls: 'mark-document-completed',
+            icon: 'fa fa-gavel',
+            text: row.complete_date ? 'Reopen Document' : 'Mark Document Completed' },
+          { url: row.remove_url,
+            cls: 'remove-from-task-queue',
+            icon: 'fa fa-remove',
+            text: 'Remove Document from this Task Queue' }
+        ];
+        show_menu(menu_data, grid, row.pk, 400);
+      };
+      var task_queues_columns = [
+        { text: 'Description', datafield: 'description', width: 'auto',
+          align: 'center', cellsalign: 'center' },
+        { text: 'Date', datafield: 'complete_date', width: 150,
+          filtertype: 'date', cellsformat: 'MM-dd-yyyy HH:mm',
+          align: 'center', cellsalign: 'center', columngroup: 'Completed' },
+        { text: 'User', datafield: 'complete_user', width: 150,
+          align: 'center', cellsalign: 'center', columngroup: 'Completed' },
+        { text: 'Action', datafield: 'edit_url', width: 60,
+          align: 'center', exportable: false,
+          columntype: 'button',
+          sortable: false, filterable: false, menu: false,
+          cellsrenderer: function(){return 'Menu'},
+          buttonclick: task_queues_menu_renderer }
+      ];
+      var task_queues_custom_source_data = {
+        url: '{% url "project:task-queue-list" %}',
+        data: { 'document_pk': {{ document.pk }} },
+        badgeClass: 'task-queues-badge'
+      };
+      var task_queues_custom_grid_options = {
+        columngroups: [
+          { text: 'Completed', name: 'Completed', align: 'center' }
+        ]
+      };
+      draw_grid(".jqxgrid-task-queues", task_queues_datafields, task_queues_columns, false,
+          task_queues_custom_source_data, task_queues_custom_grid_options);
+
+      // Clusters table
+      var clusters_datafields = [
+        { name: 'pk', type: 'int' },
+        { name: 'cluster_id', type: 'int' },
+        { name: 'name', type: 'string' },
+        { name: 'self_name', type: 'string' },
+        { name: 'description', type: 'string' },
+        { name: 'type', type: 'string' },
+        { name: 'count', type: 'int' },
+        { name: 'created_date', type: 'date' },
+        { name: 'documents' },
+        { name: 'url', type: 'string' }
+      ];
+      var clusters_menu_renderer = function(row_number, event) {
+        var grid = $(event.currentTarget).parents('.jqxgrid');
+        var row = grid.jqxGrid('getrowdata', row_number);
+        var menu_data = [
+          { icon: 'fa fa-folder-open-o',
+            onclick: "expand_row(event, '.jqxgrid', " + row_number + ")",
+            text: 'Show Documents' }
+        ];
+        show_menu(menu_data, grid, row.pk);
+      };
+      var clusters_columns = [
+        { text: 'Cluster Name', datafield: 'self_name', width: 'auto',
+          align: 'center', cellsalign: 'center' },
+        { text: 'Cluster#', datafield: 'cluster_id', width: 80,
+          align: 'center', cellsalign: 'center' },
+        { text: 'Name', datafield: 'name', width: 'auto',
+          align: 'center', cellsalign: 'center', columngroup: 'Clustering info' },
+        { text: 'Description', datafield: 'description', width: 'auto',
+          align: 'center', cellsalign: 'center', columngroup: 'Clustering info' },
+        { text: 'Cluster By', datafield: 'type', width: 80,
+          align: 'center', cellsalign: 'center', columngroup: 'Clustering info' },
+        { text: 'Documents', datafield: 'count', width: 80,
+          align: 'center', cellsalign: 'center' },
+        { text: 'Date', datafield: 'created_date', width: 120,
+          filtertype: 'date', cellsformat: 'MM-dd-yyyy HH:mm',
+          align: 'center', cellsalign: 'center' },
+        { text: 'Action', datafield: 'edit_url', width: 60,
+          align: 'center', exportable: false,
+          columntype: 'button',
+          sortable: false, filterable: false, menu: false,
+          cellsrenderer: function(){return 'Menu'},
+          buttonclick: clusters_menu_renderer }
+      ];
+      var clusters_custom_source_data = {
+        url: '{% url "analyze:document-cluster-list" %}',
+        data: { 'document_pk': {{ document.pk }} },
+        badgeClass: 'clusters-badge'
+      };
+      // create nested grid.
+      var clusters_initrowdetails = function(index, parentElement, gridElement, record) {
+        var documents_grid = $($(parentElement).children()[1]);
+        documents_grid.attr('id', 'grid' + record.boundindex);
+        var details_source = {
+          datafields: [
+            { name: 'pk', type: 'int' },
+            { name: 'name', type: 'string' },
+            { name: 'description', type: 'string' },
+            { name: 'document_type', type: 'string' },
+            { name: 'url', type: 'string' }
+          ],
+          localdata: record.documents
+        };
+        var nestedGridAdapter = new $.jqx.dataAdapter(details_source);
+        if (documents_grid != null) {
+          var documents_menu_renderer = function(row) {
+            row = documents_grid.jqxGrid('getrowdata', row);
+            var menu_data = [
+              { url: row.url,
+                icon: 'fa fa-file-text-o',
+                text: 'Document Details' }
+            ];
+            show_menu(menu_data, documents_grid, row.pk, 300);
+          };
+          documents_grid.jqxGrid({
+            source: nestedGridAdapter,
+            altrows: true,
+            enabletooltips: true,
+            sortable: true,
+            filterable: true,
+            width: '98%',
+            height: 200,
+            columns: [
+              { text: 'Name', datafield: 'name', width: 'auto',
+                cellsrenderer: defaultLinkFormatter,
+                align: 'center', cellsalign: 'center' },
+              { text: 'Description', datafield: 'description', width: 300,
+                align: 'center', cellsalign: 'center' },
+              { text: 'Type', datafield: 'document_type', width: 100,
+                align: 'center', cellsalign: 'center' },
+              { text: 'Action', datafield: 'edit_url', width: 60,
+                align: 'center', exportable: false,
+                columntype: 'button',
+                sortable: false, filterable: false, menu: false,
+                cellsrenderer: function(){return 'Menu'},
+                buttonclick: documents_menu_renderer }
+            ]
+          });
+        }
+      };
+      var clusters_custom_grid_options = {
+        rowsheight: 60,
+        pageable: false,
+        rowdetails: true,
+        initrowdetails: clusters_initrowdetails,
+        rowdetailstemplate: {
+          rowdetails: "<div class='sub-grid-title'>Documents</div><div id='grid' class='sub-grid'></div>",
+          rowdetailsheight: 245,
+          rowdetailshidden: true
+        },
+        columngroups: [
+          { text: 'Clustering info', name: 'Clustering info', align: 'center' }
+        ]
+      };
+      draw_grid(".jqxgrid-clusters", clusters_datafields, clusters_columns, false,
+          clusters_custom_source_data, clusters_custom_grid_options);
+
+      // Document Similarity table
+      var similarity_datafields = [
+        { name: 'document_b__pk', type: 'int' },
+        { name: 'document_b__name', type: 'string' },
+        { name: 'document_b__description', type: 'string' },
+        { name: 'document_b__document_type', type: 'string' },
+        { name: 'document_b__url', type: 'string' },
+        { name: 'similarity', type: 'float' }
+      ];
+      var document_b_name_renderer = function(index, columnfield, value, defaulthtml, columnproperties, row){
+        return linkFormatter(defaulthtml, row.document_b__url, value);
+      };
+      var similarity_columns = [
+        { text: 'ID', datafield: 'document_b__pk', width: 50,
+          align: 'center', cellsalign: 'center',
+          columngroup: 'Document B' },
+        { text: 'Name', datafield: 'document_b__name', width: 'auto', minwidth: 300,
+          align: 'center', cellsalign: 'left',
+          cellsrenderer: document_b_name_renderer,
+          columngroup: 'Document B' },
+        { text: 'Description', datafield: 'document_b__description', width: 300,
+          enabletooltips: true, columngroup: 'Document B',
+          align: 'center', cellsalign: 'center' },
+        { text: 'Type', datafield: 'document_b__document_type', width: 100,
+          align: 'center', cellsalign: 'center',
+          columngroup: 'Document B' },
+        { text: 'Similarity', datafield: 'similarity', width: 80,
+          align: 'center', cellsalign: 'center', cellsformat: 'p2' }
+      ];
+      var similarity_custom_source_data = {
+        url: '{% url "analyze:document-similarity-list" %}',
+        data: { 'document_pk': {{ document.pk }} },
+        badgeClass: 'similarity-badge'
+      };
+      var similarity_custom_grid_options = {
+        columngroups: [
+          { text: 'Document B', name: 'Document B', align: 'center' }
+        ]
+      };
+      draw_grid(".jqxgrid-similarity", similarity_datafields, similarity_columns, true,
+                similarity_custom_source_data, similarity_custom_grid_options);
+
+      if (window.location.hash.indexOf('tab') != -1 ){
+        var tab_id = window.location.hash.split('-')[1];
+        var tab_no = window.location.hash.split('-')[2];
+        $('#tabs' + tab_id).tabs('option', 'active', tab_no)
+      }
+    });
+  </script>
+  {% include "document/_note_js.html" %}
+{% endblock %}

@@ -1,0 +1,450 @@
+{% load static i18n pipeline %}
+
+<!DOCTYPE html>
+<html dir="ltr" lang="en-US">
+<head>
+
+  <meta http-equiv="content-type" content="text/html; charset=UTF-8">
+  <meta http-equiv="x-ua-compatible" content="ie=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="keywords" content="Contraxsuite Services,document,knowledge,management,analyze">
+  <meta name="description" content="Contraxsuite Services allows to analyze documents content.">
+  <meta name="author" content="LexPredict, LLC">
+
+  {% block css %}
+    <!-- Favicon -->
+    <link rel="shortcut icon" href="{% static "images/favicon.ico" %}">
+
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Lato:300,400,400italic,600,700|Raleway:300,400,500,600,700|Crete+Round:400italic" type="text/css" />
+    <link rel="stylesheet" href="{% static "theme/css/bootstrap.css" %}" type="text/css" />
+    <link rel="stylesheet" href="{% static "theme/css/style.css" %}" type="text/css" />
+    <link rel="stylesheet" href="{% static "theme/css/swiper.css" %}" type="text/css" />
+    <link rel="stylesheet" href="{% static "theme/css/dark.css" %}" type="text/css" />
+    <link rel="stylesheet" href="{% static "theme/css/font-icons.css" %}" type="text/css" />
+    <link rel="stylesheet" href="{% static "theme/css/animate.css" %}" type="text/css" />
+    <link rel="stylesheet" href="{% static "theme/css/magnific-popup.css" %}" type="text/css" />
+    <link rel="stylesheet" href="{% static "theme/css/responsive.css" %}" type="text/css" />
+  {% endblock %}
+
+  {% block css_extra %}
+    {% stylesheet "custom_css" %}
+  {% endblock %}
+
+  <title>Contraxsuite Services | {% block title %}Home{% endblock title %}</title>
+
+</head>
+
+<body class="stretched {% block bodyclass %}{% endblock %}">
+
+<!-- Document Wrapper -->
+<div id="wrapper" class="clearfix">
+
+  {% block content_wrapper %}
+    <!-- Header -->
+    <header id="header" class="transparent-header semi-transparent dark full-header">
+      <div id="header-wrap">
+        <div class="container clearfix">
+          <div id="primary-menu-trigger"><i class="icon-reorder"></i></div>
+
+          <!-- Logo -->
+          <div id="logo">
+            <a href="{% url 'home' %}" class="standard-logo" data-dark-logo="{% static "images/contraxsuite_logo.png" %}">
+              <img src="{% static "images/contraxsuite_logo.png" %}" alt="Contraxsuite Logo">
+            </a>
+          </div>
+          <!-- #logo end -->
+
+          <!-- Primary Navigation -->
+          <nav id="primary-menu" class="style-2">
+            {% if user.is_authenticated %}
+              <ul id="main_menu">
+                <li>
+                  <a href="#"><div><i class="fa fa-tasks"></i><span>Tasks</span></div></a>
+                  <ul>
+                    <li><a href="{% url "project:dashboard" %}"><div>Dashboard</div></a></li>
+                    <li class="divider"></li>
+                    <li><a href="{% url "project:project-list" %}"><div>Projects</div></a></li>
+                    <li><a href="{% url "project:task-queue-list" %}"><div>Task Queues</div></a></li>
+                    {% if not user.is_reviewer %}
+                      <li class="divider"></li>
+                      <li><a href="{% url "task:task-list" %}"><div>Admin Tasks</div></a></li>
+                      <li><a href="{% url "filebrowser:fb_browse" %}"><div>Browse/Upload Documents</div></a></li>
+                    {% endif %}
+                  </ul>
+                </li>
+                <li>
+                  <a href="#"><div><i class="fa fa-file-text-o"></i><span>Documents</span></div></a>
+                  <ul>
+                    <li>
+                      <a href="{% url "document:document-list" %}">Documents</a>
+                      <ul>
+                        <li><a href="{% url "document:document-list" %}"><div>Document List</div></a></li>
+                        <li><a href="{% url "document:document-note-list" %}"><div>Document Notes</div></a></li>
+                        <li><a href="{% url "document:document-property-list" %}"><div>Document Properties</div></a></li>
+                        <li><a href="{% url "document:document-relation-list" %}"><div>Document Relations</div></a></li>
+                        <li><a href="{% url "analyze:document-cluster-list" %}"><div>Document Clusters</div></a></li>
+                        <li><a href="{% url "analyze:document-similarity-list" %}"><div>Document Similarity</div></a></li>
+                      </ul>
+                    </li>
+                    <li>
+                      <a href="{% url "document:text-unit-list" %}">Text Units</a>
+                      <ul>
+                        <li><a href="{% url "document:text-unit-list" %}"><div>Text Unit List</div></a></li>
+                        <li><a href="{% url "document:text-unit-note-list" %}"><div>Text Unit Notes</div></a></li>
+                        <li><a href="{% url "document:text-unit-tag-list" %}"><div>Text Unit Tags</div></a></li>
+                        <li><a href="{% url "document:text-unit-property-list" %}"><div>Text Unit Properties</div></a></li>
+                        <li><a href="{% url "analyze:text-unit-cluster-list" %}"><div>Text Unit Clusters</div></a></li>
+                        <li><a href="{% url "analyze:text-unit-similarity-list" %}"><div>Text Unit Similarity</div></a></li>
+                      </ul>
+                    </li>
+                  </ul>
+                </li>
+                <li>
+                  <a href="#"><div><i class="fa fa-magic"></i><span>Assistant</span></div></a>
+                  <ul>
+                    <li><a href="{% url "analyze:text-unit-classification-list" %}"><div>
+                      Text Unit Classification</div></a></li>
+                    <li><a href="{% url "analyze:text-unit-classifier-suggestion-list" %}"><div>
+                      Text Unit Classification Suggestions</div></a></li>
+                    <li class="divider"></li>
+                    <li><a href="{% url "analyze:text-unit-classifier-list" %}"><div>
+                      Classifiers</div></a></li>
+                  </ul>
+                </li>
+                <li>
+                  <a href="#"><div><i class="fa fa-tags"></i><span>Terms, Party, &amp; Entities</span></div></a>
+                  <ul>
+                    <li>
+                      <a href="#">Terms</a>
+                      <ul>
+                        <li><a href="{% url "extract:legal-term-usage-list" %}"><div>Term Usage</div></a></li>
+                        <li><a href="{% url "extract:top-legal-term-usage-list" %}"><div>Top Term Usage</div></a></li>
+                      </ul>
+                    </li>
+                    <li>
+                      <a href="#">Entities</a>
+                      <ul>
+                        <li><a href="{% url "extract:geo-entity-usage-list" %}"><div>Geo Entity Usage</div></a></li>
+                        <li><a href="{% url "extract:top-geo-entity-usage-list" %}"><div>Top Geo Entity Usage</div></a></li>
+                      </ul>
+                    </li>
+                    <li>
+                      <a href="#">Parties</a>
+                      <ul>
+                        <li><a href="{% url "extract:party-usage-list" %}"><div>Party Usage</div></a></li>
+                        <li><a href="{% url "extract:top-party-usage-list" %}"><div>Top Party Usage</div></a></li>
+                      </ul>
+                    </li>
+                    <li>
+                      <a href="#">Dates</a>
+                      <ul>
+                        <li><a href="{% url "extract:date-usage-list" %}"><div>Date Usage</div></a></li>
+                        <li><a href="{% url "extract:top-date-usage-list" %}"><div>Top Date Usage</div></a></li>
+                        <li><a href="{% url "extract:date-usage-timeline" %}"><div>Date Usage Timeline</div></a></li>
+                        <li class="divider"></li>
+                        <li><a href="{% url "extract:date-duration-usage-list" %}"><div>Date Duration Usage</div></a></li>
+                        <li><a href="{% url "extract:top-date-duration-usage-list" %}"><div>Top Date Duration Usage</div></a></li>
+                      </ul>
+                    </li>
+                    <li>
+                      <a href="#">Definitions</a>
+                      <ul>
+                        <li><a href="{% url "extract:definition-usage-list" %}"><div>Definition Usage</div></a></li>
+                        <li><a href="{% url "extract:top-definition-usage-list" %}"><div>Top Definition Usage</div></a></li>
+                      </ul>
+                    </li>
+                    <li>
+                      <a href="#">Courts</a>
+                      <ul>
+                        <li><a href="{% url "extract:court-usage-list" %}"><div>Court Usage</div></a></li>
+                        <li><a href="{% url "extract:top-court-usage-list" %}"><div>Top Court Usage</div></a></li>
+                      </ul>
+                    </li>
+                    <li>
+                      <a href="#">Currencies</a>
+                      <ul>
+                        <li><a href="{% url "extract:currency-usage-list" %}"><div>Currency Usage</div></a></li>
+                        <li><a href="{% url "extract:top-currency-usage-list" %}"><div>Top Currency Usage</div></a></li>
+                      </ul>
+                    </li>
+                  </ul>
+                </li>
+                <li>
+                  <a href="#"><div><i class="fa fa-bar-chart"></i><span>Reports</span></div></a>
+                  <ul>
+                    <li><a href="{% url "document:document-list" %}"><div>Document Clauses</div></a></li>
+                    <li><a href="{% url "extract:geo-entity-usage-chart" "country" %}"><div>Document Geography</div></a></li>
+                    <li><a href="{% url "document:document-property-list" %}"><div>Document Counterparties</div></a></li>
+                    <li class="divider"></li>
+                    <li><a href="{% url "extract:date-usage-timeline" %}"><div>Date Usage Timeline</div></a></li>
+                    <li><a href="{% url "document:document-property-list" %}"><div>Risk Summary</div></a></li>
+                  </ul>
+                </li>
+                <li>
+                  <a href="{% url "document:stats" %}"><div><i class="fa fa-tachometer"></i><span>Stats</span></div></a>
+                </li>
+              </ul>
+            {% endif %}
+
+            <ul id="account_menu" class="pull-right">
+              {% if request.user.is_authenticated %}
+                <li>
+                  <a class="" href="{% url 'users:user-detail' request.user.username %}">
+                    <i class="i-circled i-dark i-small icon-user"
+                       data-toggle="tooltip" data-placement="bottom" data-delay='{"show": 1000, "hide":0}'
+                       data-original-title="{% trans "My Profile" %}"></i>
+                    <span>{% trans "My Profile" %}</span>
+                  </a>
+                </li>
+                <li>
+                  <a class="" href="{% url 'account_logout' %}">
+                    <i class="i-circled i-dark i-small icon-signout"
+                       data-toggle="tooltip" data-placement="bottom" data-delay='{"show": 1000, "hide":0}'
+                       data-original-title="{% trans "Sign Out" %}"></i>
+                    <span>{% trans "Sign Out" %}</span>
+                  </a>
+                </li>
+              {% else %}
+                <li>
+                  <a class="" href="{% url 'account_signup' %}">
+                    <i class="i-circled i-dark i-small icon-pencil"
+                       data-toggle="tooltip" data-placement="bottom" data-delay='{"show": 1000, "hide":0}'
+                       data-original-title="{% trans "Sign Up" %}"></i>
+                    <span>{% trans "Sign Up" %}</span>
+                  </a>
+                </li>
+                <li>
+                  <a class="" href="{% url 'account_login' %}">
+                    <i class="i-circled i-dark i-small icon-signin"
+                       data-toggle="tooltip" data-placement="bottom" data-delay='{"show": 1000, "hide":0}'
+                       data-original-title="{% trans "Sign In" %}"></i>
+                    <span>{% trans "Sign In" %}</span>
+                  </a>
+                </li>
+              {% endif %}
+            </ul>
+
+          </nav><!-- #primary-menu end -->
+        </div>
+      </div>
+    </header><!-- #header end -->
+
+    <!-- Page Header -->
+    {% block page_header_wrapper %}
+      <section id="page-title">
+        <div class="container clearfix">
+          <h1>{% block page_header %}{% endblock %}{% block page_header_addon %}{% endblock %}</h1>
+        </div>
+      </section>
+    {% endblock %}
+    <!-- end Page Header -->
+
+    <!-- Content -->
+    <section id="content">
+      <div class="content-wrap">
+        <div class="container clearfix">
+
+          <!-- Global Search -->
+          {% if user.is_authenticated %}
+            <div class="well global-search">
+              <div>
+                <i class="fa fa-search"></i>
+                <strong>Global Search</strong>
+              </div>
+              <form class="form-inline" action="{% url "document:search" %}">
+                <div class="form-group">
+                  <input type="text" class="typeahead form-control" id="name_search" name="name_search"
+                         value="{{ name_search }}"
+                         placeholder="Name">
+                </div>
+                <div class="form-group">
+                  <input type="text" class="typeahead form-control" id="description_search" name="description_search"
+                         value="{{ description_search }}"
+                         placeholder="Description">
+                </div>
+                <div class="form-group">
+                  <input type="text" class="form-control" id="term_search" name="term_search"
+                         data-role="tagsinput"
+                         value="{{ term_search }}"
+                         placeholder="Term">
+                </div>
+                <div class="form-group">
+                  <input type="text" class="typeahead form-control" id="entity_search" name="entity_search"
+                         value="{{ entity_search }}"
+                         placeholder="Entity">
+                </div>
+                {% if is_text_unit_list_page %}
+                  <div class="form-group">
+                    <input type="search" class="form-control" id="elastic_search" name="elastic_search"
+                           value="{{ elastic_search }}"
+                           placeholder="Elastic Search by Text">
+                  </div>
+                {% endif %}
+
+                <button type="submit" class="btn-u btn-sm button-dark">Search</button>
+
+                <i class="i-circled i-dark i-small icon-double-angle-right global-search-switch" data-toggle="tooltip" data-placement="bottom"
+                   data-delay="{&quot;show&quot;: 1000, &quot;hide&quot;:0}"
+                   data-original-title="Collapse"></i>
+              </form>
+            </div>
+          {% endif %}
+          <!-- end Global Search -->
+
+          {% if messages %}
+            {% for message in messages %}
+              <span class="notification" data-notify-type="{{ message.tags }}" data-notify-msg="{{ message }}"></span>
+            {% endfor %}
+          {% endif %}
+
+          {% block content %}{% endblock content %}
+
+          {% if request.user.is_authenticated %}
+            <span class="user-info">
+            {{ user.username }}/{{ user.role_abbr }}
+              {% if user.is_admin %}
+                <a href="{% url "admin:index" %}"
+                   class="fa fa-cog"
+                   title="Admin site"></a>
+              {% endif %}
+          </span>
+          {% endif %}
+        </div> <!-- /container -->
+      </div>
+    </section><!-- #content end -->
+
+    <!-- /form to export xlsx from list view -->
+    <form id="exportForm" method="GET">
+      <input type='hidden' name='export' value='1'/>
+      {% block export_params_inputs %}{% endblock %}
+    </form>
+
+    {% block modal %}{% endblock modal %}
+
+    <!-- Footer -->
+    <footer id="footer" class="dark">
+
+      {% if user.is_authenticated %}
+        <!-- Footer widgets -->
+        <div class="container">
+          <div class="content-wrap">
+            <div class="row counter-block">
+              <div class="col-md-3">
+                <a href="{% url "document:document-list" %}">
+                  <div class="counter counter-small text-center"><span data-from="1" data-to="{{ documents_count }}" data-refresh-interval="100" data-speed="1000" data-comma="true">{{ documents_count }}</span></div>
+                  <h5 class="nobottommargin text-center">Total Documents</h5>
+                </a>
+              </div>
+              <div class="col-md-3">
+                <a href="{% url "project:project-list" %}">
+                  <div class="counter counter-small text-center"><span data-from="1" data-to="{{ projects_count }}" data-refresh-interval="200" data-speed="2000" data-comma="true">{{ projects_count }}</span></div>
+                  <h5 class="nobottommargin text-center">Projects</h5>
+                </a>
+              </div>
+              <div class="col-md-3">
+                <a href="{% url "project:task-queue-list" %}">
+                  <div class="counter counter-small text-center"><span data-from="1" data-to="{{ task_queues_count }}" data-refresh-interval="200" data-speed="2000" data-comma="true">{{ task_queues_count }}</span></div>
+                  <h5 class="nobottommargin text-center">Task Queues</h5>
+                </a>
+              </div>
+              <div class="col-md-3">
+                <a href="{% url "users:user-list" %}">
+                  <div class="counter counter-small text-center"><span data-from="1" data-to="{{ reviewers_count }}" data-refresh-interval="200" data-speed="2000" data-comma="true">{{ reviewers_count }}</span></div>
+                  <h5 class="nobottommargin text-center">Reviewers</h5>
+                </a>
+              </div>
+            </div>
+          </div>
+        </div><!-- end Footer widgets -->
+      {% endif %}
+
+      <!-- Marketing site -->
+      <section class="footer-slider">
+        <div class="vertical-middle center slider-text">
+          <div class="heading-block nobottomborder nobottommargin center">
+            <h1>
+              <a href="https://contraxsuite.com/">
+                <div class="text-rotater" data-separator="|" data-rotate="flipInX" data-speed="3500">
+                  Visit <span class="t-rotate">https://contraxsuite.com|contraxsuite marketing site</span>
+                </div>
+              </a>
+            </h1>
+          </div>
+        </div>
+      </section>
+
+      <!-- Copyrights -->
+      <div id="copyrights">
+        <div class="container clearfix">
+
+          <div class="col_half">
+            Copyrights &copy; 2015-2017, <a href="https://lexpredict.com">LexPredict, LLC</a><br>
+            <div class="copyright-links"><a href="#">Terms of Use</a></div>
+          </div>
+
+          <div class="col_half col_last tright">
+            <div class="fright clearfix">
+              <a href="#" class="social-icon si-small si-borderless si-facebook">
+                <i class="icon-facebook"></i>
+                <i class="icon-facebook"></i>
+              </a>
+
+              <a href="#" class="social-icon si-small si-borderless si-twitter">
+                <i class="icon-twitter"></i>
+                <i class="icon-twitter"></i>
+              </a>
+
+              <a href="#" class="social-icon si-small si-borderless si-linkedin">
+                <i class="icon-linkedin"></i>
+                <i class="icon-linkedin"></i>
+              </a>
+            </div>
+
+            <div class="clear"></div>
+
+            <i class="icon-envelope2"></i> <a href="mailto:it@lexpredict.com">it@lexpredict.com</a>
+          </div>
+
+        </div>
+      </div><!-- #copyrights end -->
+    </footer><!-- #footer end -->
+
+    {% if user.is_authenticated %}
+      <!-- Global Search switcher -->
+      <div id="global_search_switch" class="global-search-bar">
+        <div>Global Search</div>
+        <i class="i-circled i-dark i-small icon-search global-search-switch"></i>
+      </div><!-- end Global Search switcher -->
+    {% endif %}
+
+  {% endblock content_wrapper %}
+</div><!-- #wrapper end -->
+
+<!-- Go To Top -->
+<div id="gotoTop" class="icon-angle-up"></div>
+
+
+{% block js %}
+  <script src="{% static 'theme/js/jquery.js' %}" style="text/javascrypt"></script>
+  <script src="{% static 'theme/js/plugins.js' %}" style="text/javascrypt"></script>
+  <script src="{% static "theme/js/functions.js" %}" style="text/javascrypt"></script>
+
+  {#  <script src="https://cdnjs.cloudflare.com/ajax/libs/tether/1.3.7/js/tether.min.js"#}
+  {#          integrity="sha384-XTs3FgkjiBgo8qjEjBk0tGmf3wPrWtA6coPfQDfFEY8AnYJwjalXCiosYRBIBZX8"#}
+  {#          crossorigin="anonymous"></script>#}
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/typeahead.js/0.11.1/typeahead.bundle.min.js"
+          crossorigin="anonymous"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/mark.js/8.4.0/mark.min.js"
+          integrity="sha256-d4W6lnqRlQIXAoSYOnZCyDTDikGIxMs2EfQ4Qy7bgJQ=" crossorigin="anonymous"></script>
+
+  {% javascript "custom_js" %}
+  <script src="{% static 'js/project.js' %}" style="text/javascrypt"></script>
+{% endblock %}
+
+{% csrf_token %}
+
+{% block js_extra %}{% endblock %}
+
+</body>
+</html>

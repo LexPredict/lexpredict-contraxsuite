@@ -1,0 +1,23 @@
+{% load static %}
+
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <title>Attachment Preview</title>
+</head>
+<body>
+  <div class="wrapper">
+  {% if attachment.extension in 'tiff|pdf|doc|rtf|txt' %}
+    <iframe src="https://docs.google.com/gview?url={{ attachment.path }}&embedded=true" width="100%" height="700" style="border: none;"></iframe>
+  {% elif attachment.extension in 'docx|odt|csv|xls|xlsx|ppt|pptx' %}
+    <iframe src='https://view.officeapps.live.com/op/embed.aspx?src={{ attachment.path }}' width='100%' height='700' frameborder='0'>
+      This is an embedded <a target='_blank' href='http://office.com'>Microsoft Office</a> document, powered by <a target='_blank' href='http://office.com/webapps'>Office Online</a>.
+    </iframe>
+  {% elif attachment.extension in 'jpg|png' %}
+    <img src="{% static attachment.path %}" width="100%" height="700" />
+  {% endif %}
+  </div>
+</body>
+</html>

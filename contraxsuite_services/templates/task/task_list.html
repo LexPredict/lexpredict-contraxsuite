@@ -1,0 +1,450 @@
+{% extends "base_list_ajax.html" %}
+{% load static %}
+
+{% block css_extra %}
+  {{ block.super }}
+  <link rel="stylesheet" href="{% static "theme/css/components/radio-checkbox.css" %}" type="text/css" />
+  <link rel="stylesheet" href="{% static "theme/css/components/bs-switches.css" %}" type="text/css" />
+  <style>
+    .dropdown-submenu {
+      position: relative;
+    }
+    .dropdown-submenu > .dropdown-menu {
+      top: 0;
+      left: 100%;
+    }
+    .dropdown-submenu:hover > .dropdown-menu {
+      display: block;
+    }
+    .dropdown-submenu > a:after {
+      display: block;
+      content: " ";
+      float: right;
+      width: 0;
+      height: 0;
+      border: 5px solid transparent;
+      border-right-width: 0;
+      border-left-color: #ccc;
+      margin: 5px -10px 0 10px;
+    }
+    .btn-group.open .dropdown-submenu > .dropdown-toggle {
+      -webkit-box-shadow: none;
+      box-shadow: none;
+    }
+  </style>
+{% endblock %}
+
+{% block button_block %}
+  {{ block.super }}
+  <div class="dropdown btn-group pull-left">
+    <a href="#" class="btn-u btn-sm dropdown-toggle"
+       data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+      Run Task<span class="caret"></span>
+    </a>
+    <ul class="dropdown-menu dropdown-menu-left">
+      {#      <li>#}
+      {#        <a href="{% url "filebrowser:fb_browse" %}">#}
+      {#          <i class="fa fa-files-o"></i>#}
+      {#          Browse/Upload Documents</a>#}
+      {#      </li>#}
+      <li class="dropdown-submenu">
+        <a class="dropdown-toggle" href="#" data-toggle="dropdown" aria-haspopup="false"
+           aria-expanded="false">
+          <i class="fa fa-file-text-o"></i> Load Data</a>
+        <ul class="dropdown-menu">
+          <li>
+            <a class="task" href="#"
+               data-href="{% url "task:load-documents" %}"
+               data-btn-text="Load">
+              <i class="fa fa-file-text-o"></i>
+              Load Documents</a>
+          </li>
+          <li>
+            <a class="task" href="#"
+               data-href="{% url "task:load-terms" %}">
+              <i class="fa fa-bars"></i>
+              Load Terms</a>
+          </li>
+          <li>
+            <a class="task" href="#"
+               data-href="{% url "task:load-geo-entities" %}"
+               data-btn-text="Load">
+              <i class="fa fa-map-signs"></i>
+              Load Geo Entities</a>
+          </li>
+          <li>
+            <a class="task" href="#"
+               data-href="{% url "task:load-courts" %}">
+              <i class="fa fa-gavel"></i>
+              Load Courts</a>
+          </li>
+        </ul>
+      </li>
+      <li class="divider"></li>
+      <li class="dropdown-submenu">
+        <a class="dropdown-toggle" href="#" data-toggle="dropdown" aria-haspopup="false"
+           aria-expanded="false">
+          <i class="fa fa-search"></i> Locators</a>
+        <ul class="dropdown-menu">
+          <li>
+            <a class="task" href="#"
+               data-href="{% url "task:locate-terms" %}"
+               data-btn-text="Locate">
+              <i class="fa fa-search"></i>
+              Locate Terms</a>
+          </li>
+          <li>
+            <a class="task" href="#"
+               data-href="{% url "task:locate-geo-entities" %}"
+               data-btn-text="Locate">
+              <i class="fa fa-search"></i>
+              Locate Geo Entities</a>
+          </li>
+          <li>
+            <a class="task" href="#"
+               data-href="{% url "task:locate-parties" %}"
+               data-btn-text="Locate">
+              <i class="fa fa-search"></i>
+              Locate Parties</a>
+          </li>
+          <li>
+            <a class="task" href="#"
+               data-href="{% url "task:locate-dates" %}"
+               data-btn-text="Locate">
+              <i class="fa fa-search"></i>
+              Locate Date Usages</a>
+          </li>
+          <li>
+            <a class="task" href="#"
+               data-href="{% url "task:locate-date-durations" %}"
+               data-btn-text="Locate">
+              <i class="fa fa-search"></i>
+              Locate Date Duration Usages</a>
+          </li>
+          <li>
+            <a class="task" href="#"
+               data-href="{% url "task:locate-definitions" %}"
+               data-btn-text="Locate">
+              <i class="fa fa-search"></i>
+              Locate Definition Usages</a>
+          </li>
+          <li>
+            <a class="task" href="#"
+               data-href="{% url "task:locate-courts" %}"
+               data-btn-text="Locate">
+              <i class="fa fa-search"></i>
+              Locate Court Usages</a>
+          </li>
+          <li>
+            <a class="task" href="#"
+               data-href="{% url "task:locate-currencies" %}"
+               data-btn-text="Locate">
+              <i class="fa fa-search"></i>
+              Locate Currency Usages</a>
+          </li>
+        </ul>
+      </li>
+      <li class="divider"></li>
+
+      <li class="dropdown-submenu">
+        <a class="dropdown-toggle" href="#" data-toggle="dropdown" aria-haspopup="false"
+           aria-expanded="false">
+          <i class="fa fa-search"></i> Analyze</a>
+        <ul class="dropdown-menu">
+          <li>
+            <a class="task" href="#"
+               data-href="{% url "task:cluster" %}"
+               data-btn-text="Cluster">
+              <i class="fa fa-object-group"></i>
+              Cluster Documents/Text Units</a>
+          </li>
+          {% if active_classifiers %}
+            <li>
+              <a class="task" href="#"
+                 data-href="{% url "task:existed-classifier-classify" %}"
+                 data-btn-text="Classify">
+                <i class="fa fa-object-group"></i>
+                Classify Text Units (Use Existing Classifier)</a>
+            </li>
+          {% endif %}
+          <li>
+            <a class="task" href="#"
+               data-href="{% url "task:create-classifier-classify" %}"
+               data-btn-text="Classify">
+              <i class="fa fa-object-group"></i>
+              Classify Text Units (Create New Classifier)</a>
+          </li>
+          <li>
+            <a class="task" href="#"
+               data-href="{% url "task:similarity" %}"
+               data-btn-text="Search">
+              <i class="fa fa-copy"></i>
+              Identify Similar Documents/Text Units</a>
+          </li>
+          <li>
+            <a class="task" href="#"
+               data-href="{% url "task:party-similarity" %}"
+               data-btn-text="Search">
+              <i class="fa fa-copy"></i>
+              Identify Similar Parties</a>
+          </li>
+        </ul>
+      </li>
+      <li class="divider"></li>
+      <li>
+        <a class="task" href="#"
+           data-href="{% url "task:update-elasticsearch-index" %}"
+           data-btn-text="Update Index"
+           data-content="The update index command will freshen all of the content in Elasticsearch index. Use it after loading new documents.">
+          <i class="fa fa-refresh"></i>
+          Update Elasticsearch Index</a>
+      </li>
+      <li class="divider"></li>
+      <li>
+        <a class="task" href="#"
+           data-href="{% url "task:clean-tasks" %}"
+           data-btn-text="Clean"
+           data-type="red"
+           data-btn-class="btn-u btn-sm btn-d"
+           data-content="Clean tasks with <span class='tag tag-success'>SUCCESS</span> or <span class='tag tag-danger'>FAILURE</span> statuses?<br />
+                         Note: this task scheduled on Mondays.">
+          <i class="fa fa-trash"></i>
+          Clean Task List</a>
+      </li>
+    </ul>
+  </div>
+{% endblock %}
+
+{% block js_extra %}
+  {{ block.super }}
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-confirm/3.1.1/jquery-confirm.min.js"></script>
+  <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/jQuery-Knob/1.2.13/jquery.knob.min.js"></script>
+  <script type="text/javascript" src="{% static "theme/js/components/bs-switches.js" %}"></script>
+  <script type="text/javascript">
+    var show_options = function($form){
+      if ($('select[name="using"]').length) {
+        var using = $('select[name="using"]').val();
+        var is_simple = $('input[name="options"]').is(':checked');
+        if (using == 'MiniBatchKMeans') {
+          var advanced = ', [name="kmeans_max_iter"], [name^="mb_kmeans_"]';
+          var hidden_advanced = is_simple ? advanced : '';
+          var visible_advanced = is_simple ? '' : advanced;
+          $form.find('[name="n_clusters"]' + visible_advanced).parent('p').show();
+          $form.find('[name^="kmeans_n_init"], [name^="birch_"], [name^="dbscan_"]' + hidden_advanced).parent('p').hide()
+        }
+        else if (using == 'KMeans') {
+          advanced = ', [name^="kmeans_"]';
+          hidden_advanced = is_simple ? advanced : '';
+          visible_advanced = is_simple ? '' : advanced;
+          $form.find('[name="n_clusters"]' + visible_advanced).parent('p').show();
+          $form.find('[name^="mb_kmeans_"], [name^="birch_"], [name^="dbscan_"]' + hidden_advanced).parent('p').hide()
+        }
+        else if (using == 'Birch') {
+          advanced = ', [name^="birch_"]';
+          hidden_advanced = is_simple ? advanced : '';
+          visible_advanced = is_simple ? '' : advanced;
+          $form.find('[name="n_clusters"]' + visible_advanced).parent('p').show();
+          $form.find('[name^="kmeans_"], [name^="mb_kmeans_"], [name^="dbscan_"]' + hidden_advanced).parent('p').hide()
+        }
+        else if (using == 'DBSCAN') {
+          advanced = ', [name^="dbscan_"]';
+          hidden_advanced = is_simple ? advanced : '';
+          if (!is_simple) {
+            $form.find('[name^="dbscan_"]').parent('p').show();
+          }
+          $form.find('[name="n_clusters"], [name^="kmeans_"], [name^="mb_kmeans_"], [name^="birch_"]' + hidden_advanced).parent('p').hide()
+        }
+      }
+      else if ($('select[name="algorithm"]').length){
+        var algorithm = $('select[name="algorithm"]').val();
+        is_simple = $('input[name="options"]').is(':checked');
+        if (algorithm == 'SVC') {
+          hidden_advanced = is_simple ? ', [name^="svc_"]' : '';
+          if (!is_simple) {
+            $form.find('[name^="svc_"]').parent('p').show();
+          }
+          $form.find('[name^="mnb_"], [name^="rfc_etc_"], [name^="lrcv_"]' + hidden_advanced).parent('p').hide()
+        }
+        else if (algorithm == 'MultinomialNB') {
+          hidden_advanced = is_simple ? ', [name^="mnb_"]' : '';
+          if (!is_simple) {
+            $form.find('[name^="mnb_"]').parent('p').show();
+          }
+          $form.find('[name^="svc_"], [name^="rfc_etc_"], [name^="lrcv_"]' + hidden_advanced).parent('p').hide()
+        }
+        else if (algorithm == 'ExtraTreesClassifier' || algorithm == 'RandomForestClassifier') {
+          hidden_advanced = is_simple ? ', [name^="rfc_etc_"]' : '';
+          if (!is_simple) {
+            $form.find('[name^="rfc_etc_"]').parent('p').show();
+          }
+          $form.find('[name^="svc_"], [name^="mnb_"], [name^="lrcv_"]' + hidden_advanced).parent('p').hide()
+        }
+        else if (algorithm == 'LogisticRegressionCV') {
+          hidden_advanced = is_simple ? ', [name^="lrcv_"]' : '';
+          if (!is_simple) {
+            $form.find('[name^="lrcv_"]').parent('p').show();
+          }
+          $form.find('[name^="svc_"], [name^="mnb_"], [name^="rfc_etc_"]' + hidden_advanced).parent('p').hide()
+        }
+      }
+    };
+    var onLoadJC = function(jc){
+      var $form = jc.$content;
+      $form.find(".bt-switch").bootstrapSwitch();
+      $form.find('input[class*="max-one-of"]').change(function () {
+        var cls = $(this).attr('class').split(' ');
+        if (this.checked) {
+          $('.' + cls.join('.')).not(this).prop("checked", false)
+        }
+      });
+      $form.find('input[class*="min-one-of"]').change(function () {
+        var cls = $(this).attr('class').split(' ');
+        if (!$('input[class*="min-one-of"]:checked').length) {
+          $('.' + cls.join('.')).not(this).first().prop("checked", true)
+        }
+      });
+      $form.find('select[name="using"], select[name="algorithm"], input[name="options"]').on('change switchChange.bootstrapSwitch', function () {
+        show_options($form)
+      });
+      show_options($form)
+    };
+    $('.task').click(function(){
+      var $that = $(this);
+      var jc = $.confirm({
+        title: 'Are you sure?',
+        backgroundDismiss: true,
+        content: $that.data('content') || function(){
+          var self = this;
+          $.get($that.data('href')).done(function(data){
+            var content = '<form class="popup-form">' +
+                '<p class="header">' + data.header + '</p>' +
+                data.form_data + '</form>';
+            var $content = $(content);
+            $content.find('input.checkbox-style').each(function(){
+              $(this).parent().addClass('checkbox-ltr-full-width');
+            });
+
+            self.setContent($content);
+
+            {# works on production; TODO: find issue, remove duplication #}
+            {% if settings.HOST_NAME != 'localhost' %}
+              onLoadJC(jc);
+            {% endif %}
+          });
+        },
+        onContentReady: function(){
+          {# works locally #}
+          {% if settings.HOST_NAME == 'localhost' %}
+            onLoadJC(jc);
+          {% endif %}
+        },
+        columnClass: 'col-md-8 col-md-offset-2',
+        type: $that.data('type') || 'blue',
+        icon: 'fa fa-warning text-warning',
+        buttons: {
+          confirm: {
+            text: $that.data('btn-text'),
+            btnClass: $that.data('btn-class') || 'btn-u btn-sm',
+            action: function(){
+              var jc = this;
+              var form = jc.$content.find('form');
+              form.find('.error').remove();
+              $.post($that.data('href'), form.serialize())
+                  .done(function(data){
+                    jc.close();
+                    $.alert({
+                      icon: 'fa fa-spinner fa-spin text-warning',
+                      title: 'Working!',
+                      type: 'orange',
+                      content: data,
+                      columnClass: 'col-md-4 col-md-offset-4',
+                      onClose: function(){
+                        $('.jqxgrid').jqxGrid('updatebounddata')
+                      }
+                    });
+                  })
+                  .fail(function(data){
+                    $.each(data.responseJSON, function(field, error){
+                      var error_p = '<p class="error">' + error[0] + '</p>';
+                      form.find('[name=' + field + ']').parent().prepend(error_p)
+                    })
+                  });
+              return false
+            }
+          },
+          cancel: {
+            btnClass: 'btn-u btn-sm btn-l'
+          }
+        }
+      });
+    });
+
+    $(document).ready(function () {
+      var datafields = [
+        { name: 'pk', type: 'int' },
+        { name: 'name', type: 'string' },
+        { name: 'user__username', type: 'string' },
+        { name: 'date_start', type: 'date' },
+        { name: 'date_done', type: 'date' },
+        { name: 'time', type: 'string' },
+        { name: 'progress', type: 'float' },
+        { name: 'has_error', type: 'bool' },
+        { name: 'status', type: 'string' },
+        { name: 'url', type: 'string' },
+        { name: 'purge_url', type: 'string' }
+      ];
+      var menu_renderer = function(row, event) {
+        var grid = $(event.currentTarget).parents('.jqxgrid');
+        row = grid.jqxGrid('getrowdata', row);
+        var menu_data = [
+          { url: row.url,
+            icon: 'fa fa-info-circle',
+            text: 'View Details'},
+          { url: row.purge_url,
+            cls: 'purge-task',
+            icon: 'fa fa-eraser',
+            text: 'Purge Task'}
+        ];
+        show_menu(menu_data, grid, row.pk);
+      };
+      var status_renderer = function(index, columnfield, value, defaulthtml, columnproperties, row){
+        var cls = row.has_error ? 'danger' : row.status == 'SUCCESS'
+            ? 'success' : row.status == 'PENDING'
+            ? 'warning' : row.status == 'FAILURE'
+            ? 'danger' : 'default';
+        var value = row.has_error ? 'FAILURE' : row.status;
+        var new_value = '<span class="label label-' + cls + '">' + value + '</span>';
+        return renderCell(defaulthtml, new_value);
+      };
+      var columns = [
+        { text: 'Task Name', datafield: 'name', width: 'auto',
+          align: 'center', cellsalign: 'left',
+          cellsrenderer: defaultLinkFormatter },
+        { text: 'User', datafield: 'user__username', width: 150,
+          align: 'center', cellsalign: 'center' },
+        { text: 'Date Started', datafield: 'date_start', width: 150,
+          filtertype: 'date', cellsformat: 'MM-dd-yyyy HH:mm',
+          align: 'center', cellsalign: 'center' },
+        { text: 'Date Done', datafield: 'date_done', width: 150,
+          filtertype: 'date', cellsformat: 'MM-dd-yyyy HH:mm',
+          align: 'center', cellsalign: 'center' },
+        { text: 'Time', datafield: 'time', width: 150,
+          align: 'center', cellsalign: 'center' },
+        { text: 'Progress', datafield: 'progress', width: 100,
+          cellsrenderer: knob_cellsrenderer,
+          align: 'center', cellsalign: 'center' },
+        { text: 'Status', datafield: 'status', width: 100,
+          cellsrenderer: status_renderer,
+          align: 'center', cellsalign: 'center' },
+        { text: 'Action', datafield: 'url', width: 60,
+          align: 'center', exportable: false,
+          columntype: 'button',
+          sortable: false, filterable: false, menu: false,
+          cellsrenderer: function(){return 'Menu'},
+          buttonclick: menu_renderer }
+      ];
+      var custom_grid_options = { rowsheight: 60 };
+      draw_grid(".jqxgrid", datafields, columns, false, null, custom_grid_options);
+    });
+  </script>
+{% endblock %}

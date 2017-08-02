@@ -1,0 +1,70 @@
+{% extends "base_list_ajax.html" %}
+{% load static %}
+
+{% block js_extra %}
+  {{ block.super }}
+  <script type="text/javascript">
+    $(document).ready(function () {
+      var datafields = [
+        { name: 'pk', type: 'int' },
+        { name: 'document__name', type: 'string' },
+        { name: 'document__document_type', type: 'string' },
+        { name: 'document__description', type: 'string' },
+        { name: 'unit_type', type: 'string' },
+        { name: 'language', type: 'string' },
+        { name: 'text', type: 'string' },
+        { name: 'url', type: 'string' },
+        { name: 'detail_url', type: 'string' }
+      ];
+      var menu_renderer = function(row, event) {
+        var grid = $(event.currentTarget).parents('.jqxgrid');
+        row = grid.jqxGrid('getrowdata', row);
+        var menu_data = [
+          { url: row.url,
+            icon: 'fa fa-file-text-o',
+            text: 'View Document'},
+          { url: row.detail_url,
+            icon: 'fa fa-info-circle',
+            text: 'View Details'},
+          { url: '#',
+            icon: 'fa fa-tags',
+            cls: 'tag-text-unit',
+            text: 'Tag'},
+          { url: '#',
+            icon: 'fa fa-gavel',
+            cls: 'classify-text-unit',
+            text: 'Classify'}
+        ];
+        show_menu(menu_data, grid, row.pk);
+      };
+      var columns = [
+        { text: 'Name', datafield: 'document__name', width: 300,
+          align: 'center', cellsalign: 'left', enabletooltips: true,
+          cellsrenderer: defaultLinkFormatter, columngroup: 'Document' },
+        { text: 'Type', datafield: 'document__document_type', width: 100,
+          align: 'center', cellsalign: 'center', columngroup: 'Document' },
+        { text: 'Description', datafield: 'document__description',
+          width: 200, enabletooltips: true, columngroup: 'Document',
+          align: 'center', cellsalign: 'center' },
+        { text: 'Unit Type', datafield: 'unit_type', width: 80,
+          align: 'center', cellsalign: 'center' },
+        { text: 'Language', datafield: 'language', width: 80,
+          align: 'center', cellsalign: 'center' },
+        { text: 'Text', datafield: 'text', width: 'auto', minwidth: 300,
+          align: 'center', cellsalign: 'center' },
+        { text: 'Action', datafield: 'edit_url', width: 60,
+          align: 'center', exportable: false,
+          columntype: 'button',
+          sortable: false, filterable: false, menu: false,
+          cellsrenderer: function(){return 'Menu'},
+          buttonclick: menu_renderer }
+      ];
+      var custom_grid_options = {
+        columngroups: [
+          { text: 'Document', name: 'Document', align: 'center' }
+        ]
+      };
+      draw_grid(".jqxgrid", datafields, columns, true, null, custom_grid_options);
+    });
+  </script>
+{% endblock %}

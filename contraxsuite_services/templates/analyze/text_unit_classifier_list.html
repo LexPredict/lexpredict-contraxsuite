@@ -1,0 +1,60 @@
+{% extends "base_list_ajax.html" %}
+{% load static %}
+
+{% block js_extra %}
+  {{ block.super }}
+  <script type="text/javascript">
+    $(document).ready(function () {
+      var datafields = [
+        { name: 'pk', type: 'int' },
+        { name: 'name', type: 'string' },
+        { name: 'version', type: 'string' },
+        { name: 'class_name', type: 'string' },
+        { name: 'is_active', type: 'bool' },
+        { name: 'suggestions', type: 'int' },
+        { name: 'retrain_url', type: 'string' },
+        { name: 'suggestions_url', type: 'string' },
+        { name: 'delete_url', type: 'string' }
+      ];
+      var menu_renderer = function(row, event) {
+        var grid = $(event.currentTarget).parents('.jqxgrid');
+        row = grid.jqxGrid('getrowdata', row);
+        var menu_data = [
+          {url: row.retrain_url,
+           icon: 'fa fa-refresh',
+           cls: 'retrain-classifier',
+           text: 'Retrain'},
+          {url: row.delete_url + '?next={{ request.path }}',
+           icon: 'fa fa-remove',
+           cls: 'remove',
+           text: 'Remove'}
+        ];
+        show_menu(menu_data, grid, row.pk);
+      };
+      var class_name_renderer = function(index, columnfield, value, defaulthtml, columnproperties, row) {
+        return linkFormatter(defaulthtml, row.suggestions_url, value)
+      };
+      var columns = [
+        { text: 'Name', datafield: 'name', width: 'auto',
+          align: 'center', cellsalign: 'left', enabletooltips: true },
+        { text: 'Version', datafield: 'version', width: 150,
+          align: 'center', cellsalign: 'center' },
+        { text: 'Class Name', datafield: 'class_name', width: 150,
+          cellsrenderer: class_name_renderer,
+          align: 'center', cellsalign: 'center' },
+        { text: 'Active', datafield: 'is_active', width: 80,
+          cellsrenderer: bool_renderer,
+          align: 'center', cellsalign: 'center' },
+        { text: 'Suggestions', datafield: 'suggestions', width: 100,
+          align: 'center', cellsalign: 'center' },
+        { text: 'Action', datafield: 'url', width: 60,
+          align: 'center', exportable: false,
+          columntype: 'button',
+          sortable: false, filterable: false, menu: false,
+          cellsrenderer: function(){return 'Menu'},
+          buttonclick: menu_renderer }
+      ];
+      draw_grid(".jqxgrid", datafields, columns, false);
+    });
+  </script>
+{% endblock %}

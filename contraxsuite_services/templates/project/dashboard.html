@@ -1,0 +1,324 @@
+{% extends "base.html" %}
+{% load static pipeline %}
+
+{% block css_extra %}
+  {% stylesheet 'custom_jqwidgets_css' %}
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/jquery-confirm/3.1.1/jquery-confirm.min.css">
+  {{ block.super }}
+{% endblock %}
+
+{% block title %}Dashboard{% endblock %}
+
+{% block page_header %}Dashboard{% endblock %}
+
+{% block content %}
+
+  <div class="tabs tabs-bb clearfix page-tabs" id="tabs" data-speed="700" data-active="1">
+    <ul class="tab-nav clearfix">
+      <li><a href="#tab-1">Projects<span class="badge badge-s pull-right projects-badge"></span></a></li>
+      <li><a href="#tab-2">Assigned Tasks<span class="badge badge-s pull-right assigned-tasks-badge"></span></a></li>
+      <li><a href="#tab-3">Completed Tasks<span class="badge badge-s pull-right completed-tasks-badge"></span></a></li>
+    </ul>
+
+    <div class="tab-container">
+
+      <div class="tab-content clearfix" id="tab-1">
+        <div class="pull-right grid-controls">
+          {% include '_base_grid_buttons_block.html' %}
+        </div>
+        <div class="jqxgrid-container">
+          <div class="jqxgrid col-md-12 jqxgrid-projects"></div>
+        </div>
+      </div>
+
+      <div class="tab-content clearfix" id="tab-2">
+        <div class="pull-right grid-controls">
+          {% include '_base_grid_buttons_block.html' %}
+        </div>
+        <div class="jqxgrid-container">
+          <div class="jqxgrid col-md-12 jqxgrid-assigned-tasks"></div>
+        </div>
+      </div>
+
+      <div class="tab-content clearfix" id="tab-3">
+        <div class="pull-right grid-controls">
+          {% include '_base_grid_buttons_block.html' %}
+        </div>
+        <div class="jqxgrid-container">
+          <div class="jqxgrid col-md-12 jqxgrid-completed-tasks"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+{% endblock %}
+
+{% block js %}
+  {{ block.super }}
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jQuery-Knob/1.2.13/jquery.knob.min.js"></script>
+  {% include "_base_jqxgrid_block.html" %}
+
+  <script type="text/javascript">
+    $(document).ready(function () {
+      var projects_datafields = [
+        { name: 'pk', type: 'int' },
+        { name: 'name', type: 'string' },
+        { name: 'description', type: 'string' },
+        { name: 'task_queues_count', type: 'int' },
+        { name: 'total_documents_count', type: 'int' },
+        { name: 'completed_documents_count', type: 'int' },
+        { name: 'progress', type: 'float' },
+        { name: 'task_queue_data' }
+      ];
+      var projects_menu_renderer = function (row_number, event) {
+        var menu_data = [
+          { icon: 'fa fa-folder-open-o',
+            onclick: "expand_row(event, '.jqxgrid-projects', " + row_number + ")",
+            text: 'Show Task Queues' }
+        ];
+        show_menu(menu_data);
+      };
+      var projects_columns = [
+        { text: 'Name', datafield: 'name', width: '30%',
+          align: 'center', cellsalign: 'center' },
+        { text: 'Description', datafield: 'description', width: 'auto',
+          align: 'center', cellsalign: 'center' },
+        { text: 'Task Queues', datafield: 'task_queues_count', width: 100,
+          align: 'center', cellsalign: 'center' },
+        { text: 'Total', datafield: 'total_documents_count', width: 100,
+          align: 'center', cellsalign: 'center', columngroup: 'Documents' },
+        { text: 'Completed', datafield: 'completed_documents_count', width: 100,
+          align: 'center', cellsalign: 'center', columngroup: 'Documents' },
+        { text: 'Progress', datafield: 'progress', width: 100,
+          cellsrenderer: knob_cellsrenderer,
+          align: 'center', cellsalign: 'center' },
+        { text: 'Action', datafield: 'url', width: 60,
+          align: 'center', exportable: false,
+          columntype: 'button',
+          sortable: false, filterable: false, menu: false,
+          cellsrenderer: function(){return 'Menu'},
+          buttonclick: projects_menu_renderer }
+      ];
+      var projects_custom_source_data = {
+        url: '{% url "project:project-list" %}',
+        badgeClass: 'projects-badge'
+      };
+      // create nested grid
+      var projects_initrowdetails = function(index, parentElement, gridElement, record) {
+        var grid = $($(parentElement).children()[1]);
+        var details_source_ = {
+          datafields: [
+            { name: 'project__pk', type: 'int' },
+            { name: 'pk', type: 'int' },
+            { name: 'description', type: 'string' },
+            { name: 'total_documents_count', type: 'int' },
+            { name: 'completed_documents_count', type: 'int' },
+            { name: 'progress', type: 'float' },
+            { name: 'reviewers_count', type: 'int' },
+            { name: 'reviewers_usernames', type: 'string' }
+          ],
+          localdata: record.task_queue_data
+        };
+        var nestedGridAdapter = new $.jqx.dataAdapter(details_source_);
+        if (grid != null) {
+          grid.jqxGrid({
+            source: nestedGridAdapter,
+            altrows: true,
+            rowsheight: 60,
+            enabletooltips: true,
+            sortable: true,
+            filterable: true,
+            width: '98%',
+            height: 180,
+            columns: [
+              { text: 'Description', datafield: 'description', width: 'auto',
+                align: 'center', cellsalign: 'center' },
+              { text: 'Total', datafield: 'total_documents_count', width: 90,
+                align: 'center', cellsalign: 'center', columngroup: 'Documents' },
+              { text: 'Completed', datafield: 'completed_documents_count', width: 90,
+                align: 'center', cellsalign: 'center', columngroup: 'Documents' },
+              { text: 'Progress', datafield: 'progress', width: 90,
+                cellsrenderer: knob_cellsrenderer,
+                align: 'center', cellsalign: 'center' },
+              { text: 'Reviewers', datafield: 'reviewers_count', width: 90,
+                cellsrenderer: reviewers_renderer,
+                align: 'center', cellsalign: 'center' }
+            ],
+            columngroups: [
+              { text: 'Documents', name: 'Documents', align: 'center' }
+            ]
+          });
+        }
+      };
+      var projects_custom_grid_options = {
+        rowsheight: 60,
+        columnsheight: 30,
+        pageable: true,
+        rowdetails: true,
+        autoheight: true,
+        initrowdetails: projects_initrowdetails,
+        rowdetailstemplate: {
+          rowdetails: "<div class='sub-grid-title'>Task Queues</div><div id='grid' class='sub-grid'></div>",
+          rowdetailsheight: 225,
+          rowdetailshidden: true
+        },
+        columngroups: [
+          { text: 'Documents', name: 'Documents', align: 'center' }
+        ]
+      };
+      draw_grid(".jqxgrid-projects", projects_datafields, projects_columns, false,
+                projects_custom_source_data, projects_custom_grid_options);
+
+      var tasks_datafields = [
+        { name: 'pk', type: 'int' },
+        { name: 'description', type: 'string' },
+        { name: 'total_documents_count', type: 'int' },
+        { name: 'completed_documents_count', type: 'int' },
+        { name: 'progress', type: 'float' },
+        { name: 'reviewers_count', type: 'int' },
+        { name: 'reviewers_usernames', type: 'string' },
+        { name: 'documents' }
+      ];
+      var tasks_menu_renderer = function (row_number, event) {
+        var grid = $(event.currentTarget).parents('.jqxgrid');
+        var cls = grid.hasClass('jqxgrid-assigned-tasks') ? 'jqxgrid-assigned-tasks' : 'jqxgrid-completed-tasks';
+        var menu_data = [
+          { icon: 'fa fa-folder-open-o',
+            onclick: "expand_row(event, '." + cls + "', " + row_number + ")",
+            text: 'Show Task Queues' }
+        ];
+        show_menu(menu_data);
+      };
+      var tasks_columns = [
+        { text: 'Description', datafield: 'description', width: 'auto',
+          align: 'center', cellsalign: 'center' },
+        { text: 'Total', datafield: 'total_documents_count', width: 90,
+          align: 'center', cellsalign: 'center', columngroup: 'Documents' },
+        { text: 'Completed', datafield: 'completed_documents_count', width: 90,
+          align: 'center', cellsalign: 'center', columngroup: 'Documents' },
+        { text: 'Progress', datafield: 'progress', width: 90,
+          cellsrenderer: knob_cellsrenderer,
+          align: 'center', cellsalign: 'center' },
+        { text: 'Reviewers', datafield: 'reviewers_count', width: 90,
+          cellsrenderer: reviewers_renderer,
+          align: 'center', cellsalign: 'center' },
+        { text: 'Action', datafield: 'url', width: 60,
+          align: 'center', exportable: false,
+          columntype: 'button',
+          sortable: false, filterable: false, menu: false,
+          cellsrenderer: function(){return 'Menu'},
+          buttonclick: tasks_menu_renderer }
+      ];
+      var tasks_custom_source_data = {
+        url: '{% url "project:task-queue-list" %}'
+      };
+      // create nested grid.
+      var tasks_initrowdetails = function(index, parentElement, gridElement, record) {
+        var documents_grid = $($(parentElement).children()[1]);
+        documents_grid.attr('id', 'grid' + record.boundindex);
+        var details_source = {
+          datafields: [
+            { name: 'pk', type: 'int' },
+            { name: 'num', type: 'int' },
+            { name: 'name', type: 'string' },
+            { name: 'description', type: 'string' },
+            { name: 'type', type: 'string' },
+            { name: 'complete_date', type: 'date' },
+            { name: 'complete_user', type: 'string' },
+            { name: 'url', type: 'string' },
+            { name: 'open_url', type: 'string' },
+            { name: 'remove_url', type: 'string' }
+          ],
+          localdata: record.documents
+        };
+        var nestedGridAdapter = new $.jqx.dataAdapter(details_source);
+        if (documents_grid != null) {
+          var documents_menu_renderer = function(row) {
+            row = documents_grid.jqxGrid('getrowdata', row);
+            var menu_data = [
+              { url: row.url,
+                icon: 'fa fa-file-text-o',
+                text: 'Document Details' },
+              { url: row.open_url,
+                cls: 'mark-document-completed',
+                icon: 'fa fa-gavel',
+                text: row.complete_date ? 'Reopen Document' : 'Mark Document Completed' },
+              { url: row.remove_url,
+                cls: 'remove-from-task-queue',
+                icon: 'fa fa-remove',
+                text: 'Remove Document from Task Queue' }
+            ];
+            // send task queue's pk?
+            show_menu(menu_data, documents_grid, row.pk, 300);
+          };
+          documents_grid.jqxGrid({
+            source: nestedGridAdapter,
+            altrows: true,
+            enabletooltips: true,
+            sortable: true,
+            filterable: true,
+            width: '98%',
+            height: 200,
+            columns: [
+              { text: 'Number', datafield: 'num', width: 80,
+                align: 'center', cellsalign: 'center' },
+              { text: 'Name', datafield: 'name', width: 'auto',
+                align: 'center', cellsalign: 'center',
+                cellsrenderer: defaultLinkFormatter, columngroup: 'Document' },
+              { text: 'Description', datafield: 'description', width: 200,
+                align: 'center', cellsalign: 'center', columngroup: 'Document' },
+              { text: 'Type', datafield: 'type', width: 100,
+                align: 'center', cellsalign: 'center', columngroup: 'Document' },
+              { text: 'Date', datafield: 'complete_date', width: 150,
+                filtertype: 'date', cellsformat: 'MM-dd-yyyy HH:mm',
+                align: 'center', cellsalign: 'center', columngroup: 'Completed' },
+              { text: 'User', datafield: 'complete_user', width: 150,
+                align: 'center', cellsalign: 'center', columngroup: 'Completed' },
+              { text: 'Action', datafield: 'edit_url', width: 60,
+                align: 'center', exportable: false,
+                columntype: 'button',
+                sortable: false, filterable: false, menu: false,
+                cellsrenderer: function(){return 'Menu'},
+                buttonclick: documents_menu_renderer }
+            ],
+            columngroups: [
+              { text: 'Document', name: 'Document', align: 'center' },
+              { text: 'Completed', name: 'Completed', align: 'center' }
+            ]
+          });
+        }
+        var reviewers_box = $($(parentElement).children()[0]).find('.reviewers');
+        if (record.reviewers_usernames) {
+          reviewers_box.append('<span>Reviewers:</span>');
+          $.each(record.reviewers_usernames.split('\n'), function (i, val) {
+            reviewers_box.append('<i class="btn-u btn-xs btn-nu btn-xl">' + val + '</i>')
+          });
+        }
+      };
+      var tasks_custom_grid_options = {
+        rowsheight: 60,
+        columnsheight: 30,
+        pageable: false,
+        rowdetails: true,
+        initrowdetails: tasks_initrowdetails,
+        rowdetailstemplate: {
+          rowdetails: "<div class='sub-grid-title'>Documents<span class='pull-right mb-5 reviewers'></span></div><div id='grid' class='sub-grid'></div>",
+          rowdetailsheight: 255,
+          rowdetailshidden: true
+        },
+        columngroups: [
+          { text: 'Documents', name: 'Documents', align: 'center' }
+        ]
+      };
+      tasks_custom_source_data.data = {only_assigned: true};
+      tasks_custom_source_data.badgeClass = 'assigned-tasks-badge';
+      draw_grid(".jqxgrid-assigned-tasks", tasks_datafields, tasks_columns, false,
+                tasks_custom_source_data, tasks_custom_grid_options);
+      var completed_tasks_custom_source_data = $.extend({}, tasks_custom_source_data);
+      completed_tasks_custom_source_data.data = {only_completed: true};
+      completed_tasks_custom_source_data.badgeClass = 'completed-tasks-badge';
+      draw_grid(".jqxgrid-completed-tasks", tasks_datafields, tasks_columns, false,
+                completed_tasks_custom_source_data, tasks_custom_grid_options);
+    })
+  </script>
+{% endblock %}

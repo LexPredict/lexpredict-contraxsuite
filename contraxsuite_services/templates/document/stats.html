@@ -1,0 +1,206 @@
+{% extends "base.html" %}
+{% load humanize %}
+
+{% block title %}Stats{% endblock %}
+
+{% block page_header %}Stats{% endblock %}
+
+{% block content %}
+  <h5 class="mb-5">Project Statistics</h5>
+  <table class="table table-bordered table-striped">
+    <thead class="thead-inverse">
+    <tr>
+      <th>Projects</th>
+      <th>Progress Avg.</th>
+      <th>Completed</th>
+      <th>Completed %</th>
+      <th>Documents Total</th>
+      <th>Unique Documents</th>
+    </tr>
+    </thead>
+    <tbody>
+    <tr class="tr-with-knob">
+      <td>{{ project_total_count|intcomma }}</td>
+      <td class="knob">{{ project_progress_avg }}</td>
+      <td>{{ project_completed_count|intcomma }}</td>
+      <td class="knob">{{ project_completed_weight }}</td>
+      <td>{{ project_documents_total_count|intcomma }}</td>
+      <td>{{ project_documents_unique_count|intcomma }}</td>
+    </tr>
+    </tbody>
+  </table>
+
+  <h5 class="mb-5">Task Queue Statistics</h5>
+  <table class="table table-bordered table-striped">
+    <thead class="thead-inverse">
+    <tr>
+      <th>Task Queues</th>
+      <th>Progress Avg.</th>
+      <th>Completed</th>
+      <th>Completed %</th>
+      <th>Documents Total</th>
+      <th>Unique Documents</th>
+      <th>Reviewers</th>
+    </tr>
+    </thead>
+    <tbody>
+    <tr class="tr-with-knob">
+      <td>{{ task_queue_total_count|intcomma }}</td>
+      <td class="knob">{{ task_queue_progress_avg|intcomma }}</td>
+      <td>{{ task_queue_completed_count|intcomma }}</td>
+      <td class="knob">{{ task_queue_completed_weight|intcomma }}</td>
+      <td>{{ task_queue_documents_total_count|intcomma }}</td>
+      <td>{{ task_queue_documents_unique_count|intcomma }}</td>
+      <td>{{ task_queue_reviewers_unique_count|intcomma }}</td>
+    </tr>
+    </tbody>
+  </table>
+
+  {% if not user.is_reviewer %}
+  <h5 class="mb-5">Admin Task Statistics</h5>
+  <table class="table table-bordered table-striped">
+    <thead class="thead-inverse">
+    <tr>
+      <th rowspan="2" style="vertical-align: middle">Tasks Total</th>
+      <th colspan="3">Status</th>
+    </tr>
+    <tr>
+      <th><span class="label label-success">SUCCESS</span></th>
+      <th><span class="label label-warning">PENDING</span></th>
+      <th><span class="label label-danger">FAILURE</span></th>
+    </tr>
+    </thead>
+    <tbody>
+    <tr class="tr-with-knob">
+      <td>{{ admin_task_total_count }}</td>
+      <td>{{ admin_task_by_status_count.SUCCESS|default:"0" }}</td>
+      <td>{{ admin_task_by_status_count.PENDING|default:"0" }}</td>
+      <td>{{ admin_task_by_status_count.FAILURE|default:"0" }}</td>
+    </tr>
+    </tbody>
+  </table>
+  {% endif %}
+
+  <h5 class="mb-5">Document Statistics</h5>
+  <table class="table table-bordered table-striped">
+    <thead class="thead-inverse">
+    <tr>
+      <th>Documents</th>
+      <th>Document Properties</th>
+      <th>Document Relations</th>
+      <th>Document Notes</th>
+    </tr>
+    </thead>
+    <tbody>
+    <tr>
+      <td>{{ document_count|intcomma }}</td>
+      <td>{{ document_property_count|intcomma }}</td>
+      <td>{{ document_relation_count|intcomma }}</td>
+      <td>{{ document_note_count|intcomma }}</td>
+    </tr>
+    </tbody>
+  </table>
+
+  <h5 class="mb-5">Text Unit Statistics</h5>
+  <table class="table table-bordered table-striped">
+    <thead class="thead-inverse">
+    <tr>
+      <th>Text Units</th>
+      <th>Notes</th>
+      <th>Tags</th>
+      <th>Properties</th>
+      <th>Classifications</th>
+      <th>Classification Suggestion Types</th>
+      <th>Classification Suggestions</th>
+    </tr>
+    </thead>
+    <tbody>
+    <tr>
+      <td>{{ text_unit_count|intcomma }}</td>
+      <td>{{ text_unit_note_count|intcomma }}</td>
+      <td>{{ text_unit_tag_count|intcomma }}</td>
+      <td>{{ text_unit_property_count|intcomma }}</td>
+      <td>{{ text_unit_classification_count|intcomma }}</td>
+      <td>{{ text_unit_classification_suggestion_type_count|intcomma }}</td>
+      <td>{{ text_unit_classification_suggestion_count|intcomma }}</td>
+    </tr>
+    </tbody>
+  </table>
+
+  <h5 class="mb-5">Geo Entity Statistics</h5>
+  <table class="table table-bordered table-striped">
+    <thead class="thead-inverse">
+    <tr>
+      <th>Geo Entities</th>
+      <th>Geo Aliases</th>
+      <th>Geo Relations</th>
+      <th>Geo Entity Usages</th>
+      <th>Geo Alias Usages</th>
+    </tr>
+    </thead>
+    <tbody>
+    <tr>
+      <td>{{ geo_entity_count|intcomma }}</td>
+      <td>{{ geo_alias_count|intcomma }}</td>
+      <td>{{ geo_relation_count|intcomma }}</td>
+      <td>{{ geo_entity_usage_count|intcomma }}</td>
+      <td>{{ geo_alias_usage_count|intcomma }}</td>
+    </tr>
+    </tbody>
+  </table>
+
+  <h5 class="mb-5">Term, Party, Court, Date, etc. Statistics</h5>
+  <table class="table table-bordered table-striped">
+    <thead class="thead-inverse">
+    <tr>
+      <th width="34%">Definition</th>
+      <th width="33%">Count</th>
+      <th>Usages</th>
+    </tr>
+    </thead>
+    <tbody>
+    <tr>
+      <td>Terms</td>
+      <td>{{ legal_term_count|intcomma }}</td>
+      <td>{{ legal_term_usage_count|intcomma }}</td>
+    </tr>
+    <tr>
+      <td>Parties</td>
+      <td>{{ party_count|intcomma }}</td>
+      <td>{{ party_usage_count|intcomma }}</td>
+    </tr>
+    </tbody>
+  </table>
+
+{% endblock %}
+
+{% block js_extra %}
+  {{ block.super }}
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jQuery-Knob/1.2.13/jquery.knob.min.js"></script>
+  <script type="text/javascript">
+
+    $(document).ready(function(){
+      $('.knob').each(function(){
+        var $knob = $('<div><input type="text" class="in-table-knob"></div>');
+        $knob
+            .find('input')
+            .attr('value', $(this).text())
+            .knob({
+              readOnly: true,
+              width: 50,
+              height: 50,
+              skin: "tron",
+              bgColor: "#ddd",
+              fgColor: "#1ABC9C", //"#85AED2",
+              inputColor: "#666",
+              format: function(v){return v ? v+'%': '0%'},
+              draw: function () {
+                $(this.i).css({'font-size': '10px', 'margin-top': '18px'});
+              }
+            });
+        $(this).text("").append($knob)
+      })
+    })
+  </script>
+
+{% endblock %}

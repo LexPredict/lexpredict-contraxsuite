@@ -1,0 +1,30 @@
+{% extends "base_list_ajax.html" %}
+{% load static project_tags %}
+
+{% block title %}Top {{ model_name_plural|capwords }}{% endblock %}
+
+{% block page_header %}Top {{ model_name|capwords }} List{% endblock %}
+
+{% block js_extra %}
+  {{ block.super }}
+  <script type="text/javascript">
+    $(document).ready(function () {
+      var datafields = [
+        { name: 'entity__name', type: 'string' },
+        { name: 'entity__category', type: 'string' },
+        { name: 'count', type: 'int' },
+        { name: 'url', type: 'string' }
+      ];
+      var columns = [
+        { text: 'Entity Name', datafield: 'entity__name', width: '34%',
+          align: 'center', cellsalign: 'center',
+          cellsrenderer: defaultLinkFormatter },
+        { text: 'Entity Category', datafield: 'entity__category', width: '33%',
+          align: 'center', cellsalign: 'center' },
+        { text: 'Count', datafield: 'count', width: '33%',
+          align: 'center', cellsalign: 'center' }
+      ];
+      draw_grid(".jqxgrid", datafields, columns, false);
+    });
+  </script>
+{% endblock %}

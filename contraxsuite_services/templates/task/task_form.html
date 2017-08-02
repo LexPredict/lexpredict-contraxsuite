@@ -1,0 +1,11 @@
+{% extends "base_form.html" %}
+{% load static project_tags %}
+
+{% block title %} {{ task_name }}{% endblock %}
+
+{% block page_header_wrapper %}{{ task_name }}{% endblock %}
+
+{% block buttons %}
+  <button class="btn-u btn-sm" type="submit">Run</button>
+  <a class="cancel btn-u btn-sm btn-l" href="{% url "task:task-list" %}">Cancel</a>
+{% endblock %}

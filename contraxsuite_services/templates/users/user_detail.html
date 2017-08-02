@@ -1,0 +1,13 @@
+{% extends "base_detail.html" %}
+
+{% block page_header %}My Profile{% endblock %}
+
+{% block cancel_button %}
+  {% if user == a_user %}
+    <a class="btn-u btn-sm" href="{% url 'account_change_password' %}">Change Password</a>
+  {% endif %}
+  <a class="btn-u btn-sm" href="{% url 'account_email' %}">E-Mail</a>
+  {% if not user.is_reviewer %}
+    <a class="btn-u btn-sm btn-i" href="{% url 'users:user-list' %}">User List</a>
+  {% endif %}
+{% endblock %}

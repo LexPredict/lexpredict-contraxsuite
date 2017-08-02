@@ -1,0 +1,107 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Date Usage Timeline{% endblock %}
+
+{% block page_header %}Date Usage Timeline{% endblock %}
+
+{% block css_extra %}
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/vis/4.20.1/vis.min.css">
+  {{ block.super }}
+  <link rel="stylesheet" href="{% static "theme/css/components/radio-checkbox.css" %}" type="text/css" />
+{% endblock %}
+
+{% block content %}
+  <input class="checkbox-style" id="per_month" name="per_month" type="checkbox" disabled="disabled">
+  <label for="per_month" class="checkbox-style-3-label">Group per Month</label>
+  <div id="timeline"></div>
+  <div class="loader-container">
+    <div class="loader"></div>
+    <span>Loading...</span>
+  </div>
+{% endblock %}
+
+{% block js %}
+  {{ block.super }}
+  <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/vis/4.20.1/vis.min.js"></script>
+  <script type="text/javascript">
+    $(function () {
+      $.ajaxSetup({ cache: false });
+
+      var blendColors = function (weight, power) {
+        var c0 = '#AEC9EE',  // color for 0%
+            c1 = '#BBEE96';  // color for 100%
+        var p = 1 - Math.pow(1-weight, power);
+        var f = parseInt(c0.slice(1),16),
+            t = parseInt(c1.slice(1),16),
+            R1 = f>>16,
+            G1 = f>>8 & 0x00FF,
+            B1 = f & 0x0000FF,
+            R2 = t>>16,
+            G2 = t>>8 & 0x00FF,
+            B2 = t & 0x0000FF;
+        return "#"+(0x1000000+(Math.round((R2-R1)*p)+R1)*0x10000+(Math.round((G2-G1)*p)+G1)*0x100+(Math.round((B2-B1)*p)+B1)).toString(16).slice(1);
+      };
+
+      var draw_timeline = function(){
+        $('.loader-container').show();
+        var per_month = $('#per_month').is(':checked');
+
+        $.get('{% url 'extract:date-usage-timeline' %}', {per_month: per_month}).done(function(response){
+          // hide the "loading..."
+          $('.loader-container').hide();
+
+          // DOM element where the Timeline will be attached
+          var container = document.getElementById('timeline');
+          var power = response.per_month ? 3 : 8;
+
+          // process data
+          var data = [];
+          $.each(response.data, function(n, i){
+            var content = $('<a></a>')
+                .attr('href', i.url)
+                .css({'background-color': blendColors(i.weight, power)})
+                .text(i.content);
+
+            var item = { start: i.start,
+                         content: content.get(0).outerHTML };
+
+            if (!response.per_month) {
+              var title = $('<div></div>').addClass('timeline-tooltip');
+              $.each(i.date_data, function (m, j) {
+                $('<p></p>').text(j.text_unit__document__name).appendTo(title);
+                $('<p></p>').text(j.text_unit__text).appendTo(title)
+              });
+              item['title'] = title.get(0).outerHTML
+            }
+
+            data.push(item)
+          });
+
+          // Create a DataSet (allows two way data-binding)
+          var items = new vis.DataSet(data);
+
+          // Configuration for the Timeline
+          var options = { start: response.initial_start_date,
+                          end: response.initial_end_date,
+                          height: '400px',
+                          maxHeight: '600px',
+                          zoomMax: response.per_month ? 31536000000*3 : 31536000000,   // 1 year
+                          zoomMin: response.per_month ? 2592000000*12 : 2592000000 };  // 30 days
+
+          // Create a Timeline
+          var timeline = new vis.Timeline(container, items, options);
+          $('#per_month').attr('disabled', false);
+        })
+      };
+
+      draw_timeline();
+
+      $('#per_month').click(function(){
+        $('#per_month').attr('disabled', true);
+        $('#timeline').empty();
+        draw_timeline()
+      })
+    })
+  </script>
+{% endblock %}

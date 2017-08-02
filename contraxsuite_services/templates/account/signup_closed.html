@@ -1,0 +1,11 @@
+{% extends "account/base.html" %}
+{% load i18n %}
+
+{% block title %}{% trans "Sign Up Closed" %}{% endblock %}
+
+{% block header %}{% trans "Sign Up Closed" %}{% endblock %}
+
+{% block inner %}
+  <p>{% trans "We are sorry, but the sign up is currently closed." %}</p>
+  <button class="btn-u btn-sm btn-l cancel" type="button">{% trans "Back" %}</button>
+{% endblock %}

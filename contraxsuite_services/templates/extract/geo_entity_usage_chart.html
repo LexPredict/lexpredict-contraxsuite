@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Entity Usage Chart{% endblock %}
+
+{% block page_header %}Entity Usage Chart{% endblock %}
+
+{% block content %}
+  <a class="pull-right"
+     href="{% url "extract:geo-entity-usage-map" %}"
+     title="Google Map: Usage by country">
+    <i class="i-circled i-light i-small icon-map-marker"></i>
+  </a>
+  <div class="clearfix"></div>
+  <div id="regions_div"></div>
+{% endblock %}
+
+{% block js %}
+  {{ block.super }}
+  <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
+  <script type="text/javascript">
+    $(function () {
+      google.charts.load('upcoming', {'packages':['geochart']});
+      google.charts.setOnLoadCallback(drawRegionsMap);
+
+      function drawRegionsMap() {
+        $.ajaxSetup({ cache: false });
+        $.ajax("{% url "extract:geo-entity-usage-chart" "country" %}")
+            .done(function(json){
+              var data = google.visualization.arrayToDataTable(json);
+              var options = {};
+              var chart = new google.visualization.GeoChart(document.getElementById('regions_div'));
+              chart.draw(data, options);
+            })
+      }
+    })
+  </script>
+{% endblock %}

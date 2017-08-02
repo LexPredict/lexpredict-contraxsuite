@@ -1,0 +1,31 @@
+{% extends "base_list_ajax.html" %}
+{% load static project_tags %}
+
+{% block title %}Top {{ model_name_plural|capwords }}{% endblock %}
+
+{% block page_header %}Top {{ model_name|capwords }} List{% endblock %}
+
+{% block js_extra %}
+  {{ block.super }}
+  <script type="text/javascript">
+    $(document).ready(function () {
+      var datafields = [
+        { name: 'date', type: 'date' },
+        { name: 'count', type: 'int' },
+        { name: 'url', type: 'string' }
+      ];
+      var dateLinkFormatter = function(index, columnfield, value, defaulthtml, columnproperties, row) {
+        return baseLinkFormatter(row.url, value, defaulthtml, columnproperties)
+      };
+      var columns = [
+        { text: 'Date', datafield: 'date', width: 'auto',
+          align: 'center', cellsalign: 'center',
+          filtertype: 'date', cellsformat: 'MM-dd-yyyy',
+          cellsrenderer: dateLinkFormatter },
+        { text: 'Count', datafield: 'count', width: 'auto',
+          align: 'center', cellsalign: 'center' }
+      ];
+      draw_grid(".jqxgrid", datafields, columns, false);
+    });
+  </script>
+{% endblock %}

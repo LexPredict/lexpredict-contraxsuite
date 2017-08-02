@@ -1,0 +1,81 @@
+{% extends "base_list_ajax.html" %}
+{% load static %}
+
+{#{% block add_button %}#}
+{#  <a class="btn-u btn-sm btn-s"#}
+{#     href="{% url "document:text-unit-property-add" %}?next={{ request.path }}">#}
+{#    Create#}
+{#  </a>#}
+{#{% endblock %}#}
+
+{% block js_extra %}
+  {{ block.super }}
+  <script type="text/javascript">
+    $(document).ready(function () {
+      var datafields = [
+        { name: 'pk', type: 'int' },
+        { name: 'text_unit__document__name', type: 'string' },
+        { name: 'text_unit__document__document_type', type: 'string' },
+        { name: 'text_unit__document__description', type: 'string' },
+        { name: 'text_unit__unit_type', type: 'string' },
+        { name: 'text_unit__language', type: 'string' },
+        { name: 'key', type: 'string' },
+        { name: 'value', type: 'string' },
+        { name: 'url', type: 'string' },
+        { name: 'text_unit_url', type: 'string' },
+        { name: 'delete_url', type: 'string' }
+      ];
+      var menu_renderer = function(row, event) {
+        var grid = $(event.currentTarget).parents('.jqxgrid');
+        row = grid.jqxGrid('getrowdata', row);
+        var menu_data = [
+          { url: row.url,
+            icon: 'fa fa-file-text-o',
+            text: 'View Document' },
+          { url: row.text_unit_url,
+            icon: 'fa fa-info-circle',
+            text: 'View Text Unit' },
+          { url: row.delete_url + '?next={{ request.path }}',
+            icon: 'fa fa-remove',
+            cls: 'remove',
+            text: 'Remove'}
+        ];
+        show_menu(menu_data, grid, row.pk);
+      };
+      var columns = [
+        { text: 'Name', datafield: 'text_unit__document__name', width: 'auto',
+          align: 'center', cellsalign: 'left', enabletooltips: true,
+          cellsrenderer: defaultLinkFormatter, columngroup: 'Document' },
+        { text: 'Type', datafield: 'text_unit__document__document_type', width: 100,
+          align: 'center', cellsalign: 'center', columngroup: 'Document' },
+        { text: 'Description', datafield: 'text_unit__document__description',
+          width: 'auto', enabletooltips: true, columngroup: 'Document',
+          align: 'center', cellsalign: 'center' },
+        { text: 'Type', datafield: 'text_unit__unit_type', width: 80,
+          align: 'center', cellsalign: 'center', columngroup: 'Text Unit' },
+        { text: 'Language', datafield: 'text_unit__language', width: 80,
+          align: 'center', cellsalign: 'center', columngroup: 'Text Unit' },
+{#        { text: 'User', datafield: 'user__username', width: 120,#}
+{#          align: 'center', cellsalign: 'center' },#}
+        { text: 'Property Name', datafield: 'key', width: 120,
+          align: 'center', cellsalign: 'center' },
+        { text: 'Property Value', datafield: 'value', width: 120,
+          align: 'center', cellsalign: 'center' },
+        { text: 'Action', datafield: 'url', width: 60,
+          align: 'center', exportable: false,
+          columntype: 'button',
+          sortable: false, filterable: false, menu: false,
+          cellsrenderer: function(){return 'Menu'},
+          buttonclick: menu_renderer }
+      ];
+      var custom_grid_options = {
+        columngroups: [
+          { text: 'Document', name: 'Document', align: 'center' },
+          { text: 'Text Unit', name: 'Text Unit', align: 'center' },
+          { text: 'Property', name: 'Property', align: 'center' }
+        ]
+      };
+      draw_grid(".jqxgrid", datafields, columns, true, null, custom_grid_options);
+    });
+  </script>
+{% endblock %}

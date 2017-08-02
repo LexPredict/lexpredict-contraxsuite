@@ -1,0 +1,144 @@
+{% extends "base_list_ajax.html" %}
+{% load static %}
+
+{% block js_extra %}
+  {{ block.super }}
+  <script type="text/javascript">
+    $(document).ready(function () {
+      var datafields = [
+        { name: 'pk', type: 'int' },
+        { name: 'cluster_id', type: 'int' },
+        { name: 'name', type: 'string' },
+        { name: 'self_name', type: 'string' },
+        { name: 'description', type: 'string' },
+        { name: 'cluster_by', type: 'string' },
+        { name: 'using', type: 'string' },
+        { name: 'count', type: 'int' },
+        { name: 'created_date', type: 'date' },
+        { name: 'text_units' }
+      ];
+      var menu_renderer = function(row_number, event) {
+        var grid = $(event.currentTarget).parents('.jqxgrid');
+        var row = grid.jqxGrid('getrowdata', row_number);
+        var menu_data = [
+          { icon: 'fa fa-folder-open-o',
+            onclick: "expand_row(event, '.jqxgrid', " + row_number + ")",
+            text: 'Show Text Units' }
+        ];
+        show_menu(menu_data, grid, row.pk);
+      };
+      var columns = [
+        { text: 'Cluster Name', datafield: 'self_name', width: 'auto',
+          align: 'center', cellsalign: 'center' },
+        { text: 'Cluster#', datafield: 'cluster_id', width: 80,
+          align: 'center', cellsalign: 'center' },
+        { text: 'Name', datafield: 'name', width: 'auto',
+          align: 'center', cellsalign: 'center', columngroup: 'Clustering info' },
+        { text: 'Description', datafield: 'description', width: 'auto',
+          align: 'center', cellsalign: 'center', columngroup: 'Clustering info' },
+        { text: 'Cluster By', datafield: 'cluster_by', width: 80,
+          align: 'center', cellsalign: 'center', columngroup: 'Clustering info' },
+        { text: 'Using', datafield: 'using', width: 80,
+          align: 'center', cellsalign: 'center', columngroup: 'Clustering info' },
+        { text: 'Text Units', datafield: 'count', width: 90,
+          align: 'center', cellsalign: 'center' },
+        { text: 'Date', datafield: 'created_date', width: 120,
+          filtertype: 'date', cellsformat: 'MM-dd-yyyy HH:mm',
+          align: 'center', cellsalign: 'center' },
+        { text: 'Action', datafield: 'edit_url', width: 60,
+          align: 'center', exportable: false,
+          columntype: 'button',
+          sortable: false, filterable: false, menu: false,
+          cellsrenderer: function(){return 'Menu'},
+          buttonclick: menu_renderer }
+      ];
+      // create nested grid.
+      var initrowdetails = function(index, parentElement, gridElement, record) {
+        var text_units_grid = $($(parentElement).children()[1]);
+        text_units_grid.attr('id', 'grid' + record.boundindex);
+        var details_source = {
+          datafields: [
+            { name: 'pk', type: 'int' },
+            { name: 'document__name', type: 'string' },
+            { name: 'document__description', type: 'string' },
+            { name: 'document__document_type', type: 'string' },
+            { name: 'unit_type', type: 'string' },
+            { name: 'language', type: 'string' },
+            { name: 'text', type: 'string' },
+            { name: 'document_url', type: 'string' },
+            { name: 'text_unit_url', type: 'string' }
+          ],
+          localdata: record.text_units
+        };
+        var nestedGridAdapter = new $.jqx.dataAdapter(details_source);
+        if (text_units_grid != null) {
+          var text_units_menu_renderer = function(row) {
+            row = text_units_grid.jqxGrid('getrowdata', row);
+            var menu_data = [
+              { url: row.document_url,
+                icon: 'fa fa-file-text-o',
+                text: 'View Document Details' },
+              { url: row.text_unit_url,
+                icon: 'fa fa-file-text-o',
+                text: 'View Text Unit Details' }
+            ];
+            show_menu(menu_data, text_units_grid, row.pk, 300);
+          };
+          text_units_grid.jqxGrid({
+            source: nestedGridAdapter,
+            altrows: true,
+            enabletooltips: true,
+            sortable: true,
+            filterable: true,
+            width: '98%',
+            height: 200,
+            showstatusbar: true,
+            statusbarheight: 2,
+            columns: [
+              { text: 'Name', datafield: 'document__name', width: 200,
+                align: 'center', cellsalign: 'left', enabletooltips: true,
+                columngroup: 'Document' },
+              { text: 'Type', datafield: 'document__document_type', width: 100,
+                align: 'center', cellsalign: 'center', columngroup: 'Document' },
+              { text: 'Description', datafield: 'document__description',
+                width: 200, enabletooltips: true, columngroup: 'Document',
+                align: 'center', cellsalign: 'center' },
+              { text: 'Unit Type', datafield: 'unit_type', width: 80,
+                align: 'center', cellsalign: 'center', columngroup: 'Text Unit' },
+              { text: 'Language', datafield: 'language', width: 80,
+                align: 'center', cellsalign: 'center', columngroup: 'Text Unit' },
+              { text: 'Text', datafield: 'text', width: 'auto',
+                align: 'center', cellsalign: 'center', columngroup: 'Text Unit' },
+              { text: 'Action', datafield: 'edit_url', width: 60,
+                align: 'center', exportable: false,
+                columntype: 'button',
+                sortable: false, filterable: false, menu: false,
+                cellsrenderer: function(){return 'Menu'},
+                buttonclick: text_units_menu_renderer }
+            ],
+            columngroups: [
+              { text: 'Document', name: 'Document', align: 'center' },
+              { text: 'Text Unit', name: 'Text Unit', align: 'center' }
+            ]
+          });
+        }
+      };
+
+      var custom_grid_options = {
+        rowsheight: 60,
+        pageable: false,
+        rowdetails: true,
+        initrowdetails: initrowdetails,
+        rowdetailstemplate: {
+          rowdetails: "<div class='sub-grid-title'>Text Units</div><div id='grid' class='sub-grid'></div>",
+          rowdetailsheight: 245,
+          rowdetailshidden: true
+        },
+        columngroups: [
+          { text: 'Clustering info', name: 'Clustering info', align: 'center' }
+        ]
+      };
+      draw_grid(".jqxgrid", datafields, columns, false, null, custom_grid_options);
+    });
+  </script>
+{% endblock %}

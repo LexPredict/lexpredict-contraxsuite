@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% load tz static project_tags %}
+
+{% block title %}{{ model_name|capwords }} detail{% endblock %}
+
+{% block page_header %}{{ model_name|capwords }}{% endblock %}
+{% block page_header_addon %}
+  <small style="text-transform: none">detail</small>
+{% endblock %}
+
+{% block content %}
+  {% block top_back_link %}{% endblock %}
+
+  <table class="table table-striped table-hover details">
+    <thead class="thead-inverse">
+      <tr><th colspan="2">{{ object }}</th></tr>
+    </thead>
+    <tr>
+      <td>ID</td>
+      <td>{{ object.pk }}</td>
+    </tr>
+    {% for field in form %}
+      {% if fields and field.name in fields or not fields %}
+        {{ field|as_tr }}
+      {% endif %}
+    {% endfor %}
+  </table>
+  {% block update_button %}
+    <a class="btn-u btn-sm btn-s" href="{{ update_url }}">Update</a>
+  {% endblock %}
+  {% block cancel_button %}
+    <button class="btn-u btn-sm btn-l cancel" type="button">Back</button>
+  {% endblock %}
+
+  {% block content_bottom_addon %}{% endblock %}
+
+  <p></p>
+{% endblock %}

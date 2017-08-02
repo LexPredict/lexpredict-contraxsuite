@@ -1,0 +1,37 @@
+[flake8]
+ignore = 
+    # F812: list comprehension redefines ...
+    F812,
+    # H101: Use TODO(NAME)
+    H101,
+    # H202: assertRaises Exception too broad
+    H202,
+    # H401: docstring should not start with a space
+    H401,
+    # H403: multi line docstrings should end on a new line
+    H403,
+    # H404: multi line docstring should start without a leading new line
+    H404,
+    # H405: multi line docstring summary not separated with an empty line
+    H405,
+
+# maximum length that any line (with some exceptions) may be
+max-line-length = 100
+
+# comma-separated list of glob patterns to exclude from checks
+exclude =
+    .git,
+    *.pyc,
+    __pycache__,
+    **/migrations/*
+
+# Count the number of occurrences of each error/warning code and print a report
+statistics = True
+
+# Redirect all output to the specified file
+output-file = flake_report.txt
+
+# Also print output to stdout if output-file has been configured
+tee = True
+
+
