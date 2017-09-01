@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+
+{% block bodyclass %}account{% endblock %}
+
+{% block content %}
+  <div class="divcenter">
+    <h2>{% block header %}{% endblock %}</h2>
+    {% block inner %}{% endblock %}
+  </div>
+{% endblock %}

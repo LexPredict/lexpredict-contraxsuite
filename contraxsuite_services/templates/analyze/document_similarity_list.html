@@ -1,0 +1,66 @@
+{% extends "base_list_ajax.html" %}
+{% load static %}
+
+{% block js_extra %}
+  {{ block.super }}
+  <script type="text/javascript">
+    $(document).ready(function () {
+      var datafields = [
+        { name: 'document_a__pk', type: 'int' },
+        { name: 'document_a__name', type: 'string' },
+        { name: 'document_a__description', type: 'string' },
+        { name: 'document_a__document_type', type: 'string' },
+        { name: 'document_a__url', type: 'string' },
+        { name: 'document_b__pk', type: 'int' },
+        { name: 'document_b__name', type: 'string' },
+        { name: 'document_b__description', type: 'string' },
+        { name: 'document_b__document_type', type: 'string' },
+        { name: 'document_b__url', type: 'string' },
+        { name: 'similarity', type: 'float' }
+      ];
+      var document_a_name_renderer = function(index, columnfield, value, defaulthtml, columnproperties, row){
+        return linkFormatter(defaulthtml, row.document_a__url, value);
+      };
+      var document_b_name_renderer = function(index, columnfield, value, defaulthtml, columnproperties, row){
+        return linkFormatter(defaulthtml, row.document_b__url, value);
+      };
+      var columns = [
+        { text: 'ID', datafield: 'document_a__pk', width: 50,
+          align: 'center', cellsalign: 'center',
+          columngroup: 'Document A' },
+        { text: 'Name', datafield: 'document_a__name', width: 200,
+          align: 'center', cellsalign: 'left',
+          cellsrenderer: document_a_name_renderer,
+          columngroup: 'Document A' },
+        { text: 'Description', datafield: 'document_a__description', width: 'auto',
+          enabletooltips: true, columngroup: 'Document A',
+          align: 'center', cellsalign: 'center' },
+        { text: 'Type', datafield: 'document_a__document_type', width: 100,
+          align: 'center', cellsalign: 'center',
+          columngroup: 'Document A' },
+        { text: 'ID', datafield: 'document_b__pk', width: 50,
+          align: 'center', cellsalign: 'center',
+          columngroup: 'Document B' },
+        { text: 'Name', datafield: 'document_b__name', width: 200,
+          align: 'center', cellsalign: 'left',
+          cellsrenderer: document_b_name_renderer,
+          columngroup: 'Document B' },
+        { text: 'Description', datafield: 'document_b__description', width: 'auto',
+          enabletooltips: true, columngroup: 'Document B',
+          align: 'center', cellsalign: 'center' },
+        { text: 'Type', datafield: 'document_b__document_type', width: 100,
+          align: 'center', cellsalign: 'center',
+          columngroup: 'Document B' },
+        { text: 'Similarity', datafield: 'similarity', width: 80,
+          align: 'center', cellsalign: 'center', cellsformat: 'p2' }
+      ];
+      var custom_grid_options = {
+        columngroups: [
+          { text: 'Document A', name: 'Document A', align: 'center' },
+          { text: 'Document B', name: 'Document B', align: 'center' }
+        ]
+      };
+      draw_grid(".jqxgrid", datafields, columns, true, null, custom_grid_options);
+    });
+  </script>
+{% endblock %}

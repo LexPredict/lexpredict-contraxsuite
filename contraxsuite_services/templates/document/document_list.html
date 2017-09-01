@@ -1,0 +1,38 @@
+{% extends "base_list_ajax.html" %}
+{% load static %}
+
+{% block js_extra %}
+  {{ block.super }}
+  <script type="text/javascript">
+    $(document).ready(function () {
+      var datafields = [
+        { name: 'pk', type: 'int' },
+        { name: 'name', type: 'string' },
+        { name: 'document_type', type: 'string' },
+        { name: 'description', type: 'string' },
+        { name: 'properties', type: 'int' },
+        { name: 'relations', type: 'int' },
+        { name: 'text_units', type: 'int' },
+        { name: 'url', type: 'string' }
+      ];
+      var columns = [
+        { text: 'ID', datafield: 'pk', width: 50,
+          align: 'center', cellsalign: 'center' },
+        { text: 'Name', datafield: 'name', width: 300,
+          align: 'center', cellsalign: 'left',
+          cellsrenderer: defaultLinkFormatter },
+        { text: 'Type', datafield: 'document_type', width: 100,
+          align: 'center', cellsalign: 'center' },
+        { text: 'Description', datafield: 'description', width: 'auto',
+          align: 'center', cellsalign: 'center' },
+        { text: 'Properties', datafield: 'properties', width: 100,
+          align: 'center', cellsalign: 'center' },
+        { text: 'Relations', datafield: 'relations', width: 100,
+          align: 'center', cellsalign: 'center' },
+        { text: 'Text Units', datafield: 'text_units', width: 100,
+          align: 'center', cellsalign: 'center' }
+      ];
+      draw_grid(".jqxgrid", datafields, columns, false);
+    });
+  </script>
+{% endblock %}

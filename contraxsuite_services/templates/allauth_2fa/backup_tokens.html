@@ -1,0 +1,27 @@
+{% extends 'account/base.html' %}
+{% load i18n %}
+
+{% block header %}
+  <h1>{% trans "Two-Factor Authentication Backup Tokens" %}</h1>
+{% endblock %}
+
+{% block inner %}
+  <ul class="list-group">
+    {% for token in backup_tokens %}
+    <li class="list-group-item list-group-item-warning">{{ token.token }}</li>
+
+    {% empty %}
+    {% trans 'No tokens. Press the button below to generate some.' %}
+
+    {% endfor %}
+  </ul>
+
+  <form method="post">
+    {% csrf_token %}
+    <button class="btn-u btn-sm" type="submit">
+      {% trans 'Generate backup tokens' %}
+    </button>
+  </form>
+
+  <a class="btn-u btn-sm btn-w" href="{% url 'two-factor-remove' %}">Disable Two Factor</a>
+{% endblock %}

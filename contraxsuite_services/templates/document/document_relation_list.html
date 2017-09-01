@@ -1,0 +1,62 @@
+{% extends "base_list_ajax.html" %}
+{% load static %}
+
+{% block js_extra %}
+  {{ block.super }}
+  <script type="text/javascript">
+    $(document).ready(function () {
+      var datafields = [
+        { name: 'pk', type: 'int' },
+        { name: 'document_a__name', type: 'string' },
+        { name: 'document_a__document_type', type: 'string' },
+        { name: 'document_a__description', type: 'string' },
+        { name: 'document_b__name', type: 'string' },
+        { name: 'document_b__document_type', type: 'string' },
+        { name: 'document_b__description', type: 'string' },
+        { name: 'relation_type', type: 'string' },
+        { name: 'url_a', type: 'string' },
+        { name: 'url_b', type: 'string' }
+      ];
+      var link_a_renderer = function(index, columnfield, value, defaulthtml, columnproperties, row) {
+        return linkFormatter(defaulthtml, row.url_a, value)
+      };
+      var link_b_renderer = function(index, columnfield, value, defaulthtml, columnproperties, row) {
+        return linkFormatter(defaulthtml, row.url_b, value)
+      };
+
+      var columns = [
+        { text: 'Name', datafield: 'document_a__name', width: 300,
+          align: 'center', cellsalign: 'left', enabletooltips: true,
+          columngroup: 'DocumentA',
+          cellsrenderer: link_a_renderer },
+        { text: 'Type', datafield: 'document_a__document_type', width: 100,
+          columngroup: 'DocumentA',
+          align: 'center', cellsalign: 'center' },
+        { text: 'Description', datafield: 'document_a__description',
+          width: 'auto', enabletooltips: true,
+          columngroup: 'DocumentA',
+          align: 'center', cellsalign: 'center' },
+        { text: 'Name', datafield: 'document_b__name', width: 300,
+          align: 'center', cellsalign: 'left', enabletooltips: true,
+          columngroup: 'DocumentB',
+          cellsrenderer: link_b_renderer },
+        { text: 'Type', datafield: 'document_b__document_type', width: 100,
+          columngroup: 'DocumentB',
+          align: 'center', cellsalign: 'center' },
+        { text: 'Description', datafield: 'document_b__description',
+          width: 'auto', enabletooltips: true,
+          columngroup: 'DocumentB',
+          align: 'center', cellsalign: 'center' },
+        { text: 'Relation Type', datafield: 'relation_type', width: 100,
+          align: 'center', cellsalign: 'center' }
+      ];
+      var custom_grid_options = {
+        columngroups: [
+          { text: 'Document A', align: 'center', name: 'DocumentA' },
+          { text: 'Document B', align: 'center', name: 'DocumentB' }
+        ]
+      };
+      draw_grid(".jqxgrid", datafields, columns, false, null, custom_grid_options);
+    });
+  </script>
+{% endblock %}

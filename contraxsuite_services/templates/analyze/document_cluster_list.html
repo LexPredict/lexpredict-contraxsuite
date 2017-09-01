@@ -1,0 +1,219 @@
+{% extends "base_list_ajax.html" %}
+{% load static %}
+
+{% block css %}
+  <link rel="stylesheet" type="text/css" href="https://cdnjs.cloudflare.com/ajax/libs/chosen/1.6.2/chosen.min.css">
+  {{ block.super }}
+  <link rel="stylesheet" href="{% static "theme/css/components/radio-checkbox.css" %}" type="text/css" />
+{% endblock %}
+
+{% block js_extra %}
+  <div class="tq_form" style="display: none">
+    <form class="popup-form" style="padding-bottom: 30px">
+      {% csrf_token %}
+      <p>
+        <label for="new_task_queue">Create New Task Queue</label>
+        <input id="new_task_queue" name="new_task_queue" type="checkbox">
+      </p>
+      <div class="task-queue-choice-form"></div>
+      <div class="task-queue-create-form">
+        <p>
+          <label for="new_project">Create New Project</label>
+          <input id="new_project" name="new_project" type="checkbox">
+        </p>
+        <div class="project-choice-form"></div>
+        <div class="project-create-form"></div>
+      </div>
+    </form>
+    <p>&nbsp</p>
+  </div>
+  {{ block.super }}
+  <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/chosen/1.6.2/chosen.jquery.min.js"></script>
+  <script type="text/javascript">
+
+    function show_create_task_queue_popup(event, cluster_pk){
+      event.preventDefault();
+      var jc = $.confirm({
+        type: 'blue',
+        icon: 'fa fa-object-group',
+        title: 'Add Documents from this Cluster to Task Queue.',
+        backgroundDismiss: true,
+        content: function () {
+          var self = this;
+          $.get({
+            url: '{% url "project:assign-cluster-documents" %}',
+            dataType: 'json',
+            method: 'get'
+          }).done(function (response) {
+            var tq_form = $('.tq_form').clone().addClass('tq_form_popup').css('display', 'block');
+            tq_form.find('.task-queue-choice-form').append(response.task_queue_choice_form);
+            tq_form.find('.task-queue-create-form').prepend(response.task_queue_create_form);
+            tq_form.find('.project-choice-form').append(response.project_choice_form);
+            tq_form.find('.project-create-form').append(response.project_create_form);
+            self.setContent(tq_form);
+          }).fail(function(){
+            self.setContent('Something went wrong.');
+          });
+        },
+        onContentReady: function () {
+          $('.tq_form_popup select:enabled').chosen();
+          $('.tq_form_popup .task-queue-create-form, .tq_form_popup .project-create-form').toggle();
+          $('.tq_form_popup #new_task_queue').click(function(){
+            $('.tq_form_popup .task-queue-choice-form, .tq_form_popup .task-queue-create-form').toggle()
+            $('.tq_form_popup #id_task_queue').val('').trigger('chosen:updated');
+            $('.tq_form_popup #id_project').val('').trigger('chosen:updated');
+          });
+          $('.tq_form_popup #new_project').click(function(){
+            $('.tq_form_popup .project-choice-form, .tq_form_popup .project-create-form').toggle();
+            $('.tq_form_popup #id_project').val('').trigger('chosen:updated')
+          })
+        },
+        columnClass: 'col-md-8 col-md-offset-2',
+        buttons: {
+          action: {
+            text: 'Confirm',
+            btnClass: 'btn-u btn-sm btn-s',
+            action: function(){
+              $.ajax({
+                method: 'POST',
+                url: '{% url "project:assign-cluster-documents" %}?cluster_pk=' + cluster_pk,
+                data: $('.popup-form').serialize(),
+                success: function(response){
+                  ajax_success_handler(response);
+                  if (response.status == 'success'){
+                    jc.close()
+                  }
+                },
+                error: ajax_error_handler
+              });
+              return false
+            }
+          },
+          cancel: cancel_button_action
+        }
+      });
+    }
+
+    $(document).ready(function () {
+      var datafields = [
+        { name: 'pk', type: 'int' },
+        { name: 'cluster_id', type: 'int' },
+        { name: 'name', type: 'string' },
+        { name: 'self_name', type: 'string' },
+        { name: 'description', type: 'string' },
+        { name: 'cluster_by', type: 'string' },
+        { name: 'using', type: 'string' },
+        { name: 'count', type: 'int' },
+        { name: 'created_date', type: 'date' },
+        { name: 'documents' }
+      ];
+      var menu_renderer = function(row_number, event) {
+        var grid = $(event.currentTarget).parents('.jqxgrid');
+        var row = grid.jqxGrid('getrowdata', row_number);
+        var menu_data = [
+          { icon: 'fa fa-folder-open-o',
+            onclick: "expand_row(event, '.jqxgrid', " + row_number + ")",
+            text: 'Show Documents' },
+          { icon: 'fa fa-plus',
+            onclick: "show_create_task_queue_popup(event, " + row.pk + ")",
+            text: 'Add to Task Queue' }
+        ];
+        show_menu(menu_data, grid, row.pk);
+      };
+      var columns = [
+        { text: 'Cluster Name', datafield: 'self_name', width: 'auto',
+          align: 'center', cellsalign: 'center' },
+        { text: 'Cluster#', datafield: 'cluster_id', width: 70,
+          align: 'center', cellsalign: 'center' },
+        { text: 'Name', datafield: 'name', width: 'auto',
+          align: 'center', cellsalign: 'center', columngroup: 'Clustering info' },
+        { text: 'Description', datafield: 'description', width: 'auto',
+          align: 'center', cellsalign: 'center', columngroup: 'Clustering info' },
+        { text: 'Cluster By', datafield: 'cluster_by', width: 110,
+          align: 'center', cellsalign: 'center', columngroup: 'Clustering info' },
+        { text: 'Using', datafield: 'using', width: 120,
+          align: 'center', cellsalign: 'center', columngroup: 'Clustering info' },
+        { text: 'Documents', datafield: 'count', width: 80,
+          align: 'center', cellsalign: 'center' },
+        { text: 'Date', datafield: 'created_date', width: 120,
+          filtertype: 'date', cellsformat: 'MM-dd-yyyy HH:mm',
+          align: 'center', cellsalign: 'center' },
+        { text: 'Action', datafield: 'edit_url', width: 60,
+          align: 'center', exportable: false,
+          columntype: 'button',
+          sortable: false, filterable: false, menu: false,
+          cellsrenderer: function(){return 'Menu'},
+          buttonclick: menu_renderer }
+      ];
+      // create nested grid
+      var initrowdetails = function(index, parentElement, gridElement, record) {
+        var documents_grid = $($(parentElement).children()[1]);
+        documents_grid.attr('id', 'grid' + record.boundindex);
+        var details_source = {
+          datafields: [
+            { name: 'pk', type: 'int' },
+            { name: 'name', type: 'string' },
+            { name: 'description', type: 'string' },
+            { name: 'document_type', type: 'string' },
+            { name: 'url', type: 'string' }
+          ],
+          localdata: record.documents
+        };
+        var nestedGridAdapter = new $.jqx.dataAdapter(details_source);
+        if (documents_grid != null) {
+          var documents_menu_renderer = function(row) {
+            row = documents_grid.jqxGrid('getrowdata', row);
+            var menu_data = [
+              { url: row.url,
+                icon: 'fa fa-file-text-o',
+                text: 'Document Details' }
+            ];
+            show_menu(menu_data, documents_grid, row.pk, 300);
+          };
+          documents_grid.jqxGrid({
+            source: nestedGridAdapter,
+            altrows: true,
+            enabletooltips: true,
+            sortable: true,
+            filterable: true,
+            width: '98%',
+            height: 200,
+            showstatusbar: true,
+            statusbarheight: 2,
+            columns: [
+              { text: 'Name', datafield: 'name', width: 'auto',
+                cellsrenderer: defaultLinkFormatter,
+                align: 'center', cellsalign: 'center' },
+              { text: 'Description', datafield: 'description', width: 300,
+                align: 'center', cellsalign: 'center' },
+              { text: 'Type', datafield: 'document_type', width: 100,
+                align: 'center', cellsalign: 'center' },
+              { text: 'Action', datafield: 'edit_url', width: 60,
+                align: 'center', exportable: false,
+                columntype: 'button',
+                sortable: false, filterable: false, menu: false,
+                cellsrenderer: function(){return 'Menu'},
+                buttonclick: documents_menu_renderer }
+            ]
+          });
+        }
+      };
+
+      var custom_grid_options = {
+        rowsheight: 60,
+        pageable: false,
+        rowdetails: true,
+        initrowdetails: initrowdetails,
+        rowdetailstemplate: {
+          rowdetails: "<div class='sub-grid-title'>Documents</div><div id='grid' class='sub-grid'></div>",
+          rowdetailsheight: 245,
+          rowdetailshidden: true
+        },
+        columngroups: [
+          { text: 'Clustering info', name: 'Clustering info', align: 'center' }
+        ]
+      };
+      draw_grid(".jqxgrid", datafields, columns, false, null, custom_grid_options);
+    });
+  </script>
+{% endblock %}

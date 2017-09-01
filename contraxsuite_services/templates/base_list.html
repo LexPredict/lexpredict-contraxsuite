@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+
+{% block content %}
+  <h2 class="pull-left">{% block header %}{% endblock %}</h2>
+  <div class="pull-right">
+    {% block add_button %}{% endblock %}
+    {% block export_button %}
+      <button type="button" class="btn-u btn-sm list-export">Export</button>
+    {% endblock %}
+  </div>
+  <div class="clearfix"></div>
+  {% block table %}{% endblock %}
+  {% include '_paginator_block.html' %}
+{% endblock %}

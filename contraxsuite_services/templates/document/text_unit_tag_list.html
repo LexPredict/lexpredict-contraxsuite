@@ -1,0 +1,88 @@
+{% extends "base_list_ajax.html" %}
+{% load static %}
+
+{% block add_button %}
+  <form id="tag_searchForm" method="GET" class="pull-right header-search-form">
+    <div class="input-group">
+      <input type="text" class="typeahead form-control" id="tag_search" name="tag_search"
+             value="{{ tag_search|default:"" }}"
+             placeholder="Tag Name">
+      <span class="input-group-btn">
+        <button class="btn btn-primary" type="submit"><i class="fa fa-search">&nbsp;</i></button>
+      </span>
+    </div>
+  </form>
+{% endblock %}
+
+{% block js_extra %}
+  {{ block.super }}
+  <script type="text/javascript">
+    $(document).ready(function () {
+      var datafields = [
+        { name: 'pk', type: 'int' },
+        { name: 'text_unit__document__name', type: 'string' },
+        { name: 'text_unit__document__document_type', type: 'string' },
+        { name: 'text_unit__document__description', type: 'string' },
+        { name: 'text_unit__unit_type', type: 'string' },
+        { name: 'text_unit__language', type: 'string' },
+        { name: 'tag', type: 'string' },
+        { name: 'user__username', type: 'string' },
+        { name: 'timestamp', type: 'date' },
+        { name: 'url', type: 'string' },
+        { name: 'detail_url', type: 'string' },
+        { name: 'delete_url', type: 'string' }
+      ];
+      var menu_renderer = function(row, event) {
+        var grid = $(event.currentTarget).parents('.jqxgrid');
+        row = grid.jqxGrid('getrowdata', row);
+        var menu_data = [
+          { url: row.url,
+            icon: 'fa fa-file-text-o',
+            text: 'View Document' },
+          { url: row.detail_url,
+            icon: 'fa fa-info-circle',
+            text: 'View Text Unit' },
+          { url: row.delete_url + '?next={{ request.path }}',
+            icon: 'fa fa-remove',
+            cls: 'remove',
+            text: 'Remove'}
+        ];
+        show_menu(menu_data, grid, row.pk);
+      };
+      var columns = [
+        { text: 'Name', datafield: 'text_unit__document__name', width: 200,
+          align: 'center', cellsalign: 'left', enabletooltips: true,
+          cellsrenderer: defaultLinkFormatter, columngroup: 'Document' },
+        { text: 'Type', datafield: 'text_unit__document__document_type', width: 100,
+          align: 'center', cellsalign: 'center', columngroup: 'Document' },
+        { text: 'Description', datafield: 'text_unit__document__description',
+          width: 200, enabletooltips: true, columngroup: 'Document',
+          align: 'center', cellsalign: 'center' },
+        { text: 'Type', datafield: 'text_unit__unit_type', width: 80,
+          align: 'center', cellsalign: 'center', columngroup: 'Text Unit' },
+        { text: 'Language', datafield: 'text_unit__language', width: 80,
+          align: 'center', cellsalign: 'center', columngroup: 'Text Unit' },
+        { text: 'User', datafield: 'user__username', width: 120,
+          align: 'center', cellsalign: 'center' },
+        { text: 'Date', datafield: 'timestamp', width: 120,
+          filtertype: 'date', cellsformat: 'MM-dd-yyyy HH:mm',
+          align: 'center', cellsalign: 'center' },
+        { text: 'Tag', datafield: 'tag', width: 'auto',
+          align: 'center', cellsalign: 'center' },
+        { text: 'Action', datafield: 'url', width: 60,
+          align: 'center', exportable: false,
+          columntype: 'button',
+          sortable: false, filterable: false, menu: false,
+          cellsrenderer: function(){return 'Menu'},
+          buttonclick: menu_renderer }
+      ];
+      var custom_grid_options = {
+        columngroups: [
+          { text: 'Document', name: 'Document', align: 'center' },
+          { text: 'Text Unit', name: 'Text Unit', align: 'center' }
+        ]
+      };
+      draw_grid(".jqxgrid", datafields, columns, false, null, custom_grid_options);
+    });
+  </script>
+{% endblock %}

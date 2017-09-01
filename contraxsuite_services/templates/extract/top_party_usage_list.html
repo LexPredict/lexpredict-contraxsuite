@@ -1,0 +1,53 @@
+{% extends "base_list_ajax.html" %}
+{% load static project_tags %}
+
+{% block title %}Top {{ model_name_plural|capwords }}{% endblock %}
+
+{% block page_header %}Top {{ model_name|capwords }} List{% endblock %}
+
+{% block js_extra %}
+  {{ block.super }}
+  <script type="text/javascript">
+    $(document).ready(function () {
+      var datafields = [
+        { name: 'party__name', type: 'string' },
+        { name: 'party__type', type: 'string' },
+        { name: 'count', type: 'int' },
+        { name: 'party_summary_url', type: 'string' },
+        { name: 'url', type: 'string' }
+      ];
+      var menu_renderer = function(row_number) {
+        var grid = $('.jqxgrid');
+        var row = grid.jqxGrid('getrowdata', row_number);
+        var menu_data = [
+          { url: row.url,
+            icon: 'fa fa-file-text-o',
+            text: 'View Similar Party Usages' },
+          { url:  row.party_summary_url,
+            icon: 'fa fa-cubes',
+            text: 'Party Summary' }
+        ];
+        show_menu(menu_data, grid, row.pk, 300);
+      };
+      var partyNameFormatter = function (index, columnfield, value, defaulthtml, columnproperties, row) {
+        return linkFormatter(defaulthtml, row.party_summary_url, value);
+      };
+      var columns = [
+        { text: 'Party Name', datafield: 'party__name', width: '33%',
+          align: 'center', cellsalign: 'center',
+          cellsrenderer: partyNameFormatter },
+        { text: 'Party Type', datafield: 'party__type', width: 'auto',
+          align: 'center', cellsalign: 'center' },
+        { text: 'Count', datafield: 'count', width: 'auto',
+          align: 'center', cellsalign: 'center' },
+        { text: 'Action', datafield: 'url', width: 60,
+          align: 'center', exportable: false,
+          columntype: 'button',
+          sortable: false, filterable: false, menu: false,
+          cellsrenderer: function(){return 'Menu'},
+          buttonclick: menu_renderer }
+      ];
+      draw_grid(".jqxgrid", datafields, columns, false);
+    });
+  </script>
+{% endblock %}

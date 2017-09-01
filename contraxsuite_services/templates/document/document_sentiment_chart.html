@@ -1,0 +1,117 @@
+{% extends "base.html" %}
+{% load static pipeline %}
+
+{% block css_extra %}
+  {% stylesheet 'custom_jqwidgets_css' %}
+  {{ block.super }}
+  <style type="text/css">
+    .jqx-chart-axis-description {
+      font-size: 15px;
+      font-weight: bold;
+    }
+  </style>
+{% endblock %}
+
+{% block title %}Document Sentiment Chart{% endblock %}
+
+{% block page_header %}Document Sentiment Chart{% endblock %}
+
+{% block content %}
+  <div id='chartContainer' style="width: 100%; height: 500px;"></div>
+{% endblock %}
+
+{% block js_extra %}
+  {{ block.super }}
+  {% javascript 'custom_jqwidgets_js' %}
+
+  <script type="text/javascript">
+    $(document).ready(function () {
+      var tooltipFormatter = function (value, itemIndex, serie, group, xAxisValue, xAxis) {
+        var dataItem = dataItem = dataAdapter.records[itemIndex];
+        return '<div style="text-align: left">' +
+            'Document ID: ' + dataItem.pk + '<br />' +
+            'Document Name: ' + dataItem.name + '<br />' +
+            'Polarity: ' + dataItem.polarity + '<br />' +
+            'Subjectivity: ' + dataItem.subjectivity + '</div>'
+      };
+      var source = {
+        datatype: "json",
+        url: '{% url "document:document-sentiment-chart" %}',
+        datafields: [
+          {name: 'pk', type: 'int'},
+          {name: 'name', type: 'string'},
+          {name: 'url', type: 'string'},
+          {name: 'polarity', type: 'float'},
+          {name: 'subjectivity', type: 'float'}
+        ]
+      };
+      var dataAdapter = new $.jqx.dataAdapter(source,
+          {
+            autoBind: true,
+            async: false,
+            downloadComplete: function () { },
+            loadComplete: function () { },
+            loadError: function () { }
+          }
+      );
+      var settings = {
+        title: "",
+        description: "",
+        enableAnimations: true,
+        enableCrosshairs: true,
+        showLegend: false,
+        padding: { left: 10, top: 10, right: 10, bottom: 10 },
+        source: dataAdapter,
+        colorScheme: 'scheme01',
+        xAxis:
+        {
+          dataField: 'polarity',
+          displayText: 'Polarity',
+          minValue: 0,
+          maxValue: 1,
+          unitInterval: 0.1,
+          valuesOnTicks: true,
+          title: { text: 'Polarity' },
+          rangeSelector: {
+            serieType: 'area',
+            padding: { /*left: 0, right: 0,*/ top: 20, bottom: 0 },
+            // Uncomment the line below to render the selector in a separate container
+            //renderTo: $('#selectorContainer'),
+            backgroundColor: 'white',
+            size: 110,
+            gridLines: {visible: false}
+          }
+        },
+        valueAxis: {
+          minValue: 0,
+          maxValue: 1,
+          unitInterval: 0.1,
+          title: { text: 'Subjectivity' }
+        },
+        seriesGroups:
+            [
+              {
+                type: 'scatter',
+                toolTipFormatFunction: tooltipFormatter,
+                series: [
+                  { dataField: 'subjectivity',
+                    symbolSize: 10,
+                    symbolType: 'circle',
+                    displayText: 'Subjectivity'
+                  }
+                ]
+              }
+            ]
+      };
+      // link chart data to document detail pages
+      $('#chartContainer').on('click', function (event) {
+        if (event.args) {
+          var dataItem = dataAdapter.records[event.args.elementIndex];
+          window.location.href = dataItem.url
+        }
+      });
+      // setup the chart
+      $('#chartContainer').jqxChart(settings);
+    });
+  </script>
+{% endblock %}

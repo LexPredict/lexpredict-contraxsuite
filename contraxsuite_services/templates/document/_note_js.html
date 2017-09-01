@@ -1,0 +1,67 @@
+{% load static %}
+
+<script type="text/javascript" src="{% static "ckeditor/ckeditor/ckeditor.js" %}"></script>
+<script type="text/javascript" src="{% static "ckeditor/ckeditor-init.js" %}"></script>
+<script type="text/javascript">
+  function show_note_popup(grid, row_number, owner_name, owner_pk_name) {
+    if (row_number != null){
+      var row = $(grid).jqxGrid('getrowdata', row_number);
+      var note = row.note;
+      var note_id = row.pk;
+      var owner_id = row[owner_pk_name];
+    }
+    else {
+      owner_id = owner_pk_name
+    }
+    $.confirm({
+      type: 'blue',
+      icon: 'fa fa-file-text-o',
+      title: (note ? 'Update' : 'Create') + ' note',
+      columnClass: 'col-md-10 col-md-offset-1 col-xs-10 col-xs-offset-1',
+      backgroundDismiss: true,
+      content: '<div class="note-editor"><textarea id="note_editor"></textarea></div>',
+      onContentReady: function () {
+        CKEDITOR.replace('note_editor');
+        CKEDITOR.instances['note_editor'].setData(note);
+      },
+      buttons: {
+        save: {
+          text: 'Save',
+          btnClass: 'btn-u btn-sm btn-s',
+          action: function(){
+            var note = CKEDITOR.instances['note_editor'].getData();
+            if (!note){
+              SEMICOLON.widget.notifications($('<span class="notification" data-notify-type="error" data-notify-msg="Empty Note"></span>'));
+              return false
+            }
+            var data = {
+              owner_name: owner_name,
+              owner_id: owner_id,
+              note_id: note_id,
+              note: note,
+            };
+            $.ajax({
+              type: 'POST',
+              dataType: 'json',
+              url: '{% url "document:note-submit" %}',
+              data: data,
+              success: function(response){
+                $(grid).jqxGrid('updatebounddata');
+                SEMICOLON.widget.notifications($('<span class="notification" data-notify-type="' + response.status + '" data-notify-msg="' + response.message + '"></span>'))
+              },
+              error: function(xhr){
+                console.log(xhr);
+                SEMICOLON.widget.notifications($('<span class="notification" data-notify-type="error" data-notify-msg="Error"></span>'));
+              }
+            });
+          }
+        },
+        cancel: {
+          text: 'Cancel',
+          btnClass: 'btn-u btn-sm btn-l',
+          action: function(){}
+        }
+      }
+    });
+  }
+</script>

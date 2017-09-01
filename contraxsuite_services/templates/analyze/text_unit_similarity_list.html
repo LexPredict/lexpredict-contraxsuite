@@ -1,0 +1,85 @@
+{% extends "base_list_ajax.html" %}
+{% load static %}
+
+{% block js_extra %}
+  {{ block.super }}
+  <script type="text/javascript">
+    $(document).ready(function () {
+      var datafields = [
+        { name: 'text_unit_a__pk', type: 'int' },
+        { name: 'text_unit_a__unit_type', type: 'string' },
+        { name: 'text_unit_a__language', type: 'string' },
+        { name: 'text_unit_a__text', type: 'string' },
+        { name: 'text_unit_a__url', type: 'string' },
+        { name: 'text_unit_a_document_url', type: 'string' },
+        { name: 'text_unit_b__pk', type: 'int' },
+        { name: 'text_unit_b__unit_type', type: 'string' },
+        { name: 'text_unit_b__language', type: 'string' },
+        { name: 'text_unit_b__text', type: 'string' },
+        { name: 'text_unit_b__url', type: 'string' },
+        { name: 'text_unit_b_document_url', type: 'string' },
+        { name: 'similarity', type: 'float' }
+      ];
+      var menu_renderer = function(row, event) {
+        var grid = $(event.currentTarget).parents('.jqxgrid');
+        row = grid.jqxGrid('getrowdata', row);
+        var menu_data = [
+          { url: row.text_unit_a_document_url,
+            icon: 'fa fa-file-text-o',
+            text: 'View Document A'},
+          { url: row.text_unit_a__url,
+            icon: 'fa fa-info-circle',
+            text: 'View Text Unit A'},
+          { url: row.text_unit_b_document_url,
+            icon: 'fa fa-file-text-o',
+            text: 'View Document B'},
+          { url: row.text_unit_b__url,
+            icon: 'fa fa-info-circle',
+            text: 'View Text Unit B'}
+        ];
+        show_menu(menu_data, grid, row.pk);
+      };
+      var columns = [
+        { text: 'ID', datafield: 'text_unit_a__pk', width: 70,
+          align: 'center', cellsalign: 'center',
+          columngroup: 'Text Unit A' },
+        { text: 'Type', datafield: 'text_unit_a__unit_type', width: 70,
+          align: 'center', cellsalign: 'center',
+          columngroup: 'Text Unit A' },
+        { text: 'Language', datafield: 'text_unit_a__language', width: 70,
+          enabletooltips: true, columngroup: 'Text Unit A',
+          align: 'center', cellsalign: 'center' },
+        { text: 'Text', datafield: 'text_unit_a__text', width: 'auto',
+          align: 'center', cellsalign: 'center',
+          columngroup: 'Text Unit A' },
+        { text: 'ID', datafield: 'text_unit_b__pk', width: 70,
+          align: 'center', cellsalign: 'center',
+          columngroup: 'Text Unit B' },
+        { text: 'Type', datafield: 'text_unit_b__unit_type', width: 70,
+          align: 'center', cellsalign: 'center',
+          columngroup: 'Text Unit B' },
+        { text: 'Language', datafield: 'text_unit_b__language', width: 70,
+          enabletooltips: true, columngroup: 'Text Unit B',
+          align: 'center', cellsalign: 'center' },
+        { text: 'Text', datafield: 'text_unit_b__text', width: 'auto',
+          align: 'center', cellsalign: 'center',
+          columngroup: 'Text Unit B' },
+        { text: 'Similarity', datafield: 'similarity', width: 70,
+          align: 'center', cellsalign: 'center', cellsformat: 'p2' },
+        { text: 'Action', datafield: 'edit_url', width: 60,
+          align: 'center', exportable: false,
+          columntype: 'button',
+          sortable: false, filterable: false, menu: false,
+          cellsrenderer: function(){return 'Menu'},
+          buttonclick: menu_renderer }
+      ];
+      var custom_grid_options = {
+        columngroups: [
+          { text: 'Text Unit A', name: 'Text Unit A', align: 'center' },
+          { text: 'Text Unit B', name: 'Text Unit B', align: 'center' }
+        ]
+      };
+      draw_grid(".jqxgrid", datafields, columns, true, null, custom_grid_options);
+    });
+  </script>
+{% endblock %}

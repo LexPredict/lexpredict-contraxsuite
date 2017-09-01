@@ -1,0 +1,21 @@
+<i class="btn-u btn-xs btn-xl fa fa-refresh update-jqxgrid-data"
+   title="Refresh data"></i>
+<i class="btn-u btn-xs btn-xl fa fa-copy jqxgrid-select-mode"
+   title="Select row/cell"></i>
+<i class="btn-u btn-xs btn-xl fa fa-filter jqxgrid-filterrow"
+   title="Switch filter row"></i>
+{% if not hide_export_button %}
+  <div class="dropdown gridExport" style="display: inline;">
+    <button class="btn-u btn-sm btn-xl-p dropdown-toggle" type="button" data-toggle="dropdown" aria-expanded="true">
+      Export <span class="caret"></span>
+    </button>
+    <ul class="dropdown-menu" data-export-filename="{{ export_filename }}"
+        style="min-width: 80px;">
+      <li data-export-to="csv"><a href="#">CSV</a></li>
+      {% if settings.JQ_EXPORT %}
+      <li data-export-to="xls"><a href="#">XLS</a></li>
+      {% endif %}
+      <li data-export-to="pdf"><a href="#">PDF</a></li>
+    </ul>
+  </div>
+{% endif %}

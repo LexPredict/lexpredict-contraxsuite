@@ -1,0 +1,27 @@
+{% extends "base_list_ajax.html" %}
+{% load static project_tags %}
+
+{% block title %}Top {{ model_name_plural|capwords }}{% endblock %}
+
+{% block page_header %}Top {{ model_name|capwords }} List{% endblock %}
+
+{% block js_extra %}
+  {{ block.super }}
+  <script type="text/javascript">
+    $(document).ready(function () {
+      var datafields = [
+        { name: 'term__term', type: 'string' },
+        { name: 'count', type: 'int' },
+        { name: 'url', type: 'string' }
+      ];
+      var columns = [
+        { text: 'Term', datafield: 'term__term', width: '50%',
+          align: 'center', cellsalign: 'center',
+          cellsrenderer: defaultLinkFormatter },
+        { text: 'Count', datafield: 'count', width: '50%',
+          align: 'center', cellsalign: 'center' }
+      ];
+      draw_grid(".jqxgrid", datafields, columns, false);
+    });
+  </script>
+{% endblock %}

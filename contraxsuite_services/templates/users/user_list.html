@@ -1,0 +1,49 @@
+{% extends "base_list_ajax.html" %}
+{% load static %}
+
+{% block js_extra %}
+  {{ block.super }}
+  <script type="text/javascript">
+    $(document).ready(function () {
+      var datafields = [
+        { name: 'pk', type: 'int' },
+        { name: 'username', type: 'string' },
+        { name: 'role', type: 'string' },
+        { name: 'first_name', type: 'string' },
+        { name: 'last_name', type: 'string' },
+        { name: 'name', type: 'string' },
+        { name: 'organization', type: 'string' },
+        { name: 'email', type: 'string' },
+        { name: 'url', type: 'string' }
+      ];
+      var columns = [
+        { text: 'ID', datafield: 'pk', width: 50,
+          cellclassname: inactive_cellsclassrenderer,
+          align: 'center', cellsalign: 'center' },
+        { text: 'Username', datafield: 'username', width: 150,
+          align: 'center', cellsalign: 'left',
+          cellsrenderer: defaultLinkFormatter,
+          cellclassname: inactive_cellsclassrenderer },
+        { text: 'Role', datafield: 'role', width: 150,
+          cellclassname: inactive_cellsclassrenderer,
+          align: 'center', cellsalign: 'center' },
+        { text: 'First Name', datafield: 'first_name', width: 100,
+          cellclassname: inactive_cellsclassrenderer,
+          align: 'center', cellsalign: 'center' },
+        { text: 'Last Name', datafield: 'last_name', width: 100,
+          cellclassname: inactive_cellsclassrenderer,
+          align: 'center', cellsalign: 'center' },
+        { text: 'Name', datafield: 'name', width: 'auto',
+          cellclassname: inactive_cellsclassrenderer,
+          align: 'center', cellsalign: 'center' },
+        { text: 'Organization', datafield: 'organization', width: 'auto',
+          cellclassname: inactive_cellsclassrenderer,
+          align: 'center', cellsalign: 'center' },
+        { text: 'Email', datafield: 'email', width: 'auto',
+          cellclassname: inactive_cellsclassrenderer,
+          align: 'center', cellsalign: 'center' }
+      ];
+      draw_grid(".jqxgrid", datafields, columns, false);
+    });
+  </script>
+{% endblock %}

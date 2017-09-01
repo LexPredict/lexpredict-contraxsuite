@@ -1,0 +1,123 @@
+{% extends "base_list_ajax.html" %}
+{% load static %}
+
+{#{% block add_button %}#}
+{#  <button type="button" class="btn-u btn-sm btn-s pull-right create-note">Create Note</button>#}
+{#{% endblock %}#}
+
+{% block js_extra %}
+  {{ block.super }}
+  <script type="text/javascript">
+    $(document).ready(function () {
+      var datafields = [
+        { name: 'pk', type: 'int' },
+        { name: 'document__pk', type: 'int' },
+        { name: 'document__name', type: 'string' },
+        { name: 'document__document_type', type: 'string' },
+        { name: 'document__description', type: 'string' },
+        { name: 'note', type: 'string' },
+        { name: 'user', type: 'string' },
+        { name: 'timestamp', type: 'date' },
+        { name: 'history' },
+        { name: 'url', type: 'string' },
+        { name: 'delete_url', type: 'string' }
+      ];
+      var menu_renderer = function(row_number, event) {
+        var grid = $(event.currentTarget).parents('.jqxgrid');
+        var row = grid.jqxGrid('getrowdata', row_number);
+        var menu_data = [
+          { url: row.url,
+            icon: 'fa fa-file-text-o',
+            text: 'View Document' },
+          { icon: 'fa fa-pencil',
+            onclick: "event.preventDefault();show_note_popup('.jqxgrid', " + row_number + ", 'document', 'document__pk')",
+            text: 'Edit Note' },
+          { icon: 'fa fa-folder-open-o',
+            onclick: "expand_row(event, '.jqxgrid', " + row_number + ")",
+            text: 'Show History' },
+          { url: row.delete_url + '?next={{ request.path }}',
+            icon: 'fa fa-remove',
+            cls: 'remove',
+            text: 'Remove' }
+        ];
+        show_menu(menu_data, grid, row.pk);
+      };
+      var columns = [
+        { text: 'Name', datafield: 'document__name', width: 200,
+          align: 'center', cellsalign: 'left',
+          cellsrenderer: defaultLinkFormatter, columngroup: 'Document' },
+        { text: 'Type', datafield: 'document__document_type', width: 100,
+          align: 'center', cellsalign: 'center', columngroup: 'Document' },
+        { text: 'Description', datafield: 'document__description',
+          width: 200, columngroup: 'Document',
+          align: 'center', cellsalign: 'center' },
+        { text: 'Note', datafield: 'note', width: 'auto', minwidth: 300,
+          cellsrenderer: note_renderer,
+          align: 'center', cellsalign: 'center' },
+        { text: 'User', datafield: 'user', width: 120,
+          align: 'center', cellsalign: 'center' },
+        { text: 'Date', datafield: 'timestamp', width: 120,
+          filtertype: 'date', cellsformat: 'MM-dd-yyyy HH:mm',
+          align: 'center', cellsalign: 'center' },
+        { text: 'Action', datafield: 'url', width: 60,
+          align: 'center', exportable: false,
+          columntype: 'button',
+          sortable: false, filterable: false, menu: false,
+          cellsrenderer: function(){return 'Menu'},
+          buttonclick: menu_renderer }
+      ];
+
+      // create nested grid
+      var initrowdetails = function(index, parentElement, gridElement, record) {
+        var grid = $($(parentElement).children()[1]);
+        var details_source = {
+          datafields: [
+            { name: 'document_id', type: 'int' },
+            { name: 'history_date', type: 'date' },
+            { name: 'history_user__username', type: 'string' },
+            { name: 'note', type: 'string' }
+          ],
+          localdata: record.history
+        };
+        var nestedGridAdapter = new $.jqx.dataAdapter(details_source);
+        if (grid != null) {
+          grid.jqxGrid({
+            source: nestedGridAdapter,
+            altrows: true,
+            rowsheight: 40,
+            enabletooltips: true,
+            sortable: true,
+            filterable: true,
+            width: '98%',
+            height: 200,
+            columns: [
+              { text: 'Created Date', datafield: 'history_date', width: 150,
+                filtertype: 'date', cellsformat: 'MM-dd-yyyy HH:mm',
+                align: 'center', cellsalign: 'center' },
+              { text: 'User', datafield: 'history_user__username', width: 150,
+                align: 'center', cellsalign: 'center' },
+              { text: 'Note', datafield: 'note', width: 'auto', minwidth: 300,
+                cellsrenderer: note_renderer,
+                align: 'center', cellsalign: 'center' }
+            ]
+          });
+        }
+      };
+
+      var custom_grid_options = {
+        rowdetails: true,
+        initrowdetails: initrowdetails,
+        rowdetailstemplate: {
+          rowdetails: "<div class='sub-grid-title'>History</div><div id='grid' class='sub-grid'></div>",
+          rowdetailsheight: 245,
+          rowdetailshidden: true
+        },
+        columngroups: [
+          { text: 'Document', name: 'Document', align: 'center' }
+        ]
+      };
+      draw_grid(".jqxgrid", datafields, columns, false, null, custom_grid_options);
+    });
+  </script>
+  {% include "document/_note_js.html" %}
+{% endblock %}

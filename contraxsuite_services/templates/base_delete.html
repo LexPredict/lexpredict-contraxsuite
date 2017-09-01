@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% load static project_tags %}
+
+{% block title %}{{ model_name|capwords }} delete{% endblock %}
+
+{% block content %}
+  <div class="center-form">
+    <h4>Delete {{ model_name|capwords }}?</h4>
+    <p><small>{{ object }}</small></p>
+    <p>Are you sure?</p>
+    <form class="" action="#" method="POST">
+      {% csrf_token %}
+      <input type="hidden" name="next" value="{{ request.GET.next }}">
+      <button class="cancel btn-u btn-sm btn-l">Cancel</button>
+      <button class="btn-u btn-sm" type="submit">Submit</button>
+    </form>
+  </div>
+{% endblock %}

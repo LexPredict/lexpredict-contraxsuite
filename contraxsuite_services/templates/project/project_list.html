@@ -1,0 +1,145 @@
+{% extends "base_list_ajax.html" %}
+{% load static %}
+
+{% block add_button %}
+  {% if not user.is_reviewer %}
+    <a class="btn-u btn-sm btn-s" href="{% url "project:project-add" %}">Create</a>
+  {% endif %}
+{% endblock %}
+
+{% block js_extra %}
+  {{ block.super }}
+  <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/jQuery-Knob/1.2.13/jquery.knob.min.js"></script>
+  <script type="text/javascript">
+    $(document).ready(function () {
+      var datafields = [
+        { name: 'pk', type: 'int' },
+        { name: 'name', type: 'string' },
+        { name: 'description', type: 'string' },
+        { name: 'task_queues_count', type: 'int' },
+        { name: 'total_documents_count', type: 'int' },
+        { name: 'completed_documents_count', type: 'int' },
+        { name: 'progress', type: 'float' },
+        { name: 'task_queue_data' },  
+        { name: 'url', type: 'string' }
+      ];
+      var menu_renderer = function (row_number, event) {
+        var grid = $(event.currentTarget).parents('.jqxgrid');
+        var row = grid.jqxGrid('getrowdata', row_number);
+        var menu_data = [
+          { icon: 'fa fa-folder-open-o',
+            onclick: "expand_row(event, '.jqxgrid', " + row_number + ")",
+            text: 'Show Task Queues' },
+          { url: '{% url "project:task-queue-add" %}?row_id=' + row_number + '&project_id='+row.pk,
+            icon: 'fa fa-plus',
+            text: 'Create Task Queue' },
+          { url: row.url,
+            icon: 'fa fa-pencil',
+            text: 'Update Project' }
+        ];
+        show_menu(menu_data, grid, row.pk);
+      };
+      var columns = [
+        { text: 'Name', datafield: 'name', width: '30%',
+          align: 'center', cellsalign: 'center',
+          cellsrenderer: defaultLinkFormatter },
+        { text: 'Description', datafield: 'description', width: 'auto',
+          align: 'center', cellsalign: 'center' },
+        { text: 'Task Queues', datafield: 'task_queues_count', width: 100,
+          align: 'center', cellsalign: 'center' },
+        { text: 'Documents', datafield: 'total_documents_count', width: 100,
+          align: 'center', cellsalign: 'center' },
+        { text: 'Progress', datafield: 'progress', width: 100,
+          cellsrenderer: knob_cellsrenderer,
+          align: 'center', cellsalign: 'center' },
+        { text: 'Action', datafield: 'edit_url', width: 60,
+          align: 'center', exportable: false,
+          columntype: 'button',
+          sortable: false, filterable: false, menu: false,
+          cellsrenderer: function(){return 'Menu'},
+          buttonclick: menu_renderer
+        }
+      ];
+      // create nested grid
+      var initrowdetails = function(index, parentElement, gridElement, record) {
+        var grid = $($(parentElement).children()[1]);
+        var details_source_ = {
+          datafields: [
+            { name: 'project__pk', type: 'int' },
+            { name: 'pk', type: 'int' },
+            { name: 'description', type: 'string' },
+            { name: 'total_documents_count', type: 'int' },
+            { name: 'completed_documents_count', type: 'int' },
+            { name: 'progress', type: 'float' },
+            { name: 'reviewers_count', type: 'int' },
+            { name: 'reviewers_usernames', type: 'string' },
+            { name: 'url', type: 'string' }
+          ],
+          localdata: record.task_queue_data
+        };
+        var nestedGridAdapter = new $.jqx.dataAdapter(details_source_);
+        if (grid != null) {
+          var task_menu_renderer = function (row) {
+            row = grid.jqxGrid('getrowdata', row);
+            var menu_data = [
+              { url: row.url,
+                icon: 'fa fa-pencil',
+                text: 'Update Task Queue' }
+            ];
+            show_menu(menu_data, grid, row.pk);
+          };
+          grid.jqxGrid({
+            source: nestedGridAdapter,
+            altrows: true,
+            rowsheight: 60,
+            enabletooltips: true,
+            sortable: true,
+            filterable: true,
+            width: '98%',
+            height: 180,
+            showstatusbar: true,
+            statusbarheight: 2,
+            columns: [
+              { text: 'Description', datafield: 'description', width: 'auto',
+                align: 'center', cellsalign: 'center',
+                cellsrenderer: defaultLinkFormatter },
+              { text: 'Documents', datafield: 'total_documents_count', width: 90,
+                align: 'center', cellsalign: 'center' },
+              { text: 'Progress', datafield: 'progress', width: 90,
+                cellsrenderer: knob_cellsrenderer,
+                align: 'center', cellsalign: 'center' },
+              { text: 'Reviewers', datafield: 'reviewers_count', width: 90,
+                cellsrenderer: reviewers_renderer,
+                align: 'center', cellsalign: 'center' },
+              { text: 'Action', datafield: 'url', width: 60,
+                align: 'center', exportable: false,
+                columntype: 'button',
+                sortable: false, filterable: false, menu: false,
+                cellsrenderer: function(){return 'Menu'},
+                buttonclick: task_menu_renderer }
+            ]
+          });
+        }
+      };
+
+      var custom_grid_options = {
+        rowsheight: 60,
+        pageable: false,
+        rowdetails: true,
+        initrowdetails: initrowdetails,
+        rowdetailstemplate: {
+          rowdetails: "<div class='sub-grid-title'>Task Queues</div><div id='grid' class='sub-grid'></div>",
+          rowdetailsheight: 225,
+          rowdetailshidden: true
+        },
+        ready: function () {
+          if (window.location.hash) {
+            $(".jqxgrid").jqxGrid('showrowdetails', window.location.hash.replace('#', ''));
+          }
+        }
+      };
+
+      draw_grid(".jqxgrid", datafields, columns, false, null, custom_grid_options);
+    })
+  </script>
+{% endblock %}

@@ -1,0 +1,434 @@
+{% extends "base.html" %}
+{% load static pipeline %}
+
+{% block css_extra %}
+  {% stylesheet 'custom_jqwidgets_css' %}
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/jquery-confirm/3.1.1/jquery-confirm.min.css">
+  {{ block.super }}
+{% endblock %}
+
+{% block title %}Party Summary{% endblock %}
+
+{% block page_header %}Party Summary{% endblock %}
+
+{% block content %}
+{# TODO: do we need it here? apply it to jqwidgets grid pages #}
+{#  <div class="pull-right header-search-form highlight-container">#}
+{#    <div class="input-group">#}
+{#      <span class="input-group-btn">#}
+{#        <button class="btn btn-warning" type="button">Highlight</button>#}
+{#      </span>#}
+{#      <input type="text" class="form-control" id="highlight_term" name="highlight_term"#}
+{#             value="{{ object.name|default:"" }}"#}
+{#             placeholder="Term">#}
+{#    </div>#}
+{#  </div>#}
+
+  <table class="table table-bordered table-striped">
+    <thead class="thead-inverse">
+    <tr>
+      <th>Name</th>
+      <th>Type</th>
+      <th>Description</th>
+    </tr>
+    </thead>
+    <tbody>
+    <tr>
+      <td>{{ object.name }}</td>
+      <td>{{ object.type }}</td>
+      <td>{{ object.description }}</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="tabs tabs-bb clearfix page-tabs" id="tabs1" data-speed="700" data-active="1"
+       style="margin-top: 50px;">
+
+    <ul class="tab-nav clearfix mb-40">
+      <li><a href="#tab-1">Documents<span class="badge badge-s pull-right documents-badge"></span></a></li>
+      <li><a href="#tab-2">TextUnits<span class="badge badge-s pull-right text-units-badge"></span></a></li>
+      <li><a href="#tab-3">Top Geographic Entities<span class="badge badge-s pull-right entities-badge"></span></a></li>
+      <li><a href="#tab-4">Similar Parties<span class="badge badge-s pull-right parties-badge"></span></a></li>
+    </ul>
+
+    <div class="tab-content clearfix" id="tab-1">
+      <div class="pull-right grid-controls">
+        {% include '_base_grid_buttons_block.html' %}
+      </div>
+      <div class="jqxgrid-container">
+        <div class="jqxgrid col-md-12 jqxgrid-documents"></div>
+      </div>
+    </div>
+
+    <div class="tab-content clearfix" id="tab-2">
+      <div class="pull-right grid-controls">
+        {% include '_base_grid_buttons_block.html' %}
+      </div>
+      <div class="jqxgrid-container">
+        <div class="jqxgrid col-md-12 jqxgrid-text-units"></div>
+      </div>
+    </div>
+
+    <div class="tab-content clearfix" id="tab-3">
+      <div class="pull-right grid-controls">
+        {% include '_base_grid_buttons_block.html' %}
+      </div>
+      <div class="jqxgrid-container">
+        <div class="jqxgrid col-md-12 jqxgrid-entities"></div>
+      </div>
+    </div>
+
+    <div class="tab-content clearfix" id="tab-4">
+      <div class="pull-right grid-controls">
+        {% include '_base_grid_buttons_block.html' %}
+      </div>
+      <div class="jqxgrid-container">
+        <div class="jqxgrid col-md-12 jqxgrid-parties"></div>
+      </div>
+    </div>
+
+  </div>
+
+{% endblock %}
+
+{% block js_extra %}
+  {% include "_base_jqxgrid_block.html" %}
+  <script type="text/javascript">
+    $(document).ready(function () {
+      highlightParties(".jqxgrid-text-units", "{{ object.name|safe }}");
+
+      // Documents table
+      var documents_datafields = [
+        { name: 'pk', type: 'int' },
+        { name: 'name', type: 'string' },
+        { name: 'document_type', type: 'string' },
+        { name: 'description', type: 'string' },
+        { name: 'url', type: 'string' },
+        { name: 'text_unit_data' }
+      ];
+      var documents_menu_renderer = function(row_number) {
+        var grid = $('.jqxgrid-documents');
+        var row = grid.jqxGrid('getrowdata', row_number);
+        var menu_data = [
+          { icon: 'fa fa-folder-open-o',
+            onclick: "expand_row(event, '.jqxgrid-documents', " + row_number + ")",
+            text: 'Show Details' },
+          { url: row.url,
+            icon: 'fa fa-file-text-o',
+            text: 'View Document'}
+        ];
+        show_menu(menu_data, grid, row.pk, 300);
+      };
+      var documents_columns = [
+        { text: 'ID', datafield: 'pk', width: 50,
+          align: 'center', cellsalign: 'center' },
+        { text: 'Name', datafield: 'name', width: 300,
+          align: 'center', cellsalign: 'left',
+          cellsrenderer: defaultLinkFormatter },
+        { text: 'Type', datafield: 'document_type', width: 100,
+          align: 'center', cellsalign: 'center' },
+        { text: 'Description', datafield: 'description', width: 'auto',
+          align: 'center', cellsalign: 'center' },
+        { text: 'Action', datafield: 'url', width: 60,
+          align: 'center', exportable: false,
+          columntype: 'button',
+          sortable: false, filterable: false, menu: false,
+          cellsrenderer: function(){return 'Menu'},
+          buttonclick: documents_menu_renderer }
+      ];
+      var documents_custom_source_data = {
+        url: '{% url "document:document-list" %}',
+        data: { 'party_pk': '{{ object.pk }}' },
+        badgeClass: 'documents-badge'
+      };
+      var nested_grid_initrowdetails = function(index, parentElement, gridElement, record) {
+        var grid = $($(parentElement).children()[0]);
+        grid.attr('id', 'grid' + record.boundindex);
+        var details_source = {
+          datafields: [
+            { name: 'unit_type', type: 'string' },
+            { name: 'language', type: 'string' },
+            { name: 'text', type: 'string' },
+            { name: 'detail_url', type: 'string' }
+          ],
+          localdata: record.text_unit_data
+        };
+        var nestedGridAdapter = new $.jqx.dataAdapter(details_source);
+        if (grid != null) {
+          var menu_renderer = function(row) {
+            row = grid.jqxGrid('getrowdata', row);
+            var menu_data = [
+              { url: row.detail_url,
+                icon: 'fa fa-info-circle',
+                text: 'View Text Unit' }
+            ];
+            show_menu(menu_data, grid, row.pk);
+          };
+          grid.jqxGrid({
+            source: nestedGridAdapter,
+            altrows: true,
+            rowsheight: 40,
+            enabletooltips: true,
+            sortable: true,
+            filterable: true,
+            width: '98%',
+            height: 200,
+            columns: [
+              { text: 'Unit Type', datafield: 'unit_type', width: 80,
+                align: 'center', cellsalign: 'center' },
+              { text: 'Language', datafield: 'language', width: 80,
+                align: 'center', cellsalign: 'center' },
+              { text: 'Text', datafield: 'text', width: 'auto', minwidth: 'auto',
+                align: 'center', cellsalign: 'center' },
+              { text: 'Action', datafield: 'url', width: 60,
+                align: 'center', exportable: false,
+                columntype: 'button',
+                sortable: false, filterable: false, menu: false,
+                cellsrenderer: function(){ return 'Menu' },
+                buttonclick: menu_renderer }
+            ]
+          });
+        }
+      };
+      var documents_custom_grid_opts = {
+        rowdetails: true,
+        initrowdetails: nested_grid_initrowdetails,
+        rowdetailstemplate: {
+          rowdetails: "<div id='grid' class='sub-grid' style='margin: 10px;'></div>",
+          rowdetailsheight: 220,
+          rowdetailshidden: true
+        }
+      };
+      draw_grid(".jqxgrid-documents", documents_datafields, documents_columns, false,
+                documents_custom_source_data, documents_custom_grid_opts);
+
+      // text_units table
+      var text_units_datafields = [
+        { name: 'pk', type: 'int' },
+        { name: 'document__name', type: 'string' },
+        { name: 'document__document_type', type: 'string' },
+        { name: 'document__description', type: 'string' },
+        { name: 'unit_type', type: 'string' },
+        { name: 'language', type: 'string' },
+        { name: 'text', type: 'string' },
+        { name: 'url', type: 'string' },
+        { name: 'detail_url', type: 'string' }
+      ];
+      var text_units_menu_renderer = function(row_number) {
+        var grid = $('.jqxgrid-text-units');
+        var row = grid.jqxGrid('getrowdata', row_number);
+        var menu_data = [
+          { url: row.url,
+            icon: 'fa fa-file-text-o',
+            text: 'View Document'},
+          { url: row.detail_url,
+            icon: 'fa fa-info-circle',
+            text: 'View Details'}
+        ];
+        show_menu(menu_data, grid, row.pk, 300);
+      };
+      var text_units_columns = [
+        { text: 'Name', datafield: 'document__name', width: 300,
+          align: 'center', cellsalign: 'left', enabletooltips: true,
+          cellsrenderer: defaultLinkFormatter, columngroup: 'Document' },
+        { text: 'Type', datafield: 'document__document_type', width: 100,
+          align: 'center', cellsalign: 'center', columngroup: 'Document' },
+        { text: 'Description', datafield: 'document__description',
+          width: 200, enabletooltips: true, columngroup: 'Document',
+          align: 'center', cellsalign: 'center' },
+        { text: 'Unit Type', datafield: 'unit_type', width: 80,
+          align: 'center', cellsalign: 'center' },
+        { text: 'Language', datafield: 'language', width: 80,
+          align: 'center', cellsalign: 'center' },
+        { text: 'Text', datafield: 'text', width: 'auto', minwidth: 300,
+          align: 'center', cellsalign: 'center' },
+        { text: 'Action', datafield: 'url', width: 60,
+          align: 'center', exportable: false,
+          columntype: 'button',
+          sortable: false, filterable: false, menu: false,
+          cellsrenderer: function(){ return 'Menu' },
+          buttonclick: text_units_menu_renderer }
+      ];
+      var text_units_custom_source_data = {
+        url: '{% url "document:text-unit-list" %}',
+        data: { 'party_pk': '{{ object.pk }}' },
+        badgeClass: 'text-units-badge'
+      };
+      var text_units_grid_options = {
+        columngroups: [
+          { text: 'Document', name: 'Document', align: 'center' }
+        ]
+      };
+      draw_grid(".jqxgrid-text-units", text_units_datafields, text_units_columns, false,
+                text_units_custom_source_data, text_units_grid_options);
+
+      // Top Entity Usages table
+      var entities_datafields = [
+        { name: 'entity__name', type: 'string' },
+        { name: 'entity__category', type: 'string' },
+        { name: 'entity_data' },
+        { name: 'count', type: 'int' }
+      ];
+      var entities_menu_renderer = function(row_number) {
+        var grid = $('.jqxgrid-entities');
+        var row = grid.jqxGrid('getrowdata', row_number);
+        var menu_data = [
+          { icon: 'fa fa-folder-open-o',
+            onclick: "expand_row(event, '.jqxgrid-entities', " + row_number + ")",
+            text: 'Show Details' },
+          { icon: 'fa fa-search',
+            url:  '{% url "extract:geo-entity-usage-list" %}?entity_search=' + row.entity__name,
+            text: 'View All Similar Entity Usages' }
+        ];
+        show_menu(menu_data, grid, row.pk, 300);
+      };
+      var entities_columns = [
+        { text: 'Entity Name', datafield: 'entity__name', width: 'auto',
+          align: 'center', cellsalign: 'center' },
+        { text: 'Entity Category', datafield: 'entity__category', width: 'auto',
+          align: 'center', cellsalign: 'center' },
+        { text: 'Count', datafield: 'count', width: 150,
+          align: 'center', cellsalign: 'center' },
+        { text: 'Action', datafield: 'url', width: 60,
+          align: 'center', exportable: false,
+          columntype: 'button',
+          sortable: false, filterable: false, menu: false,
+          cellsrenderer: function(){return 'Menu'},
+          buttonclick: entities_menu_renderer }
+      ];
+      var entities_custom_source_data = {
+        url: '{% url "extract:top-geo-entity-usage-list" %}',
+        data: { party_pk: '{{ object.pk }}' },
+        badgeClass: 'entities-badge'
+      };
+      var nested_grid_initrowdetails = function(index, parentElement, gridElement, record) {
+        var grid = $($(parentElement).children()[0]);
+        grid.attr('id', 'grid' + record.boundindex);
+        var details_source = {
+          datafields: [
+            { name: 'text_unit__document__name', type: 'string' },
+            { name: 'text_unit__document__document_type', type: 'string' },
+            { name: 'text_unit__document__description', type: 'string' },
+            { name: 'entity__name', type: 'string' },
+            { name: 'entity__category', type: 'string' },
+            { name: 'count', type: 'int' },
+            { name: 'text_unit__text', type: 'string' },
+            { name: 'url', type: 'string' },
+            { name: 'detail_url', type: 'string' }          ],
+          localdata: record.entity_data
+        };
+        var nestedGridAdapter = new $.jqx.dataAdapter(details_source);
+        if (grid != null) {
+          var menu_renderer = function(row) {
+            row = grid.jqxGrid('getrowdata', row);
+            var menu_data = [
+              { url: row.url,
+                icon: 'fa fa-file-text-o',
+                text: 'View Document'},
+              { url: row.detail_url,
+                icon: 'fa fa-info-circle',
+                text: 'View Text Unit'}
+            ];
+            show_menu(menu_data, grid, row.pk);
+          };
+          grid.jqxGrid({
+            source: nestedGridAdapter,
+            altrows: true,
+            rowsheight: 40,
+            enabletooltips: true,
+            sortable: true,
+            filterable: true,
+            width: '98%',
+            height: 200,
+            columns: [
+              { text: 'Name', datafield: 'text_unit__document__name', width: 200,
+                align: 'center', cellsalign: 'left', enabletooltips: true,
+                cellsrenderer: defaultLinkFormatter, columngroup: 'Document' },
+              { text: 'Type', datafield: 'text_unit__document__document_type', width: 100,
+                align: 'center', cellsalign: 'center', columngroup: 'Document' },
+              { text: 'Description', datafield: 'text_unit__document__description',
+                width: 200, enabletooltips: true, columngroup: 'Document',
+                align: 'center', cellsalign: 'center' },
+              { text: 'Name', datafield: 'entity__name', width: 120,
+                align: 'center', cellsalign: 'center', columngroup: 'Entity' },
+              { text: 'Category', datafield: 'entity__category', width: 120,
+                align: 'center', cellsalign: 'center', columngroup: 'Entity' },
+              { text: 'Count', datafield: 'count', width: 60,
+                align: 'center', cellsalign: 'center' },
+              { text: 'Text Unit', datafield: 'text_unit__text', width: 'auto', minwidth: 200,
+                align: 'center', cellsalign: 'center' },
+              { text: 'Action', datafield: 'url', width: 60,
+                align: 'center', exportable: false,
+                columntype: 'button',
+                sortable: false, filterable: false, menu: false,
+                cellsrenderer: function(){ return 'Menu' },
+                buttonclick: menu_renderer }
+            ]
+          });
+        }
+      };
+      var entities_custom_grid_opts = {
+        rowdetails: true,
+        initrowdetails: nested_grid_initrowdetails,
+        rowdetailstemplate: {
+          rowdetails: "<div id='grid' class='sub-grid' style='margin: 10px;'></div>",
+          rowdetailsheight: 220,
+          rowdetailshidden: true
+        }
+      };
+      draw_grid(".jqxgrid-entities", entities_datafields, entities_columns, false,
+                entities_custom_source_data, entities_custom_grid_opts);
+
+      // Parties table
+      var parties_datafields = [
+        { name: 'party_b__name', type: 'string' },
+        { name: 'party_b__type', type: 'string' },
+        { name: 'party_b__description', type: 'string' },
+        { name: 'party_b__url', type: 'string' },
+        { name: 'similarity', type: 'float' }
+      ];
+      var parties_menu_renderer = function(row_number) {
+        var grid = $('.jqxgrid-parties');
+        var row = grid.jqxGrid('getrowdata', row_number);
+        var menu_data = [
+          { icon: 'fa fa-cubes',
+            url:  row.party_b__url,
+            text: 'View Party Summary' },
+          { icon: 'fa fa-search',
+            url:  '{% url "extract:party-usage-list" %}?party_search=' + row.party_b__name,
+            text: 'View All Similar Party Usages' }
+        ];
+        show_menu(menu_data, grid, row.pk, 300);
+      };
+      var parties_columns = [
+        { text: 'Name', datafield: 'party_b__name', width: 'auto',
+          align: 'center', cellsalign: 'center', columngroup: 'Party' },
+        { text: 'Type', datafield: 'party_b__type', width: 'auto',
+          align: 'center', cellsalign: 'center', columngroup: 'Party' },
+{#        { text: 'Description', datafield: 'party_b__description', width: 'auto',#}
+{#          align: 'center', cellsalign: 'center', columngroup: 'Party' },#}
+        { text: 'Similarity', datafield: 'similarity', width: 150,
+          align: 'center', cellsalign: 'center', cellsformat: 'p' },
+        { text: 'Action', datafield: 'url', width: 60,
+          align: 'center', exportable: false,
+          columntype: 'button',
+          sortable: false, filterable: false, menu: false,
+          cellsrenderer: function(){return 'Menu'},
+          buttonclick: parties_menu_renderer }
+      ];
+      var parties_custom_source_data = {
+        url: '{% url "analyze:party-similarity-list" %}',
+        data: { 'party_pk': {{ object.pk }} },
+        badgeClass: 'parties-badge'
+      };
+      draw_grid(".jqxgrid-parties", parties_datafields, parties_columns, false,
+                parties_custom_source_data);
+
+      if (window.location.hash.indexOf('tab') != -1 ){
+        var tab_id = window.location.hash.split('-')[1];
+        var tab_no = window.location.hash.split('-')[2];
+        $('#tabs' + tab_id).tabs('option', 'active', tab_no)
+      }
+    });
+  </script>
+{% endblock %}

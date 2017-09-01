@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% load static project_tags pipeline %}
+
+{% block css_extra %}
+  {% stylesheet 'custom_jqwidgets_css' %}
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/jquery-confirm/3.1.1/jquery-confirm.min.css">
+  {{ block.super }}
+{% endblock %}
+
+{% block title %}{{ model_name_plural|capwords }}{% endblock %}
+
+{% block page_header %}
+  {{ model_name|capwords }} {% block list_tag %}List{% endblock %}
+{% endblock %}
+
+{% block content %}
+
+  {% block content_top_addon %}{% endblock %}
+
+  {% block button_block %}
+    <div class="pull-right grid-controls">
+      {% include '_base_grid_buttons_block.html' %}
+      {% block add_button %}
+        {#        <a class="btn btn-success btn-sm" href="{% block add_btn_url %}{% endblock %}">Create New</a>#}
+      {% endblock %}
+    </div>
+  {% endblock %}
+
+  {% block content_list %}
+    {% block content_list_top_addon %}{% endblock %}
+    <div class="jqxgrid-container jqxgrid-{{ model_name_init }}">
+      <div class="jqxgrid col-md-12" data-modelname="{{ model_name|capwords }}"></div>
+    </div>
+    {% block content_list_bottom_addon %}{% endblock %}
+  {% endblock %}
+
+{% endblock %}
+
+{% block js_extra %}
+  {% include "_base_jqxgrid_block.html" %}
+{% endblock %}
