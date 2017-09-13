@@ -3,8 +3,7 @@ Software package for [LexPredict ContraxSuite](https://github.com/LexPredict/lex
 
 * Official Website: https://contraxsuite.com/
 * LexPredict: https://lexpredict.com/
-* [Installation and Configuration Guide](https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.0/documentation/Installation%20and%20Configuration%20Guide.pdf)
-* [Software and Data Dependencies](https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.0/documentation/Software%20and%20Data%20Dependencies.pdf)
+* [Current Documentation](https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.0.1/documentation/)
 * Contact: contact@lexpredict.com
 
 ![Logo](https://www.lexpredict.com/wp-content/uploads/2014/08/lexpredict_logo_horizontal_1.png)
@@ -13,7 +12,7 @@ Software package for [LexPredict ContraxSuite](https://github.com/LexPredict/lex
 ContraxSuite is available under a dual-licensing model as described here:
  * https://www.lexpredict.com/2017/07/30/licensing-contraxsuite-legaltech-dual/
 
-**If you would like to be released from the terms of the default AGPLv3 license, please contact us at support@lexpredict.com.**
+**If you would like to be released from the terms of the default AGPLv3 license, please contact us at: ContraxSuite Licensing <<license@contraxsuite.com>>.**
 
 ## Structure
 Please note that ContraxSuite installations generally require trained models or knowledge sets for usage.
