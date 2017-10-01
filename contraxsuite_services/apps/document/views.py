@@ -15,7 +15,6 @@ from django.core.urlresolvers import reverse
 from django.db.models import Count, F, Prefetch
 from django.shortcuts import get_object_or_404, redirect
 from django.shortcuts import render
-from django.utils.timezone import now
 from django.views.generic import DetailView
 
 # EL imports
@@ -31,7 +30,7 @@ from apps.document.models import (
 from apps.extract.models import (
     Term, TermUsage, GeoAlias, GeoEntity, GeoRelation,
     GeoAliasUsage, GeoEntityUsage, Party, PartyUsage,
-    Court, CourtUsage, CurrencyUsage,
+    Court, CourtUsage, CurrencyUsage, RegulationUsage,
     DefinitionUsage, DateDurationUsage, DateUsage)
 from apps.common.mixins import (
     AjaxListView, CustomUpdateView, CustomCreateView, CustomDeleteView,
@@ -882,6 +881,7 @@ def view_stats(request):
     date_duration_usages = DateDurationUsage.objects
     date_usages = DateUsage.objects
     definition_usages = DefinitionUsage.objects
+    regulation_usages = RegulationUsage.objects
 
     if request.user.is_reviewer:
         document_filter_opts = dict(document__taskqueue__reviewers=request.user)
@@ -927,6 +927,7 @@ def view_stats(request):
         date_duration_usages = date_duration_usages.filter(**tu_filter_opts).distinct()
         date_usages = date_usages.filter(**tu_filter_opts).distinct()
         definition_usages = definition_usages.filter(**tu_filter_opts).distinct()
+        regulation_usages = regulation_usages.filter(**tu_filter_opts).distinct()
 
     context = {
         "document_count": documents.count(),
@@ -958,6 +959,7 @@ def view_stats(request):
         "date_duration_usage_count": date_duration_usages.count(),
         "date_usage_count": date_usages.count(),
         "definition_usage_count": definition_usages.count(),
+        "regulation_usage_count": regulation_usages.count(),
         "project_total_count": project_total_count,
         "project_completed_count": project_completed_count,
         "project_completed_weight": project_completed_weight,

@@ -21,34 +21,20 @@ import nltk
 import numpy as np
 import pandas as pd
 import pycountry
-from apps.analyze.models import (
-    DocumentCluster, TextUnitCluster,
-    DocumentSimilarity, TextUnitSimilarity, PartySimilarity as PartySimilarityModel,
-    TextUnitClassification, TextUnitClassifier, TextUnitClassifierSuggestion)
-# Project imports
-from apps.document.models import (
-    Document, DocumentProperty, TextUnit, TextUnitProperty, TextUnitTag)
-from apps.extract.models import (
-    GeoAlias, GeoAliasUsage, GeoEntity, GeoEntityUsage, GeoRelation,
-    Term, TermUsage, Party, PartyUsage,
-    Court, CourtUsage, CurrencyUsage, RegulationUsage,
-    DateDurationUsage, DateUsage, DefinitionUsage)
-from apps.task.celery import app
-from apps.task.models import Task
-from apps.task.utils.custom import fast_uuid, extract_entity_list, text2num
-from apps.task.utils.nlp import lang
-from apps.task.utils.ocr.textract import textract2text
-from apps.task.utils.text.segment import segment_paragraphs, segment_sentences
+from lexnlp.extract.en import (
+    amounts, citations, courts,
+    dates, distances, definitions,
+    durations, money, percents, ratios, regulations)
+from lexnlp.extract.en.entities.nltk_maxent import get_companies
+from lexnlp.nlp.en.tokens import get_stems, get_tokens
+from textblob import TextBlob
+from tika import parser
+
 # Celery imports
 from celery import shared_task
 from celery.result import AsyncResult
 from celery.utils.log import get_task_logger
-# Django imports
-from django.conf import settings
-from django.core.management import call_command
-from django.db.models import Q
-from django.utils.timezone import now
-from django_celery_results.models import TaskResult
+
 # Scikit-learn imports
 from sklearn.cluster import Birch, DBSCAN, KMeans, MiniBatchKMeans
 from sklearn.ensemble import ExtraTreesClassifier, RandomForestClassifier
@@ -58,8 +44,34 @@ from sklearn.metrics.pairwise import cosine_similarity
 from sklearn.naive_bayes import MultinomialNB
 from sklearn.semi_supervised import LabelSpreading
 from sklearn.svm import SVC
-from textblob import TextBlob
-from tika import parser
+
+# Django imports
+from django.conf import settings
+from django.core.management import call_command
+from django.db.models import Q
+from django.utils.timezone import now
+from django_celery_results.models import TaskResult
+
+# Project imports
+from apps.analyze.models import (
+    DocumentCluster, TextUnitCluster,
+    DocumentSimilarity, TextUnitSimilarity, PartySimilarity as PartySimilarityModel,
+    TextUnitClassification, TextUnitClassifier, TextUnitClassifierSuggestion)
+from apps.document.models import (
+    Document, DocumentProperty, TextUnit, TextUnitProperty, TextUnitTag)
+from apps.extract import models as extract_models
+from apps.extract.models import (
+    GeoAlias, GeoAliasUsage, GeoEntity, GeoEntityUsage, GeoRelation,
+    Term, TermUsage, Party, PartyUsage, RegulationUsage,
+    AmountUsage, PercentUsage, RatioUsage, DistanceUsage,
+    Court, CourtUsage, CurrencyUsage, RegulationUsage,
+    CitationUsage, DateDurationUsage, DateUsage, DefinitionUsage)
+from apps.task.celery import app
+from apps.task.models import Task
+from apps.task.utils.custom import fast_uuid, extract_entity_list, text2num
+from apps.task.utils.nlp import lang
+from apps.task.utils.ocr.textract import textract2text
+from apps.task.utils.text.segment import segment_paragraphs, segment_sentences
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2017, ContraxSuite, LLC"
@@ -271,6 +283,8 @@ class LoadDocuments(BaseTask):
         # create Document Properties
         document_properties = [
             DocumentProperty(
+                created_by_id=kwargs['user_id'],
+                modified_by_id=kwargs['user_id'],
                 document_id=document.pk,
                 key=k,
                 value=v) for k, v in metadata.items() if v]
@@ -278,10 +292,14 @@ class LoadDocuments(BaseTask):
         polarity, subjectivity = TextBlob(text).sentiment
         document_properties += [
             DocumentProperty(
+                created_by_id=kwargs['user_id'],
+                modified_by_id=kwargs['user_id'],
                 document_id=document.pk,
                 key='polarity',
                 value=str(round(polarity, 3))),
             DocumentProperty(
+                created_by_id=kwargs['user_id'],
+                modified_by_id=kwargs['user_id'],
                 document_id=document.pk,
                 key='subjectivity',
                 value=str(round(subjectivity, 3)))]
@@ -452,6 +470,8 @@ class LoadGeoEntities(BaseTask):
             data = pd.read_csv(path)
             self.log('Detected %d entities' % len(data))
             entities_df = entities_df.append(data)
+        if entities_df.empty:
+            raise RuntimeError('Received 0 entities to process, exit.')
         entities_df = entities_df.drop_duplicates().fillna('')
         self.task.push()
 
@@ -499,143 +519,6 @@ class LoadGeoEntities(BaseTask):
         self.task.push()
 
 
-# class LoadGeoEntities1(BaseTask):
-#     """
-#     Load Geopolitical Entities from given dictionaries
-#     """
-#     name = 'LoadGeoEntities1'
-#
-#     def process(self, **kwargs):
-#         """
-#         Load Geopolitical Entities
-#         :param kwargs: form data
-#         :return:
-#         """
-#
-#         geo_entities_path = os.path.join(settings.DATA_ROOT,
-#                                          kwargs['geo_entities_path'].strip('/'))
-#         if not os.path.exists(geo_entities_path):
-#             geo_entities_path = os.path.join(settings.MEDIA_ROOT,
-#                                              settings.FILEBROWSER_DIRECTORY,
-#                                              kwargs['geo_entities_path'].strip('/'))
-#         if not os.path.exists(geo_entities_path) or not os.path.isfile(geo_entities_path):
-#             raise RuntimeError('Unable to find geo entities file: "%s"' % geo_entities_path)
-#         else:
-#             geo_entities_data = pd.read_csv(geo_entities_path)
-#
-#         geo_relations_path = os.path.join(settings.DATA_ROOT,
-#                                           kwargs['geo_relations_path'].strip('/'))
-#         if not os.path.exists(geo_relations_path):
-#             geo_relations_path = os.path.join(settings.MEDIA_ROOT,
-#                                               settings.FILEBROWSER_DIRECTORY,
-#                                               kwargs['geo_relations_path'].strip('/'))
-#         if not os.path.exists(geo_relations_path) or not os.path.isfile(geo_relations_path):
-#             geo_relations_data = []
-#         else:
-#             geo_relations_data = pd.read_csv(geo_relations_path)
-#
-#         geo_aliases_path = os.path.join(settings.DATA_ROOT,
-#                                         kwargs['geo_aliases_path'].strip('/'))
-#         if not os.path.exists(geo_aliases_path):
-#             geo_aliases_path = os.path.join(settings.MEDIA_ROOT,
-#                                             settings.FILEBROWSER_DIRECTORY,
-#                                             kwargs['geo_aliases_path'].strip('/'))
-#         if not os.path.exists(geo_aliases_path) or not os.path.isfile(geo_aliases_path):
-#             geo_aliases_data = []
-#         else:
-#             geo_aliases_data = pd.read_csv(geo_aliases_path)
-#
-#         if kwargs['delete']:
-#             GeoEntity.objects.all().delete()
-#             GeoRelation.objects.all().delete()
-#             GeoAlias.objects.all().delete()
-#
-#         self.task.subtasks_total = 3
-#         self.task.save()
-#
-#         # create Geo Entities
-#         geo_entities = []
-#         self.log('Detected %d geo entities' % len(geo_entities_data))
-#
-#         for _, row in geo_entities_data.iterrows():
-#             entity_id = row['Entity ID']
-#             entity_name = row['Entity Name'].strip()
-#             if GeoEntity.objects.filter(Q(name=entity_name) | Q(entity_id=entity_id)).exists():
-#                 self.log('Geo Entity with ID "{}" of name "{}" already exists, skip.'.format(
-#                     entity_id, entity_name))
-#                 continue
-#
-#             if 'latitude' in row and row['latitude']:
-#                 latitude = row['latitude']
-#                 longitude = row['longitude']
-#             else:
-#                 g = geocoder.google(entity_name)
-#                 if not g.latlng and ',' in entity_name:
-#                     g = geocoder.google(entity_name.split(',')[0])
-#                 latitude, longitude = g.latlng
-#
-#             geo_entities.append(
-#                 GeoEntity(entity_id=entity_id,
-#                           name=entity_name,
-#                           category=row['Entity Category'].strip(),
-#                           latitude=latitude,
-#                           longitude=longitude))
-#
-#         GeoEntity.objects.bulk_create(geo_entities)
-#         self.log('Total created: %d GeoEntities' % len(geo_entities))
-#         self.task.push()
-#
-#         # create Geo Relations
-#         geo_relations = []
-#         self.log('Detected %d geo relations' % len(geo_relations_data))
-#
-#         for _, row in geo_relations_data.iterrows():
-#             entity_a_id = row['Entity A ID']
-#             entity_b_id = row['Entity B ID']
-#             if GeoEntity.objects.filter(entity_id__in=[entity_a_id, entity_b_id]).count() < 2:
-#                 self.log('Geo Entity with ID "{}" or "{}" doesn\'t exist, skip.'.format(
-#                     entity_a_id, entity_b_id))
-#                 continue
-#             if GeoRelation.objects.filter(entity_a_id=entity_a_id, entity_b_id=entity_b_id) \
-#                     .exists():
-#                 self.log('Geo Relation with Entity A ID "{}" and Entity B ID "{}"'
-#                          ' already exists, skip.'.format(entity_a_id, entity_b_id))
-#                 continue
-#             entity_a = GeoEntity.objects.get(entity_id=entity_a_id)
-#             entity_b = GeoEntity.objects.get(entity_id=entity_b_id)
-#             geo_relations.append(
-#                 GeoRelation(entity_a=entity_a,
-#                             entity_b=entity_b,
-#                             relation_type=row['Relationship Type'].strip()))
-#
-#         GeoRelation.objects.bulk_create(geo_relations)
-#         self.log('Total created: %d GeoRelations' % len(geo_relations))
-#         self.task.push()
-#
-#         # create Geo Aliases
-#         geo_aliases = []
-#         self.log('Detected %d geo aliases' % len(geo_aliases_data))
-#
-#         for _, row in geo_aliases_data.iterrows():
-#             entity_id = row['Entity ID']
-#             entity_alias = row['Entity Alias'].strip()
-#             entity = GeoEntity.objects.get(entity_id=entity_id)
-#
-#             if GeoAlias.objects.filter(entity=entity, alias=entity_alias).exists():
-#                 self.log('Geo Alias with Entity "{}" and alis "{}"'
-#                          ' already exists, skip.'.format(entity, entity_alias))
-#                 continue
-#             geo_aliases.append(
-#                 GeoAlias(entity=entity,
-#                          alias=entity_alias,
-#                          locale=row['Entity Locale'].strip(),
-#                          type=row['Entity Alias Type'].strip()))
-#
-#         GeoAlias.objects.bulk_create(geo_aliases)
-#         self.log('Total created: %d GeoAliases' % len(geo_aliases))
-#         self.task.push()
-
-
 class LoadCourts(BaseTask):
     """
     Load Courts data from a file OR github repo
@@ -681,17 +564,333 @@ class LoadCourts(BaseTask):
             for _, row in dictionary_data.iterrows():
                 if not Court.objects.filter(
                         court_id=row['Court ID'],
-                        abbreviation=row['Alias']).exists():
+                        alias=row['Alias']).exists():
                     court = Court(
                         court_id=row['Court ID'],
                         type=row['Court Type'],
                         name=row['Court Name'],
-                        abbreviation=row['Alias']
+                        level=row['Level'],
+                        jurisdiction=row['Jurisdiction'],
+                        alias=row['Alias']
                     )
                     courts.append(court)
 
             Court.objects.bulk_create(courts)
         self.task.push()
+
+
+class Locate(BaseTask):
+    """
+    Locate multiple items
+    """
+    name = "Locate"
+    usage_model_map = dict(
+        money=['CurrencyUsage'],
+        durations=['DateDurationUsage'],
+        parties=['PartyUsage'],
+        geoentities=['GeoEntityUsage', 'GeoAliasUsage']
+    )
+    lexnlp_task_map = dict()
+
+    def process(self, **kwargs):
+        tasks = kwargs['tasks']
+        for term_name, term_kwargs in tasks.items():
+            if term_kwargs['delete'] or term_kwargs['locate']:
+                usage_model_names = self.usage_model_map.get(
+                    term_name,
+                    [term_name[:-1].title() + 'Usage'])
+                for usage_model_name in usage_model_names:
+                    usage_model = getattr(extract_models, usage_model_name)
+                    deleted = usage_model.objects.all().delete()
+                    self.log('Deleted {} {} objects'.format(
+                        deleted[0], usage_model_name))
+
+        locate = {i: j for i, j in tasks.items() if j['locate']}
+
+        if not locate:
+            self.task.force_complete()
+            return
+
+        sub_task_kwargs = {}
+        if 'terms' in locate:
+            term_stems = {}
+            for t, pk in Term.objects.values_list('term', 'pk'):
+                stemmed_term = ' %s ' % ' '.join(get_stems(t))
+                stemmed_item = term_stems.get(stemmed_term, [])
+                stemmed_item.append([t, pk])
+                term_stems[stemmed_term] = stemmed_item
+            for item in term_stems:
+                term_stems[item] = dict(values=term_stems[item],
+                                        length=len(term_stems[item]))
+            sub_task_kwargs['term_stems'] = term_stems
+
+        if 'geoentities' in locate:
+            entities = GeoEntity.objects
+            if locate['geoentities']['priority']:
+                entities = entities.distinct('name')
+            entity_stems = {}
+            for e, pk in entities.values_list('name', 'pk'):
+                stemmed_entity = ' %s ' % ' '.join(get_stems(e))
+                entity_stems[stemmed_entity] = pk
+            sub_task_kwargs['geo_entity_stems'] = entity_stems
+
+            alias_stems = {}
+            for a, t, pk in GeoAlias.objects.values_list('alias', 'type', 'pk'):
+                if t.startswith('iso') or t == 'abbreviation':
+                    alias_stems[a] = [True, pk]
+                else:
+                    stemmed_alias = ' %s ' % ' '.join(get_stems(a))
+                    if stemmed_alias in entity_stems:
+                        continue
+                    alias_stems[stemmed_alias] = [False, pk]
+            sub_task_kwargs['geo_alias_stems'] = alias_stems
+
+        if 'courts' in locate:
+            sub_task_kwargs['court_config_list'] = [
+                dict(
+                    id=i.id,
+                    name=i.name,
+                    court_aliases=i.alias.split(';') if i.alias else []
+                ) for i in Court.objects.all()]
+
+        text_units = TextUnit.objects.all()
+        self.log('Run location of {}.'.format('; '.join(locate.keys())))
+        self.task.subtasks_total = text_units.count()
+        self.task.save()
+        self.log('Found {0} Text Units. Added {0} subtasks.'.format(
+            self.task.subtasks_total))
+
+        for text_unit_id, text in text_units.values_list('id', 'text'):
+            self.parse_text_unit.apply_async(
+                args=(locate, text_unit_id, text, sub_task_kwargs),
+                task_id='%d_%s' % (self.task.id, fast_uuid()))
+
+    @staticmethod
+    @shared_task
+    def parse_text_unit(locate, text_unit_id, text, sub_task_kwargs):
+        if 'amounts' in locate:
+            found = amounts.get_amounts(text, return_sources=True)
+            if found:
+                unique = set(found)
+                AmountUsage.objects.bulk_create(
+                    [AmountUsage(
+                        text_unit_id=text_unit_id,
+                        amount=item[0],
+                        amount_str=item[1],
+                        count=found.count(item)
+                    ) for item in unique])
+        if 'citations' in locate:
+            found = citations.get_citations(text, return_source=True)
+            if found:
+                unique = set(found)
+                CitationUsage.objects.bulk_create(
+                    [CitationUsage(
+                        text_unit_id=text_unit_id,
+                        volume=item[0],
+                        reporter=item[1],
+                        reporter_full_name=item[2],
+                        page=item[3],
+                        page2=item[4],
+                        court=item[5],
+                        year=item[6],
+                        citation_str=item[7],
+                        count=found.count(item)
+                    ) for item in unique])
+        if 'courts' in locate:
+            found = [i['id'] for i in courts.get_courts(
+                text, court_config_list=sub_task_kwargs['court_config_list'])]
+            if found:
+                unique = set(found)
+                CourtUsage.objects.bulk_create(
+                    [CourtUsage(
+                        text_unit_id=text_unit_id,
+                        court_id=court_id,
+                        count=found.count(court_id)
+                    ) for court_id in unique])
+        if 'distances' in locate:
+            found = distances.get_distances(text, return_sources=True)
+            if found:
+                unique = set(found)
+                DistanceUsage.objects.bulk_create(
+                    [DistanceUsage(
+                        text_unit_id=text_unit_id,
+                        amount=item[0],
+                        amount_str=item[2],
+                        distance_type=item[1],
+                        count=found.count(item)
+                    ) for item in unique])
+        if 'dates' in locate:
+            found = dates.get_dates(
+                text,
+                strict=locate['dates'].get('strict', False),
+                return_source=False)
+            if found:
+                unique = set(found)
+                DateUsage.objects.bulk_create(
+                    [DateUsage(
+                        text_unit_id=text_unit_id,
+                        date=item,
+                        count=found.count(item)
+                    ) for item in unique])
+        if 'definitions' in locate:
+            found = list(definitions.get_definitions(text))
+            if found:
+                unique = set(found)
+                DefinitionUsage.objects.bulk_create(
+                    [DefinitionUsage(
+                        text_unit_id=text_unit_id,
+                        definition=item,
+                        count=found.count(item)
+                    ) for item in unique])
+        if 'durations' in locate:
+            found = durations.get_durations(text, return_sources=True)
+            if found:
+                unique = set(found)
+                DateDurationUsage.objects.bulk_create(
+                    [DateDurationUsage(
+                        text_unit_id=text_unit_id,
+                        amount=item[1],
+                        amount_str=item[3],
+                        duration_type=item[0],
+                        duration_days=item[2],
+                        count=found.count(item)
+                    ) for item in unique])
+        if 'money' in locate:
+            found = money.get_money(text, return_sources=True)
+            if found:
+                unique = set(found)
+                CurrencyUsage.objects.bulk_create(
+                    [CurrencyUsage(
+                        text_unit_id=text_unit_id,
+                        amount=item[0],
+                        amount_str=item[2],
+                        currency=item[1],
+                        count=found.count(item)
+                    ) for item in unique])
+        if 'parties' in locate:
+            found = list(get_companies(text))
+            if found:
+                pu_list = []
+                unique = set(found)
+                for _party in unique:
+                    party_name, party_type = _party
+                    party, _ = Party.objects.get_or_create(
+                        name=party_name,
+                        type=party_type)
+                    count = found.count(_party)
+                    pu_list.append(
+                        PartyUsage(text_unit_id=text_unit_id,
+                                   party=party,
+                                   count=count))
+                PartyUsage.objects.bulk_create(pu_list)
+        if 'percents' in locate:
+            found = percents.get_percents(text, return_sources=True)
+            if found:
+                unique = set(found)
+                PercentUsage.objects.bulk_create(
+                    [PercentUsage(
+                        text_unit_id=text_unit_id,
+                        amount=item[1],
+                        amount_str=item[3],
+                        unit_type=item[0],
+                        total=item[2],
+                        count=found.count(item)
+                    ) for item in unique])
+        if 'ratios' in locate:
+            found = ratios.get_ratios(text, return_sources=True)
+            if found:
+                unique = set(found)
+                RatioUsage.objects.bulk_create(
+                    [RatioUsage(
+                        text_unit_id=text_unit_id,
+                        amount=item[0],
+                        amount2=item[1],
+                        amount_str=item[3],
+                        total=item[2],
+                        count=found.count(item)
+                    ) for item in unique])
+        if 'regulations' in locate:
+            found = regulations.get_regulations(text)
+            if found:
+                unique = set(found)
+                RegulationUsage.objects.bulk_create(
+                    [RegulationUsage(
+                        text_unit_id=text_unit_id,
+                        regulation_type=item[0],
+                        regulation_name=item[1],
+                        count=found.count(item)
+                    ) for item in unique])
+        if 'geoentities' in locate:
+            text_stems = ' %s ' % ' '.join(get_stems(text, lowercase=True))
+            entity_usages = []
+            for stemmed_entity, pk in sub_task_kwargs['geo_entity_stems'].items():
+                if stemmed_entity not in text_stems:
+                    continue
+                count = text_stems.count(stemmed_entity)
+                entity_usages.append([pk, count])
+            GeoEntityUsage.objects.bulk_create([
+                GeoEntityUsage(
+                    text_unit_id=text_unit_id,
+                    entity_id=pk,
+                    count=count) for pk, count in entity_usages])
+            alias_usages = []
+            for alias, data in sub_task_kwargs['geo_alias_stems'].items():
+                is_abbr, pk = data
+                if is_abbr:
+                    count = 0
+                    for m in re.finditer(r'(?:^|[\(\.,\s])({})(?:[\)\.,\s]|$)'.format(alias), text):
+                        start = m.start()
+                        _start = max([0, start - 10])
+                        end = m.end()
+                        _end = end + 10
+                        if text[_start:start] == text[_start:start].upper() or \
+                            text[end:_end] == text[end:_end].upper() or \
+                                text.startswith('%s.' % alias):
+                            continue
+                        if alias in ('AM', 'PM') and re.search(r':\d\d\s+{}'.format(alias)):
+                            continue
+                        count += 1
+                    if count:
+                        alias_usages.append([pk, count])
+                else:
+                    count = text_stems.count(alias)
+                    if count:
+                        alias_usages.append([pk, count])
+            GeoAliasUsage.objects.bulk_create([
+                GeoAliasUsage(
+                    text_unit_id=text_unit_id,
+                    alias_id=pk,
+                    count=count) for pk, count in alias_usages])
+        if 'terms' in locate:
+            text_stems = ' %s ' % ' '.join(get_stems(text, lowercase=True))
+            text_tokens = get_tokens(text, lowercase=True)
+            term_usages = []
+            for stemmed_term, data in sub_task_kwargs['term_stems'].items():
+                # stem not found in text
+                if stemmed_term not in text_stems:
+                    continue
+                # if stem has 1 variant only
+                if data['length'] == 1:
+                    count = text_stems.count(stemmed_term)
+                    if count:
+                        term_data = data['values'][0]
+                        term_data.append(count)
+                        term_usages.append(term_data)
+                # case when f.e. stem "respons" is equal to multiple terms
+                # ["response", "responsive", "responsibility"]
+                else:
+                    for term_data in data['values']:
+                        count = text_tokens.count(term_data[0])
+                        if count:
+                            term_data.append(count)
+                            term_usages.append(term_data)
+                # TODO: "responsibilities"
+
+            TermUsage.objects.bulk_create([
+                TermUsage(
+                    text_unit_id=text_unit_id,
+                    term_id=pk,
+                    count=count) for _, pk, count in term_usages])
 
 
 class LocateGeoEntities(BaseTask):
@@ -982,6 +1181,8 @@ class LocateDates(BaseTask):
                 for adate in set(dates):
                     document_properties.append(
                         DocumentProperty(
+                            created_by_id=user_id,
+                            modified_by_id=user_id,
                             document_id=document_id,
                             key='date',
                             value=adate.isoformat()))
@@ -1080,6 +1281,8 @@ class LocateDateDurations(BaseTask):
             for duration_item in set(normalized_durations):
                 document_properties.append(
                     DocumentProperty(
+                        created_by_id=kwargs['user_id'],
+                        modified_by_id=kwargs['user_id'],
                         document_id=document_id,
                         key='duration',
                         value=duration_item))
@@ -1197,8 +1400,7 @@ class LocateCurrencies(BaseTask):
                     cu.text_unit = tu
                     cu.usage_type = "symbol"
                     cu.currency = occurrence[1]
-                    value, value_str = self.get_amount(occurrence, reverse=True)
-                    cu.amount = {'value': value, 'value_str': value_str}
+                    cu.amount, cu.amount_str = self.get_amount(occurrence, reverse=True)
                     cu_results.append(cu)
                     financial_found = True
 
@@ -1209,8 +1411,7 @@ class LocateCurrencies(BaseTask):
                     cu.text_unit = tu
                     cu.usage_type = "short_name"
                     cu.currency = occurrence[1]
-                    value, value_str = self.get_amount(occurrence)
-                    cu.amount = {'value': value, 'value_str': value_str}
+                    cu.amount, cu.amount_str = self.get_amount(occurrence)
                     cu_results.append(cu)
                     financial_found = True
 
@@ -1221,8 +1422,7 @@ class LocateCurrencies(BaseTask):
                     cu.text_unit = tu
                     cu.usage_type = "abbreviation"
                     cu.currency = occurrence[1]
-                    value, value_str = self.get_amount(occurrence)
-                    cu.amount = {'value': value, 'value_str': value_str}
+                    cu.amount, cu.amount_str = self.get_amount(occurrence)
                     cu_results.append(cu)
                     financial_found = True
 
@@ -1312,6 +1512,10 @@ class LocateRegulations(BaseTask):
     Locate Regulations in text units
     """
     name = 'LocateRegulations'
+    codes_map = {
+        'CFR': 'Code of Federal Regulations',
+        'USC': 'United States Code'
+    }
 
     def process(self, **kwargs):
         """
@@ -1335,18 +1539,25 @@ class LocateRegulations(BaseTask):
         self.task.save()
 
         usages = []
+        try:
+            entity = GeoEntity.objects.get(name='United States')
+        except GeoEntity.DoesNotExist:
+            entity = None
+
         for tu_pk, text in text_units.values_list('pk', 'text'):
             matches = [(a, b.replace('.', '').upper(), c) for a, b, c in reg_comp.findall(text)]
             for match in set(matches):
                 usages.append(
                     RegulationUsage(
-                        entity=None,  # TODO: Get United States GeoEntity
-                        regulation_type="United States Code" if match == 'USC' else match,
+                        text_unit_id=tu_pk,
+                        entity=entity,  # TODO: Get United States GeoEntity
+                        regulation_type=self.codes_map.get(match[1], match[1]),
                         regulation_name=' '.join(match),
                         count=matches.count(match)
                     )
                 )
             self.task.push()
+        RegulationUsage.objects.bulk_create(usages)
 
 
 class LocateCourts(BaseTask):
@@ -1370,7 +1581,7 @@ class LocateCourts(BaseTask):
             self.task.force_complete()
             return
 
-        courts_data = Court.objects.values_list('pk', 'name', 'type', 'abbreviation')
+        courts_data = Court.objects.values_list('pk', 'name', 'type', 'alias')
         # chunk contains N elements
         chunk_size = 20
         chunks = np.array_split(courts_data, courts_data.count() / chunk_size)
@@ -2025,6 +2236,7 @@ app.tasks.register(LoadGeoEntities())
 app.tasks.register(LoadCourts())
 
 # Register all locate tasks
+app.tasks.register(Locate())
 app.tasks.register(LocateTerms())
 app.tasks.register(LocateGeoEntities())
 app.tasks.register(LocateParties())

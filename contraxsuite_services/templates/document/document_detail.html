@@ -44,7 +44,7 @@
       <td>{{ document.document_type }}</td>
       <td>{{ document.description }}</td>
       <td>{{ document.document_a_set.count|add:document.document_b_set.count }}</td>
-      </tr>
+    </tr>
     </tbody>
   </table>
 
@@ -92,6 +92,12 @@
       <li><a href="#tab-10">Date Durations<span class="badge badge-s pull-right durations-badge"></span></a></li>
       <li><a href="#tab-11">Courts<span class="badge badge-s pull-right courts-badge"></span></a></li>
       <li><a href="#tab-12">Currencies<span class="badge badge-s pull-right currencies-badge"></span></a></li>
+      <li><a href="#tab-13">Regulations<span class="badge badge-s pull-right regulations-badge"></span></a></li>
+      <li><a href="#tab-14">Citations<span class="badge badge-s pull-right citations-badge"></span></a></li>
+      <li><a href="#tab-15">Distances<span class="badge badge-s pull-right distances-badge"></span></a></li>
+      <li><a href="#tab-16">Amounts<span class="badge badge-s pull-right amounts-badge"></span></a></li>
+      <li><a href="#tab-17">Percents<span class="badge badge-s pull-right percents-badge"></span></a></li>
+      <li><a href="#tab-18">Ratios<span class="badge badge-s pull-right ratios-badge"></span></a></li>
     </ul>
 
     <div class="tab-content clearfix" id="tab-1">
@@ -175,6 +181,10 @@
 
     <div class="tab-content clearfix" id="tab-8">
       <div class="pull-right grid-controls">
+        <a class="btn-u btn-sm"
+           href="{% url "extract:date-usage-export-ical" %}?document_pk={{ document.id }}">
+          Export Dates
+        </a>
         {% include '_base_grid_buttons_block.html' %}
       </div>
       <div class="jqxgrid-container">
@@ -215,6 +225,60 @@
       </div>
       <div class="jqxgrid-container">
         <div class="jqxgrid col-md-12 jqxgrid-currencies"></div>
+      </div>
+    </div>
+
+    <div class="tab-content clearfix" id="tab-13">
+      <div class="pull-right grid-controls">
+        {% include '_base_grid_buttons_block.html' %}
+      </div>
+      <div class="jqxgrid-container">
+        <div class="jqxgrid col-md-12 jqxgrid-regulations"></div>
+      </div>
+    </div>
+
+    <div class="tab-content clearfix" id="tab-14">
+      <div class="pull-right grid-controls">
+        {% include '_base_grid_buttons_block.html' %}
+      </div>
+      <div class="jqxgrid-container">
+        <div class="jqxgrid col-md-12 jqxgrid-citations"></div>
+      </div>
+    </div>
+
+    <div class="tab-content clearfix" id="tab-15">
+      <div class="pull-right grid-controls">
+        {% include '_base_grid_buttons_block.html' %}
+      </div>
+      <div class="jqxgrid-container">
+        <div class="jqxgrid col-md-12 jqxgrid-distances"></div>
+      </div>
+    </div>
+
+    <div class="tab-content clearfix" id="tab-16">
+      <div class="pull-right grid-controls">
+        {% include '_base_grid_buttons_block.html' %}
+      </div>
+      <div class="jqxgrid-container">
+        <div class="jqxgrid col-md-12 jqxgrid-amounts"></div>
+      </div>
+    </div>
+
+    <div class="tab-content clearfix" id="tab-17">
+      <div class="pull-right grid-controls">
+        {% include '_base_grid_buttons_block.html' %}
+      </div>
+      <div class="jqxgrid-container">
+        <div class="jqxgrid col-md-12 jqxgrid-percents"></div>
+      </div>
+    </div>
+
+    <div class="tab-content clearfix" id="tab-18">
+      <div class="pull-right grid-controls">
+        {% include '_base_grid_buttons_block.html' %}
+      </div>
+      <div class="jqxgrid-container">
+        <div class="jqxgrid col-md-12 jqxgrid-ratios"></div>
       </div>
     </div>
 
@@ -299,7 +363,7 @@
         title: 'Text Unit Property',
         backgroundDismiss: true,
         content: '<input type="text" class="form-control" name="key" id="key" placeholder="Key" value="' + key + '"><br />' +
-                 '<input type="text" class="form-control" name="value" id="value" placeholder="Value" value="' + value + '">',
+        '<input type="text" class="form-control" name="value" id="value" placeholder="Value" value="' + value + '">',
         buttons: {
           save: {
             text: 'Save',
@@ -489,7 +553,7 @@
         badgeClass: 'parties-badge'
       };
       draw_grid(".jqxgrid-top-party-usages", parties_datafields, parties_columns, false,
-                parties_custom_source_data, text_units_nested_grid_data('party_data'));
+          parties_custom_source_data, text_units_nested_grid_data('party_data'));
 
       // Top Term Usages table
       var terms_datafields = [
@@ -529,7 +593,7 @@
         badgeClass: 'terms-badge'
       };
       draw_grid(".jqxgrid-top-term-usages", terms_datafields, terms_columns, false,
-                terms_custom_source_data, text_units_nested_grid_data('term_data'));
+          terms_custom_source_data, text_units_nested_grid_data('term_data'));
 
       // Top Entity Usages table
       var entities_datafields = [
@@ -571,7 +635,7 @@
         badgeClass: 'entities-badge'
       };
       draw_grid(".jqxgrid-top-entity-usages", entities_datafields, entities_columns, false,
-                entities_custom_source_data, text_units_nested_grid_data('entity_data'));
+          entities_custom_source_data, text_units_nested_grid_data('entity_data'));
 
       // Notes table
       var notes_datafields = [
@@ -807,7 +871,7 @@
         badgeClass: 'dates-badge'
       };
       draw_grid(".jqxgrid-dates", dates_datafields, dates_columns, false,
-                dates_custom_source_data, text_units_nested_grid_data('date_data'));
+          dates_custom_source_data, text_units_nested_grid_data('date_data'));
 
       // Top Definition Usages table
       var definitions_datafields = [
@@ -846,7 +910,7 @@
         badgeClass: 'definitions-badge'
       };
       draw_grid(".jqxgrid-definitions", definitions_datafields, definitions_columns, false,
-                definitions_custom_source_data, text_units_nested_grid_data('definition_data'));
+          definitions_custom_source_data, text_units_nested_grid_data('definition_data'));
 
       // Top Date Duration Usages table
       var durations_datafields = [
@@ -888,7 +952,7 @@
         badgeClass: 'durations-badge'
       };
       draw_grid(".jqxgrid-durations", durations_datafields, durations_columns, false,
-                durations_custom_source_data, text_units_nested_grid_data('duration_data'));
+          durations_custom_source_data, text_units_nested_grid_data('duration_data'));
 
       // Top Court Usages table
       var courts_datafields = [
@@ -930,7 +994,7 @@
         badgeClass: 'courts-badge'
       };
       draw_grid(".jqxgrid-courts", courts_datafields, courts_columns, false,
-                courts_custom_source_data, text_units_nested_grid_data('court_data'));
+          courts_custom_source_data, text_units_nested_grid_data('court_data'));
 
       // Top Currency Usages table
       var currencies_datafields = [
@@ -980,8 +1044,8 @@
         var details_source = {
           datafields: [
             { name: 'currency', type: 'string' },
-            { name: 'amount__value', type: 'float' },
-            { name: 'amount__value_str', type: 'string' },
+            { name: 'amount', type: 'float' },
+            { name: 'amount__str', type: 'string' },
             { name: 'usage_type', type: 'string' },
             { name: 'text_unit__text', type: 'string' },
             { name: 'detail_url', type: 'string' }
@@ -1012,7 +1076,7 @@
                 align: 'center', cellsalign: 'center', columngroup: 'Currency Info' },
               { text: 'Type', datafield: 'usage_type', width: 100,
                 align: 'center', cellsalign: 'center', columngroup: 'Currency Info' },
-              { text: 'Amount Value', datafield: 'amount__value', width: 120, cellsformat: 'f2',
+              { text: 'Amount', datafield: 'amount', width: 120, cellsformat: 'f2',
                 align: 'center', cellsalign: 'center', columngroup: 'Currency Info' },
               { text: 'Text Unit', datafield: 'text_unit__text', width: 'auto', minwidth: 300,
                 align: 'center', cellsalign: 'center' },
@@ -1027,11 +1091,11 @@
         }
       };
       var currencies_custom_grid_options = {
-          rowsheight: 60,
-          pageable: false,
-          rowdetails: true,
-          initrowdetails: currencies_initrowdetails,
-          rowdetailstemplate: {
+        rowsheight: 60,
+        pageable: false,
+        rowdetails: true,
+        initrowdetails: currencies_initrowdetails,
+        rowdetailstemplate: {
           rowdetails: "<div id='grid' class='sub-grid' style='margin: 10px;'></div>",
           rowdetailsheight: 245,
           rowdetailshidden: true
@@ -1041,7 +1105,256 @@
         ]
       };
       draw_grid(".jqxgrid-currencies", currencies_datafields, currencies_columns, false,
-                currencies_custom_source_data, currencies_custom_grid_options);
+          currencies_custom_source_data, currencies_custom_grid_options);
+
+
+      // Top Regulation Usages table
+      var regulations_datafields = [
+        { name: 'regulation_name', type: 'string' },
+        { name: 'regulation_type', type: 'string' },
+        { name: 'count', type: 'int' },
+        { name: 'regulation_data' }
+      ];
+      var regulations_menu_renderer = function(row_number) {
+        var grid = $('.jqxgrid-regulations');
+        var row = grid.jqxGrid('getrowdata', row_number);
+        var menu_data = [
+          { icon: 'fa fa-folder-open-o',
+            onclick: "expand_row(event, '.jqxgrid-regulations', " + row_number + ")",
+            text: 'Show Details' },
+          { icon: 'fa fa-search',
+            url:  '{% url "extract:regulation-usage-list" %}?regulation_search=' + encodeURIComponent(row.regulation_name),
+            text: 'View Similar Regulation Usages' }
+        ];
+        show_menu(menu_data, grid, row.pk, 300);
+      };
+      var regulations_columns = [
+        { text: 'Regulation Type', datafield: 'regulation_type', width: 'auto',
+          align: 'center', cellsalign: 'center' },
+        { text: 'Regulation Name', datafield: 'regulation_name', width: 'auto',
+          align: 'center', cellsalign: 'center' },
+        { text: 'Count', datafield: 'count', width: 150,
+          align: 'center', cellsalign: 'center' },
+        { text: 'Action', datafield: 'url', width: 60,
+          align: 'center', exportable: false,
+          columntype: 'button',
+          sortable: false, filterable: false, menu: false,
+          cellsrenderer: function(){return 'Menu'},
+          buttonclick: regulations_menu_renderer }
+      ];
+      var regulations_custom_source_data = {
+        url: '{% url "extract:top-regulation-usage-list" %}',
+        data: { 'document_pk': {{ document.pk }} },
+        badgeClass: 'regulations-badge'
+      };
+      draw_grid(".jqxgrid-regulations", regulations_datafields, regulations_columns, false,
+          regulations_custom_source_data, text_units_nested_grid_data('regulation_data'));
+
+      // Top Citation Usages table
+      var citations_datafields = [
+        { name: 'citation_str', type: 'string' },
+        { name: 'count', type: 'int' },
+        { name: 'citation_data' }
+      ];
+      var citations_menu_renderer = function(row_number) {
+        var grid = $('.jqxgrid-citations');
+        var row = grid.jqxGrid('getrowdata', row_number);
+        var menu_data = [
+          { icon: 'fa fa-folder-open-o',
+            onclick: "expand_row(event, '.jqxgrid-citations', " + row_number + ")",
+            text: 'Show Details' },
+          { icon: 'fa fa-search',
+            url:  '{% url "extract:citation-usage-list" %}?citation_search=' + encodeURIComponent(row.citation_str),
+            text: 'View Similar Citation Usages' }
+        ];
+        show_menu(menu_data, grid, row.pk, 300);
+      };
+      var citations_columns = [
+        { text: 'Citation', datafield: 'citation_str', width: 'auto',
+          align: 'center', cellsalign: 'center' },
+        { text: 'Count', datafield: 'count', width: 150,
+          align: 'center', cellsalign: 'center' },
+        { text: 'Action', datafield: 'url', width: 60,
+          align: 'center', exportable: false,
+          columntype: 'button',
+          sortable: false, filterable: false, menu: false,
+          cellsrenderer: function(){return 'Menu'},
+          buttonclick: citations_menu_renderer }
+      ];
+      var citations_custom_source_data = {
+        url: '{% url "extract:top-citation-usage-list" %}',
+        data: { 'document_pk': {{ document.pk }} },
+        badgeClass: 'citations-badge'
+      };
+      draw_grid(".jqxgrid-citations", citations_datafields, citations_columns, false,
+          citations_custom_source_data, text_units_nested_grid_data('citation_data'));
+
+      // Top Distance Usages table
+      var distances_datafields = [
+        { name: 'distance_type', type: 'string' },
+        { name: 'amount', type: 'float' },
+        { name: 'count', type: 'int' },
+        { name: 'distance_data' }
+      ];
+      var distances_menu_renderer = function(row_number) {
+        var grid = $('.jqxgrid-distances');
+        var row = grid.jqxGrid('getrowdata', row_number);
+        var menu_data = [
+          { icon: 'fa fa-folder-open-o',
+            onclick: "expand_row(event, '.jqxgrid-distances', " + row_number + ")",
+            text: 'Show Details' },
+          { icon: 'fa fa-search',
+            url:  '{% url "extract:distance-usage-list" %}?distance_search=' + encodeURIComponent(row.distance_str),
+            text: 'View Similar Distance Usages' }
+        ];
+        show_menu(menu_data, grid, row.pk, 300);
+      };
+      var distances_columns = [
+        { text: 'Amount', datafield: 'amount', width: 'auto',
+          align: 'center', cellsalign: 'center' },
+        { text: 'Distance Type', datafield: 'distance_type', width: 'auto',
+          align: 'center', cellsalign: 'center' },
+        { text: 'Count', datafield: 'count', width: 150,
+          align: 'center', cellsalign: 'center' },
+        { text: 'Action', datafield: 'url', width: 60,
+          align: 'center', exportable: false,
+          columntype: 'button',
+          sortable: false, filterable: false, menu: false,
+          cellsrenderer: function(){return 'Menu'},
+          buttonclick: distances_menu_renderer }
+      ];
+      var distances_custom_source_data = {
+        url: '{% url "extract:top-distance-usage-list" %}',
+        data: { 'document_pk': {{ document.pk }} },
+        badgeClass: 'distances-badge'
+      };
+      draw_grid(".jqxgrid-distances", distances_datafields, distances_columns, false,
+          distances_custom_source_data, text_units_nested_grid_data('distance_data'));
+
+      // Top Amount Usages table
+      var amounts_datafields = [
+        { name: 'amount', type: 'float' },
+        { name: 'count', type: 'int' },
+        { name: 'amount_data' }
+      ];
+      var amounts_menu_renderer = function(row_number) {
+        var grid = $('.jqxgrid-amounts');
+        var row = grid.jqxGrid('getrowdata', row_number);
+        var menu_data = [
+          { icon: 'fa fa-folder-open-o',
+            onclick: "expand_row(event, '.jqxgrid-amounts', " + row_number + ")",
+            text: 'Show Details' },
+          { icon: 'fa fa-search',
+            url:  '{% url "extract:amount-usage-list" %}?amount_search=' + encodeURIComponent(row.amount),
+            text: 'View Similar Amount Usages' }
+        ];
+        show_menu(menu_data, grid, row.pk, 300);
+      };
+      var amounts_columns = [
+        { text: 'Amount', datafield: 'amount', width: 'auto',
+          align: 'center', cellsalign: 'center' },
+        { text: 'Count', datafield: 'count', width: 150,
+          align: 'center', cellsalign: 'center' },
+        { text: 'Action', datafield: 'url', width: 60,
+          align: 'center', exportable: false,
+          columntype: 'button',
+          sortable: false, filterable: false, menu: false,
+          cellsrenderer: function(){return 'Menu'},
+          buttonclick: amounts_menu_renderer }
+      ];
+      var amounts_custom_source_data = {
+        url: '{% url "extract:top-amount-usage-list" %}',
+        data: { 'document_pk': {{ document.pk }} },
+        badgeClass: 'amounts-badge'
+      };
+      draw_grid(".jqxgrid-amounts", amounts_datafields, amounts_columns, false,
+          amounts_custom_source_data, text_units_nested_grid_data('amount_data'));
+
+      // Top Percent Usages table
+      var percents_datafields = [
+        { name: 'unit_type', type: 'string' },
+        { name: 'amount', type: 'float' },
+        { name: 'count', type: 'int' },
+        { name: 'percent_data' }
+      ];
+      var percents_menu_renderer = function(row_number) {
+        var grid = $('.jqxgrid-percents');
+        var row = grid.jqxGrid('getrowdata', row_number);
+        var menu_data = [
+          { icon: 'fa fa-folder-open-o',
+            onclick: "expand_row(event, '.jqxgrid-percents', " + row_number + ")",
+            text: 'Show Details' },
+          { icon: 'fa fa-search',
+            url:  '{% url "extract:percent-usage-list" %}?percent_type_search=' + encodeURIComponent(row.unit_type) +
+            '&percent_amount_search=' + encodeURIComponent(row.amount),
+            text: 'View Similar Percent Usages' }
+        ];
+        show_menu(menu_data, grid, row.pk, 300);
+      };
+      var percents_columns = [
+        { text: 'Amount', datafield: 'amount', width: 'auto',
+          align: 'center', cellsalign: 'center' },
+        { text: 'Unit Type', datafield: 'unit_type', width: 'auto',
+          align: 'center', cellsalign: 'center' },
+        { text: 'Count', datafield: 'count', width: 150,
+          align: 'center', cellsalign: 'center' },
+        { text: 'Action', datafield: 'url', width: 60,
+          align: 'center', exportable: false,
+          columntype: 'button',
+          sortable: false, filterable: false, menu: false,
+          cellsrenderer: function(){return 'Menu'},
+          buttonclick: percents_menu_renderer }
+      ];
+      var percents_custom_source_data = {
+        url: '{% url "extract:top-percent-usage-list" %}',
+        data: { 'document_pk': {{ document.pk }} },
+        badgeClass: 'percents-badge'
+      };
+      draw_grid(".jqxgrid-percents", percents_datafields, percents_columns, false,
+          percents_custom_source_data, text_units_nested_grid_data('percent_data'));
+
+      // Top Ratio Usages table
+      var ratios_datafields = [
+        { name: 'amount', type: 'float' },
+        { name: 'amount2', type: 'float' },
+        { name: 'count', type: 'int' },
+        { name: 'ratio_data' }
+      ];
+      var ratios_menu_renderer = function(row_number) {
+        var grid = $('.jqxgrid-ratios');
+        var row = grid.jqxGrid('getrowdata', row_number);
+        var menu_data = [
+          { icon: 'fa fa-folder-open-o',
+            onclick: "expand_row(event, '.jqxgrid-ratios', " + row_number + ")",
+            text: 'Show Details' },
+          { icon: 'fa fa-search',
+            url:  '{% url "extract:ratio-usage-list" %}?ratio_amount_search=' + encodeURIComponent(row.amount) +
+            '&ratio_amount2_search=' + encodeURIComponent(row.amount2),
+            text: 'View Similar Ratio Usages' }
+        ];
+        show_menu(menu_data, grid, row.pk, 300);
+      };
+      var ratios_columns = [
+        { text: 'Amount 1', datafield: 'amount', width: 'auto',
+          align: 'center', cellsalign: 'center' },
+        { text: 'Amount 2', datafield: 'amount2', width: 'auto',
+          align: 'center', cellsalign: 'center' },
+        { text: 'Count', datafield: 'count', width: 150,
+          align: 'center', cellsalign: 'center' },
+        { text: 'Action', datafield: 'url', width: 60,
+          align: 'center', exportable: false,
+          columntype: 'button',
+          sortable: false, filterable: false, menu: false,
+          cellsrenderer: function(){return 'Menu'},
+          buttonclick: ratios_menu_renderer }
+      ];
+      var ratios_custom_source_data = {
+        url: '{% url "extract:top-ratio-usage-list" %}',
+        data: { 'document_pk': {{ document.pk }} },
+        badgeClass: 'ratios-badge'
+      };
+      draw_grid(".jqxgrid-ratios", ratios_datafields, ratios_columns, false,
+          ratios_custom_source_data, text_units_nested_grid_data('ratio_data'));
 
       // Task Queues table
       var task_queues_datafields = [
@@ -1254,7 +1567,7 @@
         ]
       };
       draw_grid(".jqxgrid-similarity", similarity_datafields, similarity_columns, true,
-                similarity_custom_source_data, similarity_custom_grid_options);
+          similarity_custom_source_data, similarity_custom_grid_options);
 
       if (window.location.hash.indexOf('tab') != -1 ){
         var tab_id = window.location.hash.split('-')[1];

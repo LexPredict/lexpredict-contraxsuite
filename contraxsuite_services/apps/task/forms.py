@@ -132,7 +132,7 @@ class LocateForm(forms.Form):
     header = 'Locate specific terms in existing text units.'
 
     LocateGeoEntities_locate = LTRCheckboxField(
-        label=_("Locate Geo Entities and Geo Aliases"),
+        label=_("Geo Entities and Geo Aliases"),
         initial=False,
         required=False)
     LocateGeoEntities_priority = LTRCheckboxField(
@@ -146,91 +146,176 @@ class LocateForm(forms.Form):
         initial=False,
         required=False)
 
-    LocateTerms_locate = LTRCheckboxField(
-        label=_('Locate Terms'),
-        initial=False,
-        required=False)
-    LocateTerms_delete = LTRCheckboxField(
-        label=_("Delete existing Term Usages"),
-        widget=LTRCheckboxWidget(attrs={'label_class': 'checkbox-small level-1'}),
-        initial=False,
-        required=False)
-
-    LocateParties_locate = LTRCheckboxField(
-        label=_('Locate Parties'),
-        initial=False,
-        required=False)
-    LocateParties_delete = LTRCheckboxField(
-        label=_("Delete existing Parties and Party Usages"),
-        widget=LTRCheckboxWidget(attrs={'label_class': 'checkbox-small level-1'}),
-        initial=False,
-        required=False)
-
     LocateDates_locate = LTRCheckboxField(
-        label=_('Locate Dates'),
+        label=_('Dates'),
+        initial=False,
+        required=False)
+    LocateDates_strict = LTRCheckboxField(
+        label=_("Strict"),
+        widget=LTRCheckboxWidget(
+            attrs={'label_class': 'checkbox-small level-1'}),
         initial=False,
         required=False)
     LocateDates_delete = LTRCheckboxField(
         label=_("Delete existing Date Usages"),
-        widget=LTRCheckboxWidget(attrs={'label_class': 'checkbox-small level-1'}),
+        widget=LTRCheckboxWidget(
+            attrs={'label_class': 'checkbox-small level-1'}),
         initial=False,
         required=False)
 
-    LocateDateDurations_locate = LTRCheckboxField(
-        label=_('Locate Date Durations'),
+    LocateAmounts_locate = LTRCheckboxField(
+        label=_('Amounts'),
+        widget=LTRCheckboxWidget(attrs={'class': 'checkbox-parent'}),
         initial=False,
         required=False)
-    LocateDateDurations_delete = LTRCheckboxField(
-        label=_("Delete existing Date Duration Usages"),
-        widget=LTRCheckboxWidget(attrs={'label_class': 'checkbox-small level-1'}),
+    LocateAmounts_delete = LTRCheckboxField(
+        label=_("Delete existing Amount Usages"),
+        widget=LTRCheckboxWidget(
+            attrs={'label_class': 'checkbox-small level-1',
+                   'class': 'checkbox-child'}),
         initial=False,
         required=False)
 
-    LocateDefinitions_locate = LTRCheckboxField(
-        label=_('Locate Definitions'),
+    LocateCitations_locate = LTRCheckboxField(
+        label=_('Citations'),
+        widget=LTRCheckboxWidget(attrs={'class': 'checkbox-parent'}),
         initial=False,
         required=False)
-    LocateDefinitions_delete = LTRCheckboxField(
-        label=_("Delete existing Definition Usages"),
-        widget=LTRCheckboxWidget(attrs={'label_class': 'checkbox-small level-1'}),
+    LocateCitations_delete = LTRCheckboxField(
+        label=_("Delete existing Citation Usages"),
+        widget=LTRCheckboxWidget(attrs={
+            'label_class': 'checkbox-small level-1',
+            'class': 'checkbox-child'}),
         initial=False,
         required=False)
 
     LocateCourts_locate = LTRCheckboxField(
-        label=_('Locate Courts'),
+        label=_('Courts'),
+        widget=LTRCheckboxWidget(attrs={'class': 'checkbox-parent'}),
         initial=False,
         required=False)
     LocateCourts_delete = LTRCheckboxField(
         label=_("Delete existing Court Usages"),
-        widget=LTRCheckboxWidget(attrs={'label_class': 'checkbox-small level-1'}),
+        widget=LTRCheckboxWidget(attrs={
+            'label_class': 'checkbox-small level-1',
+            'class': 'checkbox-child'}),
         initial=False,
         required=False)
 
-    LocateCurrencies_locate = LTRCheckboxField(
-        label=_('Locate Currencies in existing text units.'),
+    LocateMoney_locate = LTRCheckboxField(
+        label=_('Currencies'),
+        widget=LTRCheckboxWidget(attrs={'class': 'checkbox-parent'}),
         initial=False,
         required=False)
-    LocateCurrencies_use_symbols = LTRCheckboxField(
-        label=_("Use symbols"),
-        widget=LTRCheckboxWidget(attrs={'class': 'min-one-of',
-                                        'label_class': 'checkbox-small level-1'}),
-        initial=False,
-        required=False)
-    LocateCurrencies_use_short_names = LTRCheckboxField(
-        label=_("Use short names"),
-        widget=LTRCheckboxWidget(attrs={'class': 'min-one-of',
-                                        'label_class': 'checkbox-small level-1'}),
-        initial=False,
-        required=False)
-    LocateCurrencies_use_abbreviations = LTRCheckboxField(
-        label=_("Use abbreviations"),
-        widget=LTRCheckboxWidget(attrs={'class': 'min-one-of',
-                                        'label_class': 'checkbox-small level-1'}),
-        initial=False,
-        required=False)
-    LocateCurrencies_delete = LTRCheckboxField(
+    LocateMoney_delete = LTRCheckboxField(
         label=_("Delete existing Currency Usages"),
-        widget=LTRCheckboxWidget(attrs={'label_class': 'checkbox-small level-1'}),
+        widget=LTRCheckboxWidget(
+            attrs={'label_class': 'checkbox-small level-1',
+                   'class': 'checkbox-child'}),
+        initial=False,
+        required=False)
+
+    LocateDurations_locate = LTRCheckboxField(
+        label=_('Date Durations'),
+        widget=LTRCheckboxWidget(attrs={'class': 'checkbox-parent'}),
+        initial=False,
+        required=False)
+    LocateDurations_delete = LTRCheckboxField(
+        label=_("Delete existing Date Duration Usages"),
+        widget=LTRCheckboxWidget(
+            attrs={'label_class': 'checkbox-small level-1',
+                   'class': 'checkbox-child'}),
+        initial=False,
+        required=False)
+
+    LocateDefinitions_locate = LTRCheckboxField(
+        label=_('Definitions'),
+        widget=LTRCheckboxWidget(attrs={'class': 'checkbox-parent'}),
+        initial=False,
+        required=False)
+    LocateDefinitions_delete = LTRCheckboxField(
+        label=_("Delete existing Definition Usages"),
+        widget=LTRCheckboxWidget(
+            attrs={'label_class': 'checkbox-small level-1',
+                   'class': 'checkbox-child'}),
+        initial=False,
+        required=False)
+
+    LocateDistances_locate = LTRCheckboxField(
+        label=_('Distances'),
+        widget=LTRCheckboxWidget(attrs={'class': 'checkbox-parent'}),
+        initial=False,
+        required=False)
+    LocateDistances_delete = LTRCheckboxField(
+        label=_("Delete existing Distance Usages"),
+        widget=LTRCheckboxWidget(
+            attrs={'label_class': 'checkbox-small level-1',
+                   'class': 'checkbox-child'}),
+        initial=False,
+        required=False)
+
+    LocateParties_locate = LTRCheckboxField(
+        label=_('Parties'),
+        widget=LTRCheckboxWidget(attrs={'class': 'checkbox-parent'}),
+        initial=False,
+        required=False)
+    LocateParties_delete = LTRCheckboxField(
+        label=_("Delete existing Parties and Party Usages"),
+        widget=LTRCheckboxWidget(
+            attrs={'label_class': 'checkbox-small level-1',
+                   'class': 'checkbox-child'}),
+        initial=False,
+        required=False)
+
+    LocatePercents_locate = LTRCheckboxField(
+        label=_('Percents'),
+        widget=LTRCheckboxWidget(attrs={'class': 'checkbox-parent'}),
+        initial=False,
+        required=False)
+    LocatePercents_delete = LTRCheckboxField(
+        label=_("Delete existing Percent Usages"),
+        widget=LTRCheckboxWidget(
+            attrs={'label_class': 'checkbox-small level-1',
+                   'class': 'checkbox-child'}),
+        initial=False,
+        required=False)
+
+    LocateRatios_locate = LTRCheckboxField(
+        label=_('Ratios'),
+        widget=LTRCheckboxWidget(attrs={'class': 'checkbox-parent'}),
+        initial=False,
+        required=False)
+    LocateRatios_delete = LTRCheckboxField(
+        label=_("Delete existing Ratio Usages"),
+        widget=LTRCheckboxWidget(
+            attrs={'label_class': 'checkbox-small level-1',
+                   'class': 'checkbox-child'}),
+        initial=False,
+        required=False)
+
+    LocateRegulations_locate = LTRCheckboxField(
+        label=_('Regulations'),
+        widget=LTRCheckboxWidget(attrs={'class': 'checkbox-parent'}),
+        initial=False,
+        required=False)
+    LocateRegulations_delete = LTRCheckboxField(
+        label=_("Delete existing Regulation Usages"),
+        widget=LTRCheckboxWidget(
+            attrs={'label_class': 'checkbox-small level-1',
+                   'class': 'checkbox-child'}),
+        initial=False,
+        required=False)
+
+    LocateTerms_locate = LTRCheckboxField(
+        label=_('Terms'),
+        widget=LTRCheckboxWidget(attrs={'class': 'checkbox-parent'}),
+        initial=False,
+        required=False)
+    LocateTerms_delete = LTRCheckboxField(
+        label=_("Delete existing Term Usages"),
+        widget=LTRCheckboxWidget(
+            attrs={'label_class': 'checkbox-small level-1',
+                   'class': 'checkbox-child'}),
         initial=False,
         required=False)
 
@@ -645,3 +730,8 @@ class PartySimilarityForm(forms.Form):
         label=_("Delete existing PartySimilarity objects."),
         initial=True,
         required=False)
+
+
+class UpdateElasticSearchForm(forms.Form):
+    header = 'The update index command will freshen all of the content ' \
+             'in Elasticsearch index. Use it after loading new documents.'

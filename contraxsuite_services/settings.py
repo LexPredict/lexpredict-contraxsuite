@@ -23,6 +23,7 @@ PROJECT_DIR = ROOT_DIR.path('contraxsuite_services')
 APPS_DIR = PROJECT_DIR.path('apps')
 
 DEBUG = False
+DEBUG_SQL = False
 DEBUG_TEMPLATE = False
 
 # APP CONFIGURATION
@@ -165,9 +166,9 @@ TEMPLATES = [
 ]
 
 # email settings
-DEFAULT_FROM_EMAIL = '"ContraxSuite" <support@lexpredict.com>'
-DEFAULT_REPLY_TO = '"ContraxSuite" <support@lexpredict.com>'
-SERVER_EMAIL = '"ContraxSuite" <support@lexpredict.com>'
+DEFAULT_FROM_EMAIL = '"ContraxSuite" <support@contraxsuite.com>'
+DEFAULT_REPLY_TO = '"ContraxSuite" <support@contraxsuite.com>'
+SERVER_EMAIL = '"ContraxSuite" <support@contraxsuite.com>'
 
 # See: http://django-crispy-forms.readthedocs.io/en/latest/install.html#template-packs
 CRISPY_TEMPLATE_PACK = 'bootstrap4'
@@ -390,7 +391,7 @@ JQ_EXPORT = False
 # place dictionaries for GeoEntities, Terms, US Courts, etc.
 DATA_ROOT = PROJECT_DIR('data/')
 GIT_DATA_REPO_ROOT = 'https://raw.githubusercontent.com/' \
-                     'LexPredict/lexpredict-legal-dictionary/1.0.1'
+                     'LexPredict/lexpredict-legal-dictionary/1.0.2'
 
 # logging
 LOG_FILE_NAME = 'log.txt'

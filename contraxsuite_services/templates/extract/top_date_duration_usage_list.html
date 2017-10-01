@@ -10,17 +10,20 @@
   <script type="text/javascript">
     $(document).ready(function () {
       var datafields = [
-        { name: 'duration', type: 'int' },
-        { name: 'duration_str', type: 'string' },
+        { name: 'amount', type: 'int' },
+        { name: 'duration_type', type: 'string' },
+        { name: 'duration_days', type: 'float' },
         { name: 'count', type: 'int' },
         { name: 'url', type: 'string' }
       ];
       var columns = [
-        { text: 'Duration (days)', datafield: 'duration', width: 'auto',
+        { text: 'Amount', datafield: 'amount', width: 'auto',
           align: 'center', cellsalign: 'center' },
-        { text: 'Duration (value)', datafield: 'duration_str', width: 'auto',
+        { text: 'Duration Type', datafield: 'duration_type', width: 'auto',
+          align: 'center', cellsalign: 'center' },
+        { text: 'Days', datafield: 'duration_days', width: 'auto',
           align: 'center', cellsalign: 'center',
-          cellsrenderer: defaultLinkFormatter },
+          cellsrenderer: defaultLinkFormatter  },
         { text: 'Count', datafield: 'count', width: 'auto',
           align: 'center', cellsalign: 'center' }
       ];

@@ -77,6 +77,17 @@
       height: 34px;
       padding-top: 3px;
     }
+    .checkbox-parent {
+      width: 30%;
+      display: inline-block;
+    }
+    .checkbox-child {
+      width: 60%;
+      display: inline-block;
+    }
+    .checkbox-child label {
+      margin-left: 5px;
+    }
   </style>
 {% endblock %}
 
@@ -173,8 +184,7 @@
       <li>
         <a class="task" href="#"
            data-href="{% url "task:update-elasticsearch-index" %}"
-           data-btn-text="Update Index"
-           data-content="The update index command will freshen all of the content in Elasticsearch index. Use it after loading new documents.">
+           data-btn-text="Update Index">
           <i class="fa fa-refresh"></i>
           Update Elasticsearch Index</a>
       </li>
@@ -297,6 +307,14 @@
         <span class="level-3">
           <input class="as-btn" id="_id_terms_legal_3_locale_en" name="terms_legal_3_locale_en" type="checkbox">
           <label for="_id_terms_legal_3_locale_en">en</label>
+        </span>
+      </p>
+      <p class="level-2">
+        <input class="checkbox-style" id="_id_terms_legal_4" name="terms_legal_4" type="checkbox">
+        <label for="_id_terms_legal_4" class="checkbox-style-3-label checkbox-small">Common Law (top 1000)</label>
+        <span class="level-3">
+          <input class="as-btn" id="_id_terms_legal_4_locale_en" name="terms_legal_4_locale_en" type="checkbox">
+          <label for="_id_terms_legal_4_locale_en">en</label>
         </span>
       </p>
     </div>
@@ -569,14 +587,31 @@
             $content.find('input.checkbox-style').each(function(){
               $(this).parent().addClass('checkbox-ltr-full-width');
             });
-
+            $content.find('input.checkbox-parent').each(function(){
+              $(this).parent().addClass('checkbox-parent');
+            });
+            $content.find('input.checkbox-child').each(function(){
+              $(this).parent().addClass('checkbox-child');
+            });
             self.setContent($content);
 
             {# works on production; TODO: find issue, remove duplication #}
             {% if settings.HOST_NAME != 'localhost' %}
               onLoadJC(jc);
             {% endif %}
-          });
+          }).fail(function(xhr) {
+            jc.close();
+            $.alert({
+              icon: 'fa fa-warning text-danger',
+              title: xhr.responseText,
+              type: 'red',
+              content: '',
+              columnClass: 'col-md-6 col-md-offset-3',
+              onClose: function () {
+                $('.jqxgrid').jqxGrid('updatebounddata')
+              }
+            })
+          })
         },
         onContentReady: function(){
           {# works locally #}

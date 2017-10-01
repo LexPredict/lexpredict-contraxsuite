@@ -11,6 +11,17 @@ __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
 
+class Usage(models.Model):
+    """
+    Base usage model
+    """
+    text_unit = models.ForeignKey(TextUnit, db_index=True)
+    count = models.IntegerField(null=False, default=0)
+
+    class Meta:
+        abstract = True
+
+
 class Term(models.Model):
     """
     Legal term/dictionary entry
@@ -27,13 +38,11 @@ class Term(models.Model):
             .format(self.term, self.source)
 
 
-class TermUsage(models.Model):
+class TermUsage(Usage):
     """
     Legal term/dictionary usage
     """
-    text_unit = models.ForeignKey(TextUnit, db_index=True)
     term = models.ForeignKey(Term, db_index=True)
-    count = models.IntegerField(null=False)
 
     class Meta:
         unique_together = (("text_unit", "term"),)
@@ -92,13 +101,11 @@ class GeoAlias(models.Model):
             .format(self.alias, self.type, self.entity)
 
 
-class GeoEntityUsage(models.Model):
+class GeoEntityUsage(Usage):
     """
     Geo Entity usage
     """
-    text_unit = models.ForeignKey(TextUnit, db_index=True)
     entity = models.ForeignKey(GeoEntity, db_index=True)
-    count = models.IntegerField(null=False)
 
     class Meta:
         unique_together = (("text_unit", "entity"),)
@@ -109,13 +116,11 @@ class GeoEntityUsage(models.Model):
             .format(self.entity, self.text_unit, self.count)
 
 
-class GeoAliasUsage(models.Model):
+class GeoAliasUsage(Usage):
     """
     Geo Alias usage
     """
-    text_unit = models.ForeignKey(TextUnit, db_index=True)
     alias = models.ForeignKey(GeoAlias, db_index=True)
-    count = models.IntegerField(null=False)
 
     class Meta:
         unique_together = (("text_unit", "alias"),)
@@ -144,14 +149,12 @@ class Party(models.Model):
             .format(self.name, self.type, self.description)
 
 
-class PartyUsage(models.Model):
+class PartyUsage(Usage):
     """
     Party usage
     """
-    text_unit = models.ForeignKey(TextUnit, db_index=True)
     party = models.ForeignKey(Party, db_index=True)
     role = models.CharField(max_length=1024, db_index=True, blank=True, null=True)
-    count = models.IntegerField(null=False, default=0)
 
     class Meta:
         unique_together = (("text_unit", "party"),)
@@ -162,7 +165,7 @@ class PartyUsage(models.Model):
             .format(self.party, self.role, self.text_unit)
 
 
-class DateUsage(models.Model):
+class DateUsage(Usage):
     """
     Date usage
     """
@@ -175,10 +178,9 @@ class DateUsage(models.Model):
         (WY, WY)
     )
 
-    text_unit = models.ForeignKey(TextUnit, db_index=True)
     date = models.DateField(db_index=True)
+    date_str = models.CharField(max_length=128, blank=True, null=True)
     format = models.CharField(max_length=30, choices=FORMAT_CHOICES, default=ED, db_index=True)
-    count = models.IntegerField(null=False, default=0)
 
     class Meta:
         unique_together = (("text_unit", "date"),)
@@ -189,31 +191,12 @@ class DateUsage(models.Model):
             .format(self.date, self.text_unit)
 
 
-class DateDurationUsage(models.Model):
-    """
-    Date Duration usage
-    """
-    text_unit = models.ForeignKey(TextUnit, db_index=True)
-    duration = models.DurationField(db_index=True)
-    duration_str = models.CharField(max_length=20, db_index=True)
-    count = models.IntegerField(null=False, default=0)
-
-    class Meta:
-        unique_together = (("text_unit", "duration_str"),)
-        ordering = ('text_unit', 'duration', '-count')
-
-    def __str__(self):
-        return "DateDurationUsage (duration={0}, text_unit={1})" \
-            .format(self.duration, self.text_unit)
-
-
-class DefinitionUsage(models.Model):
+class DefinitionUsage(Usage):
     """
     Definition usage
     """
-    text_unit = models.ForeignKey(TextUnit, db_index=True)
     definition = models.CharField(max_length=128, db_index=True)
-    count = models.IntegerField(null=False, default=0)
+    definition_str = models.CharField(max_length=512, blank=True, null=True)
 
     class Meta:
         unique_together = (("text_unit", "definition"),)
@@ -231,23 +214,23 @@ class Court(models.Model):
     court_id = models.IntegerField(default=0)
     type = models.CharField(max_length=30, db_index=True)
     name = models.CharField(max_length=1024, db_index=True)
-    abbreviation = models.CharField(max_length=100, db_index=True, blank=True)
+    level = models.CharField(max_length=30, db_index=True, blank=True)
+    jurisdiction = models.CharField(max_length=30, db_index=True, blank=True)
+    alias = models.CharField(max_length=100, db_index=True, blank=True)
 
     class Meta:
         ordering = ('court_id',)
 
     def __str__(self):
-        return "Court (id={0}, name={1}, type={2}, abbr={3})" \
-            .format(self.court_id, self.name, self.type, self.abbreviation)
+        return "Court (id={0}, name={1}, type={2}, alias={3})" \
+            .format(self.court_id, self.name, self.type, self.alias)
 
 
-class CourtUsage(models.Model):
+class CourtUsage(Usage):
     """
     Court usage
     """
-    text_unit = models.ForeignKey(TextUnit, db_index=True)
     court = models.ForeignKey(Court, db_index=True)
-    count = models.IntegerField(null=False, default=0)
 
     class Meta:
         unique_together = (("text_unit", "court"),)
@@ -258,37 +241,135 @@ class CourtUsage(models.Model):
             .format(self.court.name, self.text_unit)
 
 
-class RegulationUsage(models.Model):
+class RegulationUsage(Usage):
     """
     Regulation usage
     """
-    text_unit = models.ForeignKey(TextUnit, db_index=True)
-    entity = models.ForeignKey(GeoEntity, db_index=True)
+    entity = models.ForeignKey(GeoEntity, null=True, blank=True, db_index=True)
     regulation_type = models.CharField(max_length=128, db_index=True)
     regulation_name = models.CharField(max_length=1024, db_index=True)
-    count = models.IntegerField(null=False, default=0)
 
     class Meta:
         unique_together = (("text_unit", "entity", "regulation_type"),)
         ordering = ('text_unit', '-count', 'regulation_type', 'entity')
 
     def __str__(self):
-        return "RegulationUsage (regulation={0}, text_unit={1})" \
-            .format(self.regulation, self.text_unit)
+        return "RegulationUsage (regulation_name={0}, text_unit={1})" \
+            .format(self.regulation_name, self.text_unit)
 
 
-class CurrencyUsage(models.Model):
+class BaseAmountUsage(Usage):
+    """
+    Base Amount usage model
+    """
+    amount = models.FloatField(blank=True, null=True)
+    amount_str = models.CharField(max_length=150, blank=True, null=True)
+
+    class Meta:
+        abstract = True
+        ordering = ('text_unit', '-amount', 'count')
+
+
+class AmountUsage(BaseAmountUsage):
+    """
+    Amount usage
+    """
+    def __str__(self):
+        return "AmountUsage (amount={})" \
+            .format(self.amount)
+
+
+class CurrencyUsage(BaseAmountUsage):
     """
     Currency usage
     """
-    text_unit = models.ForeignKey(TextUnit, db_index=True)
     usage_type = models.CharField(max_length=20, db_index=True)
     currency = models.CharField(max_length=20, db_index=True)
-    amount = JSONField(blank=True, null=True)
 
     class Meta:
         ordering = ('text_unit', 'usage_type', 'currency', '-amount')
 
     def __str__(self):
-        return "CurrencyUsage (usage_type={0}, currency={1}, amount={2})" \
+        return "CurrencyUsage (usage_type={0}, currency={1}), amount={2})" \
             .format(self.usage_type, self.currency, self.amount)
+
+
+class DistanceUsage(BaseAmountUsage):
+    """
+    Distance usage
+    """
+    distance_type = models.CharField(max_length=20, db_index=True)
+
+    class Meta:
+        ordering = ('text_unit', 'distance_type', '-amount')
+
+    def __str__(self):
+        return "DistanceUsage (distance_type={0}, amount={1})" \
+            .format(self.distance_type, self.amount)
+
+
+class RatioUsage(BaseAmountUsage):
+    """
+    Ratio usage
+    """
+    amount2 = models.FloatField(blank=True, null=True)
+    total = models.FloatField(blank=True, null=True)
+
+    class Meta:
+        ordering = ('text_unit', '-amount', '-amount2')
+
+    def __str__(self):
+        return "RatioUsage ({0} : {1})" \
+            .format(self.amount, self.amount2)
+
+
+class PercentUsage(BaseAmountUsage):
+    """
+    Percent usage
+    """
+    unit_type = models.CharField(max_length=20, db_index=True)
+    total = models.FloatField(blank=True, null=True)
+
+    class Meta:
+        ordering = ('text_unit', 'unit_type', '-amount')
+
+    def __str__(self):
+        return "PercentUsage (unit_type={0}, amount={1})" \
+            .format(self.unit_type, self.amount)
+
+
+class DateDurationUsage(BaseAmountUsage):
+    """
+    Date Duration usage
+    """
+    duration_type = models.CharField(max_length=20, blank=True, null=True, db_index=True)
+    duration_days = models.FloatField(blank=True, null=True)
+
+    class Meta:
+        unique_together = (("text_unit", "amount_str"),)
+        ordering = ('text_unit', 'amount', '-count')
+
+    def __str__(self):
+        return "DateDurationUsage (amount_str={0}, text_unit={1})" \
+            .format(self.amount_str, self.text_unit)
+
+
+class CitationUsage(Usage):
+    """
+    Citation usage
+    """
+    volume = models.PositiveSmallIntegerField()
+    reporter = models.CharField(max_length=20, db_index=True)
+    reporter_full_name = models.CharField(max_length=200, blank=True, null=True, db_index=True)
+    page = models.PositiveSmallIntegerField()
+    page2 = models.CharField(max_length=10, blank=True, null=True)
+    court = models.CharField(max_length=20, blank=True, null=True, db_index=True)
+    year = models.PositiveSmallIntegerField(blank=True, null=True, db_index=True)
+    citation_str = models.CharField(max_length=100)
+
+    class Meta:
+        ordering = ('text_unit', 'reporter', '-count')
+
+    def __str__(self):
+        return "CitationUsage (citation_str={0}, text_unit={1})" \
+            .format(self.citation_str, self.text_unit)

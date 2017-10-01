@@ -90,7 +90,7 @@ party_type_ptns = {
     r"Limited Liability Company": "LLC",
     r"(?:llc|l\.l\.c)(?:\W|$)": "LLC",
     r"(?:llp|l\.l\.p)(?:\W|$)": "LLP",
-    r"(?:lp|l\.l\.p)(?:\W|$)": "LP",
+    r"(?:lp|l\.p)(?:\W|$)": "LP",
     r"(?:lllp|l\.l\.l\.p)(?:\W|$)": "LLLP",
     r"(?:pllc|p\.l\.l\.c)(?:\W|$)": "PLLC",
     r"(?:plc|p\..l\.c)(?:\W|$)": "PLC",
@@ -162,7 +162,7 @@ def extract_nnp_phrases(text):
         phrase = []
 
         for t, p in pos:
-            if p in ["NNP"] or t in [","]:
+            if p in ["NNP", "NNPS"] or t in [",", "&"]:
                 phrase.append(t)
             else:
                 if len(phrase) > 1:

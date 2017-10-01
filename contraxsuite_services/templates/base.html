@@ -9,7 +9,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="keywords" content="Contraxsuite Services,document,knowledge,management,analyze">
   <meta name="description" content="Contraxsuite Services allows to analyze documents content.">
-  <meta name="author" content="LexPredict, LLC">
+  <meta name="author" content="ContraxSuite, LLC">
 
   {% block css %}
     <!-- Favicon -->
@@ -136,6 +136,22 @@
                       <ul>
                         <li><a href="{% url "extract:party-usage-list" %}"><div>Party Usage</div></a></li>
                         <li><a href="{% url "extract:top-party-usage-list" %}"><div>Top Party Usage</div></a></li>
+                        <li class="divider"></li>
+                        <li><a href="{% url "extract:party-network-chart" %}"><div>Party Network Chart</div></a></li>
+                      </ul>
+                    </li>
+                    <li>
+                      <a href="#">Amounts</a>
+                      <ul>
+                        <li><a href="{% url "extract:amount-usage-list" %}"><div>Amount Usage</div></a></li>
+                        <li><a href="{% url "extract:top-amount-usage-list" %}"><div>Top Amount Usage</div></a></li>
+                      </ul>
+                    </li>
+                    <li>
+                      <a href="#">Citations</a>
+                      <ul>
+                        <li><a href="{% url "extract:citation-usage-list" %}"><div>Citation Usage</div></a></li>
+                        <li><a href="{% url "extract:top-citation-usage-list" %}"><div>Top Citation Usage</div></a></li>
                       </ul>
                     </li>
                     <li>
@@ -158,6 +174,13 @@
                       </ul>
                     </li>
                     <li>
+                      <a href="#">Distances</a>
+                      <ul>
+                        <li><a href="{% url "extract:distance-usage-list" %}"><div>Distance Usage</div></a></li>
+                        <li><a href="{% url "extract:top-distance-usage-list" %}"><div>Top Distance Usage</div></a></li>
+                      </ul>
+                    </li>
+                    <li>
                       <a href="#">Courts</a>
                       <ul>
                         <li><a href="{% url "extract:court-usage-list" %}"><div>Court Usage</div></a></li>
@@ -171,6 +194,28 @@
                         <li><a href="{% url "extract:top-currency-usage-list" %}"><div>Top Currency Usage</div></a></li>
                       </ul>
                     </li>
+                    <li>
+                      <a href="#">Percents</a>
+                      <ul>
+                        <li><a href="{% url "extract:percent-usage-list" %}"><div>Percent Usage</div></a></li>
+                        <li><a href="{% url "extract:top-percent-usage-list" %}"><div>Top Percent Usage</div></a></li>
+                      </ul>
+                    </li>
+                    <li>
+                      <a href="#">Ratios</a>
+                      <ul>
+                        <li><a href="{% url "extract:ratio-usage-list" %}"><div>Ratio Usage</div></a></li>
+                        <li><a href="{% url "extract:top-ratio-usage-list" %}"><div>Top Ratio Usage</div></a></li>
+                      </ul>
+                    </li>
+                    <li>
+                      <a href="#">Regulations</a>
+                      <ul>
+                        <li><a href="{% url "extract:regulation-usage-list" %}"><div>Regulation Usage</div></a></li>
+                        <li><a href="{% url "extract:top-regulation-usage-list" %}"><div>Top Regulation Usage</div></a></li>
+                      </ul>
+                    </li>
+
                   </ul>
                 </li>
                 <li>
@@ -181,6 +226,7 @@
                     <li><a href="{% url "document:document-property-list" %}"><div>Document Counterparties</div></a></li>
                     <li class="divider"></li>
                     <li><a href="{% url "extract:date-usage-timeline" %}"><div>Date Usage Timeline</div></a></li>
+                    <li><a href="{% url "extract:date-usage-calendar" %}"><div>Date Usage Calendar</div></a></li>
                     <li><a href="{% url "document:document-property-list" %}"><div>Risk Summary</div></a></li>
                   </ul>
                 </li>
@@ -388,8 +434,9 @@
         <div class="container clearfix">
 
           <div class="col_half">
-            Copyrights &copy; 2015-2017, <a href="https://lexpredict.com">LexPredict, LLC</a><br>
+            Copyrights &copy; 2015-2017, <a href="https://contraxsuite.com">ContraxSuite, LLC</a><br>
             <div class="copyright-links"><a href="#">Terms of Use</a></div>
+            <div style="color: #1ABC9C;">version: 1.0.1</div>
           </div>
 
           <div class="col_half col_last tright">
@@ -412,7 +459,7 @@
 
             <div class="clear"></div>
 
-            <i class="icon-envelope2"></i> <a href="mailto:it@lexpredict.com">it@lexpredict.com</a>
+            <i class="icon-envelope2"></i> <a href="mailto:support@contraxsuite.com">support@contraxsuite.com</a>
           </div>
 
         </div>

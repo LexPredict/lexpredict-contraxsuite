@@ -8,7 +8,8 @@ from apps.extract.models import (
     Court, CourtUsage, CurrencyUsage,
     DateDurationUsage, DateUsage, DefinitionUsage,
     GeoAlias, GeoAliasUsage, GeoEntity, GeoEntityUsage, GeoRelation,
-    Term, TermUsage, Party, PartyUsage)
+    AmountUsage, DistanceUsage, PercentUsage, RatioUsage, CitationUsage,
+    Term, TermUsage, Party, PartyUsage, RegulationUsage)
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2017, ContraxSuite, LLC"
@@ -19,13 +20,18 @@ __email__ = "support@contraxsuite.com"
 
 
 class CourtAdmin(admin.ModelAdmin):
-    list_display = ('type', 'name', 'abbreviation')
-    search_fields = ('name', 'abbreviation')
+    list_display = ('type', 'name', 'alias')
+    search_fields = ('name', 'alias')
 
 
 class CourtUsageAdmin(admin.ModelAdmin):
     list_display = ('text_unit', 'court', 'count')
     search_fields = ('text_unit__text', 'court__name')
+
+
+class CitationUsageAdmin(admin.ModelAdmin):
+    list_display = ('text_unit', 'citation_str', 'count')
+    search_fields = ('text_unit__text', 'citation_str')
 
 
 class CurrencyUsageAdmin(admin.ModelAdmin):
@@ -34,8 +40,8 @@ class CurrencyUsageAdmin(admin.ModelAdmin):
 
 
 class DateDurationUsageAdmin(admin.ModelAdmin):
-    list_display = ('text_unit', 'duration', 'duration_str', 'count')
-    search_fields = ('duration', 'duration_str')
+    list_display = ('text_unit', 'amount', 'amount_str', 'count')
+    search_fields = ('amount', 'amount_str')
 
 
 class DateUsageAdmin(admin.ModelAdmin):
@@ -43,9 +49,34 @@ class DateUsageAdmin(admin.ModelAdmin):
     search_fields = ('date', 'format')
 
 
+class AmountUsageAdmin(admin.ModelAdmin):
+    list_display = ('text_unit', 'amount', 'amount_str', 'count')
+    search_fields = ('amount', 'amount_str')
+
+
+class DistanceUsageAdmin(admin.ModelAdmin):
+    list_display = ('text_unit', 'distance_type', 'amount', 'count')
+    search_fields = ('definition',)
+
+
+class PercentUsageAdmin(admin.ModelAdmin):
+    list_display = ('text_unit', 'amount', 'unit_type', 'count')
+    search_fields = ('amount', 'unit_type')
+
+
+class RatioUsageAdmin(admin.ModelAdmin):
+    list_display = ('text_unit', 'amount', 'amount2', 'count')
+    search_fields = ('amount', 'amount2')
+
+
 class DefinitionUsageAdmin(admin.ModelAdmin):
     list_display = ('text_unit', 'definition', 'count')
     search_fields = ('definition',)
+
+
+class RegulationUsageAdmin(admin.ModelAdmin):
+    list_display = ('text_unit', 'regulation_name', 'regulation_type', 'count')
+    search_fields = ('regulation_name',)
 
 
 class GeoAliasAdmin(admin.ModelAdmin):
@@ -83,18 +114,24 @@ class TermUsageAdmin(admin.ModelAdmin):
     search_fields = ('term', 'count')
 
 
+admin.site.register(AmountUsage, AmountUsageAdmin)
 admin.site.register(Court, CourtAdmin)
+admin.site.register(CitationUsage, CitationUsageAdmin)
 admin.site.register(CourtUsage, CourtUsageAdmin)
 admin.site.register(CurrencyUsage, CurrencyUsageAdmin)
 admin.site.register(DateDurationUsage, DateDurationUsageAdmin)
 admin.site.register(DateUsage, DateUsageAdmin)
 admin.site.register(DefinitionUsage, DefinitionUsageAdmin)
+admin.site.register(DistanceUsage, DistanceUsageAdmin)
 admin.site.register(GeoAlias, GeoAliasAdmin)
 admin.site.register(GeoAliasUsage, GeoAliasUsageAdmin)
 admin.site.register(GeoEntity, GeoEntityAdmin)
 admin.site.register(GeoEntityUsage, GeoEntityUsageAdmin)
 admin.site.register(GeoRelation, GeoRelationAdmin)
-admin.site.register(Term, TermAdmin)
-admin.site.register(TermUsage, TermUsageAdmin)
 admin.site.register(Party)
 admin.site.register(PartyUsage)
+admin.site.register(PercentUsage, PercentUsageAdmin)
+admin.site.register(RatioUsage, RatioUsageAdmin)
+admin.site.register(RegulationUsage, RegulationUsageAdmin)
+admin.site.register(Term, TermAdmin)
+admin.site.register(TermUsage, TermUsageAdmin)

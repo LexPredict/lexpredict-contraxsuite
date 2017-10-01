@@ -10,8 +10,8 @@
         { name: 'text_unit__document__name', type: 'string' },
         { name: 'text_unit__document__document_type', type: 'string' },
         { name: 'text_unit__document__description', type: 'string' },
-        { name: 'court__name', type: 'string' },
-        { name: 'court__alias', type: 'string' },
+        { name: 'amount_str', type: 'string' },
+        { name: 'amount', type: 'float' },
         { name: 'count', type: 'int' },
         { name: 'text_unit__text', type: 'string' },
         { name: 'url', type: 'string' },
@@ -31,18 +31,18 @@
         show_menu(menu_data, grid, row.pk);
       };
       var columns = [
-        { text: 'Name', datafield: 'text_unit__document__name', width: 'auto',
+        { text: 'Name', datafield: 'text_unit__document__name', width: 300,
           align: 'center', cellsalign: 'left', enabletooltips: true,
           cellsrenderer: defaultLinkFormatter, columngroup: 'Document' },
         { text: 'Type', datafield: 'text_unit__document__document_type', width: 100,
           align: 'center', cellsalign: 'center', columngroup: 'Document' },
-        { text: 'Name', datafield: 'court__name', width: 200,
-          align: 'center', cellsalign: 'center', columngroup: 'Court' },
-        { text: 'Alias', datafield: 'court__alias', width: 150,
-          align: 'center', cellsalign: 'center', columngroup: 'Court' },
+        { text: 'Amount', datafield: 'amount', width: 100,
+          align: 'center', cellsalign: 'center' },
+        { text: 'String', datafield: 'amount_str', width: 200,
+          align: 'center', cellsalign: 'center' },
         { text: 'Count', datafield: 'count', width: 80,
           align: 'center', cellsalign: 'center' },
-        { text: 'Text Unit', datafield: 'text_unit__text', width: 'auto',
+        { text: 'Text Unit', datafield: 'text_unit__text', width: 'auto', minwidth: 300,
           align: 'center', cellsalign: 'center' },
         { text: 'Action', datafield: 'url', width: 60,
           align: 'center', exportable: false,
@@ -53,8 +53,7 @@
       ];
       var custom_grid_options = {
         columngroups: [
-          { text: 'Document', name: 'Document', align: 'center' },
-          { text: 'Court', name: 'Court', align: 'center' }
+          { text: 'Document', name: 'Document', align: 'center' }
         ]
       };
       draw_grid(".jqxgrid", datafields, columns, true, null, custom_grid_options);

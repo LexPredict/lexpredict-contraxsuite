@@ -11,7 +11,8 @@ from apps.common.utils import create_standard_urls
 from apps.extract import views
 from apps.extract.models import (
     CourtUsage, CurrencyUsage, DateDurationUsage, DateUsage,
-    DefinitionUsage, GeoEntityUsage, TermUsage, PartyUsage)
+    AmountUsage, DistanceUsage, PercentUsage, RatioUsage, CitationUsage,
+    DefinitionUsage, GeoEntityUsage, TermUsage, PartyUsage, RegulationUsage)
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2017, ContraxSuite, LLC"
@@ -40,9 +41,15 @@ def register(model, view_types):
 register(TermUsage, view_types=('list',))
 register(GeoEntityUsage, view_types=('list',))
 register(PartyUsage, view_types=('list',))
+register(AmountUsage, view_types=('list',))
+register(CitationUsage, view_types=('list',))
 register(DateUsage, view_types=('list',))
 register(DateDurationUsage, view_types=('list',))
 register(DefinitionUsage, view_types=('list',))
+register(DistanceUsage, view_types=('list',))
+register(PercentUsage, view_types=('list',))
+register(RatioUsage, view_types=('list',))
+register(RegulationUsage, view_types=('list',))
 register(CourtUsage, view_types=('list',))
 register(CurrencyUsage, view_types=('list',))
 
@@ -74,6 +81,11 @@ urlpatterns += [
         name='top-party-usage-list',
     ),
     url(
+        r'^party-network-chart/$',
+        views.PartyNetworkChartView.as_view(),
+        name='party-network-chart',
+    ),
+    url(
         r'^top-date-usage/list/$',
         views.TopDateUsageListView.as_view(),
         name='top-date-usage-list',
@@ -89,6 +101,11 @@ urlpatterns += [
         name='date-usage-calendar',
     ),
     url(
+        r'^date-usage-export-ical/$',
+        views.DateUsageToICalView.as_view(),
+        name='date-usage-export-ical',
+    ),
+    url(
         r'^top-date-duration-usage/list/$',
         views.TopDateDurationUsageListView.as_view(),
         name='top-date-duration-usage-list',
@@ -97,6 +114,36 @@ urlpatterns += [
         r'^top-definition-usage/list/$',
         views.TopDefinitionUsageListView.as_view(),
         name='top-definition-usage-list',
+    ),
+    url(
+        r'^top-amount-usage/list/$',
+        views.TopAmountUsageListView.as_view(),
+        name='top-amount-usage-list',
+    ),
+    url(
+        r'^top-citation-usage/list/$',
+        views.TopCitationUsageListView.as_view(),
+        name='top-citation-usage-list',
+    ),
+    url(
+        r'^top-distance-usage/list/$',
+        views.TopDistanceUsageListView.as_view(),
+        name='top-distance-usage-list',
+    ),
+    url(
+        r'^top-percent-usage/list/$',
+        views.TopPercentUsageListView.as_view(),
+        name='top-percent-usage-list',
+    ),
+    url(
+        r'^top-ratio-usage/list/$',
+        views.TopRatioUsageListView.as_view(),
+        name='top-ratio-usage-list',
+    ),
+    url(
+        r'^top-regulation-usage/list/$',
+        views.TopRegulationUsageListView.as_view(),
+        name='top-regulation-usage-list',
     ),
     url(
         r'^top-court-usage/list/$',

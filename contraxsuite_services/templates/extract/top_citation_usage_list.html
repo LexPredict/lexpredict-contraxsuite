@@ -10,17 +10,14 @@
   <script type="text/javascript">
     $(document).ready(function () {
       var datafields = [
-        { name: 'court__name', type: 'string' },
-        { name: 'court__alias', type: 'string' },
+        { name: 'citation_str', type: 'string' },
         { name: 'count', type: 'int' },
         { name: 'url', type: 'string' }
       ];
       var columns = [
-        { text: 'Court Name', datafield: 'court__name', width: 'auto',
+        { text: 'Citation', datafield: 'citation_str', width: 'auto',
           align: 'center', cellsalign: 'center',
           cellsrenderer: defaultLinkFormatter },
-        { text: 'Court Alias', datafield: 'court__alias', width: 'auto',
-          align: 'center', cellsalign: 'center' },
         { text: 'Count', datafield: 'count', width: 'auto',
           align: 'center', cellsalign: 'center' }
       ];

@@ -4,14 +4,21 @@
 from __future__ import absolute_import, unicode_literals
 
 # Standard imports
+from collections import defaultdict
 import datetime
+import itertools
 import json
 import geocoder
+
+# Third-party import
+import icalendar
 
 # Django imports
 from django.core.urlresolvers import reverse
 from django.db.models import Count, F, Max, Min, Sum, Q
 from django.db.models.functions import TruncMonth
+from django.http import Http404
+from django.http.response import HttpResponse
 from django.views.generic import DetailView, TemplateView
 
 # Project imports
@@ -19,10 +26,11 @@ from apps.common.mixins import (
     AjaxListView, AjaxResponseMixin, JqPaginatedListView, TypeaheadView)
 from apps.document.models import Document
 from apps.extract.models import (
-    CourtUsage, CurrencyUsage,
+    AmountUsage, CourtUsage, CurrencyUsage, DistanceUsage,
     DateDurationUsage, DateUsage, DefinitionUsage,
-    GeoAliasUsage, GeoEntity, GeoEntityUsage,
-    Term, TermUsage, Party, PartyUsage)
+    GeoAliasUsage, GeoEntityUsage, RegulationUsage,
+    RatioUsage, PercentUsage, CitationUsage,
+    TermUsage, Party, PartyUsage)
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2017, ContraxSuite, LLC"
@@ -64,7 +72,7 @@ class TermUsageListView(JqPaginatedListView):
             qs = qs.filter(text_unit__document__pk=self.request.GET['document_pk'])
 
         # filter out duplicated Terms (equal terms, but diff. term sources)
-        qs = qs.order_by('term__term').distinct('term__term', 'text_unit__pk')
+        # qs = qs.order_by('term__term').distinct('term__term', 'text_unit__pk')
         return qs
 
     def get_context_data(self, **kwargs):
@@ -361,6 +369,9 @@ class PartyUsageListView(JqPaginatedListView):
         if party_search:
             party_search_list = party_search.split(",")
             qs = qs.filter(party__name__in=party_search_list)
+        party_search_iexact = self.request.GET.get("party_search_iexact", "")
+        if party_search_iexact:
+            qs = qs.filter(party__name__iexact=party_search_iexact)
         qs = qs.select_related('party', 'text_unit', 'text_unit__document')
         return qs
 
@@ -567,13 +578,13 @@ class DateDurationUsageListView(JqPaginatedListView):
     model = DateDurationUsage
     json_fields = ['text_unit__document__pk', 'text_unit__document__name',
                    'text_unit__document__description', 'text_unit__document__document_type',
-                   'duration', 'duration_str', 'count', 'text_unit__pk', 'text_unit__text']
+                   'amount', 'amount_str', 'duration_type', 'duration_days', 'count',
+                   'text_unit__pk', 'text_unit__text']
     limit_reviewers_qs_by_field = 'text_unit__document'
 
     def get_json_data(self, **kwargs):
         data = super().get_json_data()
         for item in data['data']:
-            item['duration'] = item['duration'].days
             item['url'] = reverse('document:document-detail',
                                   args=[item['text_unit__document__pk']])
             item['detail_url'] = reverse('document:text-unit-detail',
@@ -585,7 +596,11 @@ class DateDurationUsageListView(JqPaginatedListView):
         if "document_pk" in self.request.GET:
             qs = qs.filter(text_unit__document__pk=self.request.GET['document_pk'])
         if 'duration_search' in self.request.GET:
-            qs = qs.filter(duration_str=self.request.GET["duration_search"])
+            try:
+                duration_days = float(self.request.GET["duration_search"])
+                qs = qs.filter(duration_days=duration_days)
+            except ValueError:
+                pass
         return qs
 
     def get_context_data(self, **kwargs):
@@ -605,14 +620,12 @@ class TopDateDurationUsageListView(JqPaginatedListView):
             list_view = DateDurationUsageListView(request=self.request)
             duration_data = list_view.get_json_data()['data']
         for item in data:
-            duration = item['duration'].days
-            item['duration'] = duration
             item['url'] = reverse('extract:date-duration-usage-list') + \
-                          '?duration_search=' + item['duration_str']
+                          '?duration_search=' + str(item['duration_days'])
             if "document_pk" in self.request.GET:
                 item['duration_data'] = [i for i in duration_data
-                                         if i['duration'] == item['duration']]
-        data = sorted(data, key=lambda i: -i['duration'])
+                                         if i['duration_days'] == item['duration_days']]
+        data = sorted(data, key=lambda i: -i['duration_days'])
         return {'data': data, 'total_records': len(data)}
 
     def get_queryset(self):
@@ -621,7 +634,7 @@ class TopDateDurationUsageListView(JqPaginatedListView):
         if "document_pk" in self.request.GET:
             qs = qs.filter(text_unit__document__pk=self.request.GET['document_pk'])
 
-        qs = qs.values("duration", "duration_str") \
+        qs = qs.values("amount", "duration_type", "duration_days") \
             .annotate(count=Sum("count")) \
             .order_by("-count")
         return qs
@@ -696,7 +709,7 @@ class CourtUsageListView(JqPaginatedListView):
     model = CourtUsage
     json_fields = ['text_unit__document__pk', 'text_unit__document__name',
                    'text_unit__document__description', 'text_unit__document__document_type',
-                   'court__name', 'court__abbreviation', 'count',
+                   'court__name', 'court__alias', 'count',
                    'text_unit__pk', 'text_unit__text']
     limit_reviewers_qs_by_field = 'text_unit__document'
 
@@ -751,7 +764,7 @@ class TopCourtUsageListView(JqPaginatedListView):
         if "document_pk" in self.request.GET:
             qs = qs.filter(text_unit__document__pk=self.request.GET['document_pk'])
 
-        qs = qs.values("court__name", "court__abbreviation") \
+        qs = qs.values("court__name", "court__alias") \
             .annotate(count=Sum("count")) \
             .order_by("-count")
         return qs
@@ -761,15 +774,13 @@ class CurrencyUsageListView(JqPaginatedListView):
     model = CurrencyUsage
     json_fields = ['text_unit__document__pk', 'text_unit__document__name',
                    'text_unit__document__description', 'text_unit__document__document_type',
-                   'usage_type', 'currency', 'amount',
+                   'usage_type', 'currency', 'amount', 'amount_str',
                    'text_unit__pk', 'text_unit__text']
     limit_reviewers_qs_by_field = 'text_unit__document'
 
     def get_json_data(self, **kwargs):
         data = super().get_json_data()
         for item in data['data']:
-            item['amount__value'] = item['amount']['value'] if item['amount'] else None
-            item['amount__value_str'] = item['amount']['value_str'] if item['amount'] else None
             item['url'] = reverse('document:document-detail',
                                   args=[item['text_unit__document__pk']])
             item['detail_url'] = reverse('document:text-unit-detail',
@@ -822,6 +833,454 @@ class TopCurrencyUsageListView(JqPaginatedListView):
         return qs
 
 
+class RegulationUsageListView(JqPaginatedListView):
+    model = RegulationUsage
+    json_fields = ['text_unit__document__pk', 'text_unit__document__name',
+                   'text_unit__document__description', 'text_unit__document__document_type',
+                   'regulation_type', 'regulation_name', 'entity__name', 'count',
+                   'text_unit__pk', 'text_unit__text']
+    limit_reviewers_qs_by_field = 'text_unit__document'
+
+    def get_json_data(self, **kwargs):
+        data = super().get_json_data()
+        for item in data['data']:
+            item['url'] = reverse('document:document-detail',
+                                  args=[item['text_unit__document__pk']])
+            item['detail_url'] = reverse('document:text-unit-detail',
+                                         args=[item['text_unit__pk']]) + \
+                                 '?highlight=' + item['regulation_name']
+        return data
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+
+        if "document_pk" in self.request.GET:
+            qs = qs.filter(text_unit__document__pk=self.request.GET['document_pk'])
+
+        regulation_search = self.request.GET.get("regulation_search")
+        if regulation_search:
+            qs = qs.filter(regulation_name=regulation_search)
+        return qs
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        ctx['regulation_search'] = self.request.GET.get("regulation_search", "")
+        return ctx
+
+
+class TopRegulationUsageListView(JqPaginatedListView):
+    model = RegulationUsage
+    template_name = "extract/top_regulation_usage_list.html"
+    limit_reviewers_qs_by_field = 'text_unit__document'
+
+    def get_json_data(self, **kwargs):
+        data = list(self.get_queryset())
+        if "document_pk" in self.request.GET:
+            regulation_list_view = RegulationUsageListView(request=self.request)
+            regulation_data = regulation_list_view.get_json_data()['data']
+        for item in data:
+            item['url'] = reverse('extract:regulation-usage-list') + \
+                          '?regulation_search=' + item['regulation_name']
+            if "document_pk" in self.request.GET:
+                item['regulation_data'] = [i for i in regulation_data
+                                           if i['regulation_name'] == item['regulation_name']]
+        return {'data': data, 'total_records': len(data)}
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+
+        if "document_pk" in self.request.GET:
+            qs = qs.filter(text_unit__document__pk=self.request.GET['document_pk'])
+
+        qs = qs.values("regulation_name", "regulation_type") \
+            .annotate(count=Sum("count")) \
+            .order_by("-count")
+        return qs
+
+
+class AmountUsageListView(JqPaginatedListView):
+    model = AmountUsage
+    json_fields = ['text_unit__document__pk', 'text_unit__document__name',
+                   'text_unit__document__description', 'text_unit__document__document_type',
+                   'amount', 'amount_str', 'count', 'text_unit__pk', 'text_unit__text']
+    limit_reviewers_qs_by_field = 'text_unit__document'
+
+    def get_json_data(self, **kwargs):
+        data = super().get_json_data()
+        for item in data['data']:
+            item['url'] = reverse('document:document-detail',
+                                  args=[item['text_unit__document__pk']])
+            item['detail_url'] = reverse('document:text-unit-detail',
+                                         args=[item['text_unit__pk']])
+        return data
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+
+        if "document_pk" in self.request.GET:
+            qs = qs.filter(text_unit__document__pk=self.request.GET['document_pk'])
+
+        amount_search = self.request.GET.get("amount_search")
+        if amount_search:
+            qs = qs.filter(amount=float(amount_search))
+        return qs
+
+
+class TopAmountUsageListView(JqPaginatedListView):
+    model = AmountUsage
+    template_name = "extract/top_amount_usage_list.html"
+    limit_reviewers_qs_by_field = 'text_unit__document'
+
+    def get_json_data(self, **kwargs):
+        data = list(self.get_queryset())
+        if "document_pk" in self.request.GET:
+            amount_list_view = AmountUsageListView(request=self.request)
+            amount_data = amount_list_view.get_json_data()['data']
+        for item in data:
+            item['url'] = reverse('extract:amount-usage-list') + \
+                          '?amount_search={}'.format(item['amount'])
+            if "document_pk" in self.request.GET:
+                item['amount_data'] = [i for i in amount_data
+                                       if i['amount'] == item['amount']]
+        return {'data': data, 'total_records': len(data)}
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+
+        if "document_pk" in self.request.GET:
+            qs = qs.filter(text_unit__document__pk=self.request.GET['document_pk'])
+
+        qs = qs.values("amount") \
+            .annotate(count=Sum("count")) \
+            .order_by("-count")
+        return qs
+
+
+class DistanceUsageListView(JqPaginatedListView):
+    model = DistanceUsage
+    json_fields = ['text_unit__document__pk', 'text_unit__document__name',
+                   'text_unit__document__description', 'text_unit__document__document_type',
+                   'amount', 'distance_type', 'count', 'text_unit__pk', 'text_unit__text']
+    limit_reviewers_qs_by_field = 'text_unit__document'
+
+    def get_json_data(self, **kwargs):
+        data = super().get_json_data()
+        for item in data['data']:
+            item['url'] = reverse('document:document-detail',
+                                  args=[item['text_unit__document__pk']])
+            item['detail_url'] = reverse('document:text-unit-detail',
+                                         args=[item['text_unit__pk']])
+        return data
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+
+        if "document_pk" in self.request.GET:
+            qs = qs.filter(text_unit__document__pk=self.request.GET['document_pk'])
+
+        distance_type_search = self.request.GET.get("distance_type_search")
+        distance_amount_search = self.request.GET.get("distance_amount_search")
+        if distance_type_search and distance_amount_search:
+            qs = qs.filter(distance_type=distance_type_search, amount=float(distance_amount_search))
+        return qs
+
+
+class TopDistanceUsageListView(JqPaginatedListView):
+    model = DistanceUsage
+    template_name = "extract/top_distance_usage_list.html"
+    limit_reviewers_qs_by_field = 'text_unit__document'
+
+    def get_json_data(self, **kwargs):
+        data = list(self.get_queryset())
+        if "document_pk" in self.request.GET:
+            distance_list_view = DistanceUsageListView(request=self.request)
+            distance_data = distance_list_view.get_json_data()['data']
+        for item in data:
+            item['url'] = reverse('extract:distance-usage-list') + \
+                          '?distance_type_search={}&distance_amount_search={}'.format(
+                              item['distance_type'], item['amount'])
+            if "document_pk" in self.request.GET:
+                item['distance_data'] = [i for i in distance_data
+                                         if i['distance_type'] == item['distance_type']
+                                         and i['amount'] == item['amount']]
+        return {'data': data, 'total_records': len(data)}
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+
+        if "document_pk" in self.request.GET:
+            qs = qs.filter(text_unit__document__pk=self.request.GET['document_pk'])
+
+        qs = qs.values("distance_type", "amount") \
+            .annotate(count=Sum("count")) \
+            .order_by("-count")
+        return qs
+
+
+class PercentUsageListView(JqPaginatedListView):
+    model = PercentUsage
+    json_fields = ['text_unit__document__pk', 'text_unit__document__name',
+                   'text_unit__document__description', 'text_unit__document__document_type',
+                   'amount', 'unit_type', 'total', 'count', 'text_unit__pk', 'text_unit__text']
+    limit_reviewers_qs_by_field = 'text_unit__document'
+
+    def get_json_data(self, **kwargs):
+        data = super().get_json_data()
+        for item in data['data']:
+            item['url'] = reverse('document:document-detail',
+                                  args=[item['text_unit__document__pk']])
+            item['detail_url'] = reverse('document:text-unit-detail',
+                                         args=[item['text_unit__pk']])
+        return data
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+
+        if "document_pk" in self.request.GET:
+            qs = qs.filter(text_unit__document__pk=self.request.GET['document_pk'])
+
+        percent_type_search = self.request.GET.get("percent_type_search")
+        percent_amount_search = self.request.GET.get("percent_amount_search")
+        if percent_type_search and percent_amount_search:
+            qs = qs.filter(unit_type=percent_type_search, amount=float(percent_amount_search))
+        return qs
+
+
+class TopPercentUsageListView(JqPaginatedListView):
+    model = PercentUsage
+    template_name = "extract/top_percent_usage_list.html"
+    limit_reviewers_qs_by_field = 'text_unit__document'
+
+    def get_json_data(self, **kwargs):
+        data = list(self.get_queryset())
+        if "document_pk" in self.request.GET:
+            percent_list_view = PercentUsageListView(request=self.request)
+            percent_data = percent_list_view.get_json_data()['data']
+        for item in data:
+            item['url'] = reverse('extract:percent-usage-list') + \
+                          '?percent_type_search={}&percent_amount_search={}'.format(
+                              item['unit_type'], item['amount'])
+            if "document_pk" in self.request.GET:
+                item['percent_data'] = [i for i in percent_data
+                                        if i['unit_type'] == item['unit_type']
+                                        and i['amount'] == item['amount']]
+        return {'data': data, 'total_records': len(data)}
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+
+        if "document_pk" in self.request.GET:
+            qs = qs.filter(text_unit__document__pk=self.request.GET['document_pk'])
+
+        qs = qs.values("unit_type", "amount") \
+            .annotate(count=Sum("count")) \
+            .order_by("-count")
+        return qs
+
+
+class RatioUsageListView(JqPaginatedListView):
+    model = RatioUsage
+    json_fields = ['text_unit__document__pk', 'text_unit__document__name',
+                   'text_unit__document__description', 'text_unit__document__document_type',
+                   'amount', 'amount2', 'total', 'count', 'text_unit__pk', 'text_unit__text']
+    limit_reviewers_qs_by_field = 'text_unit__document'
+
+    def get_json_data(self, **kwargs):
+        data = super().get_json_data()
+        for item in data['data']:
+            item['url'] = reverse('document:document-detail',
+                                  args=[item['text_unit__document__pk']])
+            item['detail_url'] = reverse('document:text-unit-detail',
+                                         args=[item['text_unit__pk']])
+        return data
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+
+        if "document_pk" in self.request.GET:
+            qs = qs.filter(text_unit__document__pk=self.request.GET['document_pk'])
+
+        ratio_amount_search = self.request.GET.get("ratio_amount_search")
+        ratio_amount2_search = self.request.GET.get("ratio_amount2_search")
+        if ratio_amount_search and ratio_amount2_search:
+            qs = qs.filter(amount=float(ratio_amount_search),
+                           amount2=float(ratio_amount2_search))
+        return qs
+
+
+class TopRatioUsageListView(JqPaginatedListView):
+    model = RatioUsage
+    template_name = "extract/top_ratio_usage_list.html"
+    limit_reviewers_qs_by_field = 'text_unit__document'
+
+    def get_json_data(self, **kwargs):
+        data = list(self.get_queryset())
+        if "document_pk" in self.request.GET:
+            ratio_list_view = RatioUsageListView(request=self.request)
+            ratio_data = ratio_list_view.get_json_data()['data']
+        for item in data:
+            item['url'] = reverse('extract:ratio-usage-list') + \
+                          '?ratio_amount_search={}&ratio_amount2_search={}'.format(
+                              item['amount'], item['amount2'])
+            if "document_pk" in self.request.GET:
+                item['ratio_data'] = [i for i in ratio_data
+                                        if i['amount'] == item['amount']
+                                        and i['amount2'] == item['amount2']]
+        return {'data': data, 'total_records': len(data)}
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+
+        if "document_pk" in self.request.GET:
+            qs = qs.filter(text_unit__document__pk=self.request.GET['document_pk'])
+
+        qs = qs.values("amount", "amount2") \
+            .annotate(count=Sum("count")) \
+            .order_by("-count")
+        return qs
+
+
+class CitationUsageListView(JqPaginatedListView):
+    model = CitationUsage
+    json_fields = ['text_unit__document__pk', 'text_unit__document__name',
+                   'text_unit__document__document_type',
+                   'volume', 'reporter', 'reporter_full_name', 'page', 'page2', 'court', 'year',
+                   'citation_str', 'count', 'text_unit__pk', 'text_unit__text']
+    limit_reviewers_qs_by_field = 'text_unit__document'
+
+    def get_json_data(self, **kwargs):
+        data = super().get_json_data()
+        for item in data['data']:
+            item['url'] = reverse('document:document-detail',
+                                  args=[item['text_unit__document__pk']])
+            item['detail_url'] = reverse('document:text-unit-detail',
+                                         args=[item['text_unit__pk']])
+        return data
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+
+        if "document_pk" in self.request.GET:
+            qs = qs.filter(text_unit__document__pk=self.request.GET['document_pk'])
+
+        citation_search = self.request.GET.get("citation_search")
+        if citation_search:
+            qs = qs.filter(citation_str=citation_search)
+        return qs
+
+
+class TopCitationUsageListView(JqPaginatedListView):
+    model = CitationUsage
+    template_name = "extract/top_citation_usage_list.html"
+    limit_reviewers_qs_by_field = 'text_unit__document'
+
+    def get_json_data(self, **kwargs):
+        data = list(self.get_queryset())
+        if "document_pk" in self.request.GET:
+            citation_list_view = CitationUsageListView(request=self.request)
+            citation_data = citation_list_view.get_json_data()['data']
+        for item in data:
+            item['url'] = reverse('extract:citation-usage-list') + \
+                          '?citation_search={}'.format(item['citation_str'])
+            if "document_pk" in self.request.GET:
+                item['citation_data'] = [i for i in citation_data
+                                         if i['citation_str'] == item['citation_str']]
+        return {'data': data, 'total_records': len(data)}
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+
+        if "document_pk" in self.request.GET:
+            qs = qs.filter(text_unit__document__pk=self.request.GET['document_pk'])
+
+        qs = qs.values("citation_str") \
+            .annotate(count=Sum("count")) \
+            .order_by("-count")
+        return qs
+
+
+class DateUsageToICalView(DateUsageListView):
+
+    def get(self, request, *args, **kwargs):
+        document_pk = request.GET.get('document_pk')
+        if not document_pk:
+            return Http404("Document pk is not defined.")
+
+        sample_length = 100
+        # Create calendar
+        cal = icalendar.Calendar()
+        cal.add('prodid', 'ContraxSuite (https://contraxsuite.com)')
+        cal.add('version', '1.0.2')
+
+        # Filter to text unit
+        for du in self.get_json_data()['data']:
+            event = icalendar.Event()
+            event.add("summary", "Calendar reminder for document {0}, text unit {1}:\n{2}"
+                      .format(du['text_unit__document__name'], du['text_unit__pk'],
+                              du['text_unit__text'][:sample_length]))
+            event.add("dtstart", du['date'])
+            event.add("dtend", du['date'])
+            event.add("dtstamp", du['date'])
+            cal.add_component(event)
+
+        filename = "document-{0}.ics".format(document_pk)
+
+        response = HttpResponse(cal.to_ical(), content_type='text/calendar; charset=utf8')
+        response['Content-Disposition'] = 'attachment; filename="{}"'.format(filename)
+        return response
+
+
 class PartySummary(DetailView):
     model = Party
     template_name = 'extract/party_summary.html'
+
+
+class PartyNetworkChartView(PartyUsageListView):
+    template_name = "extract/party_network_chart.html"
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        parties = defaultdict(list)
+        for result in self.get_queryset() \
+                .values('party__name', 'text_unit__document_id') \
+                .order_by('party__name', 'text_unit__document_id'):
+            parties[result['text_unit__document_id']].append(result['party__name'].upper())
+        parties = [i for sub in parties.values() for i in sub if len(set(sub)) > 1]
+        ctx['parties'] = sorted(set(parties))
+        return ctx
+
+    def get_json_data(self):
+        parties = defaultdict(list)
+        for result in self.get_queryset()\
+                .values('party__name', 'text_unit__document_id')\
+                .order_by('party__name', 'text_unit__document_id'):
+            parties[result['text_unit__document_id']].append(result['party__name'].upper())
+        party_doc_edge = [list(itertools.combinations(set(i), 2))
+                          for i in parties.values() if len(set(i)) > 1]
+        chart_nodes = []
+        processed_nodes = []
+        for group_num, parties in enumerate(party_doc_edge, start=1):
+            to_process = {j for sub in parties for j in sub if j not in processed_nodes}
+            chart_nodes += [{"id": i,
+                             "group": group_num,
+                             "url": reverse("extract:party-usage-list") + '?party_search_iexact=' + i}
+                            for i in to_process]
+            processed_nodes.extend(to_process)
+        chart_links = [{"source": i, "target": j, "value": 2}
+                       for g in party_doc_edge for i, j in g]
+
+        if 'party_name_iexact' in self.request.GET:
+            party_name = self.request.GET.get('party_name_iexact', chart_nodes[0]['id'])
+            members = {party_name}
+            while 1:
+                members1 = {i["source"] for i in chart_links if i["target"] in members
+                           and i["source"] not in members}
+                members2 = {i["target"] for i in chart_links if i["source"] in members
+                           and i["target"] not in members}
+                if not members1 and not members2:
+                    break
+                members = members | members1 | members2
+
+            chart_nodes = [i for i in chart_nodes if i['id'] in members]
+            chart_links = [i for i in chart_links if i['source'] in members or i['target'] in members]
+        return {"nodes": chart_nodes, "links": chart_links}

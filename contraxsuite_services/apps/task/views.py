@@ -3,12 +3,10 @@
 # Future imports
 from __future__ import absolute_import, unicode_literals
 
-from collections import OrderedDict
-
 # Django imports
 from django.conf import settings
 from django.core.urlresolvers import reverse
-from django.http import JsonResponse
+from django.http import JsonResponse, HttpResponseForbidden
 from django.shortcuts import redirect
 from django.views.generic.edit import FormView
 
@@ -23,7 +21,8 @@ from apps.task.forms import (
     LocateDatesForm, LocateDateDurationsForm, LocateDefinitionsForm,
     LocateCourtsForm, LocateCurrenciesForm,
     ExistedClassifierClassifyForm, CreateClassifierClassifyForm,
-    ClusterForm, SimilarityForm, PartySimilarityForm)
+    ClusterForm, SimilarityForm, PartySimilarityForm,
+    UpdateElasticSearchForm)
 from apps.task.models import Task
 from apps.task.tasks import call_task, clean_tasks, purge_task
 
@@ -61,13 +60,19 @@ class BaseAjaxTaskView(AdminRequiredMixin, JSONResponseView):
         return JsonResponse(data, encoder=DjangoJSONEncoder, safe=False, **kwargs)
 
     def get(self, request, *args, **kwargs):
-        form = self.form_class()
-        data = dict(header=form.header,
-                    form_class=self.html_form_class,
-                    form_data=form.as_p())
+        if Task.disallow_start(self.task_name):
+            return HttpResponseForbidden(
+                'Forbidden. Task "%s" is already started.' % self.task_name)
+        else:
+            form = self.form_class()
+            data = dict(header=form.header,
+                        form_class=self.html_form_class,
+                        form_data=form.as_p())
         return self.json_response(data)
 
     def post(self, request, *args, **kwargs):
+        if Task.disallow_start(self.task_name):
+            return HttpResponseForbidden('Forbidden. Such task is already started.')
         if self.form_class is None:
             data = request.POST.dict()
         else:
@@ -94,6 +99,7 @@ class LoadTaskView(AdminRequiredMixin, JSONResponseView):
         terms_legal_1='legal/common_law.csv',
         terms_legal_2='legal/us_cfr.csv',
         terms_legal_3='legal/us_usc.csv',
+        terms_legal_4='legal/common_law_top1000.csv',
         terms_scientific_1='scientific/us_hazardous_waste.csv',
         courts_1='legal/ca_courts.csv',
         courts_2='legal/us_courts.csv',
@@ -115,7 +121,12 @@ class LoadTaskView(AdminRequiredMixin, JSONResponseView):
             return self.json_response('error', status=404)
         data['user_id'] = request.user.pk
 
+        rejected_tasks = []
+        started_tasks = []
         for task_alias, task_name in self.tasks_map.items():
+            if Task.disallow_start(task_name):
+                rejected_tasks.append(task_name)
+                continue
             repo_paths = ['{}/{}/{}'.format(settings.GIT_DATA_REPO_ROOT,
                                             j.replace('{}_locale_'.format(i), ''),
                                             self.paths_map[i])
@@ -125,6 +136,7 @@ class LoadTaskView(AdminRequiredMixin, JSONResponseView):
             delete = '{}_delete'.format(task_alias) in data
             if any([repo_paths, file_path, delete]):
                 call_task(task_name, repo_paths=repo_paths, file_path=file_path, delete=delete)
+                started_tasks.append(task_name)
         return self.json_response('The task is started. It can take a while.')
 
 
@@ -136,6 +148,11 @@ class LoadDocumentsView(BaseAjaxTaskView):
 class LocateTaskView(BaseAjaxTaskView):
     form_class = LocateForm
     html_form_class = 'popup-form locate-form'
+    custom_tasks = set(
+        # 'LocateTerms',
+        # 'LocateGeoEntities',
+        # 'LocateParties',
+    )
 
     def post(self, request, *args, **kwargs):
         form = self.form_class(request.POST)
@@ -143,13 +160,46 @@ class LocateTaskView(BaseAjaxTaskView):
             return self.json_response(form.errors, status=404)
         data = form.cleaned_data
         task_names = set([i.split('_')[0] for i in data])
+        custom_task_names = task_names & self.custom_tasks
+        lexnlp_task_names = task_names - self.custom_tasks
 
-        for task_name in task_names:
-            kwargs = {k.replace('%s_' % task_name, ''): v for k, v in data.items() if k.startswith(task_name)}
+        # custom tasks
+        rejected_tasks = []
+        started_tasks = []
+        for task_name in custom_task_names:
+            kwargs = {k.replace('%s_' % task_name, ''): v for k, v in data.items()
+                      if k.startswith(task_name)}
             if any(kwargs.values()):
                 kwargs['user_id'] = request.user.pk
-                call_task(task_name, **kwargs)
-        return self.json_response('The task is started. It can take a while.')
+                if Task.disallow_start(task_name):
+                    rejected_tasks.append(task_name)
+                else:
+                    started_tasks.append(task_name)
+                    call_task(task_name, **kwargs)
+
+        # lexnlp tasks
+        lexnlp_task_data = dict()
+        for task_name in lexnlp_task_names:
+            kwargs = {k.replace('%s_' % task_name, ''): v for k, v in data.items()
+                      if k.startswith(task_name)}
+            if any(kwargs.values()):
+                task_name = task_name.replace('Locate', '').lower()
+                lexnlp_task_data[task_name] = kwargs
+        if lexnlp_task_data:
+            if Task.disallow_start('Locate'):
+                rejected_tasks.append('Locate')
+            else:
+                started_tasks.append('Locate')
+                call_task('Locate', tasks=lexnlp_task_data, user_id=request.user.pk)
+
+        response_text = ''
+        if started_tasks:
+            response_text += 'The Task is started. It can take a while.<br />'
+            response_text += 'Started tasks: [{}].<br />'.format(', '.join(started_tasks))
+        if rejected_tasks:
+            response_text += 'Some tasks were rejected (already started).<br />'
+            response_text += 'Rejected Tasks: [{}]'.format(', '.join(rejected_tasks))
+        return self.json_response(response_text)
 
 
 class LocateTermsView(BaseAjaxTaskView):
@@ -205,6 +255,7 @@ class CreateClassifierClassifyView(BaseAjaxTaskView):
 
 class UpdateElasticsearchIndexView(BaseAjaxTaskView):
     task_name = 'Update Elasticsearch Index'
+    form_class = UpdateElasticSearchForm
 
 
 class ClusterView(BaseAjaxTaskView):

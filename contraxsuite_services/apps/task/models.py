@@ -65,6 +65,10 @@ class Task(models.Model):
                 return 'PENDING'
         return self.celery_task.status
 
+    @classmethod
+    def disallow_start(cls, name):
+        return any([t.status == 'PENDING' for t in Task.objects.filter(name=name)])
+
     @property
     def date_done(self):
         if self.status == 'SUCCESS':
