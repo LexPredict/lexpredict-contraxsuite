@@ -594,11 +594,6 @@
               $(this).parent().addClass('checkbox-child');
             });
             self.setContent($content);
-
-            {# works on production; TODO: find issue, remove duplication #}
-            {% if settings.HOST_NAME != 'localhost' %}
-              onLoadJC(jc);
-            {% endif %}
           }).fail(function(xhr) {
             jc.close();
             $.alert({
@@ -614,10 +609,9 @@
           })
         },
         onContentReady: function(){
-          {# works locally #}
-          {% if settings.HOST_NAME == 'localhost' %}
+          setTimeout(function() {
             onLoadJC(jc);
-          {% endif %}
+          }, 1000);
         },
         columnClass: 'col-md-8 col-md-offset-2',
         type: $that.data('type') || 'blue',
