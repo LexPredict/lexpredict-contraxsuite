@@ -318,7 +318,7 @@
                 method: 'POST',
                 url: '{% url "analyze:text-unit-classification-submit" %}',
                 data: {
-                  text_unit_id: pk,
+                  owner_id: pk,
                   class_name: class_name,
                   class_value: class_value },
                 success: function(response){
@@ -496,7 +496,7 @@
         });
         $('.popup-menu a.tag-text-unit').click(function(event) {
           event.preventDefault();
-          tag_popup(pk)
+          tag_popup('text_unit', pk)
         });
         $('.popup-menu a.classify-text-unit').click(function(event) {
           event.preventDefault();
