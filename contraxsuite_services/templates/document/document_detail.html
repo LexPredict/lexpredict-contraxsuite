@@ -914,8 +914,9 @@
 
       // Top Date Duration Usages table
       var durations_datafields = [
-        { name: 'duration', type: 'int' },
-        { name: 'duration_str', type: 'string' },
+        { name: 'amount', type: 'int' },
+        { name: 'duration_type', type: 'string' },
+        { name: 'duration_days', type: 'float' },
         { name: 'count', type: 'int' },
         { name: 'duration_data' }
       ];
@@ -933,11 +934,14 @@
         show_menu(menu_data, grid, row.pk, 300);
       };
       var durations_columns = [
-        { text: 'Duration (days)', datafield: 'duration', width: 'auto',
+        { text: 'Amount', datafield: 'amount', width: 'auto',
           align: 'center', cellsalign: 'center' },
-        { text: 'Duration (value)', datafield: 'duration_str', width: 'auto',
+        { text: 'Duration Type', datafield: 'duration_type', width: 'auto',
           align: 'center', cellsalign: 'center' },
-        { text: 'Count', datafield: 'count', width: 150,
+        { text: 'Days', datafield: 'duration_days', width: 'auto',
+          align: 'center', cellsalign: 'center',
+          cellsrenderer: defaultLinkFormatter  },
+        { text: 'Count', datafield: 'count', width: 'auto',
           align: 'center', cellsalign: 'center' },
         { text: 'Action', datafield: 'url', width: 60,
           align: 'center', exportable: false,
@@ -999,7 +1003,7 @@
       // Top Currency Usages table
       var currencies_datafields = [
         { name: 'currency', type: 'string' },
-        { name: 'usage_type', type: 'string' },
+{#        { name: 'usage_type', type: 'string' },#}
         { name: 'count', type: 'int' },
         { name: 'url', type: 'string' },
         { name: 'currency_data' }
@@ -1021,8 +1025,8 @@
         { text: 'Currency', datafield: 'currency', width: 'auto',
           align: 'center', cellsalign: 'center',
           cellsrenderer: defaultLinkFormatter },
-        { text: 'Usage Type', datafield: 'usage_type', width: 'auto',
-          align: 'center', cellsalign: 'center' },
+{#        { text: 'Usage Type', datafield: 'usage_type', width: 'auto',#}
+{#          align: 'center', cellsalign: 'center' },#}
         { text: 'Count', datafield: 'count', width: 'auto',
           align: 'center', cellsalign: 'center' },
         { text: 'Action', datafield: 'url', width: 60,
@@ -1046,7 +1050,7 @@
             { name: 'currency', type: 'string' },
             { name: 'amount', type: 'float' },
             { name: 'amount__str', type: 'string' },
-            { name: 'usage_type', type: 'string' },
+{#            { name: 'usage_type', type: 'string' },#}
             { name: 'text_unit__text', type: 'string' },
             { name: 'detail_url', type: 'string' }
           ],
@@ -1074,8 +1078,8 @@
             columns: [
               { text: 'Currency', datafield: 'currency', width: 80,
                 align: 'center', cellsalign: 'center', columngroup: 'Currency Info' },
-              { text: 'Type', datafield: 'usage_type', width: 100,
-                align: 'center', cellsalign: 'center', columngroup: 'Currency Info' },
+{#              { text: 'Type', datafield: 'usage_type', width: 100,#}
+{#                align: 'center', cellsalign: 'center', columngroup: 'Currency Info' },#}
               { text: 'Amount', datafield: 'amount', width: 120, cellsformat: 'f2',
                 align: 'center', cellsalign: 'center', columngroup: 'Currency Info' },
               { text: 'Text Unit', datafield: 'text_unit__text', width: 'auto', minwidth: 300,
