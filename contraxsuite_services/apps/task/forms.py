@@ -105,6 +105,14 @@ class LocateCourtsForm(forms.Form):
         required=False)
 
 
+class LocateEmployeesForm(forms.Form):
+    header = 'Locate Employees in existing documents.'
+    delete = LTRCheckboxField(
+        label=_("Delete existing Employees"),
+        initial=True,
+        required=False)
+
+
 class LocateCurrenciesForm(forms.Form):
     header = 'Locate Currencies in existing text units.'
     use_symbols = LTRCheckboxField(
@@ -318,7 +326,6 @@ class LocateForm(forms.Form):
                    'class': 'checkbox-child'}),
         initial=False,
         required=False)
-
 
 class ExistedClassifierClassifyForm(forms.Form):
     header = 'Classify Text Units using an existing Classifier.'

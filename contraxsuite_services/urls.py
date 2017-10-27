@@ -41,6 +41,7 @@ urlpatterns = [
                   url(r'^extract/', include('apps.extract.urls', namespace='extract')),
                   url(r'^project/', include('apps.project.urls', namespace='project')),
                   url(r'^task/', include('apps.task.urls', namespace='task')),
+                  url(r'^employee/', include('apps.employee.urls', namespace='employee')),
                   # Custom
                   url(r'^admin/filebrowser/', include(filebrowser_site.urls)),
 

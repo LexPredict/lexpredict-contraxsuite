@@ -66,6 +66,10 @@ from apps.extract.models import (
     AmountUsage, PercentUsage, RatioUsage, DistanceUsage,
     Court, CourtUsage, CurrencyUsage, RegulationUsage,
     CitationUsage, DateDurationUsage, DateUsage, DefinitionUsage)
+
+from apps.employee.models import Employee, Employer
+from apps.employee.services import get_employee_name, get_employer_name, get_salary, get_effective_date
+
 from apps.task.celery import app
 from apps.task.models import Task
 from apps.task.utils.custom import fast_uuid, extract_entity_list, text2num
@@ -2229,6 +2233,77 @@ class Similarity(BaseTask):
                     self.task.push()
 
 
+TRIGGER_LIST_COMPANY = ["corporation", "company", "employer"]
+TRIGGER_LIST_EMPLOYEE = ["employee", "executive"]
+
+
+class LocateEmployees(BaseTask):
+    """
+        Locate Employees, i.e. extract employee objects
+        from uploaded employment agreement documents files in a given directory
+        :param kwargs
+        :return:
+    """
+    name= 'LocateEmployees'
+
+    def process(self, **kwargs):
+        """
+        Locate employees
+        :param kwargs:
+        :return:
+        """
+        if kwargs['delete']:
+            deleted = Employee.objects.all().delete()
+            self.log('Deleted: ' + str(deleted))
+
+        self.task.subtasks_total = Document.objects.count()
+        self.task.save()
+        self.log('Found {0} Documents. Added {0} subtasks.'.format(self.task.subtasks_total))
+
+        for d in Document.objects.all():
+            self.parse_document_for_employee.apply_async(args=(d.id,),
+                                                         task_id='%d_%s' % (self.task.id, fast_uuid()))
+
+    @staticmethod
+    @shared_task
+    def parse_document_for_employee(document_id):
+
+        employee_dict= {}
+
+        for t in TextUnit.objects.filter(document_id=document_id, unit_type="sentence").all():
+            text = t.text
+            # skip if all text in uppercase
+            if text == text.upper():
+                continue
+            # clean
+            text = text.replace('[', '(').replace(']', ')')
+            # get values not yet found. This logic assumes only one of each of these values found per document.
+            #if there is more than one it will only pick up the first
+            if employee_dict.get('name') is None:
+                employee_dict['name'] = get_employee_name(text)
+            if employee_dict.get('employer') is None:
+                employee_dict['employer'] = get_employer_name(text)
+            if employee_dict.get('salary') is None:
+                employee_dict['salary'] = get_salary(text)
+            if employee_dict.get('effective_date') is None:
+                employee_dict['effective_date'] = get_effective_date(text)
+
+        employee = employer = None
+        # create Employee only if his/her name exists
+        if employee_dict.get('name') is not None:
+            employee, ee_created = Employee.objects.get_or_create(
+                name=employee_dict['name'],
+                salary=employee_dict.get('salary'))
+
+        # create Employer
+        if employee and employee_dict.get('employer') is not None:
+            employer, er_created = Employer.objects.get_or_create(name=employee_dict['employer'])
+
+        if employee and employer and not amployee.employer:
+            employee.employer = employer
+            employee.save()
+
+
 # Register all load tasks
 app.tasks.register(LoadDocuments())
 app.tasks.register(LoadTerms())
@@ -2246,6 +2321,7 @@ app.tasks.register(LocateDefinitions())
 app.tasks.register(LocateCourts())
 app.tasks.register(LocateCurrencies())
 app.tasks.register(LocateRegulations())
+app.tasks.register(LocateEmployees())
 
 # Register all update/cluster/classify tasks
 app.tasks.register(UpdateElasticsearchIndex())

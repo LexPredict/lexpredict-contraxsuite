@@ -22,9 +22,10 @@ ROOT_DIR = environ.Path(__file__) - 2
 PROJECT_DIR = ROOT_DIR.path('contraxsuite_services')
 APPS_DIR = PROJECT_DIR.path('apps')
 
-DEBUG = False
-DEBUG_SQL = False
-DEBUG_TEMPLATE = False
+DEBUG = True
+DEBUG_TEMPLATE=True
+
+ALLOWED_HOSTS=['dev.kelly.contraxsuite.com']
 
 # APP CONFIGURATION
 # ------------------------------------------------------------------------------
@@ -72,6 +73,7 @@ INSTALLED_APPS = (
     'apps.project',
     'apps.task',
     'apps.users',
+    'apps.employee'
 )
 
 # MIDDLEWARE CONFIGURATION
@@ -356,6 +358,7 @@ CKEDITOR_CONFIGS = {
 LOGIN_EXEMPT_URLS = (
     r'^accounts/',    # allow any URL under /accounts/*
     r'^__debug__/',   # allow debug toolbar
+    r'^extract/search/',
 )
 
 # django-filebrowser
@@ -366,7 +369,7 @@ STRICT_PIL = True
 # Allowed extensions for file upload
 FILEBROWSER_EXTENSIONS = {
     'Image': ['.jpg', '.jpeg', '.png', '.tif', '.tiff'],
-    'Document': ['.pdf', '.doc', '.docx', '.rtf', '.txt', '.xls', '.xlsx', '.csv'],
+    'Document': ['.pdf', '.doc', '.docx', '.rtf', '.txt', '.xls', '.xlsx', '.csv', '.html'],
 }
 # Max. Upload Size in Bytes
 FILEBROWSER_MAX_UPLOAD_SIZE = 10 * 1024 ** 2    # 10Mb

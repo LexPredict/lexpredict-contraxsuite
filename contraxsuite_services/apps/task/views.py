@@ -17,7 +17,7 @@ from apps.common.mixins import (
     JSONResponseView, JqPaginatedListView, TechAdminRequiredMixin)
 from apps.task.forms import (
     LoadDocumentsForm, LocateTermsForm, LocateForm,
-    LocateGeoEntitiesForm, LocatePartiesForm,
+    LocateGeoEntitiesForm, LocatePartiesForm, LocateEmployeesForm,
     LocateDatesForm, LocateDateDurationsForm, LocateDefinitionsForm,
     LocateCourtsForm, LocateCurrenciesForm,
     ExistedClassifierClassifyForm, CreateClassifierClassifyForm,
@@ -235,6 +235,11 @@ class LocateDefinitionsView(BaseAjaxTaskView):
 class LocateCourtsView(BaseAjaxTaskView):
     task_name = 'Locate Courts'
     form_class = LocateCourtsForm
+
+
+class LocateEmployeesView(BaseAjaxTaskView):
+    task_name = 'Locate Employees'
+    form_class = LocateEmployeesForm
 
 
 class LocateCurrenciesView(BaseAjaxTaskView):

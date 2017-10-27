@@ -176,4 +176,10 @@ urlpatterns += [
         views.TypeaheadPartyName.as_view(),
         name='party-name-complete',
     ),
+
+    url(
+        r'^search/term/$',
+        views.TermSearchView.as_view(),
+        name='search-term',
+    ),
 ]

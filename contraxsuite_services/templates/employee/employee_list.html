@@ -1,0 +1,69 @@
+{% extends "base_list_ajax.html" %}
+{% load static %}
+
+{% block js_extra %}
+  {{ block.super }}
+  <script type="text/javascript">
+    $(document).ready(function () {
+      var datafields = [
+        { name: 'pk', type: 'int' },
+        { name: 'document__name', type: 'string' },
+        { name: 'document__document_type', type: 'string' },
+        { name: 'document__description', type: 'string' },
+        { name: 'name', type: 'string' },
+        { name: 'salary', type: 'int' },
+        { name: 'title', type: 'string' },
+        { name: 'effective_date', type: 'date' },
+        { name: 'employer__name', type: 'string' },
+        { name: 'document_url', type: 'string' },
+        { name: 'employee_url', type: 'string' }
+      ];
+      var menu_renderer = function(row, event) {
+        var grid = $(event.currentTarget).parents('.jqxgrid');
+        row = grid.jqxGrid('getrowdata', row);
+        var menu_data = [
+          {url: row.url,
+            icon: 'fa fa-file-text-o',
+            text: 'View Document'},
+          {url: row.employee_url,
+            icon: 'fa fa-user',
+            text: 'View Employee'},
+        ];
+        show_menu(menu_data, grid, row.pk);
+      };
+      var columns = [
+        { text: 'Name', datafield: 'document__name', width: 'auto',
+          align: 'center', cellsalign: 'left',
+          cellsrenderer: defaultLinkFormatter, columngroup: 'Document' },
+        { text: 'Type', datafield: 'document__document_type', width: 100,
+          align: 'center', cellsalign: 'center', columngroup: 'Document' },
+        { text: 'Name', datafield: 'name', width: 200,
+          align: 'center', cellsalign: 'left' },
+        { text: 'Title', datafield: 'title', width: 150,
+          align: 'center', cellsalign: 'center' },
+        { text: 'Salary', datafield: 'salary', width: 100,
+          align: 'center', cellsalign: 'center', cellsformat: 'c2' },
+        { text: 'Effective Date', datafield: 'effective_date', width: 120,
+          filtertype: 'date', cellsformat: 'MM-dd-yyyy',
+          align: 'center', cellsalign: 'center' },
+        { text: 'Employer Name', datafield: 'employer__name',
+          width: 200, enabletooltips: true,
+          align: 'center', cellsalign: 'center' },
+        { text: 'Action', datafield: 'url', width: 60,
+          align: 'center', exportable: false,
+          columntype: 'button',
+          sortable: false, filterable: false, menu: false,
+          cellsrenderer: function(){return 'Menu'},
+          buttonclick: menu_renderer }
+      ];
+
+      var custom_grid_options = {
+        columngroups: [
+          { text: 'Document', name: 'Document', align: 'center' }
+        ]
+      };
+      draw_grid(".jqxgrid", datafields, columns, true, null, custom_grid_options);
+
+    });
+  </script>
+{% endblock %}

@@ -1,0 +1,57 @@
+{% extends "base_list_ajax.html" %}
+{% load static %}
+
+{% block js_extra %}
+  {{ block.super }}
+  <script type="text/javascript">
+    $(document).ready(function () {
+      var datafields = [
+        { name: 'pk', type: 'int' },
+        { name: 'document__name', type: 'string' },
+        { name: 'document__document_type', type: 'string' },
+        { name: 'document__description', type: 'string' },
+        { name: 'name', type: 'string' },
+        { name: 'salary', type: 'string' },
+        { name: 'employer__name', type: 'string' },
+        { name: 'document_url', type: 'string' },
+        { name: 'employee_url', type: 'string' }
+      ];
+      var menu_renderer = function(row, event) {
+        var grid = $(event.currentTarget).parents('.jqxgrid');
+        row = grid.jqxGrid('getrowdata', row);
+        var menu_data = [
+          {url: row.document_url,
+            icon: 'fa fa-file-text-o',
+            text: 'View Document'},
+          {url: row.employee_url,
+            icon: 'fa fa-user',
+            text: 'View Employee'},
+        ];
+        show_menu(menu_data, grid, row.pk);
+      };
+      var columns = [
+        { text: 'Name', datafield: 'document__name', width: 300,
+          align: 'center', cellsalign: 'left', enabletooltips: true,
+          cellsrenderer: defaultLinkFormatter, columngroup: 'Document' },
+        { text: 'Type', datafield: 'document__document_type', width: 100,
+          align: 'center', cellsalign: 'center', columngroup: 'Document' },
+        { text: 'Name', datafield: 'name', width: 'auto',
+          align: 'center', cellsalign: 'left', enabletooltips: true,
+          cellsrenderer: defaultLinkFormatter},
+        { text: 'Salary', datafield: 'salary', width: 100,
+          align: 'center', cellsalign: 'center' },
+        { text: 'Employer Name', datafield: 'employer__name',
+          width: 200, enabletooltips: true,
+          align: 'center', cellsalign: 'center' }
+      ];
+
+      var custom_grid_options = {
+        columngroups: [
+          { text: 'Document', name: 'Document', align: 'center' }
+        ]
+      };
+      draw_grid(".jqxgrid", datafields, columns, true, null, custom_grid_options);
+
+    });
+  </script>
+{% endblock %}

@@ -4,21 +4,10 @@
 {% load admin_static i18n l10n fb_tags fb_compat %}
 
 <!-- STYLESHEETS -->
-{% block css_extra %}
+{% block css %}
   {{ block.super }}
   <link rel="stylesheet" type="text/css" href="{% static "admin/css/forms.css" %}" />
   <link rel="stylesheet" type="text/css" href="{% static "filebrowser/css/filebrowser.css" %}" />
-  <style>
-    .progress-bar {
-      float: inherit;
-      width: inherit;
-    }
-    .qq-upload-complete {
-      position: inherit;
-      left: 0;
-      margin: 0;
-    }
-  </style>
 {% endblock %}
 
 <!-- JAVASCRIPTS -->

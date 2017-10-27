@@ -126,6 +126,14 @@
         </ul>
       </li>
 
+          <li>
+            <a class="task" href="#"
+               data-href="{% url "task:locate-employees" %}"
+               data-btn-text="Locate">
+              <i class="fa fa-file-text-o"></i>
+              Locate Employees</a>
+          </li>
+
       <li class="divider"></li>
       <li>
         <a class="task" href="#"
@@ -496,6 +504,7 @@
     };
     var onLoadJC = function(jc){
       var $form = jc.$content;
+      console.log($form)
       {# activate chosen plugin #}
       $form.find('select.chosen:enabled').chosen();
       $form.find('form > p:visible:last:has(select)').css('height', '80px');

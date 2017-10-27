@@ -43,8 +43,14 @@ urlpatterns = [
 
     url(
         r'^locate/$',
+        #NewLocateView.as_view(),
         views.LocateTaskView.as_view(),
         name='locate',
+    ),
+    url(
+        r'^locate-employees/$',
+        views.LocateEmployeesView.as_view(),
+        name='locate-employees',
     ),
     url(
         r'^locate-terms/$',
