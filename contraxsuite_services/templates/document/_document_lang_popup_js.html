@@ -1,0 +1,42 @@
+<script type="text/javascript">
+  // document language popup
+  function document_lang_popup(owner_name, pk, grid) {
+    if (owner_name == 'cluster_documents') {
+      var title = 'Set Document Language';
+      var url = '{% url "document:cluster-documents-language-submit" %}'
+    }
+    $.confirm({
+      type: 'blue',
+      icon: 'fa fa-tags',
+      title: title,
+      backgroundDismiss: true,
+      content: '<input type="text" class="form-control" name="language" id="language" placeholder="Language code" value="" size="3">',
+      buttons: {
+        save: {
+          text: 'Save',
+          btnClass: 'btn-u btn-sm',
+          action: function(){
+            var lang = this.$content.find('#language').val();
+            if (2 <= lang.length <= 3) {
+              $.ajax({
+                method: 'POST',
+                url: url,
+                data: {
+                  owner_id: pk,
+                  language: lang },
+                success: function(response){
+                  if (grid){
+                    $(grid).jqxGrid('updatebounddata');
+                  }
+                  ajax_success_handler(response)
+                },
+                error: ajax_error_handler
+              })
+            }
+          }
+        },
+        cancel: cancel_button_action
+      }
+    })
+  }
+</script>

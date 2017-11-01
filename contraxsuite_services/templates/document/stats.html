@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% load humanize %}
+{% load humanize project_tags %}
 
 {% block title %}Stats{% endblock %}
 
@@ -217,8 +217,8 @@
     </thead>
     <tbody>
     <tr>
-      <td>1.0.2</td>
-      <td>370c7f1</td>
+      <td>{% settings_value "VERSION_NUMBER" %}</td>
+      <td>{% settings_value "VERSION_COMMIT" %}</td>
     </tr>
     </tbody>
   </table>

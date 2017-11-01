@@ -88,6 +88,10 @@
     .checkbox-child label {
       margin-left: 5px;
     }
+    .locate-form .helptext {
+      text-align: left;
+      margin-left: 43px;
+    }
   </style>
 {% endblock %}
 
@@ -496,6 +500,7 @@
     };
     var onLoadJC = function(jc){
       var $form = jc.$content;
+      console.log($form)
       {# activate chosen plugin #}
       $form.find('select.chosen:enabled').chosen();
       $form.find('form > p:visible:last:has(select)').css('height', '80px');

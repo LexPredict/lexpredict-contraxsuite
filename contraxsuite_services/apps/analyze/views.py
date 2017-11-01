@@ -22,8 +22,8 @@ from apps.common.mixins import (
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2017, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.0.1/LICENSE"
-__version__ = "1.0.1"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.0.3/LICENSE"
+__version__ = "1.0.3"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -279,9 +279,9 @@ class PartySimilarityListView(JqPaginatedListView):
     model = PartySimilarity
     # limit_reviewers_qs_by_field = ['document_a', 'document_b']
     json_fields = ['party_a__name', 'party_a__description',
-                   'party_a__pk', 'party_a__type',
+                   'party_a__pk', 'party_a__type_abbr',
                    'party_b__name', 'party_a__description',
-                   'party_b__pk', 'party_b__type',
+                   'party_b__pk', 'party_b__type_abbr',
                    'similarity']
 
     def get_json_data(self, **kwargs):

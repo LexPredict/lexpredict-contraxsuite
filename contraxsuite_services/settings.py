@@ -23,7 +23,6 @@ PROJECT_DIR = ROOT_DIR.path('contraxsuite_services')
 APPS_DIR = PROJECT_DIR.path('apps')
 
 DEBUG = False
-DEBUG_SQL = False
 DEBUG_TEMPLATE = False
 
 # APP CONFIGURATION
@@ -45,7 +44,6 @@ INSTALLED_APPS = (
     'allauth',  # registration
     'allauth.account',  # registration
     'allauth.socialaccount',  # registration
-    'haystack',   # elastic search
     'simple_history',    # historical records
     'django_celery_results',    # for celery tasks
     'filebrowser',    # browse/upload documents
@@ -335,13 +333,10 @@ FILE_UPLOAD_HANDLERS = (
     "django_excel.TemporaryExcelFileUploadHandler"
 )
 
-# django-haystack
-HAYSTACK_CONNECTIONS = {
-    'default': {
-        'ENGINE': 'haystack.backends.elasticsearch_backend.ElasticsearchSearchEngine',
-        'URL': 'http://127.0.0.1:9200/',
-        'INDEX_NAME': 'haystack',
-    },
+# elasticsearch integration
+ELASTICSEARCH_CONFIG = {
+    'hosts': [{'host': '127.0.0.1', 'port': 9200}],
+    'index': 'contraxsuite'
 }
 
 # django-ckeditor
@@ -356,6 +351,7 @@ CKEDITOR_CONFIGS = {
 LOGIN_EXEMPT_URLS = (
     r'^accounts/',    # allow any URL under /accounts/*
     r'^__debug__/',   # allow debug toolbar
+    r'^extract/search/',
 )
 
 # django-filebrowser
@@ -366,7 +362,7 @@ STRICT_PIL = True
 # Allowed extensions for file upload
 FILEBROWSER_EXTENSIONS = {
     'Image': ['.jpg', '.jpeg', '.png', '.tif', '.tiff'],
-    'Document': ['.pdf', '.doc', '.docx', '.rtf', '.txt', '.xls', '.xlsx', '.csv'],
+    'Document': ['.pdf', '.doc', '.docx', '.rtf', '.txt', '.xls', '.xlsx', '.csv', '.html'],
 }
 # Max. Upload Size in Bytes
 FILEBROWSER_MAX_UPLOAD_SIZE = 10 * 1024 ** 2    # 10Mb
@@ -391,7 +387,7 @@ JQ_EXPORT = False
 # place dictionaries for GeoEntities, Terms, US Courts, etc.
 DATA_ROOT = PROJECT_DIR('data/')
 GIT_DATA_REPO_ROOT = 'https://raw.githubusercontent.com/' \
-                     'LexPredict/lexpredict-legal-dictionary/1.0.2'
+                     'LexPredict/lexpredict-legal-dictionary/1.0.3'
 
 # logging
 LOG_FILE_NAME = 'log.txt'
@@ -447,6 +443,9 @@ NOTEBOOK_ARGUMENTS = [
     '--ip=0.0.0.0',
     '--port=8000',
 ]
+
+VERSION_NUMBER = '1.0.3'
+VERSION_COMMIT = '9ed8aea'
 
 try:
     from local_settings import *

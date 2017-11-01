@@ -1,0 +1,55 @@
+<script type="text/javascript">
+  // text unit property popup
+  function document_property_popup(owner_name, pk, grid, property_pk, key, value) {
+    if (typeof property_pk === "undefined"){
+      property_pk = null;
+      key = '';
+      value = '';
+    }
+    if (owner_name == 'document') {
+      var title = 'Document Property';
+      var url = '{% url "document:document-property-submit" %}'
+    }
+    else if (owner_name == 'cluster_documents') {
+      title = 'Document Property for all documents in the Cluster';
+      url = '{% url "document:cluster-documents-property-submit" %}'
+    }
+    $.confirm({
+      type: 'blue',
+      icon: 'fa fa-tags',
+      title: title,
+      backgroundDismiss: true,
+      content: '<input type="text" class="form-control" name="key" id="key" placeholder="Key" value="' + key + '"><br />' +
+      '<input type="text" class="form-control" name="value" id="value" placeholder="Value" value="' + value + '">',
+      buttons: {
+        save: {
+          text: 'Save',
+          btnClass: 'btn-u btn-sm',
+          action: function(){
+            var key = this.$content.find('#key').val();
+            var value = this.$content.find('#value').val();
+            if (key && value) {
+              $.ajax({
+                method: 'POST',
+                url: url,
+                data: {
+                  owner_id: pk,
+                  property_pk: property_pk,
+                  key: key,
+                  value: value },
+                success: function(response){
+                  if (grid){
+                    $(grid).jqxGrid('updatebounddata');
+                  }
+                  ajax_success_handler(response)
+                },
+                error: ajax_error_handler
+              })
+            }
+          }
+        },
+        cancel: cancel_button_action
+      }
+    })
+  }
+</script>

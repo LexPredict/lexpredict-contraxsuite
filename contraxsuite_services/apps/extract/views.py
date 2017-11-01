@@ -15,15 +15,16 @@ import icalendar
 
 # Django imports
 from django.core.urlresolvers import reverse
+from django.contrib.auth import authenticate
 from django.db.models import Count, F, Max, Min, Sum, Q
 from django.db.models.functions import TruncMonth
-from django.http import Http404
+from django.http import Http404, HttpResponseForbidden, HttpResponse
 from django.http.response import HttpResponse
 from django.views.generic import DetailView, TemplateView
 
 # Project imports
 from apps.common.mixins import (
-    AjaxListView, AjaxResponseMixin, JqPaginatedListView, TypeaheadView)
+    AjaxListView, AjaxResponseMixin, JqPaginatedListView, JSONResponseView, TypeaheadView)
 from apps.document.models import Document
 from apps.extract.models import (
     AmountUsage, CourtUsage, CurrencyUsage, DistanceUsage,
@@ -34,8 +35,8 @@ from apps.extract.models import (
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2017, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.0.1/LICENSE"
-__version__ = "1.0.1"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.0.3/LICENSE"
+__version__ = "1.0.3"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -343,7 +344,7 @@ class PartyUsageListView(JqPaginatedListView):
     model = PartyUsage
     json_fields = ['text_unit__document__pk', 'text_unit__document__name',
                    'text_unit__document__description', 'text_unit__document__document_type',
-                   'party__name', 'party__type', 'party__pk',
+                   'party__name', 'party__type_abbr', 'party__pk',
                    'count', 'text_unit__pk', 'text_unit__text']
     limit_reviewers_qs_by_field = 'text_unit__document'
 
@@ -410,7 +411,7 @@ class TopPartyUsageListView(JqPaginatedListView):
         if "party_pk" in self.request.GET:
             qs = qs.filter(party__pk=self.request.GET['party_pk'])
 
-        qs = qs.values("party__name", "party__type", "party__pk") \
+        qs = qs.values("party__name", "party__type_abbr", "party__pk") \
             .annotate(count=Sum("count")) \
             .order_by("-count")
         return qs
@@ -1284,3 +1285,39 @@ class PartyNetworkChartView(PartyUsageListView):
             chart_nodes = [i for i in chart_nodes if i['id'] in members]
             chart_links = [i for i in chart_links if i['source'] in members or i['target'] in members]
         return {"nodes": chart_nodes, "links": chart_links}
+
+
+class TermSearchView(JSONResponseView):
+
+    def get(self, request, *args, **kwargs):
+        return HttpResponseForbidden()
+
+    def post(self, request, *args, **kwargs):
+        if not request.is_ajax():
+            return HttpResponseForbidden()
+        username = request.POST.get('username')
+        password = request.POST.get('password')
+        user = authenticate(username=username, password=password)
+        if not user:
+            return HttpResponse('Wrong username or password.',
+                                content_type="application/json",
+                                status=401)
+        request.user = user
+        return super().post(request, *args, **kwargs)
+
+    def get_json_data(self, request, *args, **kwargs):
+        request.GET = request.POST
+        data = TermUsageListView(request=request).get_json_data()
+        if request.POST.get('as_dict') in [None, 'false']:
+            ret = [dict(
+                    document_id=item['text_unit__document__pk'],
+                    term=item['term__term'],
+                    count=item['count'],
+                    text_unit_id=item['text_unit__pk']) for item in data['data']]
+        else:
+            ret = [(item['text_unit__document__pk'],
+                    item['count'],
+                    item['term__term'],
+                    item['text_unit__pk']) for item in data['data']]
+            ret = [('Document ID', 'Term', 'Count', 'Text Unit ID')] + ret
+        return ret

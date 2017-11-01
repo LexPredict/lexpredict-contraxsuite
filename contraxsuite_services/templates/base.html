@@ -1,4 +1,4 @@
-{% load static i18n pipeline %}
+{% load static i18n pipeline project_tags %}
 
 <!DOCTYPE html>
 <html dir="ltr" lang="en-US">
@@ -436,7 +436,7 @@
           <div class="col_half">
             Copyrights &copy; 2015-2017, <a href="https://contraxsuite.com">ContraxSuite, LLC</a><br>
             <div class="copyright-links"><a href="#">Terms of Use</a></div>
-            <div style="color: #1ABC9C;">version: 1.0.2</div>
+            <div style="color: #1ABC9C;">version: {% settings_value "VERSION_NUMBER" %}</div>
           </div>
 
           <div class="col_half col_last tright">

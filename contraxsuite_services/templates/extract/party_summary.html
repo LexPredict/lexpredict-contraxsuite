@@ -35,8 +35,8 @@
     <tbody>
     <tr>
       <td>{{ object.name }}</td>
-      <td>{{ object.type }}</td>
-      <td>{{ object.description }}</td>
+      <td>{{ object.type_abbr }}</td>
+      <td>{{ object.description|default:"-" }}</td>
       </tr>
     </tbody>
   </table>
@@ -382,7 +382,7 @@
       // Parties table
       var parties_datafields = [
         { name: 'party_b__name', type: 'string' },
-        { name: 'party_b__type', type: 'string' },
+        { name: 'party_b__type_abbr', type: 'string' },
         { name: 'party_b__description', type: 'string' },
         { name: 'party_b__url', type: 'string' },
         { name: 'similarity', type: 'float' }
@@ -403,7 +403,7 @@
       var parties_columns = [
         { text: 'Name', datafield: 'party_b__name', width: 'auto',
           align: 'center', cellsalign: 'center', columngroup: 'Party' },
-        { text: 'Type', datafield: 'party_b__type', width: 'auto',
+        { text: 'Type', datafield: 'party_b__type_abbr', width: 'auto',
           align: 'center', cellsalign: 'center', columngroup: 'Party' },
 {#        { text: 'Description', datafield: 'party_b__description', width: 'auto',#}
 {#          align: 'center', cellsalign: 'center', columngroup: 'Party' },#}

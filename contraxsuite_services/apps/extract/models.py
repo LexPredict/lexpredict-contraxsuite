@@ -5,8 +5,8 @@ from apps.document.models import TextUnit
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2017, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.0.1/LICENSE"
-__version__ = "1.0.1"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.0.3/LICENSE"
+__version__ = "1.0.3"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -136,11 +136,14 @@ class Party(models.Model):
     Party, e.g., person or company
     """
     name = models.CharField(max_length=1024, db_index=True)
-    type = models.CharField(max_length=1024, db_index=True)
+    type = models.CharField(max_length=1024, blank=True, null=True, db_index=True)
+    type_abbr = models.CharField(max_length=30, blank=True, null=True, db_index=True)
+    type_label = models.CharField(max_length=50, blank=True, null=True, db_index=True)
+    type_description = models.CharField(max_length=50, blank=True, null=True, db_index=True)
     description = models.TextField(null=True)
 
     class Meta:
-        unique_together = (("name", "type"),)
+        unique_together = (("name", "type_abbr"),)
         verbose_name_plural = 'Parties'
         ordering = ('name', 'type')
 
@@ -263,7 +266,7 @@ class BaseAmountUsage(Usage):
     Base Amount usage model
     """
     amount = models.FloatField(blank=True, null=True)
-    amount_str = models.CharField(max_length=150, blank=True, null=True)
+    amount_str = models.CharField(max_length=300, blank=True, null=True)
 
     class Meta:
         abstract = True

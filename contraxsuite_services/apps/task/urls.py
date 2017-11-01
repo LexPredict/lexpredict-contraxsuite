@@ -11,8 +11,8 @@ from . import views
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2017, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.0.1/LICENSE"
-__version__ = "1.0.1"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.0.3/LICENSE"
+__version__ = "1.0.3"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -50,41 +50,6 @@ urlpatterns = [
         r'^locate-terms/$',
         views.LocateTermsView.as_view(),
         name='locate-terms',
-    ),
-    url(
-        r'^locate-geo-entities/$',
-        views.LocateGeoEntitiesView.as_view(),
-        name='locate-geo-entities',
-    ),
-    url(
-        r'^locate-parties/$',
-        views.LocatePartiesView.as_view(),
-        name='locate-parties',
-    ),
-    url(
-        r'^locate-dates/$',
-        views.LocateDatesView.as_view(),
-        name='locate-dates',
-    ),
-    url(
-        r'^locate-date-durations/$',
-        views.LocateDateDurationsView.as_view(),
-        name='locate-date-durations',
-    ),
-    url(
-        r'^locate-definitions/$',
-        views.LocateDefinitionsView.as_view(),
-        name='locate-definitions',
-    ),
-    url(
-        r'^locate-courts/$',
-        views.LocateCourtsView.as_view(),
-        name='locate-courts',
-    ),
-    url(
-        r'^locate-currencies/$',
-        views.LocateCurrenciesView.as_view(),
-        name='locate-currencies',
     ),
 
     url(

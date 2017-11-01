@@ -26,8 +26,8 @@ from apps.common.utils import cap_words, export_qs_to_file
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2017, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.0.1/LICENSE"
-__version__ = "1.0.1"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.0.3/LICENSE"
+__version__ = "1.0.3"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -356,6 +356,8 @@ class AjaxListView(ReviewerQSMixin, AjaxResponseMixin, BaseCustomListView):
                        if isinstance(i, django_fields.BooleanField)]
         for row in data:
             row.update((k, False) for k, v in row.items() if v is None and k in bool_fields)
+            row.update((k, v.replace("<", "&lt;").replace(">", "&gt;"))
+                       for k, v in row.items() if isinstance(v, str))
 
         return data
 
