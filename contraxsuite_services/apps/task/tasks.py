@@ -34,6 +34,7 @@ from tika import parser
 from celery import shared_task
 from celery.result import AsyncResult
 from celery.utils.log import get_task_logger
+from celery.contrib import rdb
 
 # Scikit-learn imports
 from sklearn.cluster import Birch, DBSCAN, KMeans, MiniBatchKMeans
@@ -67,8 +68,9 @@ from apps.extract.models import (
     Court, CourtUsage, CurrencyUsage, RegulationUsage,
     CitationUsage, DateDurationUsage, DateUsage, DefinitionUsage)
 
-from apps.employee.models import Employee, Employer
-from apps.employee.services import get_employee_name, get_employer_name, get_salary, get_effective_date
+from apps.employee.models import Employee, Employer, Provision
+from apps.employee.services import get_employee_name, get_employer_name, get_salary,\
+    get_effective_date, get_similar_to_non_compete, get_similar_to_termination, get_vacation_duration
 
 from apps.task.celery import app
 from apps.task.models import Task
@@ -1086,7 +1088,7 @@ class LocateParties(BaseTask):
         self.log('Found {0} Documents. Added {0} subtasks.'.format(self.task.subtasks_total))
 
         for d in Document.objects.all():
-            self.parse_document.apply_async(args=(d.id,),
+            self.parse_document.apply_async(args=(d.id, ),
                                             task_id='%d_%s' % (self.task.id, fast_uuid()))
 
     @staticmethod
@@ -2233,9 +2235,6 @@ class Similarity(BaseTask):
                     self.task.push()
 
 
-TRIGGER_LIST_COMPANY = ["corporation", "company", "employer"]
-TRIGGER_LIST_EMPLOYEE = ["employee", "executive"]
-
 
 class LocateEmployees(BaseTask):
     """
@@ -2253,7 +2252,7 @@ class LocateEmployees(BaseTask):
         :return:
         """
         if kwargs['delete']:
-            deleted = Employee.objects.all().delete()
+            deleted = Employee.objects.all().delete() + Employer.objects.all().delete() + Provision.objects.all().delete()
             self.log('Deleted: ' + str(deleted))
 
         self.task.subtasks_total = Document.objects.count()
@@ -2261,7 +2260,7 @@ class LocateEmployees(BaseTask):
         self.log('Found {0} Documents. Added {0} subtasks.'.format(self.task.subtasks_total))
 
         for d in Document.objects.all():
-            self.parse_document_for_employee.apply_async(args=(d.id,),
+            self.parse_document_for_employee.apply_async(args=(d.id, ),
                                                          task_id='%d_%s' % (self.task.id, fast_uuid()))
 
     @staticmethod
@@ -2269,8 +2268,9 @@ class LocateEmployees(BaseTask):
     def parse_document_for_employee(document_id):
 
         employee_dict= {}
+        provisions=[]
 
-        for t in TextUnit.objects.filter(document_id=document_id, unit_type="sentence").all():
+        for t in TextUnit.objects.filter(document_id=document_id, unit_type="paragraph").all():
             text = t.text
             # skip if all text in uppercase
             if text == text.upper():
@@ -2278,28 +2278,70 @@ class LocateEmployees(BaseTask):
             # clean
             text = text.replace('[', '(').replace(']', ')')
             # get values not yet found. This logic assumes only one of each of these values found per document.
-            #if there is more than one it will only pick up the first
+            # if there is more than one it will only pick up the first (except effective date)
             if employee_dict.get('name') is None:
                 employee_dict['name'] = get_employee_name(text)
             if employee_dict.get('employer') is None:
                 employee_dict['employer'] = get_employer_name(text)
-            if employee_dict.get('salary') is None:
-                employee_dict['salary'] = get_salary(text)
+            if employee_dict.get('annual_salary') is None:
+                get_salary_result = get_salary(text)
+                if get_salary_result is not None:
+                    employee_dict['annual_salary'] = get_salary_result[0][0] * get_salary_result[1]
+                    employee_dict['salary_currency'] = get_salary_result[0][1]
             if employee_dict.get('effective_date') is None:
                 employee_dict['effective_date'] = get_effective_date(text)
+            if employee_dict.get('vacation') is None:
+                get_vacation_result= get_vacation_duration(text)
+                if get_vacation_result is not None:
+                    yearly_amount= get_vacation_result[0][1]*get_vacation_result[1]
+                    employee_dict['vacation']= str(yearly_amount) + " " + str(get_vacation_result[0][0])+"s"
+
+            non_compete_similarity=get_similar_to_non_compete(text)
+            if non_compete_similarity >.5:
+                provisions.append({"text_unit":t.id, "similarity":non_compete_similarity, "type": "noncompete"})
+
+            termination_similarity=get_similar_to_termination(text)
+            if termination_similarity >.5:
+                provisions.append({"text_unit":t.id, "similarity":termination_similarity, "type": "termination"})
 
         employee = employer = None
         # create Employee only if his/her name exists
         if employee_dict.get('name') is not None:
             employee, ee_created = Employee.objects.get_or_create(
                 name=employee_dict['name'],
-                salary=employee_dict.get('salary'))
+                annual_salary=employee_dict.get('annual_salary'),
+                salary_currency=employee_dict.get('salary_currency'),
+                effective_date= employee_dict.get('effective_date'),
+                vacation_yearly= employee_dict.get('vacation'),
+                document= Document.objects.get(pk=document_id)
+                )
+
+        if len(provisions)>0 and employee is not None:
+            noncompete_found=False
+            termination_found=False
+
+            for i in provisions:
+                if i["type"]=="noncompete":
+                    noncompete_found=True
+                if i["type"]=="termination":
+                    termination_found=True
+                provision, provision_created = Provision.objects.get_or_create(
+                    text_unit=TextUnit.objects.get(pk=i["text_unit"]),
+                    similarity=i["similarity"],
+                    employee=employee,
+                    document=Document.objects.get(pk=document_id),
+                    type= i["type"]
+                )
+            employee.has_noncompete= noncompete_found
+            employee.has_termination=termination_found
+            employee.save()
 
         # create Employer
         if employee and employee_dict.get('employer') is not None:
             employer, er_created = Employer.objects.get_or_create(name=employee_dict['employer'])
 
-        if employee and employer and not amployee.employer:
+
+        if employee and employer and not employee.employer:
             employee.employer = employer
             employee.save()
 
@@ -2391,3 +2433,4 @@ def purge_task(task_pk):
     ret = 'Deleted task, celery task, %d children celery tasks.' % children_tasks_no
     log(ret)
     return {'message': ret, 'status': 'success'}
+

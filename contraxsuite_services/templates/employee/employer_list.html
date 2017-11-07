@@ -1,0 +1,24 @@
+{% extends "base_list_ajax.html" %}
+{% load static %}
+
+{% block js_extra %}
+  {{ block.super }}
+  <script type="text/javascript">
+    $(document).ready(function () {
+      var datafields = [
+        { name: 'pk', type: 'int' },
+        { name: 'employer__name', type: 'string' },
+          {name: 'count' , type: 'int'}
+      ];
+      var columns = [
+        { text: 'Name', datafield: 'employer__name', width: 300,
+          align: 'center', cellsalign: 'left', enabletooltips: true,},
+        { text: 'Count', datafield: 'count', width: 80,
+          align: 'center', cellsalign: 'center' },
+      ];
+
+      draw_grid(".jqxgrid", datafields, columns, true, null, custom_grid_options);
+
+    });
+  </script>
+{% endblock %}

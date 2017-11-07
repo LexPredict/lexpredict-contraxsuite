@@ -1,0 +1,132 @@
+{% extends "base.html" %}
+{% load static pipeline %}
+
+{% block css_extra %}
+  {% stylesheet 'custom_jqwidgets_css' %}
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/jquery-confirm/3.1.1/jquery-confirm.min.css">
+  {{ block.super }}
+{% endblock %}
+
+{% block Title %}Employee Detail View{% endblock %}
+
+{% block page_header %}Employee Detail View{% endblock %}
+
+{% block content %}
+    <h3>Employee</h3>
+      <div>
+        <a class="btn-u btn-sm" id="button_view_raw_document"
+       href="{% url "document:document-detail" employee.document.id %}" target="_blank">
+      View Document Detail
+        </a>
+  </div>
+  <table class="table table-bordered table-striped">
+    <thead class="thead-inverse">
+    <tr>
+      <th>Name</th>
+      <th>Annual Salary</th>
+      <th>Currency</th>
+        <th>Annual Vacation</th>
+      <th>Employer Name</th>
+        <th>Effective Date</th>
+    </tr>
+    </thead>
+    <tbody>
+    <tr>
+      <td>{{ employee.name }}</td>
+      <td>{{ employee.annual_salary }}</td>
+      <td>{{ employee.salary_currency }}</td>
+        <td>{{ employee.vacation_yearly }}</td>
+      <td>{{ employee.employer.name }}</td>
+        <td>{{ employee.effective_date }}</td>
+    </tr>
+    </tbody>
+  </table>
+    <div class="tabs tabs-bb clearfix page-tabs" id="tabs1" data-speed="700" data-active="1"
+       style="margin-top: 50px;">
+
+        <ul class="tab-nav clearfix mb-10">
+          <li><a href="#tab-1">Non-Compete<span class="badge badge-s pull-right noncompetes-badge"></span></a></li>
+          <li><a href="#tab-2">Termination<span class="badge badge-s pull-right terminations-badge"></span></a></li>
+        </ul>
+        <div class="tab-content clearfix" id="tab-1">
+          <div class="pull-right grid-controls">
+            {% include '_base_grid_buttons_block.html' %}
+          </div>
+          <div class="jqxgrid-container">
+            <div class="jqxgrid col-md-12 jqxgrid-noncompetes needsmenu"></div>
+          </div>
+        </div>
+        <div class="tab-content clearfix" id="tab-2">
+            <div class="pull-right grid-controls">
+            {% include '_base_grid_buttons_block.html' %}
+          </div>
+          <div class="jqxgrid-container">
+            <div class="jqxgrid col-md-12 jqxgrid-terminations needsmenu"></div>
+          </div>
+        </div>
+    </div>
+{% endblock %}
+
+{% block js_extra %}
+  {% include "_base_jqxgrid_block.html" %}
+
+<script type="text/javascript">
+     $(document).ready(function () {
+
+      var provision_datafields = [
+        { name: 'text_unit__text', type: 'string' },
+        { name: 'similarity', type: 'string' },
+          {name: 'detail_url', type:'string'}
+      ];
+
+      var menu_renderer = function(row, event) {
+        var grid = $(event.currentTarget).parents('.needsmenu');
+        row = grid.jqxGrid('getrowdata', row);
+        var menu_data = [
+          {url: row.detail_url,
+            icon: 'fa fa-info-circle',
+            text: 'View Text Unit'}
+        ];
+        show_menu(menu_data, grid, row.pk);
+      };
+      var custom_grid_options= { autorowheight: true}
+
+      var provision_columns = [
+        { text: 'Provision', datafield: 'text_unit__text', width: 'auto',
+          align: 'center', cellsalign: 'center' },
+        { text: 'Confidence', datafield: 'similarity', width: '100',
+          align: 'center', cellsalign: 'center'},
+        { text: 'Action', datafield: 'detail_url', width: 60,
+          align: 'center', exportable: false,
+          columntype: 'button',
+          sortable: false, filterable: false, menu: false,
+          cellsrenderer: function(){return 'Menu'},
+          buttonclick: menu_renderer }
+      ];
+
+
+      // noncompete table
+      var noncompete_custom_source_data = {
+        url: '{% url "employee:provision-list" %}',
+        data: { 'employee__pk': {{ employee.pk }}, 'type': 'noncompete' },
+          badgeClass: 'noncompetes-badge'
+      };
+
+      draw_grid(".jqxgrid-noncompetes", provision_datafields, provision_columns, false,
+          noncompete_custom_source_data, custom_grid_options);
+
+      // termination table
+     var termination_custom_source_data = {
+        url: '{% url "employee:provision-list" %}',
+        data: { 'employee__pk': {{ employee.pk }}, 'type': 'termination' },
+          badgeClass: 'terminations-badge'
+      };
+
+      draw_grid(".jqxgrid-terminations", provision_datafields, provision_columns, false,
+          termination_custom_source_data, custom_grid_options);
+
+
+     });
+</script>
+
+{% endblock %}

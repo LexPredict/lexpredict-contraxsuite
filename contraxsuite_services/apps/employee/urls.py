@@ -7,7 +7,7 @@ from django.conf.urls import url
 # Project imports
 from apps.common.utils import create_standard_urls
 from apps.employee import views
-from apps.employee.models import Employee, Employer
+from apps.employee.models import Employee, Employer, EmployerUsage
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2017, ContraxSuite, LLC"
@@ -33,8 +33,8 @@ def register(model, view_types):
 
 
 # Register views through helper method
-register(Employee, view_types=('list',))
-register(Employer, view_types=('list',))
+register(Employee, view_types=('list', 'detail'))
+register(EmployerUsage, view_types=('list',))
 
 # Add hard-coded URL mappings
 urlpatterns += [
@@ -44,9 +44,14 @@ urlpatterns += [
         name='employee-list',
     ),
     url(
-        r'^employer/list/$',
-        views.EmployerListView.as_view(),
-        name='employer-list',
+        r'^employer-usage/$',
+        views.EmployerUsageListView.as_view(),
+        name='employer-usage-list',
+    ),
+    url(
+        r'^employee-provision/$',
+        views.ProvisionListView.as_view(),
+        name='provision-list',
     ),
 
 ]

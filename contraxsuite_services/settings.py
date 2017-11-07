@@ -315,6 +315,7 @@ AUTOLOGIN = False
 AUTOSLUG_SLUGIFY_FUNCTION = 'slugify.slugify'
 
 # celery
+CELERY_RDB_HOST= 'dev.kelly.contraxsuite.com'
 CELERY_BROKER_URL = 'redis://127.0.0.1:6379/0'
 CELERY_RESULT_BACKEND = 'django-db'
 CELERY_RESULT_EXPIRES = 0
