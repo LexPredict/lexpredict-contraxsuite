@@ -1,6 +1,18 @@
 {% extends "base_list_ajax.html" %}
 {% load static %}
 
+{% block css_extra %}
+  {{ block.super }}
+  <style>
+    .two-lines-col.jqx-grid-column-header > div:first-child > div:first-child {
+      margin-top: 25px !important;
+      margin-bottom: 4px !important;
+    }
+    .two-lines-col.jqx-grid-column-header > div:first-child > div:first-child > span {
+      white-space: normal;
+    }
+  </style>
+{% endblock %}
 {% block js_extra %}
   {{ block.super }}
   <script type="text/javascript">
@@ -19,7 +31,8 @@
           {name: 'has_termination', type:'bool'},
           {name: 'url' , type: 'string'},
           {name: 'detail_url', type:'string'},
-          {name: 'vacation_yearly', type:'string'}
+          {name: 'vacation_yearly', type:'string'},
+          {name: 'governing_geo', type:'string'}
       ];
       var menu_renderer = function(row, event) {
         var grid = $(event.currentTarget).parents('.jqxgrid');
@@ -42,21 +55,23 @@
           align: 'center', cellsalign: 'center', columngroup: 'Document' },
           { text: 'Employee', datafield: 'name', width: 150,
           align: 'center', cellsalign: 'left'},
-          { text: 'Annual Salary', datafield: 'annual_salary',
-          align: 'center', cellsalign: 'center', width: 100 },
-          {text: 'Currency', datafield: 'salary_currency', width: 60, 
+          { text: 'Annual Salary', datafield: 'annual_salary', classname: 'two-lines-col',
+          align: 'center', cellsalign: 'center', width: 60 },
+          {text: 'Currency', datafield: 'salary_currency', width: 60,
           align: 'center', cellsalign: 'center' },
-          { text: 'Annual vacation', datafield: 'vacation_yearly',
-          align: 'center', cellsalign: 'center', width: 100 },
+          { text: 'Annual vacation', datafield: 'vacation_yearly', classname: 'two-lines-col',
+          align: 'center', cellsalign: 'center', width: 80 },
+           { text: 'Governing Law', datafield: 'governing_geo', classname: 'two-lines-col',
+          align: 'center', cellsalign: 'center', width: 80 },
           { text: 'Employer Name', datafield: 'employer__name', width: 200,
           align: 'center', cellsalign: 'center' },
-          { text: 'Non-Compete', datafield: 'has_noncompete',
-          width: 70,  columntype: 'checkbox', resizable: false, type: 'bool',
+          { text: 'Non- Compete', datafield: 'has_noncompete', classname: 'two-lines-col',
+          width: 65,  columntype: 'checkbox', resizable: false, type: 'bool',
           align: 'center', cellsalign: 'center' },
-          { text: 'Termination', datafield: 'has_termination',
-          width: 70,  columntype: 'checkbox', resizable: false, type: 'bool',
+          { text: 'Termi- nation', datafield: 'has_termination', classname: 'two-lines-col',
+          width: 65,  columntype: 'checkbox', resizable: false, type: 'bool',
           align: 'center', cellsalign: 'center' },
-          {text: 'Effective Date', datafield: 'effective_date', width: 100,
+          {text: 'Effective Date', datafield: 'effective_date', width: 80, classname: 'two-lines-col',
           enabletooltips:true, align: 'center', cellsalign: 'center',
               format: 'yyyy-MM-dd', cellsformat: 'yyyy-MM-dd'},
           { text: 'Action', datafield: 'url', width: 60,

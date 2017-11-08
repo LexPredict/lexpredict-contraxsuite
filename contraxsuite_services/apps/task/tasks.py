@@ -70,7 +70,8 @@ from apps.extract.models import (
 
 from apps.employee.models import Employee, Employer, Provision
 from apps.employee.services import get_employee_name, get_employer_name, get_salary,\
-    get_effective_date, get_similar_to_non_compete, get_similar_to_termination, get_vacation_duration
+    get_effective_date, get_similar_to_non_compete, get_similar_to_termination, \
+    get_vacation_duration, get_governing_geo, get_similar_to_benefits
 
 from apps.task.celery import app
 from apps.task.models import Task
@@ -2295,6 +2296,8 @@ class LocateEmployees(BaseTask):
                 if get_vacation_result is not None:
                     yearly_amount= get_vacation_result[0][1]*get_vacation_result[1]
                     employee_dict['vacation']= str(yearly_amount) + " " + str(get_vacation_result[0][0])+"s"
+            if employee_dict.get('governing_geo') is None:
+               employee_dict['governing_geo']=get_governing_geo(text)
 
             non_compete_similarity=get_similar_to_non_compete(text)
             if non_compete_similarity >.5:
@@ -2303,6 +2306,10 @@ class LocateEmployees(BaseTask):
             termination_similarity=get_similar_to_termination(text)
             if termination_similarity >.5:
                 provisions.append({"text_unit":t.id, "similarity":termination_similarity, "type": "termination"})
+
+            benefits_similarity=get_similar_to_benefits(text)
+            if benefits_similarity >.5:
+                provisions.append({"text_unit": t.id, "similarity": benefits_similarity, "type": "benefits"})
 
         employee = employer = None
         # create Employee only if his/her name exists
@@ -2313,6 +2320,7 @@ class LocateEmployees(BaseTask):
                 salary_currency=employee_dict.get('salary_currency'),
                 effective_date= employee_dict.get('effective_date'),
                 vacation_yearly= employee_dict.get('vacation'),
+                governing_geo=employee_dict.get('governing_geo'),
                 document= Document.objects.get(pk=document_id)
                 )
 
@@ -2325,6 +2333,8 @@ class LocateEmployees(BaseTask):
                     noncompete_found=True
                 if i["type"]=="termination":
                     termination_found=True
+                if i["type"]=="benefits":
+                    benefits_found=True
                 provision, provision_created = Provision.objects.get_or_create(
                     text_unit=TextUnit.objects.get(pk=i["text_unit"]),
                     similarity=i["similarity"],
@@ -2334,6 +2344,8 @@ class LocateEmployees(BaseTask):
                 )
             employee.has_noncompete= noncompete_found
             employee.has_termination=termination_found
+            employee.has_benefits=benefits_found
+
             employee.save()
 
         # create Employer

@@ -46,7 +46,8 @@ class EmployeeListView(JqPaginatedListView):
     model = Employee
     json_fields = ['document__pk', 'document__name', 'document__description',
                    'document__document_type', 'name', 'annual_salary', 'salary_currency', 'effective_date',
-                   'employer__name', 'pk', 'has_noncompete', 'has_termination', 'vacation_yearly']
+                   'employer__name', 'pk', 'has_noncompete', 'has_termination', 'vacation_yearly',
+                   'governing_geo']
     field_types = dict(count=int)
 
     def get_json_data(self, **kwargs):

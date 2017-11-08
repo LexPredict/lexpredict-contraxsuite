@@ -30,6 +30,8 @@ non_compete_positive_words=["competit", "noncompetit"]
 non_compete_negative_words=[]
 termination_positive_words=["termin"]
 termination_negative_words=[]
+benefits_positive_words=["benefit", "disabl", "stock", "pension", "insur"]
+benefits_negative_words=["termin"] #exclude clauses where saying you don't get benefits cause terminated
 
 
 
@@ -244,6 +246,11 @@ def get_similar_to_termination(text, termination_positives=termination_positive_
                          termination_negatives=termination_negative_words):
     return get_similar_to_terms_employee(text, termination_positives, termination_negatives)
 
+def get_similar_to_benefits(text, benefits_positives=benefits_positive_words,
+                         benefits_negatives=benefits_negative_words):
+    return get_similar_to_terms_employee(text, benefits_positives, benefits_negatives)
+
 def findWholeWordorPhrase(w):
     w = w.replace(" ", r"\s+")
     return re.compile(r'\b({0})\b'.format(w), flags=re.IGNORECASE).search
+
