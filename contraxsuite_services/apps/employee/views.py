@@ -59,6 +59,10 @@ class EmployeeListView(JqPaginatedListView):
 
     def get_queryset(self):
         qs = super().get_queryset()
+
+        if "employer_pk" in self.request.GET:
+            qs = qs.filter(employer__pk=self.request.GET['employer_pk'])
+
         term_search = self.request.GET.get("employee_search", "")
 
         if term_search:
@@ -69,6 +73,7 @@ class EmployeeListView(JqPaginatedListView):
         ctx = super().get_context_data(**kwargs)
         ctx['employee_search'] = self.request.GET.get("employee_search", "")
         return ctx
+
 
 class ProvisionListView(JqPaginatedListView):
     model = Provision
@@ -96,15 +101,18 @@ class ProvisionListView(JqPaginatedListView):
         return qs
 
 
-class EmployerUsageListView(JqPaginatedListView):
-    model = EmployerUsage
+class EmployerListView(JqPaginatedListView):
+    model = Employer
     template_name="employee/employer_usage_list.html"
     json_fields = ['name', 'count']
-    field_types = dict(count=int)
+    annotate = {'count': Count('employee')}
 
     def get_json_data(self, **kwargs):
         data = super().get_json_data()
+        for item in data['data']:
+            item['url'] = reverse('employee:employer-detail', args=[item['pk']])
         return data
+
 
 class EmployeeDetailView(PermissionRequiredMixin, DetailView):
     model = Employee
@@ -117,3 +125,19 @@ class EmployeeDetailView(PermissionRequiredMixin, DetailView):
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
         return ctx
+
+
+class EmployerDetailView(PermissionRequiredMixin, DetailView):
+    model = Employer
+    template_name = "employee/employer_detail.html"
+    raise_exception = True
+
+    def has_permission(self):
+        return True
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        ctx['total_contracts'] = self.object.employee_set.count()
+        ctx['total_employees'] = self.object.employee_set.values('name').annotate(Count('name')).count()
+        return ctx
+

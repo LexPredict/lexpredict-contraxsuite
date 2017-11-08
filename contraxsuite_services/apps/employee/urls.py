@@ -34,20 +34,11 @@ def register(model, view_types):
 
 # Register views through helper method
 register(Employee, view_types=('list', 'detail'))
-register(EmployerUsage, view_types=('list',))
+register(Employer, view_types=('list', 'detail'))
+
 
 # Add hard-coded URL mappings
 urlpatterns += [
-    url(
-        r'^employee/list/$',
-        views.EmployeeListView.as_view(),
-        name='employee-list',
-    ),
-    url(
-        r'^employer-usage/$',
-        views.EmployerUsageListView.as_view(),
-        name='employer-usage-list',
-    ),
     url(
         r'^employee-provision/$',
         views.ProvisionListView.as_view(),

@@ -119,6 +119,11 @@
                   <ul>
                     <li>
                       <a href="{% url "employee:employee-list" %}">Employees</a>
+                      <ul>
+                        <li><a href="{% url "employee:employee-list" %}"><div>Employees</div></a></li>
+                        <li><a href="{% url "employee:employer-list" %}"><div>Employers</div></a></li>
+                      </ul>
+
                     </li>
                     <li>
                       <a href="#">Terms</a>
