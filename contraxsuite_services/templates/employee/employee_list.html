@@ -31,6 +31,7 @@
           {name: 'has_termination', type:'bool'},
           {name: 'url' , type: 'string'},
           {name: 'detail_url', type:'string'},
+          {name: 'employer_url', type:'string'},
           {name: 'vacation_yearly', type:'string'},
           {name: 'governing_geo', type:'string'}
       ];
@@ -45,6 +46,12 @@
             icon: 'fa fa-user',
             text: 'View Employee'},
         ];
+        if(row.employer_url){
+          menu_data.push(
+          {url: row.employer_url,
+            icon: 'fa fa-bank',
+            text: 'View Employer'},
+          )};
         show_menu(menu_data, grid, row.pk);
       };
       var columns = [

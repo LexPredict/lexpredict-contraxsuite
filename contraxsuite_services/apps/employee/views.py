@@ -46,7 +46,7 @@ class EmployeeListView(JqPaginatedListView):
     model = Employee
     json_fields = ['document__pk', 'document__name', 'document__description',
                    'document__document_type', 'name', 'annual_salary', 'salary_currency', 'effective_date',
-                   'employer__name', 'pk', 'has_noncompete', 'has_termination', 'vacation_yearly',
+                   'employer__name', 'employer__pk', 'has_noncompete', 'has_termination', 'vacation_yearly',
                    'governing_geo']
     field_types = dict(count=int)
 
@@ -54,6 +54,7 @@ class EmployeeListView(JqPaginatedListView):
         data = super().get_json_data()
         for item in data['data']:
             item['detail_url'] = reverse('employee:employee-detail', args=[item['pk']])
+            item['employer_url'] = reverse('employee:employer-detail', args=[item['employer__pk']]) if item['employer__pk'] else None
             item['url'] = reverse('document:document-detail', args=[item['document__pk']])
         return data
 
@@ -103,8 +104,8 @@ class ProvisionListView(JqPaginatedListView):
 
 class EmployerListView(JqPaginatedListView):
     model = Employer
-    template_name="employee/employer_usage_list.html"
-    json_fields = ['name', 'count']
+    template_name="employee/employer_list.html"
+    json_fields = ['name']
     annotate = {'count': Count('employee')}
 
     def get_json_data(self, **kwargs):
