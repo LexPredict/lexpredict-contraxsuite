@@ -41,7 +41,7 @@ class Employee(models.Model):
                "doc_id= {0}," \
                "name={0}," \
                "salary={2})" \
-            .format(self.document.id, self.name, self.salary)
+            .format(self.document.id, self.name, self.annual_salary)
 
 
 
