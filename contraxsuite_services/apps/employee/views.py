@@ -150,6 +150,6 @@ class EmployerGeoChartView(JSONResponseView):
         if 'employer_pk' in request.GET:
             qs = qs.filter(employer__pk=request.GET['employer_pk'])
         location_list = list(qs.order_by('name', '-effective_date').distinct('name').values_list('governing_geo', flat=True))
-        data = [['location', 'count']] + [[i, location_list.count(i)] for i in set(location_list)]
+        data = [['location', 'count']] + [[i, location_list.count(i)] for i in set(location_list) if i != None]
         return data
 
