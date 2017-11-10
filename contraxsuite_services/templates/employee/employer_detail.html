@@ -4,6 +4,8 @@
 {% block css_extra %}
   {% stylesheet 'custom_jqwidgets_css' %}
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/jquery-confirm/3.1.1/jquery-confirm.min.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/vis/4.20.1/vis.min.css">
+
   <style>
     .jqx-grid-cell .jqx-button {
       height: 96% !important;
@@ -23,6 +25,46 @@
       margin-bottom: 20px;
       border: 2px solid lightgrey;
     }
+  </style>
+  <style>
+.tabs.page-tabs .tab-nav a,
+.page-tabs .nav-tabs a {
+  text-transform: uppercase;
+  color: #444;
+  font-weight: 600;
+  margin: 0;
+  font-family: 'Raleway', sans-serif;
+  font-size: 18px;
+  height: 40px;
+  line-height: 40px;
+  padding: 0 10px;
+}
+.tabs.page-tabs .tab-nav li:not(.ui-state-active) a,
+.page-tabs .nav-tabs li:not(.active) a {
+  opacity: 0.5;
+}
+.tabs.page-tabs .tab-nav li:not(.ui-state-active) a:hover,
+.page-tabs .nav-tabs li:not(.active) a:hover {
+  opacity: 1;
+}
+.page-tabs > .nav > li > a:hover,
+.page-tabs > .nav > li > a:focus {
+  background-color: inherit;
+  border: inherit;
+}
+.nav-tabs > li.active > a,
+.nav-tabs > li.active > a:hover,
+.nav-tabs > li.active > a:focus {
+  color: inherit;
+  background-color: inherit;
+  border: none;
+  border-bottom: 2px solid #1ABC9C;
+}
+.page-tabs .tab-pane:target {
+  background: transparent;
+  padding: 0;
+  border: none;
+}
   </style>
   {{ block.super }}
 {% endblock %}
@@ -50,16 +92,17 @@
     </tr>
     </tbody>
   </table>
-    <div class="tabs tabs-bb clearfix page-tabs" id="tabs1" data-speed="700" data-active="1"
-       style="margin-top: 50px;">
+  <div class="tabs page-tabs mt-40" id="tabs1">
 
-        <ul class="tab-nav clearfix mb-10">
-          <li><a href="#tab-1">Employee Contracts<span class="badge badge-s pull-right employees-badge"></span></a></li>
-          <li><a href="#tab-2">Employees Count by Governing Law<span class="badge badge-s pull-right chart1-badge"></span></a></li>
-          <li><a href="#tab-3">Chart 2<span class="badge badge-s pull-right chart2-badge"></span></a></li>
-        </ul>
+      <ul class="nav nav-tabs tab-nav boot-tabs mb-10">
+        <li clas=="active"><a data-toggle="tab" href="#tab-1">Employee Contracts<span class="badge badge-s pull-right employees-badge"></span></a></li>
+        <li><a data-toggle="tab" href="#tab-2">Employees Count by Governing Law<span class="badge badge-s pull-right chart1-badge"></span></a></li>
+        <li><a data-toggle="tab" href="#tab-3">Employee Contracts Executed Over Time<span class="badge badge-s pull-right chart2-badge"></span></a></li>
+      </ul>
 
-        <div class="tab-content clearfix" id="tab-1">
+      <div class="tab-content">
+
+        <div class="tab-pane clearfix active" id="tab-1">
           <div class="pull-right grid-controls">
             {% include '_base_grid_buttons_block.html' %}
           </div>
@@ -68,7 +111,7 @@
           </div>
         </div>
 
-        <div class="tab-content clearfix" id="tab-2">
+        <div class="tab-pane clearfix" id="tab-2">
           <div id="geo_chart">
             <div class="loader-container">
               <div class="loader"></div>
@@ -77,10 +120,17 @@
           </div>
         </div>
 
-        <div class="tab-content clearfix" id="tab-3">
+        <div class="tab-pane clearfix" id="tab-3">
+          <div id="timeline_chart">
+            <div class="loader-container">
+              <div class="loader"></div>
+              <span>Loading...</span>
+            </div>
+          </div>
         </div>
 
     </div>
+  </div>
 {% endblock %}
 
 {% block js_extra %}
@@ -181,7 +231,7 @@
 
           function drawGeoChart() {
             $.ajaxSetup({ cache: false });
-            $.ajax("{% url "employee:employer-geo-chart" %}?employer_pk={{ object.pk }}")
+            $.ajax("{% url "employee:employee-geo-chart" %}?employer_pk={{ object.pk }}")
                 .done(function(json){
                   var data = google.visualization.arrayToDataTable(json);
                   var options = {
@@ -198,5 +248,55 @@
     }
   })
   </script>
+
+  // timeline chart
+  <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/vis/4.20.1/vis.min.js"></script>
+  <script type="text/javascript">
+    $(function () {
+      $.ajaxSetup({ cache: false });
+
+      var draw_timeline = function(){
+        $('.loader-container').show();
+
+        $.get('{% url 'employee:employee-timeline-chart' %}?employer_pk={{ object.pk }}').done(function(response){
+          // hide the "loading..."
+          $('.loader-container').hide();
+
+          // DOM element where the Timeline will be attached
+          var container = document.getElementById("timeline_chart");
+          //var power = 8;
+
+          // process data
+          var data = [];
+          $.each(response.data, function(n, i){
+            var content = $('<a></a>')
+                .attr('href', i.url)
+                .text(i.name);
+            var item = { start: i.start,
+                         content: content.get(0).outerHTML,
+                         title: i.start };
+            data.push(item)
+          });
+
+          // Create a DataSet
+          var items = new vis.DataSet(data);
+
+          // Configuration for the Timeline
+          var options = { start: response.initial_start_date,
+                          end: response.initial_end_date,
+                          height: '400px',
+                          maxHeight: '600px',
+                          zoomMax: 315360000000,   // 1 year
+                          zoomMin: 2592000000 };  // 30 days
+
+          // Create a Timeline
+          var timeline = new vis.Timeline(container, items, options);
+        })
+      };
+
+      draw_timeline();
+    })
+  </script>
+
 
 {% endblock %}

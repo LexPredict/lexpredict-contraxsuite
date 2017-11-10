@@ -143,7 +143,7 @@ class EmployerDetailView(PermissionRequiredMixin, DetailView):
         return ctx
 
 
-class EmployerGeoChartView(JSONResponseView):
+class EmployeeGeoChartView(JSONResponseView):
 
     def get_json_data(self, request):
         qs = Employee.objects.all()
@@ -152,4 +152,29 @@ class EmployerGeoChartView(JSONResponseView):
         location_list = list(qs.order_by('name', '-effective_date').distinct('name').values_list('governing_geo', flat=True))
         data = [['location', 'count']] + [[i, location_list.count(i)] for i in set(location_list) if i != None]
         return data
+
+
+
+class EmployeeTimelineChartView(JSONResponseView):
+
+    def get_json_data(self, request):
+
+        qs = Employee.objects.filter(effective_date__isnull=False)
+        if "employer_pk" in self.request.GET:
+            qs = qs.filter(employer__pk=self.request.GET['employer_pk'])
+
+        qs = qs.order_by('effective_date') \
+            .values('pk', 'name', start=F('effective_date'))
+        data = list(qs)
+        visible_interval = 180
+
+        for item in data:
+            item['url'] = reverse('employee:employee-detail', args=[item['pk']])
+
+        focus_date = data[-1]['start'] if data else datetime.date.today()
+        initial_start_date = focus_date - datetime.timedelta(days=visible_interval)
+        initial_end_date = focus_date + datetime.timedelta(days=visible_interval)
+        return {'data': data,
+                'initial_start_date': initial_start_date,
+                'initial_end_date': initial_end_date}
 
