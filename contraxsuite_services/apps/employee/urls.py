@@ -44,5 +44,10 @@ urlpatterns += [
         views.ProvisionListView.as_view(),
         name='provision-list',
     ),
+    url(
+        r'^employer-geo-chart/$',
+        views.EmployerGeoChartView.as_view(),
+        name='employer-geo-chart',
+    ),
 
 ]

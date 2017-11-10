@@ -17,6 +17,12 @@
     .two-lines-col.jqx-grid-column-header > div:first-child > div:first-child > span {
       white-space: normal;
     }
+    #geo_chart {
+      height: 512px;
+      width: 100%;
+      margin-bottom: 20px;
+      border: 2px solid lightgrey;
+    }
   </style>
   {{ block.super }}
 {% endblock %}
@@ -49,7 +55,7 @@
 
         <ul class="tab-nav clearfix mb-10">
           <li><a href="#tab-1">Employee Contracts<span class="badge badge-s pull-right employees-badge"></span></a></li>
-          <li><a href="#tab-2">Chart 1<span class="badge badge-s pull-right chart1-badge"></span></a></li>
+          <li><a href="#tab-2">Employees Count by Governing Law<span class="badge badge-s pull-right chart1-badge"></span></a></li>
           <li><a href="#tab-3">Chart 2<span class="badge badge-s pull-right chart2-badge"></span></a></li>
         </ul>
 
@@ -63,6 +69,12 @@
         </div>
 
         <div class="tab-content clearfix" id="tab-2">
+          <div id="geo_chart">
+            <div class="loader-container">
+              <div class="loader"></div>
+              <span>Loading...</span>
+            </div>
+          </div>
         </div>
 
         <div class="tab-content clearfix" id="tab-3">
@@ -156,5 +168,35 @@
 
      });
 </script>
+
+  <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
+  <script type="text/javascript">
+  $( "#tabs1" ).tabs({
+    activate: function( event, ui ) {
+      if (!$('#tab-2').hasClass('activated')){
+        $(function () {
+          google.charts.load('upcoming', {'packages':['geochart']});
+          google.charts.setOnLoadCallback(drawGeoChart);
+          $('#tab-2').addClass('activated')
+
+          function drawGeoChart() {
+            $.ajaxSetup({ cache: false });
+            $.ajax("{% url "employee:employer-geo-chart" %}?employer_pk={{ object.pk }}")
+                .done(function(json){
+                  var data = google.visualization.arrayToDataTable(json);
+                  var options = {
+                      region: "US",
+                      resolution: "provinces",
+                      displayMode: "regions",
+                  };
+                  var chart = new google.visualization.GeoChart(document.getElementById('geo_chart'));
+                  chart.draw(data, options);
+                })
+          }
+        })
+      }
+    }
+  })
+  </script>
 
 {% endblock %}
