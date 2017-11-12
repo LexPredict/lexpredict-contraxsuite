@@ -221,13 +221,12 @@
 
   <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
   <script type="text/javascript">
-  $( "#tabs1" ).tabs({
-    activate: function( event, ui ) {
-      if (!$('#tab-2').hasClass('activated')){
+    $('a[href="#tab-2"]').on( 'shown.bs.tab', function( evt ) {
+      if (!$(this).hasClass('activated')){
         $(function () {
           google.charts.load('upcoming', {'packages':['geochart']});
           google.charts.setOnLoadCallback(drawGeoChart);
-          $('#tab-2').addClass('activated')
+          $(this).addClass('activated')
 
           function drawGeoChart() {
             $.ajaxSetup({ cache: false });
@@ -245,8 +244,7 @@
           }
         })
       }
-    }
-  })
+    })
   </script>
 
   // timeline chart
