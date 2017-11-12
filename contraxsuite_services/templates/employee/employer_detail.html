@@ -5,6 +5,7 @@
   {% stylesheet 'custom_jqwidgets_css' %}
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/jquery-confirm/3.1.1/jquery-confirm.min.css">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/vis/4.20.1/vis.min.css">
+  <link rel="stylesheet" href="{% static "theme/css/components/radio-checkbox.css" %}" type="text/css" />
 
   <style>
     .jqx-grid-cell .jqx-button {
@@ -112,6 +113,12 @@
         </div>
 
         <div class="tab-pane clearfix" id="tab-2">
+{#  <span class="checkbox-ltr-full-width">#}
+{#    <input class="checkbox-style" id="usa_only" name="usa_only" type="checkbox" checked="checked">#}
+{#    <label for="usa_only" class="checkbox-style-3-label">#}
+{#      USA Only#}
+{#    </label>#}
+{#  </span>#}
           <div id="geo_chart">
             <div class="loader-container">
               <div class="loader"></div>
@@ -219,32 +226,42 @@
      });
 </script>
 
+  // geo chart
   <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
   <script type="text/javascript">
+    function load_geo_map() {
+        google.charts.load('upcoming', {'packages':['geochart']});
+        google.charts.setOnLoadCallback(drawGeoChart);
+        $('a[href="#tab-2"]').addClass('activated')
+    }
+    function drawGeoChart() {
+        $.ajaxSetup({ cache: false });
+        //var usa_only = $('#usa_only').is(':checked');
+        var usa_only = true;
+        $.ajax("{% url "employee:employee-geo-chart" %}?employer_pk={{ object.pk }}&usa_only="+usa_only)
+          .done(function(json){
+    	      var data = google.visualization.arrayToDataTable(json);
+              var options = {
+                  displayMode: "regions",
+              };
+              if (usa_only){
+                options.region = "US";
+                options.resolution = "provinces";
+              }
+              var chart = new google.visualization.GeoChart(document.getElementById('geo_chart'));
+              chart.draw(data, options);
+          })
+    }
+
     $('a[href="#tab-2"]').on( 'shown.bs.tab', function( evt ) {
       if (!$(this).hasClass('activated')){
-        $(function () {
-          google.charts.load('upcoming', {'packages':['geochart']});
-          google.charts.setOnLoadCallback(drawGeoChart);
-          $(this).addClass('activated')
-
-          function drawGeoChart() {
-            $.ajaxSetup({ cache: false });
-            $.ajax("{% url "employee:employee-geo-chart" %}?employer_pk={{ object.pk }}")
-                .done(function(json){
-                  var data = google.visualization.arrayToDataTable(json);
-                  var options = {
-                      region: "US",
-                      resolution: "provinces",
-                      displayMode: "regions",
-                  };
-                  var chart = new google.visualization.GeoChart(document.getElementById('geo_chart'));
-                  chart.draw(data, options);
-                })
-          }
-        })
+        load_geo_map()
       }
     })
+    $('#usa_only').change(function () {
+      load_geo_map()
+    })
+
   </script>
 
   // timeline chart

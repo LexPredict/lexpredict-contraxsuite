@@ -11,10 +11,51 @@
     .two-lines-col.jqx-grid-column-header > div:first-child > div:first-child > span {
       white-space: normal;
     }
+    #geo_chart {
+      height: 512px;
+      width: 100%;
+      margin-bottom: 20px;
+      border: 2px solid lightgrey;
+    }
   </style>
 {% endblock %}
+
+{% block content %}
+  <div class="tabs tabs-bb clearfix page-tabs" id="tabs" data-speed="700" data-active="1"
+       style="margin-top: 50px;">
+
+    <ul class="tab-nav clearfix">
+      <li><a href="#tab-1">Employees List</a></li>
+      <li><a href="#tab-2">Employees Count By Governing Law</a></li>
+    </ul>
+
+    <div class="tab-container">
+
+      <div class="tab-content clearfix" id="tab-1">
+        <div class="pull-right grid-controls">
+          {% include '_base_grid_buttons_block.html' %}
+        </div>
+        <div class="jqxgrid-container jqxgrid-{{ model_name_init }}">
+          <div class="jqxgrid col-md-12"></div>
+        </div>
+      </div>
+
+      <div class="tab-content clearfix" id="tab-2">
+          <div id="geo_chart">
+            <div class="loader-container">
+              <div class="loader"></div>
+              <span>Loading...</span>
+            </div>
+          </div>
+      </div>
+
+    </div>
+  </div>
+{% endblock %}
+
 {% block js_extra %}
   {{ block.super }}
+  <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
   <script type="text/javascript">
     $(document).ready(function () {
       var datafields = [
@@ -95,6 +136,41 @@
         ]
       };
       draw_grid(".jqxgrid", datafields, columns, true, null, custom_grid_options);
+
+
+  // geo chart
+    function load_geo_map() {
+        google.charts.load('upcoming', {'packages':['geochart']});
+        google.charts.setOnLoadCallback(drawGeoChart);
+        $('a[href="#tab-2"]').addClass('activated')
+    }
+    function drawGeoChart() {
+        $.ajaxSetup({ cache: false });
+        //var usa_only = $('#usa_only').is(':checked');
+        var usa_only = true;
+        $.ajax("{% url "employee:employee-geo-chart" %}?usa_only="+usa_only)
+          .done(function(json){
+    	      var data = google.visualization.arrayToDataTable(json);
+              var options = {
+                  displayMode: "regions",
+              };
+              if (usa_only){
+                options.region = "US";
+                options.resolution = "provinces";
+              }
+              var chart = new google.visualization.GeoChart(document.getElementById('geo_chart'));
+              chart.draw(data, options);
+          })
+    }
+
+    $('a[href="#tab-2"]').on( 'click', function( evt ) {
+      if (!$(this).hasClass('activated')){
+        load_geo_map()
+      }
+    })
+    $('#usa_only').change(function () {
+      load_geo_map()
+    })
 
     });
   </script>
