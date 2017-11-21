@@ -15,8 +15,8 @@ from apps.document.models import (
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2017, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.0.1/LICENSE"
-__version__ = "1.0.1"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.0.3/LICENSE"
+__version__ = "1.0.3"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -106,6 +106,22 @@ urlpatterns += [
         views.SubmitDocumentTagView.as_view(),
         name='document-tag-submit',
     ),
+    url(
+        r'^submit/cluster-documents-tag/$',
+        views.SubmitClusterDocumentsTagView.as_view(),
+        name='cluster-documents-tag-submit',
+    ),
+    url(
+        r'^submit/cluster-documents-property/$',
+        views.SubmitClusterDocumentsPropertyView.as_view(),
+        name='cluster-documents-property-submit',
+    ),
+    url(
+        r'^submit/cluster-documents-language/$',
+        views.SubmitClusterDocumentsLanguageView.as_view(),
+        name='cluster-documents-language-submit',
+    ),
+
     url(
         r'^submit/text-unit-tag/$',
         views.SubmitTextUnitTagView.as_view(),

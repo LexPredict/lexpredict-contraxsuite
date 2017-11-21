@@ -16,10 +16,7 @@ from apps.common.mixins import (
     AdminRequiredMixin, CustomDetailView, DjangoJSONEncoder,
     JSONResponseView, JqPaginatedListView, TechAdminRequiredMixin)
 from apps.task.forms import (
-    LoadDocumentsForm, LocateTermsForm, LocateForm,
-    LocateGeoEntitiesForm, LocatePartiesForm, LocateEmployeesForm,
-    LocateDatesForm, LocateDateDurationsForm, LocateDefinitionsForm,
-    LocateCourtsForm, LocateCurrenciesForm,
+    LoadDocumentsForm, LocateTermsForm, LocateForm, LocateEmployeesForm,
     ExistedClassifierClassifyForm, CreateClassifierClassifyForm,
     ClusterForm, SimilarityForm, PartySimilarityForm,
     UpdateElasticSearchForm)
@@ -28,8 +25,8 @@ from apps.task.tasks import call_task, clean_tasks, purge_task
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2017, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.0.1/LICENSE"
-__version__ = "1.0.1"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.0.3/LICENSE"
+__version__ = "1.0.3"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -150,8 +147,6 @@ class LocateTaskView(BaseAjaxTaskView):
     html_form_class = 'popup-form locate-form'
     custom_tasks = set(
         # 'LocateTerms',
-        # 'LocateGeoEntities',
-        # 'LocateParties',
     )
 
     def post(self, request, *args, **kwargs):
@@ -159,7 +154,7 @@ class LocateTaskView(BaseAjaxTaskView):
         if not form.is_valid():
             return self.json_response(form.errors, status=404)
         data = form.cleaned_data
-        task_names = set([i.split('_')[0] for i in data])
+        task_names = set([i.split('_')[0] for i in data if i != 'parse'])
         custom_task_names = task_names & self.custom_tasks
         lexnlp_task_names = task_names - self.custom_tasks
 
@@ -183,14 +178,16 @@ class LocateTaskView(BaseAjaxTaskView):
             kwargs = {k.replace('%s_' % task_name, ''): v for k, v in data.items()
                       if k.startswith(task_name)}
             if any(kwargs.values()):
-                task_name = task_name.replace('Locate', '').lower()
                 lexnlp_task_data[task_name] = kwargs
         if lexnlp_task_data:
             if Task.disallow_start('Locate'):
                 rejected_tasks.append('Locate')
             else:
                 started_tasks.append('Locate')
-                call_task('Locate', tasks=lexnlp_task_data, user_id=request.user.pk)
+                call_task('Locate',
+                          tasks=lexnlp_task_data,
+                          parse=data['parse'],
+                          user_id=request.user.pk)
 
         response_text = ''
         if started_tasks:
@@ -202,49 +199,15 @@ class LocateTaskView(BaseAjaxTaskView):
         return self.json_response(response_text)
 
 
+# sample view for custom task
 class LocateTermsView(BaseAjaxTaskView):
     task_name = 'Locate Terms'
     form_class = LocateTermsForm
 
 
-class LocateGeoEntitiesView(BaseAjaxTaskView):
-    task_name = 'Locate Geo Entities'
-    form_class = LocateGeoEntitiesForm
-
-
-class LocatePartiesView(BaseAjaxTaskView):
-    task_name = 'Locate Parties'
-    form_class = LocatePartiesForm
-
-
-class LocateDatesView(BaseAjaxTaskView):
-    task_name = 'Locate Dates'
-    form_class = LocateDatesForm
-
-
-class LocateDateDurationsView(BaseAjaxTaskView):
-    task_name = 'Locate Date Durations'
-    form_class = LocateDateDurationsForm
-
-
-class LocateDefinitionsView(BaseAjaxTaskView):
-    task_name = 'Locate Definitions'
-    form_class = LocateDefinitionsForm
-
-
-class LocateCourtsView(BaseAjaxTaskView):
-    task_name = 'Locate Courts'
-    form_class = LocateCourtsForm
-
-
 class LocateEmployeesView(BaseAjaxTaskView):
     task_name = 'Locate Employees'
     form_class = LocateEmployeesForm
-
-
-class LocateCurrenciesView(BaseAjaxTaskView):
-    task_name = 'Locate Currencies'
-    form_class = LocateCurrenciesForm
 
 
 class ExistedClassifierClassifyView(BaseAjaxTaskView):

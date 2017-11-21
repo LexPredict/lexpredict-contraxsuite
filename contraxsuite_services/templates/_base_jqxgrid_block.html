@@ -261,8 +261,22 @@
       tag_pk = null;
       tag = ''
     }
-    var url = target == 'document' ? '{% url "document:document-tag-submit" %}' : '{% url "document:text-unit-tag-submit" %}';
-    var title = target == 'document' ? 'Tag Document' : 'Tag Text Unit';
+    if (target == 'document') {
+      var url = '{% url "document:document-tag-submit" %}';
+      var title = 'Tag Document'
+    }
+    else if (target == 'text_unit') {
+      url = '{% url "document:text-unit-tag-submit" %}';
+      title = 'Tag Text Unit'
+    }
+    else if (target == 'cluster_documents') {
+      url = '{% url "document:cluster-documents-tag-submit" %}';
+      title = "Tag cluster's documents"
+    }
+    else if (target == 'cluster_documents') {
+      url = '{% url "document:cluster-documents-tag-submit" %}';
+      title = "Tag cluster's documents"
+    }
     $.confirm({
       type: 'blue',
       icon: 'fa fa-tags',

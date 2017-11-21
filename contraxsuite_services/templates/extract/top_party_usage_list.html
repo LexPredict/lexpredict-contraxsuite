@@ -11,7 +11,7 @@
     $(document).ready(function () {
       var datafields = [
         { name: 'party__name', type: 'string' },
-        { name: 'party__type', type: 'string' },
+        { name: 'party__type_abbr', type: 'string' },
         { name: 'count', type: 'int' },
         { name: 'party_summary_url', type: 'string' },
         { name: 'url', type: 'string' }
@@ -36,7 +36,7 @@
         { text: 'Party Name', datafield: 'party__name', width: '33%',
           align: 'center', cellsalign: 'center',
           cellsrenderer: partyNameFormatter },
-        { text: 'Party Type', datafield: 'party__type', width: 'auto',
+        { text: 'Party Type', datafield: 'party__type_abbr', width: 'auto',
           align: 'center', cellsalign: 'center' },
         { text: 'Count', datafield: 'count', width: 'auto',
           align: 'center', cellsalign: 'center' },

@@ -35,8 +35,8 @@ from apps.extract.models import (
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2017, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.0.1/LICENSE"
-__version__ = "1.0.1"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.0.3/LICENSE"
+__version__ = "1.0.3"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -344,7 +344,7 @@ class PartyUsageListView(JqPaginatedListView):
     model = PartyUsage
     json_fields = ['text_unit__document__pk', 'text_unit__document__name',
                    'text_unit__document__description', 'text_unit__document__document_type',
-                   'party__name', 'party__type', 'party__pk',
+                   'party__name', 'party__type_abbr', 'party__pk',
                    'count', 'text_unit__pk', 'text_unit__text']
     limit_reviewers_qs_by_field = 'text_unit__document'
 
@@ -411,7 +411,7 @@ class TopPartyUsageListView(JqPaginatedListView):
         if "party_pk" in self.request.GET:
             qs = qs.filter(party__pk=self.request.GET['party_pk'])
 
-        qs = qs.values("party__name", "party__type", "party__pk") \
+        qs = qs.values("party__name", "party__type_abbr", "party__pk") \
             .annotate(count=Sum("count")) \
             .order_by("-count")
         return qs

@@ -22,10 +22,9 @@ ROOT_DIR = environ.Path(__file__) - 2
 PROJECT_DIR = ROOT_DIR.path('contraxsuite_services')
 APPS_DIR = PROJECT_DIR.path('apps')
 
-DEBUG = True
-DEBUG_TEMPLATE=True
-
-ALLOWED_HOSTS=['dev.kelly.contraxsuite.com']
+DEBUG = False
+DEBUG_SQL = False
+DEBUG_TEMPLATE = False
 
 # APP CONFIGURATION
 # ------------------------------------------------------------------------------
@@ -46,7 +45,6 @@ INSTALLED_APPS = (
     'allauth',  # registration
     'allauth.account',  # registration
     'allauth.socialaccount',  # registration
-    'haystack',   # elastic search
     'simple_history',    # historical records
     'django_celery_results',    # for celery tasks
     'filebrowser',    # browse/upload documents
@@ -338,13 +336,10 @@ FILE_UPLOAD_HANDLERS = (
     "django_excel.TemporaryExcelFileUploadHandler"
 )
 
-# django-haystack
-HAYSTACK_CONNECTIONS = {
-    'default': {
-        'ENGINE': 'haystack.backends.elasticsearch_backend.ElasticsearchSearchEngine',
-        'URL': 'http://127.0.0.1:9200/',
-        'INDEX_NAME': 'haystack',
-    },
+# elasticsearch integration
+ELASTICSEARCH_CONFIG = {
+    'hosts': [{'host': '127.0.0.1', 'port': 9200}],
+    'index': 'contraxsuite'
 }
 
 # django-ckeditor
@@ -395,7 +390,7 @@ JQ_EXPORT = False
 # place dictionaries for GeoEntities, Terms, US Courts, etc.
 DATA_ROOT = PROJECT_DIR('data/')
 GIT_DATA_REPO_ROOT = 'https://raw.githubusercontent.com/' \
-                     'LexPredict/lexpredict-legal-dictionary/1.0.2'
+                     'LexPredict/lexpredict-legal-dictionary/1.0.3'
 
 # logging
 LOG_FILE_NAME = 'log.txt'
@@ -451,6 +446,9 @@ NOTEBOOK_ARGUMENTS = [
     '--ip=0.0.0.0',
     '--port=8000',
 ]
+
+VERSION_NUMBER = '1.0.3'
+VERSION_COMMIT = '9ed8aea'
 
 try:
     from local_settings import *

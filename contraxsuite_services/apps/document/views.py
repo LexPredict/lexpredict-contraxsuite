@@ -10,6 +10,7 @@ import urllib
 import pandas as pd
 
 # Django imports
+from django.conf import settings
 from django.contrib.sites.models import Site
 from django.core.urlresolvers import reverse
 from django.db.models import Count, F, Prefetch
@@ -17,8 +18,8 @@ from django.shortcuts import get_object_or_404, redirect
 from django.shortcuts import render
 from django.views.generic import DetailView
 
-# EL imports
-from haystack.query import SearchQuerySet
+# Other lib imports
+from elasticsearch import Elasticsearch
 
 # Project imports
 from apps.analyze.models import (
@@ -43,8 +44,8 @@ from apps.users.models import User
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2017, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.0.1/LICENSE"
-__version__ = "1.0.1"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.0.3/LICENSE"
+__version__ = "1.0.3"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -392,30 +393,21 @@ class TextUnitListView(JqPaginatedListView):
                    'document__pk', 'document__name',
                    'document__document_type', 'document__description']
     limit_reviewers_qs_by_field = 'document'
+    es = Elasticsearch(hosts=settings.ELASTICSEARCH_CONFIG['hosts'])
 
     def get_queryset(self):
         qs = super().get_queryset()
 
-        if "elastic_search" in self.request.GET or "text_search" in self.request.GET:
+        if "elastic_search" in self.request.GET:
             elastic_search = self.request.GET.get("elastic_search")
-
-            # use haystack
-            if elastic_search is not None:
-                qs = SearchQuerySet()
-                text_search = elastic_search
-            # else plain django
-            else:
-                text_search = self.request.GET.get("text_search")
-
-            # TODO: check effectiveness using with haystack (_and, _or, _not)
+            es_res = self.es.search(index=settings.ELASTICSEARCH_CONFIG['index'],
+                                    body={'query': {'match': {'_all': elastic_search}}})
+            # See UpdateElasticsearchIndex in tasks.py for the set of indexed fields
+            pks = [hit['_source']['pk'] for hit in es_res['hits']['hits']]
+            qs = TextUnit.objects.filter(pk__in=pks)
+        elif "text_search" in self.request.GET:
+            text_search = self.request.GET.get("text_search")
             qs = self.filter(text_search, qs, _or_lookup='text__icontains')
-
-            # if haystack transform sqs into qs
-            if elastic_search is not None:
-                qs = qs.models(TextUnit)
-                pks = [search_obj._pk for search_obj in qs]
-                qs = TextUnit.objects.filter(pk__in=pks)
-                # TODO: use? .distinct('text_hash')
 
         if "document_pk" in self.request.GET:
             # Document Detail view
@@ -756,6 +748,89 @@ class SubmitDocumentTagView(SubmitView):
         action = 'created' if created else 'updated'
         self.success_message = '%s Tag %s was successfully %s' \
                                % (cap_words(self.owner_class._meta.verbose_name), str(obj), action)
+        return self.success()
+
+
+class SubmitClusterDocumentsTagView(SubmitView):
+    owner = None
+    owner_class = DocumentCluster
+    tag_class = DocumentTag
+    owner_field = 'document'
+
+    def dispatch(self, request, *args, **kwargs):
+        self.owner = self.get_owner(request)
+        return super().dispatch(request, *args, **kwargs)
+
+    def get_success_message(self):
+        return "Successfully added tag /%s/ for cluster /%s/ documents" % (
+            self.request.POST["tag"],
+            str(self.owner))
+
+    @staticmethod
+    def allowed(user, owner):
+        # return user.can_view_document(owner)
+        return True
+
+    def get_owner(self, request):
+        try:
+            owner = self.owner_class.objects.get(id=request.POST["owner_id"])
+            if not self.allowed(request.user, owner):
+                self.error_message = 'Not Allowed'
+                return None
+        except self.owner_class.DoesNotExist:
+            self.error_message = 'Not Found'
+            return None
+        return owner
+
+    def process(self, request):
+        if not self.owner:
+            return self.failure()
+        timestamp = datetime.datetime.now()
+        tags = [self.tag_class(**{
+            self.owner_field: owner,
+            'tag': request.POST['tag'],
+            'user': request.user,
+            'timestamp': timestamp}) for owner in self.owner.documents.all()]
+        self.tag_class.objects.bulk_create(tags)
+        return self.success()
+
+
+class SubmitClusterDocumentsPropertyView(SubmitClusterDocumentsTagView):
+    owner_class = DocumentCluster
+    property_class = DocumentProperty
+
+    def get_success_message(self):
+        return "Successfully added property %s:%s for cluster %s documents" % (
+            self.request.POST["key"],
+            self.request.POST["value"],
+            str(self.owner))
+
+    def process(self, request):
+        if not self.owner:
+            return self.failure()
+        properties = [self.property_class(**{
+            self.owner_field: owner,
+            'key': request.POST['key'],
+            'value': request.POST['value']}) for owner in self.owner.documents.all()]
+        # use save instead of bulk_create to call save method on model
+        for prop in properties:
+            prop.save()
+        return self.success()
+
+
+class SubmitClusterDocumentsLanguageView(SubmitClusterDocumentsTagView):
+    owner_class = DocumentCluster
+
+    def get_success_message(self):
+        return "Successfully changed language to %s for cluster %s documents" % (
+            self.request.POST["language"],
+            str(self.owner))
+
+    def process(self, request):
+        if not self.owner:
+            return self.failure()
+        text_units = TextUnit.objects.filter(document__documentcluster=self.owner)
+        text_units.update(language=self.request.POST["language"])
         return self.success()
 
 

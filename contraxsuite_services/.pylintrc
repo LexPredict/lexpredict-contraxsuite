@@ -40,7 +40,7 @@ disable=W0142,W0403,W0232,E1101,C0111,C0103,unused-wildcard-import,wildcard-impo
  
 # Set the output format. Available formats are text, parseable, colorized, msvs
 # (visual studio) and html
-output-format=html
+output-format=text
  
 # Put messages in a separate file for each module / package specified on the
 # command line instead of printing them on stdout. Reports (if any) will be

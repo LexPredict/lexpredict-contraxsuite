@@ -29,6 +29,10 @@
   </div>
   {{ block.super }}
   <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/chosen/1.6.2/chosen.jquery.min.js"></script>
+
+  {% include "document/_document_property_popup_js.html" %}
+  {% include "document/_document_lang_popup_js.html" %}
+
   <script type="text/javascript">
 
     function show_create_task_queue_popup(event, cluster_pk){
@@ -66,7 +70,7 @@
           $('.tq_form_popup #new_project').click(function(){
             $('.tq_form_popup .project-choice-form, .tq_form_popup .project-create-form').toggle();
             $('.tq_form_popup #id_project').val('').trigger('chosen:updated')
-          })
+          });
         },
         columnClass: 'col-md-8 col-md-offset-2',
         buttons: {
@@ -116,9 +120,21 @@
             text: 'Show Documents' },
           { icon: 'fa fa-plus',
             onclick: "show_create_task_queue_popup(event, " + row.pk + ")",
-            text: 'Add to Task Queue' }
+            text: 'Add to Task Queue' },
+          { url: '#',
+            icon: 'fa fa-tags',
+            onclick: "document_lang_popup('cluster_documents', " + row.pk + ")",
+            text: 'Set Language for Documents'},
+          { url: '#',
+            icon: 'fa fa-tags',
+            onclick: "tag_popup('cluster_documents', " + row.pk + ")",
+            text: 'Tag Documents'},
+          { url: '#',
+            icon: 'fa fa-tags',
+            onclick: "document_property_popup('cluster_documents'," + row.pk + ",null)",
+            text: 'Add properties for Documents'}
         ];
-        show_menu(menu_data, grid, row.pk);
+        show_menu(menu_data, grid, row.pk, 300);
       };
       var columns = [
         { text: 'Cluster Name', datafield: 'self_name', width: 'auto',

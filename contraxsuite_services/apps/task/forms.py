@@ -6,14 +6,14 @@ from django.conf import settings
 from django.utils.translation import ugettext_lazy as _
 
 # Project imports
-from apps.common.widgets import LTRCheckboxField, LTRCheckboxWidget
+from apps.common.widgets import LTRCheckboxField, LTRCheckboxWidget, LTRRadioField
 from apps.analyze.models import TextUnitClassification, TextUnitClassifier
 from apps.document.models import DocumentProperty, TextUnitProperty
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2017, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.0.1/LICENSE"
-__version__ = "1.0.1"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.0.3/LICENSE"
+__version__ = "1.0.3"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -45,62 +45,11 @@ class LoadDocumentsForm(forms.Form):
         required=False)
 
 
-class LocateGeoEntitiesForm(forms.Form):
-    header = 'Locate Geo Entities and Geo Aliases in existing Text Units.'
-    priority = LTRCheckboxField(
-        label=_("Use first entity occurrence to resolve ambiguous entities"),
-        initial=True,
-        required=False)
-    delete = LTRCheckboxField(
-        label=_("Delete existing Geo Entity Usages and Geo Alias Usages"),
-        initial=True,
-        required=False)
-
-
+# sample form for custom task
 class LocateTermsForm(forms.Form):
     header = 'Locate Terms in existing Text Units.'
     delete = LTRCheckboxField(
         label=_("Delete existing Term Usages"),
-        initial=True,
-        required=False)
-
-
-class LocatePartiesForm(forms.Form):
-    header = 'Locate Parties in existing documents.'
-    delete = LTRCheckboxField(
-        label=_("Delete existing Parties and Party Usages"),
-        initial=True,
-        required=False)
-
-
-class LocateDatesForm(forms.Form):
-    header = 'Locate Dates in existing documents.'
-    delete = LTRCheckboxField(
-        label=_("Delete existing Date Usages"),
-        initial=True,
-        required=False)
-
-
-class LocateDateDurationsForm(forms.Form):
-    header = 'Locate Date Durations in existing documents.'
-    delete = LTRCheckboxField(
-        label=_("Delete existing Date Duration Usages"),
-        initial=True,
-        required=False)
-
-
-class LocateDefinitionsForm(forms.Form):
-    header = 'Locate Definitions in existing text units.'
-    delete = LTRCheckboxField(
-        label=_("Delete existing Definition Usages"),
-        initial=True,
-        required=False)
-
-
-class LocateCourtsForm(forms.Form):
-    header = 'Locate Courts in existing text units.'
-    delete = LTRCheckboxField(
-        label=_("Delete existing Court Usages"),
         initial=True,
         required=False)
 
@@ -113,70 +62,47 @@ class LocateEmployeesForm(forms.Form):
         required=False)
 
 
-class LocateCurrenciesForm(forms.Form):
-    header = 'Locate Currencies in existing text units.'
-    use_symbols = LTRCheckboxField(
-        label=_("Use symbols"),
-        widget=LTRCheckboxWidget(attrs={'class': 'min-one-of'}),
-        initial=True,
-        required=False)
-    use_short_names = LTRCheckboxField(
-        label=_("Use short names"),
-        widget=LTRCheckboxWidget(attrs={'class': 'min-one-of'}),
-        initial=True,
-        required=False)
-    use_abbreviations = LTRCheckboxField(
-        label=_("Use abbreviations"),
-        widget=LTRCheckboxWidget(attrs={'class': 'min-one-of'}),
-        initial=True,
-        required=False)
-    delete = LTRCheckboxField(
-        label=_("Delete existing Currency Usages"),
-        initial=True,
-        required=False)
-
-
 class LocateForm(forms.Form):
     header = 'Locate specific terms in existing text units.'
 
-    LocateGeoEntities_locate = LTRCheckboxField(
+    geoentity_locate = LTRCheckboxField(
         label=_("Geo Entities and Geo Aliases"),
         initial=False,
         required=False)
-    LocateGeoEntities_priority = LTRCheckboxField(
+    geoentity_priority = LTRCheckboxField(
         label=_("Use first entity occurrence to resolve ambiguous entities"),
         widget=LTRCheckboxWidget(attrs={'label_class': 'checkbox-small level-1'}),
         initial=False,
         required=False)
-    LocateGeoEntities_delete = LTRCheckboxField(
+    geoentity_delete = LTRCheckboxField(
         label=_("Delete existing Geo Entity Usages and Geo Alias Usages"),
         widget=LTRCheckboxWidget(attrs={'label_class': 'checkbox-small level-1'}),
         initial=False,
         required=False)
 
-    LocateDates_locate = LTRCheckboxField(
+    date_locate = LTRCheckboxField(
         label=_('Dates'),
         initial=False,
         required=False)
-    LocateDates_strict = LTRCheckboxField(
+    date_strict = LTRCheckboxField(
         label=_("Strict"),
         widget=LTRCheckboxWidget(
             attrs={'label_class': 'checkbox-small level-1'}),
         initial=False,
         required=False)
-    LocateDates_delete = LTRCheckboxField(
+    date_delete = LTRCheckboxField(
         label=_("Delete existing Date Usages"),
         widget=LTRCheckboxWidget(
             attrs={'label_class': 'checkbox-small level-1'}),
         initial=False,
         required=False)
 
-    LocateAmounts_locate = LTRCheckboxField(
+    amount_locate = LTRCheckboxField(
         label=_('Amounts'),
         widget=LTRCheckboxWidget(attrs={'class': 'checkbox-parent'}),
         initial=False,
         required=False)
-    LocateAmounts_delete = LTRCheckboxField(
+    amount_delete = LTRCheckboxField(
         label=_("Delete existing Amount Usages"),
         widget=LTRCheckboxWidget(
             attrs={'label_class': 'checkbox-small level-1',
@@ -184,12 +110,12 @@ class LocateForm(forms.Form):
         initial=False,
         required=False)
 
-    LocateCitations_locate = LTRCheckboxField(
+    citation_locate = LTRCheckboxField(
         label=_('Citations'),
         widget=LTRCheckboxWidget(attrs={'class': 'checkbox-parent'}),
         initial=False,
         required=False)
-    LocateCitations_delete = LTRCheckboxField(
+    citation_delete = LTRCheckboxField(
         label=_("Delete existing Citation Usages"),
         widget=LTRCheckboxWidget(attrs={
             'label_class': 'checkbox-small level-1',
@@ -197,12 +123,12 @@ class LocateForm(forms.Form):
         initial=False,
         required=False)
 
-    LocateCourts_locate = LTRCheckboxField(
+    court_locate = LTRCheckboxField(
         label=_('Courts'),
         widget=LTRCheckboxWidget(attrs={'class': 'checkbox-parent'}),
         initial=False,
         required=False)
-    LocateCourts_delete = LTRCheckboxField(
+    court_delete = LTRCheckboxField(
         label=_("Delete existing Court Usages"),
         widget=LTRCheckboxWidget(attrs={
             'label_class': 'checkbox-small level-1',
@@ -210,12 +136,12 @@ class LocateForm(forms.Form):
         initial=False,
         required=False)
 
-    LocateMoney_locate = LTRCheckboxField(
+    currency_locate = LTRCheckboxField(
         label=_('Currencies'),
         widget=LTRCheckboxWidget(attrs={'class': 'checkbox-parent'}),
         initial=False,
         required=False)
-    LocateMoney_delete = LTRCheckboxField(
+    currency_delete = LTRCheckboxField(
         label=_("Delete existing Currency Usages"),
         widget=LTRCheckboxWidget(
             attrs={'label_class': 'checkbox-small level-1',
@@ -223,12 +149,12 @@ class LocateForm(forms.Form):
         initial=False,
         required=False)
 
-    LocateDurations_locate = LTRCheckboxField(
+    duration_locate = LTRCheckboxField(
         label=_('Date Durations'),
         widget=LTRCheckboxWidget(attrs={'class': 'checkbox-parent'}),
         initial=False,
         required=False)
-    LocateDurations_delete = LTRCheckboxField(
+    duration_delete = LTRCheckboxField(
         label=_("Delete existing Date Duration Usages"),
         widget=LTRCheckboxWidget(
             attrs={'label_class': 'checkbox-small level-1',
@@ -236,12 +162,12 @@ class LocateForm(forms.Form):
         initial=False,
         required=False)
 
-    LocateDefinitions_locate = LTRCheckboxField(
+    definition_locate = LTRCheckboxField(
         label=_('Definitions'),
         widget=LTRCheckboxWidget(attrs={'class': 'checkbox-parent'}),
         initial=False,
         required=False)
-    LocateDefinitions_delete = LTRCheckboxField(
+    definition_delete = LTRCheckboxField(
         label=_("Delete existing Definition Usages"),
         widget=LTRCheckboxWidget(
             attrs={'label_class': 'checkbox-small level-1',
@@ -249,12 +175,12 @@ class LocateForm(forms.Form):
         initial=False,
         required=False)
 
-    LocateDistances_locate = LTRCheckboxField(
+    distance_locate = LTRCheckboxField(
         label=_('Distances'),
         widget=LTRCheckboxWidget(attrs={'class': 'checkbox-parent'}),
         initial=False,
         required=False)
-    LocateDistances_delete = LTRCheckboxField(
+    distance_delete = LTRCheckboxField(
         label=_("Delete existing Distance Usages"),
         widget=LTRCheckboxWidget(
             attrs={'label_class': 'checkbox-small level-1',
@@ -262,12 +188,12 @@ class LocateForm(forms.Form):
         initial=False,
         required=False)
 
-    LocateParties_locate = LTRCheckboxField(
+    party_locate = LTRCheckboxField(
         label=_('Parties'),
         widget=LTRCheckboxWidget(attrs={'class': 'checkbox-parent'}),
         initial=False,
         required=False)
-    LocateParties_delete = LTRCheckboxField(
+    party_delete = LTRCheckboxField(
         label=_("Delete existing Parties and Party Usages"),
         widget=LTRCheckboxWidget(
             attrs={'label_class': 'checkbox-small level-1',
@@ -275,12 +201,12 @@ class LocateForm(forms.Form):
         initial=False,
         required=False)
 
-    LocatePercents_locate = LTRCheckboxField(
+    percent_locate = LTRCheckboxField(
         label=_('Percents'),
         widget=LTRCheckboxWidget(attrs={'class': 'checkbox-parent'}),
         initial=False,
         required=False)
-    LocatePercents_delete = LTRCheckboxField(
+    percent_delete = LTRCheckboxField(
         label=_("Delete existing Percent Usages"),
         widget=LTRCheckboxWidget(
             attrs={'label_class': 'checkbox-small level-1',
@@ -288,12 +214,12 @@ class LocateForm(forms.Form):
         initial=False,
         required=False)
 
-    LocateRatios_locate = LTRCheckboxField(
+    ratio_locate = LTRCheckboxField(
         label=_('Ratios'),
         widget=LTRCheckboxWidget(attrs={'class': 'checkbox-parent'}),
         initial=False,
         required=False)
-    LocateRatios_delete = LTRCheckboxField(
+    ratio_delete = LTRCheckboxField(
         label=_("Delete existing Ratio Usages"),
         widget=LTRCheckboxWidget(
             attrs={'label_class': 'checkbox-small level-1',
@@ -301,12 +227,12 @@ class LocateForm(forms.Form):
         initial=False,
         required=False)
 
-    LocateRegulations_locate = LTRCheckboxField(
+    regulation_locate = LTRCheckboxField(
         label=_('Regulations'),
         widget=LTRCheckboxWidget(attrs={'class': 'checkbox-parent'}),
         initial=False,
         required=False)
-    LocateRegulations_delete = LTRCheckboxField(
+    regulation_delete = LTRCheckboxField(
         label=_("Delete existing Regulation Usages"),
         widget=LTRCheckboxWidget(
             attrs={'label_class': 'checkbox-small level-1',
@@ -314,18 +240,27 @@ class LocateForm(forms.Form):
         initial=False,
         required=False)
 
-    LocateTerms_locate = LTRCheckboxField(
+    term_locate = LTRCheckboxField(
         label=_('Terms'),
         widget=LTRCheckboxWidget(attrs={'class': 'checkbox-parent'}),
         initial=False,
         required=False)
-    LocateTerms_delete = LTRCheckboxField(
+    term_delete = LTRCheckboxField(
         label=_("Delete existing Term Usages"),
         widget=LTRCheckboxWidget(
             attrs={'label_class': 'checkbox-small level-1',
                    'class': 'checkbox-child'}),
         initial=False,
         required=False)
+
+    parse = LTRRadioField(
+        choices=(('paragraphs', 'Parse Text Units with "paragraph" type'),
+                 ('sentences', 'Parse Text Units with both "paragraph" and "sentence" types')),
+        help_text='Warning! Parsing both "paragraph" and "sentence" Text Unit types'
+                  ' will take much more time',
+        initial='paragraphs',
+        required=False)
+
 
 class ExistedClassifierClassifyForm(forms.Form):
     header = 'Classify Text Units using an existing Classifier.'
@@ -536,7 +471,9 @@ class ClusterForm(forms.Form):
         widget=forms.SelectMultiple(attrs={'class': 'chosen'}),
         choices=[('terms', 'Terms'),
                  ('parties', 'Parties'),
-                 ('entities', 'Geo Entities')],
+                 ('entities', 'Geo Entities'),
+                 ('document type', 'Document Type'),
+                 ('document type', 'Source Type')],
         required=True,
         help_text='Cluster by terms, parties or geo entities.')
     using = forms.ChoiceField(

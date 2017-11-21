@@ -172,7 +172,7 @@
       <div class="pull-right grid-controls">
         {% include '_base_grid_buttons_block.html' %}
         <button type="button" class="btn-u btn-sm btn-s pull-right"
-                onclick="document_property_popup({{ document.pk }}, '.jqxgrid-properties')">Create</button>
+                onclick="document_property_popup('document', {{ document.pk }}, '.jqxgrid-properties')">Create</button>
       </div>
       <div class="jqxgrid-container">
         <div class="jqxgrid col-md-12 jqxgrid-properties"></div>
@@ -349,52 +349,9 @@
     highlightParties(".jqxgrid-text-units", {{ party_list|safe }});
   </script>
 
+  {% include "document/_document_property_popup_js.html" %}
+
   <script type="text/javascript">
-    // text unit property popup
-    function document_property_popup(pk, grid, property_pk, key, value) {
-      if (typeof property_pk === "undefined"){
-        property_pk = null;
-        key = '';
-        value = '';
-      }
-      $.confirm({
-        type: 'blue',
-        icon: 'fa fa-tags',
-        title: 'Text Unit Property',
-        backgroundDismiss: true,
-        content: '<input type="text" class="form-control" name="key" id="key" placeholder="Key" value="' + key + '"><br />' +
-        '<input type="text" class="form-control" name="value" id="value" placeholder="Value" value="' + value + '">',
-        buttons: {
-          save: {
-            text: 'Save',
-            btnClass: 'btn-u btn-sm',
-            action: function(){
-              var key = this.$content.find('#key').val();
-              var value = this.$content.find('#value').val();
-              if (key && value) {
-                $.ajax({
-                  method: 'POST',
-                  url: '{% url "document:document-property-submit" %}',
-                  data: {
-                    owner_id: pk,
-                    property_pk: property_pk,
-                    key: key,
-                    value: value },
-                  success: function(response){
-                    if (grid){
-                      $(grid).jqxGrid('updatebounddata');
-                    }
-                    ajax_success_handler(response)
-                  },
-                  error: ajax_error_handler
-                })
-              }
-            }
-          },
-          cancel: cancel_button_action
-        }
-      })
-    }
 
     $(document).ready(function () {
 
@@ -505,7 +462,7 @@
       // Parties table
       var parties_datafields = [
         { name: 'party__name', type: 'string' },
-        { name: 'party__type', type: 'string' },
+        { name: 'party__type_abbr', type: 'string' },
         { name: 'count', type: 'int' },
         { name: 'party_summary_url', type: 'string' },
         { name: 'party_data' }
@@ -536,7 +493,7 @@
         { text: 'Name', datafield: 'party__name', width: 'auto',
           align: 'center', cellsalign: 'center', columngroup: 'Party',
           cellsrenderer: partyNameFormatter },
-        { text: 'Type', datafield: 'party__type', width: 'auto',
+        { text: 'Type', datafield: 'party__type_abbr', width: 'auto',
           align: 'center', cellsalign: 'center', columngroup: 'Party' },
         { text: 'Count', datafield: 'count', width: 150,
           align: 'center', cellsalign: 'center' },
@@ -794,7 +751,7 @@
         row = grid.jqxGrid('getrowdata', row);
         var menu_data = [
           { icon: 'fa fa-pencil',
-            onclick: "event.preventDefault();document_property_popup({{ document.pk }},'.jqxgrid-properties',"+row.pk+",'"+row.key+"','"+row.value+"')",
+            onclick: "event.preventDefault();document_property_popup('document', {{ document.pk }},'.jqxgrid-properties',"+row.pk+",'"+row.key+"','"+row.value+"')",
             text: 'Edit Property' },
           { url: row.delete_url + '?next={{ request.path }}',
             icon: 'fa fa-remove',

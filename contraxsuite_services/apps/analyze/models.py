@@ -9,8 +9,8 @@ from apps.users.models import User
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2017, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.0.1/LICENSE"
-__version__ = "1.0.1"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.0.3/LICENSE"
+__version__ = "1.0.3"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -135,7 +135,7 @@ class BaseCluster(models.Model):
     description = models.CharField(max_length=200, db_index=True)
 
     # Cluster dimension(s)
-    cluster_by = models.CharField(max_length=20, db_index=True)
+    cluster_by = models.CharField(max_length=100, db_index=True)
 
     # Cluster data
     using = models.CharField(max_length=20, db_index=True)
