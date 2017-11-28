@@ -1,3 +1,5 @@
+[![](https://tokei.rs/b1/github/lexpredict/lexpredict-contraxsuite?category=code)](https://github.com/lexpredict/lexpredict-contraxsuite)
+
 # LexPredict ContraxSuite - Software
 Software package for [LexPredict ContraxSuite](https://github.com/LexPredict/lexpredict-contraxsuite).
 
