@@ -527,8 +527,8 @@ NOTEBOOK_ARGUMENTS = [
     '--port=8000',
 ]
 
-VERSION_NUMBER = '1.0.3'
-VERSION_COMMIT = '9ed8aea'
+VERSION_NUMBER = '1.0.4'
+VERSION_COMMIT = 'bee4d81'
 
 try:
     from local_settings import *
