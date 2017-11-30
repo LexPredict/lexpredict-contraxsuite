@@ -588,17 +588,48 @@ footer .counter-block a .counter {
   padding: 2px 0 0 0;
 }
 
-.tabs.page-tabs .tab-nav a {
+/*---------------*/
+/*  Tabs styles  */
+/*---------------*/
+.tabs.page-tabs .tab-nav a,
+.page-tabs .nav-tabs a {
   text-transform: uppercase;
   color: #444;
   font-weight: 600;
-  margin: 0 0 30px 0;
+  margin: 0;
   font-family: 'Raleway', sans-serif;
   font-size: 18px;
+  height: 40px;
+  line-height: 40px;
+  padding: 0 10px;
 }
-.tabs.page-tabs .tab-nav li:not(.ui-state-active) a {
+.tabs.page-tabs .tab-nav li:not(.ui-state-active) a,
+.page-tabs .nav-tabs li:not(.active) a {
   opacity: 0.5;
 }
+.tabs.page-tabs .tab-nav li:not(.ui-state-active) a:hover,
+.page-tabs .nav-tabs li:not(.active) a:hover {
+  opacity: 1;
+}
+.page-tabs > .nav > li > a:hover,
+.page-tabs > .nav > li > a:focus {
+  background-color: inherit;
+  border: inherit;
+}
+.nav-tabs > li.active > a,
+.nav-tabs > li.active > a:hover,
+.nav-tabs > li.active > a:focus {
+  color: inherit;
+  background-color: inherit;
+  border: none;
+  border-bottom: 2px solid #1ABC9C;
+}
+.page-tabs .tab-pane:target {
+  background: transparent;
+  padding: 0;
+  border: none;
+}
+
 #exportForm {
   margin: 0;
 }
@@ -914,6 +945,13 @@ body:not(.device-touch) .btn-u {
 .badge-s {
   background-color: #1ABC9C;
 }
+.badge {
+  vertical-align: top;
+}
+.dropdown-menu .badge {
+  float: right;
+  margin-top: 10px;
+}
 
 footer .footer-slider {
   background: url(../images/contrax-demo-site.png);
@@ -1004,7 +1042,11 @@ footer .footer-slider .t-rotate {
   height: 80px;
 }
 .popup-form:not(.ltr) > p:not(.header) {
-  margin-bottom: 10px;
+  margin-bottom: 2px;
+}
+.popup-form .main-label {
+  margin-bottom: 20px;
+  text-transform: uppercase;
 }
 .jconfirm .text-warning {
   color: #e69d19;

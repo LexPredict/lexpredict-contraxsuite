@@ -1,3 +1,27 @@
+"""
+    Copyright (C) 2017, ContraxSuite, LLC
+
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU Affero General Public License as
+    published by the Free Software Foundation, either version 3 of the
+    License, or (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU Affero General Public License for more details.
+
+    You should have received a copy of the GNU Affero General Public License
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+    You can also be released from the requirements of the license by purchasing
+    a commercial license from ContraxSuite, LLC. Buying such a license is
+    mandatory as soon as you develop commercial activities involving ContraxSuite
+    software without disclosing the source code of your own applications.  These
+    activities include: offering paid services to customers as an ASP or "cloud"
+    provider, processing documents on the fly in a web application,
+    or shipping ContraxSuite within a closed source product.
+"""
 # -*- coding: utf-8 -*-
 
 # Standard imports
@@ -10,6 +34,7 @@ import pickle
 import re
 import string
 import sys
+from copy import deepcopy
 from io import StringIO
 from traceback import format_exc
 
@@ -19,21 +44,25 @@ import geocoder
 import nltk
 import numpy as np
 import pandas as pd
-from elasticsearch import Elasticsearch
-from lexnlp.extract.en import (
-    amounts, citations, courts,
-    dates, distances, definitions,
-    durations, geoentities, money, percents, ratios, regulations, dict_entities)
-from lexnlp.extract.en.entities.nltk_maxent import get_companies
-from lexnlp.nlp.en.tokens import get_stems, get_token_list
-from textblob import TextBlob
-from tika import parser
-
+import sys
+from constance import config
 # Celery imports
 from celery import shared_task
 from celery.result import AsyncResult
 from celery.utils.log import get_task_logger
-
+# Django imports
+from django.conf import settings
+from django.db.models import Count, Q
+from django.utils.timezone import now
+from django_celery_results.models import TaskResult
+from elasticsearch import Elasticsearch
+from lexnlp.extract.en import (
+    amounts, citations, copyright, courts, dates, distances, definitions,
+    durations, geoentities, money, percents, ratios, regulations, trademarks, urls,
+    dict_entities)
+from lexnlp.extract.en.entities.nltk_maxent import get_companies
+from lexnlp.nlp.en.tokens import get_stems, get_token_list
+from lexnlp.nlp.en.segments.titles import get_titles
 # Scikit-learn imports
 from sklearn.cluster import Birch, DBSCAN, KMeans, MiniBatchKMeans
 from sklearn.ensemble import ExtraTreesClassifier, RandomForestClassifier
@@ -43,38 +72,38 @@ from sklearn.metrics.pairwise import cosine_similarity
 from sklearn.naive_bayes import MultinomialNB
 from sklearn.semi_supervised import LabelSpreading
 from sklearn.svm import SVC
-
-# Django imports
-from django.conf import settings
-from django.db.models import Q
-from django.utils.timezone import now
-from django_celery_results.models import TaskResult
+from textblob import TextBlob
+from tika import parser
 
 # Project imports
 from apps.analyze.models import (
     DocumentCluster, TextUnitCluster,
     DocumentSimilarity, TextUnitSimilarity, PartySimilarity as PartySimilarityModel,
     TextUnitClassification, TextUnitClassifier, TextUnitClassifierSuggestion)
+from apps.common.advancedcelery.transfer import TransferManager
+from apps.common.advancedcelery.fileaccess.local_file_access import LocalFileAccess
+from apps.common.advancedcelery.fileaccess.nginx_http_file_access import NginxHttpFileAccess
 from apps.document.models import (
     Document, DocumentProperty, TextUnit, TextUnitProperty, TextUnitTag)
 from apps.extract import models as extract_models
 from apps.extract.models import (
+    AmountUsage, CitationUsage, CopyrightUsage,
+    Court, CourtUsage, CurrencyUsage,
+    DateDurationUsage, DateUsage, DefinitionUsage, DistanceUsage,
     GeoAlias, GeoAliasUsage, GeoEntity, GeoEntityUsage, GeoRelation,
-    Term, TermUsage, Party, PartyUsage,
-    AmountUsage, PercentUsage, RatioUsage, DistanceUsage,
-    Court, CourtUsage, CurrencyUsage, RegulationUsage,
-    CitationUsage, DateDurationUsage, DateUsage, DefinitionUsage)
-from apps.task.celery import app
+    PercentUsage, RatioUsage, RegulationUsage,
+    Party, PartyUsage, Term, TermUsage, TrademarkUsage, UrlUsage)
+from apps.celery import app
+from apps.common.utils import fast_uuid
 from apps.task.models import Task
-from apps.task.utils.custom import fast_uuid
 from apps.task.utils.nlp import lang
 from apps.task.utils.ocr.textract import textract2text
 from apps.task.utils.text.segment import segment_paragraphs, segment_sentences
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2017, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.0.3/LICENSE"
-__version__ = "1.0.3"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.0.4/LICENSE"
+__version__ = "1.0.4"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -93,15 +122,32 @@ wnl = nltk.stem.WordNetLemmatizer()
 # TODO: Configuration-based and language-based punctuation.
 remove_punctuation_map = dict((ord(char), None) for char in string.punctuation)
 
+transfer = TransferManager()
+
+
+def prepare_file_access_handler():
+    type = settings.CELERY_FILE_ACCESS_TYPE
+    if type == 'Local':
+        return LocalFileAccess(settings.CELERY_FILE_ACCESS_LOCAL_ROOT_DIR)
+    elif type == 'Nginx':
+        return NginxHttpFileAccess(settings.CELERY_FILE_ACCESS_NGINX_ROOT_URL)
+    else:
+        return None
+
+
+file_access_handler = prepare_file_access_handler()
+
 
 def call_task(task_name, **options):
     """
-
-    :param task_name:
-    :param options:
+    Call celery task by name
+    :param task_name: str, task tane
+    :param options: task params
     :return:
     """
-    task_class = getattr(this_module, task_name.replace(' ', ''))
+    this_module_name = options.pop('module_name', __name__)
+    _this_module = sys.modules[this_module_name]
+    task_class = getattr(_this_module, task_name.replace(' ', ''))
     task_id = str(fast_uuid())
     task = Task.objects.create(
         name=task_name,
@@ -197,18 +243,9 @@ class LoadDocuments(BaseTask):
 
     def process(self, **kwargs):
 
-        file_list = []
-        path = os.path.join(settings.MEDIA_ROOT,
-                            settings.FILEBROWSER_DIRECTORY,
-                            kwargs['source_path'].strip().strip('/'))
-        self.log('Parse ' + path)
-
-        if os.path.isfile(path):
-            file_list.append(path)
-        else:
-            for root, _, files in os.walk(path):
-                for filename in files:
-                    file_list.append(os.path.join(root, filename))
+        path = kwargs['source_path']
+        self.log('Parse {0} at {1}'.format(path, file_access_handler))
+        file_list = file_access_handler.list(path)
         self.log("Detected {0} files. Added {0} subtasks.".format(len(file_list)))
 
         if kwargs['delete']:
@@ -225,13 +262,18 @@ class LoadDocuments(BaseTask):
 
     @staticmethod
     @shared_task
-    def create_document(file_path, kwargs):
+    def create_document(uri: str, kwargs):
+        with file_access_handler.get_local_fn(uri) as (fn, file_name):
+            LoadDocuments.create_document_local(fn, uri, kwargs)
+
+    @staticmethod
+    def create_document_local(file_path, file_name, kwargs):
 
         task_id = kwargs['task_id']
 
         # Check for existing record
-        if Document.objects.filter(description=file_path).exists():
-            log(task_id, 'SKIP (EXISTS): ' + file_path)
+        if Document.objects.filter(description=file_name).exists():
+            log(task_id, 'SKIP (EXISTS): ' + file_name)
             return
 
         # process by tika
@@ -254,11 +296,11 @@ class LoadDocuments(BaseTask):
                 text = textract2text(file_path)
                 parser_name = 'textract'
             except:
-                log(task_id, 'SKIP (ERROR): ' + file_path)
+                log(task_id, 'SKIP (ERROR): ' + file_name)
                 return
 
         if not text:
-            log(task_id, 'SKIP (ERROR): ' + file_path)
+            log(task_id, 'SKIP (ERROR): ' + file_name)
             return
 
         metadata['parsed_by'] = parser_name
@@ -267,19 +309,24 @@ class LoadDocuments(BaseTask):
         try:
             language = lang.get_language_langid(text)[0]
         except:
-            log(task_id, 'SKIP (LANGUAGE NOT DETECTED): ' + file_path)
+            log(task_id, 'SKIP (LANGUAGE NOT DETECTED): ' + file_name)
             return
 
+        # detect title
+        title = metadata.get('title', None)
+        if not title:
+            title = get_titles(text)
+
         # Create document object
-        rel_file_path = os.path.join(*re.split(r'(data/)', file_path)[-2:])
         document = Document.objects.create(
             document_type=kwargs['document_type'],
-            name=os.path.basename(file_path),
-            description=rel_file_path,
-            source=os.path.dirname(rel_file_path),
+            name=os.path.basename(file_name),
+            description=file_name,
+            source=os.path.dirname(file_name),
             source_type=kwargs['source_type'],
-            source_path=rel_file_path,
-            metadata=metadata)
+            source_path=file_name,
+            metadata=metadata,
+            title=title)
 
         # create Document Properties
         document_properties = [
@@ -341,7 +388,7 @@ class LoadDocuments(BaseTask):
                     value=str(round(subjectivity)))]
         TextUnitProperty.objects.bulk_create(text_unit_properties)
 
-        log(message='LOADED (%s): %s' % (parser_name.upper(), file_path),
+        log(message='LOADED (%s): %s' % (parser_name.upper(), file_name),
             task=task_id)
 
 
@@ -609,12 +656,55 @@ class Locate(BaseTask):
         geoentity=['GeoEntityUsage', 'GeoAliasUsage']
     )
 
+    @staticmethod
+    def load_geo_config():
+
+        geo_config = {}
+        for name, pk in GeoEntity.objects.values_list('name', 'pk'):
+            entity = dict_entities.entity_config(pk, name, name_is_alias=True)
+            geo_config[pk] = entity
+        for alias_id, alias_text, alias_type, entity_id, alias_lang \
+                in GeoAlias.objects.values_list('pk', 'alias', 'type', 'entity', 'locale'):
+            entity = geo_config[entity_id]
+            if entity:
+                is_abbrev = alias_type.startswith('iso') or alias_type.startswith('abbrev')
+                dict_entities.add_aliases_to_entity(entity,
+                                                    aliases_csv=alias_text,
+                                                    language=alias_lang,
+                                                    is_abbreviation=is_abbrev,
+                                                    alias_id=alias_id)
+        return list(geo_config.values())
+
+    @staticmethod
+    def load_court_config():
+        return [dict_entities.entity_config(
+            entity_id=i.id,
+            name=i.name,
+            aliases=i.alias.split(';') if i.alias else []
+        ) for i in Court.objects.all()]
+
+    @staticmethod
+    def load_term_stems():
+        term_stems = {}
+        for t, pk in Term.objects.values_list('term', 'pk'):
+            stemmed_term = ' %s ' % ' '.join(get_stems(t))
+            stemmed_item = term_stems.get(stemmed_term, [])
+            stemmed_item.append([t, pk])
+            term_stems[stemmed_term] = stemmed_item
+        for item in term_stems:
+            term_stems[item] = dict(values=term_stems[item],
+                                    length=len(term_stems[item]))
+        return term_stems
+
     def process(self, **kwargs):
 
         # delete ThingUsage and TextUnitTag(tag=thing)
         locate = {}
+        available_locators = list(settings.REQUIRED_LOCATORS) + list(config.standard_optional_locators)
         for term_name, term_kwargs in kwargs['tasks'].items():
-            if term_kwargs['delete'] or term_kwargs['locate']:
+            if term_name not in available_locators:
+                continue
+            if term_kwargs.get('delete') or term_kwargs.get('locate'):
                 usage_model_names = self.usage_model_map.get(
                     term_name,
                     [term_name.title() + 'Usage'])
@@ -626,7 +716,7 @@ class Locate(BaseTask):
                 tags_deleted = TextUnitTag.objects.filter(tag=term_name).delete()
                 self.log('Deleted {} TextUnitTag(tag={})'.format(
                     tags_deleted[0], term_name))
-                if term_kwargs['locate']:
+                if term_kwargs.get('locate'):
                     locate[term_name] = {i: j for i, j in term_kwargs.items()
                                          if i not in ['locate', 'delete']}
 
@@ -636,42 +726,13 @@ class Locate(BaseTask):
 
         # create data for specific tasks
         if 'term' in locate:
-            term_stems = {}
-            for t, pk in Term.objects.values_list('term', 'pk'):
-                stemmed_term = ' %s ' % ' '.join(get_stems(t))
-                stemmed_item = term_stems.get(stemmed_term, [])
-                stemmed_item.append([t, pk])
-                term_stems[stemmed_term] = stemmed_item
-            for item in term_stems:
-                term_stems[item] = dict(values=term_stems[item],
-                                        length=len(term_stems[item]))
-            locate['term']['term_stems'] = term_stems
+            locate['term']['term_stems'] = Locate.load_term_stems()
 
         if 'geoentity' in locate:
-            geo_config = {}
-            for name, pk in GeoEntity.objects.values_list('name', 'pk'):
-                entity = dict_entities.entity_config(pk, name, name_is_alias=True)
-                geo_config[pk] = entity
-
-            for alias_id, alias_text, alias_type, entity_id, alias_lang \
-                    in GeoAlias.objects.values_list('pk', 'alias', 'type', 'entity', 'locale'):
-                entity = geo_config[entity_id]
-                if entity:
-                    is_abbrev = alias_type.startswith('iso') or alias_type.startswith('abbrev')
-                    dict_entities.add_aliases_to_entity(entity,
-                                                        aliases_csv=alias_text,
-                                                        language=alias_lang,
-                                                        is_abbreviation=is_abbrev,
-                                                        alias_id=alias_id)
-            locate['geoentity']['geo_config_list'] = list(geo_config.values())
+            locate['geoentity']['geo_config'] = Locate.load_geo_config()
 
         if 'court' in locate:
-            locate['court']['court_config_list'] = [
-                dict_entities.entity_config(
-                    entity_id=i.id,
-                    name=i.name,
-                    aliases=i.alias.split(';') if i.alias else []
-                ) for i in Court.objects.all()]
+            locate['court']['court_config'] = Locate.load_court_config()
 
         # define number of async tasks
         text_units = TextUnit.objects.all()
@@ -687,15 +748,20 @@ class Locate(BaseTask):
         self.log('Found {0} Text Units. Added {0} subtasks.'.format(
             self.task.subtasks_total))
 
+        # Putting 'locate' dict as large args for further multiple runs of parse_text_unit child tasks
+        locate_cache_key = Locate.__name__ + str(self.task.id)
+        transfer.put(key=locate_cache_key, value=locate)
+
         for text_unit_id, text, text_unit_lang in text_units.values_list('id', 'text', 'language'):
             self.parse_text_unit.apply_async(
-                args=(locate, text_unit_id, text_unit_lang, text, kwargs['user_id']),
+                args=(text_unit_id, text_unit_lang, text, kwargs['user_id'], locate_cache_key),
                 task_id='%d_%s' % (self.task.id, fast_uuid()))
 
     @staticmethod
     @shared_task
-    def parse_text_unit(locate, text_unit_id, text_unit_lang, text, user_id):
+    def parse_text_unit(text_unit_id, text_unit_lang, text, user_id, cache_key):
         tags = []
+        locate = transfer.get(cache_key) if cache_key else {}
         for task_name, task_kwargs in locate.items():
             func_name = 'parse_%s' % task_name
             try:
@@ -750,9 +816,10 @@ def parse_citation(text, text_unit_id, _text_unit_lang):
 
 
 def parse_court(text, text_unit_id, text_unit_lang, **kwargs):
+    court_config = kwargs['court_config']
     found = [dict_entities.get_entity_id(i[0])
              for i in courts.get_courts(text,
-                                        court_config_list=kwargs['court_config_list'],
+                                        court_config_list=court_config,
                                         text_languages=[text_unit_lang])]
     if found:
         unique = set(found)
@@ -910,40 +977,84 @@ def parse_regulation(text, text_unit_id, _text_unit_lang):
     return bool(found)
 
 
+def parse_copyright(text, text_unit_id, _text_unit_lang):
+    found = list(copyright.get_copyright(text, return_sources=True))
+    if found:
+        unique = set(found)
+        CopyrightUsage.objects.bulk_create(
+            [CopyrightUsage(
+                text_unit_id=text_unit_id,
+                year=item[1],
+                name=item[2],
+                copyright_str=item[3],
+                count=found.count(item)
+            ) for item in unique])
+    return bool(found)
+
+
+def parse_trademark(text, text_unit_id, _text_unit_lang):
+    found = list(trademarks.get_trademarks(text))
+    if found:
+        unique = set(found)
+        TrademarkUsage.objects.bulk_create(
+            [TrademarkUsage(
+                text_unit_id=text_unit_id,
+                trademark=item,
+                count=found.count(item)
+            ) for item in unique])
+    return bool(found)
+
+
+def parse_url(text, text_unit_id, _text_unit_lang):
+    found = list(urls.get_urls(text))
+    if found:
+        unique = set(found)
+        UrlUsage.objects.bulk_create(
+            [UrlUsage(
+                text_unit_id=text_unit_id,
+                source_url=item,
+                count=found.count(item)
+            ) for item in unique])
+    return bool(found)
+
+
 def parse_geoentity(text, text_unit_id, text_unit_lang, **kwargs):
-    geo_config_list = kwargs['geo_config_list']
+    geo_config = kwargs['geo_config']
     priority = kwargs['priority']
     entity_alias_pairs = list(geoentities.get_geoentities(text,
-                                                       geo_config_list,
-                                                       text_languages=[text_unit_lang],
-                                                       priority=priority))
+                                                          geo_config,
+                                                          text_languages=[text_unit_lang],
+                                                          priority=priority))
 
     entity_ids = [dict_entities.get_entity_id(entity) for entity, _alias in entity_alias_pairs]
     if entity_ids:
         unique = set(entity_ids)
         GeoEntityUsage.objects.bulk_create([
-            GeoEntityUsage(
-                text_unit_id=text_unit_id,
-                entity_id=idd,
-                count=entity_ids.count(idd)) for idd in unique])
+                                               GeoEntityUsage(
+                                                   text_unit_id=text_unit_id,
+                                                   entity_id=idd,
+                                                   count=entity_ids.count(idd)) for idd in unique])
 
     alias_ids = [dict_entities.get_alias_id(alias) for _entity, alias in entity_alias_pairs]
     if alias_ids:
         unique = set(alias_ids)
         GeoAliasUsage.objects.bulk_create([
-            GeoAliasUsage(
-                text_unit_id=text_unit_id,
-                alias_id=idd,
-                count=alias_ids.count(idd)) for idd in unique if idd])
+                                              GeoAliasUsage(
+                                                  text_unit_id=text_unit_id,
+                                                  alias_id=idd,
+                                                  count=alias_ids.count(idd)) for idd in unique if idd])
 
     return bool(entity_ids)
 
 
 def parse_term(text, text_unit_id, _text_unit_lang, **kwargs):
+    term_stems = kwargs['term_stems']
     text_stems = ' %s ' % ' '.join(get_stems(text, lowercase=True))
     text_tokens = get_token_list(text, lowercase=True)
     term_usages = []
-    for stemmed_term, data in kwargs['term_stems'].items():
+    for stemmed_term, _data in term_stems.items():
+        # prevent modifying of term_stems
+        data = deepcopy(_data)
         # stem not found in text
         if stemmed_term not in text_stems:
             continue
@@ -964,10 +1075,10 @@ def parse_term(text, text_unit_id, _text_unit_lang, **kwargs):
                     term_usages.append(term_data)
                     # TODO: "responsibilities"
     TermUsage.objects.bulk_create([
-        TermUsage(
-            text_unit_id=text_unit_id,
-            term_id=pk,
-            count=count) for _, pk, count in term_usages])
+                                      TermUsage(
+                                          text_unit_id=text_unit_id,
+                                          term_id=pk,
+                                          count=count) for _, pk, count in term_usages])
     return bool(term_usages)
 
 
@@ -1241,10 +1352,12 @@ class Cluster(BaseTask):
             'cluster_model': DocumentCluster,
             'property_lookup': 'documentproperty',
             'lookup_map': dict(
+                dates='dateusage__date',
                 terms='termusage__term__term',
                 parties='partyusage__party__name',
                 entities='geoentityusage__entity__name'),
             'filter_map': dict(
+                dates='textunit__dateusage__isnull',
                 terms='textunit__termusage__isnull',
                 parties='textunit__partyusage__isnull',
                 entities='textunit__geoentityusage__isnull')
@@ -1254,10 +1367,12 @@ class Cluster(BaseTask):
             'cluster_model': TextUnitCluster,
             'property_lookup': 'textunitproperty',
             'lookup_map': dict(
+                dates=['dateusage_set', 'date'],
                 terms=['termusage_set', 'term__term'],
                 parties=['partyusage_set', 'party__name'],
                 entities=['geoentityusage_set', 'entity__name']),
             'filter_map': dict(
+                dates='dateusage__isnull',
                 terms='termusage__isnull',
                 parties='partyusage__isnull',
                 entities='geoentityusage__isnull')
@@ -1276,6 +1391,11 @@ class Cluster(BaseTask):
         using = kwargs['using']
         n_clusters = kwargs['n_clusters']
         cluster_by = kwargs['cluster_by']
+        cluster_by_document_type = 'document type' in cluster_by
+        cluster_by_document_source_type = 'document source type' in cluster_by
+        cluster_by_date = 'dates' in cluster_by
+        cluster_by_str = ', '.join(sorted(cluster_by))
+        cluster_by = [i for i in cluster_by if i in ('dates', 'terms', 'parties', 'entities')]
 
         target_attrs = self.cluster_map[target]
         source_model = target_attrs['source_model']
@@ -1285,7 +1405,7 @@ class Cluster(BaseTask):
 
         # step #1 - delete
         if kwargs['delete_type']:
-            cluster_model.objects.filter(cluster_by=', '.join(cluster_by), using=using).delete()
+            cluster_model.objects.filter(cluster_by=cluster_by_str, using=using).delete()
         if kwargs['delete']:
             cluster_model.objects.all().delete()
         self.task.push()
@@ -1297,28 +1417,119 @@ class Cluster(BaseTask):
             q_object.add(Q(**{filter_map[c]: False}), Q.OR)
         objects = source_model.objects.filter(q_object).distinct()
         pks = list(objects.values_list('pk', flat=True))
-        # get minimized texts
-        if target == 'documents':
-            minimized_texts_set = [
-                ' '.join([' '.join([i for i in o.textunit_set.values_list(lookup_map[c], flat=True)
-                                    if i]) for c in cluster_by])
-                for o in objects]
+
+        # cluster by date
+        if cluster_by_date:
+            id_field = 'text_unit__document_id' if target == 'documents' else 'text_unit_id'
+            qs = DateUsage.objects.values(id_field, 'date').annotate(Count('date'))
+            df = pd.DataFrame(list(qs)).groupby([id_field, 'date'],
+                                                as_index=False).agg({'date__count': 'sum'})
+            dft = df.pivot(index=id_field, columns='date', values='date__count')
+            X = dft.fillna(0).values.tolist()
+            y = dft.index.tolist()
+            feature_names = dft.columns.tolist()
+            self.task.push(2)
         else:
-            minimized_texts_set = [
-                ' '.join([' '.join(getattr(o, lookup_map[c][0])
-                                   .values_list(lookup_map[c][1], flat=True)) for c in cluster_by])
-                for o in objects]
-        self.task.push()
+            # get minimized texts if cluster_by requires text value
+            if target == 'documents':
+                minimized_texts_set = [
+                    '%s ' % o.document_type if cluster_by_document_type else '' +
+                    '%s ' % o.source_type if cluster_by_document_source_type else '' +
+                    ' '.join([' '.join([i for i in o.textunit_set.values_list(lookup_map[c], flat=True)
+                    if i]) for c in cluster_by])
+                    for o in objects]
+            else:
+                minimized_texts_set = [
+                    '%s ' % o.document.document_type if cluster_by_document_type else '' +
+                    '%s ' % o.document.source_type if cluster_by_document_source_type else '' +
+                    ' '.join([' '.join(getattr(o, lookup_map[c][0])
+                    .values_list(lookup_map[c][1], flat=True)) for c in cluster_by])
+                    for o in objects]
+            self.task.push()
+            # step #3
+            vectorizer = TfidfVectorizer(max_df=0.5, max_features=self.n_features,
+                                         min_df=2, stop_words='english',
+                                         use_idf=kwargs['use_idf'])
+            X = vectorizer.fit_transform(minimized_texts_set).toarray()
+            feature_names = vectorizer.get_feature_names()
+            self.task.push()
 
-        # step #3
-        vectorizer = TfidfVectorizer(max_df=0.5, max_features=self.n_features,
-                                     min_df=2, stop_words='english',
-                                     use_idf=kwargs['use_idf'])
-        X = vectorizer.fit_transform(minimized_texts_set)
-        self.task.push()
-
-        created_date = datetime.datetime.now()
         # step #4
+        created_date = datetime.datetime.now()
+        m = self.get_model(**kwargs)
+
+        if using == 'LabelSpreading':
+            # TODO: simplify
+            objects_with_prop = {pk: prop for pk, prop in objects.filter(
+                **{'{}__key'.format(target_attrs['property_lookup']): kwargs['ls_%s_property' % target]})
+                .values_list('pk', '{}__value'.format(target_attrs['property_lookup']))
+                .order_by('pk').distinct('pk')}
+            prop_map = {n: prop for n, prop in enumerate(set(objects_with_prop.values()))}
+            prop_map_rev = {prop: n for n, prop in prop_map.items()}
+            objects_with_prop_n = {pk: prop_map_rev[prop] for pk, prop in objects_with_prop.items()}
+            y = [objects_with_prop_n.get(i, -1) for i in objects.values_list('pk', flat=True)]
+            m.fit(X, y)
+            labeled = {pk: prop_map[m.transduction_[n]] for n, pk in
+                       enumerate(objects.values_list('pk', flat=True))
+                       if y[n] != -1}
+            for cluster_id, cluster_label in enumerate(set(labeled.values())):
+                cluster = cluster_model.objects.create(
+                    cluster_id=cluster_id,
+                    name=cluster_name,
+                    self_name=cluster_label,
+                    description=cluster_desc,
+                    cluster_by=cluster_by_str,
+                    using=using,
+                    created_date=created_date)
+                getattr(cluster, target).set(
+                    [pk for pk, label in labeled.items() if label == cluster_label])
+
+        else:
+            m.fit(X)
+            if using == 'DBSCAN' and not cluster_by_date:
+                labels = m.labels_
+                for cluster_id in set(labels):
+                    cluster_index = np.where(labels == cluster_id)[0]
+                    cluster_tokens = []
+                    for item_index in cluster_index:
+                        cluster_tokens.extend(nltk.word_tokenize(minimized_texts_set[item_index]))
+                    cluster_self_name = "-".join(pd.Series(cluster_tokens).value_counts()
+                                                 .head(self.self_name_len).index).lower()
+                    cluster = cluster_model.objects.create(
+                        cluster_id=cluster_id + 1,
+                        name=cluster_name,
+                        self_name='empty' if cluster_id == -1 else cluster_self_name,
+                        description=cluster_desc,
+                        cluster_by=cluster_by_str,
+                        using=using,
+                        created_date=created_date)
+                    getattr(cluster, target).set([pks[i] for i in cluster_index])
+            else:
+                if using == 'Birch':
+                    order_centroids = m.subcluster_centers_.argsort()[:, ::-1]
+                else:
+                    order_centroids = m.cluster_centers_.argsort()[:, ::-1]
+
+                # create clusters
+                for cluster_id in range(n_clusters):
+                    cluster_self_name = '>'.join(
+                        [str(feature_names[j]) for j in order_centroids[cluster_id, :self.self_name_len]])
+                    cluster = cluster_model.objects.create(
+                        cluster_id=cluster_id + 1,
+                        name=cluster_name,
+                        self_name=cluster_self_name,
+                        description=cluster_desc,
+                        cluster_by=cluster_by_str,
+                        using=using,
+                        created_date=created_date)
+                    getattr(cluster, target).set(
+                        [pks[n] for n, label_id in enumerate(m.labels_.tolist())
+                         if label_id == cluster_id])
+        self.task.push()
+
+    def get_model(self, **kwargs):
+        using = kwargs['using']
+        n_clusters = kwargs['n_clusters']
         if using == 'MiniBatchKMeans':
             m = MiniBatchKMeans(
                 n_clusters=n_clusters,
@@ -1351,88 +1562,7 @@ class Cluster(BaseTask):
             )
         else:
             raise RuntimeError('Clustering method is not defined')
-
-        cluster_by = ', '.join(cluster_by)
-        if using == 'LabelSpreading':
-            # TODO: simplify
-            objects_with_prop = {pk: prop for pk, prop in objects.filter(
-                **{'{}__key'.format(target_attrs['property_lookup']): kwargs['ls_%s_property' % target]})
-                .values_list('pk', '{}__value'.format(target_attrs['property_lookup']))
-                .order_by('pk').distinct('pk')}
-            prop_map = {n: prop for n, prop in enumerate(set(objects_with_prop.values()))}
-            prop_map_rev = {prop: n for n, prop in prop_map.items()}
-            objects_with_prop_n = {pk: prop_map_rev[prop] for pk, prop in objects_with_prop.items()}
-            y = [objects_with_prop_n.get(i, -1) for i in objects.values_list('pk', flat=True)]
-            m.fit(X.toarray(), y)
-            labeled = {pk: prop_map[m.transduction_[n]] for n, pk in
-                       enumerate(objects.values_list('pk', flat=True))
-                       if y[n] == -1}
-            for cluster_id, cluster_label in enumerate(set(labeled.values())):
-                cluster = cluster_model.objects.create(
-                    cluster_id=cluster_id,
-                    name=cluster_name,
-                    self_name=cluster_label,
-                    description=cluster_desc,
-                    cluster_by=cluster_by,
-                    using=using,
-                    created_date=created_date)
-                getattr(cluster, target).set(
-                    [pk for pk, label in labeled.items() if label == cluster_label])
-
-        else:
-            m.fit(X)
-            terms = vectorizer.get_feature_names()
-            if using == 'DBSCAN':
-                labels = m.labels_
-                for cluster_id in set(labels):
-                    cluster_index = np.where(labels == cluster_id)[0]
-                    cluster_tokens = []
-                    for item_index in cluster_index:
-                        cluster_tokens.extend(nltk.word_tokenize(minimized_texts_set[item_index]))
-                    cluster_self_name = "-".join(pd.Series(cluster_tokens).value_counts()
-                                                 .head(self.self_name_len).index).lower()
-                    cluster = cluster_model.objects.create(
-                        cluster_id=cluster_id + 1,
-                        name=cluster_name,
-                        self_name='empty' if cluster_id == -1 else cluster_self_name,
-                        description=cluster_desc,
-                        cluster_by=cluster_by,
-                        using=using,
-                        created_date=created_date)
-                    getattr(cluster, target).set([pks[i] for i in cluster_index])
-            else:
-                if using == 'Birch':
-                    order_centroids = m.subcluster_centers_.argsort()[:, ::-1]
-                else:
-                    order_centroids = m.cluster_centers_.argsort()[:, ::-1]
-
-                # create clusters
-                for cluster_id in range(n_clusters):
-                    cluster_self_name = '-'.join(
-                        [terms[j] for j in order_centroids[cluster_id, :self.self_name_len]])
-                    cluster = cluster_model.objects.create(
-                        cluster_id=cluster_id + 1,
-                        name=cluster_name,
-                        self_name=cluster_self_name,
-                        description=cluster_desc,
-                        cluster_by=cluster_by,
-                        using=using,
-                        created_date=created_date)
-                    getattr(cluster, target).set(
-                        [pks[n] for n, label_id in enumerate(m.labels_.tolist())
-                         if label_id == cluster_id])
-
-        # create cluster with empty values (if terms are not found in documents)
-        # cluster, _ = cluster_model.objects.get_or_create(
-        #     cluster_id=0,
-        #     name=cluster_name,
-        #     self_name='empty',
-        #     description=cluster_desc,
-        #     cluster_by=cluster_by,
-        #     using=using,
-        #     created_date=created_date)
-        # getattr(cluster, target).add(*list(source_model.objects.exclude(pk__in=pks)))
-        self.task.push()
+        return m
 
     def process(self, **kwargs):
 
@@ -1635,24 +1765,6 @@ class Similarity(BaseTask):
                     self.task.push()
 
 
-# Register all load tasks
-app.tasks.register(LoadDocuments())
-app.tasks.register(LoadTerms())
-app.tasks.register(LoadGeoEntities())
-app.tasks.register(LoadCourts())
-
-# Register all locate tasks
-app.tasks.register(Locate())
-app.tasks.register(LocateTerms())
-
-# Register all update/cluster/classify tasks
-app.tasks.register(UpdateElasticsearchIndex())
-app.tasks.register(Classify())
-app.tasks.register(Cluster())
-app.tasks.register(Similarity())
-app.tasks.register(PartySimilarity())
-
-
 @shared_task(name='celery.clean_tasks')
 def clean_tasks(delta_days=2):
     """
@@ -1713,3 +1825,21 @@ def purge_task(task_pk):
     ret = 'Deleted task, celery task, %d children celery tasks.' % children_tasks_no
     log(ret)
     return {'message': ret, 'status': 'success'}
+
+
+# Register all load tasks
+app.register_task(LoadDocuments())
+app.register_task(LoadTerms())
+app.register_task(LoadGeoEntities())
+app.register_task(LoadCourts())
+
+# Register all locate tasks
+app.register_task(Locate())
+app.register_task(LocateTerms())
+
+# Register all update/cluster/classify tasks
+app.register_task(UpdateElasticsearchIndex())
+app.register_task(Classify())
+app.register_task(Cluster())
+app.register_task(Similarity())
+app.register_task(PartySimilarity())

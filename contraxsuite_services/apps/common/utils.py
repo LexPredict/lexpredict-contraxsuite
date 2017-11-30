@@ -1,8 +1,34 @@
+"""
+    Copyright (C) 2017, ContraxSuite, LLC
+
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU Affero General Public License as
+    published by the Free Software Foundation, either version 3 of the
+    License, or (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU Affero General Public License for more details.
+
+    You should have received a copy of the GNU Affero General Public License
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+    You can also be released from the requirements of the license by purchasing
+    a commercial license from ContraxSuite, LLC. Buying such a license is
+    mandatory as soon as you develop commercial activities involving ContraxSuite
+    software without disclosing the source code of your own applications.  These
+    activities include: offering paid services to customers as an ASP or "cloud"
+    provider, processing documents on the fly in a web application,
+    or shipping ContraxSuite within a closed source product.
+"""
 # -*- coding: utf-8 -*-
 
 # Standard imports
 import datetime
+import random
 import re
+import uuid
 
 # Django imports
 from django.conf.urls import url
@@ -12,8 +38,8 @@ import django_excel as excel
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2017, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.0.3/LICENSE"
-__version__ = "1.0.3"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.0.4/LICENSE"
+__version__ = "1.0.4"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -162,6 +188,12 @@ def create_standard_urls(model, views, view_types=('list', 'add', 'detail', 'upd
     model_slug = slugify(model._meta.verbose_name)
     view_pattern = '%s{}%s' % (model.__name__, 'View')
     urlpatterns = []
+
+    if 'top_list' in view_types:
+        urlpatterns += [
+            url(r'^{}/list/$'.format('top-' + model_slug),
+                getattr(views, 'Top' + view_pattern.format('List')).as_view(),
+                name='top-{}-list'.format(model_slug))]
     if 'list' in view_types:
         urlpatterns += [
             url(r'^{}/list/$'.format(model_slug),
@@ -188,3 +220,7 @@ def create_standard_urls(model, views, view_types=('list', 'add', 'detail', 'upd
                 getattr(views, view_pattern.format('Delete')).as_view(),
                 name='{}-delete'.format(model_slug))]
     return urlpatterns
+
+
+def fast_uuid():
+    return uuid.UUID(int=random.getrandbits(128), version=4)
