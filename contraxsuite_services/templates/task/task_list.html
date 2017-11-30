@@ -92,6 +92,9 @@
       text-align: left;
       margin-left: 43px;
     }
+    .disabled {
+      opacity: 0.3
+    }
   </style>
 {% endblock %}
 
@@ -103,11 +106,6 @@
       Run Task<span class="caret"></span>
     </a>
     <ul class="dropdown-menu dropdown-menu-left">
-      {#      <li>#}
-      {#        <a href="{% url "filebrowser:fb_browse" %}">#}
-      {#          <i class="fa fa-files-o"></i>#}
-      {#          Browse/Upload Documents</a>#}
-      {#      </li>#}
       <li class="dropdown-submenu">
         <a class="dropdown-toggle" href="#" data-toggle="dropdown" aria-haspopup="false"
            aria-expanded="false">
@@ -125,7 +123,7 @@
                data-href="{% url "task:load" %}"
                data-btn-text="Load">
               <i class="fa fa-bars"></i>
-              Load Terms, Courts and Geo Entities</a>
+              Load Dictionary Data</a>
           </li>
         </ul>
       </li>
@@ -334,6 +332,7 @@
       <label for="_id_terms_delete" class="checkbox-style-3-label">Delete existing Terms</label>
     </div>
 
+    {% if 'court' in available_locators %}
     <div class="fancy-title title-bottom-border">
       <h4>Load Courts</h4>
     </div>
@@ -367,6 +366,7 @@
       <input class="checkbox-style" id="_id_courts_delete" name="courts_delete" type="checkbox">
       <label for="_id_courts_delete" class="checkbox-style-3-label">Delete existing Courts</label>
     </p>
+    {% endif %}
 
     <div class="fancy-title title-bottom-border">
       <h4>Load Geo Entities</h4>
@@ -449,10 +449,10 @@
           var visible_tu_props = cluster_tus ? '[name="ls_text_units_property"]' : '';
           var hidden_tu_props = cluster_tus ? '' : '[name="ls_text_units_property"]';
           var visible = $.grep([visible_advanced, visible_doc_props, visible_tu_props], function(n){ return (n!==''); });
-          visible = visible.join(', ')
+          visible = visible.join(', ');
           $form.find(visible).parent('p').show();
           var hidden = $.grep([hidden_advanced, hidden_doc_props, hidden_tu_props], function(n){ return (n!==''); });
-          hidden = hidden ? ', ' + hidden.join(', ') : ''
+          hidden = hidden ? ', ' + hidden.join(', ') : '';
           $form.find(
               '[name="n_clusters"], [name^="kmeans_"], [name^="mb_kmeans_"], [name^="dbscan_"]' +
               hidden).parent('p').hide();
@@ -500,7 +500,6 @@
     };
     var onLoadJC = function(jc){
       var $form = jc.$content;
-      console.log($form)
       {# activate chosen plugin #}
       $form.find('select.chosen:enabled').chosen();
       $form.find('form > p:visible:last:has(select)').css('height', '80px');
@@ -525,6 +524,11 @@
       $form.find('.switcher-off').parent('p').toggle();
       $form.find('.switcher').change(function () {
         $form.find('[class*="switcher-"]').parent('p').toggle()
+      });
+      {# activate locate-all checkbox #}
+      $form.find('[name="locate_all"]').click(function () {
+        var checkBoxes = $form.find('[id$="_locate"]');
+        checkBoxes.trigger("click");
       });
       {# locate form #}
       if ($form.find('form.locate-form').length){
@@ -570,11 +574,28 @@
           }
         });
       }
+      {# clustering by date only #}
+      $form.find('[name="cluster_by"]').on('change', function () {
+        if ($.inArray('dates', $(this).val()) != -1 &&
+            $form.find('[name="using"]').val() != 'LabelSpreading'){
+          $(this).val('dates').trigger("chosen:updated");
+          $('[name="using"] option[value="DBSCAN"]').css('display', 'none')
+        }
+        else {
+          $('[name="using"] option[value="DBSCAN"]').css('display', 'block')
+        }
+      });
       {# clustering / classify #}
-      $form.find('[name="do_cluster_documents"], [name="do_cluster_text_units"], select[name="using"], select[name="algorithm"], input[name="options"]').on('change switchChange.bootstrapSwitch', function () {
+      $form.find('[name="do_cluster_documents"], ' +
+                 '[name="do_cluster_text_units"], ' +
+                 'select[name="using"], select[name="algorithm"], ' +
+                 'input[name="options"]').on('change switchChange.bootstrapSwitch', function () {
         show_options($form)
       });
-      show_options($form)
+      show_options($form);
+      // activate form using small delay to enable all plugins !!!
+      $form.find('input[type="checkbox"]').prop("disabled", false);
+      $form.find('form').animate({opacity: 1}, 400);
     };
 
     $('.task').click(function(){
@@ -599,6 +620,9 @@
               $(this).parent().addClass('checkbox-child');
             });
             self.setContent($content);
+            // disable form checkboxes for 1 s to allow to activate all handlers firstly
+            $content.find('input[type="checkbox"]:not(.bt-switch)').prop("disabled", true);
+            $content.addClass('disabled');
           }).fail(function(xhr) {
             jc.close();
             $.alert({

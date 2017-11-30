@@ -1,3 +1,27 @@
+"""
+    Copyright (C) 2017, ContraxSuite, LLC
+
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU Affero General Public License as
+    published by the Free Software Foundation, either version 3 of the
+    License, or (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU Affero General Public License for more details.
+
+    You should have received a copy of the GNU Affero General Public License
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+    You can also be released from the requirements of the license by purchasing
+    a commercial license from ContraxSuite, LLC. Buying such a license is
+    mandatory as soon as you develop commercial activities involving ContraxSuite
+    software without disclosing the source code of your own applications.  These
+    activities include: offering paid services to customers as an ASP or "cloud"
+    provider, processing documents on the fly in a web application,
+    or shipping ContraxSuite within a closed source product.
+"""
 # -*- coding: utf-8 -*-
 
 # Future imports
@@ -10,14 +34,15 @@ from django.conf.urls import url
 from apps.common.utils import create_standard_urls
 from apps.extract import views
 from apps.extract.models import (
-    CourtUsage, CurrencyUsage, DateDurationUsage, DateUsage,
-    AmountUsage, DistanceUsage, PercentUsage, RatioUsage, CitationUsage,
-    DefinitionUsage, GeoEntityUsage, TermUsage, PartyUsage, RegulationUsage)
+    AmountUsage, CitationUsage, CopyrightUsage, CourtUsage, CurrencyUsage,
+    DateDurationUsage, DateUsage, DefinitionUsage, DistanceUsage, GeoEntityUsage,
+    PartyUsage, PercentUsage, RatioUsage, RegulationUsage, TermUsage, TrademarkUsage,
+    UrlUsage)
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2017, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.0.3/LICENSE"
-__version__ = "1.0.3"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.0.4/LICENSE"
+__version__ = "1.0.4"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -37,34 +62,27 @@ def register(model, view_types):
     urlpatterns += create_standard_urls(model, views, view_types)
 
 
-# Register views through helper method
-register(TermUsage, view_types=('list',))
-register(GeoEntityUsage, view_types=('list',))
-register(PartyUsage, view_types=('list',))
-register(AmountUsage, view_types=('list',))
-register(CitationUsage, view_types=('list',))
-register(DateUsage, view_types=('list',))
-register(DateDurationUsage, view_types=('list',))
-register(DefinitionUsage, view_types=('list',))
-register(DistanceUsage, view_types=('list',))
-register(PercentUsage, view_types=('list',))
-register(RatioUsage, view_types=('list',))
-register(RegulationUsage, view_types=('list',))
-register(CourtUsage, view_types=('list',))
-register(CurrencyUsage, view_types=('list',))
+# Register urls through helper method
+register(AmountUsage, view_types=('list', 'top_list'))
+register(CitationUsage, view_types=('list', 'top_list'))
+register(CopyrightUsage, view_types=('list', 'top_list'))
+register(CourtUsage, view_types=('list', 'top_list'))
+register(CurrencyUsage, view_types=('list', 'top_list'))
+register(DateUsage, view_types=('list', 'top_list'))
+register(DateDurationUsage, view_types=('list', 'top_list'))
+register(DefinitionUsage, view_types=('list', 'top_list'))
+register(DistanceUsage, view_types=('list', 'top_list'))
+register(GeoEntityUsage, view_types=('list', 'top_list'))
+register(PartyUsage, view_types=('list', 'top_list'))
+register(PercentUsage, view_types=('list', 'top_list'))
+register(RatioUsage, view_types=('list', 'top_list'))
+register(RegulationUsage, view_types=('list', 'top_list'))
+register(TermUsage, view_types=('list', 'top_list'))
+register(TrademarkUsage, view_types=('list', 'top_list'))
+register(UrlUsage, view_types=('list', 'top_list'))
 
 # Add hard-coded URL mappings
 urlpatterns += [
-    url(
-        r'^top-term-usage/list/$',
-        views.TopTermUsageListView.as_view(),
-        name='top-term-usage-list',
-    ),
-    url(
-        r'^top-geo-entity-usage/list/$',
-        views.TopGeoEntityUsageListView.as_view(),
-        name='top-geo-entity-usage-list',
-    ),
     url(
         r'^geo-entity-usage-map/$',
         views.GeoEntityUsageGoogleMapView.as_view(),
@@ -76,19 +94,9 @@ urlpatterns += [
         name='geo-entity-usage-chart',
     ),
     url(
-        r'^top-party-usage/list/$',
-        views.TopPartyUsageListView.as_view(),
-        name='top-party-usage-list',
-    ),
-    url(
         r'^party-network-chart/$',
         views.PartyNetworkChartView.as_view(),
         name='party-network-chart',
-    ),
-    url(
-        r'^top-date-usage/list/$',
-        views.TopDateUsageListView.as_view(),
-        name='top-date-usage-list',
     ),
     url(
         r'^date-usage-timeline/$',
@@ -104,56 +112,6 @@ urlpatterns += [
         r'^date-usage-export-ical/$',
         views.DateUsageToICalView.as_view(),
         name='date-usage-export-ical',
-    ),
-    url(
-        r'^top-date-duration-usage/list/$',
-        views.TopDateDurationUsageListView.as_view(),
-        name='top-date-duration-usage-list',
-    ),
-    url(
-        r'^top-definition-usage/list/$',
-        views.TopDefinitionUsageListView.as_view(),
-        name='top-definition-usage-list',
-    ),
-    url(
-        r'^top-amount-usage/list/$',
-        views.TopAmountUsageListView.as_view(),
-        name='top-amount-usage-list',
-    ),
-    url(
-        r'^top-citation-usage/list/$',
-        views.TopCitationUsageListView.as_view(),
-        name='top-citation-usage-list',
-    ),
-    url(
-        r'^top-distance-usage/list/$',
-        views.TopDistanceUsageListView.as_view(),
-        name='top-distance-usage-list',
-    ),
-    url(
-        r'^top-percent-usage/list/$',
-        views.TopPercentUsageListView.as_view(),
-        name='top-percent-usage-list',
-    ),
-    url(
-        r'^top-ratio-usage/list/$',
-        views.TopRatioUsageListView.as_view(),
-        name='top-ratio-usage-list',
-    ),
-    url(
-        r'^top-regulation-usage/list/$',
-        views.TopRegulationUsageListView.as_view(),
-        name='top-regulation-usage-list',
-    ),
-    url(
-        r'^top-court-usage/list/$',
-        views.TopCourtUsageListView.as_view(),
-        name='top-court-usage-list',
-    ),
-    url(
-        r'^top-currency-usage/list/$',
-        views.TopCurrencyUsageListView.as_view(),
-        name='top-currency-usage-list',
     ),
     url(
         r'^party/(?P<pk>\d+)/summary/$',

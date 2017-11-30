@@ -474,13 +474,14 @@
   // open popup window on menu button click in jqxgrid
   var show_menu = function (menu_data, grid, pk, width) {
     var default_link_data = {
-      url: '#', cls: '', icon: '', onclick: '', text: ''
+      url: '#', cls: '', icon: '', onclick: '', text: '', target: '_parent'
     };
     var ul = $('<ul class="popup-menu"></ul>');
     $.each(menu_data, function(index, item){
       item = $.extend({}, default_link_data, item);
       var li = $('<li><a href="' + item.url +
                      '" class="' + item.cls +
+                     '" target"' + item.target +
                    '" onclick="' + item.onclick +
                    '" data-pk="' + pk + '"><i class="' + item.icon + '"></i>' + item.text + '</a></li>');
       ul.append(li)
