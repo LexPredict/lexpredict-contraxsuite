@@ -315,7 +315,8 @@ class LoadDocuments(BaseTask):
         # detect title
         title = metadata.get('title', None)
         if not title:
-            title = get_titles(text)
+            _titles = list(get_titles(text))
+            title = _titles[0] if _titles else None
 
         # Create document object
         document = Document.objects.create(
