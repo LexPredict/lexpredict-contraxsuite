@@ -549,10 +549,14 @@ class LoadGeoEntities(BaseTask):
         for _, row in entities_df.iterrows():
             entity_id = row['Entity ID']
             entity_name = row['Entity Name'].strip()
-            if GeoEntity.objects.filter(Q(name=entity_name) | Q(entity_id=entity_id)).exists():
-                self.log('Geo Entity with ID "{}" or name "{}" already exists, skip.'.format(
-                    entity_id, entity_name))
-                continue
+            entity_priority = row.get('Entity Priority')
+            if entity_priority:
+                try:
+                    entity_priority = int(entity_priority)
+                except ValueError:
+                    entity_priority = 0
+            else:
+                entity_priority = 0
 
             if 'latitude' in row and row['latitude']:
                 latitude = row['latitude']
@@ -566,6 +570,7 @@ class LoadGeoEntities(BaseTask):
             entity = GeoEntity.objects.create(
                 entity_id=entity_id,
                 name=entity_name,
+                priority=entity_priority,
                 category=row['Entity Category'].strip(),
                 latitude=latitude,
                 longitude=longitude)
@@ -661,8 +666,8 @@ class Locate(BaseTask):
     def load_geo_config():
 
         geo_config = {}
-        for name, pk in GeoEntity.objects.values_list('name', 'pk'):
-            entity = dict_entities.entity_config(pk, name, name_is_alias=True)
+        for name, pk, priority in GeoEntity.objects.values_list('name', 'pk', 'priority'):
+            entity = dict_entities.entity_config(pk, name, priority or 0, name_is_alias=True)
             geo_config[pk] = entity
         for alias_id, alias_text, alias_type, entity_id, alias_lang \
                 in GeoAlias.objects.values_list('pk', 'alias', 'type', 'entity', 'locale'):
@@ -681,6 +686,7 @@ class Locate(BaseTask):
         return [dict_entities.entity_config(
             entity_id=i.id,
             name=i.name,
+            priority=0,
             aliases=i.alias.split(';') if i.alias else []
         ) for i in Court.objects.all()]
 

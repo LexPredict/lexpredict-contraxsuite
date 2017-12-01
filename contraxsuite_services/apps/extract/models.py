@@ -83,6 +83,7 @@ class GeoEntity(models.Model):
     """
     entity_id = models.PositiveSmallIntegerField(unique=True, db_index=True)
     name = models.CharField(max_length=1024, db_index=True)
+    priority = models.IntegerField(null=True, blank=True)
     category = models.CharField(max_length=1024, db_index=True)
     description = models.TextField(null=True)
     latitude = models.DecimalField(max_digits=9, decimal_places=6, blank=True, null=True)

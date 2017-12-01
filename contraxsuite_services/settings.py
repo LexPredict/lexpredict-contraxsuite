@@ -470,7 +470,7 @@ JQ_EXPORT = False
 # place dictionaries for GeoEntities, Terms, US Courts, etc.
 DATA_ROOT = PROJECT_DIR('data/')
 GIT_DATA_REPO_ROOT = 'https://raw.githubusercontent.com/' \
-                     'LexPredict/lexpredict-legal-dictionary/1.0.3'
+                     'LexPredict/lexpredict-legal-dictionary/1.0.4'
 
 # logging
 LOG_FILE_NAME = 'log.txt'
