@@ -162,7 +162,7 @@ class LocateForm(forms.Form):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         for field in list(self.fields.keys()):
-            if field == 'parse':
+            if field in ['parse', 'locate_all']:
                 continue
             field_name = field.split('_')[0]
             available_locators = list(settings.REQUIRED_LOCATORS) + list(config.standard_optional_locators)
