@@ -528,7 +528,7 @@ NOTEBOOK_ARGUMENTS = [
 ]
 
 VERSION_NUMBER = '1.0.4'
-VERSION_COMMIT = 'bee4d81'
+VERSION_COMMIT = '4861451'
 
 try:
     from local_settings import *

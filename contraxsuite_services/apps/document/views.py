@@ -297,7 +297,9 @@ class DocumentSourceView(DocumentDetailView):
 
     def get_context_data(self, **kwargs):
         # TODO: detect protocol, don't hardcode
-        rel_url = os.path.join('/media', self.object.description.lstrip('/'))
+        rel_url = os.path.join('/media',
+                               settings.FILEBROWSER_DIRECTORY.lstrip('/'),
+                               self.object.description.lstrip('/'))
         attachment = dict(
             name=self.object.name,
             path='https://{host}{rel_url}'.format(
