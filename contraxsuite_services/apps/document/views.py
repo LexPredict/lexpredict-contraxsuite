@@ -427,8 +427,18 @@ class TextUnitListView(JqPaginatedListView):
 
         if "elastic_search" in self.request.GET:
             elastic_search = self.request.GET.get("elastic_search")
-            es_res = self.es.search(index=settings.ELASTICSEARCH_CONFIG['index'],
-                                    body={'query': {'match': {'_all': elastic_search}}})
+            es_query = {
+                'query': {
+                    'bool': {
+                        'must': [
+                            {'match': {'unit_type': 'paragraph'}},
+                            {'match': {'_all': elastic_search}},
+                        ]
+                    }
+                }
+            }
+            es_res = self.es.search(size=100, index=settings.ELASTICSEARCH_CONFIG['index'],
+                                    body=es_query)
             # See UpdateElasticsearchIndex in tasks.py for the set of indexed fields
             pks = [hit['_source']['pk'] for hit in es_res['hits']['hits']]
             qs = TextUnit.objects.filter(pk__in=pks)
