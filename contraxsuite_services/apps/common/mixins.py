@@ -380,8 +380,9 @@ class AjaxListView(ReviewerQSMixin, AjaxResponseMixin, BaseCustomListView):
                        if isinstance(i, django_fields.BooleanField)]
         for row in data:
             row.update((k, False) for k, v in row.items() if v is None and k in bool_fields)
-            row.update((k, v.replace("<", "&lt;").replace(">", "&gt;"))
-                       for k, v in row.items() if isinstance(v, str))
+            if not kwargs.get('keep_tags'):
+                row.update((k, v.replace("<", "&lt;").replace(">", "&gt;"))
+                           for k, v in row.items() if isinstance(v, str))
 
         return data
 
@@ -503,12 +504,12 @@ class JqPaginatedListView(AjaxListView):
         total_records = qs.count()
         enable_pagination = json.loads(self.request.GET.get('enable_pagination', 'null'))
         if not enable_pagination:
-            data = super().get_json_data(qs=qs)
+            data = super().get_json_data(qs=qs, **kwargs)
         elif qs.exists():
             qs = self.filter_and_sort(qs)
             total_records = qs.count()
             qs = self.paginate(qs)
-            data = super().get_json_data(qs=qs)
+            data = super().get_json_data(qs=qs, **kwargs)
         return {'data': data, 'total_records': total_records}
 
     @staticmethod

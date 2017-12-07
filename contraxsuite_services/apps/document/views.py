@@ -319,7 +319,7 @@ class DocumentNoteListView(JqPaginatedListView):
     ordering = ['-timestamp']
 
     def get_json_data(self, **kwargs):
-        data = super().get_json_data()
+        data = super().get_json_data(keep_tags=True)
         history = list(
             DocumentNote.history
             .filter(document_id__in=list(self.get_queryset()
@@ -532,7 +532,7 @@ class TextUnitNoteListView(JqPaginatedListView):
     limit_reviewers_qs_by_field = 'text_unit__document'
 
     def get_json_data(self, **kwargs):
-        data = super().get_json_data()
+        data = super().get_json_data(keep_tags=True)
         history = list(
             TextUnitNote.history
             .filter(text_unit__document_id__in=list(
