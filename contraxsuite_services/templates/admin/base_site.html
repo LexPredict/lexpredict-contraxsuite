@@ -1,6 +1,10 @@
 {% extends "admin/base.html" %}
 {% load admin_static %}
 
+{% block extrastyle %}
+    <link rel="shortcut icon" href="{% static "images/favicon.ico" %}">
+{% endblock %}
+
 {% block branding %}
   <a href="/" class=""><i class="icon-home"></i> View Site</a>
 {% endblock %}

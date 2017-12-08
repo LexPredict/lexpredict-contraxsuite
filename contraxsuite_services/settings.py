@@ -1,5 +1,28 @@
 # -*- coding: utf-8 -*-
 """
+Copyright (C) 2017, ContraxSuite, LLC
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU Affero General Public License as
+published by the Free Software Foundation, either version 3 of the
+License, or (at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU Affero General Public License for more details.
+
+You should have received a copy of the GNU Affero General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+You can also be released from the requirements of the license by purchasing
+a commercial license from ContraxSuite, LLC. Buying such a license is
+mandatory as soon as you develop commercial activities involving ContraxSuite
+software without disclosing the source code of your own applications.  These
+activities include: offering paid services to customers as an ASP or "cloud"
+provider, processing documents on the fly in a web application,
+or shipping ContraxSuite within a closed source product.
+
 Django settings for contraxsuite_services project.
 
 For more information on this file, see
@@ -13,6 +36,7 @@ from __future__ import absolute_import, unicode_literals
 import sys
 import environ
 
+from apps.common.advancedcelery.fileaccess.local_file_access import LocalFileAccess
 from celery.schedules import crontab
 
 from django.core.urlresolvers import reverse_lazy
@@ -62,6 +86,8 @@ INSTALLED_APPS = (
     'django_otp.plugins.otp_static',
     # Enable two-factor auth
     'allauth_2fa',
+    'constance',     # django-constance
+    'constance.backends.database',    # django-constance backend
 
     # LOCAL_APPS
     'apps.common',
@@ -87,6 +113,7 @@ MIDDLEWARE = (
     'apps.common.middleware.LoginRequiredMiddleware',
     'apps.common.middleware.HttpResponseNotAllowedMiddleware',
     'apps.common.middleware.RequestUserMiddleware',
+    'apps.common.middleware.AppEnabledRequiredMiddleware',
     'pipeline.middleware.MinifyHTMLMiddleware',
     # Configure the django-otp package. Note this must be after the
     # AuthenticationMiddleware.
@@ -137,20 +164,22 @@ TEMPLATES = [
         # See: https://docs.djangoproject.com/en/dev/ref/settings/#std:setting-TEMPLATES-BACKEND
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
         # See: https://docs.djangoproject.com/en/dev/ref/settings/#template-dirs
-        'DIRS': [
-            PROJECT_DIR('templates'),
-        ],
+        # 'DIRS': [
+        #     PROJECT_DIR('templates'),
+        # ],
         'OPTIONS': {
             # See: https://docs.djangoproject.com/en/dev/ref/settings/#template-debug
             'debug': DEBUG,
             # See: https://docs.djangoproject.com/en/dev/ref/settings/#template-loaders
             # https://docs.djangoproject.com/en/dev/ref/templates/api/#loader-types
             'loaders': [
-                'django.template.loaders.filesystem.Loader',
-                'django.template.loaders.app_directories.Loader',
+                ('apps.common.loaders.Loader', [PROJECT_DIR('templates')])
+                # 'django.template.loaders.app_directories.Loader',
+                # ('django.template.loaders.filesystem.Loader', [PROJECT_DIR('templates')])
             ],
             # See: https://docs.djangoproject.com/en/dev/ref/settings/#template-context-processors
             'context_processors': [
+                'constance.context_processors.config',
                 'django.template.context_processors.debug',
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
@@ -313,8 +342,8 @@ AUTOLOGIN = False
 AUTOSLUG_SLUGIFY_FUNCTION = 'slugify.slugify'
 
 # celery
-CELERY_RDB_HOST= 'dev.kelly.contraxsuite.com'
-CELERY_BROKER_URL = 'redis://127.0.0.1:6379/0'
+# CELERY_BROKER_URL = 'redis://127.0.0.1:6379/0'
+CELERY_BROKER_URL = 'amqp://contrax1:contrax1@localhost:5672/contrax1_vhost'
 CELERY_RESULT_BACKEND = 'django-db'
 CELERY_RESULT_EXPIRES = 0
 # CELERY_WORKER_HIJACK_ROOT_LOGGER = False
@@ -329,6 +358,13 @@ CELERY_LOG_FILE_PATH = PROJECT_DIR(CELERY_LOG_FILE_NAME)
 # this needed on production. check
 CELERY_IMPORTS = ('apps.task.tasks',)
 # CELERY_TIMEZONE = 'UTC'
+
+CELERY_TASK_SERIALIZER = 'pickle'
+CELERY_ACCEPT_CONTENT = ['pickle']
+
+# Redis for Celery args caching
+CELERY_CACHE_REDIS_URL = 'redis://127.0.0.1:6379/0'
+CELERY_CACHE_REDIS_KEY_PREFIX = 'celery_task'
 
 # django-excel
 FILE_UPLOAD_HANDLERS = (
@@ -379,6 +415,51 @@ FILEBROWSER_DEFAULT_SORTING_BY = 'filename_lower'
 FILEBROWSER_SEARCH_TRAVERSE = True
 FILEBROWSER_LIST_PER_PAGE = 25
 
+CELERY_FILE_ACCESS_TYPE = 'Local'
+CELERY_FILE_ACCESS_LOCAL_ROOT_DIR = MEDIA_ROOT + '/' + FILEBROWSER_DIRECTORY
+#CELERY_FILE_ACCESS_TYPE = 'Nginx'
+#CELERY_FILE_ACCESS_NGINX_ROOT_URL = 'http://localhost:8888/media/'
+
+# django-constance settings
+REQUIRED_LOCATORS = (
+    'geoentity',
+    'party',
+    'term',
+    'date',
+)
+OPTIONAL_LOCATORS = (
+    'amount',
+    'citation',
+    'copyright',
+    'court',
+    'currency',
+    'definition',
+    'distance',
+    'duration',
+    'percent',
+    'ratio',
+    'regulation',
+    'trademark',
+    'url'
+)
+LOCATOR_GROUPS = {
+    'amount': ('amount', 'currency', 'distance', 'percent', 'ratio'),
+    'other': ('citation', 'copyright', 'definition', 'regulation', 'trademark', 'url')
+}
+OPTIONAL_LOCATOR_CHOICES = [(i, i) for i in OPTIONAL_LOCATORS]
+CONSTANCE_ADDITIONAL_FIELDS = {
+    'app_multiselect': ['django.forms.fields.MultipleChoiceField', {
+        'widget': 'django.forms.SelectMultiple',
+        'choices': OPTIONAL_LOCATOR_CHOICES
+    }],
+}
+CONSTANCE_CONFIG = {
+    'standard_optional_locators': (OPTIONAL_LOCATORS,
+                                   'Standard Optional Locators',
+                                   'app_multiselect'),
+}
+CONSTANCE_BACKEND = 'constance.backends.database.DatabaseBackend'
+
 # tika settings (is not used for now)
 # TIKA_VERSION = '1.14'
 # TIKA_SERVER_JAR = ROOT_DIR('../libs/tika/tika-server-1.14.jar')
@@ -390,7 +471,7 @@ JQ_EXPORT = False
 # place dictionaries for GeoEntities, Terms, US Courts, etc.
 DATA_ROOT = PROJECT_DIR('data/')
 GIT_DATA_REPO_ROOT = 'https://raw.githubusercontent.com/' \
-                     'LexPredict/lexpredict-legal-dictionary/1.0.3'
+                     'LexPredict/lexpredict-legal-dictionary/1.0.4'
 
 # logging
 LOG_FILE_NAME = 'log.txt'
@@ -447,8 +528,8 @@ NOTEBOOK_ARGUMENTS = [
     '--port=8000',
 ]
 
-VERSION_NUMBER = '1.0.3'
-VERSION_COMMIT = '9ed8aea'
+VERSION_NUMBER = '1.0.4'
+VERSION_COMMIT = '4861451'
 
 try:
     from local_settings import *

@@ -1,3 +1,27 @@
+"""
+    Copyright (C) 2017, ContraxSuite, LLC
+
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU Affero General Public License as
+    published by the Free Software Foundation, either version 3 of the
+    License, or (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU Affero General Public License for more details.
+
+    You should have received a copy of the GNU Affero General Public License
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+    You can also be released from the requirements of the license by purchasing
+    a commercial license from ContraxSuite, LLC. Buying such a license is
+    mandatory as soon as you develop commercial activities involving ContraxSuite
+    software without disclosing the source code of your own applications.  These
+    activities include: offering paid services to customers as an ASP or "cloud"
+    provider, processing documents on the fly in a web application,
+    or shipping ContraxSuite within a closed source product.
+"""
 # -*- coding: utf-8 -*-
 
 # Standard imports
@@ -26,8 +50,8 @@ from apps.common.utils import cap_words, export_qs_to_file
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2017, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.0.3/LICENSE"
-__version__ = "1.0.3"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.0.4/LICENSE"
+__version__ = "1.0.4"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -356,8 +380,9 @@ class AjaxListView(ReviewerQSMixin, AjaxResponseMixin, BaseCustomListView):
                        if isinstance(i, django_fields.BooleanField)]
         for row in data:
             row.update((k, False) for k, v in row.items() if v is None and k in bool_fields)
-            row.update((k, v.replace("<", "&lt;").replace(">", "&gt;"))
-                       for k, v in row.items() if isinstance(v, str))
+            if not kwargs.get('keep_tags'):
+                row.update((k, v.replace("<", "&lt;").replace(">", "&gt;"))
+                           for k, v in row.items() if isinstance(v, str))
 
         return data
 
@@ -479,12 +504,12 @@ class JqPaginatedListView(AjaxListView):
         total_records = qs.count()
         enable_pagination = json.loads(self.request.GET.get('enable_pagination', 'null'))
         if not enable_pagination:
-            data = super().get_json_data(qs=qs)
+            data = super().get_json_data(qs=qs, **kwargs)
         elif qs.exists():
             qs = self.filter_and_sort(qs)
             total_records = qs.count()
             qs = self.paginate(qs)
-            data = super().get_json_data(qs=qs)
+            data = super().get_json_data(qs=qs, **kwargs)
         return {'data': data, 'total_records': total_records}
 
     @staticmethod

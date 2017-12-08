@@ -1,3 +1,5 @@
+[![](https://tokei.rs/b1/github/lexpredict/lexpredict-contraxsuite?category=code)](https://github.com/lexpredict/lexpredict-contraxsuite)
+
 # LexPredict ContraxSuite - Software
 Software package for [LexPredict ContraxSuite](https://github.com/LexPredict/lexpredict-contraxsuite).
 
@@ -25,6 +27,7 @@ Please note that ContraxSuite installations generally require trained models or 
 ## Releases
 Please note that ContraxSuite releases can be found under **non-master** branches.  Releases, including dates, are listed below:
 
+* 1.0.4: December 1, 2017 - Fifth public release; [code](https://github.com/LexPredict/lexpredict-contraxsuite/tree/1.0.4) | [data](https://github.com/LexPredict/lexpredict-legal-dictionary/tree/1.0.4) | [deploy](https://github.com/LexPredict/lexpredict-contraxsuite-deploy/tree/1.0.4) | [samples](https://github.com/LexPredict/lexpredict-contraxsuite-samples/tree/1.0.4) | [changelog](https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.0.4/documentation/Release%20Notes%20and%20Changelog%20-%20Release%201.0.4.pdf)
 * 1.0.3: November 1, 2017 - Fourth public release; [code](https://github.com/LexPredict/lexpredict-contraxsuite/tree/1.0.3) | [data](https://github.com/LexPredict/lexpredict-legal-dictionary/tree/1.0.3) | [deploy](https://github.com/LexPredict/lexpredict-contraxsuite-deploy/tree/1.0.3) | [samples](https://github.com/LexPredict/lexpredict-contraxsuite-samples/tree/1.0.3) | [changelog](https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.0.3/documentation/Release%20Notes%20and%20Changelog%20-%20Release%201.0.3.pdf)
 * 1.0.2: October 1, 2017 - Third public release; [code](https://github.com/LexPredict/lexpredict-contraxsuite/tree/1.0.2) | [data](https://github.com/LexPredict/lexpredict-legal-dictionary/tree/1.0.2) | [deploy](https://github.com/LexPredict/lexpredict-contraxsuite-deploy/tree/1.0.2) | [samples](https://github.com/LexPredict/lexpredict-contraxsuite-samples/tree/1.0.2) | [changelog](https://github.com/LexPredict/lexpredict-contraxsuite/blob/master/documentation/Release%20Notes%20and%20Changelog%20-%20Release%201.0.2.pdf)
 * 1.0.1: September 1, 2017 - Second public release; [code](https://github.com/LexPredict/lexpredict-contraxsuite/tree/1.0.1) | [data](https://github.com/LexPredict/lexpredict-legal-dictionary/tree/1.0.1) | [deploy](https://github.com/LexPredict/lexpredict-contraxsuite-deploy/tree/1.0.1) | [samples](https://github.com/LexPredict/lexpredict-contraxsuite-samples/tree/1.0.1) | [changelog](https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.0.1/documentation/Release%20Notes%20and%20Changelog%20-%20Release%201.0.1.pdf)

@@ -76,266 +76,360 @@
     </div>
   </div>
 
-  <div class="tabs tabs-bb clearfix page-tabs" id="tabs1" data-speed="700" data-active="1"
-       style="margin-top: 50px;">
+  <div class="page-tabs mb-40" id="tabs1">
 
-    <ul class="tab-nav clearfix mb-10">
-      <li><a href="#tab-1">Text Units<span class="badge badge-s pull-right text-units-badge"></span></a></li>
-      <li><a href="#tab-2">Parties<span class="badge badge-s pull-right parties-badge"></span></a></li>
-      <li><a href="#tab-3">Terms<span class="badge badge-s pull-right terms-badge"></span></a></li>
-      <li><a href="#tab-4">Entities<span class="badge badge-s pull-right entities-badge"></span></a></li>
-      <li><a href="#tab-5">Notes<span class="badge badge-s pull-right notes-badge"></span></a></li>
-      <li><a href="#tab-6">Tags<span class="badge badge-s pull-right tags-badge"></span></a></li>
-      <li><a href="#tab-7">Properties<span class="badge badge-s pull-right properties-badge"></span></a></li>
-      <li><a href="#tab-8">Dates<span class="badge badge-s pull-right dates-badge"></span></a></li>
-      <li><a href="#tab-9">Definitions<span class="badge badge-s pull-right definitions-badge"></span></a></li>
-      <li><a href="#tab-10">Date Durations<span class="badge badge-s pull-right durations-badge"></span></a></li>
-      <li><a href="#tab-11">Courts<span class="badge badge-s pull-right courts-badge"></span></a></li>
-      <li><a href="#tab-12">Currencies<span class="badge badge-s pull-right currencies-badge"></span></a></li>
-      <li><a href="#tab-13">Regulations<span class="badge badge-s pull-right regulations-badge"></span></a></li>
-      <li><a href="#tab-14">Citations<span class="badge badge-s pull-right citations-badge"></span></a></li>
-      <li><a href="#tab-15">Distances<span class="badge badge-s pull-right distances-badge"></span></a></li>
-      <li><a href="#tab-16">Amounts<span class="badge badge-s pull-right amounts-badge"></span></a></li>
-      <li><a href="#tab-17">Percents<span class="badge badge-s pull-right percents-badge"></span></a></li>
-      <li><a href="#tab-18">Ratios<span class="badge badge-s pull-right ratios-badge"></span></a></li>
+    <ul class="nav nav-tabs boot-tabs">
+      <li class="active"><a data-toggle="tab" href="#tab-1">Text Units<span class="badge badge-s text-units-badge"></span></a></li>
+      <li><a data-toggle="tab" href="#tab-2">Parties<span class="badge badge-s parties-badge"></span></a></li>
+      <li><a data-toggle="tab" href="#tab-3">Terms<span class="badge badge-s terms-badge"></span></a></li>
+      <li><a data-toggle="tab" href="#tab-4">Entities<span class="badge badge-s entities-badge"></span></a></li>
+      <li><a data-toggle="tab" href="#tab-5">Notes<span class="badge badge-s notes-badge"></span></a></li>
+      <li><a data-toggle="tab" href="#tab-6">Tags<span class="badge badge-s tags-badge"></span></a></li>
+      <li><a data-toggle="tab" href="#tab-7">Properties<span class="badge badge-s properties-badge"></span></a></li>
+      <li class="dropdown">
+        <a href="#" id="tab1-other" class="dropdown-toggle" data-toggle="dropdown">
+          <span>Other Items</span>
+          <b class="caret"></b>
+        </a>
+        <ul class="dropdown-menu" role="menu" aria-labelledby="tab1-dropdown" style="width: 240px;">
+          {% if 'amount' in available_locators %}
+            <li><a data-toggle="tab" class="other" href="#tab-8">Amounts<span class="badge badge-s amounts-badge"></span></a></li>
+          {% endif %}
+          {% if 'citation' in available_locators %}
+            <li><a data-toggle="tab" class="other" href="#tab-9">Citations<span class="badge badge-s citations-badge"></span></a></li>
+          {% endif %}
+          {% if 'copyright' in available_locators %}
+            <li><a data-toggle="tab" class="other" href="#tab-10">Copyrights<span class="badge badge-s copyrights-badge"></span></a></li>
+          {% endif %}
+          {% if 'court' in available_locators %}
+            <li><a data-toggle="tab" class="other" href="#tab-11">Courts<span class="badge badge-s courts-badge"></span></a></li>
+          {% endif %}
+          {% if 'currency' in available_locators %}
+            <li><a data-toggle="tab" class="other" href="#tab-12">Currencies<span class="badge badge-s currencies-badge"></span></a></li>
+          {% endif %}
+          <li><a data-toggle="tab" class="other" href="#tab-13">Dates<span class="badge badge-s dates-badge"></span></a></li>
+          {% if 'duration' in available_locators %}
+            <li><a data-toggle="tab" class="other" href="#tab-14">Date Durations<span class="badge badge-s durations-badge"></span></a></li>
+          {% endif %}
+          {% if 'definition' in available_locators %}
+            <li><a data-toggle="tab" class="other" href="#tab-15">Definitions<span class="badge badge-s definitions-badge"></span></a></li>
+          {% endif %}
+          {% if 'distance' in available_locators %}
+            <li><a data-toggle="tab" class="other" href="#tab-16">Distances<span class="badge badge-s distances-badge"></span></a></li>
+          {% endif %}
+          {% if 'percent' in available_locators %}
+            <li><a data-toggle="tab" class="other" href="#tab-17">Percents<span class="badge badge-s percents-badge"></span></a></li>
+          {% endif %}
+          {% if 'ratio' in available_locators %}
+            <li><a data-toggle="tab" class="other" href="#tab-18">Ratios<span class="badge badge-s ratios-badge"></span></a></li>
+          {% endif %}
+          {% if 'regulation' in available_locators %}
+            <li><a data-toggle="tab" class="other" href="#tab-19">Regulations<span class="badge badge-s regulations-badge"></span></a></li>
+          {% endif %}
+          {% if 'trademark' in available_locators %}
+            <li><a data-toggle="tab" class="other" href="#tab-20">Trademarks<span class="badge badge-s trademarks-badge"></span></a></li>
+          {% endif %}
+          {% if 'url' in available_locators %}
+            <li><a data-toggle="tab" class="other" href="#tab-21">Urls<span class="badge badge-s urls-badge"></span></a></li>
+          {% endif %}
+        </ul>
+      </li>
+
     </ul>
 
-    <div class="tab-content clearfix" id="tab-1">
-      <div class="pull-right header-search-form highlight-container">
-        <div class="input-group">
-          <span class="input-group-btn">
-            <button class="btn btn-warning" type="button">Highlight</button>
-          </span>
-          <input type="text" class="form-control" id="highlight_term" name="highlight_term"
-                 value="{{ highlight|default:"" }}"
-                 placeholder="Term">
+    <div  class="tab-content">
+
+      <div class="tab-pane clearfix active" id="tab-1">
+        <div class="pull-right header-search-form highlight-container">
+          <div class="input-group">
+            <span class="input-group-btn">
+              <button class="btn btn-warning" type="button">Highlight</button>
+            </span>
+            <input type="text" class="form-control" id="highlight_term" name="highlight_term"
+                   value="{{ highlight|default:"" }}"
+                   placeholder="Term">
+          </div>
+        </div>
+        <div class="pull-right grid-controls">
+          {% include '_base_grid_buttons_block.html' %}
+        </div>
+        <div class="jqxgrid-container">
+          <div class="jqxgrid col-md-12 jqxgrid-text-units"></div>
         </div>
       </div>
-      <div class="pull-right grid-controls">
-        {% include '_base_grid_buttons_block.html' %}
-      </div>
-      <div class="jqxgrid-container">
-        <div class="jqxgrid col-md-12 jqxgrid-text-units"></div>
-      </div>
-    </div>
 
-    <div class="tab-content clearfix" id="tab-2">
-      <div class="pull-right grid-controls">
-        {% include '_base_grid_buttons_block.html' %}
+      <div class="tab-pane clearfix" id="tab-2">
+        <div class="pull-right grid-controls">
+          {% include '_base_grid_buttons_block.html' %}
+        </div>
+        <div class="jqxgrid-container">
+          <div class="jqxgrid col-md-12 jqxgrid-top-party-usages"></div>
+        </div>
       </div>
-      <div class="jqxgrid-container">
-        <div class="jqxgrid col-md-12 jqxgrid-top-party-usages"></div>
-      </div>
-    </div>
 
-    <div class="tab-content clearfix" id="tab-3">
-      <div class="pull-right grid-controls">
-        {% include '_base_grid_buttons_block.html' %}
+      <div class="tab-pane clearfix" id="tab-3">
+        <div class="pull-right grid-controls">
+          {% include '_base_grid_buttons_block.html' %}
+        </div>
+        <div class="jqxgrid-container">
+          <div class="jqxgrid col-md-12 jqxgrid-top-term-usages"></div>
+        </div>
       </div>
-      <div class="jqxgrid-container">
-        <div class="jqxgrid col-md-12 jqxgrid-top-term-usages"></div>
-      </div>
-    </div>
 
-    <div class="tab-content clearfix" id="tab-4">
-      <div class="pull-right grid-controls">
-        {% include '_base_grid_buttons_block.html' %}
+      <div class="tab-pane clearfix" id="tab-4">
+        <div class="pull-right grid-controls">
+          {% include '_base_grid_buttons_block.html' %}
+        </div>
+        <div class="jqxgrid-container">
+          <div class="jqxgrid col-md-12 jqxgrid-top-entity-usages"></div>
+        </div>
       </div>
-      <div class="jqxgrid-container">
-        <div class="jqxgrid col-md-12 jqxgrid-top-entity-usages"></div>
-      </div>
-    </div>
 
-    <div class="tab-content clearfix" id="tab-5">
-      <div class="pull-right grid-controls">
-        {% include '_base_grid_buttons_block.html' %}
-        <button type="button" class="btn-u btn-sm btn-s pull-right"
-                onclick="show_note_popup('.jqxgrid-notes', null, 'document', {{ document.pk }} )">Create</button>
+      <div class="tab-pane clearfix" id="tab-5">
+        <div class="pull-right grid-controls">
+          {% include '_base_grid_buttons_block.html' %}
+          <button type="button" class="btn-u btn-sm btn-s pull-right"
+                  onclick="show_note_popup('.jqxgrid-notes', null, 'document', {{ document.pk }} )">Create</button>
+        </div>
+        <div class="jqxgrid-container">
+          <div class="jqxgrid col-md-12 jqxgrid-notes"></div>
+        </div>
       </div>
-      <div class="jqxgrid-container">
-        <div class="jqxgrid col-md-12 jqxgrid-notes"></div>
-      </div>
-    </div>
 
-    <div class="tab-content clearfix" id="tab-6">
-      <div class="pull-right grid-controls">
-        {% include '_base_grid_buttons_block.html' %}
-        <button type="button" class="btn-u btn-sm btn-s pull-right"
-                onclick="tag_popup('document', {{ document.pk }}, '.jqxgrid-tags')">Create</button>
+      <div class="tab-pane clearfix" id="tab-6">
+        <div class="pull-right grid-controls">
+          {% include '_base_grid_buttons_block.html' %}
+          <button type="button" class="btn-u btn-sm btn-s pull-right"
+                  onclick="tag_popup('document', {{ document.pk }}, '.jqxgrid-tags')">Create</button>
+        </div>
+        <div class="jqxgrid-container">
+          <div class="jqxgrid col-md-12 jqxgrid-tags"></div>
+        </div>
       </div>
-      <div class="jqxgrid-container">
-        <div class="jqxgrid col-md-12 jqxgrid-tags"></div>
-      </div>
-    </div>
 
-    <div class="tab-content clearfix" id="tab-7">
-      <div class="pull-right grid-controls">
-        {% include '_base_grid_buttons_block.html' %}
-        <button type="button" class="btn-u btn-sm btn-s pull-right"
-                onclick="document_property_popup('document', {{ document.pk }}, '.jqxgrid-properties')">Create</button>
+      <div class="tab-pane clearfix" id="tab-7">
+        <div class="pull-right grid-controls">
+          {% include '_base_grid_buttons_block.html' %}
+          <button type="button" class="btn-u btn-sm btn-s pull-right"
+                  onclick="document_property_popup('document', {{ document.pk }}, '.jqxgrid-properties')">Create</button>
+        </div>
+        <div class="jqxgrid-container">
+          <div class="jqxgrid col-md-12 jqxgrid-properties"></div>
+        </div>
       </div>
-      <div class="jqxgrid-container">
-        <div class="jqxgrid col-md-12 jqxgrid-properties"></div>
-      </div>
-    </div>
 
-    <div class="tab-content clearfix" id="tab-8">
-      <div class="pull-right grid-controls">
-        <a class="btn-u btn-sm"
-           href="{% url "extract:date-usage-export-ical" %}?document_pk={{ document.id }}">
-          Export Dates
-        </a>
-        {% include '_base_grid_buttons_block.html' %}
-      </div>
-      <div class="jqxgrid-container">
-        <div class="jqxgrid col-md-12 jqxgrid-dates"></div>
-      </div>
-    </div>
+      {% if 'amount' in available_locators %}
+        <div class="tab-pane clearfix" id="tab-8">
+          <div class="pull-right grid-controls">
+            {% include '_base_grid_buttons_block.html' %}
+          </div>
+          <div class="jqxgrid-container">
+            <div class="jqxgrid col-md-12 jqxgrid-amounts"></div>
+          </div>
+        </div>
+      {% endif %}
 
-    <div class="tab-content clearfix" id="tab-9">
-      <div class="pull-right grid-controls">
-        {% include '_base_grid_buttons_block.html' %}
-      </div>
-      <div class="jqxgrid-container">
-        <div class="jqxgrid col-md-12 jqxgrid-definitions"></div>
-      </div>
-    </div>
+      {% if 'citation' in available_locators %}
+        <div class="tab-pane clearfix" id="tab-9">
+          <div class="pull-right grid-controls">
+            {% include '_base_grid_buttons_block.html' %}
+          </div>
+          <div class="jqxgrid-container">
+            <div class="jqxgrid col-md-12 jqxgrid-citations"></div>
+          </div>
+        </div>
+      {% endif %}
 
-    <div class="tab-content clearfix" id="tab-10">
-      <div class="pull-right grid-controls">
-        {% include '_base_grid_buttons_block.html' %}
-      </div>
-      <div class="jqxgrid-container">
-        <div class="jqxgrid col-md-12 jqxgrid-durations"></div>
-      </div>
-    </div>
+      {% if 'copyright' in available_locators %}
+        <div class="tab-pane clearfix" id="tab-10">
+          <div class="pull-right grid-controls">
+            {% include '_base_grid_buttons_block.html' %}
+          </div>
+          <div class="jqxgrid-container">
+            <div class="jqxgrid col-md-12 jqxgrid-copyrights"></div>
+          </div>
+        </div>
+      {% endif %}
 
-    <div class="tab-content clearfix" id="tab-11">
-      <div class="pull-right grid-controls">
-        {% include '_base_grid_buttons_block.html' %}
-      </div>
-      <div class="jqxgrid-container">
-        <div class="jqxgrid col-md-12 jqxgrid-courts"></div>
-      </div>
-    </div>
+      {% if 'court' in available_locators %}
+        <div class="tab-pane clearfix" id="tab-11">
+          <div class="pull-right grid-controls">
+            {% include '_base_grid_buttons_block.html' %}
+          </div>
+          <div class="jqxgrid-container">
+            <div class="jqxgrid col-md-12 jqxgrid-courts"></div>
+          </div>
+        </div>
+      {% endif %}
 
-    <div class="tab-content clearfix" id="tab-12">
-      <div class="pull-right grid-controls">
-        {% include '_base_grid_buttons_block.html' %}
-      </div>
-      <div class="jqxgrid-container">
-        <div class="jqxgrid col-md-12 jqxgrid-currencies"></div>
-      </div>
-    </div>
+      {% if 'currency' in available_locators %}
+        <div class="tab-pane clearfix" id="tab-12">
+          <div class="pull-right grid-controls">
+            {% include '_base_grid_buttons_block.html' %}
+          </div>
+          <div class="jqxgrid-container">
+            <div class="jqxgrid col-md-12 jqxgrid-currencies"></div>
+          </div>
+        </div>
+      {% endif %}
 
-    <div class="tab-content clearfix" id="tab-13">
-      <div class="pull-right grid-controls">
-        {% include '_base_grid_buttons_block.html' %}
+      <div class="tab-pane clearfix" id="tab-13">
+        <div class="pull-right grid-controls">
+          <a class="btn-u btn-sm"
+             href="{% url "extract:date-usage-export-ical" %}?document_pk={{ document.id }}">
+            Export Dates
+          </a>
+          {% include '_base_grid_buttons_block.html' %}
+        </div>
+        <div class="jqxgrid-container">
+          <div class="jqxgrid col-md-12 jqxgrid-dates"></div>
+        </div>
       </div>
-      <div class="jqxgrid-container">
-        <div class="jqxgrid col-md-12 jqxgrid-regulations"></div>
-      </div>
-    </div>
 
-    <div class="tab-content clearfix" id="tab-14">
-      <div class="pull-right grid-controls">
-        {% include '_base_grid_buttons_block.html' %}
-      </div>
-      <div class="jqxgrid-container">
-        <div class="jqxgrid col-md-12 jqxgrid-citations"></div>
-      </div>
-    </div>
+      {% if 'duration' in available_locators %}
+        <div class="tab-pane clearfix" id="tab-14">
+          <div class="pull-right grid-controls">
+            {% include '_base_grid_buttons_block.html' %}
+          </div>
+          <div class="jqxgrid-container">
+            <div class="jqxgrid col-md-12 jqxgrid-durations"></div>
+          </div>
+        </div>
+      {% endif %}
 
-    <div class="tab-content clearfix" id="tab-15">
-      <div class="pull-right grid-controls">
-        {% include '_base_grid_buttons_block.html' %}
-      </div>
-      <div class="jqxgrid-container">
-        <div class="jqxgrid col-md-12 jqxgrid-distances"></div>
-      </div>
-    </div>
+      {% if 'definition' in available_locators %}
+        <div class="tab-pane clearfix" id="tab-15">
+          <div class="pull-right grid-controls">
+            {% include '_base_grid_buttons_block.html' %}
+          </div>
+          <div class="jqxgrid-container">
+            <div class="jqxgrid col-md-12 jqxgrid-definitions"></div>
+          </div>
+        </div>
+      {% endif %}
 
-    <div class="tab-content clearfix" id="tab-16">
-      <div class="pull-right grid-controls">
-        {% include '_base_grid_buttons_block.html' %}
-      </div>
-      <div class="jqxgrid-container">
-        <div class="jqxgrid col-md-12 jqxgrid-amounts"></div>
-      </div>
-    </div>
+      {% if 'distance' in available_locators %}
+        <div class="tab-pane clearfix" id="tab-16">
+          <div class="pull-right grid-controls">
+            {% include '_base_grid_buttons_block.html' %}
+          </div>
+          <div class="jqxgrid-container">
+            <div class="jqxgrid col-md-12 jqxgrid-distances"></div>
+          </div>
+        </div>
+      {% endif %}
 
-    <div class="tab-content clearfix" id="tab-17">
-      <div class="pull-right grid-controls">
-        {% include '_base_grid_buttons_block.html' %}
-      </div>
-      <div class="jqxgrid-container">
-        <div class="jqxgrid col-md-12 jqxgrid-percents"></div>
-      </div>
-    </div>
+      {% if 'percent' in available_locators %}
+        <div class="tab-pane clearfix" id="tab-17">
+          <div class="pull-right grid-controls">
+            {% include '_base_grid_buttons_block.html' %}
+          </div>
+          <div class="jqxgrid-container">
+            <div class="jqxgrid col-md-12 jqxgrid-percents"></div>
+          </div>
+        </div>
+      {% endif %}
 
-    <div class="tab-content clearfix" id="tab-18">
-      <div class="pull-right grid-controls">
-        {% include '_base_grid_buttons_block.html' %}
-      </div>
-      <div class="jqxgrid-container">
-        <div class="jqxgrid col-md-12 jqxgrid-ratios"></div>
-      </div>
-    </div>
+      {% if 'ratio' in available_locators %}
+        <div class="tab-pane clearfix" id="tab-18">
+          <div class="pull-right grid-controls">
+            {% include '_base_grid_buttons_block.html' %}
+          </div>
+          <div class="jqxgrid-container">
+            <div class="jqxgrid col-md-12 jqxgrid-ratios"></div>
+          </div>
+        </div>
+      {% endif %}
 
+      {% if 'regulation' in available_locators %}
+        <div class="tab-pane clearfix" id="tab-19">
+          <div class="pull-right grid-controls">
+            {% include '_base_grid_buttons_block.html' %}
+          </div>
+          <div class="jqxgrid-container">
+            <div class="jqxgrid col-md-12 jqxgrid-regulations"></div>
+          </div>
+        </div>
+      {% endif %}
+
+      {% if 'trademark' in available_locators %}
+        <div class="tab-pane clearfix" id="tab-20">
+          <div class="pull-right grid-controls">
+            {% include '_base_grid_buttons_block.html' %}
+          </div>
+          <div class="jqxgrid-container">
+            <div class="jqxgrid col-md-12 jqxgrid-trademarks"></div>
+          </div>
+        </div>
+      {% endif %}
+
+      {% if 'url' in available_locators %}
+        <div class="tab-pane clearfix" id="tab-21">
+          <div class="pull-right grid-controls">
+            {% include '_base_grid_buttons_block.html' %}
+          </div>
+          <div class="jqxgrid-container">
+            <div class="jqxgrid col-md-12 jqxgrid-urls"></div>
+          </div>
+        </div>
+      {% endif %}
+
+    </div>
   </div>
 
-  <div class="tabs tabs-bb clearfix page-tabs" id="tabs2" data-speed="700" data-active="1"
-       style="margin-top: 50px;">
+  <div class="page-tabs" id="tabs2">
 
-    <ul class="tab-nav clearfix mb-40">
-      <li><a href="#tab-21">Task Queues<span class="badge badge-s pull-right task-queues-badge"></span></a></li>
-      <li><a href="#tab-22">Clusters<span class="badge badge-s pull-right clusters-badge"></span></a></li>
-      <li><a href="#tab-23">Document Similarity<span class="badge badge-s pull-right similarity-badge"></span></a></li>
+    <ul class="nav nav-tabs boot-tabs">
+      <li class="active"><a data-toggle="tab" href="#tab-31">Task Queues<span class="badge badge-s task-queues-badge"></span></a></li>
+      <li><a data-toggle="tab" href="#tab-32">Clusters<span class="badge badge-s clusters-badge"></span></a></li>
+      <li><a data-toggle="tab" href="#tab-33">Document Similarity<span class="badge badge-s similarity-badge"></span></a></li>
     </ul>
 
-    <div class="tab-content clearfix" id="tab-21">
-      <div class="pull-right grid-controls">
-        {% include '_base_grid_buttons_block.html' %}
-        <div class="btn-group text-center pull-right" style="margin-top: 5px;">
-          <button type="button" class="btn-u btn-sm dropdown-toggle"
-                  data-toggle="dropdown" aria-haspopup="true">
-            Add To Task Queue
-            <span class="caret"></span>
-          </button>
-          <ul class="dropdown-menu dropdown-menu-right">
-            {% for task_queue in extra_task_queue_list %}
-              <li>
-                <a href="{% url "project:add-to-task-queue" task_queue.pk document.pk %}#tab-2-2"
-                   class="add_to_task_queue">
-                  {{ task_queue }} / {{ task_queue.description }}</a>
-              </li>
-            {% endfor %}
-          </ul>
+    <div class="tab-content">
+      <div class="tab-pane clearfix active" id="tab-31">
+        <div class="pull-right grid-controls">
+          {% include '_base_grid_buttons_block.html' %}
+          <div class="btn-group text-center pull-right" style="margin-top: 5px;">
+            <button type="button" class="btn-u btn-sm dropdown-toggle"
+                    data-toggle="dropdown" aria-haspopup="true">
+              Add To Task Queue
+              <span class="caret"></span>
+            </button>
+            <ul class="dropdown-menu dropdown-menu-right">
+              {% for task_queue in extra_task_queue_list %}
+                <li>
+                  <a href="{% url "project:add-to-task-queue" task_queue.pk document.pk %}#tab-2-2"
+                     class="add_to_task_queue">
+                    {{ task_queue }} / {{ task_queue.description }}</a>
+                </li>
+              {% endfor %}
+            </ul>
+          </div>
+        </div>
+        <div class="jqxgrid-container">
+          <div class="jqxgrid col-md-12 jqxgrid-task-queues"></div>
         </div>
       </div>
-      <div class="jqxgrid-container">
-        <div class="jqxgrid col-md-12 jqxgrid-task-queues"></div>
-      </div>
-    </div>
 
-    <div class="tab-content clearfix" id="tab-22">
-      <div class="pull-right grid-controls">
-        {% include '_base_grid_buttons_block.html' %}
+      <div class="tab-pane clearfix" id="tab-32">
+        <div class="pull-right grid-controls">
+          {% include '_base_grid_buttons_block.html' %}
+        </div>
+        <div class="jqxgrid-container">
+          <div class="jqxgrid col-md-12 jqxgrid-clusters"></div>
+        </div>
       </div>
-      <div class="jqxgrid-container">
-        <div class="jqxgrid col-md-12 jqxgrid-clusters"></div>
-      </div>
-    </div>
 
-    <div class="tab-content clearfix" id="tab-23">
-      <div class="pull-right grid-controls">
-        {% include '_base_grid_buttons_block.html' %}
+      <div class="tab-pane clearfix" id="tab-33">
+        <div class="pull-right grid-controls">
+          {% include '_base_grid_buttons_block.html' %}
+        </div>
+        <div class="jqxgrid-container">
+          <div class="jqxgrid col-md-12 jqxgrid-similarity"></div>
+        </div>
       </div>
-      <div class="jqxgrid-container">
-        <div class="jqxgrid col-md-12 jqxgrid-similarity"></div>
-      </div>
-    </div>
 
+    </div>
   </div>
 
 {% endblock %}
@@ -830,488 +924,640 @@
       draw_grid(".jqxgrid-dates", dates_datafields, dates_columns, false,
           dates_custom_source_data, text_units_nested_grid_data('date_data'));
 
-      // Top Definition Usages table
-      var definitions_datafields = [
-        { name: 'definition', type: 'string' },
-        { name: 'count', type: 'int' },
-        { name: 'definition_data' }
-      ];
-      var definitions_menu_renderer = function(row_number) {
-        var grid = $('.jqxgrid-definitions');
-        var row = grid.jqxGrid('getrowdata', row_number);
-        var menu_data = [
-          { icon: 'fa fa-folder-open-o',
-            onclick: "expand_row(event, '.jqxgrid-definitions', " + row_number + ")",
-            text: 'Show Details' },
-          { icon: 'fa fa-search',
-            url:  '{% url "extract:definition-usage-list" %}?definition_search=' + encodeURIComponent(row.definition),
-            text: 'View Similar Definition Usages' }
+      {% if 'definition' in available_locators %}
+        // Top Definition Usages table
+        var definitions_datafields = [
+          { name: 'definition', type: 'string' },
+          { name: 'count', type: 'int' },
+          { name: 'definition_data' }
         ];
-        show_menu(menu_data, grid, row.pk, 300);
-      };
-      var definitions_columns = [
-        { text: 'Definition', datafield: 'definition', width: 'auto',
-          align: 'center', cellsalign: 'center' },
-        { text: 'Count', datafield: 'count', width: 150,
-          align: 'center', cellsalign: 'center' },
-        { text: 'Action', datafield: 'url', width: 60,
-          align: 'center', exportable: false,
-          columntype: 'button',
-          sortable: false, filterable: false, menu: false,
-          cellsrenderer: function(){return 'Menu'},
-          buttonclick: definitions_menu_renderer }
-      ];
-      var definitions_custom_source_data = {
-        url: '{% url "extract:top-definition-usage-list" %}',
-        data: { 'document_pk': {{ document.pk }} },
-        badgeClass: 'definitions-badge'
-      };
-      draw_grid(".jqxgrid-definitions", definitions_datafields, definitions_columns, false,
-          definitions_custom_source_data, text_units_nested_grid_data('definition_data'));
-
-      // Top Date Duration Usages table
-      var durations_datafields = [
-        { name: 'duration', type: 'int' },
-        { name: 'duration_str', type: 'string' },
-        { name: 'count', type: 'int' },
-        { name: 'duration_data' }
-      ];
-      var durations_menu_renderer = function(row_number) {
-        var grid = $('.jqxgrid-durations');
-        var row = grid.jqxGrid('getrowdata', row_number);
-        var menu_data = [
-          { icon: 'fa fa-folder-open-o',
-            onclick: "expand_row(event, '.jqxgrid-durations', " + row_number + ")",
-            text: 'Show Details' },
-          { icon: 'fa fa-search',
-            url:  '{% url "extract:date-duration-usage-list" %}?duration_search=' + row.duration_str,
-            text: 'View Similar Date Duration Usages' }
-        ];
-        show_menu(menu_data, grid, row.pk, 300);
-      };
-      var durations_columns = [
-        { text: 'Duration (days)', datafield: 'duration', width: 'auto',
-          align: 'center', cellsalign: 'center' },
-        { text: 'Duration (value)', datafield: 'duration_str', width: 'auto',
-          align: 'center', cellsalign: 'center' },
-        { text: 'Count', datafield: 'count', width: 150,
-          align: 'center', cellsalign: 'center' },
-        { text: 'Action', datafield: 'url', width: 60,
-          align: 'center', exportable: false,
-          columntype: 'button',
-          sortable: false, filterable: false, menu: false,
-          cellsrenderer: function(){return 'Menu'},
-          buttonclick: durations_menu_renderer }
-      ];
-      var durations_custom_source_data = {
-        url: '{% url "extract:top-date-duration-usage-list" %}',
-        data: { 'document_pk': {{ document.pk }} },
-        badgeClass: 'durations-badge'
-      };
-      draw_grid(".jqxgrid-durations", durations_datafields, durations_columns, false,
-          durations_custom_source_data, text_units_nested_grid_data('duration_data'));
-
-      // Top Court Usages table
-      var courts_datafields = [
-        { name: 'court__name', type: 'string' },
-        { name: 'court__abbreviation', type: 'string' },
-        { name: 'count', type: 'int' },
-        { name: 'court_data' }
-      ];
-      var courts_menu_renderer = function(row_number) {
-        var grid = $('.jqxgrid-courts');
-        var row = grid.jqxGrid('getrowdata', row_number);
-        var menu_data = [
-          { icon: 'fa fa-folder-open-o',
-            onclick: "expand_row(event, '.jqxgrid-courts', " + row_number + ")",
-            text: 'Show Details' },
-          { icon: 'fa fa-search',
-            url:  '{% url "extract:court-usage-list" %}?court=' + encodeURIComponent(row.court__name),
-            text: 'View Similar Court Usages' }
-        ];
-        show_menu(menu_data, grid, row.pk, 300);
-      };
-      var courts_columns = [
-        { text: 'Court Name', datafield: 'court__name', width: 'auto',
-          align: 'center', cellsalign: 'center' },
-        { text: 'Court Abbreviation', datafield: 'court__abbreviation', width: 'auto',
-          align: 'center', cellsalign: 'center' },
-        { text: 'Count', datafield: 'count', width: 150,
-          align: 'center', cellsalign: 'center' },
-        { text: 'Action', datafield: 'url', width: 60,
-          align: 'center', exportable: false,
-          columntype: 'button',
-          sortable: false, filterable: false, menu: false,
-          cellsrenderer: function(){return 'Menu'},
-          buttonclick: courts_menu_renderer }
-      ];
-      var courts_custom_source_data = {
-        url: '{% url "extract:top-court-usage-list" %}',
-        data: { 'document_pk': {{ document.pk }} },
-        badgeClass: 'courts-badge'
-      };
-      draw_grid(".jqxgrid-courts", courts_datafields, courts_columns, false,
-          courts_custom_source_data, text_units_nested_grid_data('court_data'));
-
-      // Top Currency Usages table
-      var currencies_datafields = [
-        { name: 'currency', type: 'string' },
-        { name: 'usage_type', type: 'string' },
-        { name: 'count', type: 'int' },
-        { name: 'url', type: 'string' },
-        { name: 'currency_data' }
-      ];
-      var currencies_menu_renderer = function(row_number) {
-        var grid = $('.jqxgrid-currencies');
-        var row = grid.jqxGrid('getrowdata', row_number);
-        var menu_data = [
-          { icon: 'fa fa-folder-open-o',
-            onclick: "expand_row(event, '.jqxgrid-currencies', " + row_number + ")",
-            text: 'Show Details' },
-          { icon: 'fa fa-search',
-            url:  '{% url "extract:currency-usage-list" %}?currency_search=' + encodeURIComponent(row.currency),
-            text: 'View Similar Currency Usages' }
-        ];
-        show_menu(menu_data, grid, row.pk, 300);
-      };
-      var currencies_columns = [
-        { text: 'Currency', datafield: 'currency', width: 'auto',
-          align: 'center', cellsalign: 'center',
-          cellsrenderer: defaultLinkFormatter },
-        { text: 'Usage Type', datafield: 'usage_type', width: 'auto',
-          align: 'center', cellsalign: 'center' },
-        { text: 'Count', datafield: 'count', width: 'auto',
-          align: 'center', cellsalign: 'center' },
-        { text: 'Action', datafield: 'url', width: 60,
-          align: 'center', exportable: false,
-          columntype: 'button',
-          sortable: false, filterable: false, menu: false,
-          cellsrenderer: function(){return 'Menu'},
-          buttonclick: currencies_menu_renderer }
-      ];
-      var currencies_custom_source_data = {
-        url: '{% url "extract:top-currency-usage-list" %}',
-        data: { 'document_pk': {{ document.pk }} },
-        badgeClass: 'currencies-badge'
-      };
-      // create nested grid.
-      var currencies_initrowdetails = function(index, parentElement, gridElement, record) {
-        var grid = $($(parentElement).children()[0]);
-        grid.attr('id', 'grid' + record.boundindex);
-        var details_source = {
-          datafields: [
-            { name: 'currency', type: 'string' },
-            { name: 'amount', type: 'float' },
-            { name: 'amount__str', type: 'string' },
-            { name: 'usage_type', type: 'string' },
-            { name: 'text_unit__text', type: 'string' },
-            { name: 'detail_url', type: 'string' }
-          ],
-          localdata: record.currency_data
+        var definitions_menu_renderer = function(row_number) {
+          var grid = $('.jqxgrid-definitions');
+          var row = grid.jqxGrid('getrowdata', row_number);
+          var menu_data = [
+            { icon: 'fa fa-folder-open-o',
+              onclick: "expand_row(event, '.jqxgrid-definitions', " + row_number + ")",
+              text: 'Show Details' },
+            { icon: 'fa fa-search',
+              url:  '{% url "extract:definition-usage-list" %}?definition_search=' + encodeURIComponent(row.definition),
+              text: 'View Similar Definition Usages' }
+          ];
+          show_menu(menu_data, grid, row.pk, 300);
         };
-        var nestedGridAdapter = new $.jqx.dataAdapter(details_source);
-        if (grid != null) {
-          var currencies_menu_renderer = function(row) {
-            row = grid.jqxGrid('getrowdata', row);
-            var menu_data = [
-              { url: row.detail_url,
-                icon: 'fa fa-info-circle',
-                text: 'View Text Unit'}
-            ];
-            show_menu(menu_data, grid, row.pk, 300);
+        var definitions_columns = [
+          { text: 'Definition', datafield: 'definition', width: 'auto',
+            align: 'center', cellsalign: 'center' },
+          { text: 'Count', datafield: 'count', width: 150,
+            align: 'center', cellsalign: 'center' },
+          { text: 'Action', datafield: 'url', width: 60,
+            align: 'center', exportable: false,
+            columntype: 'button',
+            sortable: false, filterable: false, menu: false,
+            cellsrenderer: function(){return 'Menu'},
+            buttonclick: definitions_menu_renderer }
+        ];
+        var definitions_custom_source_data = {
+          url: '{% url "extract:top-definition-usage-list" %}',
+          data: { 'document_pk': {{ document.pk }} },
+          badgeClass: 'definitions-badge'
+        };
+        draw_grid(".jqxgrid-definitions", definitions_datafields, definitions_columns, false,
+            definitions_custom_source_data, text_units_nested_grid_data('definition_data'));
+      {% endif %}
+
+      {% if 'duration' in available_locators %}
+        // Top Date Duration Usages table
+        var durations_datafields = [
+          { name: 'amount', type: 'int' },
+          { name: 'duration_type', type: 'string' },
+          { name: 'duration_days', type: 'float' },
+          { name: 'count', type: 'int' },
+          { name: 'duration_data' }
+        ];
+        var durations_menu_renderer = function(row_number) {
+          var grid = $('.jqxgrid-durations');
+          var row = grid.jqxGrid('getrowdata', row_number);
+          var menu_data = [
+            { icon: 'fa fa-folder-open-o',
+              onclick: "expand_row(event, '.jqxgrid-durations', " + row_number + ")",
+              text: 'Show Details' },
+            { icon: 'fa fa-search',
+              url:  '{% url "extract:date-duration-usage-list" %}?duration_search=' + row.duration_str,
+              text: 'View Similar Date Duration Usages' }
+          ];
+          show_menu(menu_data, grid, row.pk, 300);
+        };
+        var durations_columns = [
+          { text: 'Amount', datafield: 'amount', width: 'auto',
+            align: 'center', cellsalign: 'center' },
+          { text: 'Duration Type', datafield: 'duration_type', width: 'auto',
+            align: 'center', cellsalign: 'center' },
+          { text: 'Days', datafield: 'duration_days', width: 'auto',
+            align: 'center', cellsalign: 'center',
+            cellsrenderer: defaultLinkFormatter  },
+          { text: 'Count', datafield: 'count', width: 'auto',
+            align: 'center', cellsalign: 'center' },
+          { text: 'Action', datafield: 'url', width: 60,
+            align: 'center', exportable: false,
+            columntype: 'button',
+            sortable: false, filterable: false, menu: false,
+            cellsrenderer: function(){return 'Menu'},
+            buttonclick: durations_menu_renderer }
+        ];
+        var durations_custom_source_data = {
+          url: '{% url "extract:top-date-duration-usage-list" %}',
+          data: { 'document_pk': {{ document.pk }} },
+          badgeClass: 'durations-badge'
+        };
+        draw_grid(".jqxgrid-durations", durations_datafields, durations_columns, false,
+            durations_custom_source_data, text_units_nested_grid_data('duration_data'));
+      {% endif %}
+
+      {% if 'court' in available_locators %}
+        // Top Court Usages table
+        var courts_datafields = [
+          { name: 'court__name', type: 'string' },
+          { name: 'court__alias', type: 'string' },
+          { name: 'count', type: 'int' },
+          { name: 'court_data' }
+        ];
+        var courts_menu_renderer = function(row_number) {
+          var grid = $('.jqxgrid-courts');
+          var row = grid.jqxGrid('getrowdata', row_number);
+          var menu_data = [
+            { icon: 'fa fa-folder-open-o',
+              onclick: "expand_row(event, '.jqxgrid-courts', " + row_number + ")",
+              text: 'Show Details' },
+            { icon: 'fa fa-search',
+              url:  '{% url "extract:court-usage-list" %}?court=' + encodeURIComponent(row.court__name),
+              text: 'View Similar Court Usages' }
+          ];
+          show_menu(menu_data, grid, row.pk, 300);
+        };
+        var courts_columns = [
+          { text: 'Court Name', datafield: 'court__name', width: 'auto',
+            align: 'center', cellsalign: 'center' },
+          { text: 'Court Alias', datafield: 'court__alias', width: 150,
+            align: 'center', cellsalign: 'center' },
+          { text: 'Count', datafield: 'count', width: 150,
+            align: 'center', cellsalign: 'center' },
+          { text: 'Action', datafield: 'url', width: 60,
+            align: 'center', exportable: false,
+            columntype: 'button',
+            sortable: false, filterable: false, menu: false,
+            cellsrenderer: function(){return 'Menu'},
+            buttonclick: courts_menu_renderer }
+        ];
+        var courts_custom_source_data = {
+          url: '{% url "extract:top-court-usage-list" %}',
+          data: { 'document_pk': {{ document.pk }} },
+          badgeClass: 'courts-badge'
+        };
+        draw_grid(".jqxgrid-courts", courts_datafields, courts_columns, false,
+            courts_custom_source_data, text_units_nested_grid_data('court_data'));
+      {% endif %}
+
+      {% if 'currency' in available_locators %}
+        // Top Currency Usages table
+        var currencies_datafields = [
+          { name: 'currency', type: 'string' },
+          {#        { name: 'usage_type', type: 'string' },#}
+          { name: 'count', type: 'int' },
+          { name: 'url', type: 'string' },
+          { name: 'currency_data' }
+        ];
+        var currencies_menu_renderer = function(row_number) {
+          var grid = $('.jqxgrid-currencies');
+          var row = grid.jqxGrid('getrowdata', row_number);
+          var menu_data = [
+            { icon: 'fa fa-folder-open-o',
+              onclick: "expand_row(event, '.jqxgrid-currencies', " + row_number + ")",
+              text: 'Show Details' },
+            { icon: 'fa fa-search',
+              url:  '{% url "extract:currency-usage-list" %}?currency_search=' + encodeURIComponent(row.currency),
+              text: 'View Similar Currency Usages' }
+          ];
+          show_menu(menu_data, grid, row.pk, 300);
+        };
+        var currencies_columns = [
+          { text: 'Currency', datafield: 'currency', width: 'auto',
+            align: 'center', cellsalign: 'center',
+            cellsrenderer: defaultLinkFormatter },
+          {#        { text: 'Usage Type', datafield: 'usage_type', width: 'auto',#}
+          {#          align: 'center', cellsalign: 'center' },#}
+          { text: 'Count', datafield: 'count', width: 'auto',
+            align: 'center', cellsalign: 'center' },
+          { text: 'Action', datafield: 'url', width: 60,
+            align: 'center', exportable: false,
+            columntype: 'button',
+            sortable: false, filterable: false, menu: false,
+            cellsrenderer: function(){return 'Menu'},
+            buttonclick: currencies_menu_renderer }
+        ];
+        var currencies_custom_source_data = {
+          url: '{% url "extract:top-currency-usage-list" %}',
+          data: { 'document_pk': {{ document.pk }} },
+          badgeClass: 'currencies-badge'
+        };
+        // create nested grid.
+        var currencies_initrowdetails = function(index, parentElement, gridElement, record) {
+          var grid = $($(parentElement).children()[0]);
+          grid.attr('id', 'grid' + record.boundindex);
+          var details_source = {
+            datafields: [
+              { name: 'currency', type: 'string' },
+              { name: 'amount', type: 'float' },
+              { name: 'amount__str', type: 'string' },
+              {#            { name: 'usage_type', type: 'string' },#}
+              { name: 'text_unit__text', type: 'string' },
+              { name: 'detail_url', type: 'string' }
+            ],
+            localdata: record.currency_data
           };
-          grid.jqxGrid({
-            source: nestedGridAdapter,
-            altrows: true,
-            enabletooltips: true,
-            sortable: true,
-            filterable: true,
-            width: '98%',
-            height: 200,
-            columns: [
-              { text: 'Currency', datafield: 'currency', width: 80,
-                align: 'center', cellsalign: 'center', columngroup: 'Currency Info' },
-              { text: 'Type', datafield: 'usage_type', width: 100,
-                align: 'center', cellsalign: 'center', columngroup: 'Currency Info' },
-              { text: 'Amount', datafield: 'amount', width: 120, cellsformat: 'f2',
-                align: 'center', cellsalign: 'center', columngroup: 'Currency Info' },
-              { text: 'Text Unit', datafield: 'text_unit__text', width: 'auto', minwidth: 300,
-                align: 'center', cellsalign: 'center' },
-              { text: 'Action', datafield: 'edit_url', width: 60,
-                align: 'center', exportable: false,
-                columntype: 'button',
-                sortable: false, filterable: false, menu: false,
-                cellsrenderer: function(){return 'Menu'},
-                buttonclick: currencies_menu_renderer }
-            ]
-          });
-        }
-      };
-      var currencies_custom_grid_options = {
-        rowsheight: 60,
-        pageable: false,
-        rowdetails: true,
-        initrowdetails: currencies_initrowdetails,
-        rowdetailstemplate: {
-          rowdetails: "<div id='grid' class='sub-grid' style='margin: 10px;'></div>",
-          rowdetailsheight: 245,
-          rowdetailshidden: true
-        },
-        columngroups: [
-          { text: 'Clustering info', name: 'Clustering info', align: 'center' }
-        ]
-      };
-      draw_grid(".jqxgrid-currencies", currencies_datafields, currencies_columns, false,
-          currencies_custom_source_data, currencies_custom_grid_options);
 
+          var nestedGridAdapter = new $.jqx.dataAdapter(details_source);
+          if (grid != null) {
+            var currencies_menu_renderer = function(row) {
+              row = grid.jqxGrid('getrowdata', row);
+              var menu_data = [
+                { url: row.detail_url,
+                  icon: 'fa fa-info-circle',
+                  text: 'View Text Unit'}
+              ];
+              show_menu(menu_data, grid, row.pk, 300);
+            };
+            grid.jqxGrid({
+              source: nestedGridAdapter,
+              altrows: true,
+              enabletooltips: true,
+              sortable: true,
+              filterable: true,
+              width: '98%',
+              height: 200,
+              columns: [
+                { text: 'Currency', datafield: 'currency', width: 80,
+                  align: 'center', cellsalign: 'center', columngroup: 'Currency Info' },
+                {#              { text: 'Type', datafield: 'usage_type', width: 100,#}
+                {#                align: 'center', cellsalign: 'center', columngroup: 'Currency Info' },#}
+                { text: 'Amount', datafield: 'amount', width: 120, cellsformat: 'f2',
+                  align: 'center', cellsalign: 'center', columngroup: 'Currency Info' },
+                { text: 'Text Unit', datafield: 'text_unit__text', width: 'auto', minwidth: 300,
+                  align: 'center', cellsalign: 'center' },
+                { text: 'Action', datafield: 'edit_url', width: 60,
+                  align: 'center', exportable: false,
+                  columntype: 'button',
+                  sortable: false, filterable: false, menu: false,
+                  cellsrenderer: function(){return 'Menu'},
+                  buttonclick: currencies_menu_renderer }
+              ]
+            });
+          }
+        };
+        var currencies_custom_grid_options = {
+          rowsheight: 60,
+          pageable: false,
+          rowdetails: true,
+          initrowdetails: currencies_initrowdetails,
+          rowdetailstemplate: {
+            rowdetails: "<div id='grid' class='sub-grid' style='margin: 10px;'></div>",
+            rowdetailsheight: 245,
+            rowdetailshidden: true
+          },
+          columngroups: [
+            { text: 'Clustering info', name: 'Clustering info', align: 'center' }
+          ]
+        };
+        draw_grid(".jqxgrid-currencies", currencies_datafields, currencies_columns, false,
+            currencies_custom_source_data, currencies_custom_grid_options);
+      {% endif %}
 
-      // Top Regulation Usages table
-      var regulations_datafields = [
-        { name: 'regulation_name', type: 'string' },
-        { name: 'regulation_type', type: 'string' },
-        { name: 'count', type: 'int' },
-        { name: 'regulation_data' }
-      ];
-      var regulations_menu_renderer = function(row_number) {
-        var grid = $('.jqxgrid-regulations');
-        var row = grid.jqxGrid('getrowdata', row_number);
-        var menu_data = [
-          { icon: 'fa fa-folder-open-o',
-            onclick: "expand_row(event, '.jqxgrid-regulations', " + row_number + ")",
-            text: 'Show Details' },
-          { icon: 'fa fa-search',
-            url:  '{% url "extract:regulation-usage-list" %}?regulation_search=' + encodeURIComponent(row.regulation_name),
-            text: 'View Similar Regulation Usages' }
+      {% if 'regulation' in available_locators %}
+        // Top Regulation Usages table
+        var regulations_datafields = [
+          { name: 'regulation_name', type: 'string' },
+          { name: 'regulation_type', type: 'string' },
+          { name: 'count', type: 'int' },
+          { name: 'regulation_data' }
         ];
-        show_menu(menu_data, grid, row.pk, 300);
-      };
-      var regulations_columns = [
-        { text: 'Regulation Type', datafield: 'regulation_type', width: 'auto',
-          align: 'center', cellsalign: 'center' },
-        { text: 'Regulation Name', datafield: 'regulation_name', width: 'auto',
-          align: 'center', cellsalign: 'center' },
-        { text: 'Count', datafield: 'count', width: 150,
-          align: 'center', cellsalign: 'center' },
-        { text: 'Action', datafield: 'url', width: 60,
-          align: 'center', exportable: false,
-          columntype: 'button',
-          sortable: false, filterable: false, menu: false,
-          cellsrenderer: function(){return 'Menu'},
-          buttonclick: regulations_menu_renderer }
-      ];
-      var regulations_custom_source_data = {
-        url: '{% url "extract:top-regulation-usage-list" %}',
-        data: { 'document_pk': {{ document.pk }} },
-        badgeClass: 'regulations-badge'
-      };
-      draw_grid(".jqxgrid-regulations", regulations_datafields, regulations_columns, false,
-          regulations_custom_source_data, text_units_nested_grid_data('regulation_data'));
-
-      // Top Citation Usages table
-      var citations_datafields = [
-        { name: 'citation_str', type: 'string' },
-        { name: 'count', type: 'int' },
-        { name: 'citation_data' }
-      ];
-      var citations_menu_renderer = function(row_number) {
-        var grid = $('.jqxgrid-citations');
-        var row = grid.jqxGrid('getrowdata', row_number);
-        var menu_data = [
-          { icon: 'fa fa-folder-open-o',
-            onclick: "expand_row(event, '.jqxgrid-citations', " + row_number + ")",
-            text: 'Show Details' },
-          { icon: 'fa fa-search',
-            url:  '{% url "extract:citation-usage-list" %}?citation_search=' + encodeURIComponent(row.citation_str),
-            text: 'View Similar Citation Usages' }
+        var regulations_menu_renderer = function(row_number) {
+          var grid = $('.jqxgrid-regulations');
+          var row = grid.jqxGrid('getrowdata', row_number);
+          var menu_data = [
+            { icon: 'fa fa-folder-open-o',
+              onclick: "expand_row(event, '.jqxgrid-regulations', " + row_number + ")",
+              text: 'Show Details' },
+            { icon: 'fa fa-search',
+              url:  '{% url "extract:regulation-usage-list" %}?regulation_search=' + encodeURIComponent(row.regulation_name),
+              text: 'View Similar Regulation Usages' }
+          ];
+          show_menu(menu_data, grid, row.pk, 300);
+        };
+        var regulations_columns = [
+          { text: 'Regulation Type', datafield: 'regulation_type', width: 'auto',
+            align: 'center', cellsalign: 'center' },
+          { text: 'Regulation Name', datafield: 'regulation_name', width: 'auto',
+            align: 'center', cellsalign: 'center' },
+          { text: 'Count', datafield: 'count', width: 150,
+            align: 'center', cellsalign: 'center' },
+          { text: 'Action', datafield: 'url', width: 60,
+            align: 'center', exportable: false,
+            columntype: 'button',
+            sortable: false, filterable: false, menu: false,
+            cellsrenderer: function(){return 'Menu'},
+            buttonclick: regulations_menu_renderer }
         ];
-        show_menu(menu_data, grid, row.pk, 300);
-      };
-      var citations_columns = [
-        { text: 'Citation', datafield: 'citation_str', width: 'auto',
-          align: 'center', cellsalign: 'center' },
-        { text: 'Count', datafield: 'count', width: 150,
-          align: 'center', cellsalign: 'center' },
-        { text: 'Action', datafield: 'url', width: 60,
-          align: 'center', exportable: false,
-          columntype: 'button',
-          sortable: false, filterable: false, menu: false,
-          cellsrenderer: function(){return 'Menu'},
-          buttonclick: citations_menu_renderer }
-      ];
-      var citations_custom_source_data = {
-        url: '{% url "extract:top-citation-usage-list" %}',
-        data: { 'document_pk': {{ document.pk }} },
-        badgeClass: 'citations-badge'
-      };
-      draw_grid(".jqxgrid-citations", citations_datafields, citations_columns, false,
-          citations_custom_source_data, text_units_nested_grid_data('citation_data'));
+        var regulations_custom_source_data = {
+          url: '{% url "extract:top-regulation-usage-list" %}',
+          data: { 'document_pk': {{ document.pk }} },
+          badgeClass: 'regulations-badge'
+        };
+        draw_grid(".jqxgrid-regulations", regulations_datafields, regulations_columns, false,
+            regulations_custom_source_data, text_units_nested_grid_data('regulation_data'));
+      {% endif %}
 
-      // Top Distance Usages table
-      var distances_datafields = [
-        { name: 'distance_type', type: 'string' },
-        { name: 'amount', type: 'float' },
-        { name: 'count', type: 'int' },
-        { name: 'distance_data' }
-      ];
-      var distances_menu_renderer = function(row_number) {
-        var grid = $('.jqxgrid-distances');
-        var row = grid.jqxGrid('getrowdata', row_number);
-        var menu_data = [
-          { icon: 'fa fa-folder-open-o',
-            onclick: "expand_row(event, '.jqxgrid-distances', " + row_number + ")",
-            text: 'Show Details' },
-          { icon: 'fa fa-search',
-            url:  '{% url "extract:distance-usage-list" %}?distance_search=' + encodeURIComponent(row.distance_str),
-            text: 'View Similar Distance Usages' }
+      {% if 'citation' in available_locators %}
+        // Top Citation Usages table
+        var citations_datafields = [
+          { name: 'citation_str', type: 'string' },
+          { name: 'count', type: 'int' },
+          { name: 'citation_data' }
         ];
-        show_menu(menu_data, grid, row.pk, 300);
-      };
-      var distances_columns = [
-        { text: 'Amount', datafield: 'amount', width: 'auto',
-          align: 'center', cellsalign: 'center' },
-        { text: 'Distance Type', datafield: 'distance_type', width: 'auto',
-          align: 'center', cellsalign: 'center' },
-        { text: 'Count', datafield: 'count', width: 150,
-          align: 'center', cellsalign: 'center' },
-        { text: 'Action', datafield: 'url', width: 60,
-          align: 'center', exportable: false,
-          columntype: 'button',
-          sortable: false, filterable: false, menu: false,
-          cellsrenderer: function(){return 'Menu'},
-          buttonclick: distances_menu_renderer }
-      ];
-      var distances_custom_source_data = {
-        url: '{% url "extract:top-distance-usage-list" %}',
-        data: { 'document_pk': {{ document.pk }} },
-        badgeClass: 'distances-badge'
-      };
-      draw_grid(".jqxgrid-distances", distances_datafields, distances_columns, false,
-          distances_custom_source_data, text_units_nested_grid_data('distance_data'));
+        var citations_menu_renderer = function(row_number) {
+          var grid = $('.jqxgrid-citations');
+          var row = grid.jqxGrid('getrowdata', row_number);
+          var menu_data = [
+            { icon: 'fa fa-folder-open-o',
+              onclick: "expand_row(event, '.jqxgrid-citations', " + row_number + ")",
+              text: 'Show Details' },
+            { icon: 'fa fa-search',
+              url:  '{% url "extract:citation-usage-list" %}?citation_search=' + encodeURIComponent(row.citation_str),
+              text: 'View Similar Citation Usages' }
+          ];
+          show_menu(menu_data, grid, row.pk, 300);
+        };
+        var citations_columns = [
+          { text: 'Citation', datafield: 'citation_str', width: 'auto',
+            align: 'center', cellsalign: 'center' },
+          { text: 'Count', datafield: 'count', width: 150,
+            align: 'center', cellsalign: 'center' },
+          { text: 'Action', datafield: 'url', width: 60,
+            align: 'center', exportable: false,
+            columntype: 'button',
+            sortable: false, filterable: false, menu: false,
+            cellsrenderer: function(){return 'Menu'},
+            buttonclick: citations_menu_renderer }
+        ];
+        var citations_custom_source_data = {
+          url: '{% url "extract:top-citation-usage-list" %}',
+          data: { 'document_pk': {{ document.pk }} },
+          badgeClass: 'citations-badge'
+        };
+        draw_grid(".jqxgrid-citations", citations_datafields, citations_columns, false,
+            citations_custom_source_data, text_units_nested_grid_data('citation_data'));
+      {% endif %}
 
-      // Top Amount Usages table
-      var amounts_datafields = [
-        { name: 'amount', type: 'float' },
-        { name: 'count', type: 'int' },
-        { name: 'amount_data' }
-      ];
-      var amounts_menu_renderer = function(row_number) {
-        var grid = $('.jqxgrid-amounts');
-        var row = grid.jqxGrid('getrowdata', row_number);
-        var menu_data = [
-          { icon: 'fa fa-folder-open-o',
-            onclick: "expand_row(event, '.jqxgrid-amounts', " + row_number + ")",
-            text: 'Show Details' },
-          { icon: 'fa fa-search',
-            url:  '{% url "extract:amount-usage-list" %}?amount_search=' + encodeURIComponent(row.amount),
-            text: 'View Similar Amount Usages' }
+      {% if 'distance' in available_locators %}
+        // Top Distance Usages table
+        var distances_datafields = [
+          { name: 'distance_type', type: 'string' },
+          { name: 'amount', type: 'float' },
+          { name: 'count', type: 'int' },
+          { name: 'distance_data' }
         ];
-        show_menu(menu_data, grid, row.pk, 300);
-      };
-      var amounts_columns = [
-        { text: 'Amount', datafield: 'amount', width: 'auto',
-          align: 'center', cellsalign: 'center' },
-        { text: 'Count', datafield: 'count', width: 150,
-          align: 'center', cellsalign: 'center' },
-        { text: 'Action', datafield: 'url', width: 60,
-          align: 'center', exportable: false,
-          columntype: 'button',
-          sortable: false, filterable: false, menu: false,
-          cellsrenderer: function(){return 'Menu'},
-          buttonclick: amounts_menu_renderer }
-      ];
-      var amounts_custom_source_data = {
-        url: '{% url "extract:top-amount-usage-list" %}',
-        data: { 'document_pk': {{ document.pk }} },
-        badgeClass: 'amounts-badge'
-      };
-      draw_grid(".jqxgrid-amounts", amounts_datafields, amounts_columns, false,
-          amounts_custom_source_data, text_units_nested_grid_data('amount_data'));
+        var distances_menu_renderer = function(row_number) {
+          var grid = $('.jqxgrid-distances');
+          var row = grid.jqxGrid('getrowdata', row_number);
+          var menu_data = [
+            { icon: 'fa fa-folder-open-o',
+              onclick: "expand_row(event, '.jqxgrid-distances', " + row_number + ")",
+              text: 'Show Details' },
+            { icon: 'fa fa-search',
+              url:  '{% url "extract:distance-usage-list" %}?distance_search=' + encodeURIComponent(row.distance_str),
+              text: 'View Similar Distance Usages' }
+          ];
+          show_menu(menu_data, grid, row.pk, 300);
+        };
+        var distances_columns = [
+          { text: 'Amount', datafield: 'amount', width: 'auto',
+            align: 'center', cellsalign: 'center' },
+          { text: 'Distance Type', datafield: 'distance_type', width: 'auto',
+            align: 'center', cellsalign: 'center' },
+          { text: 'Count', datafield: 'count', width: 150,
+            align: 'center', cellsalign: 'center' },
+          { text: 'Action', datafield: 'url', width: 60,
+            align: 'center', exportable: false,
+            columntype: 'button',
+            sortable: false, filterable: false, menu: false,
+            cellsrenderer: function(){return 'Menu'},
+            buttonclick: distances_menu_renderer }
+        ];
+        var distances_custom_source_data = {
+          url: '{% url "extract:top-distance-usage-list" %}',
+          data: { 'document_pk': {{ document.pk }} },
+          badgeClass: 'distances-badge'
+        };
+        draw_grid(".jqxgrid-distances", distances_datafields, distances_columns, false,
+            distances_custom_source_data, text_units_nested_grid_data('distance_data'));
+      {% endif %}
 
-      // Top Percent Usages table
-      var percents_datafields = [
-        { name: 'unit_type', type: 'string' },
-        { name: 'amount', type: 'float' },
-        { name: 'count', type: 'int' },
-        { name: 'percent_data' }
-      ];
-      var percents_menu_renderer = function(row_number) {
-        var grid = $('.jqxgrid-percents');
-        var row = grid.jqxGrid('getrowdata', row_number);
-        var menu_data = [
-          { icon: 'fa fa-folder-open-o',
-            onclick: "expand_row(event, '.jqxgrid-percents', " + row_number + ")",
-            text: 'Show Details' },
-          { icon: 'fa fa-search',
-            url:  '{% url "extract:percent-usage-list" %}?percent_type_search=' + encodeURIComponent(row.unit_type) +
-            '&percent_amount_search=' + encodeURIComponent(row.amount),
-            text: 'View Similar Percent Usages' }
+      {% if 'amount' in available_locators %}
+        // Top Amount Usages table
+        var amounts_datafields = [
+          { name: 'amount', type: 'float' },
+          { name: 'count', type: 'int' },
+          { name: 'amount_data' }
         ];
-        show_menu(menu_data, grid, row.pk, 300);
-      };
-      var percents_columns = [
-        { text: 'Amount', datafield: 'amount', width: 'auto',
-          align: 'center', cellsalign: 'center' },
-        { text: 'Unit Type', datafield: 'unit_type', width: 'auto',
-          align: 'center', cellsalign: 'center' },
-        { text: 'Count', datafield: 'count', width: 150,
-          align: 'center', cellsalign: 'center' },
-        { text: 'Action', datafield: 'url', width: 60,
-          align: 'center', exportable: false,
-          columntype: 'button',
-          sortable: false, filterable: false, menu: false,
-          cellsrenderer: function(){return 'Menu'},
-          buttonclick: percents_menu_renderer }
-      ];
-      var percents_custom_source_data = {
-        url: '{% url "extract:top-percent-usage-list" %}',
-        data: { 'document_pk': {{ document.pk }} },
-        badgeClass: 'percents-badge'
-      };
-      draw_grid(".jqxgrid-percents", percents_datafields, percents_columns, false,
-          percents_custom_source_data, text_units_nested_grid_data('percent_data'));
+        var amounts_menu_renderer = function(row_number) {
+          var grid = $('.jqxgrid-amounts');
+          var row = grid.jqxGrid('getrowdata', row_number);
+          var menu_data = [
+            { icon: 'fa fa-folder-open-o',
+              onclick: "expand_row(event, '.jqxgrid-amounts', " + row_number + ")",
+              text: 'Show Details' },
+            { icon: 'fa fa-search',
+              url:  '{% url "extract:amount-usage-list" %}?amount_search=' + encodeURIComponent(row.amount),
+              text: 'View Similar Amount Usages' }
+          ];
+          show_menu(menu_data, grid, row.pk, 300);
+        };
+        var amounts_columns = [
+          { text: 'Amount', datafield: 'amount', width: 'auto',
+            align: 'center', cellsalign: 'center' },
+          { text: 'Count', datafield: 'count', width: 150,
+            align: 'center', cellsalign: 'center' },
+          { text: 'Action', datafield: 'url', width: 60,
+            align: 'center', exportable: false,
+            columntype: 'button',
+            sortable: false, filterable: false, menu: false,
+            cellsrenderer: function(){return 'Menu'},
+            buttonclick: amounts_menu_renderer }
+        ];
+        var amounts_custom_source_data = {
+          url: '{% url "extract:top-amount-usage-list" %}',
+          data: { 'document_pk': {{ document.pk }} },
+          badgeClass: 'amounts-badge'
+        };
+        draw_grid(".jqxgrid-amounts", amounts_datafields, amounts_columns, false,
+            amounts_custom_source_data, text_units_nested_grid_data('amount_data'));
+      {% endif %}
 
-      // Top Ratio Usages table
-      var ratios_datafields = [
-        { name: 'amount', type: 'float' },
-        { name: 'amount2', type: 'float' },
-        { name: 'count', type: 'int' },
-        { name: 'ratio_data' }
-      ];
-      var ratios_menu_renderer = function(row_number) {
-        var grid = $('.jqxgrid-ratios');
-        var row = grid.jqxGrid('getrowdata', row_number);
-        var menu_data = [
-          { icon: 'fa fa-folder-open-o',
-            onclick: "expand_row(event, '.jqxgrid-ratios', " + row_number + ")",
-            text: 'Show Details' },
-          { icon: 'fa fa-search',
-            url:  '{% url "extract:ratio-usage-list" %}?ratio_amount_search=' + encodeURIComponent(row.amount) +
-            '&ratio_amount2_search=' + encodeURIComponent(row.amount2),
-            text: 'View Similar Ratio Usages' }
+      {% if 'percent' in available_locators %}
+        // Top Percent Usages table
+        var percents_datafields = [
+          { name: 'unit_type', type: 'string' },
+          { name: 'amount', type: 'float' },
+          { name: 'count', type: 'int' },
+          { name: 'percent_data' }
         ];
-        show_menu(menu_data, grid, row.pk, 300);
-      };
-      var ratios_columns = [
-        { text: 'Amount 1', datafield: 'amount', width: 'auto',
-          align: 'center', cellsalign: 'center' },
-        { text: 'Amount 2', datafield: 'amount2', width: 'auto',
-          align: 'center', cellsalign: 'center' },
-        { text: 'Count', datafield: 'count', width: 150,
-          align: 'center', cellsalign: 'center' },
-        { text: 'Action', datafield: 'url', width: 60,
-          align: 'center', exportable: false,
-          columntype: 'button',
-          sortable: false, filterable: false, menu: false,
-          cellsrenderer: function(){return 'Menu'},
-          buttonclick: ratios_menu_renderer }
-      ];
-      var ratios_custom_source_data = {
-        url: '{% url "extract:top-ratio-usage-list" %}',
-        data: { 'document_pk': {{ document.pk }} },
-        badgeClass: 'ratios-badge'
-      };
-      draw_grid(".jqxgrid-ratios", ratios_datafields, ratios_columns, false,
-          ratios_custom_source_data, text_units_nested_grid_data('ratio_data'));
+        var percents_menu_renderer = function(row_number) {
+          var grid = $('.jqxgrid-percents');
+          var row = grid.jqxGrid('getrowdata', row_number);
+          var menu_data = [
+            { icon: 'fa fa-folder-open-o',
+              onclick: "expand_row(event, '.jqxgrid-percents', " + row_number + ")",
+              text: 'Show Details' },
+            { icon: 'fa fa-search',
+              url:  '{% url "extract:percent-usage-list" %}?percent_type_search=' + encodeURIComponent(row.unit_type) +
+              '&percent_amount_search=' + encodeURIComponent(row.amount),
+              text: 'View Similar Percent Usages' }
+          ];
+          show_menu(menu_data, grid, row.pk, 300);
+        };
+        var percents_columns = [
+          { text: 'Amount', datafield: 'amount', width: 'auto',
+            align: 'center', cellsalign: 'center' },
+          { text: 'Unit Type', datafield: 'unit_type', width: 'auto',
+            align: 'center', cellsalign: 'center' },
+          { text: 'Count', datafield: 'count', width: 150,
+            align: 'center', cellsalign: 'center' },
+          { text: 'Action', datafield: 'url', width: 60,
+            align: 'center', exportable: false,
+            columntype: 'button',
+            sortable: false, filterable: false, menu: false,
+            cellsrenderer: function(){return 'Menu'},
+            buttonclick: percents_menu_renderer }
+        ];
+        var percents_custom_source_data = {
+          url: '{% url "extract:top-percent-usage-list" %}',
+          data: { 'document_pk': {{ document.pk }} },
+          badgeClass: 'percents-badge'
+        };
+        draw_grid(".jqxgrid-percents", percents_datafields, percents_columns, false,
+            percents_custom_source_data, text_units_nested_grid_data('percent_data'));
+      {% endif %}
+
+      {% if 'ratio' in available_locators %}
+        // Top Ratio Usages table
+        var ratios_datafields = [
+          { name: 'amount', type: 'float' },
+          { name: 'amount2', type: 'float' },
+          { name: 'count', type: 'int' },
+          { name: 'ratio_data' }
+        ];
+        var ratios_menu_renderer = function(row_number) {
+          var grid = $('.jqxgrid-ratios');
+          var row = grid.jqxGrid('getrowdata', row_number);
+          var menu_data = [
+            { icon: 'fa fa-folder-open-o',
+              onclick: "expand_row(event, '.jqxgrid-ratios', " + row_number + ")",
+              text: 'Show Details' },
+            { icon: 'fa fa-search',
+              url:  '{% url "extract:ratio-usage-list" %}?ratio_amount_search=' + encodeURIComponent(row.amount) +
+              '&ratio_amount2_search=' + encodeURIComponent(row.amount2),
+              text: 'View Similar Ratio Usages' }
+          ];
+          show_menu(menu_data, grid, row.pk, 300);
+        };
+        var ratios_columns = [
+          { text: 'Amount 1', datafield: 'amount', width: 'auto',
+            align: 'center', cellsalign: 'center' },
+          { text: 'Amount 2', datafield: 'amount2', width: 'auto',
+            align: 'center', cellsalign: 'center' },
+          { text: 'Count', datafield: 'count', width: 150,
+            align: 'center', cellsalign: 'center' },
+          { text: 'Action', datafield: 'url', width: 60,
+            align: 'center', exportable: false,
+            columntype: 'button',
+            sortable: false, filterable: false, menu: false,
+            cellsrenderer: function(){return 'Menu'},
+            buttonclick: ratios_menu_renderer }
+        ];
+        var ratios_custom_source_data = {
+          url: '{% url "extract:top-ratio-usage-list" %}',
+          data: { 'document_pk': {{ document.pk }} },
+          badgeClass: 'ratios-badge'
+        };
+        draw_grid(".jqxgrid-ratios", ratios_datafields, ratios_columns, false,
+            ratios_custom_source_data, text_units_nested_grid_data('ratio_data'));
+      {% endif %}
+
+      {% if 'copyright' in available_locators %}
+        // Top Copyright Usages table
+        var copyrights_datafields = [
+          { name: 'copyright_str', type: 'string' },
+          { name: 'count', type: 'int' },
+          { name: 'copyright_data' }
+        ];
+        var copyrights_menu_renderer = function(row_number) {
+          var grid = $('.jqxgrid-copyrights');
+          var row = grid.jqxGrid('getrowdata', row_number);
+          var menu_data = [
+            { icon: 'fa fa-folder-open-o',
+              onclick: "expand_row(event, '.jqxgrid-copyrights', " + row_number + ")",
+              text: 'Show Details' },
+            { icon: 'fa fa-search',
+              url:  '{% url "extract:copyright-usage-list" %}?copyright_search=' + encodeURIComponent(row.copyright_str),
+              text: 'View Similar Copyright Usages' }
+          ];
+          show_menu(menu_data, grid, row.pk, 300);
+        };
+        var copyrights_columns = [
+          { text: 'Copyright', datafield: 'copyright_str', width: 'auto',
+            align: 'center', cellsalign: 'center' },
+          { text: 'Count', datafield: 'count', width: 150,
+            align: 'center', cellsalign: 'center' },
+          { text: 'Action', datafield: 'url', width: 60,
+            align: 'center', exportable: false,
+            columntype: 'button',
+            sortable: false, filterable: false, menu: false,
+            cellsrenderer: function(){return 'Menu'},
+            buttonclick: copyrights_menu_renderer }
+        ];
+        var copyrights_custom_source_data = {
+          url: '{% url "extract:top-copyright-usage-list" %}',
+          data: { 'document_pk': {{ document.pk }} },
+          badgeClass: 'copyrights-badge'
+        };
+        draw_grid(".jqxgrid-copyrights", copyrights_datafields, copyrights_columns, false,
+            copyrights_custom_source_data, text_units_nested_grid_data('copyright_data'));
+      {% endif %}
+
+      {% if 'trademark' in available_locators %}
+        // Top Trademark Usages table
+        var trademarks_datafields = [
+          { name: 'trademark', type: 'string' },
+          { name: 'count', type: 'int' },
+          { name: 'trademark_data' }
+        ];
+        var trademarks_menu_renderer = function(row_number) {
+          var grid = $('.jqxgrid-trademarks');
+          var row = grid.jqxGrid('getrowdata', row_number);
+          var menu_data = [
+            { icon: 'fa fa-folder-open-o',
+              onclick: "expand_row(event, '.jqxgrid-trademarks', " + row_number + ")",
+              text: 'Show Details' },
+            { icon: 'fa fa-search',
+              url:  '{% url "extract:trademark-usage-list" %}?trademark_search=' + encodeURIComponent(row.trademark),
+              text: 'View Similar Trademark Usages' }
+          ];
+          show_menu(menu_data, grid, row.pk, 300);
+        };
+        var trademarks_columns = [
+          { text: 'Trademark', datafield: 'trademark', width: 'auto',
+            align: 'center', cellsalign: 'center' },
+          { text: 'Count', datafield: 'count', width: 150,
+            align: 'center', cellsalign: 'center' },
+          { text: 'Action', datafield: 'url', width: 60,
+            align: 'center', exportable: false,
+            columntype: 'button',
+            sortable: false, filterable: false, menu: false,
+            cellsrenderer: function(){return 'Menu'},
+            buttonclick: trademarks_menu_renderer }
+        ];
+        var trademarks_custom_source_data = {
+          url: '{% url "extract:top-trademark-usage-list" %}',
+          data: { 'document_pk': {{ document.pk }} },
+          badgeClass: 'trademarks-badge'
+        };
+        draw_grid(".jqxgrid-trademarks", trademarks_datafields, trademarks_columns, false,
+            trademarks_custom_source_data, text_units_nested_grid_data('trademark_data'));
+      {% endif %}
+
+      {% if 'url' in available_locators %}
+        // Top Url Usages table
+        var urls_datafields = [
+          { name: 'source_url', type: 'string' },
+          { name: 'goto_url', type: 'string' },
+          { name: 'count', type: 'int' },
+          { name: 'url_data' }
+        ];
+        var urls_menu_renderer = function(row_number) {
+          var grid = $('.jqxgrid-urls');
+          var row = grid.jqxGrid('getrowdata', row_number);
+          var menu_data = [
+            { icon: 'fa fa-folder-open-o',
+              onclick: "expand_row(event, '.jqxgrid-urls', " + row_number + ")",
+              text: 'Show Details' },
+            { icon: 'fa fa-search',
+              url:  '{% url "extract:url-usage-list" %}?url_search=' + encodeURIComponent(row.url),
+              text: 'View Similar Url Usages' },
+            { url: row.goto_url,
+              icon: 'fa fa-external-link-square',
+              text: 'Go to URL',
+              target: '_blank' }
+          ];
+          show_menu(menu_data, grid, row.pk, 300);
+        };
+        var urls_columns = [
+          { text: 'Url', datafield: 'source_url', width: 'auto',
+            align: 'center', cellsalign: 'center' },
+          { text: 'Count', datafield: 'count', width: 150,
+            align: 'center', cellsalign: 'center' },
+          { text: 'Action', datafield: 'url', width: 60,
+            align: 'center', exportable: false,
+            columntype: 'button',
+            sortable: false, filterable: false, menu: false,
+            cellsrenderer: function(){return 'Menu'},
+            buttonclick: urls_menu_renderer }
+        ];
+        var urls_custom_source_data = {
+          url: '{% url "extract:top-url-usage-list" %}',
+          data: { 'document_pk': {{ document.pk }} },
+          badgeClass: 'urls-badge'
+        };
+        draw_grid(".jqxgrid-urls", urls_datafields, urls_columns, false,
+            urls_custom_source_data, text_units_nested_grid_data('url_data'));
+      {% endif %}
 
       // Task Queues table
       var task_queues_datafields = [
@@ -1527,10 +1773,17 @@
           similarity_custom_source_data, similarity_custom_grid_options);
 
       if (window.location.hash.indexOf('tab') != -1 ){
-        var tab_id = window.location.hash.split('-')[1];
-        var tab_no = window.location.hash.split('-')[2];
-        $('#tabs' + tab_id).tabs('option', 'active', tab_no)
+        var tab_map = window.location.hash.split('-');
+        var tab_no = tab_map.length == 2 ? tab_map[1] : tab_map[2];
+        $('a[href="#tab-' + tab_no + '"]').tab('show');
       }
+      $('#tabs1 a[data-toggle="tab"]').on('shown.bs.tab', function (e) {
+        // e.target // newly activated tab
+        // e.relatedTarget // previous active tab
+        var other_tab = $(e.target).hasClass('other');
+        var other_content = other_tab ? $(e.target).html() : '<span>Other items</span>';
+        $('#tab1-other span').html(other_content)
+      })
     });
   </script>
   {% include "document/_note_js.html" %}

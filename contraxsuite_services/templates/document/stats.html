@@ -159,9 +159,10 @@
   <table class="table table-bordered table-striped">
     <thead class="thead-inverse">
     <tr>
-      <th width="34%">Definition</th>
-      <th width="33%">Count</th>
+      <th width="25%">Definition</th>
+      <th width="25%">Count</th>
       <th>Usages</th>
+      <th>Enabled</th>
     </tr>
     </thead>
     <tbody>
@@ -169,40 +170,97 @@
       <td>Terms</td>
       <td>{{ term_count|intcomma }}</td>
       <td>{{ term_usage_count|intcomma }}</td>
+      <td><i class="fa fa-circle text-{% if "term" in available_locators %}success{% else %}danger{% endif %}"></i></td>
     </tr>
     <tr>
       <td>Parties</td>
       <td>{{ party_count|intcomma }}</td>
       <td>{{ party_usage_count|intcomma }}</td>
+      <td><i class="fa fa-circle text-{% if "party" in available_locators %}success{% else %}danger{% endif %}"></i></td>
     </tr>
+    <tr>
     <tr>
       <td>Courts</td>
       <td>{{ court_count|intcomma }}</td>
       <td>{{ court_usage_count|intcomma }}</td>
+      <td><i class="fa fa-circle text-{% if "court" in available_locators %}success{% else %}danger{% endif %}"></i></td>
+    </tr>
+    <tr>
+      <td>Amounts</td>
+      <td></td>
+      <td>{{ amount_usage_count|intcomma }}</td>
+      <td><i class="fa fa-circle text-{% if "amount" in available_locators %}success{% else %}danger{% endif %}"></i></td>
+    </tr>
+    <tr>
+      <td>Citation</td>
+      <td></td>
+      <td>{{ citation_usage_count|intcomma }}</td>
+      <td><i class="fa fa-circle text-{% if "citation" in available_locators %}success{% else %}danger{% endif %}"></i></td>
+    </tr>
+    <tr>
+      <td>Copyright</td>
+      <td></td>
+      <td>{{ copyright_usage_count|intcomma }}</td>
+      <td><i class="fa fa-circle text-{% if "copyright" in available_locators %}success{% else %}danger{% endif %}"></i></td>
     </tr>
     <tr>
       <td>Currencies</td>
       <td></td>
       <td>{{ currency_usage_count|intcomma }}</td>
+      <td><i class="fa fa-circle text-{% if "currency" in available_locators %}success{% else %}danger{% endif %}"></i></td>
     </tr>
     <tr>
       <td>Dates</td>
       <td></td>
       <td>{{ date_usage_count|intcomma }}</td>
+      <td><i class="fa fa-circle text-{% if "date" in available_locators %}success{% else %}danger{% endif %}"></i></td>
     </tr>
     <tr>
       <td>Date Durations</td>
       <td></td>
       <td>{{ date_duration_usage_count|intcomma }}</td>
+      <td><i class="fa fa-circle text-{% if "duration" in available_locators %}success{% else %}danger{% endif %}"></i></td>
     <tr>
       <td>Definitions</td>
       <td></td>
       <td>{{ definition_usage_count|intcomma }}</td>
+      <td><i class="fa fa-circle text-{% if "definition" in available_locators %}success{% else %}danger{% endif %}"></i></td>
+    </tr>
+    <tr>
+      <td>Distances</td>
+      <td></td>
+      <td>{{ distance_usage_count|intcomma }}</td>
+      <td><i class="fa fa-circle text-{% if "distance" in available_locators %}success{% else %}danger{% endif %}"></i></td>
+    </tr>
+    <tr>
+      <td>Percents</td>
+      <td></td>
+      <td>{{ percent_usage_count|intcomma }}</td>
+      <td><i class="fa fa-circle text-{% if "percent" in available_locators %}success{% else %}danger{% endif %}"></i></td>
+    </tr>
+    <tr>
+      <td>Ratios</td>
+      <td></td>
+      <td>{{ ratio_usage_count|intcomma }}</td>
+      <td><i class="fa fa-circle text-{% if "ratio" in available_locators %}success{% else %}danger{% endif %}"></i></td>
     </tr>
     <tr>
       <td>Regulations</td>
       <td></td>
       <td>{{ regulation_usage_count|intcomma }}</td>
+      <td><i class="fa fa-circle text-{% if "regulation" in available_locators %}success{% else %}danger{% endif %}"></i></td>
+    </tr>
+    <tr>
+      <td>Trademarks</td>
+      <td></td>
+      <td>{{ trademark_usage_count|intcomma }}</td>
+      <td><i class="fa fa-circle text-{% if "trademark" in available_locators %}success{% else %}danger{% endif %}"></i></td>
+    </tr>
+    <tr>
+      <td>Urls</td>
+      <td></td>
+      <td>{{ url_usage_count|intcomma }}</td>
+      <td><i class="fa fa-circle text-{% if "url" in available_locators %}success{% else %}danger{% endif %}"></i></td>
     </tr>
     </tbody>
   </table>

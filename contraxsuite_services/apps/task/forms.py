@@ -1,4 +1,31 @@
+"""
+    Copyright (C) 2017, ContraxSuite, LLC
+
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU Affero General Public License as
+    published by the Free Software Foundation, either version 3 of the
+    License, or (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU Affero General Public License for more details.
+
+    You should have received a copy of the GNU Affero General Public License
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+    You can also be released from the requirements of the license by purchasing
+    a commercial license from ContraxSuite, LLC. Buying such a license is
+    mandatory as soon as you develop commercial activities involving ContraxSuite
+    software without disclosing the source code of your own applications.  These
+    activities include: offering paid services to customers as an ASP or "cloud"
+    provider, processing documents on the fly in a web application,
+    or shipping ContraxSuite within a closed source product.
+"""
 # -*- coding: utf-8 -*-
+
+# Third-party imports
+from constance import config
 
 # Django imports
 from django import forms
@@ -6,14 +33,15 @@ from django.conf import settings
 from django.utils.translation import ugettext_lazy as _
 
 # Project imports
-from apps.common.widgets import LTRCheckboxField, LTRCheckboxWidget, LTRRadioField
+from apps.common.widgets import LTRRadioField
+from apps.common.forms import checkbox_field
 from apps.analyze.models import TextUnitClassification, TextUnitClassifier
 from apps.document.models import DocumentProperty, TextUnitProperty
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2017, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.0.3/LICENSE"
-__version__ = "1.0.3"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.0.4/LICENSE"
+__version__ = "1.0.4"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -40,218 +68,95 @@ class LoadDocumentsForm(forms.Form):
     document_type = forms.CharField(
         max_length=100,
         required=True)
-    delete = LTRCheckboxField(
-        label=_("Delete existing Documents"),
-        required=False)
+    delete = checkbox_field("Delete existing Documents")
 
 
 # sample form for custom task
 class LocateTermsForm(forms.Form):
     header = 'Locate Terms in existing Text Units.'
-    delete = LTRCheckboxField(
-        label=_("Delete existing Term Usages"),
-        initial=True,
-        required=False)
+    delete = checkbox_field("Delete existing Term Usages", initial=True)
+
+
+def locate_field(label, parent_class='checkbox-parent'):
+    return checkbox_field(label, input_class=parent_class)
+
+
+def child_field(delete_tip=None, label='Delete existing usages', child_class='checkbox-child'):
+    if delete_tip:
+        label = "Delete existing %s Usages" % delete_tip
+    return checkbox_field(label, input_class=child_class, label_class='checkbox-small level-1')
 
 
 class LocateEmployeesForm(forms.Form):
     header = 'Locate Employees in existing documents.'
-    delete = LTRCheckboxField(
+    delete = checkbox_field(
         label=_("Delete existing Employees"),
-        initial=True,
-        required=False)
+        initial=True)
 
 
 class LocateForm(forms.Form):
     header = 'Locate specific terms in existing text units.'
 
-    geoentity_locate = LTRCheckboxField(
-        label=_("Geo Entities and Geo Aliases"),
-        initial=False,
-        required=False)
-    geoentity_priority = LTRCheckboxField(
-        label=_("Use first entity occurrence to resolve ambiguous entities"),
-        widget=LTRCheckboxWidget(attrs={'label_class': 'checkbox-small level-1'}),
-        initial=False,
-        required=False)
-    geoentity_delete = LTRCheckboxField(
-        label=_("Delete existing Geo Entity Usages and Geo Alias Usages"),
-        widget=LTRCheckboxWidget(attrs={'label_class': 'checkbox-small level-1'}),
-        initial=False,
-        required=False)
+    locate_all = checkbox_field(
+        label="Locate all items / Reverse choice",
+        label_class='main-label')
 
-    date_locate = LTRCheckboxField(
-        label=_('Dates'),
-        initial=False,
-        required=False)
-    date_strict = LTRCheckboxField(
-        label=_("Strict"),
-        widget=LTRCheckboxWidget(
-            attrs={'label_class': 'checkbox-small level-1'}),
-        initial=False,
-        required=False)
-    date_delete = LTRCheckboxField(
-        label=_("Delete existing Date Usages"),
-        widget=LTRCheckboxWidget(
-            attrs={'label_class': 'checkbox-small level-1'}),
-        initial=False,
-        required=False)
+    geoentity_locate = locate_field("Geo Entities and Geo Aliases", parent_class='')
+    geoentity_priority = child_field(
+        label="Use first entity occurrence to resolve ambiguous entities",
+        child_class='')
+    geoentity_delete = child_field(
+        label="Delete existing Geo Entity Usages and Geo Alias Usages",
+        child_class='')
 
-    amount_locate = LTRCheckboxField(
-        label=_('Amounts'),
-        widget=LTRCheckboxWidget(attrs={'class': 'checkbox-parent'}),
-        initial=False,
-        required=False)
-    amount_delete = LTRCheckboxField(
-        label=_("Delete existing Amount Usages"),
-        widget=LTRCheckboxWidget(
-            attrs={'label_class': 'checkbox-small level-1',
-                   'class': 'checkbox-child'}),
-        initial=False,
-        required=False)
+    date_locate = locate_field(label='Dates', parent_class='')
+    date_strict = child_field(label="Strict", child_class='')
+    date_delete = child_field("Date", child_class='')
 
-    citation_locate = LTRCheckboxField(
-        label=_('Citations'),
-        widget=LTRCheckboxWidget(attrs={'class': 'checkbox-parent'}),
-        initial=False,
-        required=False)
-    citation_delete = LTRCheckboxField(
-        label=_("Delete existing Citation Usages"),
-        widget=LTRCheckboxWidget(attrs={
-            'label_class': 'checkbox-small level-1',
-            'class': 'checkbox-child'}),
-        initial=False,
-        required=False)
+    amount_locate = locate_field('Amounts')
+    amount_delete = child_field("Amount")
 
-    court_locate = LTRCheckboxField(
-        label=_('Courts'),
-        widget=LTRCheckboxWidget(attrs={'class': 'checkbox-parent'}),
-        initial=False,
-        required=False)
-    court_delete = LTRCheckboxField(
-        label=_("Delete existing Court Usages"),
-        widget=LTRCheckboxWidget(attrs={
-            'label_class': 'checkbox-small level-1',
-            'class': 'checkbox-child'}),
-        initial=False,
-        required=False)
+    citation_locate = locate_field("Citations")
+    citation_delete = child_field("Citation")
 
-    currency_locate = LTRCheckboxField(
-        label=_('Currencies'),
-        widget=LTRCheckboxWidget(attrs={'class': 'checkbox-parent'}),
-        initial=False,
-        required=False)
-    currency_delete = LTRCheckboxField(
-        label=_("Delete existing Currency Usages"),
-        widget=LTRCheckboxWidget(
-            attrs={'label_class': 'checkbox-small level-1',
-                   'class': 'checkbox-child'}),
-        initial=False,
-        required=False)
+    copyright_locate = locate_field("Copyrights")
+    copyright_delete = child_field("Copyright")
 
-    duration_locate = LTRCheckboxField(
-        label=_('Date Durations'),
-        widget=LTRCheckboxWidget(attrs={'class': 'checkbox-parent'}),
-        initial=False,
-        required=False)
-    duration_delete = LTRCheckboxField(
-        label=_("Delete existing Date Duration Usages"),
-        widget=LTRCheckboxWidget(
-            attrs={'label_class': 'checkbox-small level-1',
-                   'class': 'checkbox-child'}),
-        initial=False,
-        required=False)
+    court_locate = locate_field('Courts')
+    court_delete = child_field('Court')
 
-    definition_locate = LTRCheckboxField(
-        label=_('Definitions'),
-        widget=LTRCheckboxWidget(attrs={'class': 'checkbox-parent'}),
-        initial=False,
-        required=False)
-    definition_delete = LTRCheckboxField(
-        label=_("Delete existing Definition Usages"),
-        widget=LTRCheckboxWidget(
-            attrs={'label_class': 'checkbox-small level-1',
-                   'class': 'checkbox-child'}),
-        initial=False,
-        required=False)
+    currency_locate = locate_field('Currencies')
+    currency_delete = child_field('Currency')
 
-    distance_locate = LTRCheckboxField(
-        label=_('Distances'),
-        widget=LTRCheckboxWidget(attrs={'class': 'checkbox-parent'}),
-        initial=False,
-        required=False)
-    distance_delete = LTRCheckboxField(
-        label=_("Delete existing Distance Usages"),
-        widget=LTRCheckboxWidget(
-            attrs={'label_class': 'checkbox-small level-1',
-                   'class': 'checkbox-child'}),
-        initial=False,
-        required=False)
+    duration_locate = locate_field('Date Durations')
+    duration_delete = child_field('Date Duration')
 
-    party_locate = LTRCheckboxField(
-        label=_('Parties'),
-        widget=LTRCheckboxWidget(attrs={'class': 'checkbox-parent'}),
-        initial=False,
-        required=False)
-    party_delete = LTRCheckboxField(
-        label=_("Delete existing Parties and Party Usages"),
-        widget=LTRCheckboxWidget(
-            attrs={'label_class': 'checkbox-small level-1',
-                   'class': 'checkbox-child'}),
-        initial=False,
-        required=False)
+    definition_locate = locate_field('Definitions')
+    definition_delete = child_field('Definition')
 
-    percent_locate = LTRCheckboxField(
-        label=_('Percents'),
-        widget=LTRCheckboxWidget(attrs={'class': 'checkbox-parent'}),
-        initial=False,
-        required=False)
-    percent_delete = LTRCheckboxField(
-        label=_("Delete existing Percent Usages"),
-        widget=LTRCheckboxWidget(
-            attrs={'label_class': 'checkbox-small level-1',
-                   'class': 'checkbox-child'}),
-        initial=False,
-        required=False)
+    distance_locate = locate_field('Distances')
+    distance_delete = child_field('Distance')
 
-    ratio_locate = LTRCheckboxField(
-        label=_('Ratios'),
-        widget=LTRCheckboxWidget(attrs={'class': 'checkbox-parent'}),
-        initial=False,
-        required=False)
-    ratio_delete = LTRCheckboxField(
-        label=_("Delete existing Ratio Usages"),
-        widget=LTRCheckboxWidget(
-            attrs={'label_class': 'checkbox-small level-1',
-                   'class': 'checkbox-child'}),
-        initial=False,
-        required=False)
+    party_locate = locate_field('Parties')
+    party_delete = child_field('Parties and Party Usages')
 
-    regulation_locate = LTRCheckboxField(
-        label=_('Regulations'),
-        widget=LTRCheckboxWidget(attrs={'class': 'checkbox-parent'}),
-        initial=False,
-        required=False)
-    regulation_delete = LTRCheckboxField(
-        label=_("Delete existing Regulation Usages"),
-        widget=LTRCheckboxWidget(
-            attrs={'label_class': 'checkbox-small level-1',
-                   'class': 'checkbox-child'}),
-        initial=False,
-        required=False)
+    percent_locate = locate_field('Percents')
+    percent_delete = child_field('Percent')
 
-    term_locate = LTRCheckboxField(
-        label=_('Terms'),
-        widget=LTRCheckboxWidget(attrs={'class': 'checkbox-parent'}),
-        initial=False,
-        required=False)
-    term_delete = LTRCheckboxField(
-        label=_("Delete existing Term Usages"),
-        widget=LTRCheckboxWidget(
-            attrs={'label_class': 'checkbox-small level-1',
-                   'class': 'checkbox-child'}),
-        initial=False,
-        required=False)
+    ratio_locate = locate_field('Ratios')
+    ratio_delete = child_field('Ratio')
+
+    regulation_locate = locate_field('Regulations')
+    regulation_delete = child_field('Regulation')
+
+    term_locate = locate_field('Terms')
+    term_delete = child_field('Term')
+
+    trademark_locate = locate_field('Trademarks')
+    trademark_delete = child_field('Trademark')
+
+    url_locate = locate_field('Urls')
+    url_delete = child_field('Url')
 
     parse = LTRRadioField(
         choices=(('paragraphs', 'Parse Text Units with "paragraph" type'),
@@ -260,6 +165,16 @@ class LocateForm(forms.Form):
                   ' will take much more time',
         initial='paragraphs',
         required=False)
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        for field in list(self.fields.keys()):
+            if field in ['parse', 'locate_all']:
+                continue
+            field_name = field.split('_')[0]
+            available_locators = list(settings.REQUIRED_LOCATORS) + list(config.standard_optional_locators)
+            if field_name not in available_locators:
+                del self.fields[field]
 
 
 class ExistedClassifierClassifyForm(forms.Form):
@@ -278,21 +193,21 @@ class ExistedClassifierClassifyForm(forms.Form):
         initial=90,
         required=True,
         help_text='Store values with confidence greater than (%).')
-    delete_suggestions = LTRCheckboxField(
-        label=_("Delete ClassifierSuggestions of Classifier specified above."),
-        required=False)
+    delete_suggestions = checkbox_field(
+        "Delete ClassifierSuggestions of Classifier specified above.")
 
 
-switcherField = forms.BooleanField(
+options_field_kwargs = dict(
     widget=forms.CheckboxInput(attrs={
         'class': 'bt-switch',
         'data-on-text': 'Default',
-        'data-off-text': 'Custom',
-        'data-on-color': 'default',
-        'data-off-color': 'info',
+        'data-off-text': 'Advanced',
+        'data-on-color': 'info',
+        'data-off-color': 'success',
         'data-size': 'small'}),
     initial=True,
-    required=False)
+    required=False,
+    help_text='Show advanced options.')
 
 
 class CreateClassifierClassifyForm(forms.Form):
@@ -330,17 +245,7 @@ class CreateClassifierClassifyForm(forms.Form):
         initial=90,
         required=True,
         help_text='Store values with confidence greater than (%).')
-    options = forms.BooleanField(
-        widget=forms.CheckboxInput(attrs={
-            'class': 'bt-switch',
-            'data-on-text': 'Default',
-            'data-off-text': 'Advanced',
-            'data-on-color': 'default',
-            'data-off-color': 'success',
-            'data-size': 'small'}),
-        initial=True,
-        required=False,
-        help_text='Show advanced options.')
+    options = forms.BooleanField(**options_field_kwargs)
     svc_c = forms.FloatField(
         label='C',
         min_value=0,
@@ -437,16 +342,12 @@ class CreateClassifierClassifyForm(forms.Form):
         required=True,
         initial='lbfgs',
         help_text='Algorithm to use in the optimization problem.')
-    use_tfidf = LTRCheckboxField(
-        label=_("Use TF-IDF to normalize data"),
-        widget=LTRCheckboxWidget(),
-        required=False)
-    delete_classifier = LTRCheckboxField(
-        label=_("Delete existing Classifiers of class name specified above."),
-        required=False)
-    delete_suggestions = LTRCheckboxField(
-        label=_("Delete ClassifierSuggestions of class name specified above."),
-        required=False)
+    use_tfidf = checkbox_field(
+        "Use TF-IDF to normalize data")
+    delete_classifier = checkbox_field(
+        "Delete existing Classifiers of class name specified above.")
+    delete_suggestions = checkbox_field(
+        "Delete ClassifierSuggestions of class name specified above.")
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -459,21 +360,18 @@ class CreateClassifierClassifyForm(forms.Form):
 
 class ClusterForm(forms.Form):
     header = 'Clustering Documents and/or Text Units by Terms, Entities or Parties.'
-    do_cluster_documents = LTRCheckboxField(
-        label=_("Cluster Documents"), initial=True,
-        widget=LTRCheckboxWidget(attrs={'class': 'min-one-of'}),
-        required=False)
-    do_cluster_text_units = LTRCheckboxField(
-        label=_("Cluster Text Units"),
-        widget=LTRCheckboxWidget(attrs={'class': 'min-one-of'}),
-        required=False)
+    do_cluster_documents = checkbox_field(
+        "Cluster Documents", initial=True, input_class='min-one-of')
+    do_cluster_text_units = checkbox_field(
+        "Cluster Text Units", input_class='min-one-of')
     cluster_by = forms.MultipleChoiceField(
         widget=forms.SelectMultiple(attrs={'class': 'chosen'}),
-        choices=[('terms', 'Terms'),
+        choices=[('dates', 'Dates'),
+                 ('terms', 'Terms'),
                  ('parties', 'Parties'),
                  ('entities', 'Geo Entities'),
                  ('document type', 'Document Type'),
-                 ('document type', 'Source Type')],
+                 ('document source type', 'Document Source Type')],
         required=True,
         help_text='Cluster by terms, parties or geo entities.')
     using = forms.ChoiceField(
@@ -492,17 +390,7 @@ class ClusterForm(forms.Form):
     description = forms.CharField(
         max_length=200,
         required=False)
-    options = forms.BooleanField(
-        widget=forms.CheckboxInput(attrs={
-            'class': 'bt-switch',
-            'data-on-text': 'Simple',
-            'data-off-text': 'Advanced',
-            'data-on-color': 'info',
-            'data-off-color': 'success',
-            'data-size': 'small'}),
-        initial=True,
-        required=False,
-        help_text='Show advanced options.')
+    options = forms.BooleanField(**options_field_kwargs)
     n_clusters = forms.IntegerField(
         label='n_clusters',
         min_value=1,
@@ -573,18 +461,11 @@ class ClusterForm(forms.Form):
         initial=5,
         required=True,
         help_text='Maximum number of iterations allowed.')
-    use_idf = LTRCheckboxField(
-        label=_("Use TF-IDF to normalize data"),
-        widget=LTRCheckboxWidget(),
-        required=False)
-    delete_type = LTRCheckboxField(
-        label=_('Delete existed Clusters of the "Cluster By" and "Algorithm" specified above'),
-        widget=LTRCheckboxWidget(attrs={'class': 'max-one-of'}),
-        required=False)
-    delete = LTRCheckboxField(
-        label=_("Delete all existed Clusters"),
-        widget=LTRCheckboxWidget(attrs={'class': 'max-one-of'}),
-        required=False)
+    use_idf = checkbox_field("Use TF-IDF to normalize data")
+    delete_type = checkbox_field(
+        'Delete existed Clusters of the "Cluster By" and "Algorithm" specified above',
+        input_class='max-one-of')
+    delete = checkbox_field("Delete all existed Clusters", input_class='max-one-of')
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -626,15 +507,13 @@ class ClusterForm(forms.Form):
 
 class SimilarityForm(forms.Form):
     header = 'Identify similar Documents and/or Text Units.'
-    search_similar_documents = LTRCheckboxField(
-        label=_("Identify similar Documents."),
-        initial=True,
-        widget=LTRCheckboxWidget(attrs={'class': 'min-one-of'}),
-        required=False)
-    search_similar_text_units = LTRCheckboxField(
-        label=_("Identify similar Text Units."),
-        widget=LTRCheckboxWidget(attrs={'class': 'min-one-of'}),
-        required=False)
+    search_similar_documents = checkbox_field(
+        "Identify similar Documents.",
+        input_class='min-one-of',
+        initial=True)
+    search_similar_text_units = checkbox_field(
+        "Identify similar Text Units.",
+        input_class='min-one-of')
     similarity_threshold = forms.IntegerField(
         min_value=50,
         max_value=100,
@@ -642,22 +521,13 @@ class SimilarityForm(forms.Form):
         required=True,
         help_text=_("Min. Similarity Value 50-100%")
     )
-    use_idf = LTRCheckboxField(
-        label=_("Use TF-IDF to normalize data"),
-        widget=LTRCheckboxWidget(),
-        required=False)
-    delete = LTRCheckboxField(
-        label=_("Delete existing Similarity objects."),
-        initial=True,
-        required=False)
+    use_idf = checkbox_field("Use TF-IDF to normalize data")
+    delete = checkbox_field("Delete existing Similarity objects.", initial=True)
 
 
 class PartySimilarityForm(forms.Form):
     header = 'Identify similar Parties.'
-    case_sensitive = LTRCheckboxField(
-        label=_('Case Sensitive'),
-        initial=True,
-        required=False)
+    case_sensitive = checkbox_field('Case Sensitive', initial=True)
     similarity_type = forms.ChoiceField(
         choices=[('token_set_ratio', 'token_set_ratio'),
                  ('token_sort_ratio', 'token_sort_ratio')],
@@ -668,12 +538,8 @@ class PartySimilarityForm(forms.Form):
         max_value=100,
         initial=90,
         required=True,
-        help_text=_("Min. Similarity Value 0-100%.")
-    )
-    delete = LTRCheckboxField(
-        label=_("Delete existing PartySimilarity objects."),
-        initial=True,
-        required=False)
+        help_text=_("Min. Similarity Value 0-100%."))
+    delete = checkbox_field("Delete existing PartySimilarity objects.", initial=True)
 
 
 class UpdateElasticSearchForm(forms.Form):

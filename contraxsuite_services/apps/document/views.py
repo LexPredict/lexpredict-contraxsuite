@@ -1,3 +1,27 @@
+"""
+    Copyright (C) 2017, ContraxSuite, LLC
+
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU Affero General Public License as
+    published by the Free Software Foundation, either version 3 of the
+    License, or (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU Affero General Public License for more details.
+
+    You should have received a copy of the GNU Affero General Public License
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+    You can also be released from the requirements of the license by purchasing
+    a commercial license from ContraxSuite, LLC. Buying such a license is
+    mandatory as soon as you develop commercial activities involving ContraxSuite
+    software without disclosing the source code of your own applications.  These
+    activities include: offering paid services to customers as an ASP or "cloud"
+    provider, processing documents on the fly in a web application,
+    or shipping ContraxSuite within a closed source product.
+"""
 # -*- coding: utf-8 -*-
 
 # Future imports
@@ -29,10 +53,11 @@ from apps.document.models import (
     Document, DocumentProperty, DocumentRelation, DocumentNote, DocumentTag,
     TextUnit, TextUnitProperty, TextUnitNote, TextUnitTag)
 from apps.extract.models import (
-    Term, TermUsage, GeoAlias, GeoEntity, GeoRelation,
-    GeoAliasUsage, GeoEntityUsage, Party, PartyUsage,
-    Court, CourtUsage, CurrencyUsage, RegulationUsage,
-    DefinitionUsage, DateDurationUsage, DateUsage)
+    AmountUsage, CitationUsage, CopyrightUsage, Court, CourtUsage, CurrencyUsage,
+    DateDurationUsage, DateUsage, DefinitionUsage, DistanceUsage,
+    GeoAlias, GeoAliasUsage, GeoEntity, GeoEntityUsage, GeoRelation,
+    Party, PartyUsage, PercentUsage,
+    RatioUsage, RegulationUsage, Term, TermUsage, TrademarkUsage, UrlUsage)
 from apps.common.mixins import (
     AjaxListView, CustomUpdateView, CustomCreateView, CustomDeleteView,
     JqPaginatedListView, PermissionRequiredMixin, SubmitView, TypeaheadView)
@@ -44,8 +69,8 @@ from apps.users.models import User
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2017, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.0.3/LICENSE"
-__version__ = "1.0.3"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.0.4/LICENSE"
+__version__ = "1.0.4"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -86,7 +111,7 @@ class DocumentListView(JqPaginatedListView):
     CBV for list of Document records.
     """
     model = Document
-    json_fields = ['name', 'document_type', 'description',
+    json_fields = ['name', 'document_type', 'description', 'title',
                    'properties', 'relations', 'text_units']
     limit_reviewers_qs_by_field = ""
     field_types = dict(
@@ -272,7 +297,9 @@ class DocumentSourceView(DocumentDetailView):
 
     def get_context_data(self, **kwargs):
         # TODO: detect protocol, don't hardcode
-        rel_url = os.path.join('/media', self.object.description.lstrip('/'))
+        rel_url = os.path.join('/media',
+                               settings.FILEBROWSER_DIRECTORY.lstrip('/'),
+                               self.object.description.lstrip('/'))
         attachment = dict(
             name=self.object.name,
             path='https://{host}{rel_url}'.format(
@@ -292,7 +319,7 @@ class DocumentNoteListView(JqPaginatedListView):
     ordering = ['-timestamp']
 
     def get_json_data(self, **kwargs):
-        data = super().get_json_data()
+        data = super().get_json_data(keep_tags=True)
         history = list(
             DocumentNote.history
             .filter(document_id__in=list(self.get_queryset()
@@ -400,8 +427,18 @@ class TextUnitListView(JqPaginatedListView):
 
         if "elastic_search" in self.request.GET:
             elastic_search = self.request.GET.get("elastic_search")
-            es_res = self.es.search(index=settings.ELASTICSEARCH_CONFIG['index'],
-                                    body={'query': {'match': {'_all': elastic_search}}})
+            es_query = {
+                'query': {
+                    'bool': {
+                        'must': [
+                            {'match': {'unit_type': 'paragraph'}},
+                            {'match': {'text': elastic_search}}
+                        ]
+                    }
+                }
+            }
+            es_res = self.es.search(size=1000, index=settings.ELASTICSEARCH_CONFIG['index'],
+                                    body=es_query)
             # See UpdateElasticsearchIndex in tasks.py for the set of indexed fields
             pks = [hit['_source']['pk'] for hit in es_res['hits']['hits']]
             qs = TextUnit.objects.filter(pk__in=pks)
@@ -495,7 +532,7 @@ class TextUnitNoteListView(JqPaginatedListView):
     limit_reviewers_qs_by_field = 'text_unit__document'
 
     def get_json_data(self, **kwargs):
-        data = super().get_json_data()
+        data = super().get_json_data(keep_tags=True)
         history = list(
             TextUnitNote.history
             .filter(text_unit__document_id__in=list(
@@ -942,8 +979,19 @@ def view_stats(request):
     tuc_suggestion_types = TextUnitClassifierSuggestion.objects.distinct('class_name')
     tu_notes = TextUnitNote.objects
     tu_clusters = TextUnitCluster.objects
+    
     terms = Term.objects
     term_usages = TermUsage.objects
+    
+    amount_usages = AmountUsage.objects
+    citation_usages = CitationUsage.objects
+    copyright_usages = CopyrightUsage.objects
+    court_usages = CourtUsage.objects
+    currency_usages = CurrencyUsage.objects
+    date_duration_usages = DateDurationUsage.objects
+    date_usages = DateUsage.objects
+    definition_usages = DefinitionUsage.objects
+    distance_usages = DistanceUsage.objects
     geo_entities = GeoEntity.objects
     geo_entity_usages = GeoEntityUsage.objects
     geo_aliases = GeoAlias.objects
@@ -951,12 +999,11 @@ def view_stats(request):
     geo_relations = GeoRelation.objects
     parties = Party.objects
     party_usages = PartyUsage.objects
-    court_usages = CourtUsage.objects
-    currency_usages = CurrencyUsage.objects
-    date_duration_usages = DateDurationUsage.objects
-    date_usages = DateUsage.objects
-    definition_usages = DefinitionUsage.objects
+    percent_usages = PercentUsage.objects
+    ratio_usages = RatioUsage.objects
     regulation_usages = RegulationUsage.objects
+    trademark_usages = TrademarkUsage.objects
+    url_usages = UrlUsage.objects
 
     if request.user.is_reviewer:
         document_filter_opts = dict(document__taskqueue__reviewers=request.user)
@@ -984,6 +1031,17 @@ def view_stats(request):
         terms = terms.filter(
             termusage__text_unit__document__taskqueue__reviewers=request.user).distinct()
         term_usages = term_usages.filter(**tu_filter_opts).distinct()
+        
+        amount_usages = amount_usages.filter(**tu_filter_opts).distinct()
+        citation_usages = citation_usages.filter(**tu_filter_opts).distinct()
+        copyright_usages = copyright_usages.filter(**tu_filter_opts).distinct()
+        court_usages = court_usages.filter(**tu_filter_opts).distinct()
+        currency_usages = currency_usages.filter(**tu_filter_opts).distinct()
+        date_duration_usages = date_duration_usages.filter(**tu_filter_opts).distinct()
+        date_usages = date_usages.filter(**tu_filter_opts).distinct()
+        definition_usages = definition_usages.filter(**tu_filter_opts).distinct()
+        distance_usages = distance_usages.filter(**tu_filter_opts).distinct()
+
         geo_aliases = geo_aliases.filter(
             geoaliasusage__text_unit__document__taskqueue__reviewers=request.user).distinct()
         geo_alias_usages = geo_alias_usages.filter(**tu_filter_opts).distinct()
@@ -994,15 +1052,15 @@ def view_stats(request):
             entity_a__geoentityusage__text_unit__document__taskqueue__reviewers=request.user,
             entity_b__geoentityusage__text_unit__document__taskqueue__reviewers=request.user)\
             .distinct()
+
         parties = parties.filter(
             partyusage__text_unit__document__taskqueue__reviewers=request.user).distinct()
         party_usages = party_usages.filter(**tu_filter_opts).distinct()
-        court_usages = court_usages.filter(**tu_filter_opts).distinct()
-        currency_usages = currency_usages.filter(**tu_filter_opts).distinct()
-        date_duration_usages = date_duration_usages.filter(**tu_filter_opts).distinct()
-        date_usages = date_usages.filter(**tu_filter_opts).distinct()
-        definition_usages = definition_usages.filter(**tu_filter_opts).distinct()
+        percent_usages = percent_usages.filter(**tu_filter_opts).distinct()
+        ratio_usages = ratio_usages.filter(**tu_filter_opts).distinct()
         regulation_usages = regulation_usages.filter(**tu_filter_opts).distinct()
+        trademark_usages = trademark_usages.filter(**tu_filter_opts).distinct()
+        url_usages = url_usages.filter(**tu_filter_opts).distinct()
 
     context = {
         "document_count": documents.count(),
@@ -1019,6 +1077,17 @@ def view_stats(request):
         "text_unit_classification_suggestion_type_count": tuc_suggestion_types.count(),
         "text_unit_note_count": tu_notes.count(),
         "text_unit_cluster_count": tu_clusters.count(),
+        "amount_usage_count": amount_usages.count(),
+        "citation_usage_count": citation_usages.count(),
+        "copyright_usage_count": copyright_usages.count(),
+        "court_count": Court.objects.count(),
+        "court_usage_count": court_usages.count(),
+        "currency_usage_count": currency_usages.count(),
+        "date_duration_usage_count": date_duration_usages.count(),
+        "date_usage_count": date_usages.count(),
+        "definition_usage_count": definition_usages.count(),
+        "distance_usage_count": distance_usages.count(),
+
         "geo_alias_count": geo_aliases.count(),
         "geo_alias_usage_count": geo_alias_usages.count(),
         "geo_entity_count": geo_entities.count(),
@@ -1026,15 +1095,13 @@ def view_stats(request):
         "geo_relation_count": geo_relations.count(),
         "party_count": parties.count(),
         "party_usage_count": party_usages.count(),
+        "percent_usage_count": percent_usages.count(),
+        "ratio_usage_count": ratio_usages.count(),
+        "regulation_usage_count": regulation_usages.count(),
+        "trademark_usage_count": trademark_usages.count(),
+        "url_usage_count": url_usages.count(),
         "term_count": terms.count(),
         "term_usage_count": term_usages.count(),
-        "court_count": Court.objects.count(),
-        "court_usage_count": court_usages.count(),
-        "currency_usage_count": currency_usages.count(),
-        "date_duration_usage_count": date_duration_usages.count(),
-        "date_usage_count": date_usages.count(),
-        "definition_usage_count": definition_usages.count(),
-        "regulation_usage_count": regulation_usages.count(),
         "project_total_count": project_total_count,
         "project_completed_count": project_completed_count,
         "project_completed_weight": project_completed_weight,

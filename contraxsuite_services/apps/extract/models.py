@@ -1,3 +1,27 @@
+"""
+    Copyright (C) 2017, ContraxSuite, LLC
+
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU Affero General Public License as
+    published by the Free Software Foundation, either version 3 of the
+    License, or (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU Affero General Public License for more details.
+
+    You should have received a copy of the GNU Affero General Public License
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+    You can also be released from the requirements of the license by purchasing
+    a commercial license from ContraxSuite, LLC. Buying such a license is
+    mandatory as soon as you develop commercial activities involving ContraxSuite
+    software without disclosing the source code of your own applications.  These
+    activities include: offering paid services to customers as an ASP or "cloud"
+    provider, processing documents on the fly in a web application,
+    or shipping ContraxSuite within a closed source product.
+"""
 from django.contrib.postgres.fields import JSONField
 from django.db import models
 
@@ -5,8 +29,8 @@ from apps.document.models import TextUnit
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2017, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.0.3/LICENSE"
-__version__ = "1.0.3"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.0.4/LICENSE"
+__version__ = "1.0.4"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -59,6 +83,7 @@ class GeoEntity(models.Model):
     """
     entity_id = models.PositiveSmallIntegerField(unique=True, db_index=True)
     name = models.CharField(max_length=1024, db_index=True)
+    priority = models.IntegerField(null=True, blank=True)
     category = models.CharField(max_length=1024, db_index=True)
     description = models.TextField(null=True)
     latitude = models.DecimalField(max_digits=9, decimal_places=6, blank=True, null=True)
@@ -208,6 +233,53 @@ class DefinitionUsage(Usage):
     def __str__(self):
         return "DefinitionUsage (definition={0}, text_unit={1})" \
             .format(self.definition, self.text_unit)
+
+
+class CopyrightUsage(Usage):
+    """
+    Copyright usage
+    """
+    year = models.CharField(max_length=10, null=True, blank=True, db_index=True)
+    name = models.CharField(max_length=200, db_index=True)
+    copyright_str = models.CharField(max_length=200)
+
+    class Meta:
+        unique_together = (("text_unit", "name", "year"),)
+        ordering = ('text_unit', '-count', 'name')
+
+    def __str__(self):
+        return "CopyrightUsage (copyright={0}, text_unit={1})" \
+            .format(self.copyright_str, self.text_unit)
+
+
+class TrademarkUsage(Usage):
+    """
+    Trademark usage
+    """
+    trademark = models.CharField(max_length=200, db_index=True)
+
+    class Meta:
+        unique_together = (("text_unit", "trademark"),)
+        ordering = ('text_unit', '-count', 'trademark')
+
+    def __str__(self):
+        return "TrademarkUsage (trademark={0}, text_unit={1})" \
+            .format(self.trademark, self.text_unit)
+
+
+class UrlUsage(Usage):
+    """
+    Url usage
+    """
+    source_url = models.CharField(max_length=1000, db_index=True)
+
+    class Meta:
+        unique_together = (("text_unit", "source_url"),)
+        ordering = ('text_unit', '-count', 'source_url')
+
+    def __str__(self):
+        return "UrlUsage (source_url={0}, text_unit={1})" \
+            .format(self.source_url, self.text_unit)
 
 
 class Court(models.Model):
