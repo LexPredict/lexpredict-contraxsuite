@@ -47,8 +47,8 @@ from apps.users.models import User
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2017, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.0.4/LICENSE"
-__version__ = "1.0.4"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.0.5/LICENSE"
+__version__ = "1.0.5"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -69,7 +69,7 @@ class LoginRequiredMiddleware(MiddlewareMixin):
     """
     def process_view(self, request, view_func, args, kwargs):
         assert hasattr(request, 'user')
-        if not request.user.is_authenticated() and not settings.AUTOLOGIN:
+        if not request.user.is_authenticated() and not config.auto_login:
             path = request.path_info.lstrip('/')
             if not any(m.match(path) for m in EXEMPT_URLS):
                 return redirect(settings.LOGIN_URL)
@@ -89,38 +89,38 @@ class AutoLoginMiddleware(MiddlewareMixin):
 
     def process_view(self, request, view_func, args, kwargs):
 
-        path = request.path_info
-        if path in settings.AUTOLOGIN_ALWAYS_OPEN_URLS:
-            return
+        if config.auto_login:
 
-        # TODO: Document test_user account.
-        # TODO: Allow configuration disable for test_user account.
-        if not request.user.is_authenticated():
-            test_user, created = User.objects.update_or_create(
-                username='test_user',
-                defaults=dict(
-                    first_name='Test',
-                    last_name='User',
-                    name='Test User',
-                    email='test@user.com',
-                    role='manager',
-                    is_active=True))
-            if created:
-                test_user.set_password('test_user')
-                test_user.save()
-                EmailAddress.objects.create(
-                    user=test_user,
-                    email=test_user.email,
-                    verified=True,
-                    primary=True)
+            path = request.path_info
+            if path in settings.AUTOLOGIN_ALWAYS_OPEN_URLS:
+                return
 
-            user = authenticate(username='test_user', password='test_user')
-            request.user = user
-            login(request, user)
+            if not request.user.is_authenticated():
+                test_user, created = User.objects.update_or_create(
+                    username='test_user',
+                    defaults=dict(
+                        first_name='Test',
+                        last_name='User',
+                        name='Test User',
+                        email='test@user.com',
+                        role='manager',
+                        is_active=True))
+                if created:
+                    test_user.set_password('test_user')
+                    test_user.save()
+                    EmailAddress.objects.create(
+                        user=test_user,
+                        email=test_user.email,
+                        verified=True,
+                        primary=True)
 
-        if request.user.username == 'test_user':
-            if any(m.search(path) for m in self.TEST_USER_FORBIDDEN_URLS):
-                return redirect(reverse_lazy('home'))
+                user = authenticate(username='test_user', password='test_user')
+                request.user = user
+                login(request, user)
+
+            if request.user.username == 'test_user':
+                if any(m.search(path) for m in self.TEST_USER_FORBIDDEN_URLS):
+                    return redirect(reverse_lazy('home'))
 
 
 class HttpResponseNotAllowedMiddleware(MiddlewareMixin):

@@ -53,13 +53,13 @@ from apps.document.models import Document
 from apps.extract.models import (
     AmountUsage, CitationUsage, CopyrightUsage, CourtUsage, CurrencyUsage,
     DateDurationUsage, DateUsage, DefinitionUsage, DistanceUsage,
-    GeoAliasUsage, GeoEntityUsage, Party, PartyUsage, PercentUsage,
+    GeoAliasUsage, GeoAlias, GeoEntity, GeoEntityUsage, Party, PartyUsage, PercentUsage,
     RatioUsage, RegulationUsage, TermUsage, TrademarkUsage, UrlUsage)
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2017, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.0.4/LICENSE"
-__version__ = "1.0.4"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.0.5/LICENSE"
+__version__ = "1.0.5"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -167,6 +167,28 @@ class TopTermUsageListView(BaseTopUsageListView):
         qs = sorted([dict(j) for j in set([tuple(i.items()) for i in qs])],
                     key=lambda i: i['count'], reverse=True)
         return qs
+
+
+class GeoEntityListView(JqPaginatedListView):
+    model = GeoEntity
+
+    def get_json_data(self, **kwargs):
+        data = super().get_json_data()
+        for item in data['data']:
+            item['alias'] = ', '.join(
+                GeoAlias.objects.filter(entity_id=item['pk']).values_list('alias', flat=True))
+        return data
+
+
+class GeoEntityPriorityUpdateView(JSONResponseView):
+
+    def get_json_data(self, request, *args, **kwargs):
+        pk = request.GET.get('pk')
+        priority = request.GET.get('priority')
+        obj = GeoEntity.objects.get(pk=pk)
+        obj.priority = priority
+        obj.save()
+        return {'status': 'success', 'message': 'Updated'}
 
 
 class GeoEntityUsageListView(BaseUsageListView):

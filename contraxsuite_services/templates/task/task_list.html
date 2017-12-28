@@ -128,6 +128,13 @@
         </ul>
       </li>
 
+      {% if custom_task_menu_item_templates|length > 0 %}
+        <li class="divider"></li>
+        {% for template in custom_task_menu_item_templates %}
+          {% include template %}
+        {% endfor %}
+      {% endif %}
+
       <li class="divider"></li>
       <li>
         <a class="task" href="#"
@@ -574,17 +581,6 @@
           }
         });
       }
-      {# clustering by date only #}
-      $form.find('[name="cluster_by"]').on('change', function () {
-        if ($.inArray('dates', $(this).val()) != -1 &&
-            $form.find('[name="using"]').val() != 'LabelSpreading'){
-          $(this).val('dates').trigger("chosen:updated");
-          $('[name="using"] option[value="DBSCAN"]').css('display', 'none')
-        }
-        else {
-          $('[name="using"] option[value="DBSCAN"]').css('display', 'block')
-        }
-      });
       {# clustering / classify #}
       $form.find('[name="do_cluster_documents"], ' +
                  '[name="do_cluster_text_units"], ' +
@@ -770,6 +766,7 @@
       var datafields = [
         { name: 'pk', type: 'int' },
         { name: 'name', type: 'string' },
+        { name: 'description', type: 'string' },
         { name: 'user__username', type: 'string' },
         { name: 'date_start', type: 'date' },
         { name: 'date_done', type: 'date' },
@@ -778,7 +775,8 @@
         { name: 'has_error', type: 'bool' },
         { name: 'status', type: 'string' },
         { name: 'url', type: 'string' },
-        { name: 'purge_url', type: 'string' }
+        { name: 'purge_url', type: 'string' },
+        { name: 'result_links' }
       ];
       var menu_renderer = function(row, event) {
         var grid = $(event.currentTarget).parents('.jqxgrid');
@@ -792,14 +790,21 @@
             icon: 'fa fa-eraser',
             text: 'Purge Task'}
         ];
-        show_menu(menu_data, grid, row.pk);
+        $.each(row.result_links, function(n, i){
+          menu_data.push(
+          { url: i.link,
+            icon: 'fa fa-bars',
+            text: i.name}
+          )
+        });
+        show_menu(menu_data, grid, row.pk, 300);
       };
       var status_renderer = function(index, columnfield, value, defaulthtml, columnproperties, row){
         var cls = row.has_error ? 'danger' : row.status == 'SUCCESS'
             ? 'success' : row.status == 'PENDING'
             ? 'warning' : row.status == 'FAILURE'
             ? 'danger' : 'default';
-        var value = row.has_error ? 'FAILURE' : row.status;
+        value = row.has_error ? 'FAILURE' : row.status;
         var new_value = '<span class="label label-' + cls + '">' + value + '</span>';
         return renderCell(defaulthtml, new_value);
       };
@@ -807,20 +812,22 @@
         { text: 'Task Name', datafield: 'name', width: 'auto',
           align: 'center', cellsalign: 'left',
           cellsrenderer: defaultLinkFormatter },
-        { text: 'User', datafield: 'user__username', width: 150,
+        { text: 'Description', datafield: 'description', width: 'auto',
+          align: 'center', cellsalign: 'left' },
+        { text: 'User', datafield: 'user__username', width: 100,
           align: 'center', cellsalign: 'center' },
-        { text: 'Date Started', datafield: 'date_start', width: 150,
+        { text: 'Date Started', datafield: 'date_start', width: 120,
           filtertype: 'date', cellsformat: 'MM-dd-yyyy HH:mm',
           align: 'center', cellsalign: 'center' },
-        { text: 'Date Done', datafield: 'date_done', width: 150,
+        { text: 'Date Done', datafield: 'date_done', width: 120,
           filtertype: 'date', cellsformat: 'MM-dd-yyyy HH:mm',
           align: 'center', cellsalign: 'center' },
-        { text: 'Time', datafield: 'time', width: 150,
+        { text: 'Time', datafield: 'time', width: 100,
           align: 'center', cellsalign: 'center' },
         { text: 'Progress', datafield: 'progress', width: 100,
           cellsrenderer: knob_cellsrenderer,
           align: 'center', cellsalign: 'center' },
-        { text: 'Status', datafield: 'status', width: 100,
+        { text: 'Status', datafield: 'status', width: 80,
           cellsrenderer: status_renderer,
           align: 'center', cellsalign: 'center' },
         { text: 'Action', datafield: 'url', width: 60,

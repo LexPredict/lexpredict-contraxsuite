@@ -1,0 +1,89 @@
+{% extends "base_list_ajax.html" %}
+{% load static project_tags %}
+
+{% block css_extra %}
+  {{ block.super }}
+  <style>
+    .edit-icon {
+      color: grey;
+      margin-left: 10px;
+      margin-right: 10px;
+    }
+  </style>
+{% endblock %}
+
+{% block js_extra %}
+  {{ block.super }}
+  <script src="{% static "vendor/jqwidgets/jqxgrid.edit.js" %}" type="text/javascript"></script>
+  <script src="{% static "vendor/jqwidgets/jqxnumberinput.js" %}" type="text/javascript"></script>
+  <script type="text/javascript">
+    $(document).ready(function () {
+      var datafields = [
+        { name: 'pk', type: 'int' },
+        { name: 'entity_id', type: 'int' },
+        { name: 'name', type: 'string' },
+        { name: 'priority', type: 'int' },
+        { name: 'category', type: 'string' },
+        { name: 'alias', type: 'string' }
+      ];
+      var priority_renderer = function(index, columnfield, value, defaulthtml, columnproperties, row) {
+        var new_value = '<span>' + value + '</span>' +
+            '<i class="fa fa-pencil edit-icon"></i>';
+        return renderCell(defaulthtml, new_value)
+      };
+      var menu_renderer = function(row, event) {
+        var grid = $(event.currentTarget).parents('.jqxgrid');
+        row = grid.jqxGrid('getrowdata', row);
+        var menu_data = [
+          {url: '{% url "extract:geo-entity-usage-list" %}?entity_search=' + row.name,
+           icon: 'fa fa-bars',
+           text: 'View Entity Usages'}
+        ];
+        show_menu(menu_data, grid, row.pk);
+      };
+      var columns = [
+        { text: 'ID', datafield: 'entity_id', width: 80,
+          align: 'center', cellsalign: 'center', editable: false },
+        { text: 'Name', datafield: 'name', width: 180,
+          align: 'center', cellsalign: 'center', editable: false },
+        { text: 'Priority', datafield: 'priority', width: 80, columntype: 'numberinput',
+          align: 'center', cellsalign: 'right', editable: true,
+          initeditor: function (row, cellvalue, editor) {
+            editor.jqxNumberInput({ digits: 3 });
+          },
+          cellsrenderer: priority_renderer },
+        { text: 'Category', datafield: 'category', width: 150,
+          align: 'center', cellsalign: 'center', editable: false },
+        { text: 'Alias', datafield: 'alias', width: 'auto',
+          align: 'center', cellsalign: 'center', editable: false },
+        { text: 'Action', datafield: 'url', width: 60,
+          align: 'center', exportable: false,
+          columntype: 'button',
+          sortable: false, filterable: false, menu: false,
+          cellsrenderer: function(){return 'Menu'},
+          buttonclick: menu_renderer }
+      ];
+      var custom_grid_options = {
+        editable: true
+      };
+      var custom_source_data = {
+        updaterow: function (rowid, rowdata, commit) {
+          $.ajax({
+            dataType: 'json',
+            url: '{% url "extract:geo-entity-priority-update" %}',
+            data: {pk: rowdata.pk, priority: rowdata.priority},
+            success: function (data, status, xhr) {
+              ajax_success_handler(data);
+              commit(true);
+            },
+            error: function (data) {
+              ajax_error_handler(data);
+              commit(false);
+            }
+          });
+        }
+      };
+      draw_grid(".jqxgrid", datafields, columns, false, custom_source_data, custom_grid_options);
+    });
+  </script>
+{% endblock %}

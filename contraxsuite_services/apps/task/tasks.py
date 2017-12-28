@@ -52,7 +52,7 @@ from celery.result import AsyncResult
 from celery.utils.log import get_task_logger
 # Django imports
 from django.conf import settings
-from django.db.models import Count, Q
+from django.db.models import Count, Q, Case, Value, When, IntegerField
 from django.utils.timezone import now
 from django_celery_results.models import TaskResult
 from elasticsearch import Elasticsearch
@@ -102,8 +102,8 @@ from apps.task.utils.text.segment import segment_paragraphs, segment_sentences
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2017, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.0.4/LICENSE"
-__version__ = "1.0.4"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.0.5/LICENSE"
+__version__ = "1.0.5"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -152,7 +152,8 @@ def call_task(task_name, **options):
     task = Task.objects.create(
         name=task_name,
         celery_task_id=task_id,
-        user_id=options.get('user_id')
+        user_id=options.get('user_id'),
+        metadata=options.get('metadata')
     )
     options['task_id'] = task.id
     task_class().apply_async(kwargs=options, task_id=task_id)
@@ -239,7 +240,7 @@ class LoadDocuments(BaseTask):
                    source_type - (str) f.e. "SEC data"
     :return:
     """
-    name = 'LoadDocuments'
+    name = 'Load Documents'
 
     def process(self, **kwargs):
 
@@ -397,7 +398,7 @@ class UpdateElasticsearchIndex(BaseTask):
     """
     Update Elasticsearch Index: each time after new documents are added
     """
-    name = 'UpdateElasticsearchIndex'
+    name = 'Update Elasticsearch Index'
 
     def elastic_index(self, es: Elasticsearch, tu: TextUnit):
         es_doc = {
@@ -431,7 +432,7 @@ class LoadTerms(BaseTask):
     """
     Load Terms from a dictionary sample
     """
-    name = 'LoadTerms'
+    name = 'Load Terms'
 
     def process(self, **kwargs):
         """
@@ -493,7 +494,7 @@ class LoadGeoEntities(BaseTask):
     """
     Load Geopolitical Entities from given dictionaries
     """
-    name = 'LoadGeoEntities'
+    name = 'Load Geo Entities'
     # map column name to locale and alias type
     locales_map = (
         ('German Name', 'de', 'German Name'),
@@ -510,9 +511,6 @@ class LoadGeoEntities(BaseTask):
         :param kwargs: form data
         :return:
         """
-        self.task.subtasks_total = 4
-        self.task.save()
-
         paths = kwargs['repo_paths']
         if kwargs['file_path']:
             file_path = kwargs['file_path'].strip('/')
@@ -524,13 +522,11 @@ class LoadGeoEntities(BaseTask):
             if not os.path.exists(path) or not os.path.isfile(path):
                 raise RuntimeError('Unable to parse path "%s"' % path)
             paths.append(path)
-        self.task.push()
 
         if kwargs['delete']:
             GeoEntity.objects.all().delete()
             GeoRelation.objects.all().delete()
             GeoAlias.objects.all().delete()
-        self.task.push()
 
         entities_df = pd.DataFrame()
         for path in paths:
@@ -541,6 +537,9 @@ class LoadGeoEntities(BaseTask):
         if entities_df.empty:
             raise RuntimeError('Received 0 entities to process, exit.')
         entities_df = entities_df.drop_duplicates().fillna('')
+
+        self.task.subtasks_total = len(entities_df) + 2
+        self.task.save()
         self.task.push()
 
         # create Geo Entities
@@ -585,6 +584,7 @@ class LoadGeoEntities(BaseTask):
                         locale=locale,
                         alias=row[column_name],
                         type=alias_type))
+            self.task.push()
 
         GeoAlias.objects.bulk_create(geo_aliases)
         self.log('Total created: %d GeoAliases' % len(geo_aliases))
@@ -1359,30 +1359,58 @@ class Cluster(BaseTask):
             'cluster_model': DocumentCluster,
             'property_lookup': 'documentproperty',
             'lookup_map': dict(
-                dates='dateusage__date',
-                terms='termusage__term__term',
-                parties='partyusage__party__name',
-                entities='geoentityusage__entity__name'),
+                source_type='source_type',
+                document_type='document_type',
+                metadata='metadata',
+                date='textunit__dateusage__date',
+                duration='textunit__datedurationusage__duration_days',
+                court='textunit__courtusage__court__name',
+                currency_name='textunit__currencyusage__currency',
+                currency_value='textunit__currencyusage__amount',
+                term='textunit__termusage__term__term',
+                party='textunit__partyusage__party__name',
+                entity='textunit__geoentityusage__entity__name'),
             'filter_map': dict(
-                dates='textunit__dateusage__isnull',
-                terms='textunit__termusage__isnull',
-                parties='textunit__partyusage__isnull',
-                entities='textunit__geoentityusage__isnull')
+                source_type='source_type__isnull',
+                document_type='document_type__isnull',
+                metadata='metadata__isnull',
+                court='textunit__courtusage__isnull',
+                currency_name='textunit__currencyusage__isnull',
+                currency_value='textunit__currencyusage__isnull',
+                date='textunit__dateusage__isnull',
+                duration='textunit__datedurationusage__isnull',
+                term='textunit__termusage__isnull',
+                party='textunit__partyusage__isnull',
+                entity='textunit__geoentityusage__isnull')
         },
         'text_units': {
             'source_model': TextUnit,
             'cluster_model': TextUnitCluster,
             'property_lookup': 'textunitproperty',
             'lookup_map': dict(
-                dates=['dateusage_set', 'date'],
-                terms=['termusage_set', 'term__term'],
-                parties=['partyusage_set', 'party__name'],
-                entities=['geoentityusage_set', 'entity__name']),
+                source_type='document__source_type',
+                document_type='document__document_type',
+                metadata='document__metadata',
+                court='courtusage__court__name',
+                currency_name='currencyusage__currency',
+                currency_value='currencyusage__amount',
+                date='dateusage__date',
+                duration='datedurationusage__duration_days',
+                terms='termusage__term__term',
+                party='partyusage__party__name',
+                entity='geoentityusage__entity__name'),
             'filter_map': dict(
-                dates='dateusage__isnull',
-                terms='termusage__isnull',
-                parties='partyusage__isnull',
-                entities='geoentityusage__isnull')
+                source_type='document__source_type__isnull',
+                document_type='document__document_type__isnull',
+                metadata='document__metadata__isnull',
+                court='courtusage__isnull',
+                currency_name='currencyusage__isnull',
+                currency_value='currencyusage__isnull',
+                date='dateusage__isnull',
+                duration='datedurationusage__isnull',
+                term='termusage__isnull',
+                party='partyusage__isnull',
+                entity='geoentityusage__isnull')
         },
     }
 
@@ -1398,11 +1426,7 @@ class Cluster(BaseTask):
         using = kwargs['using']
         n_clusters = kwargs['n_clusters']
         cluster_by = kwargs['cluster_by']
-        cluster_by_document_type = 'document type' in cluster_by
-        cluster_by_document_source_type = 'document source type' in cluster_by
-        cluster_by_date = 'dates' in cluster_by
         cluster_by_str = ', '.join(sorted(cluster_by))
-        cluster_by = [i for i in cluster_by if i in ('dates', 'terms', 'parties', 'entities')]
 
         target_attrs = self.cluster_map[target]
         source_model = target_attrs['source_model']
@@ -1423,45 +1447,64 @@ class Cluster(BaseTask):
         for c in cluster_by:
             q_object.add(Q(**{filter_map[c]: False}), Q.OR)
         objects = source_model.objects.filter(q_object).distinct()
-        pks = list(objects.values_list('pk', flat=True))
+        self.task.push()
 
-        # cluster by date
-        if cluster_by_date:
-            id_field = 'text_unit__document_id' if target == 'documents' else 'text_unit_id'
-            qs = DateUsage.objects.values(id_field, 'date').annotate(Count('date'))
-            df = pd.DataFrame(list(qs)).groupby([id_field, 'date'],
-                                                as_index=False).agg({'date__count': 'sum'})
-            dft = df.pivot(index=id_field, columns='date', values='date__count')
-            X = dft.fillna(0).values.tolist()
-            y = dft.index.tolist()
-            feature_names = dft.columns.tolist()
-            self.task.push(2)
-        else:
-            # get minimized texts if cluster_by requires text value
-            if target == 'documents':
-                minimized_texts_set = [
-                    '%s ' % o.document_type if cluster_by_document_type else '' +
-                    '%s ' % o.source_type if cluster_by_document_source_type else '' +
-                    ' '.join([' '.join([i for i in o.textunit_set.values_list(lookup_map[c], flat=True)
-                    if i]) for c in cluster_by])
-                    for o in objects]
+        # prepare features dataframe
+        df = pd.DataFrame()
+        for cluster_by_item in cluster_by:
+
+            id_field = 'id'
+            prop_field = lookup_map[cluster_by_item]
+            count_as_bool = cluster_by_item == 'metadata'
+
+            if count_as_bool:
+                ann_cond = dict(prop_count=Case(
+                    When(**{prop_field + '__isnull': False},
+                         then=Value(1)),
+                    default=Value(0),
+                    output_field=IntegerField()))
             else:
-                minimized_texts_set = [
-                    '%s ' % o.document.document_type if cluster_by_document_type else '' +
-                    '%s ' % o.document.source_type if cluster_by_document_source_type else '' +
-                    ' '.join([' '.join(getattr(o, lookup_map[c][0])
-                    .values_list(lookup_map[c][1], flat=True)) for c in cluster_by])
-                    for o in objects]
-            self.task.push()
-            # step #3
-            vectorizer = TfidfVectorizer(max_df=0.5, max_features=self.n_features,
-                                         min_df=2, stop_words='english',
-                                         use_idf=kwargs['use_idf'])
-            X = vectorizer.fit_transform(minimized_texts_set).toarray()
-            feature_names = vectorizer.get_feature_names()
-            self.task.push()
+                ann_cond = dict(prop_count=Count(prop_field))
+            qs = objects.values(id_field, prop_field).annotate(**ann_cond).distinct()
+            if not qs:
+                continue
 
-        # step #4
+            if cluster_by_item == 'metadata':
+                qs_ = list(qs)
+                qs = []
+                for item in qs_:
+                    for k, v in item[prop_field].items():
+                        qs.append({
+                            'id': item['id'],
+                            prop_field: '%s: %s' % (k, str(v)),
+                            'prop_count': 1})
+
+            df_ = pd.DataFrame(list(qs)).dropna()
+
+            # use number of days since min value as feature value
+            if cluster_by_item == 'date':
+                min_value = df_[prop_field].min().toordinal() - 1
+                df_['prop_count'] = df_.apply(lambda x: x[prop_field].toordinal() - min_value, axis=1)
+
+            # use amount value as feature value
+            elif cluster_by_item in ['duration', 'currency_value']:
+                df_['prop_count'] = df_.apply(lambda x: x[prop_field], axis=1)
+
+            dft = df_.pivot(index=id_field, columns=prop_field, values='prop_count')
+            dft.columns = ["%s(%s)" % (cluster_by_item, str(i)) for i in dft.columns]
+            df = df.join(dft, how='outer')
+
+        if df.empty:
+            self.log('Empty date set. Exit.')
+            self.task.force_complete()
+            return
+
+        X = df.fillna(0).values.tolist()
+        y = df.index.tolist()
+        feature_names = df.columns.tolist()
+        self.task.push()
+
+        # step #4 - get model, clustering
         created_date = datetime.datetime.now()
         m = self.get_model(**kwargs)
 
@@ -1493,24 +1536,27 @@ class Cluster(BaseTask):
 
         else:
             m.fit(X)
-            if using == 'DBSCAN' and not cluster_by_date:
+            if using == 'DBSCAN':
                 labels = m.labels_
-                for cluster_id in set(labels):
+                unique_labels = set(labels)
+                if unique_labels == {-1}:
+                    self.log('Unable to cluster, perhaps because of small data set.')
+                    self.task.push()
+                    return
+                for cluster_id in unique_labels:
+                    if cluster_id == -1:
+                        continue
                     cluster_index = np.where(labels == cluster_id)[0]
-                    cluster_tokens = []
-                    for item_index in cluster_index:
-                        cluster_tokens.extend(nltk.word_tokenize(minimized_texts_set[item_index]))
-                    cluster_self_name = "-".join(pd.Series(cluster_tokens).value_counts()
-                                                 .head(self.self_name_len).index).lower()
+                    cluster_self_name = 'cluster-{}'.format(cluster_id + 1)
                     cluster = cluster_model.objects.create(
                         cluster_id=cluster_id + 1,
-                        name=cluster_name,
-                        self_name='empty' if cluster_id == -1 else cluster_self_name,
-                        description=cluster_desc,
-                        cluster_by=cluster_by_str,
+                        name=cluster_name[:100],
+                        self_name=cluster_self_name[:100],
+                        description=cluster_desc[:200],
+                        cluster_by=cluster_by_str[:100],
                         using=using,
                         created_date=created_date)
-                    getattr(cluster, target).set([pks[i] for i in cluster_index])
+                    getattr(cluster, target).set([y[i] for i in cluster_index])
             else:
                 if using == 'Birch':
                     order_centroids = m.subcluster_centers_.argsort()[:, ::-1]
@@ -1519,19 +1565,21 @@ class Cluster(BaseTask):
 
                 # create clusters
                 for cluster_id in range(n_clusters):
+                    pks = [y[n] for n, label_id in enumerate(m.labels_.tolist())
+                           if label_id == cluster_id]
+                    if not pks:
+                        continue
                     cluster_self_name = '>'.join(
                         [str(feature_names[j]) for j in order_centroids[cluster_id, :self.self_name_len]])
                     cluster = cluster_model.objects.create(
                         cluster_id=cluster_id + 1,
-                        name=cluster_name,
-                        self_name=cluster_self_name,
-                        description=cluster_desc,
-                        cluster_by=cluster_by_str,
-                        using=using,
+                        name=cluster_name[:100],
+                        self_name=cluster_self_name[:100],
+                        description=cluster_desc[:200],
+                        cluster_by=cluster_by_str[:100],
+                        using=using[:20],
                         created_date=created_date)
-                    getattr(cluster, target).set(
-                        [pks[n] for n, label_id in enumerate(m.labels_.tolist())
-                         if label_id == cluster_id])
+                    getattr(cluster, target).set(pks)
         self.task.push()
 
     def get_model(self, **kwargs):
@@ -1565,8 +1613,7 @@ class Cluster(BaseTask):
                 p=kwargs['dbscan_p'])
         elif using == 'LabelSpreading':
             m = LabelSpreading(
-                max_iter=kwargs['ls_max_iter'],
-            )
+                max_iter=kwargs['ls_max_iter'])
         else:
             raise RuntimeError('Clustering method is not defined')
         return m

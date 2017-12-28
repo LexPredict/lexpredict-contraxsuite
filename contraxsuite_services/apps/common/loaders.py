@@ -22,21 +22,21 @@
     provider, processing documents on the fly in a web application,
     or shipping ContraxSuite within a closed source product.
 """
-"""
-Wrapper for loading templates from "templates" directories
- 1. from project apps directories
- 2. from project root directory
- 3. from other apps directories
-packages.
-"""
 
 import os
 from django.apps import apps
+from django.conf import settings
 from django.template.loaders.filesystem import Loader as FilesystemLoader
 from django.utils._os import upath
 
 
 class Loader(FilesystemLoader):
+    """
+        Wrapper for loading templates from "templates" directories
+         1. from project apps directories
+         2. from project root directory
+         3. from other apps directories
+    """
 
     def get_dirs(self):
         project_app_dirs = []
@@ -51,6 +51,7 @@ class Loader(FilesystemLoader):
                     project_app_dirs.append(upath(template_dir))
                 else:
                     other_app_dirs.append(upath(template_dir))
-        project_dir = super().get_dirs()
+        project_dir = [os.path.join(str(settings.PROJECT_DIR), 'templates')]
+        root_app_dir = [settings.APPS_DIR]
         # Immutable return value because it will be cached and shared by callers.
-        return tuple(project_app_dirs + project_dir + other_app_dirs)
+        return tuple(project_app_dirs + root_app_dir + project_dir + other_app_dirs)

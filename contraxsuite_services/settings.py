@@ -102,17 +102,22 @@ INSTALLED_APPS = (
 # MIDDLEWARE CONFIGURATION
 # ------------------------------------------------------------------------------
 MIDDLEWARE = (
+    'django.middleware.gzip.GZipMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    # simple history middleware
     'simple_history.middleware.HistoryRequestMiddleware',
+    # custom middleware
+    'apps.common.middleware.AutoLoginMiddleware',
     'apps.common.middleware.LoginRequiredMiddleware',
     'apps.common.middleware.HttpResponseNotAllowedMiddleware',
     'apps.common.middleware.RequestUserMiddleware',
     'apps.common.middleware.AppEnabledRequiredMiddleware',
+    # django-pipeline middleware for minifying data
     'pipeline.middleware.MinifyHTMLMiddleware',
     # Configure the django-otp package. Note this must be after the
     # AuthenticationMiddleware.
@@ -165,14 +170,16 @@ TEMPLATES = [
         # See: https://docs.djangoproject.com/en/dev/ref/settings/#template-dirs
         # 'DIRS': [
         #     PROJECT_DIR('templates'),
+        #     PROJECT_DIR('apps')
         # ],
+        # 'APP_DIRS': True,
         'OPTIONS': {
             # See: https://docs.djangoproject.com/en/dev/ref/settings/#template-debug
             'debug': DEBUG,
             # See: https://docs.djangoproject.com/en/dev/ref/settings/#template-loaders
             # https://docs.djangoproject.com/en/dev/ref/templates/api/#loader-types
             'loaders': [
-                ('apps.common.loaders.Loader', [PROJECT_DIR('templates')])
+                'apps.common.loaders.Loader',
                 # 'django.template.loaders.app_directories.Loader',
                 # ('django.template.loaders.filesystem.Loader', [PROJECT_DIR('templates')])
             ],
@@ -236,12 +243,26 @@ ROOT_URLCONF = 'urls'
 WSGI_APPLICATION = 'wsgi.application'
 
 # django-pipeline settings
+# see: https://django-pipeline.readthedocs.io/en/latest/
 STATICFILES_STORAGE = 'pipeline.storage.PipelineStorage'
 PIPELINE_ENABLED = True
 PIPELINE = {
     'CSS_COMPRESSOR': 'pipeline.compressors.yuglify.YuglifyCompressor',
     'JS_COMPRESSOR': 'pipeline.compressors.yuglify.YuglifyCompressor',
     'STYLESHEETS': {
+        'theme_css': {
+            'source_filenames': (
+                'theme/css/bootstrap.css',
+                'theme/css/style.css',
+                'theme/css/swiper.css',
+                'theme/css/dark.css',
+                'theme/css/font-icons.css',
+                'theme/css/animate.css',
+                'theme/css/magnific-popup.css',
+                'theme/css/responsive.css',
+            ),
+            'output_filename': 'pipeline_theme.css',
+        },
         'custom_css': {
             'source_filenames': (
                 'css/project.css',
@@ -260,43 +281,9 @@ PIPELINE = {
         'custom_js': {
             'source_filenames': (
                 'vendor/tagsinput/bootstrap-tagsinput.js',
-                # 'js/project.js',
             ),
             'output_filename': 'pipeline_custom.js',
         },
-        'custom_jqwidgets_js': {
-            'source_filenames': (
-                'vendor/jqwidgets/jqxcore.js',
-                'vendor/jqwidgets/jqxdata.js',
-                'vendor/jqwidgets/jqxbuttons.js',
-                'vendor/jqwidgets/jqxscrollbar.js',
-                'vendor/jqwidgets/jqxlistbox.js',
-                'vendor/jqwidgets/jqxdropdownlist.js',
-                'vendor/jqwidgets/jqxmenu.js',
-                'vendor/jqwidgets/jqxgrid.js',
-                'vendor/jqwidgets/jqxgrid.filter.js',
-                'vendor/jqwidgets/jqxgrid.sort.js',
-                'vendor/jqwidgets/jqxgrid.pager.js',
-                'vendor/jqwidgets/jqxgrid.selection.js',
-                'vendor/jqwidgets/jqxgrid.columnsresize.js',
-                'vendor/jqwidgets/jqxgrid.grouping.js',
-                'vendor/jqwidgets/jqxgrid.aggregates.js',
-                'vendor/jqwidgets/jqxcalendar.js',
-                'vendor/jqwidgets/jqxdatetimeinput.js',
-                'vendor/jqwidgets/jqxcheckbox.js',
-                'vendor/jqwidgets/globalization/globalize.js',
-                'vendor/jqwidgets/jqxwindow.js',
-                'vendor/jqwidgets/jqxdata.export.js',
-                'vendor/jqwidgets/jqxgrid.export.js',
-                'vendor/jqwidgets/jqxdraw.js',
-                'vendor/jqwidgets/jqxchart.core.js',
-                'vendor/jqwidgets/jqxtabs.js',
-                'vendor/jqwidgets/jqxdatatable.js',
-                'vendor/jqwidgets/jqxtreegrid.js',
-                'vendor/jqwidgets/jqxchart.rangeselector.js'
-            ),
-            'output_filename': 'js/jqwidgets.js',
-        }
     }
 }
 
@@ -319,6 +306,7 @@ AUTHENTICATION_BACKENDS = (
 )
 
 # allauth settings
+# http://django-allauth.readthedocs.io/en/latest/overview.html
 ACCOUNT_LOGOUT_REDIRECT_URL = 'account_login'
 ACCOUNT_AUTHENTICATION_METHOD = 'username'
 ACCOUNT_EMAIL_REQUIRED = True
@@ -334,8 +322,6 @@ SOCIALACCOUNT_ADAPTER = 'apps.users.adapters.SocialAccountAdapter'
 AUTH_USER_MODEL = 'users.User'
 LOGIN_REDIRECT_URL = 'users:redirect'
 LOGIN_URL = reverse_lazy('account_login')
-# see AutoLoginMiddleware
-AUTOLOGIN = False
 
 # SLUGLIFIER
 AUTOSLUG_SLUGIFY_FUNCTION = 'slugify.slugify'
@@ -359,19 +345,21 @@ CELERY_IMPORTS = ('apps.task.tasks',)
 # CELERY_TIMEZONE = 'UTC'
 
 CELERY_TASK_SERIALIZER = 'pickle'
-CELERY_ACCEPT_CONTENT = ['pickle']
+CELERY_ACCEPT_CONTENT = ['json', 'pickle']
 
 # Redis for Celery args caching
 CELERY_CACHE_REDIS_URL = 'redis://127.0.0.1:6379/0'
 CELERY_CACHE_REDIS_KEY_PREFIX = 'celery_task'
 
 # django-excel
+# http://django-excel.readthedocs.io/en/latest/
 FILE_UPLOAD_HANDLERS = (
     "django_excel.ExcelMemoryFileUploadHandler",
     "django_excel.TemporaryExcelFileUploadHandler"
 )
 
 # elasticsearch integration
+# https://elasticsearch-py.readthedocs.io/en/master/
 ELASTICSEARCH_CONFIG = {
     'hosts': [{'host': '127.0.0.1', 'port': 9200}],
     'index': 'contraxsuite'
@@ -420,6 +408,7 @@ CELERY_FILE_ACCESS_LOCAL_ROOT_DIR = MEDIA_ROOT + '/' + FILEBROWSER_DIRECTORY
 #CELERY_FILE_ACCESS_NGINX_ROOT_URL = 'http://localhost:8888/media/'
 
 # django-constance settings
+# https://django-constance.readthedocs.io/en/latest/
 REQUIRED_LOCATORS = (
     'geoentity',
     'party',
@@ -456,6 +445,9 @@ CONSTANCE_CONFIG = {
     'standard_optional_locators': (OPTIONAL_LOCATORS,
                                    'Standard Optional Locators',
                                    'app_multiselect'),
+    'auto_login': (False,
+                   'Enable Auto Login',
+                   bool),
 }
 CONSTANCE_BACKEND = 'constance.backends.database.DatabaseBackend'
 
@@ -465,12 +457,12 @@ CONSTANCE_BACKEND = 'constance.backends.database.DatabaseBackend'
 
 # use jqWidgets' export, e.g. send data to jq OR handle it on client side
 # FYI: http://www.jqwidgets.com/community/topic/jqxgrid-export-data/#}
-JQ_EXPORT = False
+JQ_EXPORT = True
 
 # place dictionaries for GeoEntities, Terms, US Courts, etc.
 DATA_ROOT = PROJECT_DIR('data/')
 GIT_DATA_REPO_ROOT = 'https://raw.githubusercontent.com/' \
-                     'LexPredict/lexpredict-legal-dictionary/1.0.4'
+                     'LexPredict/lexpredict-legal-dictionary/1.0.5'
 
 # logging
 LOG_FILE_NAME = 'log.txt'
@@ -527,8 +519,8 @@ NOTEBOOK_ARGUMENTS = [
     '--port=8000',
 ]
 
-VERSION_NUMBER = '1.0.4'
-VERSION_COMMIT = '4861451'
+VERSION_NUMBER = '1.0.5'
+VERSION_COMMIT = '7d3f00e'
 
 try:
     from local_settings import *
@@ -580,10 +572,6 @@ AUTOLOGIN_ALWAYS_OPEN_URLS = [
 AUTOLOGIN_TEST_USER_FORBIDDEN_URLS = [
     'accounts/(?!login|logout)',
 ]
-if AUTOLOGIN:
-    MIDDLEWARE += (
-        'apps.common.middleware.AutoLoginMiddleware',
-    )
 
 DATA_UPLOAD_MAX_NUMBER_FIELDS = None
 PIPELINE['PIPELINE_ENABLED'] = PIPELINE_ENABLED

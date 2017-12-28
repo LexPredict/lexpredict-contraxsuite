@@ -35,14 +35,14 @@ from apps.common.utils import create_standard_urls
 from apps.extract import views
 from apps.extract.models import (
     AmountUsage, CitationUsage, CopyrightUsage, CourtUsage, CurrencyUsage,
-    DateDurationUsage, DateUsage, DefinitionUsage, DistanceUsage, GeoEntityUsage,
-    PartyUsage, PercentUsage, RatioUsage, RegulationUsage, TermUsage, TrademarkUsage,
-    UrlUsage)
+    DateDurationUsage, DateUsage, DefinitionUsage, DistanceUsage,
+    GeoEntity, GeoEntityUsage, PartyUsage, PercentUsage, RatioUsage,
+    RegulationUsage, TermUsage, TrademarkUsage, UrlUsage)
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2017, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.0.4/LICENSE"
-__version__ = "1.0.4"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.0.5/LICENSE"
+__version__ = "1.0.5"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -72,6 +72,7 @@ register(DateUsage, view_types=('list', 'top_list'))
 register(DateDurationUsage, view_types=('list', 'top_list'))
 register(DefinitionUsage, view_types=('list', 'top_list'))
 register(DistanceUsage, view_types=('list', 'top_list'))
+register(GeoEntity, view_types=('list'))
 register(GeoEntityUsage, view_types=('list', 'top_list'))
 register(PartyUsage, view_types=('list', 'top_list'))
 register(PercentUsage, view_types=('list', 'top_list'))
@@ -83,6 +84,11 @@ register(UrlUsage, view_types=('list', 'top_list'))
 
 # Add hard-coded URL mappings
 urlpatterns += [
+    url(
+        r'^geo-entity-priority-update/$',
+        views.GeoEntityPriorityUpdateView.as_view(),
+        name='geo-entity-priority-update',
+    ),
     url(
         r'^geo-entity-usage-map/$',
         views.GeoEntityUsageGoogleMapView.as_view(),

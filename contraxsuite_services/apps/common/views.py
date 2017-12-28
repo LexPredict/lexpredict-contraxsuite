@@ -27,6 +27,9 @@
 # Future imports
 from __future__ import absolute_import, unicode_literals
 
+# Standard imports
+from collections import OrderedDict
+
 # Third-party imports
 from constance.admin import ConstanceForm, get_values
 
@@ -41,8 +44,8 @@ from apps.common.mixins import TechAdminRequiredMixin
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2017, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.0.4/LICENSE"
-__version__ = "1.0.4"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.0.5/LICENSE"
+__version__ = "1.0.5"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -54,6 +57,7 @@ class AppConfigView(TechAdminRequiredMixin, FormView):
     def get_form(self, form_class=None):
         initial = get_values()
         form = self.form_class(initial=initial)
+        form.fields = OrderedDict(sorted(form.fields.items()))
         return form
 
     def post(self, request, *args, **kwargs):

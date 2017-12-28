@@ -17,14 +17,15 @@
 
     <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css">
     <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Lato:300,400,400italic,600,700|Raleway:300,400,500,600,700|Crete+Round:400italic" type="text/css" />
-    <link rel="stylesheet" href="{% static "theme/css/bootstrap.css" %}" type="text/css" />
-    <link rel="stylesheet" href="{% static "theme/css/style.css" %}" type="text/css" />
-    <link rel="stylesheet" href="{% static "theme/css/swiper.css" %}" type="text/css" />
-    <link rel="stylesheet" href="{% static "theme/css/dark.css" %}" type="text/css" />
-    <link rel="stylesheet" href="{% static "theme/css/font-icons.css" %}" type="text/css" />
-    <link rel="stylesheet" href="{% static "theme/css/animate.css" %}" type="text/css" />
-    <link rel="stylesheet" href="{% static "theme/css/magnific-popup.css" %}" type="text/css" />
-    <link rel="stylesheet" href="{% static "theme/css/responsive.css" %}" type="text/css" />
+    {% stylesheet 'theme_css' %}
+{#    <link rel="stylesheet" href="{% static "theme/css/style.css" %}" type="text/css" />#}
+{#    <link rel="stylesheet" href="{% static "theme/css/bootstrap.css" %}" type="text/css" />#}
+{#    <link rel="stylesheet" href="{% static "theme/css/swiper.css" %}" type="text/css" />#}
+{#    <link rel="stylesheet" href="{% static "theme/css/dark.css" %}" type="text/css" />#}
+{#    <link rel="stylesheet" href="{% static "theme/css/font-icons.css" %}" type="text/css" />#}
+{#    <link rel="stylesheet" href="{% static "theme/css/animate.css" %}" type="text/css" />#}
+{#    <link rel="stylesheet" href="{% static "theme/css/magnific-popup.css" %}" type="text/css" />#}
+{#    <link rel="stylesheet" href="{% static "theme/css/responsive.css" %}" type="text/css" />#}
   {% endblock %}
 
   {% block css_extra %}

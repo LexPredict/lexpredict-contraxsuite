@@ -3,6 +3,22 @@
 <nav id="primary-menu" class="style-2">
   {% if user.is_authenticated %}
     <ul id="main_menu">
+
+      {# custom menu item block #}
+      {% if custom_main_menu_item_templates|length == 1 %}
+        {% include custom_main_menu_item_templates.0 %}
+      {% elif custom_main_menu_item_templates|length > 1 %}
+        <li>
+          <a href="#"><div><i class="fa fa-suitcase"></i><span>Utilities</span></div></a>
+          <ul>
+            {% for template in custom_main_menu_item_templates %}
+              {% include template %}
+            {% endfor %}
+          </ul>
+        </li>
+      {% endif %}
+      {# end custom menu item block #}
+
       <li>
         <a href="#"><div><i class="fa fa-tasks"></i><span>Tasks</span></div></a>
         <ul>
@@ -18,7 +34,9 @@
         </ul>
       </li>
       <li>
-        <a href="#"><div><i class="fa fa-file-text-o"></i><span>Documents</span></div></a>
+        <a href="#">
+          <div><i class="fa fa-file-text-o"></i><span>Documents</span></div>
+        </a>
         <ul>
           <li>
             <a href="{% url "document:document-list" %}">Documents</a>
@@ -47,19 +65,9 @@
         </ul>
       </li>
       <li>
-        <a href="#"><div><i class="fa fa-magic"></i><span>Assistant</span></div></a>
-        <ul>
-          <li><a href="{% url "analyze:text-unit-classification-list" %}"><div>
-            Text Unit Classification</div></a></li>
-          <li><a href="{% url "analyze:text-unit-classifier-suggestion-list" %}"><div>
-            Text Unit Classification Suggestions</div></a></li>
-          <li class="divider"></li>
-          <li><a href="{% url "analyze:text-unit-classifier-list" %}"><div>
-            Classifiers</div></a></li>
-        </ul>
-      </li>
-      <li>
-        <a href="#"><div><i class="fa fa-tags"></i><span>Extract</span></div></a>
+        <a href="#">
+          <div><i class="fa fa-tags"></i><span>Extract</span></div>
+        </a>
         <ul>
           <li>
             <a href="#">Terms</a>
@@ -80,6 +88,7 @@
           <li>
             <a href="#">Geo Entities</a>
             <ul>
+              <li><a href="{% url "extract:geo-entity-list" %}"><div>Geo Entities</div></a></li>
               <li><a href="{% url "extract:geo-entity-usage-list" %}"><div>Geo Entity Usage</div></a></li>
               <li><a href="{% url "extract:top-geo-entity-usage-list" %}"><div>Top Geo Entity Usage</div></a></li>
             </ul>
@@ -236,6 +245,29 @@
       </li>
       <li>
         <a href="{% url "document:stats" %}"><div><i class="fa fa-tachometer"></i><span>Stats</span></div></a>
+      </li>
+      <li>
+        <a href="#">
+          <div><i class="fa fa-magic"></i><span>Assistant</span></div>
+        </a>
+        <ul>
+          <li><a href="{% url "analyze:text-unit-classification-list" %}">
+            <div>
+              Text Unit Classification
+            </div>
+          </a></li>
+          <li><a href="{% url "analyze:text-unit-classifier-suggestion-list" %}">
+            <div>
+              Text Unit Classification Suggestions
+            </div>
+          </a></li>
+          <li class="divider"></li>
+          <li><a href="{% url "analyze:text-unit-classifier-list" %}">
+            <div>
+              Classifiers
+            </div>
+          </a></li>
+        </ul>
       </li>
     </ul>
   {% endif %}
