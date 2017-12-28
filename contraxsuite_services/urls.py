@@ -41,40 +41,52 @@ from apps.project.views import DashboardView
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2017, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.0.4/LICENSE"
-__version__ = "1.0.4"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.0.5/LICENSE"
+__version__ = "1.0.5"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
 
 # Manually add all standard patterns
 urlpatterns = [
-                  # Base pages
-                  url(r'^$', DashboardView.as_view(), name='home'),
-                  url(r'^$', TemplateView.as_view(template_name='home.html'), name='home'),
-                  url(r'^about/$', TemplateView.as_view(template_name='about.html'), name='about'),
-                  # Django Admin, use {% url 'admin:index' %}
-                  url(r'^admin/', admin.site.urls),
-                  # User management
-                  url(r'^accounts/', include('apps.users.urls', namespace='users')),
-                  url(r'^accounts/', include('allauth_2fa.urls')),
-                  url(r'^accounts/', include('allauth.urls')),
-                  # Apps
-                  url(r'^', include('apps.common.urls', namespace='common')),
-                  url(r'^document/', include('apps.document.urls', namespace='document')),
-                  url(r'^analyze/', include('apps.analyze.urls', namespace='analyze')),
-                  url(r'^extract/', include('apps.extract.urls', namespace='extract')),
-                  url(r'^project/', include('apps.project.urls', namespace='project')),
-                  url(r'^task/', include('apps.task.urls', namespace='task')),
-                  # Custom
-                  url(r'^admin/filebrowser/', include(filebrowser_site.urls)),
+    # Base pages
+    url(r'^$', DashboardView.as_view(), name='home'),
+    url(r'^$', TemplateView.as_view(template_name='home.html'), name='home'),
+    url(r'^about/$', TemplateView.as_view(template_name='about.html'), name='about'),
+    # Django Admin, use {% url 'admin:index' %}
+    url(r'^admin/', admin.site.urls),
+    # User management
+    url(r'^accounts/', include('apps.users.urls', namespace='users')),
+    url(r'^accounts/', include('allauth_2fa.urls')),
+    url(r'^accounts/', include('allauth.urls')),
+    # Apps
+    url(r'^', include('apps.common.urls', namespace='common')),
+    # url(r'^document/', include('apps.document.urls', namespace='document')),
+    # url(r'^analyze/', include('apps.analyze.urls', namespace='analyze')),
+    # url(r'^extract/', include('apps.extract.urls', namespace='extract')),
+    # url(r'^project/', include('apps.project.urls', namespace='project')),
+    # url(r'^task/', include('apps.task.urls', namespace='task')),
+    # Custom
+    url(r'^admin/filebrowser/', include(filebrowser_site.urls)),
 
-              ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+
+# autodiscover urls from custom apps
+namespaces = {getattr(i, 'namespace', None) for i in urlpatterns}
+custom_apps = [i.replace('apps.', '') for i in settings.INSTALLED_APPS if i.startswith('apps.')]
+for app_name in custom_apps:
+    if app_name in namespaces:
+        continue
+    try:
+        include_urls = include('apps.%s.urls' % app_name, namespace=app_name)
+    except ImportError:
+        continue
+    urlpatterns += [url(r'^%s/' % app_name, include_urls)]
 
 # Manually add debug patterns
 if settings.DEBUG:
     # This allows the error pages to be debugged during development, just visit
-    # these url in browser to see how these error pages look like.
+    # these urls in browser to see how these error pages look like.
     urlpatterns += [
         url(r'^400/$', default_views.bad_request,
             kwargs={'exception': Exception('Bad Request!')}),

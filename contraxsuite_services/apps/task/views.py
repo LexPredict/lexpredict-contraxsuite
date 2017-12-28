@@ -27,6 +27,9 @@
 # Future imports
 from __future__ import absolute_import, unicode_literals
 
+# Standard imports
+import json
+
 # Django imports
 from django.conf import settings
 from django.core.urlresolvers import reverse
@@ -49,8 +52,8 @@ from apps.task.tasks import call_task, clean_tasks, purge_task
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2017, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.0.4/LICENSE"
-__version__ = "1.0.4"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.0.5/LICENSE"
+__version__ = "1.0.5"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -91,6 +94,9 @@ class BaseAjaxTaskView(AdminRequiredMixin, JSONResponseView):
                         form_data=form.as_p())
         return self.json_response(data)
 
+    def get_metadata(self):
+        return getattr(self, 'metadata', None)
+
     def post(self, request, *args, **kwargs):
         if Task.disallow_start(self.task_name):
             return HttpResponseForbidden('Forbidden. Such task is already started.')
@@ -102,6 +108,7 @@ class BaseAjaxTaskView(AdminRequiredMixin, JSONResponseView):
                 return self.json_response(form.errors, status=400)
             data = form.cleaned_data
         data['user_id'] = request.user.pk
+        data['metadata'] = self.get_metadata()
         call_task(self.task_name, **data)
         return self.json_response('The task is started. It can take a while.')
 
@@ -127,9 +134,12 @@ class LoadTaskView(AdminRequiredMixin, JSONResponseView):
         geoentities_1='geopolitical/geopolitical_divisions.csv',
     )
     tasks_map = dict(
-        terms='LoadTerms',
-        courts='LoadCourts',
-        geoentities='LoadGeoEntities'
+        terms=dict(task_name='Load Terms'),
+        courts=dict(task_name='Load Courts'),
+        geoentities=dict(
+            task_name='Load Geo Entities',
+            result_links=[{'name': 'View Extracted Geo Entities',
+                           'link': 'extract:geo-entity-usage-list'}])
     )
 
     @staticmethod
@@ -144,7 +154,8 @@ class LoadTaskView(AdminRequiredMixin, JSONResponseView):
 
         rejected_tasks = []
         started_tasks = []
-        for task_alias, task_name in self.tasks_map.items():
+        for task_alias, metadata in self.tasks_map.items():
+            task_name = metadata['task_name']
             if Task.disallow_start(task_name):
                 rejected_tasks.append(task_name)
                 continue
@@ -156,7 +167,11 @@ class LoadTaskView(AdminRequiredMixin, JSONResponseView):
             file_path = data.get('{}_file_path'.format(task_alias)) or None
             delete = '{}_delete'.format(task_alias) in data
             if any([repo_paths, file_path, delete]):
-                call_task(task_name, repo_paths=repo_paths, file_path=file_path, delete=delete)
+                call_task(task_name,
+                          repo_paths=repo_paths,
+                          file_path=file_path,
+                          delete=delete,
+                          metadata=metadata)
                 started_tasks.append(task_name)
         return self.json_response('The task is started. It can take a while.')
 
@@ -164,6 +179,9 @@ class LoadTaskView(AdminRequiredMixin, JSONResponseView):
 class LoadDocumentsView(BaseAjaxTaskView):
     task_name = 'Load Documents'
     form_class = LoadDocumentsForm
+    metadata = dict(
+        result_links=[{'name': 'View Document List', 'link': 'document:document-list'},
+                      {'name': 'View Text Unit List', 'link': 'document:text-unit-list'}])
 
 
 class LocateTaskView(BaseAjaxTaskView):
@@ -171,6 +189,28 @@ class LocateTaskView(BaseAjaxTaskView):
     html_form_class = 'popup-form locate-form'
     custom_tasks = set(
         # 'LocateTerms',
+    )
+    metadata = dict(
+        result_links=[{'name': 'View Document List', 'link': 'document:document-list'},
+                      {'name': 'View Text Unit List', 'link': 'document:text-unit-list'}])
+    locator_result_links_map = dict(
+        geoentity={'name': 'View Geo Entity Usage List', 'link': 'extract:geo-entity-usage-list'},
+        date={'name': 'View Date Usage List', 'link': 'extract:date-usage-list'},
+        amount={'name': 'View Amount Usage List', 'link': 'extract:amount-usage-list'},
+        citation={'name': 'View Citation Usage List', 'link': 'extract:citation-usage-list'},
+        copyright={'name': 'View Copyright Usage List', 'link': 'extract:copyright-usage-list'},
+        court={'name': 'View Court Usage List', 'link': 'extract:court-usage-list'},
+        currency={'name': 'View Currency Usage List', 'link': 'extract:currency-usage-list'},
+        duration={'name': 'View Duration Usage List', 'link': 'extract:date-duration-usage-list'},
+        definition={'name': 'View Definition Usage List', 'link': 'extract:definition-usage-list'},
+        distance={'name': 'View Distance Usage List', 'link': 'extract:distance-usage-list'},
+        party={'name': 'View Party Usage List', 'link': 'extract:party-usage-list'},
+        percent={'name': 'View Percent Usage List', 'link': 'extract:percent-usage-list'},
+        ratio={'name': 'View Ratio Usage List', 'link': 'extract:ratio-usage-list'},
+        regulation={'name': 'View Regulation Usage List', 'link': 'extract:regulation-usage-list'},
+        term={'name': 'View Term Usage List', 'link': 'extract:term-usage-list'},
+        trademark={'name': 'View Trademark Usage List', 'link': 'extract:trademark-usage-list'},
+        url={'name': 'View Url Usage List', 'link': 'extract:url-usage-list'},
     )
 
     def post(self, request, *args, **kwargs):
@@ -194,6 +234,9 @@ class LocateTaskView(BaseAjaxTaskView):
                     rejected_tasks.append(task_name)
                 else:
                     started_tasks.append(task_name)
+                    locator_result_link = self.locator_result_links_map.get(task_name)
+                    if locator_result_link:
+                        kwargs['metadata'] = {'result_links': [locator_result_link]}
                     call_task(task_name, **kwargs)
 
         # lexnlp tasks
@@ -203,6 +246,7 @@ class LocateTaskView(BaseAjaxTaskView):
                       if k.startswith(task_name)}
             if any(kwargs.values()):
                 lexnlp_task_data[task_name] = kwargs
+
         if lexnlp_task_data:
             if Task.disallow_start('Locate'):
                 rejected_tasks.append('Locate')
@@ -211,7 +255,13 @@ class LocateTaskView(BaseAjaxTaskView):
                 call_task('Locate',
                           tasks=lexnlp_task_data,
                           parse=data['parse'],
-                          user_id=request.user.pk)
+                          user_id=request.user.pk,
+                          metadata={
+                              'description': [i for i, j in lexnlp_task_data.items()
+                                              if j.get('locate')],
+                              'result_links': [self.locator_result_links_map[i]
+                                               for i, j in lexnlp_task_data.items()
+                                               if j.get('locate')]})
 
         response_text = ''
         if started_tasks:
@@ -233,11 +283,28 @@ class ExistedClassifierClassifyView(BaseAjaxTaskView):
     task_name = 'Classify'
     form_class = ExistedClassifierClassifyForm
 
+    def get_metadata(self):
+        return dict(
+            description='classifier:%s' % self.request.POST.get('classifier'),
+            result_links=[{'name': 'View Text Unit Classification Suggestion List',
+                           'link': 'analyze:text-unit-classification-suggestion-list'}])
+
 
 class CreateClassifierClassifyView(BaseAjaxTaskView):
     task_name = 'Classify'
     form_class = CreateClassifierClassifyForm
     html_form_class = 'popup-form classify-form'
+
+    def get_metadata(self):
+        return dict(
+            description='classify_by:{}, algorithm:{}, class_name:{}'.format(
+                self.request.POST.get('classify_by'),
+                self.request.POST.get('algorithm'),
+                self.request.POST.get('class_name')),
+            result_links=[{'name': 'View Text Unit Classification List',
+                           'link': 'analyze:text-unit-classification-suggestion-list'},
+                          {'name': 'View Text Unit Classifier List',
+                           'link': 'analyze:text-unit-classifier-list'}])
 
 
 class UpdateElasticsearchIndexView(BaseAjaxTaskView):
@@ -250,15 +317,61 @@ class ClusterView(BaseAjaxTaskView):
     form_class = ClusterForm
     html_form_class = 'popup-form cluster-form'
 
+    def get_metadata(self):
+        cluster_items = []
+        result_links = []
+        do_cluster_documents = self.request.POST.get('do_cluster_documents')
+        if do_cluster_documents:
+            cluster_items.append('documents')
+            result_links.append({'name': 'View Document Cluster List',
+                                 'link': 'analyze:document-cluster-list'})
+        do_cluster_text_units = self.request.POST.get('do_cluster_text_units')
+        if do_cluster_text_units:
+            cluster_items.append('text units')
+            result_links.append({'name': 'View Text Unit Cluster List',
+                                 'link': 'analyze:text-unit-cluster-list'})
+        return dict(
+            description='cluster:{}; by:{}; algorithm:{}; name:{}'.format(
+                ', '.join(cluster_items),
+                self.request.POST.get('cluster_by'),
+                self.request.POST.get('using'),
+                self.request.POST.get('name')),
+            result_links=result_links)
+
 
 class SimilarityView(BaseAjaxTaskView):
     task_name = 'Similarity'
     form_class = SimilarityForm
 
+    def get_metadata(self):
+        similarity_items = []
+        result_links = []
+        if self.request.POST.get('search_similar_documents'):
+            similarity_items.append('documents')
+            result_links.append({'name': 'View Document Similarity List',
+                                 'link': 'analyze:document-similarity-list'})
+        if self.request.POST.get('search_similar_text_units'):
+            similarity_items.append('text units')
+            result_links.append({'name': 'View Text Unit Similarity List',
+                                 'link': 'analyze:text-unit-similarity-list'})
+        return dict(
+            description='similarity for:{}; threshold:{}'.format(
+                ', '.join(similarity_items),
+                self.request.POST.get('similarity_threshold')),
+            result_links=result_links)
+
 
 class PartySimilarityView(BaseAjaxTaskView):
     task_name = 'PartySimilarity'
     form_class = PartySimilarityForm
+
+    def get_metadata(self):
+        return dict(
+            description='similarity type:{}, threshold:{}'.format(
+                self.request.POST.get('similarity_type'),
+                self.request.POST.get('similarity_threshold')),
+            result_links=[{'name': 'View Party Usage List',
+                           'link': 'extract:party-usage-list'}])
 
 
 class TaskDetailView(CustomDetailView):
@@ -284,7 +397,7 @@ class PurgeTaskView(TechAdminRequiredMixin, JSONResponseView):
 class TaskListView(AdminRequiredMixin, JqPaginatedListView):
     model = Task
     ordering = '-date_start'
-    json_fields = ['name', 'date_start', 'user__username']
+    json_fields = ['name', 'date_start', 'user__username', 'metadata']
 
     def get_json_data(self, **kwargs):
         data = super().get_json_data()
@@ -297,6 +410,15 @@ class TaskListView(AdminRequiredMixin, JqPaginatedListView):
             item['status'] = task.status
             item['has_error'] = task.has_error
             item['purge_url'] = reverse('task:purge-task')
+            if item['metadata']:
+                metadata = json.loads(item['metadata'])
+                item['description'] = metadata.get('description')
+                result_links = metadata.get('result_links', [])
+                for link_data in result_links:
+                    link_data['link'] = reverse(link_data['link'])
+                item['result_links'] = result_links
+            else:
+                item['result_links'] = []
         return data
 
     def get_context_data(self, **kwargs):

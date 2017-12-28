@@ -29,6 +29,8 @@ from constance import config
 
 # Django imports
 from django.conf import settings
+from django.template.loader import get_template
+from django.template.exceptions import TemplateDoesNotExist
 
 # Project imports
 from apps.document.models import Document
@@ -37,8 +39,8 @@ from apps.users.models import User
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2017, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.0.4/LICENSE"
-__version__ = "1.0.4"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.0.5/LICENSE"
+__version__ = "1.0.5"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -49,7 +51,24 @@ def common(request):
         group_name for group_name, group_items in settings.LOCATOR_GROUPS.items()
         if any(set(group_items).intersection(available_locators))]
 
+    custom_main_menu_item_templates = []
+    custom_task_menu_item_templates = []
+    custom_apps = [i.replace('apps.', '') for i in settings.INSTALLED_APPS if i.startswith('apps.')]
+    for app_name in custom_apps:
+        try:
+            mmi_template = get_template('%s/templates/%s' % (app_name, 'main_menu_item.html'))
+            custom_main_menu_item_templates.append(mmi_template.template.name)
+        except TemplateDoesNotExist:
+            pass
+        try:
+            tmi_template = get_template('%s/templates/%s' % (app_name, 'task_menu_item.html'))
+            custom_task_menu_item_templates.append(tmi_template.template.name)
+        except TemplateDoesNotExist:
+            pass
+
     return {'settings': settings,
+            'custom_main_menu_item_templates': custom_main_menu_item_templates,
+            'custom_task_menu_item_templates': custom_task_menu_item_templates,
             'available_locators': available_locators,
             'available_locator_groups': available_locator_groups,
             'documents_count': Document.objects.count(),

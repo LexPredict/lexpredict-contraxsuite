@@ -40,8 +40,8 @@ from apps.document.models import DocumentProperty, TextUnitProperty
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2017, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.0.4/LICENSE"
-__version__ = "1.0.4"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.0.5/LICENSE"
+__version__ = "1.0.5"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -359,14 +359,19 @@ class ClusterForm(forms.Form):
         "Cluster Text Units", input_class='min-one-of')
     cluster_by = forms.MultipleChoiceField(
         widget=forms.SelectMultiple(attrs={'class': 'chosen'}),
-        choices=[('dates', 'Dates'),
-                 ('terms', 'Terms'),
-                 ('parties', 'Parties'),
-                 ('entities', 'Geo Entities'),
-                 ('document type', 'Document Type'),
-                 ('document source type', 'Document Source Type')],
+        choices=[('date', 'Dates'),
+                 ('duration', 'Date Durations'),
+                 ('term', 'Terms'),
+                 ('party', 'Parties'),
+                 ('entity', 'Geo Entities'),
+                 ('court', 'Courts'),
+                 ('currency_name', 'Currency Name'),
+                 ('currency_value', 'Currency Value'),
+                 ('metadata', 'Document Metadata'),
+                 ('document_type', 'Document Type'),
+                 ('source_type', 'Document Source Type')],
         required=True,
-        help_text='Cluster by terms, parties or geo entities.')
+        help_text='Cluster by terms, parties or other fields.')
     using = forms.ChoiceField(
         label='Algorithm',
         choices=[('MiniBatchKMeans', 'MiniBatchKMeans'),
@@ -454,7 +459,7 @@ class ClusterForm(forms.Form):
         initial=5,
         required=True,
         help_text='Maximum number of iterations allowed.')
-    use_idf = checkbox_field("Use TF-IDF to normalize data")
+    # use_idf = checkbox_field("Use TF-IDF to normalize data")
     delete_type = checkbox_field(
         'Delete existed Clusters of the "Cluster By" and "Algorithm" specified above',
         input_class='max-one-of')

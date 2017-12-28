@@ -22,7 +22,7 @@
 
 {% block js_extra %}
   {{ block.super }}
-  {% javascript 'custom_jqwidgets_js' %}
+  {% include '_jq_imports_block.html' %}
 
   <script type="text/javascript">
     $(document).ready(function () {

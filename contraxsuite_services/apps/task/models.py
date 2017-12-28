@@ -27,6 +27,9 @@
 # Standard imports
 import datetime
 
+# Third-party inports
+from jsonfield import JSONField
+
 # Django imports
 from django.db import models
 from django.utils import timezone
@@ -38,8 +41,8 @@ from apps.users.models import User
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2017, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.0.4/LICENSE"
-__version__ = "1.0.4"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.0.5/LICENSE"
+__version__ = "1.0.5"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -70,6 +73,9 @@ class Task(models.Model):
     # Task statistics
     subtasks_total = models.IntegerField(default=0, blank=True, null=True)
     subtasks_processed = models.IntegerField(default=0, blank=True, null=True)
+
+    # additional data for a task
+    metadata = JSONField(blank=True, null=True)
 
     def __str__(self):
         return "Task (name={}, celery_id={})" \
@@ -143,8 +149,8 @@ class Task(models.Model):
 
     def force_complete(self):
         self.subtasks_total = 1
+        self.subtasks_processed = 1
         self.save()
-        self.push()
 
     @property
     def uncompleted_subtasks(self):
