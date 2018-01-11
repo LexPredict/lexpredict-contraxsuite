@@ -127,7 +127,7 @@ class LoadTaskView(AdminRequiredMixin, JSONResponseView):
         terms_legal_1='legal/common_law.csv',
         terms_legal_2='legal/us_cfr.csv',
         terms_legal_3='legal/us_usc.csv',
-        terms_legal_4='legal/common_law_top1000.csv',
+        terms_legal_4='legal/common_US_terms_top1000.csv',
         terms_scientific_1='scientific/us_hazardous_waste.csv',
         courts_1='legal/ca_courts.csv',
         courts_2='legal/us_courts.csv',
