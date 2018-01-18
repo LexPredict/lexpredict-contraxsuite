@@ -56,6 +56,7 @@ from django.db.models import Count, Q, Case, Value, When, IntegerField
 from django.utils.timezone import now
 from django_celery_results.models import TaskResult
 from elasticsearch import Elasticsearch
+from elasticsearch.exceptions import RequestError
 from lexnlp.extract.en import (
     amounts, citations, copyright, courts, dates, distances, definitions,
     durations, geoentities, money, percents, ratios, regulations, trademarks, urls,
@@ -416,14 +417,23 @@ class UpdateElasticsearchIndex(BaseTask):
         self.task.subtasks_total = 1
         self.task.save()
         es = Elasticsearch(hosts=settings.ELASTICSEARCH_CONFIG['hosts'])
+
+        es_index = settings.ELASTICSEARCH_CONFIG['index']
+
+        try:
+            es.indices.create(index=es_index)
+            self.log('Created index: {0}'.format(es_index))
+        except RequestError:
+            self.log('Index already exists: {0}'.format(es_index))
+
         count = 0
         for tu in TextUnit.objects.iterator():
             self.elastic_index(es, tu)
-            count = count + 1
+            count += 1
             if count % 100 == 0:
                 self.log('Indexing text units: {0} done'.format(count))
         self.log('Finished indexing text units. Refreshing ES index.')
-        es.indices.refresh(index=settings.ELASTICSEARCH_CONFIG['index'])
+        es.indices.refresh(index=es_index)
         self.log('Done')
         self.task.push()
 
