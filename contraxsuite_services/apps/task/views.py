@@ -287,7 +287,7 @@ class ExistedClassifierClassifyView(BaseAjaxTaskView):
         return dict(
             description='classifier:%s' % self.request.POST.get('classifier'),
             result_links=[{'name': 'View Text Unit Classification Suggestion List',
-                           'link': 'analyze:text-unit-classification-suggestion-list'}])
+                           'link': 'analyze:text-unit-classifier-suggestion-list'}])
 
 
 class CreateClassifierClassifyView(BaseAjaxTaskView):
@@ -302,7 +302,7 @@ class CreateClassifierClassifyView(BaseAjaxTaskView):
                 self.request.POST.get('algorithm'),
                 self.request.POST.get('class_name')),
             result_links=[{'name': 'View Text Unit Classification List',
-                           'link': 'analyze:text-unit-classification-suggestion-list'},
+                           'link': 'analyze:text-unit-classifier-suggestion-list'},
                           {'name': 'View Text Unit Classifier List',
                            'link': 'analyze:text-unit-classifier-list'}])
 
