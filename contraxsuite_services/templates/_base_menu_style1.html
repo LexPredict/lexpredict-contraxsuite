@@ -276,6 +276,14 @@
     {% if request.user.is_authenticated %}
       {% if request.user.is_superuser %}
         <li>
+          <a class="" href="{% url 'swagger' group_by='app' %}">
+            <i class="i-circled i-dark i-small fa fa-exchange"
+               data-toggle="tooltip" data-placement="bottom" data-delay='{"show": 1000, "hide":0}'
+               data-original-title="{% trans "API" %}"></i>
+            <span>{% trans "API" %}</span>
+          </a>
+        </li>
+        <li>
           <a class="" href="{% url 'common:application-settings' %}">
             <i class="i-circled i-dark i-small icon-cogs"
                data-toggle="tooltip" data-placement="bottom" data-delay='{"show": 1000, "hide":0}'

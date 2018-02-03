@@ -1,0 +1,180 @@
+{% extends "base_list_ajax.html" %}
+{% load static %}
+
+{% block css_extra %}
+  {{ block.super }}
+  <style>
+    .two-lines-col.jqx-grid-column-header > div:first-child > div:first-child {
+      margin-top: 25px !important;
+      margin-bottom: 4px !important;
+    }
+    .two-lines-col.jqx-grid-column-header > div:first-child > div:first-child > span {
+      white-space: normal;
+    }
+    #geo_chart {
+      height: 512px;
+      width: 100%;
+      margin-bottom: 20px;
+      border: 2px solid lightgrey;
+    }
+  </style>
+{% endblock %}
+
+{% block content %}
+  <div class="tabs tabs-bb clearfix page-tabs" id="tabs" data-speed="700" data-active="1"
+       style="margin-top: 50px;">
+
+    <ul class="tab-nav clearfix">
+      <li><a href="#tab-1">Employee List</a></li>
+      <li><a href="#tab-2">Employees Count By Governing Law</a></li>
+    </ul>
+
+    <div class="tab-container">
+
+      <div class="tab-content clearfix" id="tab-1">
+        <div class="pull-right grid-controls">
+          {% include '_base_grid_buttons_block.html' %}
+        </div>
+        <div class="jqxgrid-container jqxgrid-{{ model_name_init }}">
+          <div class="jqxgrid col-md-12"></div>
+        </div>
+      </div>
+
+      <div class="tab-content clearfix" id="tab-2">
+        <div id="geo_chart">
+          <div class="loader-container">
+            <div class="loader"></div>
+            <span>Loading...</span>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+{% endblock %}
+
+{% block js_extra %}
+  {{ block.super }}
+  <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
+  <script type="text/javascript">
+    $(document).ready(function () {
+      var datafields = [
+        { name: 'pk', type: 'int' },
+        { name: 'document__name', type: 'string' },
+        { name: 'document__document_type', type: 'string' },
+        { name: 'document__description', type: 'string' },
+        { name: 'name', type: 'string' },
+        { name: 'annual_salary', type: 'float' },
+        { name: 'salary_currency', type: 'string' },
+        { name: 'effective_date', type: 'date' },
+        { name: 'employer__name', type: 'string' },
+        { name: 'has_noncompete', type:'bool' },
+        { name: 'has_termination', type:'bool' },
+        { name: 'url' , type: 'string' },
+        { name: 'detail_url', type:'string' },
+        { name: 'employer_url', type:'string' },
+        { name: 'vacation_yearly', type:'string' },
+        { name: 'governing_geo', type:'string' },
+        { name: 'has_severance', type: 'bool'}
+      ];
+      var menu_renderer = function(row, event) {
+        var grid = $(event.currentTarget).parents('.jqxgrid');
+        row = grid.jqxGrid('getrowdata', row);
+        var menu_data = [
+          { url: row.url,
+            icon: 'fa fa-file-text-o',
+            text: 'View Document'},
+          { url: row.detail_url,
+            icon: 'fa fa-user',
+            text: 'View Employee'}
+        ];
+        if(row.employer_url){
+          menu_data.push(
+              { url: row.employer_url,
+                icon: 'fa fa-bank',
+                text: 'View Employer'},
+          )}
+        show_menu(menu_data, grid, row.pk);
+      };
+      var columns = [
+        { text: 'Name', datafield: 'document__name',
+          align: 'center', cellsalign: 'left',
+          cellsrenderer: defaultLinkFormatter, columngroup: 'Document' },
+        { text: 'Type', datafield: 'document__document_type', width: 100,
+          align: 'center', cellsalign: 'center', columngroup: 'Document' },
+        { text: 'Employee', datafield: 'name', width: 150,
+          align: 'center', cellsalign: 'left'},
+        { text: 'Annual Salary', datafield: 'annual_salary', classname: 'two-lines-col',
+          align: 'center', cellsalign: 'center', width: 60 },
+        { text: 'Currency', datafield: 'salary_currency', width: 60,
+          align: 'center', cellsalign: 'center' },
+        { text: 'Annual vacation', datafield: 'vacation_yearly', classname: 'two-lines-col',
+          align: 'center', cellsalign: 'center', width: 80 },
+        { text: 'Governing Law', datafield: 'governing_geo', classname: 'two-lines-col',
+          align: 'center', cellsalign: 'center', width: 80 },
+        { text: 'Employer Name', datafield: 'employer__name', width: 200,
+          align: 'center', cellsalign: 'center' },
+        { text: 'Non- Compete', datafield: 'has_noncompete', classname: 'two-lines-col',
+          width: 65,  columntype: 'checkbox', resizable: false, type: 'bool',
+          align: 'center', cellsalign: 'center' },
+        { text: 'Termi- nation', datafield: 'has_termination', classname: 'two-lines-col',
+          width: 65,  columntype: 'checkbox', resizable: false, type: 'bool',
+          align: 'center', cellsalign: 'center' },
+        { text: 'Severance', datafield: 'has_severance', classname: 'two-lines-col',
+          width: 65,  columntype: 'checkbox', resizable: false, type: 'bool',
+          align: 'center', cellsalign: 'center' },
+        { text: 'Effective Date', datafield: 'effective_date', width: 80, classname: 'two-lines-col',
+          enabletooltips:true, align: 'center', cellsalign: 'center',
+          format: 'yyyy-MM-dd', cellsformat: 'yyyy-MM-dd'},
+        { text: 'Action', datafield: 'url', width: 60,
+          align: 'center', exportable: false,
+          columntype: 'button',
+          sortable: false, filterable: false, menu: false,
+          cellsrenderer: function(){return 'Menu'},
+          buttonclick: menu_renderer }
+      ];
+
+      var custom_grid_options = {
+        columngroups: [
+          { text: 'Document', name: 'Document', align: 'center' }
+        ]
+      };
+      draw_grid(".jqxgrid", datafields, columns, true, null, custom_grid_options);
+
+      // geo chart
+      function load_geo_map() {
+        google.charts.load('upcoming', {'packages':['geochart']});
+        google.charts.setOnLoadCallback(drawGeoChart);
+        $('a[href="#tab-2"]').addClass('activated')
+      }
+      function drawGeoChart() {
+        $.ajaxSetup({ cache: false });
+        //var usa_only = $('#usa_only').is(':checked');
+        var usa_only = true;
+        $.ajax("{% url "employee:employee-geo-chart" %}?usa_only="+usa_only)
+            .done(function(json){
+              var data = google.visualization.arrayToDataTable(json);
+              var options = {
+                displayMode: "regions"
+              };
+              if (usa_only){
+                options.region = "US";
+                options.resolution = "provinces";
+              }
+              var chart = new google.visualization.GeoChart(document.getElementById('geo_chart'));
+              chart.draw(data, options);
+            })
+      }
+
+      $('a[href="#tab-2"]').on( 'click', function( evt ) {
+        if (!$(this).hasClass('activated')){
+          load_geo_map()
+        }
+      });
+      $('#usa_only').change(function () {
+        load_geo_map()
+      })
+
+    });
+  </script>
+{% endblock %}

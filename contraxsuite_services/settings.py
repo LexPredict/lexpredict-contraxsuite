@@ -88,6 +88,14 @@ INSTALLED_APPS = (
     'allauth_2fa',
     'constance',     # django-constance
     'constance.backends.database',    # django-constance backend
+    'corsheaders',     # inject CORS headers into response
+
+    # django-rest
+    'rest_framework',
+    'rest_framework.authtoken',
+    'rest_auth',
+    'rest_auth.registration',
+    'rest_framework_swagger',
 
     # LOCAL_APPS
     'apps.common',
@@ -97,11 +105,15 @@ INSTALLED_APPS = (
     'apps.project',
     'apps.task',
     'apps.users',
+    'apps.employee',
+    'apps.lease',
+    'apps.fields',
 )
 
 # MIDDLEWARE CONFIGURATION
 # ------------------------------------------------------------------------------
 MIDDLEWARE = (
+    'corsheaders.middleware.CorsMiddleware',
     'django.middleware.gzip.GZipMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
@@ -117,6 +129,7 @@ MIDDLEWARE = (
     'apps.common.middleware.HttpResponseNotAllowedMiddleware',
     'apps.common.middleware.RequestUserMiddleware',
     'apps.common.middleware.AppEnabledRequiredMiddleware',
+    'apps.common.middleware.CookieMiddleware',
     # django-pipeline middleware for minifying data
     'pipeline.middleware.MinifyHTMLMiddleware',
     # Configure the django-otp package. Note this must be after the
@@ -376,6 +389,8 @@ CKEDITOR_CONFIGS = {
 # LoginRequiredMiddleware settings
 LOGIN_EXEMPT_URLS = (
     r'^accounts/',    # allow any URL under /accounts/*
+    r'^rest-auth/',   # allow any URL under /rest-auth/*
+    r'^api/v',        # allow any URL under /api/v*
     r'^__debug__/',   # allow debug toolbar
     r'^extract/search/',
 )
@@ -451,6 +466,33 @@ CONSTANCE_CONFIG = {
 }
 CONSTANCE_BACKEND = 'constance.backends.database.DatabaseBackend'
 
+# django-rest-framework settings
+# http://www.django-rest-framework.org/
+# from rest_framework.authentication import SessionAuthentication
+REST_FRAMEWORK = {
+    'DEFAULT_VERSIONING_CLASS': 'rest_framework.versioning.NamespaceVersioning',
+    'DEFAULT_VERSION': 'v1',
+    'ALLOWED_VERSIONS': ('v1', ),
+    'DEFAULT_AUTHENTICATION_CLASSES': (
+        'auth.CookieAuthentication',
+        # 'rest_framework.authentication.TokenAuthentication',
+        # 'rest_framework.authentication.SessionAuthentication',
+    ),
+    'DEFAULT_PERMISSION_CLASSES': (
+        'rest_framework.permissions.IsAuthenticated',
+    )
+}
+SWAGGER_SETTINGS = {
+    'SECURITY_DEFINITIONS': {
+        'api_key': {
+            'type': 'apiKey',
+            'in': 'header',
+            'name': 'Authorization'
+        }
+    },
+    'USE_SESSION_AUTH': False,
+    'JSON_EDITOR': True,
+}
 # tika settings (is not used for now)
 # TIKA_VERSION = '1.14'
 # TIKA_SERVER_JAR = ROOT_DIR('../libs/tika/tika-server-1.14.jar')
@@ -519,8 +561,14 @@ NOTEBOOK_ARGUMENTS = [
     '--port=8000',
 ]
 
-VERSION_NUMBER = '1.0.5'
-VERSION_COMMIT = '7d3f00e'
+# django-cors-headers settings
+# https://github.com/ottoyiu/django-cors-headers/
+CORS_ORIGIN_ALLOW_ALL = True
+CORS_ALLOW_CREDENTIALS = False
+CORS_URLS_REGEX = r'^/api/.*$'
+
+VERSION_NUMBER = '1.0.6'
+VERSION_COMMIT = '0040f4d'
 
 try:
     from local_settings import *
@@ -575,3 +623,7 @@ AUTOLOGIN_TEST_USER_FORBIDDEN_URLS = [
 
 DATA_UPLOAD_MAX_NUMBER_FIELDS = None
 PIPELINE['PIPELINE_ENABLED'] = PIPELINE_ENABLED
+
+FIELDS_RETRAIN_MODEL_ON_ANNOTATIONS_CHANGE = False
+
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTOCOL', 'https')

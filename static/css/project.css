@@ -1089,3 +1089,17 @@ footer .footer-slider .t-rotate {
   font-weight: bold;
   box-shadow: 10px 10px 15px #555;
 }
+
+.editor_holder .form-control label {
+  float: left;
+  width: 50%;
+}
+
+.editor_holder .form-control input {
+  float: right;
+  width: 50%;
+  border-top: 0px;
+  border-left: 0px;
+  border-right: 0px;
+  border-bottom: 1px solid #888;
+}

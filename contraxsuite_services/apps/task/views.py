@@ -53,7 +53,7 @@ from apps.task.tasks import call_task, clean_tasks, purge_task
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2017, ContraxSuite, LLC"
 __license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.0.5/LICENSE"
-__version__ = "1.0.5"
+__version__ = "1.0.6"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -109,6 +109,7 @@ class BaseAjaxTaskView(AdminRequiredMixin, JSONResponseView):
             data = form.cleaned_data
         data['user_id'] = request.user.pk
         data['metadata'] = self.get_metadata()
+        data['module_name'] = self.__module__.replace('views', 'tasks')
         call_task(self.task_name, **data)
         return self.json_response('The task is started. It can take a while.')
 
@@ -362,7 +363,7 @@ class SimilarityView(BaseAjaxTaskView):
 
 
 class PartySimilarityView(BaseAjaxTaskView):
-    task_name = 'PartySimilarity'
+    task_name = 'Party Similarity'
     form_class = PartySimilarityForm
 
     def get_metadata(self):

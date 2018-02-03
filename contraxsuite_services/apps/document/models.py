@@ -39,7 +39,7 @@ from apps.users.models import User
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2017, ContraxSuite, LLC"
 __license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.0.5/LICENSE"
-__version__ = "1.0.5"
+__version__ = "1.0.6"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -96,6 +96,8 @@ class Document(models.Model):
     # If relevant, URI/path within document source
     source_path = models.CharField(max_length=1024, db_index=True, null=True)
 
+    full_text = models.TextField(null=True)
+
     # Pre-calculated length statistics for paragraph and sentence
     paragraphs = models.PositiveIntegerField(default=0, null=False)
     sentences = models.PositiveIntegerField(default=0, null=False)
@@ -115,6 +117,10 @@ class Document(models.Model):
 
     def __repr__(self):
         return "Document (id={0})".format(self.id)
+
+    @property
+    def text(self):
+        return '\n'.join(self.textunit_set.values_list('text', flat=True))
 
 
 class DocumentTag(models.Model):
@@ -136,7 +142,7 @@ class DocumentTag(models.Model):
         ordering = ('document', 'tag', 'timestamp')
 
     def __str__(self):
-        return "DocumentTag (document={0}, tag={1}" \
+        return "DocumentTag (document={0}, tag={1})" \
             .format(self.document.id, self.tag)
 
     def __repr__(self):
@@ -171,11 +177,11 @@ class DocumentProperty(TimeStampedModel):
         verbose_name_plural = 'Document Properties'
 
     def __str__(self):
-        return "DocumentProperty (document={0}, key={1}, value={2}" \
+        return "DocumentProperty (document={0}, key={1}, value={2})" \
             .format(self.document, self.key, self.value)
 
     def __repr__(self):
-        return "DocumentProperty (document={0}, key={1}" \
+        return "DocumentProperty (document={0}, key={1})" \
             .format(self.document.id, self.key)
 
 
@@ -205,11 +211,11 @@ class DocumentRelation(models.Model):
     relation_type = models.CharField(max_length=128)
 
     def __str__(self):
-        return "DocumentRelation (document_a={0}, document_b={1}, relation_type={2}" \
+        return "DocumentRelation (document_a={0}, document_b={1}, relation_type={2})" \
             .format(self.document_a, self.document_b, self.relation_type)
 
     def __repr__(self):
-        return "DocumentRelation (document_a={0}, document_b={1}, relation_type={2}" \
+        return "DocumentRelation (document_a={0}, document_b={1}, relation_type={2})" \
             .format(self.document_a.id, self.document_b.id, self.relation_type)
 
 
@@ -240,11 +246,11 @@ class DocumentNote(models.Model):
         ordering = ('document__name', 'timestamp')
 
     def __str__(self):
-        return "DocumentNote (document={0}, note={1}, timestamp={2}" \
+        return "DocumentNote (document={0}, note={1}, timestamp={2})" \
             .format(self.document, len(self.note), self.timestamp)
 
     def __repr__(self):
-        return "DocumentNote (document={0}, note={1}" \
+        return "DocumentNote (document={0}, note={1})" \
             .format(self.document.id, self.id)
 
 
@@ -276,7 +282,7 @@ class TextUnit(models.Model):
         ordering = ('document__name', 'unit_type')
 
     def __str__(self):
-        return "TextUnit (id={4}, document={0}, unit_type={1}, language={2}, len(text)={3}" \
+        return "TextUnit (id={4}, document={0}, unit_type={1}, language={2}, len(text)={3})" \
             .format(self.document, self.unit_type, self.language, len(self.text), self.id, )
 
     def __repr__(self):
@@ -309,7 +315,7 @@ class TextUnitTag(models.Model):
         ordering = ('text_unit', 'tag', 'timestamp')
 
     def __str__(self):
-        return "TextUnitTag (text_unit={0}, tag={1}" \
+        return "TextUnitTag (text_unit={0}, tag={1})" \
             .format(self.text_unit, self.tag)
 
     def __repr__(self):
@@ -338,7 +344,7 @@ class TextUnitProperty(TimeStampedModel):
         verbose_name_plural = 'Text Unit Properties'
 
     def __str__(self):
-        return "TextUnitProperty (text_unit_pk={0}, key={1}, value={2}" \
+        return "TextUnitProperty (text_unit_pk={0}, key={1}, value={2})" \
             .format(self.text_unit.pk, self.key, self.value)
 
     def __repr__(self):
@@ -371,11 +377,11 @@ class TextUnitRelation(models.Model):
     relation_type = models.CharField(max_length=128)
 
     def __str__(self):
-        return "TextUnitRelation (text_unit_a={0}, text_unit_b={1}, relation_type={2}" \
+        return "TextUnitRelation (text_unit_a={0}, text_unit_b={1}, relation_type={2})" \
             .format(self.document_a, self.document_b, self.relation_type)
 
     def __repr__(self):
-        return "TextUnitRelation (text_unit_a={0}, text_unit_b={1}, relation_type={2}" \
+        return "TextUnitRelation (text_unit_a={0}, text_unit_b={1}, relation_type={2})" \
             .format(self.text_unit_a.id, self.text_unit_b.id, self.relation_type)
 
 
@@ -405,7 +411,7 @@ class TextUnitNote(models.Model):
         ordering = ('text_unit', 'timestamp')
 
     def __str__(self):
-        return "TextUnitNote (text_unit={0}, note={1}, timestamp={2}" \
+        return "TextUnitNote (text_unit={0}, note={1}, timestamp={2})" \
             .format(self.text_unit, len(self.note), self.timestamp)
 
     def __repr__(self):

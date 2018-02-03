@@ -32,6 +32,11 @@ import os
 import re
 from functools import reduce
 
+# Third-party imports
+from rest_framework import serializers
+from rest_framework.filters import BaseFilterBackend
+from rest_framework.generics import ListAPIView
+
 # Django imports
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin, PermissionRequiredMixin
@@ -51,7 +56,7 @@ from apps.common.utils import cap_words, export_qs_to_file
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2017, ContraxSuite, LLC"
 __license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.0.5/LICENSE"
-__version__ = "1.0.5"
+__version__ = "1.0.6"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -301,6 +306,12 @@ class JSONResponseView(View):
     def post(self, request, *args, **kwargs):
         return self.response(request, *args, **kwargs)
 
+    def put(self, request, *args, **kwargs):
+        return self.response(request, *args, **kwargs)
+
+    def delete(self, request, *args, **kwargs):
+        return self.response(request, *args, **kwargs)
+
     def get_json_data(self, request, *args, **kwargs):
         return []
 
@@ -530,3 +541,49 @@ class JqPaginatedListView(AjaxListView):
                'none': None, 'None': None, 'null': None, 'Null': None}
         ret_value = rel.get(value, '')
         return ret_value
+
+
+class SimpleRelationSerializer(serializers.ModelSerializer):
+    """
+    Serializer that extracts nested relations as char field
+    """
+
+    def get_fields(self):
+        for field in self.Meta.fields:
+            if '__' in field:
+                self._declared_fields[field] = serializers.CharField(
+                    source='.'.join(field.split('__')),
+                    read_only=True)
+        return super().get_fields()
+
+
+class JqFilterBackend(BaseFilterBackend):
+
+    def filter_queryset(self, request, queryset, *args):
+        jq_view = JqPaginatedListView(request=request)
+        if 'enable_pagination' in request.GET and 'pagenum' in request.GET:
+            queryset = jq_view.paginate(queryset)
+        if 'sortfield' in request.GET or 'filterscount' in request.GET:
+            queryset = jq_view.filter_and_sort(queryset)
+        return queryset
+
+
+class JqListAPIView(ListAPIView):
+    """
+    Filter, sort and paginate queryset using jqWidgets' grid GET params
+    """
+    filter_backends = [JqFilterBackend]
+
+
+class TypeaheadAPIView(ReviewerQSMixin, ListAPIView):
+
+    def get(self, request, *args, **kwargs):
+        qs = self.model.objects.all()
+        if "q" in request.GET:
+            search_key = '%s__icontains' % self.search_field
+            qs = qs.filter(**{search_key: request.GET.get("q")})\
+                .order_by(self.search_field).distinct(self.search_field)
+        return JsonResponse(self.qs_to_values(qs), encoder=DjangoJSONEncoder, safe=False)
+
+    def qs_to_values(self, qs):
+        return [{"value": i} for i in qs.values_list(self.search_field, flat=True)]

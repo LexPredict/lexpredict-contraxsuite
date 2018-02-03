@@ -1,0 +1,314 @@
+{% extends "base.html" %}
+{% load static pipeline %}
+
+{% block css_extra %}
+  {% stylesheet 'custom_jqwidgets_css' %}
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/jquery-confirm/3.1.1/jquery-confirm.min.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/vis/4.20.1/vis.min.css">
+  <link rel="stylesheet" href="{% static "theme/css/components/radio-checkbox.css" %}" type="text/css" />
+
+  <style>
+    .jqx-grid-cell .jqx-button {
+      height: 96% !important;
+    }
+  </style>
+  <style>
+    .two-lines-col.jqx-grid-column-header > div:first-child > div:first-child {
+      margin-top: 25px !important;
+      margin-bottom: 4px !important;
+    }
+    .two-lines-col.jqx-grid-column-header > div:first-child > div:first-child > span {
+      white-space: normal;
+    }
+    #geo_chart {
+      height: 512px;
+      width: 100%;
+      margin-bottom: 20px;
+      border: 2px solid lightgrey;
+    }
+    .tabs.page-tabs .tab-nav a,
+    .page-tabs .nav-tabs a {
+      text-transform: uppercase;
+      color: #444;
+      font-weight: 600;
+      margin: 0;
+      font-family: 'Raleway', sans-serif;
+      font-size: 18px;
+      height: 40px;
+      line-height: 40px;
+      padding: 0 10px;
+    }
+    .tabs.page-tabs .tab-nav li:not(.ui-state-active) a,
+    .page-tabs .nav-tabs li:not(.active) a {
+      opacity: 0.5;
+    }
+    .tabs.page-tabs .tab-nav li:not(.ui-state-active) a:hover,
+    .page-tabs .nav-tabs li:not(.active) a:hover {
+      opacity: 1;
+    }
+    .page-tabs > .nav > li > a:hover,
+    .page-tabs > .nav > li > a:focus {
+      background-color: inherit;
+      border: inherit;
+    }
+    .nav-tabs > li.active > a,
+    .nav-tabs > li.active > a:hover,
+    .nav-tabs > li.active > a:focus {
+      color: inherit;
+      background-color: inherit;
+      border: none;
+      border-bottom: 2px solid #1ABC9C;
+    }
+    .page-tabs .tab-pane:target {
+      background: transparent;
+      padding: 0;
+      border: none;
+    }
+  </style>
+  {{ block.super }}
+{% endblock %}
+
+{% block Title %}Employer Summary View{% endblock %}
+
+{% block page_header %}Employer Summary View{% endblock %}
+
+{% block content %}
+  <h3>{{ object.name }}</h3><hr />
+
+  <table class="table table-bordered table-striped">
+    <thead class="thead-inverse">
+    <tr>
+      <th>Name</th>
+      <th>Total Contracts</th>
+      <th>Employees</th>
+    </tr>
+    </thead>
+    <tbody>
+    <tr>
+      <td>{{ object.name }}</td>
+      <td>{{ total_contracts|default:"-" }}</td>
+      <td>{{ total_employees|default:"-" }}</td>
+    </tr>
+    </tbody>
+  </table>
+  <div class="tabs page-tabs mt-40" id="tabs1">
+
+    <ul class="nav nav-tabs tab-nav boot-tabs mb-10">
+      <li class="active"><a data-toggle="tab" href="#tab-1">Employee Contracts<span class="badge badge-s pull-right employees-badge"></span></a></li>
+      <li><a data-toggle="tab" href="#tab-2">Employees Count by Governing Law<span class="badge badge-s pull-right chart1-badge"></span></a></li>
+      <li><a data-toggle="tab" href="#tab-3">Employee Contracts Executed Over Time<span class="badge badge-s pull-right chart2-badge"></span></a></li>
+    </ul>
+
+    <div class="tab-content">
+
+      <div class="tab-pane clearfix active" id="tab-1">
+        <div class="pull-right grid-controls">
+          {% include '_base_grid_buttons_block.html' %}
+        </div>
+        <div class="jqxgrid-container">
+          <div class="jqxgrid col-md-12 jqxgrid-employees"></div>
+        </div>
+      </div>
+
+      <div class="tab-pane clearfix" id="tab-2">
+        {#  <span class="checkbox-ltr-full-width">#}
+        {#    <input class="checkbox-style" id="usa_only" name="usa_only" type="checkbox" checked="checked">#}
+        {#    <label for="usa_only" class="checkbox-style-3-label">#}
+        {#      USA Only#}
+        {#    </label>#}
+        {#  </span>#}
+        <div id="geo_chart">
+          <div class="loader-container">
+            <div class="loader"></div>
+            <span>Loading...</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="tab-pane clearfix" id="tab-3">
+        <div id="timeline_chart">
+          <div class="loader-container">
+            <div class="loader"></div>
+            <span>Loading...</span>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+{% endblock %}
+
+{% block js_extra %}
+  {% include "_base_jqxgrid_block.html" %}
+
+  <script type="text/javascript">
+    $(document).ready(function () {
+
+      var employee_datafields = [
+        { name: 'pk', type: 'int' },
+        { name: 'document__name', type: 'string' },
+        { name: 'document__document_type', type: 'string' },
+        { name: 'document__description', type: 'string' },
+        { name: 'name', type: 'string' },
+        { name: 'annual_salary', type: 'float' },
+        { name: 'salary_currency', type: 'string'},
+        { name: 'effective_date', type: 'date' },
+        { name: 'has_noncompete', type:'bool' },
+        { name: 'has_termination', type:'bool' },
+        { name: 'url' , type: 'string' },
+        { name: 'detail_url', type:'string' },
+        { name: 'vacation_yearly', type:'string' },
+        { name: 'governing_geo', type:'string' }
+      ];
+      var menu_renderer = function(row, event) {
+        var grid = $(event.currentTarget).parents('.jqxgrid');
+        row = grid.jqxGrid('getrowdata', row);
+        var menu_data = [
+          {url: row.url,
+            icon: 'fa fa-file-text-o',
+            text: 'View Document'},
+          {url: row.detail_url,
+            icon: 'fa fa-user',
+            text: 'View Employee'}
+        ];
+        show_menu(menu_data, grid, row.pk);
+      };
+      var employee_columns = [
+        { text: 'Name', datafield: 'document__name',
+          align: 'center', cellsalign: 'left',
+          cellsrenderer: defaultLinkFormatter, columngroup: 'Document' },
+        { text: 'Type', datafield: 'document__document_type', width: 100,
+          align: 'center', cellsalign: 'center', columngroup: 'Document' },
+        { text: 'Employee', datafield: 'name', width: 150,
+          align: 'center', cellsalign: 'left'},
+        { text: 'Annual Salary', datafield: 'annual_salary', classname: 'two-lines-col',
+          align: 'center', cellsalign: 'center', width: 60 },
+        { text: 'Currency', datafield: 'salary_currency', width: 60,
+          align: 'center', cellsalign: 'center' },
+        { text: 'Annual vacation', datafield: 'vacation_yearly', classname: 'two-lines-col',
+          align: 'center', cellsalign: 'center', width: 80 },
+        { text: 'Governing Law', datafield: 'governing_geo', classname: 'two-lines-col',
+          align: 'center', cellsalign: 'center', width: 80 },
+        { text: 'Non- Compete', datafield: 'has_noncompete', classname: 'two-lines-col',
+          width: 65,  columntype: 'checkbox', resizable: false, type: 'bool',
+          align: 'center', cellsalign: 'center' },
+        { text: 'Termi- nation', datafield: 'has_termination', classname: 'two-lines-col',
+          width: 65,  columntype: 'checkbox', resizable: false, type: 'bool',
+          align: 'center', cellsalign: 'center' },
+        {text: 'Effective Date', datafield: 'effective_date', width: 80, classname: 'two-lines-col',
+          enabletooltips:true, align: 'center', cellsalign: 'center',
+          format: 'yyyy-MM-dd', cellsformat: 'yyyy-MM-dd'},
+        { text: 'Action', datafield: 'url', width: 60,
+          align: 'center', exportable: false,
+          columntype: 'button',
+          sortable: false, filterable: false, menu: false,
+          cellsrenderer: function(){return 'Menu'},
+          buttonclick: menu_renderer }
+      ];
+
+      var employee_custom_grid_options = {
+        columngroups: [
+          { text: 'Document', name: 'Document', align: 'center' }
+        ]
+      };
+
+      var employee_custom_source_data = {
+        url: '{% url "employee:employee-list" %}',
+        data: { 'employer_pk': {{ object.pk }} },
+        badgeClass: 'employees-badge'
+      };
+
+      draw_grid(".jqxgrid-employees", employee_datafields, employee_columns, false,
+          employee_custom_source_data, employee_custom_grid_options);
+
+    });
+  </script>
+
+  // geo chart
+  <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
+  <script type="text/javascript">
+    function load_geo_map() {
+      google.charts.load('upcoming', {'packages':['geochart']});
+      google.charts.setOnLoadCallback(drawGeoChart);
+      $('a[href="#tab-2"]').addClass('activated')
+    }
+    function drawGeoChart() {
+      $.ajaxSetup({ cache: false });
+      //var usa_only = $('#usa_only').is(':checked');
+      var usa_only = true;
+      $.ajax("{% url "employee:employee-geo-chart" %}?employer_pk={{ object.pk }}&usa_only="+usa_only)
+          .done(function(json){
+            var data = google.visualization.arrayToDataTable(json);
+            var options = {
+              displayMode: "regions"
+            };
+            if (usa_only){
+              options.region = "US";
+              options.resolution = "provinces";
+            }
+            var chart = new google.visualization.GeoChart(document.getElementById('geo_chart'));
+            chart.draw(data, options);
+          })
+    }
+
+    $('a[href="#tab-2"]').on( 'shown.bs.tab', function( evt ) {
+      if (!$(this).hasClass('activated')){
+        load_geo_map()
+      }
+    });
+    $('#usa_only').change(function () {
+      load_geo_map()
+    })
+
+  </script>
+
+  // timeline chart
+  <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/vis/4.20.1/vis.min.js"></script>
+  <script type="text/javascript">
+    $(function () {
+      $.ajaxSetup({ cache: false });
+
+      var draw_timeline = function(){
+        $('.loader-container').show();
+
+        $.get('{% url 'employee:employee-timeline-chart' %}?employer_pk={{ object.pk }}').done(function(response){
+          // hide the "loading..."
+          $('.loader-container').hide();
+
+          // DOM element where the Timeline will be attached
+          var container = document.getElementById("timeline_chart");
+          //var power = 8;
+
+          // process data
+          var data = [];
+          $.each(response.data, function(n, i){
+            var content = $('<a></a>')
+                .attr('href', i.url)
+                .text(i.name);
+            var item = { start: i.start,
+              content: content.get(0).outerHTML,
+              title: i.start };
+            data.push(item)
+          });
+
+          // Create a DataSet
+          var items = new vis.DataSet(data);
+
+          // Configuration for the Timeline
+          var options = { start: response.initial_start_date,
+            end: response.initial_end_date,
+            height: '400px',
+            maxHeight: '600px',
+            zoomMax: 315360000000,   // 1 year
+            zoomMin: 2592000000 };  // 30 days
+
+          // Create a Timeline
+          var timeline = new vis.Timeline(container, items, options);
+        })
+      };
+
+      draw_timeline();
+    })
+  </script>
+
+{% endblock %}

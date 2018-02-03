@@ -27,6 +27,12 @@
 # Future imports
 from __future__ import unicode_literals
 
+# Standard imports
+import importlib
+
+# Third-party imports
+from filebrowser.sites import site as filebrowser_site
+
 # Django imports
 from django.conf import settings
 from django.conf.urls import include, url
@@ -34,15 +40,16 @@ from django.conf.urls.static import static
 from django.contrib import admin
 from django.views.generic import TemplateView
 from django.views import defaults as default_views
-from filebrowser.sites import site as filebrowser_site
 
 # Project imports
+from settings import REST_FRAMEWORK
+from swagger_view import get_swagger_view
 from apps.project.views import DashboardView
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2017, ContraxSuite, LLC"
 __license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.0.5/LICENSE"
-__version__ = "1.0.5"
+__version__ = "1.0.6"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -68,20 +75,62 @@ urlpatterns = [
     # url(r'^task/', include('apps.task.urls', namespace='task')),
     # Custom
     url(r'^admin/filebrowser/', include(filebrowser_site.urls)),
+    url(r'^api-auth/', include('rest_framework.urls')),
+    url(r'^rest-auth/', include('rest_auth.urls')),
+    url(r'^rest-auth/registration/', include('rest_auth.registration.urls')),
 
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
 
 # autodiscover urls from custom apps
 namespaces = {getattr(i, 'namespace', None) for i in urlpatterns}
 custom_apps = [i.replace('apps.', '') for i in settings.INSTALLED_APPS if i.startswith('apps.')]
+
+api_urlpatterns = {api_version: [] for api_version in REST_FRAMEWORK['ALLOWED_VERSIONS']}
+
 for app_name in custom_apps:
     if app_name in namespaces:
         continue
-    try:
-        include_urls = include('apps.%s.urls' % app_name, namespace=app_name)
-    except ImportError:
+    module_str = 'apps.%s.urls' % app_name
+    spec = importlib.util.find_spec(module_str)
+    if not spec:
         continue
+    include_urls = include(module_str, namespace=app_name)
     urlpatterns += [url(r'^%s/' % app_name, include_urls)]
+
+    # add api urlpatterns
+    for api_version in REST_FRAMEWORK['ALLOWED_VERSIONS']:
+        api_module_str = 'apps.{}.api.{}'.format(app_name, api_version)
+        try:
+            api_module = importlib.import_module(api_module_str)
+        except ImportError:
+            continue
+        if hasattr(api_module, 'router'):
+            api_urlpatterns[api_version] += [
+                url(r'{version}/{app_name}/'.format(
+                    version=api_version,
+                    app_name=app_name),
+                    include(api_module.router.urls)),
+            ]
+        if hasattr(api_module, 'urlpatterns'):
+            api_urlpatterns[api_version] += [
+                url(r'{version}/{app_name}/'.format(
+                    version=api_version,
+                    app_name=app_name),
+                    include(api_module.urlpatterns)),
+            ]
+for api_version, this_api_urlpatterns in api_urlpatterns.items():
+    urlpatterns += [
+        url(r'^api/', include(this_api_urlpatterns, namespace=api_version)),
+    ]
+
+
+# django-rest-swagger urls
+# patched original rest_framework_swagger.views.get_swagger_view
+schema_view = get_swagger_view()
+urlpatterns += [
+    url(r'^api/(?:(?P<group_by>version|app)/)?$', schema_view, name='swagger')
+]
+
 
 # Manually add debug patterns
 if settings.DEBUG:

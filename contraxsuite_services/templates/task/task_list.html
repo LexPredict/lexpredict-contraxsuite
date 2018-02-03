@@ -129,8 +129,8 @@
       </li>
 
       {% if custom_task_menu_item_templates|length > 0 %}
-        <li class="divider"></li>
         {% for template in custom_task_menu_item_templates %}
+          <li class="divider"></li>
           {% include template %}
         {% endfor %}
       {% endif %}

@@ -27,6 +27,7 @@
 # Standard imports
 import datetime
 import hashlib
+import json
 import logging
 import math
 import os
@@ -104,7 +105,7 @@ from apps.task.utils.text.segment import segment_paragraphs, segment_sentences
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2017, ContraxSuite, LLC"
 __license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.0.5/LICENSE"
-__version__ = "1.0.5"
+__version__ = "1.0.6"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -127,10 +128,10 @@ transfer = TransferManager()
 
 
 def prepare_file_access_handler():
-    type = settings.CELERY_FILE_ACCESS_TYPE
-    if type == 'Local':
+    access_type = settings.CELERY_FILE_ACCESS_TYPE
+    if access_type == 'Local':
         return LocalFileAccess(settings.CELERY_FILE_ACCESS_LOCAL_ROOT_DIR)
-    elif type == 'Nginx':
+    elif access_type == 'Nginx':
         return NginxHttpFileAccess(settings.CELERY_FILE_ACCESS_NGINX_ROOT_URL)
     else:
         return None
@@ -158,7 +159,7 @@ def call_task(task_name, **options):
     )
     options['task_id'] = task.id
     task_class().apply_async(kwargs=options, task_id=task_id)
-    return True
+    return task.pk
 
 
 def log(message, level='info', task=None):
@@ -259,23 +260,22 @@ class LoadDocuments(BaseTask):
         # Note: we use tika-server, tika-app works slowly ~ x4 times
         for file_path in file_list:
             self.create_document.apply_async(
-                args=(file_path, kwargs),
+                args=(self, file_path, kwargs),
                 task_id='%d_%s' % (self.task.id, fast_uuid()))
 
-    @staticmethod
     @shared_task
-    def create_document(uri: str, kwargs):
+    def create_document(self, uri: str, kwargs):
         with file_access_handler.get_local_fn(uri) as (fn, file_name):
-            LoadDocuments.create_document_local(fn, uri, kwargs)
+            return self.create_document_local(fn, uri, kwargs)
 
-    @staticmethod
-    def create_document_local(file_path, file_name, kwargs):
+    def save_extra_document_data(self, *args, **kwargs):
+        pass
 
-        task_id = kwargs['task_id']
+    def create_document_local(self, file_path, file_name, kwargs):
 
         # Check for existing record
         if Document.objects.filter(description=file_name).exists():
-            log(task_id, 'SKIP (EXISTS): ' + file_name)
+            self.log('SKIP (EXISTS): ' + file_name)
             return
 
         # process by tika
@@ -298,11 +298,11 @@ class LoadDocuments(BaseTask):
                 text = textract2text(file_path)
                 parser_name = 'textract'
             except:
-                log(task_id, 'SKIP (ERROR): ' + file_name)
+                self.log('SKIP (ERROR): ' + file_name)
                 return
 
         if not text:
-            log(task_id, 'SKIP (ERROR): ' + file_name)
+            self.log('SKIP (ERROR): ' + file_name)
             return
 
         metadata['parsed_by'] = parser_name
@@ -311,7 +311,7 @@ class LoadDocuments(BaseTask):
         try:
             language = lang.get_language_langid(text)[0]
         except:
-            log(task_id, 'SKIP (LANGUAGE NOT DETECTED): ' + file_name)
+            self.log('SKIP (LANGUAGE NOT DETECTED): ' + file_name)
             return
 
         # detect title
@@ -322,14 +322,15 @@ class LoadDocuments(BaseTask):
 
         # Create document object
         document = Document.objects.create(
-            document_type=kwargs['document_type'],
+            document_type=kwargs.get('document_type', now().strftime('%Y-%m-%d')),
             name=os.path.basename(file_name),
             description=file_name,
             source=os.path.dirname(file_name),
-            source_type=kwargs['source_type'],
+            source_type=kwargs.get('source_type'),
             source_path=file_name,
             metadata=metadata,
-            title=title)
+            title=title,
+            full_text=text)
 
         # create Document Properties
         document_properties = [
@@ -391,8 +392,23 @@ class LoadDocuments(BaseTask):
                     value=str(round(subjectivity)))]
         TextUnitProperty.objects.bulk_create(text_unit_properties)
 
-        log(message='LOADED (%s): %s' % (parser_name.upper(), file_name),
-            task=task_id)
+        # save extra document info
+        kwargs['document'] = document
+        self.save_extra_document_data(**kwargs)
+
+        self.log(message='LOADED (%s): %s' % (parser_name.upper(), file_name))
+        self.log(message='Document pk: %d' % document.pk)
+
+        # to call task locate for a document right after document processed
+        if kwargs.get('locate'):
+            locate_task_id = call_task(
+                'Locate',
+                locate=kwargs['locate'],
+                document_id=document.pk,
+                parse='paragraphs',
+                user_id=kwargs['user_id'])
+            self.log(message='locate_task_id: {}'.format(locate_task_id))
+            return json.dumps({'locate_task_id': locate_task_id, 'document_id': document.pk})
 
 
 class UpdateElasticsearchIndex(BaseTask):
@@ -410,8 +426,7 @@ class UpdateElasticsearchIndex(BaseTask):
             'language': tu.language,
             'text_hash': tu.text_hash
         }
-
-        res = es.index(index=settings.ELASTICSEARCH_CONFIG['index'], doc_type='text_unit', id=tu.pk, body=es_doc)
+        es.index(index=settings.ELASTICSEARCH_CONFIG['index'], doc_type='text_unit', id=tu.pk, body=es_doc)
 
     def process(self, **kwargs):
         self.task.subtasks_total = 1
@@ -606,7 +621,7 @@ class LoadCourts(BaseTask):
     """
     Load Courts data from a file OR github repo
     """
-    name = 'LoadCourts'
+    name = 'Load Courts'
 
     def process(self, **kwargs):
         """
@@ -713,30 +728,56 @@ class Locate(BaseTask):
                                     length=len(term_stems[item]))
         return term_stems
 
+    def delete_existing_usages(self, locator_names, document_id):
+        # delete ThingUsage and TextUnitTag(tag=thing)
+        for locator_name in locator_names:
+            usage_model_names = self.usage_model_map.get(
+                locator_name,
+                [locator_name.title() + 'Usage'])
+            for usage_model_name in usage_model_names:
+                usage_model = getattr(extract_models, usage_model_name)
+                usage_model_objects = usage_model.objects.all()
+                if document_id:
+                    usage_model_objects = usage_model_objects.filter(
+                        text_unit__document_id=document_id)
+                deleted = usage_model_objects.delete()
+                self.log('Deleted {} {} objects'.format(
+                    deleted[0], usage_model_name))
+            tag_objects = TextUnitTag.objects.filter(tag=locator_name)
+            if document_id:
+                tag_objects = tag_objects.filter(text_unit__document_id=document_id)
+            tags_deleted = tag_objects.delete()
+            self.log('Deleted {} TextUnitTag(tag={})'.format(
+                tags_deleted[0], locator_name))
+
     def process(self, **kwargs):
 
-        # delete ThingUsage and TextUnitTag(tag=thing)
-        locate = {}
-        available_locators = list(settings.REQUIRED_LOCATORS) + list(config.standard_optional_locators)
-        for term_name, term_kwargs in kwargs['tasks'].items():
-            if term_name not in available_locators:
-                continue
-            if term_kwargs.get('delete') or term_kwargs.get('locate'):
-                usage_model_names = self.usage_model_map.get(
-                    term_name,
-                    [term_name.title() + 'Usage'])
-                for usage_model_name in usage_model_names:
-                    usage_model = getattr(extract_models, usage_model_name)
-                    deleted = usage_model.objects.all().delete()
-                    self.log('Deleted {} {} objects'.format(
-                        deleted[0], usage_model_name))
-                tags_deleted = TextUnitTag.objects.filter(tag=term_name).delete()
-                self.log('Deleted {} TextUnitTag(tag={})'.format(
-                    tags_deleted[0], term_name))
+        document_id = kwargs.get('document_id')
+
+        # detect items to locate/delete
+        if 'locate' in kwargs:
+            locate = kwargs['locate']
+            do_delete = locate
+        else:
+            locate = {}
+            do_delete = []
+            for term_name, term_kwargs in kwargs['tasks'].items():
+                if term_kwargs.get('delete') or term_kwargs.get('locate'):
+                    do_delete.append(term_name)
                 if term_kwargs.get('locate'):
                     locate[term_name] = {i: j for i, j in term_kwargs.items()
                                          if i not in ['locate', 'delete']}
 
+        # cleanup items to locate/delete
+        available_locators = list(settings.REQUIRED_LOCATORS) + list(
+            config.standard_optional_locators)
+        locate = {i: j for i, j in locate.items() if i in available_locators}
+        do_delete = [i for i in do_delete if i in available_locators]
+
+        # delete ThingUsage and TextUnitTag(tag=thing)
+        self.delete_existing_usages(do_delete, document_id)
+
+        # interrupt if no items to locate
         if not locate:
             self.task.force_complete()
             return
@@ -753,11 +794,14 @@ class Locate(BaseTask):
 
         # define number of async tasks
         text_units = TextUnit.objects.all()
-        if kwargs['parse'] == 'paragraphs':
+        if document_id:
+            text_units = text_units.filter(document_id=document_id)
+        if kwargs.get('parse', 'paragraphs') == 'paragraphs':
             text_units = text_units.filter(unit_type='paragraph')
             locate_in = 'paragraphs'
         else:
             locate_in = 'paragraphs and sentences'
+
         self.log('Run location of [{}].'.format('; '.join(locate.keys())))
         self.log('Locate in [{}].'.format(locate_in))
         self.task.subtasks_total = text_units.count()
@@ -765,11 +809,14 @@ class Locate(BaseTask):
         self.log('Found {0} Text Units. Added {0} subtasks.'.format(
             self.task.subtasks_total))
 
-        # Putting 'locate' dict as large args for further multiple runs of parse_text_unit child tasks
+        # Putting 'locate' dict as large args for further multiple runs
+        # of parse_text_unit child tasks
         locate_cache_key = Locate.__name__ + str(self.task.id)
         transfer.put(key=locate_cache_key, value=locate)
 
-        for text_unit_id, text, text_unit_lang in text_units.values_list('id', 'text', 'language'):
+        for text_unit_id, text, text_unit_lang in text_units.values_list('pk', 'text', 'language'):
+            if not text_unit_id:
+                continue
             self.parse_text_unit.apply_async(
                 args=(text_unit_id, text_unit_lang, text, kwargs['user_id'], locate_cache_key),
                 task_id='%d_%s' % (self.task.id, fast_uuid()))
@@ -1037,7 +1084,7 @@ def parse_url(text, text_unit_id, _text_unit_lang):
 
 def parse_geoentity(text, text_unit_id, text_unit_lang, **kwargs):
     geo_config = kwargs['geo_config']
-    priority = kwargs['priority']
+    priority = kwargs.get('priority', True)
     entity_alias_pairs = list(geoentities.get_geoentities(text,
                                                           geo_config,
                                                           text_languages=[text_unit_lang],
@@ -1104,7 +1151,7 @@ class LocateTerms(BaseTask):
     """
     Locate terms in text units
     """
-    name = 'LocateTerms'
+    name = 'Locate Terms'
 
     def process(self, **kwargs):
         """
@@ -1673,7 +1720,7 @@ class PartySimilarity(BaseTask):
     """
     Task for the identification of similar party names.
     """
-    name = 'PartySimilarity'
+    name = 'Party Similarity'
 
     def process(self, **kwargs):
         """

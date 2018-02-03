@@ -1,0 +1,29 @@
+{% extends "base_list_ajax.html" %}
+{% load static %}
+
+{% block js_extra %}
+  {{ block.super }}
+  <script type="text/javascript">
+    $(document).ready(function () {
+      var datafields = [
+        { name: 'pk', type: 'int' },
+        { name: 'text_unit', type: 'string' },
+        { name: 'similarity', type: 'float' },
+        { name: 'employee__name', type:'string' },
+        { name: 'employee__pk', type: 'int' }
+      ];
+      var columns = [
+        { text: 'Provision', datafield: 'text_unit',
+          align: 'center', cellsalign: 'left', enabletooltips: true },
+        { text: 'Confidence', datafield: 'similarity', width: 100,
+          align: 'center', cellsalign: 'left' },
+        { text: 'Employee_PK', datafield: 'employee__pk', width: 100,
+          align: 'center', cellsalign: 'left' }
+      ];
+      var custom_grid_options= { autorowheight: true };
+
+      draw_grid(".jqxgrid", datafields, columns, true, null, custom_grid_options);
+
+    });
+  </script>
+{% endblock %}

@@ -1,0 +1,50 @@
+{% extends "base_list_ajax.html" %}
+{% load static %}
+
+{% block js_extra %}
+  {{ block.super }}
+  <script type="text/javascript">
+    $(document).ready(function () {
+      var datafields = [
+        { name: 'pk', type: 'int' },
+        { name: 'text_unit__text', type: 'string' },
+        { name: 'similarity', type: 'float' },
+        { name: 'employee__name', type:'string' },
+        { name: 'employee__pk', type: 'int' },
+        { name: 'text_unit__pk', type: 'int' },
+        { name: 'detail_url', type:'string' }
+      ];
+
+      var menu_renderer = function(row, event) {
+        var grid = $(event.currentTarget).parents('.jqxgrid');
+        row = grid.jqxGrid('getrowdata', row);
+        var menu_data = [
+          { url: row.detail_url,
+            icon: 'fa fa-info-circle',
+            text: 'View Text Unit'}
+        ];
+        show_menu(menu_data, grid, row.pk);
+      };
+
+      var columns = [
+        { text: 'Provision', datafield: 'text_unit__text',
+          align: 'center', cellsalign: 'left', enabletooltips: true},
+        { text: 'Confidence', datafield: 'similarity', width: 100,
+          align: 'center', cellsalign: 'left'},
+        { text: 'Employee_PK', datafield: 'employee__pk', width: 100,
+          align: 'center', cellsalign: 'left'},
+        { text: 'Action', datafield: 'detail_url', width: 60,
+          align: 'center', exportable: false,
+          columntype: 'button',
+          sortable: false, filterable: false, menu: false,
+          cellsrenderer: function(){return 'Menu'},
+          buttonclick: menu_renderer }
+      ];
+
+      var custom_grid_options= { autorowheight: true };
+
+      draw_grid(".jqxgrid", datafields, columns, true, null, custom_grid_options);
+
+    });
+  </script>
+{% endblock %}
