@@ -1,0 +1,3 @@
+volumes/
+kubernetes-temp/
+setenv_local.sh

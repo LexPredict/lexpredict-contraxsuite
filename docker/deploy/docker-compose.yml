@@ -1,0 +1,170 @@
+version: "3"
+services:
+
+  contrax_redis:
+    image: redis
+    volumes:
+      - redis_data:/data
+    networks:
+      - contrax_net
+    deploy:
+      replicas: 1
+      placement:
+        constraints: [node.role == manager]
+
+  contrax_elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:6.0.0
+    volumes:
+      - elasticsearch_data:/usr/share/elasticsearch/data
+    networks:
+      - contrax_net
+    environment:
+      - "xpack.security.enabled=false"
+    deploy:
+      replicas: 1
+      placement:
+        constraints: [node.role == manager]
+
+  contrax_rabbitmq:
+    image: rabbitmq:3-management
+    networks:
+      - contrax_net
+    environment:
+      - "RABBITMQ_DEFAULT_USER=${DOCKER_RABBITMQ_USER}"
+      - "RABBITMQ_DEFAULT_PASS=${DOCKER_RABBITMQ_PASSWORD}"
+      - "RABBITMQ_DEFAULT_VHOST=${DOCKER_RABBITMQ_VHOST}"
+    deploy:
+      replicas: 1
+      placement:
+        constraints: [node.role == manager]
+
+  contrax_db:
+    image: postgres:9.6
+    environment:
+      - "PGDATA=/var/lib/contraxsuite-postgres"
+      - "POSTGRES_USER=${DOCKER_PG_USER}"
+      - "POSTGRES_PASSWORD=${DOCKER_PG_PASSWORD}"
+      - "POSTGRES_DB=${DOCKER_PG_DB_NAME}"
+    volumes:
+      - postgres_data:/var/lib/contraxsuite-postgres
+    networks:
+      - contrax_net
+    deploy:
+      replicas: 1
+      placement:
+        constraints: [node.role == manager]
+
+  contrax_celery:
+    image: ${CONTRAXSUITE_IMAGE_FULL_NAME}
+    networks:
+      - contrax_net
+    command: ["/start.sh",  "celery"]
+    environment:
+      - "SHARED_USER_NAME=${SHARED_USER_NAME}"
+      - "SHARED_USER_ID=${SHARED_USER_ID}"
+      - "DOCKER_HOST_NAME_PG=${DOCKER_HOST_NAME_PG}"
+      - "DOCKER_HOST_NAME_REDIS=${DOCKER_HOST_NAME_REDIS}"
+      - "DOCKER_HOST_NAME_RABBITMQ=${DOCKER_HOST_NAME_RABBITMQ}"
+      - "DOCKER_HOST_NAME_ELASTICSEARCH=${DOCKER_HOST_NAME_ELASTICSEARCH}"
+      - "DOCKER_HOST_NAME_UWSGI=${DOCKER_HOST_NAME_UWSGI}"
+      - "DOCKER_PG_USER=${DOCKER_PG_USER}"
+      - "DOCKER_PG_PASSWORD=${DOCKER_PG_PASSWORD}"
+      - "DOCKER_PG_DB_NAME=${DOCKER_PG_DB_NAME}"
+      - "DOCKER_RABBITMQ_VHOST=${DOCKER_RABBITMQ_VHOST}"
+      - "DOCKER_RABBITMQ_USER=${DOCKER_RABBITMQ_USER}"
+      - "DOCKER_RABBITMQ_PASSWORD=${DOCKER_RABBITMQ_PASSWORD}"
+      - "DOCKER_DJANGO_HOST_NAME=${DOCKER_DJANGO_HOST_NAME}"
+      - "DOCKER_DJANGO_EMAIL_HOST=${DOCKER_DJANGO_EMAIL_HOST}"
+      - "DOCKER_DJANGO_EMAIL_PORT=${DOCKER_DJANGO_EMAIL_PORT}"
+      - "DOCKER_DJANGO_EMAIL_HOST_USER=${DOCKER_DJANGO_EMAIL_HOST_USER}"
+      - "DOCKER_DJANGO_EMAIL_HOST_PASSWORD=${DOCKER_DJANGO_EMAIL_HOST_PASSWORD}"
+      - "DOCKER_DJANGO_ADMIN_NAME=${DOCKER_DJANGO_ADMIN_NAME}"
+      - "DOCKER_DJANGO_ADMIN_PASSWORD=${DOCKER_DJANGO_ADMIN_PASSWORD}"
+      - "DOCKER_DJANGO_ADMIN_EMAIL=${DOCKER_DJANGO_ADMIN_EMAIL}"
+      - "DOCKER_DJANGO_DEBUG=${DOCKER_DJANGO_DEBUG}"
+      - "DOCKER_DJANGO_DEBUG_SQL=${DOCKER_DJANGO_DEBUG_SQL}"
+      - "DOCKER_DJANGO_SECRET_KEY=${DOCKER_DJANGO_SECRET_KEY}"
+      - "DOCKER_DJANGO_ACCOUNT_EMAIL_VERIFICATION=${DOCKER_DJANGO_ACCOUNT_EMAIL_VERIFICATION}"
+      - "DOCKER_NGINX_SERVER_NAME=${DOCKER_NGINX_SERVER_NAME}"
+      - "DOCKER_NGINX_CERTIFICATE=${DOCKER_NGINX_CERTIFICATE}"
+      - "DOCKER_NGINX_CERTIFICATE_KEY=${DOCKER_NGINX_CERTIFICATE_KEY}"
+    depends_on:
+      - contrax_rabbitmq
+      - contrax_db
+      - contrax_redis
+      - contrax_elasticsearch
+    deploy:
+      replicas: 1
+
+  contrax_uwsgi:
+    image: ${CONTRAXSUITE_IMAGE_FULL_NAME}
+    networks:
+      - contrax_net
+    command: ["/start.sh",  "uwsgi"]
+    environment:
+      - "SHARED_USER_NAME=${SHARED_USER_NAME}"
+      - "SHARED_USER_ID=${SHARED_USER_ID}"
+      - "DOCKER_HOST_NAME_PG=${DOCKER_HOST_NAME_PG}"
+      - "DOCKER_HOST_NAME_REDIS=${DOCKER_HOST_NAME_REDIS}"
+      - "DOCKER_HOST_NAME_RABBITMQ=${DOCKER_HOST_NAME_RABBITMQ}"
+      - "DOCKER_HOST_NAME_ELASTICSEARCH=${DOCKER_HOST_NAME_ELASTICSEARCH}"
+      - "DOCKER_HOST_NAME_UWSGI=${DOCKER_HOST_NAME_UWSGI}"
+      - "DOCKER_PG_USER=${DOCKER_PG_USER}"
+      - "DOCKER_PG_PASSWORD=${DOCKER_PG_PASSWORD}"
+      - "DOCKER_PG_DB_NAME=${DOCKER_PG_DB_NAME}"
+      - "DOCKER_RABBITMQ_VHOST=${DOCKER_RABBITMQ_VHOST}"
+      - "DOCKER_RABBITMQ_USER=${DOCKER_RABBITMQ_USER}"
+      - "DOCKER_RABBITMQ_PASSWORD=${DOCKER_RABBITMQ_PASSWORD}"
+      - "DOCKER_DJANGO_HOST_NAME=${DOCKER_DJANGO_HOST_NAME}"
+      - "DOCKER_DJANGO_EMAIL_HOST=${DOCKER_DJANGO_EMAIL_HOST}"
+      - "DOCKER_DJANGO_EMAIL_PORT=${DOCKER_DJANGO_EMAIL_PORT}"
+      - "DOCKER_DJANGO_EMAIL_HOST_USER=${DOCKER_DJANGO_EMAIL_HOST_USER}"
+      - "DOCKER_DJANGO_EMAIL_HOST_PASSWORD=${DOCKER_DJANGO_EMAIL_HOST_PASSWORD}"
+      - "DOCKER_DJANGO_ADMIN_NAME=${DOCKER_DJANGO_ADMIN_NAME}"
+      - "DOCKER_DJANGO_ADMIN_PASSWORD=${DOCKER_DJANGO_ADMIN_PASSWORD}"
+      - "DOCKER_DJANGO_ADMIN_EMAIL=${DOCKER_DJANGO_ADMIN_EMAIL}"
+      - "DOCKER_DJANGO_DEBUG=${DOCKER_DJANGO_DEBUG}"
+      - "DOCKER_DJANGO_DEBUG_SQL=${DOCKER_DJANGO_DEBUG_SQL}"
+      - "DOCKER_DJANGO_SECRET_KEY=${DOCKER_DJANGO_SECRET_KEY}"
+      - "DOCKER_DJANGO_ACCOUNT_EMAIL_VERIFICATION=${DOCKER_DJANGO_ACCOUNT_EMAIL_VERIFICATION}"
+      - "DOCKER_NGINX_SERVER_NAME=${DOCKER_NGINX_SERVER_NAME}"
+      - "DOCKER_NGINX_CERTIFICATE=${DOCKER_NGINX_CERTIFICATE}"
+      - "DOCKER_NGINX_CERTIFICATE_KEY=${DOCKER_NGINX_CERTIFICATE_KEY}"
+      - "DOCKER_DJANGO_THEME_ARCHIVE=${DOCKER_DJANGO_THEME_ARCHIVE}"
+      - "DOCKER_DJANGO_JQWIDGETS_ARCHIVE=${DOCKER_DJANGO_JQWIDGETS_ARCHIVE}"
+    volumes:
+      - contraxsuite_deployment_uuid:/deployment_uuid
+      - contraxsuite_nginx_certs:/etc/nginx/certificates
+      - contraxsuite_static_files:/contraxsuite_services/staticfiles
+      - contraxsuite_third_party_dependencies:/third_party_dependencies
+      - contraxsuite_data_media:/data/media
+      - django_logs:/data/logs
+      - django_nginx_logs:/var/log/nginx
+    depends_on:
+      - contrax_db
+      - contrax_celery
+      - contrax_redis
+      - contrax_rabbitmq
+      - contrax_elasticsearch
+    ports:
+      - 65080:8080
+      - 65443:4443
+    deploy:
+      replicas: 1
+      placement:
+        constraints: [node.role == manager]
+
+volumes:
+  contraxsuite_deployment_uuid:
+  contraxsuite_nginx_certs:
+  contraxsuite_static_files:
+  contraxsuite_third_party_dependencies:
+  contraxsuite_data_media:
+  django_logs:
+  django_nginx_logs:
+  postgres_data:
+  elasticsearch_data:
+  redis_data:
+
+networks:
+  contrax_net:
