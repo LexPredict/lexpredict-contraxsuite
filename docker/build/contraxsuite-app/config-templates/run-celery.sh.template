@@ -1,0 +1,28 @@
+#!/bin/sh
+echo ===================================================================
+cat /build.info
+echo ===================================================================
+
+
+adduser -u ${SHARED_USER_ID} --disabled-password --gecos "" ${SHARED_USER_NAME}
+
+mkdir -p /data/data
+mkdir -p /data/logs
+
+chown -R ${SHARED_USER_NAME}:${SHARED_USER_NAME} /contraxsuite_services
+chown -R ${SHARED_USER_NAME}:${SHARED_USER_NAME} /data
+
+mv /root/nltk_data /home/${SHARED_USER_NAME}/
+chown -R ${SHARED_USER_NAME}:${SHARED_USER_NAME} /home/${SHARED_USER_NAME}/nltk_data
+echo =======NLTK======
+ls -l /home/${SHARED_USER_NAME}/nltk_data
+echo =================
+
+
+echo "Sleeping 15 seconds to let the Postgres start and Django migrate"
+sleep 15
+echo "Starting Celery"
+
+su - ${SHARED_USER_NAME} -c "export LANG=C.UTF-8 && cd /contraxsuite_services && . /contraxsuite_services/venv/bin/activate && \
+    celery worker -A apps --concurrency=4 -B"
+
