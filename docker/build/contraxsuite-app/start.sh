@@ -117,6 +117,11 @@ if [ $1 == "uwsgi" ]; then
     echo "Sleeping 5 seconds to let Postgres start"
     sleep 5
 
+    while ! curl http://${DOCKER_HOST_NAME_PG}:5432/ 2>&1 | grep '52'
+    do
+      sleep 1
+    done
+
     echo "Ensuring Django superuser is created..."
 
 # Indentation makes sense here
