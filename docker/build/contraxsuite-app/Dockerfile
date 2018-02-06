@@ -75,6 +75,7 @@ RUN . /contraxsuite_services/venv/bin/activate && \
 
 
 RUN apt-get install -y nginx
+RUN apt-get install -y curl
 
 COPY ./temp/build.info /
 COPY ./temp/build.uuid /

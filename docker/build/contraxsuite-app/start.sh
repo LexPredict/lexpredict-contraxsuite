@@ -119,7 +119,8 @@ if [ $1 == "uwsgi" ]; then
 
     while ! curl http://${DOCKER_HOST_NAME_PG}:5432/ 2>&1 | grep '52'
     do
-      sleep 1
+      echo "Sleeping 5 seconds to let Postgres start"
+      sleep 5
     done
 
     echo "Ensuring Django superuser is created..."
