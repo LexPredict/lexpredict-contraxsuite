@@ -39,9 +39,9 @@ export DOCKER_NGINX_CERTIFICATE_KEY=
 export SHARED_USER_ID=65432
 export SHARED_USER_NAME=contraxsuite_docker_user
 
-export DOCKER_REGISTRY=$(hostname):5001
+export DOCKER_REGISTRY=
 export DOCKER_USERNAME=
-export CONTRAXSUITE_IMAGE=contraxsuite-app
+export CONTRAXSUITE_IMAGE=lexpredict/lexpredict-contraxsuite
 
 
 if [ -e setenv_local.sh ]
