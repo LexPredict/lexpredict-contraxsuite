@@ -28,7 +28,7 @@ from nose.tools import assert_equal
 from apps.lease.parsing.lease_doc_detector import LeaseDocDetector
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2017, ContraxSuite, LLC"
+__copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
 __license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.0.5/LICENSE"
 __version__ = "1.0.6"
 __maintainer__ = "LexPredict, LLC"

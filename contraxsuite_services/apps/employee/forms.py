@@ -22,6 +22,8 @@
     provider, processing documents on the fly in a web application, 
     or shipping ContraxSuite within a closed source product.
 """
+# Standard imports
+from collections import OrderedDict
 
 # Django imports
 from django import forms
@@ -32,7 +34,7 @@ from apps.common.forms import checkbox_field
 from apps.document.models import Document
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2017, ContraxSuite, LLC"
+__copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
 __license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.0.5/LICENSE"
 __version__ = "1.0.6"
 __maintainer__ = "LexPredict, LLC"
@@ -41,12 +43,16 @@ __email__ = "support@contraxsuite.com"
 
 class LocateEmployeesForm(forms.Form):
     header = 'Locate Employees in existing documents.'
-    document_type = forms.MultipleChoiceField(
-        choices=[(t, t) for t in Document.objects
-            .order_by().values_list('document_type', flat=True).distinct()],
-        widget=forms.SelectMultiple(attrs={'class': 'chosen'}),
-        required=False)
     no_detect = checkbox_field("All documents in DB are employment agreements (disable detection)")
     delete = checkbox_field(
         label=_("Delete existing Employees"),
         initial=True)
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['document_type'] = forms.MultipleChoiceField(
+            choices=[(t, t) for t in Document.objects
+                .order_by().values_list('document_type', flat=True).distinct()],
+            widget=forms.SelectMultiple(attrs={'class': 'chosen'}),
+            required=False)
+        self.fields = OrderedDict((k, self.fields[k]) for k in ['document_type', 'no_detect', 'delete'])

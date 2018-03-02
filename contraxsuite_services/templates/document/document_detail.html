@@ -12,6 +12,13 @@
       border-bottom: 1px solid #DDD;
       margin-bottom: 10px;
     }
+    #tab1-other+ul li {
+      padding: 0.25rem .5rem;
+    }
+    #tab1-other+ul li a {
+      padding: .25rem;
+      line-height: 30px;
+    }
   </style>
   {{ block.super }}
 {% endblock %}
@@ -78,8 +85,8 @@
 
   <div class="page-tabs mb-40" id="tabs1">
 
-    <ul class="nav nav-tabs boot-tabs">
-      <li class="active"><a data-toggle="tab" href="#tab-1">Text Units<span class="badge badge-s text-units-badge"></span></a></li>
+      <ul class="nav nav-tabs boot-tabs">
+      <li><a data-toggle="tab" href="#tab-1" class="active">Text Units<span class="badge badge-s text-units-badge"></span></a></li>
       <li><a data-toggle="tab" href="#tab-2">Parties<span class="badge badge-s parties-badge"></span></a></li>
       <li><a data-toggle="tab" href="#tab-3">Terms<span class="badge badge-s terms-badge"></span></a></li>
       <li><a data-toggle="tab" href="#tab-4">Entities<span class="badge badge-s entities-badge"></span></a></li>
@@ -93,44 +100,44 @@
         </a>
         <ul class="dropdown-menu" role="menu" aria-labelledby="tab1-dropdown" style="width: 240px;">
           {% if 'amount' in available_locators %}
-            <li><a data-toggle="tab" class="other" href="#tab-8">Amounts<span class="badge badge-s amounts-badge"></span></a></li>
+            <li class="dropdown-item"><a data-toggle="tab" class="other" href="#tab-8">Amounts<span class="badge badge-s amounts-badge"></span></a></li>
           {% endif %}
           {% if 'citation' in available_locators %}
-            <li><a data-toggle="tab" class="other" href="#tab-9">Citations<span class="badge badge-s citations-badge"></span></a></li>
+            <li class="dropdown-item"><a data-toggle="tab" class="other" href="#tab-9">Citations<span class="badge badge-s citations-badge"></span></a></li>
           {% endif %}
           {% if 'copyright' in available_locators %}
-            <li><a data-toggle="tab" class="other" href="#tab-10">Copyrights<span class="badge badge-s copyrights-badge"></span></a></li>
+            <li class="dropdown-item"><a data-toggle="tab" class="other" href="#tab-10">Copyrights<span class="badge badge-s copyrights-badge"></span></a></li>
           {% endif %}
           {% if 'court' in available_locators %}
-            <li><a data-toggle="tab" class="other" href="#tab-11">Courts<span class="badge badge-s courts-badge"></span></a></li>
+            <li class="dropdown-item"><a data-toggle="tab" class="other" href="#tab-11">Courts<span class="badge badge-s courts-badge"></span></a></li>
           {% endif %}
           {% if 'currency' in available_locators %}
-            <li><a data-toggle="tab" class="other" href="#tab-12">Currencies<span class="badge badge-s currencies-badge"></span></a></li>
+            <li class="dropdown-item"><a data-toggle="tab" class="other" href="#tab-12">Currencies<span class="badge badge-s currencies-badge"></span></a></li>
           {% endif %}
           <li><a data-toggle="tab" class="other" href="#tab-13">Dates<span class="badge badge-s dates-badge"></span></a></li>
           {% if 'duration' in available_locators %}
-            <li><a data-toggle="tab" class="other" href="#tab-14">Date Durations<span class="badge badge-s durations-badge"></span></a></li>
+            <li class="dropdown-item"><a data-toggle="tab" class="other" href="#tab-14">Date Durations<span class="badge badge-s durations-badge"></span></a></li>
           {% endif %}
           {% if 'definition' in available_locators %}
-            <li><a data-toggle="tab" class="other" href="#tab-15">Definitions<span class="badge badge-s definitions-badge"></span></a></li>
+            <li class="dropdown-item"><a data-toggle="tab" class="other" href="#tab-15">Definitions<span class="badge badge-s definitions-badge"></span></a></li>
           {% endif %}
           {% if 'distance' in available_locators %}
-            <li><a data-toggle="tab" class="other" href="#tab-16">Distances<span class="badge badge-s distances-badge"></span></a></li>
+            <li class="dropdown-item"><a data-toggle="tab" class="other" href="#tab-16">Distances<span class="badge badge-s distances-badge"></span></a></li>
           {% endif %}
           {% if 'percent' in available_locators %}
-            <li><a data-toggle="tab" class="other" href="#tab-17">Percents<span class="badge badge-s percents-badge"></span></a></li>
+            <li class="dropdown-item"><a data-toggle="tab" class="other" href="#tab-17">Percents<span class="badge badge-s percents-badge"></span></a></li>
           {% endif %}
           {% if 'ratio' in available_locators %}
-            <li><a data-toggle="tab" class="other" href="#tab-18">Ratios<span class="badge badge-s ratios-badge"></span></a></li>
+            <li class="dropdown-item"><a data-toggle="tab" class="other" href="#tab-18">Ratios<span class="badge badge-s ratios-badge"></span></a></li>
           {% endif %}
           {% if 'regulation' in available_locators %}
-            <li><a data-toggle="tab" class="other" href="#tab-19">Regulations<span class="badge badge-s regulations-badge"></span></a></li>
+            <li class="dropdown-item"><a data-toggle="tab" class="other" href="#tab-19">Regulations<span class="badge badge-s regulations-badge"></span></a></li>
           {% endif %}
           {% if 'trademark' in available_locators %}
-            <li><a data-toggle="tab" class="other" href="#tab-20">Trademarks<span class="badge badge-s trademarks-badge"></span></a></li>
+            <li class="dropdown-item"><a data-toggle="tab" class="other" href="#tab-20">Trademarks<span class="badge badge-s trademarks-badge"></span></a></li>
           {% endif %}
           {% if 'url' in available_locators %}
-            <li><a data-toggle="tab" class="other" href="#tab-21">Urls<span class="badge badge-s urls-badge"></span></a></li>
+            <li class="dropdown-item"><a data-toggle="tab" class="other" href="#tab-21">Urls<span class="badge badge-s urls-badge"></span></a></li>
           {% endif %}
         </ul>
       </li>
@@ -380,7 +387,7 @@
   <div class="page-tabs" id="tabs2">
 
     <ul class="nav nav-tabs boot-tabs">
-      <li class="active"><a data-toggle="tab" href="#tab-31">Task Queues<span class="badge badge-s task-queues-badge"></span></a></li>
+      <li><a data-toggle="tab" href="#tab-31" class="active">Task Queues<span class="badge badge-s task-queues-badge"></span></a></li>
       <li><a data-toggle="tab" href="#tab-32">Clusters<span class="badge badge-s clusters-badge"></span></a></li>
       <li><a data-toggle="tab" href="#tab-33">Document Similarity<span class="badge badge-s similarity-badge"></span></a></li>
     </ul>
@@ -397,7 +404,7 @@
             </button>
             <ul class="dropdown-menu dropdown-menu-right">
               {% for task_queue in extra_task_queue_list %}
-                <li>
+                <li class="dropdown-item">
                   <a href="{% url "project:add-to-task-queue" task_queue.pk document.pk %}#tab-2-2"
                      class="add_to_task_queue">
                     {{ task_queue }} / {{ task_queue.description }}</a>

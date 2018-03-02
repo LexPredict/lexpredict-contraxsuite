@@ -36,7 +36,7 @@ from django.contrib import messages
 from django.contrib.auth import authenticate, login
 from django.core.urlresolvers import reverse
 from django.db.models import signals
-from django.http import HttpResponseNotAllowed, HttpResponse, Http404
+from django.http import HttpResponseNotAllowed, HttpResponse, Http404, HttpResponseForbidden
 from django.shortcuts import render, redirect
 from django.urls import reverse_lazy
 from django.utils.deprecation import MiddlewareMixin
@@ -47,7 +47,7 @@ from allauth.account.models import EmailAddress
 from apps.users.models import User
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2017, ContraxSuite, LLC"
+__copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
 __license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.0.5/LICENSE"
 __version__ = "1.0.6"
 __maintainer__ = "LexPredict, LLC"
@@ -181,7 +181,7 @@ class RequestUserMiddleware(MiddlewareMixin):
 
 class AppEnabledRequiredMiddleware(MiddlewareMixin):
     """
-    Middleware that requires to enable certain kind of application enabled .
+    Middleware that requires to enable certain kind of application enabled.
     in "application settings"
     """
     def process_view(self, request, view_func, args, kwargs):
@@ -190,6 +190,9 @@ class AppEnabledRequiredMiddleware(MiddlewareMixin):
             available_locators = list(settings.REQUIRED_LOCATORS) + list(config.standard_optional_locators)
             if current_sub_app not in available_locators:
                 messages.error(request, 'This locator is not enabled.')
+                if request.is_ajax() or request.META['CONTENT_TYPE'] == 'application/json':
+                    return HttpResponseForbidden('Standard sub-application "%s" is not enabled.'
+                                                 % current_sub_app)
                 return redirect(reverse_lazy('common:application-settings'))
 
 
@@ -199,7 +202,6 @@ class CookieMiddleware(MiddlewareMixin):
     """
     def process_response(self, request, response):
         auth_token = request.COOKIES.get('auth_token', request.META.get('HTTP_AUTHORIZATION'))
-        # import ipdb;ipdb.set_trace()
         if request.META['PATH_INFO'] == reverse('rest_login') and response.data and response.data.get('key'):
             response.set_cookie('auth_token', 'Token %s' % response.data['key'])
         elif auth_token:

@@ -42,7 +42,7 @@ from apps.fields.parsing.field_annotations_classifier import SkLearnClassifierMo
 from apps.task.tasks import BaseTask, log
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2017, ContraxSuite, LLC"
+__copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
 __license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.0.3/LICENSE"
 __version__ = "1.0.6"
 __maintainer__ = "LexPredict, LLC"

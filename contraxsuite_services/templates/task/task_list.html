@@ -13,28 +13,50 @@
     .dropdown-submenu {
       position: relative;
     }
-    .dropdown-submenu > .dropdown-menu {
+    .dropdown-submenu>.dropdown-menu {
       top: 0;
       left: 100%;
+      margin-top: -6px;
+      margin-left: -1px;
+      -webkit-border-radius: 0 6px 6px 6px;
+      -moz-border-radius: 0 6px 6px;
+      border-radius: 0 6px 6px 6px;
     }
-    .dropdown-submenu:hover > .dropdown-menu {
+    .dropdown-submenu:hover>.dropdown-menu {
       display: block;
     }
-    .dropdown-submenu > a:after {
+    .dropdown-submenu>a:after {
       display: block;
       content: " ";
       float: right;
       width: 0;
       height: 0;
-      border: 5px solid transparent;
-      border-right-width: 0;
+      border-color: transparent;
+      border-style: solid;
+      border-width: 5px 0 5px 5px;
       border-left-color: #ccc;
-      margin: 5px -10px 0 10px;
+      margin-top: 5px;
+      margin-right: -10px;
     }
-    .btn-group.open .dropdown-submenu > .dropdown-toggle {
-      -webkit-box-shadow: none;
-      box-shadow: none;
+    .dropdown-submenu:hover>a:after {
+      border-left-color: #fff;
     }
+    .dropdown-submenu.pull-left {
+      float: none;
+    }
+    .dropdown-submenu.pull-left>.dropdown-menu {
+      left: -100%;
+      margin-left: 10px;
+      -webkit-border-radius: 6px 0 6px 6px;
+      -moz-border-radius: 6px 0 6px 6px;
+      border-radius: 6px 0 6px 6px;
+    }
+
+    li.divider {
+      margin: 5px 0 !important;
+      border-top: 1px solid;
+    }
+
     .level-1, .level-2 {
       margin-left: 40px;
     }
@@ -52,8 +74,8 @@
       padding-bottom: 3px;
     }
     input.as-btn {
-        display: none;
-      }
+      display: none;
+    }
     input.as-btn + label {
       line-height: normal;
       cursor:pointer;
@@ -101,24 +123,23 @@
 {% block button_block %}
   {{ block.super }}
   <div class="dropdown btn-group pull-left">
-    <a href="#" class="btn-u btn-sm dropdown-toggle"
+    <a href="#" class="btn-u btn-sm"
        data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
       Run Task<span class="caret"></span>
     </a>
-    <ul class="dropdown-menu dropdown-menu-left">
+    <ul class="dropdown-menu multi-level" role="menu" aria-labelledby="dropdownMenu">
       <li class="dropdown-submenu">
-        <a class="dropdown-toggle" href="#" data-toggle="dropdown" aria-haspopup="false"
-           aria-expanded="false">
+        <a class="dropdown-item" href="#" tabindex="-1">
           <i class="fa fa-file-text-o"></i> Load Data</a>
         <ul class="dropdown-menu">
-          <li>
-            <a class="task" href="#"
+          <li class="dropdown-item">
+            <a class="task" href="#" tabindex="-1"
                data-href="{% url "task:load-documents" %}"
                data-btn-text="Load">
               <i class="fa fa-file-text-o"></i>
               Load Documents</a>
           </li>
-          <li>
+          <li class="dropdown-item">
             <a class="task-load" href="#"
                data-href="{% url "task:load" %}"
                data-btn-text="Load">
@@ -136,7 +157,7 @@
       {% endif %}
 
       <li class="divider"></li>
-      <li>
+      <li class="dropdown-item">
         <a class="task" href="#"
            data-href="{% url "task:locate" %}"
            data-btn-text="Locate">
@@ -146,11 +167,10 @@
       <li class="divider"></li>
 
       <li class="dropdown-submenu">
-        <a class="dropdown-toggle" href="#" data-toggle="dropdown" aria-haspopup="false"
-           aria-expanded="false">
+        <a class="dropdown-item" href="#" tabindex="-1">
           <i class="fa fa-object-group"></i> Analyze</a>
         <ul class="dropdown-menu">
-          <li>
+          <li class="dropdown-item">
             <a class="task" href="#"
                data-href="{% url "task:cluster" %}"
                data-btn-text="Cluster">
@@ -158,7 +178,7 @@
               Cluster Documents/Text Units</a>
           </li>
           {% if active_classifiers %}
-            <li>
+            <li class="dropdown-item">
               <a class="task" href="#"
                  data-href="{% url "task:existed-classifier-classify" %}"
                  data-btn-text="Classify">
@@ -166,21 +186,21 @@
                 Classify Text Units (Use Existing Classifier)</a>
             </li>
           {% endif %}
-          <li>
+          <li class="dropdown-item">
             <a class="task" href="#"
                data-href="{% url "task:create-classifier-classify" %}"
                data-btn-text="Classify">
               <i class="fa fa-object-group"></i>
               Classify Text Units (Create New Classifier)</a>
           </li>
-          <li>
+          <li class="dropdown-item">
             <a class="task" href="#"
                data-href="{% url "task:similarity" %}"
                data-btn-text="Search">
               <i class="fa fa-copy"></i>
               Identify Similar Documents/Text Units</a>
           </li>
-          <li>
+          <li class="dropdown-item">
             <a class="task" href="#"
                data-href="{% url "task:party-similarity" %}"
                data-btn-text="Search">
@@ -190,7 +210,7 @@
         </ul>
       </li>
       <li class="divider"></li>
-      <li>
+      <li class="dropdown-item">
         <a class="task" href="#"
            data-href="{% url "task:update-elasticsearch-index" %}"
            data-btn-text="Update Index">
@@ -198,7 +218,7 @@
           Update Elasticsearch Index</a>
       </li>
       <li class="divider"></li>
-      <li>
+      <li class="dropdown-item">
         <a class="task" href="#"
            data-href="{% url "task:clean-tasks" %}"
            data-btn-text="Clean"
@@ -340,39 +360,39 @@
     </div>
 
     {% if 'court' in available_locators %}
-    <div class="fancy-title title-bottom-border">
-      <h4>Load Courts</h4>
-    </div>
+      <div class="fancy-title title-bottom-border">
+        <h4>Load Courts</h4>
+      </div>
 
-    <div class="level-1">
-      <input class="checkbox-style" id="_id_courts" name="courts" type="checkbox">
-      <label for="_id_courts" class="checkbox-style-3-label">Courts</label>
-      <p class="level-2">
-        <input class="checkbox-style" id="_id_courts_1" name="courts_1" type="checkbox">
-        <label for="_id_courts_1" class="checkbox-style-3-label checkbox-small">Canadian Courts</label>
+      <div class="level-1">
+        <input class="checkbox-style" id="_id_courts" name="courts" type="checkbox">
+        <label for="_id_courts" class="checkbox-style-3-label">Courts</label>
+        <p class="level-2">
+          <input class="checkbox-style" id="_id_courts_1" name="courts_1" type="checkbox">
+          <label for="_id_courts_1" class="checkbox-style-3-label checkbox-small">Canadian Courts</label>
         <span class="level-3">
           <input class="as-btn" id="_id_courts_1_locale_en" name="courts_1_locale_en" type="checkbox">
           <label for="_id_courts_1_locale_en">en</label>
         </span>
-      </p>
-      <p class="level-2">
-        <input class="checkbox-style" id="_id_courts_2" name="courts_2" type="checkbox">
-        <label for="_id_courts_2" class="checkbox-style-3-label checkbox-small">US Courts</label>
+        </p>
+        <p class="level-2">
+          <input class="checkbox-style" id="_id_courts_2" name="courts_2" type="checkbox">
+          <label for="_id_courts_2" class="checkbox-style-3-label checkbox-small">US Courts</label>
         <span class="level-3">
           <input class="as-btn" id="_id_courts_2_locale_en" name="courts_2_locale_en" type="checkbox">
           <label for="_id_courts_2_locale_en">en</label>
         </span>
+        </p>
+      </div>
+      <p class="level-1">
+        <label for="_id_courts_file_path">Custom file path:</label>
+        <input id="_id_courts_file_path" name="courts_file_path" maxlength="1000" type="text"><br />
+        <small>Relative path to a data file. A file should be in "&lt;ROOT_DIR&gt;/data/" or "&lt;APPS_DIR&gt;/media/data/documents/" folder.</small>
       </p>
-    </div>
-    <p class="level-1">
-      <label for="_id_courts_file_path">Custom file path:</label>
-      <input id="_id_courts_file_path" name="courts_file_path" maxlength="1000" type="text"><br />
-      <small>Relative path to a data file. A file should be in "&lt;ROOT_DIR&gt;/data/" or "&lt;APPS_DIR&gt;/media/data/documents/" folder.</small>
-    </p>
-    <p class="level-1">
-      <input class="checkbox-style" id="_id_courts_delete" name="courts_delete" type="checkbox">
-      <label for="_id_courts_delete" class="checkbox-style-3-label">Delete existing Courts</label>
-    </p>
+      <p class="level-1">
+        <input class="checkbox-style" id="_id_courts_delete" name="courts_delete" type="checkbox">
+        <label for="_id_courts_delete" class="checkbox-style-3-label">Delete existing Courts</label>
+      </p>
     {% endif %}
 
     <div class="fancy-title title-bottom-border">
@@ -471,7 +491,7 @@
           }
         }
       }
-      {# classify form #}
+          {# classify form #}
       else if ($('.classify-form').length){
         var algorithm = $('select[name="algorithm"]').val();
         is_simple = $('input[name="options"]').is(':checked');
@@ -583,9 +603,9 @@
       }
       {# clustering / classify #}
       $form.find('[name="do_cluster_documents"], ' +
-                 '[name="do_cluster_text_units"], ' +
-                 'select[name="using"], select[name="algorithm"], ' +
-                 'input[name="options"]').on('change switchChange.bootstrapSwitch', function () {
+          '[name="do_cluster_text_units"], ' +
+          'select[name="using"], select[name="algorithm"], ' +
+          'input[name="options"]').on('change switchChange.bootstrapSwitch', function () {
         show_options($form)
       });
       show_options($form);
@@ -792,9 +812,9 @@
         ];
         $.each(row.result_links, function(n, i){
           menu_data.push(
-          { url: i.link,
-            icon: 'fa fa-bars',
-            text: i.name}
+              { url: i.link,
+                icon: 'fa fa-bars',
+                text: i.name}
           )
         });
         show_menu(menu_data, grid, row.pk, 300);

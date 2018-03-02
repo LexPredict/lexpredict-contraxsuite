@@ -38,12 +38,11 @@ from apps.document.models import (
     TextUnit, TextUnitProperty, TextUnitNote, TextUnitTag)
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2017, ContraxSuite, LLC"
+__copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
 __license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.0.5/LICENSE"
 __version__ = "1.0.6"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
-
 
 # URL pattern list
 urlpatterns = []
@@ -165,5 +164,16 @@ urlpatterns += [
         r'^submit/note/$',
         views.SubmitNoteView.as_view(),
         name='note-submit',
+    ),
+    url(
+        r'^detect-field-values/$',
+        views.DetectFieldValuesTaskView.as_view(),
+        name='detect-field-values',
+    ),
+
+    url(
+        r'^train-document-field-detector-model/$',
+        views.TrainDocumentFieldDetectorModelTaskView.as_view(),
+        name='train-document-field-detector-model',
     ),
 ]

@@ -24,41 +24,61 @@
 """
 # -*- coding: utf-8 -*-
 
-# Third-party imports
-from elasticsearch import Elasticsearch
-from rest_framework import routers, serializers, viewsets, mixins
-from rest_framework.generics import (
-    ListAPIView, CreateAPIView, RetrieveAPIView, UpdateAPIView, DestroyAPIView)
+import io
+import json
+# Standard imports
+import traceback
+from tempfile import NamedTemporaryFile
 
+import numpy as np
+import pandas as pd
 # Django imports
 from django.conf import settings
-from django.conf.urls import include, url
+from django.conf.urls import url
+from django.core import serializers as core_serializers
+from django.core.management import call_command
 from django.core.urlresolvers import reverse
-from django.http import JsonResponse
+from django.http import JsonResponse, HttpResponse
+# Third-party imports
+from elasticsearch import Elasticsearch
+from rest_framework import serializers, routers, viewsets, status
+from rest_framework.generics import ListAPIView
+from rest_framework.response import Response
+from rest_framework.views import APIView
 
 # Project imports
-from apps.document.models import (
-    Document, DocumentProperty, DocumentNote, DocumentTag,
-    TextUnit, TextUnitProperty, TextUnitNote, TextUnitTag)
+from apps.analyze.models import *
 from apps.common.mixins import (
-    SimpleRelationSerializer, JqListAPIView, TypeaheadAPIView)
+    SimpleRelationSerializer, JqMixin, TypeaheadAPIView)
+from apps.common.utils import get_api_module
+from apps.document.field_types import FIELD_TYPES_REGISTRY
+from apps.document.models import (
+    DocumentField, DocumentType, DocumentFieldValue, DocumentFieldDetector,
+    DocumentProperty, DocumentNote, DocumentTag, DocumentRelation,
+    TextUnitProperty, TextUnitNote, TextUnitTag)
+from apps.extract.models import *
+from apps.project.models import *
+from apps.users.models import User
+from rest_framework_nested import routers as nested_routers
 
 
 # --------------------------------------------------------
 # Document Views
 # --------------------------------------------------------
 
-class DocumentListSerializer(serializers.ModelSerializer):
+class DocumentSerializer(SimpleRelationSerializer):
     properties = serializers.IntegerField(
         source='documentproperty_set.distinct.count',
         read_only=True)
     relations = serializers.SerializerMethodField()
     text_units = serializers.SerializerMethodField()
+    field_values = serializers.SerializerMethodField()
 
     class Meta:
         model = Document
-        fields = ['pk', 'name', 'document_type', 'description', 'title',
-                  'properties', 'relations', 'text_units']
+        fields = ['pk', 'name', 'document_type',
+                  'description', 'title',
+                  'properties', 'relations', 'text_units', 'field_values']
 
     def get_relations(self, obj):
         return obj.document_a_set.distinct().count() + obj.document_b_set.distinct().count()
@@ -67,75 +87,134 @@ class DocumentListSerializer(serializers.ModelSerializer):
         return obj.paragraphs + obj.sentences
 
 
-class DocumentListAPIView(JqListAPIView):
+class DocumentViewSet(JqMixin, viewsets.ReadOnlyModelViewSet):
     """
-    Document List\n
-    GET params:
-      - description_search: str
-      - name_search: str
-      - party_pk: int
-    GET params for jqwidgets grid query (sample, see jqWidgets documentation):
-      - languageoperator:and
-      - filtervalue0:en
-      - filtercondition0:CONTAINS
-      - filteroperator0:0
-      - filterdatafield0:language
-      - filterGroups[0][field]:language
-      - filterGroups[0][filters][0][label]:en
-      - filterGroups[0][filters][0][value]:en
-      - filterGroups[0][filters][0][condition]:CONTAINS
-      - filterGroups[0][filters][0][operator]:and
-      - filterGroups[0][filters][0][field]:language
-      - filterGroups[0][filters][0][type]:stringfilter
-      - filterscount:1
-      - groupscount:0
-      - sortdatafield:text
-      - sortorder:asc
-      - pagenum:0
-      - pagesize:10
-      - recordstartindex:0
-      - recordendindex:10
-      - enable_pagination:true
+    list:
+        Document List\n
+        GET params:
+          - description: str
+          - description_contains: str
+          - name: str
+          - name_contains: str
+          - title: str
+          - document_type: str
+          - source_type: str
+          - type_id: int
+          - party_id: int\n
+        GET params for jqwidgets grid query (sample, see jqWidgets documentation):
+          - languageoperator:and
+          - filtervalue0:en
+          - filtercondition0:CONTAINS
+          - filteroperator0:0
+          - filterdatafield0:language
+          - filterGroups[0][field]:language
+          - filterGroups[0][filters][0][label]:en
+          - filterGroups[0][filters][0][value]:en
+          - filterGroups[0][filters][0][condition]:CONTAINS
+          - filterGroups[0][filters][0][operator]:and
+          - filterGroups[0][filters][0][field]:language
+          - filterGroups[0][filters][0][type]:stringfilter
+          - filterscount:1
+          - groupscount:0
+          - sortdatafield:text
+          - sortorder:asc
+          - pagenum:0
+          - pagesize:10
+          - recordstartindex:0
+          - recordendindex:10
+          - enable_pagination:true
+    retrieve: Document Detail
     """
     queryset = Document.objects.all()
-    serializer_class = DocumentListSerializer
+    serializer_class = DocumentSerializer
 
     def get_queryset(self):
         qs = super().get_queryset()
-        description_search = self.request.GET.get("description_search")
-        if description_search:
-            qs = qs.filter(description__icontains=description_search)
-        name_search = self.request.GET.get("name_search")
-        if name_search:
-            qs = qs.filter(name__icontains=name_search)
-        party_pk = self.request.GET.get("party_pk")
-        if party_pk:
-            qs = qs.filter(textunit__partyusage__party__pk=party_pk)
+        party_id = self.request.GET.get("party_id")
+        if party_id:
+            qs = qs.filter(textunit__partyusage__party__pk=party_id)
+
         return qs
 
 
-class DocumentDetailSerializer(DocumentListSerializer):
-    class Meta(DocumentListSerializer.Meta):
-        fields = ['pk', 'name', 'document_type',
-                  'description', 'relations']
+class DocumentWithFieldsListAPI(viewsets.ViewSet):
+    def _prepare_documents(self, document_type, fields, field_values_query):
+        field_ids = [field.uid for field in fields]
 
+        field_values_query = field_values_query \
+            .filter(field_id__in=field_ids) \
+            .filter(value__isnull=False) \
+            .values_list('document__id',
+                         'document__name',
+                         'document__description',
+                         'document__title',
+                         'field_id',
+                         'value')
+        documents_by_id = {}
+        for document_id, \
+            document_name, \
+            document_description, \
+            document_title, \
+            field_id, \
+            value in field_values_query:
+            field_id = str(field_id)
 
-class DocumentDetailAPIView(RetrieveAPIView):
-    """
-    Retrieve Document
-    """
-    queryset = Document.objects.all()
-    serializer_class = DocumentDetailSerializer
+            doc = documents_by_id.get(document_id)
+            if doc is None:
+                doc = {
+                    'pk': document_id,
+                    'document_type': document_type.uid,
+                    'name': document_name,
+                    'title': document_title,
+                    'description': document_description,
+                    'field_values': {}
+                }
+                documents_by_id[document_id] = doc
+            fields = doc['field_values']
+            fv = fields.get(field_id)
+            if fv is None:
+                fv = value
+            elif type(fv) is list:
+                if value not in fv:
+                    fv.append(value)
+            elif fv != value:
+                fv = [fv, value]
+            fields[field_id] = fv
+
+        return documents_by_id.values()
+
+    def list(self, request, document_type_pk):
+        document_type = DocumentType.objects.get(pk=document_type_pk)
+        fields = document_type.search_fields.all()
+
+        field_values_query = DocumentFieldValue.objects \
+            .filter(document__document_type_id=document_type_pk)
+
+        documents = list(self._prepare_documents(document_type, fields, field_values_query))
+
+        return JsonResponse(documents, safe=False)
+
+    def retrieve(self, request, pk, document_type_pk):
+        doc = Document.objects.get(pk=pk)
+        document_type = doc.document_type
+        fields = document_type.fields.all()
+        field_values_query = DocumentFieldValue.objects \
+            .filter(document_id=pk)
+        documents = list(self._prepare_documents(document_type, fields, field_values_query))
+        document = documents[0]
+        document['full_text'] = doc.full_text
+        return JsonResponse(document)
 
 
 class DocumentSentimentChartAPIView(ListAPIView):
     """
     Document Sentiment Chart
     """
+
     def list(self, request, *args, **kwargs):
         data = []
-        documents = Document.objects\
-            .filter(documentproperty__key='polarity')\
+        documents = Document.objects \
+            .filter(documentproperty__key='polarity') \
             .filter(documentproperty__key='subjectivity')
         for doc in documents:
             try:
@@ -157,49 +236,13 @@ class DocumentSentimentChartAPIView(ListAPIView):
 # --------------------------------------------------------
 
 class DocumentPropertyDetailSerializer(SimpleRelationSerializer):
-    document_url = serializers.SerializerMethodField()
-    edit_url = serializers.SerializerMethodField()
-    delete_url = serializers.SerializerMethodField()
-
     class Meta:
         model = DocumentProperty
         fields = ['pk', 'key', 'value',
                   'created_date', 'created_by__username',
                   'modified_date', 'modified_by__username',
                   'document__pk', 'document__name',
-                  'document__document_type', 'document__description',
-                  'document_url', 'edit_url', 'delete_url']
-
-    def get_document_url(self, obj):
-        return reverse('v1:document-detail', args=[obj.document.pk])
-
-    def get_edit_url(self, obj):
-        return reverse('v1:document-property-update', args=[obj.pk])
-
-    def get_delete_url(self, obj):
-        return reverse('v1:document-property-delete', args=[obj.pk])
-
-
-class DocumentPropertyListAPIView(JqListAPIView):
-    """
-    Document Property List\n
-    GET params:
-      - see jqWidgets' grid GET params for sorting/filtering/paginating queryset
-      - document_pk: int,
-      - key_search: str,
-    """
-    queryset = DocumentProperty.objects.all()
-    serializer_class = DocumentPropertyDetailSerializer
-
-    def get_queryset(self):
-        qs = super().get_queryset()
-        if "document_pk" in self.request.GET:
-            qs = qs.filter(document__pk=self.request.GET['document_pk'])
-        key_search = self.request.GET.get('key_search')
-        if key_search:
-            qs = qs.filter(key__icontains=key_search)
-        qs = qs.select_related('document', 'created_by', 'modified_by')
-        return qs
+                  'document__document_type', 'document__description']
 
 
 class DocumentPropertyCreateSerializer(serializers.ModelSerializer):
@@ -211,42 +254,35 @@ class DocumentPropertyCreateSerializer(serializers.ModelSerializer):
         fields = ['pk', 'key', 'value', 'document_id']
 
 
-class DocumentPropertyCreateAPIView(CreateAPIView):
-    """
-    Create Document Property
-    """
-    queryset = DocumentProperty.objects.all()
-    serializer_class = DocumentPropertyCreateSerializer
-
-
-class DocumentPropertyRetrieveAPIView(RetrieveAPIView):
-    """
-    Retrieve Document Property
-    """
-    queryset = DocumentProperty.objects.all()
-    serializer_class = DocumentPropertyDetailSerializer
-
-
 class DocumentPropertyUpdateSerializer(serializers.ModelSerializer):
-
     class Meta:
         model = DocumentProperty
         fields = ['key', 'value']
 
 
-class DocumentPropertyUpdateAPIView(UpdateAPIView):
+class DocumentPropertyViewSet(JqMixin, viewsets.ModelViewSet):
     """
-    Update Document Property
+    list: Document Property List\n
+        GET params:
+          - document_id: int
+          - key: str
+          - key_contains: str
+          - value: str
+          - value_contains: str
+    retrieve: Retrieve Document Property
+    create: Create Document Property
+    update: Update Document Property
+    partial_update: Partial Update Document Property
+    delete: Delete Document Property
     """
     queryset = DocumentProperty.objects.all()
-    serializer_class = DocumentPropertyUpdateSerializer
 
-
-class DocumentPropertyDeleteAPIView(DestroyAPIView):
-    """
-    Delete Document Property
-    """
-    queryset = DocumentProperty.objects.all()
+    def get_serializer_class(self):
+        if self.action == 'create':
+            return DocumentPropertyCreateSerializer
+        if self.action == 'update':
+            return DocumentPropertyUpdateSerializer
+        return DocumentPropertyDetailSerializer
 
 
 # --------------------------------------------------------
@@ -272,28 +308,6 @@ class DocumentNoteDetailSerializer(SimpleRelationSerializer):
             'history_user__username', 'note')
 
 
-class DocumentNoteListAPIView(JqListAPIView):
-    """
-    Document Note List\n
-    GET params:
-      - see jqWidgets' grid GET params for sorting/filtering/paginating queryset
-      - document_pk: int,
-      - note_search: str,
-    """
-    queryset = DocumentNote.objects.all()
-    serializer_class = DocumentNoteDetailSerializer
-
-    def get_queryset(self):
-        qs = super().get_queryset()
-        document_pk = self.request.GET.get('document_pk')
-        if document_pk:
-            qs = qs.filter(document__pk=document_pk)
-        note_search = self.request.GET.get('note_search')
-        if note_search:
-            qs = qs.filter(note__icontains=note_search)
-        return qs
-
-
 class DocumentNoteCreateSerializer(serializers.ModelSerializer):
     document_id = serializers.PrimaryKeyRelatedField(
         source='document', queryset=Document.objects.all())
@@ -303,42 +317,33 @@ class DocumentNoteCreateSerializer(serializers.ModelSerializer):
         fields = ['pk', 'note', 'document_id']
 
 
-class DocumentNoteCreateAPIView(CreateAPIView):
-    """
-    Create Document Note
-    """
-    queryset = DocumentNote.objects.all()
-    serializer_class = DocumentNoteCreateSerializer
-
-
-class DocumentNoteRetrieveAPIView(RetrieveAPIView):
-    """
-    Retrieve Document Note
-    """
-    queryset = DocumentNote.objects.all()
-    serializer_class = DocumentNoteDetailSerializer
-
-
 class DocumentNoteUpdateSerializer(serializers.ModelSerializer):
-
     class Meta:
         model = DocumentNote
         fields = ['note']
 
 
-class DocumentNoteUpdateAPIView(UpdateAPIView):
+class DocumentNoteViewSet(JqMixin, viewsets.ModelViewSet):
     """
-    Update Document Note
+    list: Document Note List\n
+        GET params:
+          - document_id: int
+          - note: str
+          - note_contains: str
+    retrieve: Retrieve Document Note
+    create: Create Document Note
+    update: Update Document Note
+    partial_update: Partial Update Document Note
+    delete: Delete Document Note
     """
     queryset = DocumentNote.objects.all()
-    serializer_class = DocumentNoteUpdateSerializer
 
-
-class DocumentNoteDeleteAPIView(DestroyAPIView):
-    """
-    Delete Document Note
-    """
-    queryset = DocumentNote.objects.all()
+    def get_serializer_class(self):
+        if self.action == 'create':
+            return DocumentNoteCreateSerializer
+        if self.action == 'update':
+            return DocumentNoteUpdateSerializer
+        return DocumentNoteDetailSerializer
 
 
 # --------------------------------------------------------
@@ -354,28 +359,6 @@ class DocumentTagDetailSerializer(SimpleRelationSerializer):
                   'document__description']
 
 
-class DocumentTagListAPIView(JqListAPIView):
-    """
-    Document Tag List\n
-    GET params:
-      - see jqWidgets' grid GET params for sorting/filtering/paginating queryset
-      - document_pk: int
-      - tag_search: str
-    """
-    queryset = DocumentTag.objects.all()
-    serializer_class = DocumentTagDetailSerializer
-
-    def get_queryset(self):
-        qs = super().get_queryset()
-        document_pk = self.request.GET.get('document_pk')
-        if document_pk:
-            qs = qs.filter(document__pk=document_pk)
-        tag_search = self.request.GET.get('tag_search')
-        if tag_search:
-            qs = qs.filter(tag__icontains=tag_search)
-        return qs
-
-
 class DocumentTagCreateSerializer(serializers.ModelSerializer):
     document_id = serializers.PrimaryKeyRelatedField(
         source='document', queryset=Document.objects.all())
@@ -385,79 +368,60 @@ class DocumentTagCreateSerializer(serializers.ModelSerializer):
         fields = ['pk', 'tag', 'document_id']
 
 
-class DocumentTagCreateAPIView(CreateAPIView):
-    """
-    Create Document Tag
-    """
-    queryset = DocumentTag.objects.all()
-    serializer_class = DocumentTagCreateSerializer
-
-
-class DocumentTagRetrieveAPIView(RetrieveAPIView):
-    """
-    Retrieve Document Tag
-    """
-    queryset = DocumentTag.objects.all()
-    serializer_class = DocumentTagDetailSerializer
-
-
 class DocumentTagUpdateSerializer(serializers.ModelSerializer):
-
     class Meta:
         model = DocumentTag
         fields = ['tag']
 
 
-class DocumentTagUpdateAPIView(UpdateAPIView):
+class DocumentTagViewSet(JqMixin, viewsets.ModelViewSet):
     """
-    Update Document Tag
+    Document Tag List\n
+        GET params:
+          - document_id: int
+          - tag: str
+          - tag_contains: str
+    retrieve: Retrieve Document Tag
+    create: Create Document Tag
+    update: Update Document Tag
+    partial_update: Partial Update Document Tag
+    delete: Delete Document Tag
     """
     queryset = DocumentTag.objects.all()
-    serializer_class = DocumentTagUpdateSerializer
 
-
-class DocumentTagDeleteAPIView(DestroyAPIView):
-    """
-    Delete Document Tag
-    """
-    queryset = DocumentTag.objects.all()
+    def get_serializer_class(self):
+        if self.action == 'create':
+            return DocumentTagCreateSerializer
+        if self.action == 'update':
+            return DocumentTagUpdateSerializer
+        return DocumentTagDetailSerializer
 
 
 # --------------------------------------------------------
-# TextUnit Views
+# Text Unit Views
 # --------------------------------------------------------
 
-class TextUnitListSerializer(SimpleRelationSerializer):
-    document_url = serializers.SerializerMethodField()
-    detail_url = serializers.SerializerMethodField()
-
+class TextUnitDetailSerializer(SimpleRelationSerializer):
     class Meta:
         model = TextUnit
         fields = ['pk', 'unit_type', 'language', 'text', 'text_hash',
                   'document__pk', 'document__name',
-                  'document__document_type', 'document__description',
-                  'document_url', 'detail_url']
-
-    def get_document_url(self, obj):
-        return reverse('v1:document-detail', args=[obj.document.pk])
-
-    def get_detail_url(self, obj):
-        return reverse('v1:text-unit-detail', args=[obj.pk])
+                  'document__document_type', 'document__description']
 
 
-class TextUnitListAPIView(JqListAPIView):
+class TextUnitViewSet(JqMixin, viewsets.ReadOnlyModelViewSet):
     """
-    Text Unit List\n
-    GET params:
-      - see jqWidgets' grid GET params for sorting/filtering/paginating queryset
-      - elastic_search: str
-      - text_search: str
-      - document_pk: int
-      - party_pk: int
-      - text_unit_hash: str
+    list: Text Unit List\n
+        GET params:
+          - elastic_search: str
+          - text_search: str
+          - document_id: int
+          - party_id: int
+          - text_unit_hash: str
+    retrieve: Retrieve Text Unit
     """
     queryset = TextUnit.objects.all()
-    serializer_class = TextUnitListSerializer
+    serializer_class = TextUnitDetailSerializer
     es = Elasticsearch(hosts=settings.ELASTICSEARCH_CONFIG['hosts'])
 
     def get_queryset(self):
@@ -480,30 +444,19 @@ class TextUnitListAPIView(JqListAPIView):
             # See UpdateElasticsearchIndex in tasks.py for the set of indexed fields
             pks = [hit['_source']['pk'] for hit in es_res['hits']['hits']]
             qs = TextUnit.objects.filter(pk__in=pks)
-        elif "text_search" in self.request.GET:
-            text_search = self.request.GET.get("text_search")
+        elif "text_contains" in self.request.GET:
+            text_search = self.request.GET.get("text_contains")
             qs = self.filter(text_search, qs, _or_lookup='text__icontains')
 
-        if "document_pk" in self.request.GET:
-            # Document Detail view
-            qs = qs.filter(document__pk=self.request.GET['document_pk']).order_by('pk')
-        elif "party_pk" in self.request.GET:
-            qs = qs.filter(partyusage__party__pk=self.request.GET['party_pk'])
+        if "party_id" in self.request.GET:
+            qs = qs.filter(partyusage__party_id=self.request.GET['party_id'])
         elif "text_unit_hash" in self.request.GET:
             # Text Unit Detail identical text units tab
-            qs = qs.filter(text_hash=self.request.GET['text_unit_hash'])\
-                .exclude(pk=self.request.GET['text_unit_pk'])
+            qs = qs.filter(text_hash=self.request.GET['text_unit_hash']) \
+                .exclude(pk=self.request.GET['text_unit_id'])
         else:
             qs = qs.filter(unit_type='paragraph')
-        return qs
-
-
-class TextUnitDetailAPIView(RetrieveAPIView):
-    """
-    Retrieve Text Unit
-    """
-    queryset = TextUnit.objects.all()
-    serializer_class = TextUnitListSerializer
+        return qs.order_by('pk')
 
 
 # --------------------------------------------------------
@@ -511,50 +464,13 @@ class TextUnitDetailAPIView(RetrieveAPIView):
 # --------------------------------------------------------
 
 class TextUnitTagDetailSerializer(SimpleRelationSerializer):
-    document_url = serializers.SerializerMethodField()
-    text_unit_url = serializers.SerializerMethodField()
-    delete_url = serializers.SerializerMethodField()
-
     class Meta:
         model = TextUnitTag
         fields = ['pk', 'tag', 'timestamp', 'user__username',
                   'text_unit__document__pk',
                   'text_unit__document__name', 'text_unit__document__document_type',
                   'text_unit__document__description', 'text_unit__pk',
-                  'text_unit__unit_type', 'text_unit__language',
-                  'document_url', 'text_unit_url', 'delete_url']
-
-    def get_document_url(self, obj):
-        return reverse('v1:document-detail', args=[obj.text_unit.document.pk])
-
-    def get_text_unit_url(self, obj):
-        return reverse('v1:text-unit-detail', args=[obj.text_unit.pk])
-
-    def get_delete_url(self, obj):
-        return reverse('v1:text-unit-tag-delete', args=[obj.pk])
-
-
-class TextUnitTagListAPIView(JqListAPIView):
-    """
-    Text Unit Tag List\n
-    GET params:
-      - see jqWidgets' grid GET params for sorting/filtering/paginating queryset
-      - tag_search: str
-      - text_unit_id: int
-    """
-    queryset = TextUnitTag.objects.all()
-    serializer_class = TextUnitTagDetailSerializer
-
-    def get_queryset(self):
-        qs = super().get_queryset()
-        tag_search = self.request.GET.get('tag_search')
-        if tag_search:
-            qs = qs.filter(tag=tag_search)
-        text_unit_id = self.request.GET.get('text_unit_id')
-        if text_unit_id:
-            qs = qs.filter(text_unit__id=text_unit_id)
-        qs = qs.select_related('text_unit', 'text_unit__document')
-        return qs
+                  'text_unit__unit_type', 'text_unit__language']
 
 
 class TextUnitTagCreateSerializer(serializers.ModelSerializer):
@@ -566,42 +482,39 @@ class TextUnitTagCreateSerializer(serializers.ModelSerializer):
         fields = ['pk', 'tag', 'text_unit_id']
 
 
-class TextUnitTagCreateAPIView(CreateAPIView):
-    """
-    Create Text Unit Tag
-    """
-    queryset = TextUnitTag.objects.all()
-    serializer_class = TextUnitTagCreateSerializer
-
-
-class TextUnitTagRetrieveAPIView(RetrieveAPIView):
-    """
-    Retrieve Text Unit Tag
-    """
-    queryset = TextUnitTag.objects.all()
-    serializer_class = TextUnitTagDetailSerializer
-
-
 class TextUnitTagUpdateSerializer(serializers.ModelSerializer):
-
     class Meta:
         model = TextUnitTag
         fields = ['tag']
 
 
-class TextUnitTagUpdateAPIView(UpdateAPIView):
+class TextUnitTagViewSet(JqMixin, viewsets.ModelViewSet):
     """
-    Update Text Unit Tag
+    list: Text Unit Tag List\n
+        GET params:
+          - tag: str
+          - tag_contains: str
+          - text_unit_id: int
+          - user__username: str
+    retrieve: Retrieve Text Unit Tag
+    create: Create Text Unit Tag
+    update: Update Text Unit Tag
+    partial_update: Partial Update Text Unit Tag
+    delete: Delete Text Unit Tag
     """
     queryset = TextUnitTag.objects.all()
-    serializer_class = TextUnitTagUpdateSerializer
 
+    def get_serializer_class(self):
+        if self.action in 'create':
+            return TextUnitTagCreateSerializer
+        if self.action == 'update':
+            return TextUnitTagUpdateSerializer
+        return TextUnitTagDetailSerializer
 
-class TextUnitTagDeleteAPIView(DestroyAPIView):
-    """
-    Delete Text Unit Tag
-    """
-    queryset = TextUnitTag.objects.all()
+    def get_queryset(self):
+        qs = super().get_queryset()
+        qs = qs.select_related('text_unit', 'text_unit__document')
+        return qs
 
 
 # --------------------------------------------------------
@@ -609,9 +522,6 @@ class TextUnitTagDeleteAPIView(DestroyAPIView):
 # --------------------------------------------------------
 
 class TextUnitNoteDetailSerializer(SimpleRelationSerializer):
-    document_url = serializers.SerializerMethodField()
-    text_unit_url = serializers.SerializerMethodField()
-    delete_url = serializers.SerializerMethodField()
     history = serializers.SerializerMethodField()
     username = serializers.CharField(
         source='history.last.history_user.username',
@@ -623,45 +533,12 @@ class TextUnitNoteDetailSerializer(SimpleRelationSerializer):
                   'text_unit__document__name', 'text_unit__document__document_type',
                   'text_unit__document__description', 'text_unit__pk',
                   'text_unit__unit_type', 'text_unit__language',
-                  'document_url', 'text_unit_url', 'delete_url',
                   'username', 'history']
-
-    def get_document_url(self, obj):
-        return reverse('v1:document-detail', args=[obj.text_unit.document.pk])
-
-    def get_text_unit_url(self, obj):
-        return reverse('v1:text-unit-detail', args=[obj.text_unit.pk])
-
-    def get_delete_url(self, obj):
-        return reverse('v1:text-unit-note-delete', args=[obj.pk])
 
     def get_history(self, obj):
         return obj.history.values(
             'id', 'text_unit_id', 'history_date',
             'history_user__username', 'note')
-
-
-class TextUnitNoteListAPIView(JqListAPIView):
-    """
-    Text Unit Note List\n
-    GET params:
-      - see jqWidgets' grid GET params for sorting/filtering/paginating queryset
-      - tag_search: str
-      - text_unit_id: int
-    """
-    queryset = TextUnitNote.objects.all()
-    serializer_class = TextUnitNoteDetailSerializer
-
-    def get_queryset(self):
-        qs = super().get_queryset()
-        note_search = self.request.GET.get('note_search')
-        if note_search:
-            qs = qs.filter(note=note_search)
-        text_unit_id = self.request.GET.get('text_unit_id')
-        if text_unit_id:
-            qs = qs.filter(text_unit__id=text_unit_id)
-        qs = qs.select_related('text_unit', 'text_unit__document')
-        return qs
 
 
 class TextUnitNoteCreateSerializer(serializers.ModelSerializer):
@@ -673,42 +550,38 @@ class TextUnitNoteCreateSerializer(serializers.ModelSerializer):
         fields = ['pk', 'note', 'text_unit_id']
 
 
-class TextUnitNoteCreateAPIView(CreateAPIView):
-    """
-    Create Text Unit Note
-    """
-    queryset = TextUnitNote.objects.all()
-    serializer_class = TextUnitNoteCreateSerializer
-
-
-class TextUnitNoteRetrieveAPIView(RetrieveAPIView):
-    """
-    Retrieve Text Unit Note
-    """
-    queryset = TextUnitNote.objects.all()
-    serializer_class = TextUnitNoteDetailSerializer
-
-
 class TextUnitNoteUpdateSerializer(serializers.ModelSerializer):
-
     class Meta:
         model = TextUnitNote
         fields = ['note']
 
 
-class TextUnitNoteUpdateAPIView(UpdateAPIView):
+class TextUnitNoteViewSet(JqMixin, viewsets.ModelViewSet):
     """
-    Update Text Unit Note
+    list: Text Unit Note List\n
+        GET params:
+          - note: str
+          - note_contains: str
+          - text_unit_id: int
+    retrieve: Retrieve Text Unit Note
+    create: Create Text Unit Note
+    update: Update Text Unit Note
+    partial_update: Partial Update Text Unit Note
+    delete: Delete Text Unit Note
     """
     queryset = TextUnitNote.objects.all()
-    serializer_class = TextUnitNoteUpdateSerializer
 
+    def get_serializer_class(self):
+        if self.action == 'create':
+            return TextUnitNoteCreateSerializer
+        if self.action == 'update':
+            return TextUnitNoteUpdateSerializer
+        return TextUnitNoteDetailSerializer
 
-class TextUnitNoteDeleteAPIView(DestroyAPIView):
-    """
-    Delete Text Unit Note
-    """
-    queryset = TextUnitNote.objects.all()
+    def get_queryset(self):
+        qs = super().get_queryset()
+        qs = qs.select_related('text_unit', 'text_unit__document')
+        return qs
 
 
 # --------------------------------------------------------
@@ -716,11 +589,6 @@ class TextUnitNoteDeleteAPIView(DestroyAPIView):
 # --------------------------------------------------------
 
 class TextUnitPropertyDetailSerializer(SimpleRelationSerializer):
-    document_url = serializers.SerializerMethodField()
-    text_unit_url = serializers.SerializerMethodField()
-    edit_url = serializers.SerializerMethodField()
-    delete_url = serializers.SerializerMethodField()
-
     class Meta:
         model = TextUnitProperty
         fields = ['pk', 'key', 'value',
@@ -728,42 +596,7 @@ class TextUnitPropertyDetailSerializer(SimpleRelationSerializer):
                   'modified_date', 'modified_by__username',
                   'text_unit__document__pk', 'text_unit__document__name',
                   'text_unit__document__document_type', 'text_unit__document__description',
-                  'text_unit__unit_type', 'text_unit__language', 'text_unit__pk',
-                  'document_url', 'text_unit_url', 'edit_url', 'delete_url']
-
-    def get_document_url(self, obj):
-        return reverse('v1:document-detail', args=[obj.text_unit.document.pk])
-
-    def get_text_unit_url(self, obj):
-        return reverse('v1:text-unit-detail', args=[obj.text_unit.pk])
-
-    def get_edit_url(self, obj):
-        return reverse('v1:text-unit-property-update', args=[obj.pk])
-
-    def get_delete_url(self, obj):
-        return reverse('v1:text-unit-property-delete', args=[obj.pk])
-
-
-class TextUnitPropertyListAPIView(JqListAPIView):
-    """
-    Text Unit Property List\n
-    GET params:
-      - see jqWidgets' grid GET params for sorting/filtering/paginating queryset
-      - text_unit_pk: int,
-      - key_search: str,
-    """
-    queryset = TextUnitProperty.objects.all()
-    serializer_class = TextUnitPropertyDetailSerializer
-
-    def get_queryset(self):
-        qs = super().get_queryset()
-        text_unit_pk = self.request.GET.get('text_unit_pk')
-        if text_unit_pk:
-            qs = qs.filter(text_unit__pk=text_unit_pk)
-        key_search = self.request.GET.get('key_search')
-        if key_search:
-            qs = qs.filter(key__icontains=key_search)
-        return qs
+                  'text_unit__unit_type', 'text_unit__language', 'text_unit__pk']
 
 
 class TextUnitPropertyCreateSerializer(serializers.ModelSerializer):
@@ -775,178 +608,621 @@ class TextUnitPropertyCreateSerializer(serializers.ModelSerializer):
         fields = ['pk', 'key', 'value', 'text_unit_id']
 
 
-class TextUnitPropertyCreateAPIView(CreateAPIView):
-    """
-    Create Text Unit Property
-    """
-    queryset = TextUnitProperty.objects.all()
-    serializer_class = TextUnitPropertyCreateSerializer
-
-
-class TextUnitPropertyRetrieveAPIView(RetrieveAPIView):
-    """
-    Retrieve Text Unit Property
-    """
-    queryset = TextUnitProperty.objects.all()
-    serializer_class = TextUnitPropertyDetailSerializer
-
-
 class TextUnitPropertyUpdateSerializer(serializers.ModelSerializer):
     class Meta:
         model = TextUnitProperty
         fields = ['key', 'value']
 
 
-class TextUnitPropertyUpdateAPIView(UpdateAPIView):
+class TextUnitPropertyViewSet(JqMixin, viewsets.ModelViewSet):
     """
-    Update Text Unit Property
+    list: Text Unit Property List\n
+        GET params:
+          - text_unit_id: int
+          - key: str
+          - key_contains: str
+          - value: str
+          - value_contains: str
+    retrieve: Retrieve Text Unit Property
+    create: Create Text Unit Property
+    update: Update Text Unit Property
+    partial_update: Partial Update Text Unit Property
+    delete: Delete Text Unit Property
     """
     queryset = TextUnitProperty.objects.all()
-    serializer_class = TextUnitPropertyUpdateSerializer
 
-
-class TextUnitPropertyDeleteAPIView(DestroyAPIView):
-    """
-    Delete Text Unit Property
-    """
-    queryset = TextUnitNote.objects.all()
+    def get_serializer_class(self):
+        if self.action == 'create':
+            return TextUnitPropertyCreateSerializer
+        if self.action == 'update':
+            return TextUnitPropertyUpdateSerializer
+        return TextUnitPropertyDetailSerializer
 
 
 # --------------------------------------------------------
 # Typeahead Views for Global Search bar
 # --------------------------------------------------------
 
-class TypeaheadDocumentDescription(TypeaheadAPIView):
+class TypeaheadDocument(TypeaheadAPIView):
     """
-    Typeahead Document description\n
-    GET params:
-      - q: str
+    Typeahead Document\n
+        Kwargs: field_name: [name, description]
+        GET params:
+          - q: str
     """
     model = Document
-    search_field = 'description'
     limit_reviewers_qs_by_field = ''
-
-
-class TypeaheadDocumentName(TypeaheadDocumentDescription):
-    """
-    Typeahead Document name\n
-    GET params:
-      - q: str
-    """
-    search_field = 'name'
 
 
 class TypeaheadTextUnitTag(TypeaheadAPIView):
     """
     Typeahead Text Unit Tag\n
-    GET params:
-      - q: str
+        Kwargs: field_name: [tag]
+        GET params:
+          - q: str
     """
     model = TextUnitTag
-    search_field = 'tag'
     limit_reviewers_qs_by_field = 'text_unit__document'
 
 
-class TypeaheadDocumentPropertyKey(TypeaheadAPIView):
+class TypeaheadDocumentProperty(TypeaheadAPIView):
     """
-    Typeahead Text Unit Property key\n
-    GET params:
-      - q: str
+    Typeahead Text Unit Property\n
+        Kwargs: field_name: [key]
+        GET params:
+          - q: str
     """
     model = DocumentProperty
-    search_field = 'key'
     limit_reviewers_qs_by_field = 'document'
 
 
-# router = routers.DefaultRouter()
-# router.register(r'document/list', DocumentListViewSet, 'document')
+# --------------------------------------------------------
+# Document Field Views
+# --------------------------------------------------------
 
+class DocumentFieldDetailSerializer(SimpleRelationSerializer):
+    class Meta:
+        model = DocumentField
+        fields = ['uid', 'code', 'title', 'type', 'item_number', 'choices',
+                  'modified_by__username', 'modified_date']
+
+
+class DocumentFieldCreateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = DocumentField
+        fields = ['uid', 'code', 'title', 'type', 'item_number', 'choices']
+
+
+class DocumentFieldViewSet(JqMixin, viewsets.ModelViewSet):
+    """
+    list: Document Field List\n
+        GET params:
+          - uid: int
+          - code: str
+          - title: str
+          - type: str
+          - choices: str
+    retrieve: Retrieve Document Field
+    create: Create Document Field
+    update: Update Document Field
+    partial_update: Partial Update Document Field
+    delete: Delete Document Field
+    """
+    queryset = DocumentField.objects.all()
+
+    def get_serializer_class(self):
+        if self.action in ('create', 'update', 'partial_update'):
+            return DocumentFieldCreateSerializer
+        return DocumentFieldDetailSerializer
+
+
+# --------------------------------------------------------
+# Document Type Views
+# --------------------------------------------------------
+
+class DocumentTypeDetailSerializer(SimpleRelationSerializer):
+    fields_data = DocumentFieldDetailSerializer(
+        source='fields', many=True, read_only=True)
+    search_fields_data = DocumentFieldDetailSerializer(
+        source='search_fields', many=True, read_only=True)
+
+    class Meta:
+        model = DocumentType
+        fields = ['uid', 'code', 'title',
+                  'fields_data', 'search_fields_data',
+                  'modified_by__username', 'modified_date']
+
+
+class DocumentTypeCreateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = DocumentType
+        fields = ['uid', 'code', 'title', 'fields', 'search_fields']
+
+
+class DocumentTypeViewSet(JqMixin, viewsets.ModelViewSet):
+    """
+    list: Document Type List\n
+        GET params:
+          - uid: str
+          - code: str
+          - title: str
+    retrieve: Retrieve Document Type
+    create: Create Document Type
+    update: Update Document Type
+    partial_update: Partial Update Document Type
+    delete: Delete Document Type
+    """
+    queryset = DocumentType.objects.all()
+
+    def get_serializer_class(self):
+        if self.action in 'create':
+            return DocumentTypeCreateSerializer
+        if self.action == 'update':
+            return DocumentTypeCreateSerializer
+        return DocumentTypeDetailSerializer
+
+
+# --------------------------------------------------------
+# Document Field Value Views
+# --------------------------------------------------------
+
+class DocumentFieldValueSerializer(serializers.ModelSerializer):
+    adapter = None
+
+    class Meta:
+        model = DocumentFieldValue
+        fields = ['pk',
+                  'document',
+                  'field',
+                  'location_start', 'location_end', 'location_text',
+                  'value',
+                  'created_by', 'created_date', 'modified_by', 'modified_date']
+
+    def save(self, **kwargs):
+        field = self.validated_data['field']
+        self.adapter = FIELD_TYPES_REGISTRY.get(field.type)
+        return super().save(**kwargs)
+
+    def create(self, validated_data):
+        return self.adapter.save_value(validated_data['document'],
+                                       validated_data['field'],
+                                       validated_data['location_start'],
+                                       validated_data['location_end'],
+                                       validated_data['location_text'],
+                                       validated_data['value'],
+                                       self.context['request'].user,
+                                       True)
+
+    def update(self, field_value, validated_data):
+        return self.adapter.update(field_value,
+                                   validated_data['document'],
+                                   validated_data['field'],
+                                   validated_data['location_start'],
+                                   validated_data['location_end'],
+                                   validated_data['location_text'],
+                                   validated_data['value'],
+                                   self.context['request'].user)
+
+    def delete(self, instance, validated_data):
+        return self.adapter.delete(instance)
+
+
+class DocumentFieldValueViewSet(JqMixin, viewsets.ModelViewSet):
+    """
+    list: Document Field Value List\n
+        GET params:
+          - document_type_code: str
+          - field_code: str
+          - value: str
+    retrieve: Retrieve Document Field Value
+    create: Create Document Field Value
+    update: Update Document Field Value
+    partial_update: Partial Update Document Field Value
+    delete: Delete Document Field Value
+    """
+    queryset = DocumentFieldValue.objects.all()
+    serializer_class = DocumentFieldValueSerializer
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        qs = qs.filter(value__isnull=False)
+
+        document_type_code = self.request.GET.get('document_type_code')
+        if document_type_code:
+            qs = qs.filter(document__type__code=document_type_code)
+
+        document_id = self.request.GET.get('document_id')
+        if document_id:
+            qs = qs.filter(document_id=document_id)
+
+        field_code = self.request.GET.get('field_code')
+        if field_code:
+            qs = qs.filter(field__code=field_code)
+
+        value = self.request.GET.get('value')
+        if value:
+            qs = qs.filter(value__val=value)
+
+        return qs
+
+    def destroy(self, request, *args, **kwargs):
+        instance = self.get_object()
+        adapter = FIELD_TYPES_REGISTRY.get(instance.field.type)
+        adapter.delete(instance)
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+# --------------------------------------------------------
+# Document Field Value History Views
+# --------------------------------------------------------
+
+class DocumentFieldValueHistorySerializer(SimpleRelationSerializer):
+    object_id = serializers.SerializerMethodField()
+    history_id = serializers.SerializerMethodField()
+    history_user = serializers.SerializerMethodField()
+    history_date = serializers.SerializerMethodField()
+    history_type = serializers.SerializerMethodField()
+    latest_history_type = serializers.SerializerMethodField()
+    value = serializers.SerializerMethodField()
+
+    class Meta:
+        model = DocumentFieldValue
+        fields = ['history_id', 'object_id', 'document_id', 'document__name',
+                  'document__type__code', 'document__type__title',
+                  'field_id', 'field__code', 'field__type', 'field__title',
+                  'value', 'history_user', 'history_date', 'history_type',
+                  'latest_history_type']
+
+    def get_value(self, obj):
+        return obj.history_object.val
+
+    def get_object_id(self, obj):
+        return obj.history_object.pk
+
+    def get_history_id(self, obj):
+        return obj.pk
+
+    def get_history_user(self, obj):
+        user = obj.history_user
+        return user.username if user else None
+
+    def get_history_date(self, obj):
+        return obj.history_date
+
+    def get_history_type(self, obj):
+        return obj.get_history_type_display()
+
+    def get_latest_history_type(self, obj):
+        return obj.instance.history.latest().get_history_type_display()
+
+
+class DocumentFieldValueHistoryViewSet(JqMixin, viewsets.ModelViewSet):
+    """
+    list: Document Field Value History List
+        GET params:
+            - document_id: int
+            - id: int (DocumentFieldValue.id)
+    retrieve: Retrieve Document Field Value History
+    update: Update Document Field Value History\n
+        Apply specific history state
+    """
+    queryset = DocumentFieldValue.history.all()
+    serializer_class = DocumentFieldValueHistorySerializer
+    http_method_names = ['get', 'put']
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        return qs.order_by('document_id', 'field__code', 'history_date')
+
+    def update(self, request, *args, **kwargs):
+        hist_object = self.get_object()
+        source_object = hist_object.instance
+        source_object.save()
+        serializer = self.get_serializer(source_object.history.latest())
+        return Response(serializer.data)
+
+
+class StatsAPIView(APIView):
+    def get(self, request, *args, **kwargs):
+
+        # get admin tasks data
+        task_api_module = get_api_module('task')
+        task_api_view = task_api_module.TaskViewSet(request=request)
+        task_api_view.format_kwarg = {}
+        admin_task_df = pd.DataFrame(task_api_view.list(request=request).data)
+        admin_task_total_count = admin_task_df.shape[0]
+        admin_task_by_status_count = dict(admin_task_df.groupby(['status']).size()) \
+            if not admin_task_df.empty else 0
+
+        # get projects data
+        project_api_module = get_api_module('project')
+        project_api_view = project_api_module.ProjectViewSet(request=request)
+        project_api_view.format_kwarg = {}
+        project_data = project_api_view.list(request=request).data
+        if not project_data:
+            project_total_count = project_completed_count = project_completed_weight = \
+                project_progress_avg = project_documents_total_count = \
+                project_documents_unique_count = 0
+        else:
+            for i in project_data:
+                progress_data = i.pop('progress')
+                i.update(progress_data)
+            project_df = pd.DataFrame(project_data)
+            project_df['completed'] = np.where(project_df['progress'] == 100, 1, 0)
+            project_total_count = project_df.shape[0]
+            project_df_sum = project_df.sum()
+            project_completed_count = project_df_sum.completed
+            project_completed_weight = round(project_completed_count / project_total_count * 100, 1)
+            project_progress_avg = round(project_df.mean().progress, 1)
+            project_documents_total_count = project_df_sum.total_documents_count
+            project_documents_unique_count = Document.objects.filter(
+                taskqueue__project__isnull=False) \
+                .distinct().count()
+
+        # get task queues data
+        task_queue_api_view = project_api_module.TaskQueueViewSet(request=request)
+        task_queue_api_view.format_kwarg = {}
+        task_queue_data = task_queue_api_view.list(request=request).data
+        if not task_queue_data:
+            task_queue_total_count = task_queue_completed_count = task_queue_completed_weight = \
+                task_queue_progress_avg = task_queue_documents_total_count = \
+                task_queue_documents_unique_count = task_queue_reviewers_unique_count = 0
+        else:
+            for i in task_queue_data:
+                progress_data = i.pop('progress')
+                i.update(progress_data)
+            task_queue_df = pd.DataFrame(task_queue_data)
+            task_queue_df['completed'] = np.where(task_queue_df['progress'] == 100, 1, 0)
+            task_queue_total_count = task_queue_df.shape[0]
+            task_queue_df_sum = task_queue_df.sum()
+            task_queue_completed_count = task_queue_df_sum.completed
+            task_queue_completed_weight = round(
+                task_queue_completed_count / task_queue_total_count * 100, 1)
+            task_queue_progress_avg = round(task_queue_df.mean().progress, 1)
+            task_queue_documents_total_count = task_queue_df_sum.total_documents_count
+            task_queue_documents_unique_count = Document.objects.filter(taskqueue__isnull=False) \
+                .distinct().count()
+            task_queue_reviewers_unique_count = User.objects.filter(taskqueue__isnull=False) \
+                .distinct().count()
+
+        # set counts depending on user role
+        documents = Document.objects
+        document_properties = DocumentProperty.objects
+        document_tags = DocumentTag.objects
+        document_notes = DocumentNote.objects
+        document_relations = DocumentRelation.objects
+        document_clusters = DocumentCluster.objects
+        text_units = TextUnit.objects
+        tu_tags = TextUnitTag.objects
+        tu_properties = TextUnitProperty.objects
+        tu_classifications = TextUnitClassification.objects
+        tu_classification_suggestions = TextUnitClassifierSuggestion.objects
+        tuc_suggestion_types = TextUnitClassifierSuggestion.objects.distinct('class_name')
+        tu_notes = TextUnitNote.objects
+        tu_clusters = TextUnitCluster.objects
+
+        terms = Term.objects
+        term_usages = TermUsage.objects
+
+        amount_usages = AmountUsage.objects
+        citation_usages = CitationUsage.objects
+        copyright_usages = CopyrightUsage.objects
+        court_usages = CourtUsage.objects
+        currency_usages = CurrencyUsage.objects
+        date_duration_usages = DateDurationUsage.objects
+        date_usages = DateUsage.objects
+        definition_usages = DefinitionUsage.objects
+        distance_usages = DistanceUsage.objects
+        geo_entities = GeoEntity.objects
+        geo_entity_usages = GeoEntityUsage.objects
+        geo_aliases = GeoAlias.objects
+        geo_alias_usages = GeoAliasUsage.objects
+        geo_relations = GeoRelation.objects
+        parties = Party.objects
+        party_usages = PartyUsage.objects
+        percent_usages = PercentUsage.objects
+        ratio_usages = RatioUsage.objects
+        regulation_usages = RegulationUsage.objects
+        trademark_usages = TrademarkUsage.objects
+        url_usages = UrlUsage.objects
+
+        if request.user.is_reviewer:
+            document_filter_opts = dict(document__taskqueue__reviewers=request.user)
+            tu_filter_opts = dict(text_unit__document__taskqueue__reviewers=request.user)
+
+            documents = documents.filter(taskqueue__reviewers=request.user).distinct()
+            document_properties = document_properties.filter(**document_filter_opts).distinct()
+            document_tags = document_tags.filter(**document_filter_opts).distinct()
+            document_notes = document_notes.filter(**document_filter_opts).distinct()
+            document_relations = document_relations.filter(
+                document_a__taskqueue__reviewers=request.user,
+                document_b__taskqueue__reviewers=request.user).distinct()
+            document_clusters = document_clusters.filter(
+                documents__taskqueue__reviewers=request.user).distinct()
+            text_units = text_units.filter(**document_filter_opts).distinct()
+            tu_tags = tu_tags.filter(**tu_filter_opts).distinct()
+            tu_properties = tu_properties.filter(**tu_filter_opts).distinct()
+            tu_classifications = tu_classifications.filter(**tu_filter_opts).distinct()
+            tu_classification_suggestions = tu_classification_suggestions.filter(
+                **tu_filter_opts).distinct()
+            tuc_suggestion_types = tuc_suggestion_types.filter(**tu_filter_opts).distinct(
+                'class_name')
+            tu_notes = tu_notes.filter(**tu_filter_opts).distinct()
+            tu_clusters = tu_clusters.filter(
+                text_units__document__taskqueue__reviewers=request.user).distinct()
+            terms = terms.filter(
+                termusage__text_unit__document__taskqueue__reviewers=request.user).distinct()
+            term_usages = term_usages.filter(**tu_filter_opts).distinct()
+
+            amount_usages = amount_usages.filter(**tu_filter_opts).distinct()
+            citation_usages = citation_usages.filter(**tu_filter_opts).distinct()
+            copyright_usages = copyright_usages.filter(**tu_filter_opts).distinct()
+            court_usages = court_usages.filter(**tu_filter_opts).distinct()
+            currency_usages = currency_usages.filter(**tu_filter_opts).distinct()
+            date_duration_usages = date_duration_usages.filter(**tu_filter_opts).distinct()
+            date_usages = date_usages.filter(**tu_filter_opts).distinct()
+            definition_usages = definition_usages.filter(**tu_filter_opts).distinct()
+            distance_usages = distance_usages.filter(**tu_filter_opts).distinct()
+
+            geo_aliases = geo_aliases.filter(
+                geoaliasusage__text_unit__document__taskqueue__reviewers=request.user).distinct()
+            geo_alias_usages = geo_alias_usages.filter(**tu_filter_opts).distinct()
+            geo_entities = geo_entities.filter(
+                geoentityusage__text_unit__document__taskqueue__reviewers=request.user).distinct()
+            geo_entity_usages = geo_entity_usages.filter(**tu_filter_opts).distinct()
+            geo_relations = geo_relations.filter(
+                entity_a__geoentityusage__text_unit__document__taskqueue__reviewers=request.user,
+                entity_b__geoentityusage__text_unit__document__taskqueue__reviewers=request.user) \
+                .distinct()
+
+            parties = parties.filter(
+                partyusage__text_unit__document__taskqueue__reviewers=request.user).distinct()
+            party_usages = party_usages.filter(**tu_filter_opts).distinct()
+            percent_usages = percent_usages.filter(**tu_filter_opts).distinct()
+            ratio_usages = ratio_usages.filter(**tu_filter_opts).distinct()
+            regulation_usages = regulation_usages.filter(**tu_filter_opts).distinct()
+            trademark_usages = trademark_usages.filter(**tu_filter_opts).distinct()
+            url_usages = url_usages.filter(**tu_filter_opts).distinct()
+
+        data = {
+            "document_count": documents.count(),
+            "document_property_count": document_properties.count(),
+            "document_tag_count": document_tags.count(),
+            "document_note_count": document_notes.count(),
+            "document_relation_count": document_relations.count(),
+            "document_cluster_count": document_clusters.count(),
+            "text_unit_count": text_units.count(),
+            "text_unit_tag_count": tu_tags.count(),
+            "text_unit_property_count": tu_properties.count(),
+            "text_unit_classification_count": tu_classifications.count(),
+            "text_unit_classification_suggestion_count": tu_classification_suggestions.count(),
+            "text_unit_classification_suggestion_type_count": tuc_suggestion_types.count(),
+            "text_unit_note_count": tu_notes.count(),
+            "text_unit_cluster_count": tu_clusters.count(),
+            "amount_usage_count": amount_usages.count(),
+            "citation_usage_count": citation_usages.count(),
+            "copyright_usage_count": copyright_usages.count(),
+            "court_count": Court.objects.count(),
+            "court_usage_count": court_usages.count(),
+            "currency_usage_count": currency_usages.count(),
+            "date_duration_usage_count": date_duration_usages.count(),
+            "date_usage_count": date_usages.count(),
+            "definition_usage_count": definition_usages.count(),
+            "distance_usage_count": distance_usages.count(),
+
+            "geo_alias_count": geo_aliases.count(),
+            "geo_alias_usage_count": geo_alias_usages.count(),
+            "geo_entity_count": geo_entities.count(),
+            "geo_entity_usage_count": geo_entity_usages.count(),
+            "geo_relation_count": geo_relations.count(),
+            "party_count": parties.count(),
+            "party_usage_count": party_usages.count(),
+            "percent_usage_count": percent_usages.count(),
+            "ratio_usage_count": ratio_usages.count(),
+            "regulation_usage_count": regulation_usages.count(),
+            "trademark_usage_count": trademark_usages.count(),
+            "url_usage_count": url_usages.count(),
+            "term_count": terms.count(),
+            "term_usage_count": term_usages.count(),
+            "project_total_count": project_total_count,
+            "project_completed_count": project_completed_count,
+            "project_completed_weight": project_completed_weight,
+            "project_progress_avg": project_progress_avg,
+            "project_documents_total_count": project_documents_total_count,
+            "project_documents_unique_count": project_documents_unique_count,
+            "task_queue_total_count": task_queue_total_count,
+            "task_queue_completed_count": task_queue_completed_count,
+            "task_queue_completed_weight": task_queue_completed_weight,
+            "task_queue_progress_avg": task_queue_progress_avg,
+            "task_queue_documents_total_count": task_queue_documents_total_count,
+            "task_queue_documents_unique_count": task_queue_documents_unique_count,
+            "task_queue_reviewers_unique_count": task_queue_reviewers_unique_count,
+            "admin_task_total_count": admin_task_total_count,
+            "admin_task_by_status_count": admin_task_by_status_count,
+        }
+        return Response(data)
+
+
+class DumpDocumentTypeConfigView(APIView):
+    def get_full_dump(self):
+        return list(DocumentField.objects.all()) \
+               + list(DocumentType.objects.all()) \
+               + list(DocumentFieldDetector.objects.all())
+
+    def get(self, request, *args, **kwargs):
+        """
+        Dump all document types, fields and field detectors to json.
+
+        """
+        data = self.get_full_dump()
+        return HttpResponse(core_serializers.serialize("json", data),
+                            content_type='Application/json')
+
+    def put(self, request, *args, **kwargs):
+        data = request.data
+        buf = io.StringIO()
+
+        try:
+
+            with NamedTemporaryFile(mode='w+', suffix='.json') as f:
+                json.dump(data, f)
+                f.seek(0)
+                call_command('loaddata', f.name, app_label='document', stdout=buf,
+                             interactive=False)
+                buf.seek(0)
+            return HttpResponse(content=core_serializers.serialize("json", self.get_full_dump()),
+                                content_type='Application/json',
+                                status=200)
+        except:
+            log = buf.read()
+            tb = traceback.format_exc()
+            data = {
+                'log': log,
+                'exception': tb
+            }
+            return HttpResponse(content=json.dumps(data),
+                                content_type='Application/json',
+                                status=400)
+
+
+main_router = routers.DefaultRouter()
+main_router.register(r'documents', DocumentViewSet, 'document')
+main_router.register(r'document-fields', DocumentFieldViewSet, 'document-field')
+
+main_router.register(r'document-field-values', DocumentFieldValueViewSet, 'document-field-value')
+main_router.register(r'document-field-values-history', DocumentFieldValueHistoryViewSet,
+                     'document-field-values-history')
+
+main_router.register(r'document-properties', DocumentPropertyViewSet, 'document-property')
+main_router.register(r'document-notes', DocumentNoteViewSet, 'document-note')
+main_router.register(r'document-tags', DocumentTagViewSet, 'document-tag')
+main_router.register(r'text-units', TextUnitViewSet, 'text-unit')
+main_router.register(r'text-unit-tags', TextUnitTagViewSet, 'text-unit-tag')
+main_router.register(r'text-unit-notes', TextUnitNoteViewSet, 'text-unit-note')
+main_router.register(r'text-unit-properties', TextUnitPropertyViewSet, 'text-unit-property')
+
+document_type_router = routers.SimpleRouter()
+document_type_router.register(r'document-types', DocumentTypeViewSet, 'document-types')
+
+document_router = nested_routers.NestedSimpleRouter(document_type_router, r'document-types',
+                                                    lookup='document_type', trailing_slash=False)
+document_router.register(r'documents', DocumentWithFieldsListAPI, 'documents')
+
+api_routers = [main_router, document_type_router, document_router]
 
 urlpatterns = [
-    url(r'document/list/$', DocumentListAPIView.as_view(),
-        name='document-list'),
-    url(r'document/(?P<pk>\d+)/detail/$', DocumentDetailAPIView.as_view(),
-        name='document-detail'),
     url(r'document-sentiment-chart/$', DocumentSentimentChartAPIView.as_view(),
         name='document-sentiment-chart'),
 
-    url(r'document-tag/list/$', DocumentTagListAPIView.as_view(),
-        name='document-tag-list'),
-    url(r'document-tag/create/$', DocumentTagCreateAPIView.as_view(),
-        name='document-tag-create'),
-    url(r'document-tag/(?P<pk>\d+)/detail/$', DocumentTagRetrieveAPIView.as_view(),
-        name='document-tag-detail'),
-    url(r'document-tag/(?P<pk>\d+)/update/$', DocumentTagUpdateAPIView.as_view(),
-        name='document-tag-update'),
-    url(r'document-tag/(?P<pk>\d+)/delete/$', DocumentTagDeleteAPIView.as_view(),
-        name='document-tag-delete'),
+    url(r'^typeahead/document/(?P<field_name>[a-z_]+)/$', TypeaheadDocument.as_view(),
+        name='typeahead-document'),
+    url(r'^typeahead/document-property/(?P<field_name>[a-z_]+)/$',
+        TypeaheadDocumentProperty.as_view(),
+        name='typeahead-document-property'),
+    url(r'^typeahead/text-unit-tag/(?P<field_name>[a-z_]+)/$', TypeaheadTextUnitTag.as_view(),
+        name='typeahead-text-unit-tag'),
 
-    url(r'document-property/list/$', DocumentPropertyListAPIView.as_view(),
-        name='document-property-list'),
-    url(r'document-property/create/$', DocumentPropertyCreateAPIView.as_view(),
-        name='document-property-create'),
-    url(r'document-property/(?P<pk>\d+)/detail/$', DocumentPropertyRetrieveAPIView.as_view(),
-        name='document-property-detail'),
-    url(r'document-property/(?P<pk>\d+)/update/$', DocumentPropertyUpdateAPIView.as_view(),
-        name='document-property-update'),
-    url(r'document-property/(?P<pk>\d+)/delete/$', DocumentPropertyDeleteAPIView.as_view(),
-        name='document-property-delete'),
-
-    url(r'document-note/list/$', DocumentNoteListAPIView.as_view(),
-        name='document-note-list'),
-    url(r'document-note/create/$', DocumentNoteCreateAPIView.as_view(),
-        name='document-note-create'),
-    url(r'document-note/(?P<pk>\d+)/detail/$', DocumentNoteRetrieveAPIView.as_view(),
-        name='document-note-detail'),
-    url(r'document-note/(?P<pk>\d+)/update/$', DocumentNoteUpdateAPIView.as_view(),
-        name='document-note-update'),
-    url(r'document-note/(?P<pk>\d+)/delete/$', DocumentNoteDeleteAPIView.as_view(),
-        name='document-note-delete'),
-
-    url(r'text-unit/list/$', TextUnitListAPIView.as_view(),
-        name='text-unit-list'),
-    url(r'text-unit/(?P<pk>\d+)/detail/$', TextUnitDetailAPIView.as_view(),
-        name='text-unit-detail'),
-
-    url(r'text-unit-tag/list/$', TextUnitTagListAPIView.as_view(),
-        name='text-unit-tag-list'),
-    url(r'text-unit-tag/create/$', TextUnitTagCreateAPIView.as_view(),
-        name='text-unit-tag-create'),
-    url(r'text-unit-tag/(?P<pk>\d+)/detail/$', TextUnitTagRetrieveAPIView.as_view(),
-        name='text-unit-tag-detail'),
-    url(r'text-unit-tag/(?P<pk>\d+)/update/$', TextUnitTagUpdateAPIView.as_view(),
-        name='text-unit-tag-update'),
-    url(r'text-unit-tag/(?P<pk>\d+)/delete/$', TextUnitTagDeleteAPIView.as_view(),
-        name='text-unit-tag-delete'),
-
-    url(r'text-unit-note/list/$', TextUnitNoteListAPIView.as_view(),
-        name='text-unit-note-list'),
-    url(r'text-unit-note/create/$', TextUnitNoteCreateAPIView.as_view(),
-        name='text-unit-note-create'),
-    url(r'text-unit-note/(?P<pk>\d+)/detail/$', TextUnitNoteRetrieveAPIView.as_view(),
-        name='text-unit-note-detail'),
-    url(r'text-unit-note/(?P<pk>\d+)/update/$', TextUnitNoteUpdateAPIView.as_view(),
-        name='text-unit-note-update'),
-    url(r'text-unit-note/(?P<pk>\d+)/delete/$', TextUnitNoteDeleteAPIView.as_view(),
-        name='text-unit-note-delete'),
-
-    url(r'text-unit-property/list/$', TextUnitPropertyListAPIView.as_view(),
-        name='text-unit-property-list'),
-    url(r'text-unit-property/create/$', TextUnitPropertyCreateAPIView.as_view(),
-        name='text-unit-property-create'),
-    url(r'text-unit-property/(?P<pk>\d+)/detail/$', TextUnitPropertyRetrieveAPIView.as_view(),
-        name='text-unit-property-detail'),
-    url(r'text-unit-property/(?P<pk>\d+)/update/$', TextUnitPropertyUpdateAPIView.as_view(),
-        name='text-unit-property-update'),
-    url(r'text-unit-property/(?P<pk>\d+)/delete/$', TextUnitPropertyDeleteAPIView.as_view(),
-        name='text-unit-property-delete'),
-
-    url(r'^complete/document/description/$', TypeaheadDocumentDescription.as_view(),
-        name='document-description-complete'),
-    url(r'^complete/document/name/$', TypeaheadDocumentName.as_view(),
-        name='document-name-complete'),
-    url(r'^complete/document-property/key/$', TypeaheadDocumentPropertyKey.as_view(),
-        name='document-property-key-complete'),
-    url(r'^complete/text-unit-tag/tag/$', TypeaheadTextUnitTag.as_view(),
-        name='text-unit-tag-complete'),
+    url(r'stats/$', StatsAPIView.as_view(),
+        name='stats'),
+    url(r'config-dump', DumpDocumentTypeConfigView.as_view(), name='dump-config'),
 ]

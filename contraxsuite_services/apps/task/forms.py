@@ -36,10 +36,10 @@ from django.utils.translation import ugettext_lazy as _
 from apps.common.widgets import LTRRadioField
 from apps.common.forms import checkbox_field
 from apps.analyze.models import TextUnitClassification, TextUnitClassifier
-from apps.document.models import DocumentProperty, TextUnitProperty
+from apps.document.models import DocumentProperty, TextUnitProperty, DocumentType
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2017, ContraxSuite, LLC"
+__copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
 __license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.0.5/LICENSE"
 __version__ = "1.0.6"
 __maintainer__ = "LexPredict, LLC"
@@ -65,9 +65,7 @@ class LoadDocumentsForm(forms.Form):
     source_type = forms.CharField(
         max_length=100,
         required=True)
-    document_type = forms.CharField(
-        max_length=100,
-        required=True)
+    document_type = forms.ModelChoiceField(queryset=DocumentType.objects.all(), required=False)
     delete = checkbox_field("Delete existing Documents")
 
 

@@ -24,20 +24,29 @@
 """
 # -*- coding: utf-8 -*-
 
+# Standard imports
+import pickle
+import re
+import uuid
+from typing import Union, List
+
 # Django imports
 from ckeditor.fields import RichTextField
 from django.contrib.postgres.fields import JSONField
+from django.core.serializers.json import DjangoJSONEncoder
 from django.db import models
 from django.dispatch import receiver
 from django.utils.timezone import now
-
 from simple_history.models import HistoricalRecords
 
 # Project imports
+from apps.document.field_types import FIELD_TYPES_REGISTRY, FIELD_TYPES_CHOICE
+from apps.document.parsing.extractors import remove_num_separators
+from apps.document.parsing.field_annotations_classifier import SkLearnClassifierModel
 from apps.users.models import User
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2017, ContraxSuite, LLC"
+__copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
 __license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.0.5/LICENSE"
 __version__ = "1.0.6"
 __maintainer__ = "LexPredict, LLC"
@@ -70,6 +79,90 @@ class TimeStampedModel(models.Model):
             models.signals.post_save.connect(func, sender=sender)
 
 
+class DocumentField(TimeStampedModel):
+    """DocumentField object model
+
+    DocumentField describes manually created custom field for a document.
+    """
+    DOCUMENT_FIELD_TYPES = ((i, i) for i in sorted(FIELD_TYPES_REGISTRY))
+    DOCUMENT_FIELD_ITEM_NUMBERS = (
+        ('first', 'first'),
+        ('second', 'second'),
+        ('last', 'last'),
+    )
+
+    # Make pk field unique
+    uid = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+
+    # Short name for field.
+    code = models.CharField(max_length=50, db_index=True)
+
+    # Verbose name for field.
+    title = models.CharField(max_length=100, db_index=True)
+
+    # Type of the field.
+    type = models.CharField(max_length=30, choices=DOCUMENT_FIELD_TYPES,
+                            default='string', db_index=True)
+
+    # In case the type of the field requires selecting one of pre-defined values -
+    # they should be stored \n-separated in the "choices" property
+    choices = models.TextField(blank=True, null=True)
+
+    # Number of value to extract in case of multiple values
+    item_number = models.CharField(max_length=30, choices=DOCUMENT_FIELD_ITEM_NUMBERS,
+                                   default='first', db_index=True, blank=True, null=True)
+
+    class Meta:
+        unique_together = (('code', 'modified_by', 'modified_date'),)
+        ordering = ('code', 'modified_by', 'modified_date')
+
+    def __str__(self):
+        return "{0}".format(self.code)
+
+    def __repr__(self):
+        return "{1} (#{0})".format(self.pk, self.code)
+
+    def is_choice_field(self):
+        return self.type in FIELD_TYPES_CHOICE
+
+    def get_choice_values(self) -> List[str]:
+        if not self.choices:
+            return []
+        return [choice.strip() for choice in self.choices.strip().split('\n')]
+
+
+class DocumentType(TimeStampedModel):
+    """DocumentType  object model
+
+    DocumentType describes custom document type.
+    """
+    # Make pk field unique
+    uid = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+
+    # Short name for field.
+    code = models.CharField(max_length=50, db_index=True)
+
+    # Verbose name for field.
+    title = models.CharField(max_length=100, db_index=True)
+
+    # set of DocumentFields allowed for this DocumentType
+    fields = models.ManyToManyField(DocumentField, related_name='field_document_type')
+
+    # set of DocumentFields to show in search/browse API
+    search_fields = models.ManyToManyField(
+        DocumentField, related_name='search_field_document_type', blank=True)
+
+    class Meta:
+        unique_together = (('code', 'modified_by', 'modified_date'),)
+        ordering = ('code', 'modified_by', 'modified_date')
+
+    def __str__(self):
+        return self.code
+
+    def __repr__(self):
+        return "{1} (#{0})".format(self.pk, self.code)
+
+
 class Document(models.Model):
     """Document object model
 
@@ -80,9 +173,6 @@ class Document(models.Model):
 
     # Name of document, as presented in most views and exports.
     name = models.CharField(max_length=1024, db_index=True, null=True)
-
-    # Document type - i.e., file type
-    document_type = models.CharField(max_length=128, db_index=True)
 
     # Document description, as provided by metadata or user-entered.
     description = models.TextField(null=True)
@@ -108,19 +198,62 @@ class Document(models.Model):
     # Document title
     title = models.CharField(max_length=1024, db_index=True, null=True)
 
+    # Document history
+    history = HistoricalRecords()
+
+    document_type = models.ForeignKey(DocumentType, blank=True, null=True, db_index=True)
+
     class Meta:
         ordering = ('name',)
 
     def __str__(self):
-        return "Document (type={0}, name={1})" \
-            .format(self.document_type, self.name)
+        return self.name
 
     def __repr__(self):
-        return "Document (id={0})".format(self.id)
+        return "{1} ({0})" \
+            .format(self.document_type, self.name)
 
     @property
     def text(self):
         return '\n'.join(self.textunit_set.values_list('text', flat=True))
+
+
+class DocumentFieldValue(TimeStampedModel):
+    """DocumentFieldValue  object model
+
+    DocumentFieldValue contains value for custom document field.
+    """
+    # related Document.
+    document = models.ForeignKey(Document, db_index=True)
+
+    # related DocumentField
+    field = models.ForeignKey(DocumentField, db_index=True)
+
+    # Datastore for extracted value
+    value = JSONField(blank=True, null=True, encoder=DjangoJSONEncoder)
+
+    # source text start position
+    location_start = models.PositiveIntegerField()
+
+    # source text end position
+    location_end = models.PositiveIntegerField()
+
+    # source text
+    location_text = models.TextField(null=True, blank=True)
+
+    # change history
+    history = HistoricalRecords()
+
+    class Meta:
+        ordering = ('document_id', 'field__code')
+
+    def __str__(self):
+        return "{0}.{1} = {2}" \
+            .format(self.document.name, self.field.code, str(self.value)[:40])
+
+    def __repr__(self):
+        return "{0}.{1} = {2} (#{3})" \
+            .format(self.document.name, self.field.code, str(self.value)[:40], self.id)
 
 
 class DocumentTag(models.Model):
@@ -416,3 +549,108 @@ class TextUnitNote(models.Model):
 
     def __repr__(self):
         return "TextUnitNote (id={0})".format(self.id)
+
+
+class DocumentFieldDetector(models.Model):
+    DEF_RE_FLAGS = re.DOTALL | re.IGNORECASE
+
+    uid = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+
+    field = models.ForeignKey(DocumentField, blank=False, null=False)
+
+    # Field Detectors with no document type specified work for any document type
+    document_type = models.ForeignKey(DocumentType, blank=True, null=True)
+
+    # \n-separated regexps excluding sentences from possible match
+    exclude_regexps = models.TextField(blank=True, null=True)
+
+    # \n-separated regexps for detecting sentences containing field values
+    # Process order: (1) exclude, (2) include
+    include_regexps = models.TextField(blank=True, null=True)
+
+    regexps_pre_process_lower = models.BooleanField(blank=False, null=False, default=False)
+
+    regexps_pre_process_remove_numeric_separators = models.BooleanField(blank=False,
+                                                                        null=False,
+                                                                        default=False)
+
+    # For choice fields - the value which should be set if a sentence matches this detector
+    detected_value = models.CharField(max_length=256, blank=True, null=True)
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._include_matchers = None
+        self._exclude_matchers = None
+
+    def compile_regexps(self):
+        self._include_matchers = []
+
+        if self.include_regexps:
+            for r in self.include_regexps.split('\n'):
+                r = r.strip()
+                if r:
+                    self._include_matchers.append(re.compile(r, self.DEF_RE_FLAGS))
+
+        self._exclude_matchers = []
+
+        if self.exclude_regexps:
+            for r in self.exclude_regexps.split('\n'):
+                r = r.strip()
+                if r:
+                    self._exclude_matchers.append(re.compile(r, self.DEF_RE_FLAGS))
+
+    def matches(self, sentence: str):
+        if self._include_matchers is None or self._exclude_matchers is None:
+            self.compile_regexps()
+
+        if not sentence:
+            return False
+
+        if self.regexps_pre_process_lower:
+            sentence = sentence.lower()
+        if self.regexps_pre_process_remove_numeric_separators:
+            sentence = remove_num_separators(sentence)
+
+        if self._exclude_matchers:
+            for matcher_re in self._exclude_matchers:
+                for m in matcher_re.findall(sentence):
+                    return False
+        if self._include_matchers:
+            for matcher_re in self._include_matchers:
+                for m in matcher_re.findall(sentence):
+                    return True
+
+    class Meta:
+        ordering = ('uid',)
+
+    def __str__(self):
+        return "{0}: {1}".format(self.field, self.include_regexps)[:50] \
+               + " (#{0})".format(self.uid)
+
+    def __repr__(self):
+        return "{0}: {1}".format(self.field, self.include_regexps)[:50] \
+               + " (#{0})".format(self.uid)
+
+
+class ClassifierModel(models.Model):
+    document_type = models.ForeignKey(DocumentType, db_index=True)
+
+    trained_model = models.BinaryField(null=True, blank=True)
+
+    def get_trained_model_obj(self) -> Union[SkLearnClassifierModel, None]:
+        if not self.trained_model:
+            return None
+        return pickle.loads(self.trained_model)
+
+    def set_trained_model_obj(self, obj: SkLearnClassifierModel):
+        self.trained_model = pickle.dumps(obj)
+
+    class Meta:
+        ordering = ('id',)
+
+    def __str__(self):
+        return "ClassifierModel (document_type={0})" \
+            .format(self.document_type)
+
+    def __repr__(self):
+        return "ClassifierModel (id={0})".format(self.id)

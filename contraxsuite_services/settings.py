@@ -101,13 +101,13 @@ INSTALLED_APPS = (
     'apps.common',
     'apps.analyze',
     'apps.document',
+    'apps.annotator',
     'apps.extract',
     'apps.project',
     'apps.task',
     'apps.users',
     'apps.employee',
     'apps.lease',
-    'apps.fields',
 )
 
 # MIDDLEWARE CONFIGURATION
@@ -496,6 +496,7 @@ SWAGGER_SETTINGS = {
 # tika settings (is not used for now)
 # TIKA_VERSION = '1.14'
 # TIKA_SERVER_JAR = ROOT_DIR('../libs/tika/tika-server-1.14.jar')
+TIKA_DISABLE = False
 
 # use jqWidgets' export, e.g. send data to jq OR handle it on client side
 # FYI: http://www.jqwidgets.com/community/topic/jqxgrid-export-data/#}
@@ -568,7 +569,7 @@ CORS_ALLOW_CREDENTIALS = False
 CORS_URLS_REGEX = r'^/api/.*$'
 
 VERSION_NUMBER = '1.0.6'
-VERSION_COMMIT = '0040f4d'
+VERSION_COMMIT = '89756fe'
 
 try:
     from local_settings import *
@@ -624,6 +625,6 @@ AUTOLOGIN_TEST_USER_FORBIDDEN_URLS = [
 DATA_UPLOAD_MAX_NUMBER_FIELDS = None
 PIPELINE['PIPELINE_ENABLED'] = PIPELINE_ENABLED
 
-FIELDS_RETRAIN_MODEL_ON_ANNOTATIONS_CHANGE = False
+ANNOTATOR_RETRAIN_MODEL_ON_ANNOTATIONS_CHANGE = False
 
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTOCOL', 'https')

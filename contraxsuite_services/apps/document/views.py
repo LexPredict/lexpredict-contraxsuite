@@ -31,8 +31,8 @@ from __future__ import absolute_import, unicode_literals
 import datetime
 import os
 import urllib
-import pandas as pd
 
+import pandas as pd
 # Django imports
 from django.conf import settings
 from django.contrib.sites.models import Site
@@ -41,7 +41,6 @@ from django.db.models import Count, F, Prefetch
 from django.shortcuts import get_object_or_404, redirect
 from django.shortcuts import render
 from django.views.generic import DetailView
-
 # Other lib imports
 from elasticsearch import Elasticsearch
 
@@ -49,6 +48,11 @@ from elasticsearch import Elasticsearch
 from apps.analyze.models import (
     DocumentCluster, TextUnitCluster,
     TextUnitClassification, TextUnitClassifierSuggestion)
+from apps.common.mixins import (
+    AjaxListView, CustomUpdateView, CustomCreateView, CustomDeleteView,
+    JqPaginatedListView, PermissionRequiredMixin, SubmitView, TypeaheadView)
+from apps.common.utils import cap_words
+from apps.document.forms import DetectFieldValuesForm, TrainDocumentFieldDetectorModelForm
 from apps.document.models import (
     Document, DocumentProperty, DocumentRelation, DocumentNote, DocumentTag,
     TextUnit, TextUnitProperty, TextUnitNote, TextUnitTag)
@@ -58,17 +62,13 @@ from apps.extract.models import (
     GeoAlias, GeoAliasUsage, GeoEntity, GeoEntityUsage, GeoRelation,
     Party, PartyUsage, PercentUsage,
     RatioUsage, RegulationUsage, Term, TermUsage, TrademarkUsage, UrlUsage)
-from apps.common.mixins import (
-    AjaxListView, CustomUpdateView, CustomCreateView, CustomDeleteView,
-    JqPaginatedListView, PermissionRequiredMixin, SubmitView, TypeaheadView)
-from apps.common.utils import cap_words
 from apps.project.models import TaskQueue
 from apps.project.views import ProjectListView, TaskQueueListView
-from apps.task.views import TaskListView
+from apps.task.views import BaseAjaxTaskView, TaskListView
 from apps.users.models import User
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2017, ContraxSuite, LLC"
+__copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
 __license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.0.5/LICENSE"
 __version__ = "1.0.6"
 __maintainer__ = "LexPredict, LLC"
@@ -187,7 +187,6 @@ class DocumentPropertyCreateView(CustomCreateView):
 
 
 class DocumentPropertyUpdateView(DocumentPropertyCreateView, CustomUpdateView):
-
     def has_permission(self):
         document = self.get_object().document
         return self.request.user.can_view_document(document)
@@ -275,9 +274,9 @@ class DocumentDetailView(PermissionRequiredMixin, DetailView):
         document = self.object
 
         # Fetch related lists
-        party_usage_list = PartyUsage.objects\
-            .filter(text_unit__document=document)\
-            .values("party__name")\
+        party_usage_list = PartyUsage.objects \
+            .filter(text_unit__document=document) \
+            .values("party__name") \
             .annotate(count=Count("id")).order_by("-count")
         party_list = party_usage_list.values_list('party__name', flat=True)
 
@@ -322,9 +321,9 @@ class DocumentNoteListView(JqPaginatedListView):
         data = super().get_json_data(keep_tags=True)
         history = list(
             DocumentNote.history
-            .filter(document_id__in=list(self.get_queryset()
-                                         .values_list('document__pk', flat=True)))
-            .values('id', 'document_id', 'history_date', 'history_user__username', 'note'))
+                .filter(document_id__in=list(self.get_queryset()
+                                             .values_list('document__pk', flat=True)))
+                .values('id', 'document_id', 'history_date', 'history_user__username', 'note'))
 
         for item in data['data']:
             item['url'] = reverse('document:document-detail', args=[item['document__pk']])
@@ -350,12 +349,12 @@ class DocumentEnhancedView(DocumentDetailView):
         document = self.object
         paragraph_list = document.textunit_set \
             .filter(unit_type="paragraph") \
-            .order_by("id")\
+            .order_by("id") \
             .prefetch_related(
-                Prefetch(
-                    'termusage_set',
-                    queryset=TermUsage.objects.order_by('term__term').select_related('term'),
-                    to_attr='ltu'))
+            Prefetch(
+                'termusage_set',
+                queryset=TermUsage.objects.order_by('term__term').select_related('term'),
+                to_attr='ltu'))
         ctx = {"document": document,
                "party_list": list(PartyUsage.objects.filter(
                    text_unit__document=document).values_list('party__name', flat=True)),
@@ -372,7 +371,7 @@ class DocumentSentimentChartView(AjaxListView):
     def get_json_data(self):
         data = []
         documents = self.get_queryset()
-        documents = documents.filter(documentproperty__key='polarity')\
+        documents = documents.filter(documentproperty__key='polarity') \
             .filter(documentproperty__key='subjectivity')
         for doc in documents:
             data.append(dict(
@@ -453,7 +452,7 @@ class TextUnitListView(JqPaginatedListView):
             qs = qs.filter(partyusage__party__pk=self.request.GET['party_pk'])
         elif "text_unit_hash" in self.request.GET:
             # Text Unit Detail identical text units tab
-            qs = qs.filter(text_hash=self.request.GET['text_unit_hash'])\
+            qs = qs.filter(text_hash=self.request.GET['text_unit_hash']) \
                 .exclude(pk=self.request.GET['text_unit_pk'])
         else:
             qs = qs.filter(unit_type='paragraph')
@@ -535,9 +534,9 @@ class TextUnitNoteListView(JqPaginatedListView):
         data = super().get_json_data(keep_tags=True)
         history = list(
             TextUnitNote.history
-            .filter(text_unit__document_id__in=list(
+                .filter(text_unit__document_id__in=list(
                 self.get_queryset().values_list('text_unit__document__pk', flat=True)))
-            .values('id', 'text_unit_id', 'history_date', 'history_user__username', 'note'))
+                .values('id', 'text_unit_id', 'history_date', 'history_user__username', 'note'))
 
         for item in data['data']:
             item['url'] = reverse('document:document-detail',
@@ -903,7 +902,7 @@ class SubmitDocumentPropertyView(SubmitDocumentTagView):
             self.property_class.objects.create(**defaults)
             created = True
         action = 'created' if created else 'updated'
-        self.success_message = '%s Property was successfully %s'\
+        self.success_message = '%s Property was successfully %s' \
                                % (cap_words(self.owner_class._meta.verbose_name), action)
         return self.success()
 
@@ -926,7 +925,7 @@ def view_stats(request):
     """
     admin_task_df = pd.DataFrame(TaskListView(request=request).get_json_data()['data'])
     admin_task_total_count = admin_task_df.shape[0]
-    admin_task_by_status_count = dict(admin_task_df.groupby(['status']).size())\
+    admin_task_by_status_count = dict(admin_task_df.groupby(['status']).size()) \
         if not admin_task_df.empty else 0
 
     project_df = pd.DataFrame(ProjectListView(request=request).get_json_data()['data'])
@@ -942,7 +941,7 @@ def view_stats(request):
         project_completed_weight = round(project_completed_count / project_total_count * 100, 1)
         project_progress_avg = round(project_df.mean().progress, 1)
         project_documents_total_count = project_df_sum.total_documents_count
-        project_documents_unique_count = Document.objects.filter(taskqueue__project__isnull=False)\
+        project_documents_unique_count = Document.objects.filter(taskqueue__project__isnull=False) \
             .distinct().count()
 
     task_queue_df = pd.DataFrame(TaskQueueListView(request=request).get_json_data()['data'])
@@ -959,9 +958,9 @@ def view_stats(request):
             task_queue_completed_count / task_queue_total_count * 100, 1)
         task_queue_progress_avg = round(task_queue_df.mean().progress, 1)
         task_queue_documents_total_count = task_queue_df_sum.total_documents_count
-        task_queue_documents_unique_count = Document.objects.filter(taskqueue__isnull=False)\
+        task_queue_documents_unique_count = Document.objects.filter(taskqueue__isnull=False) \
             .distinct().count()
-        task_queue_reviewers_unique_count = User.objects.filter(taskqueue__isnull=False)\
+        task_queue_reviewers_unique_count = User.objects.filter(taskqueue__isnull=False) \
             .distinct().count()
 
     # set counts depending on user role
@@ -979,10 +978,10 @@ def view_stats(request):
     tuc_suggestion_types = TextUnitClassifierSuggestion.objects.distinct('class_name')
     tu_notes = TextUnitNote.objects
     tu_clusters = TextUnitCluster.objects
-    
+
     terms = Term.objects
     term_usages = TermUsage.objects
-    
+
     amount_usages = AmountUsage.objects
     citation_usages = CitationUsage.objects
     copyright_usages = CopyrightUsage.objects
@@ -1031,7 +1030,7 @@ def view_stats(request):
         terms = terms.filter(
             termusage__text_unit__document__taskqueue__reviewers=request.user).distinct()
         term_usages = term_usages.filter(**tu_filter_opts).distinct()
-        
+
         amount_usages = amount_usages.filter(**tu_filter_opts).distinct()
         citation_usages = citation_usages.filter(**tu_filter_opts).distinct()
         copyright_usages = copyright_usages.filter(**tu_filter_opts).distinct()
@@ -1050,7 +1049,7 @@ def view_stats(request):
         geo_entity_usages = geo_entity_usages.filter(**tu_filter_opts).distinct()
         geo_relations = geo_relations.filter(
             entity_a__geoentityusage__text_unit__document__taskqueue__reviewers=request.user,
-            entity_b__geoentityusage__text_unit__document__taskqueue__reviewers=request.user)\
+            entity_b__geoentityusage__text_unit__document__taskqueue__reviewers=request.user) \
             .distinct()
 
         parties = parties.filter(
@@ -1120,3 +1119,15 @@ def view_stats(request):
     }
 
     return render(request, "document/stats.html", context)
+
+
+class DetectFieldValuesTaskView(BaseAjaxTaskView):
+    task_name = 'Detect Field Values'
+    form_class = DetectFieldValuesForm
+    html_form_class = 'popup-form build-field-detector-dataset-form'
+
+
+class TrainDocumentFieldDetectorModelTaskView(BaseAjaxTaskView):
+    task_name = 'Train Document Field Detector Model'
+    form_class = TrainDocumentFieldDetectorModelForm
+    html_form_class = 'popup-form train-field-detector-model-form'

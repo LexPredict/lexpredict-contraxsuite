@@ -1,0 +1,66 @@
+"""
+    Copyright (C) 2017, ContraxSuite, LLC
+
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU Affero General Public License as
+    published by the Free Software Foundation, either version 3 of the
+    License, or (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU Affero General Public License for more details.
+
+    You should have received a copy of the GNU Affero General Public License
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+    You can also be released from the requirements of the license by purchasing
+    a commercial license from ContraxSuite, LLC. Buying such a license is
+    mandatory as soon as you develop commercial activities involving ContraxSuite
+    software without disclosing the source code of your own applications.  These
+    activities include: offering paid services to customers as an ASP or "cloud"
+    provider, processing documents on the fly in a web application,
+    or shipping ContraxSuite within a closed source product.
+"""
+# -*- coding: utf-8 -*-
+
+# Third-party imports
+from constance.admin import ConstanceForm, get_values
+from rest_framework.views import APIView
+
+# Django imports
+from django.conf.urls import url
+from django.http import JsonResponse
+
+
+class AppConfigAPIView(APIView):
+    def get(self, request, *args, **kwargs):
+        """
+        Retrieve App Config
+        """
+        initial = get_values()
+        return JsonResponse(initial)
+
+    def post(self, request, *args, **kwargs):
+        """
+        Update App Config\n
+            POST params:
+            - auto_login: bool
+            - standard_optional_locators: list[str]
+            see settings.OPTIONAL_LOCATORS
+        """
+        initial = get_values()
+        form = ConstanceForm(data=request.data, initial=initial)
+        form.data['version'] = initial.get('version')
+        if form.is_valid():
+            form.save()
+            message = 'Application settings updated successfully.'
+        else:
+            message = form.errors
+        return JsonResponse(message, safe=False)
+
+
+urlpatterns = [
+    url(r'^app-config/$', AppConfigAPIView.as_view(),
+        name='app-config'),
+]

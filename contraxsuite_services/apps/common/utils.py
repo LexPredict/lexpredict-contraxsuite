@@ -26,18 +26,20 @@
 
 # Standard imports
 import datetime
+import importlib
 import random
 import re
 import uuid
 
 # Django imports
+from django.conf import settings
 from django.conf.urls import url
 from django.core.urlresolvers import reverse
 from django.utils.text import slugify
 import django_excel as excel
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2017, ContraxSuite, LLC"
+__copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
 __license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.0.5/LICENSE"
 __version__ = "1.0.6"
 __maintainer__ = "LexPredict, LLC"
@@ -224,3 +226,11 @@ def create_standard_urls(model, views, view_types=('list', 'add', 'detail', 'upd
 
 def fast_uuid():
     return uuid.UUID(int=random.getrandbits(128), version=4)
+
+
+def get_api_module(app_name):
+    module_path_str = 'apps.{app_name}.api.{api_version}'.format(
+        app_name=app_name,
+        api_version=settings.REST_FRAMEWORK['DEFAULT_VERSION']
+    )
+    return importlib.import_module(module_path_str)

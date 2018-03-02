@@ -46,7 +46,7 @@ from apps.common.mixins import (
 
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2017, ContraxSuite, LLC"
+__copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
 __license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.0.5/LICENSE"
 __version__ = "1.0.6"
 __maintainer__ = "LexPredict, LLC"
@@ -102,10 +102,6 @@ class ProvisionListView(JqPaginatedListView):
             item['detail_url'] = reverse('document:text-unit-detail', args=[item['text_unit__pk']])
         return data
 
-    def get_context_data(self, **kwargs):
-        ctx = super().get_context_data(**kwargs)
-        return ctx
-
     def get_queryset(self):
         qs = super().get_queryset()
         if "employee__pk" in self.request.GET:
@@ -135,10 +131,6 @@ class EmployeeDetailView(PermissionRequiredMixin, DetailView):
 
     def has_permission(self):
         return self.request.user.can_view_document(self.get_object().document)
-
-    def get_context_data(self, **kwargs):
-        ctx = super().get_context_data(**kwargs)
-        return ctx
 
 
 class EmployerDetailView(PermissionRequiredMixin, DetailView):

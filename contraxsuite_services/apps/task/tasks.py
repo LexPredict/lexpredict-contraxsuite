@@ -86,7 +86,7 @@ from apps.common.advancedcelery.transfer import TransferManager
 from apps.common.advancedcelery.fileaccess.local_file_access import LocalFileAccess
 from apps.common.advancedcelery.fileaccess.nginx_http_file_access import NginxHttpFileAccess
 from apps.document.models import (
-    Document, DocumentProperty, TextUnit, TextUnitProperty, TextUnitTag)
+    Document, DocumentProperty, DocumentType, TextUnit, TextUnitProperty, TextUnitTag)
 from apps.extract import models as extract_models
 from apps.extract.models import (
     AmountUsage, CitationUsage, CopyrightUsage,
@@ -103,7 +103,7 @@ from apps.task.utils.ocr.textract import textract2text
 from apps.task.utils.text.segment import segment_paragraphs, segment_sentences
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2017, ContraxSuite, LLC"
+__copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
 __license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.0.5/LICENSE"
 __version__ = "1.0.6"
 __maintainer__ = "LexPredict, LLC"
@@ -188,7 +188,10 @@ def log(message, level='info', task=None):
 
     # TODO: set default to "" in model
     if isinstance(task, (int, str)):
-        task = Task.objects.get(pk=task)
+        try:
+            task = Task.objects.get(pk=task)
+        except:
+            task = None
     if task:
         task.log = (task.log or '') + log_content
         task.save()
@@ -238,7 +241,7 @@ class LoadDocuments(BaseTask):
     :param kwargs: task_id - Task id
                    source_path - (str) relative dir path in media/FILEBROWSER_DIRECTORY
                    delete - (bool) delete old objects
-                   document_type - (str) f.e. "agreement"
+                   document_type - (DocumentType) f.e. lease.LeaseDocument
                    source_type - (str) f.e. "SEC data"
     :return:
     """
@@ -256,6 +259,12 @@ class LoadDocuments(BaseTask):
 
         self.task.subtasks_total = len(file_list)
         self.task.save()
+
+        # prevent transferring document type objects to sub-tasks
+        document_type = kwargs.get('document_type')
+        if document_type:
+            kwargs['document_type_pk'] = document_type.pk
+            del kwargs['document_type']
 
         # Note: we use tika-server, tika-app works slowly ~ x4 times
         for file_path in file_list:
@@ -278,19 +287,22 @@ class LoadDocuments(BaseTask):
             self.log('SKIP (EXISTS): ' + file_name)
             return
 
-        # process by tika
-        parser_name = 'tika'
+        text = None
         metadata = {}
-        try:
-            data = parser.from_file(file_path)
-            parsed = data['content']
-            metadata = data['metadata']
-            # text = process_text(parsed)
-            text = parsed
-            if len(text) < 100:
+
+        if not settings.TIKA_DISABLE:
+            # process by tika
+            parser_name = 'tika'
+            try:
+                data = parser.from_file(file_path)
+                parsed = data['content']
+                metadata = data['metadata']
+                # text = process_text(parsed)
+                text = parsed
+                if len(text) < 100:
+                    text = None
+            except:
                 text = None
-        except:
-            text = None
 
         # process by textract
         if text is None:
@@ -320,9 +332,18 @@ class LoadDocuments(BaseTask):
             _titles = list(get_titles(text))
             title = _titles[0] if _titles else None
 
+        document_type = None
+
+        document_type_pk = kwargs.get('document_type_pk')
+        if document_type_pk:
+            try:
+                document_type = DocumentType.objects.get(pk=document_type_pk)
+            except:
+                pass
+
         # Create document object
         document = Document.objects.create(
-            document_type=kwargs.get('document_type', now().strftime('%Y-%m-%d')),
+            document_type=document_type,
             name=os.path.basename(file_name),
             description=file_name,
             source=os.path.dirname(file_name),

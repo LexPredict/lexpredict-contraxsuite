@@ -47,7 +47,7 @@ from swagger_view import get_swagger_view
 from apps.project.views import DashboardView
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2017, ContraxSuite, LLC"
+__copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
 __license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.0.5/LICENSE"
 __version__ = "1.0.6"
 __maintainer__ = "LexPredict, LLC"
@@ -63,11 +63,11 @@ urlpatterns = [
     # Django Admin, use {% url 'admin:index' %}
     url(r'^admin/', admin.site.urls),
     # User management
-    url(r'^accounts/', include('apps.users.urls', namespace='users')),
+    # url(r'^accounts/', include('apps.users.urls', namespace='users')),
     url(r'^accounts/', include('allauth_2fa.urls')),
     url(r'^accounts/', include('allauth.urls')),
     # Apps
-    url(r'^', include('apps.common.urls', namespace='common')),
+    # url(r'^', include('apps.common.urls', namespace='common')),
     # url(r'^document/', include('apps.document.urls', namespace='document')),
     # url(r'^analyze/', include('apps.analyze.urls', namespace='analyze')),
     # url(r'^extract/', include('apps.extract.urls', namespace='extract')),
@@ -90,12 +90,12 @@ api_urlpatterns = {api_version: [] for api_version in REST_FRAMEWORK['ALLOWED_VE
 for app_name in custom_apps:
     if app_name in namespaces:
         continue
+
     module_str = 'apps.%s.urls' % app_name
     spec = importlib.util.find_spec(module_str)
-    if not spec:
-        continue
-    include_urls = include(module_str, namespace=app_name)
-    urlpatterns += [url(r'^%s/' % app_name, include_urls)]
+    if spec:
+        include_urls = include(module_str, namespace=app_name)
+        urlpatterns += [url(r'^%s/' % app_name, include_urls)]
 
     # add api urlpatterns
     for api_version in REST_FRAMEWORK['ALLOWED_VERSIONS']:
@@ -111,6 +111,14 @@ for app_name in custom_apps:
                     app_name=app_name),
                     include(api_module.router.urls)),
             ]
+        if hasattr(api_module, 'api_routers'):
+            for router in api_module.api_routers:
+                api_urlpatterns[api_version] += [
+                    url(r'{version}/{app_name}/'.format(
+                        version=api_version,
+                        app_name=app_name),
+                        include(router.urls)),
+                ]
         if hasattr(api_module, 'urlpatterns'):
             api_urlpatterns[api_version] += [
                 url(r'{version}/{app_name}/'.format(

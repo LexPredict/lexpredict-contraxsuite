@@ -26,24 +26,93 @@
 
 # Django imports
 from django.contrib import admin
+from django.utils.html import format_html_join
 from simple_history.admin import SimpleHistoryAdmin
 
 # Project imports
 from apps.document.models import (
-    Document, DocumentProperty, DocumentRelation, DocumentNote,
-    TextUnit, TextUnitProperty, TextUnitNote, TextUnitTag)
+    Document, DocumentField, DocumentType,
+    DocumentProperty, DocumentRelation, DocumentNote, DocumentFieldDetector, DocumentFieldValue,
+    ClassifierModel, TextUnit, TextUnitProperty, TextUnitNote, TextUnitTag)
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2017, ContraxSuite, LLC"
+__copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
 __license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.0.5/LICENSE"
 __version__ = "1.0.6"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
 
-class DocumentAdmin(admin.ModelAdmin):
+class DocumentAdmin(SimpleHistoryAdmin):
     list_display = ('name', 'document_type', 'source_type', 'paragraphs', 'sentences')
     search_fields = ['document_type', 'name']
+
+
+class DocumentFieldAdmin(admin.ModelAdmin):
+    list_display = ('code', 'title', 'type', 'user', 'modified_date')
+    search_fields = ['code', 'title', 'created_user__username']
+
+    @staticmethod
+    def user(obj):
+        return obj.modified_by.username if obj.modified_by else None
+
+
+class DocumentFieldDetectorAdmin(admin.ModelAdmin):
+    list_display = (
+        'document_type', 'field', 'detected_value', 'include', 'regexps_pre_process_lower',
+        'regexps_pre_process_remove_numeric_separators')
+    search_fields = ['document_type', 'field', 'detected_value', 'include_regexps']
+
+    @staticmethod
+    def document_type_code(obj):
+        return obj.document_type.code if obj.document_type else None
+
+    document_type_code.admin_order_field = 'document_type'
+
+    @staticmethod
+    def field_code(obj):
+        return obj.field.code if obj.field else None
+
+    field_code.admin_order_field = 'field'
+
+    @staticmethod
+    def include(obj):
+        return format_html_join('\n', '<pre>{}</pre>',
+                                ((r,) for r in
+                                 obj.include_regexps.split('\n'))) if obj.field else None
+
+
+class DocumentFieldValueAdmin(admin.ModelAdmin):
+    list_display = ('document_type', 'document', 'field', 'value', 'location_start',
+                    'location_end', 'location_text', 'user')
+    search_fields = ['document__document_type', 'document', 'field', 'value', 'location_text',
+                     'user']
+
+    @staticmethod
+    def document_type(obj):
+        return obj.document.document_type if obj.document else None
+
+    @staticmethod
+    def field_code(obj):
+        return obj.field.code if obj.field else None
+
+    @staticmethod
+    def user(obj):
+        return obj.modified_by.username if obj.modified_by else None
+
+
+class DocumentTypeAdmin(admin.ModelAdmin):
+    list_display = ('code', 'title', 'fields_num', 'user', 'modified_date')
+    search_fields = ['code', 'title', 'created_user__username']
+    filter_horizontal = ('fields', 'search_fields')
+
+    @staticmethod
+    def fields_num(obj):
+        return obj.fields.count()
+
+    @staticmethod
+    def user(obj):
+        return obj.modified_by.username if obj.modified_by else None
 
 
 class DocumentPropertyAdmin(admin.ModelAdmin):
@@ -81,7 +150,17 @@ class DocumentNoteAdmin(SimpleHistoryAdmin):
     search_fields = ('document__name', 'timestamp', 'note')
 
 
+class ClassifierModelAdmin(SimpleHistoryAdmin):
+    list_display = ('document_type',)
+    search_fields = ('document_type',)
+
+
 admin.site.register(Document, DocumentAdmin)
+admin.site.register(DocumentField, DocumentFieldAdmin)
+admin.site.register(DocumentFieldDetector, DocumentFieldDetectorAdmin)
+admin.site.register(DocumentFieldValue, DocumentFieldValueAdmin)
+admin.site.register(ClassifierModel, ClassifierModelAdmin)
+admin.site.register(DocumentType, DocumentTypeAdmin)
 admin.site.register(DocumentRelation, DocumentRelationAdmin)
 admin.site.register(DocumentProperty, DocumentPropertyAdmin)
 admin.site.register(TextUnitProperty, TextUnitPropertyAdmin)

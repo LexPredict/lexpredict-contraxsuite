@@ -40,7 +40,7 @@ from apps.extract.models import (
     RegulationUsage, TermUsage, TrademarkUsage, UrlUsage)
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2017, ContraxSuite, LLC"
+__copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
 __license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.0.5/LICENSE"
 __version__ = "1.0.6"
 __maintainer__ = "LexPredict, LLC"
@@ -72,7 +72,7 @@ register(DateUsage, view_types=('list', 'top_list'))
 register(DateDurationUsage, view_types=('list', 'top_list'))
 register(DefinitionUsage, view_types=('list', 'top_list'))
 register(DistanceUsage, view_types=('list', 'top_list'))
-register(GeoEntity, view_types=('list'))
+register(GeoEntity, view_types=('list',))
 register(GeoEntityUsage, view_types=('list', 'top_list'))
 register(PartyUsage, view_types=('list', 'top_list'))
 register(PercentUsage, view_types=('list', 'top_list'))

@@ -23,14 +23,11 @@
     or shipping ContraxSuite within a closed source product.
 """
 # -*- coding: utf-8 -*-
+import io
 
-__author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2017, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.0.5/LICENSE"
-__version__ = "1.0.6"
-__maintainer__ = "LexPredict, LLC"
-__email__ = "support@contraxsuite.com"
+import pandas as pd
 
+from django.http import HttpResponse
 
 from rest_framework import exceptions
 from rest_framework.authentication import SessionAuthentication
@@ -41,6 +38,14 @@ from rest_framework.schemas import SchemaGenerator
 from rest_framework.views import APIView
 
 from rest_framework_swagger import renderers
+
+
+__author__ = "ContraxSuite, LLC; LexPredict, LLC"
+__copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.0.5/LICENSE"
+__version__ = "1.0.6"
+__maintainer__ = "LexPredict, LLC"
+__email__ = "support@contraxsuite.com"
 
 
 def get_swagger_view():
@@ -59,7 +64,7 @@ def get_swagger_view():
         ]
 
         def get(self, request, group_by='app'):
-            generator = SchemaGenerator()
+            generator = CustomSchemaGenerator()
             schema = generator.get_schema(request=request)
 
             if not schema:
@@ -78,6 +83,52 @@ def get_swagger_view():
                 _data.pop('api', None)
                 schema._data = _data
 
+            if 'download' in request.GET:
+                return download_xls(generator.get_simple_links(request))
+
             return Response(schema)
 
     return SwaggerSchemaView.as_view()
+
+
+def download_xls(a_dict, file_name='contraxsuite-api.xlsx', sheet_name='api'):
+    output = io.BytesIO()
+    writer = pd.ExcelWriter(output, engine='xlsxwriter')
+    df = pd.DataFrame(a_dict)
+    df.to_excel(writer, index=False, sheet_name=sheet_name, encoding='utf-8')
+    writer.save()
+    response = HttpResponse(
+        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+    response['Content-Disposition'] = 'attachment; filename="%s"' % file_name
+    response.write(output.getvalue())
+    return response
+
+
+class CustomSchemaGenerator(SchemaGenerator):
+
+    def get_simple_links(self, request):
+        links = []
+        for path, method, callback in self.endpoints:
+            view = self.create_view(callback, method, request)
+            link = view.schema.get_link(path, method, base_url=self.url)
+            api_version = group_name = None
+            if link.url.startswith('/api'):
+                url_parts = link.url.split('/', 5)[1:5]
+                source, api_version, app_name, group_name = url_parts
+            else:
+                url_parts = link.url.split('/', 3)[1:3]
+                source, app_name = url_parts
+            links.append(
+                dict(
+                    url=link.url,
+                    source=source,
+                    api_version=api_version,
+                    app_name=app_name,
+                    group_name=group_name,
+                    method=link.action.upper(),
+                    description=link.description,
+                    title=link.description.split('\n')[0]
+                    if link.description else view.__class__.__name__,
+                )
+            )
+        return links

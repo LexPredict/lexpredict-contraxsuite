@@ -601,14 +601,14 @@ footer .counter-block a .counter {
   font-size: 18px;
   height: 40px;
   line-height: 40px;
-  padding: 0 10px;
+  padding: 10px;
 }
 .tabs.page-tabs .tab-nav li:not(.ui-state-active) a,
-.page-tabs .nav-tabs li:not(.active) a {
+.page-tabs .nav-tabs li a:not(.active) {
   opacity: 0.5;
 }
 .tabs.page-tabs .tab-nav li:not(.ui-state-active) a:hover,
-.page-tabs .nav-tabs li:not(.active) a:hover {
+.page-tabs .nav-tabs li a:not(.active):hover {
   opacity: 1;
 }
 .page-tabs > .nav > li > a:hover,
@@ -616,9 +616,9 @@ footer .counter-block a .counter {
   background-color: inherit;
   border: inherit;
 }
-.nav-tabs > li.active > a,
-.nav-tabs > li.active > a:hover,
-.nav-tabs > li.active > a:focus {
+.nav-tabs > li > a.active,
+.nav-tabs > li > a.active:hover,
+.nav-tabs > li > a.active:focus {
   color: inherit;
   background-color: inherit;
   border: none;
@@ -792,7 +792,7 @@ body:not(.device-touch) .btn-u {
   text-shadow: 1px 1px 1px rgba(0,0,0,0.2);
 }
 .btn-u.btn-nu {
-    text-transform: none;
+  text-transform: none;
 }
 .btn-group > .btn-u {
   margin: 0;
@@ -887,7 +887,7 @@ body:not(.device-touch) .btn-u {
 }
 /* sub-grid */
 .jqx-enableselect.jqx-widget-content {
-    background-color: #e1e1eb;
+  background-color: #e1e1eb;
 }
 .sub-grid-title {
   font-weight: bold;
@@ -901,7 +901,7 @@ body:not(.device-touch) .btn-u {
 
 .jqx-grid-cell-pinned-alt,
 .jqx-grid-cell-pinned {
-    background-color: #555;
+  background-color: #555;
 }
 /* Popup menu on "acton" button click in jqxgrid */
 .popup-menu {
@@ -944,6 +944,7 @@ body:not(.device-touch) .btn-u {
 /* badges */
 .badge-s {
   background-color: #1ABC9C;
+  color: #fff;
 }
 .badge {
   vertical-align: top;
@@ -1011,10 +1012,10 @@ footer .footer-slider .t-rotate {
   margin-left: 40px;
 }
 .popup-form .checkbox-style:checked + .checkbox-style-3-label:before {
-    content: "\e116";
-    font-family: 'lined-icons';
-    background: #1ABC9C;
-    color: #FFF;
+  content: "\e116";
+  font-family: 'lined-icons';
+  background: #1ABC9C;
+  color: #FFF;
 }
 .popup-form input:not([type=checkbox]),
 .popup-form textarea,
@@ -1103,3 +1104,15 @@ footer .footer-slider .t-rotate {
   border-right: 0px;
   border-bottom: 1px solid #888;
 }
+
+.editor_holder .row {
+  margin: 0;
+}
+
+.swagger-section .hljs {
+  text-align: left;
+}
+li.dropdown-item>a {
+  color: #212529;
+}
+

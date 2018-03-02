@@ -40,6 +40,7 @@ from rest_framework.generics import ListAPIView
 # Django imports
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin, PermissionRequiredMixin
+from django.core.exceptions import FieldError
 from django.core.paginator import Paginator, EmptyPage
 from django.core.serializers.json import DjangoJSONEncoder
 from django.core.urlresolvers import reverse
@@ -54,7 +55,7 @@ from django.views.generic.list import MultipleObjectMixin
 from apps.common.utils import cap_words, export_qs_to_file
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2017, ContraxSuite, LLC"
+__copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
 __license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.0.5/LICENSE"
 __version__ = "1.0.6"
 __maintainer__ = "LexPredict, LLC"
@@ -568,22 +569,49 @@ class JqFilterBackend(BaseFilterBackend):
         return queryset
 
 
+class ModelFieldFilterBackend(BaseFilterBackend):
+
+    def filter_queryset(self, request, queryset, *args):
+        for param_name, param_value in request.GET.items():
+            try:
+                if param_name.endswith('_contains'):
+                    param_name = param_name.replace('_contains', '__icontains')
+                queryset = queryset.filter(**{param_name: param_value})
+            except FieldError:
+                continue
+        return queryset
+
+
 class JqListAPIView(ListAPIView):
     """
     Filter, sort and paginate queryset using jqWidgets' grid GET params
     """
-    filter_backends = [JqFilterBackend]
+    filter_backends = [JqFilterBackend, ModelFieldFilterBackend]
+
+
+class JqMixin(object):
+    """
+    Filter, sort and paginate queryset using jqWidgets' grid GET params
+    Filter using model's field name as query param
+    """
+    filter_backends = [JqFilterBackend, ModelFieldFilterBackend]
 
 
 class TypeaheadAPIView(ReviewerQSMixin, ListAPIView):
 
     def get(self, request, *args, **kwargs):
+        field_name = self.kwargs.get('field_name')
+        try:
+            _ = self.model._meta.get_field(field_name)
+        except:
+            raise RuntimeError('Wrong field name "{}" for model "{}"'.format(
+                field_name, self.model.__name__))
         qs = self.model.objects.all()
         if "q" in request.GET:
-            search_key = '%s__icontains' % self.search_field
+            search_key = '%s__icontains' % field_name
             qs = qs.filter(**{search_key: request.GET.get("q")})\
-                .order_by(self.search_field).distinct(self.search_field)
-        return JsonResponse(self.qs_to_values(qs), encoder=DjangoJSONEncoder, safe=False)
+                .order_by(field_name).distinct(field_name)
+        return JsonResponse(self.qs_to_values(qs, field_name), encoder=DjangoJSONEncoder, safe=False)
 
-    def qs_to_values(self, qs):
-        return [{"value": i} for i in qs.values_list(self.search_field, flat=True)]
+    def qs_to_values(self, qs, field_name):
+        return [{"value": i} for i in qs.values_list(field_name, flat=True)]
