@@ -14,7 +14,7 @@
 {% endblock %}
 
 {% block content %}
-  <form class="form-horizontal col-md-offset-{% block form_offset %}0{% endblock %}"
+  <form class="form-horizontal offset-md-{% block form_offset %}0{% endblock %}"
         {% if not is_detail %}method="POST"{% endif %}>
     <input type="hidden" name="next" value="{{ request.GET.next }}" />
     {% csrf_token %}
@@ -64,12 +64,12 @@
     {% endif %}
 
     {% block form_extra_below %}{% endblock %}
-    <div class="col-md-4 col-md-offset-3">
+    <div class="col-md-4 offset-md-3">
       <p class="form-required-field"><i class="text-red">*</i> Indicates a required field</p>
     </div>
 
-    <div class="form-group form-actions">
-      <div class="col-md-4 col-md-offset-3">
+    <div class="row form-group form-actions">
+      <div class="col-md-4 offset-md-3">
         {% block buttons %}
           {% block action_btn-u %}
             <button class="btn-u btn-sm btn-s" type="submit">

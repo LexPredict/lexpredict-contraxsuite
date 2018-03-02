@@ -646,7 +646,7 @@
               title: xhr.responseText,
               type: 'red',
               content: '',
-              columnClass: 'col-md-6 col-md-offset-3',
+              columnClass: 'col-md-6 offset-md-3',
               onClose: function () {
                 $('.jqxgrid').jqxGrid('updatebounddata')
               }
@@ -658,7 +658,7 @@
             onLoadJC(jc);
           }, 1000);
         },
-        columnClass: 'col-md-8 col-md-offset-2',
+        columnClass: 'col-md-8 offset-md-2',
         type: $that.data('type') || 'blue',
         icon: 'fa fa-warning text-warning',
         buttons: {
@@ -677,7 +677,7 @@
                       title: 'Working!',
                       type: 'orange',
                       content: data,
-                      columnClass: 'col-md-4 col-md-offset-4',
+                      columnClass: 'col-md-4 offset-md-4',
                       onClose: function(){
                         $('.jqxgrid').jqxGrid('updatebounddata')
                       }
@@ -738,7 +738,7 @@
             $(this).parents('.level-1').find('input').first().prop('checked', $('[id^="' + parent_id + '_"]:checked').length > 0);
           });
         },
-        columnClass: 'col-md-8 col-md-offset-2',
+        columnClass: 'col-md-8 offset-md-2',
         type: 'blue',
         icon: 'fa fa-download text-info',
         buttons: {
@@ -763,7 +763,7 @@
                       title: 'Working!',
                       type: 'orange',
                       content: data,
-                      columnClass: 'col-md-4 col-md-offset-4',
+                      columnClass: 'col-md-4 offset-md-4',
                       onClose: function(){
                         $('.jqxgrid').jqxGrid('updatebounddata')
                       }
