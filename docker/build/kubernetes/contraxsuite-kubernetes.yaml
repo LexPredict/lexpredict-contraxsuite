@@ -1,0 +1,622 @@
+apiVersion: v1
+kind: Service
+metadata:
+  annotations:
+    kompose.cmd: kompose convert -f ../../../deploy/docker-compose.yml
+    kompose.version: 1.4.0 (c7964e7)
+  creationTimestamp: null
+  labels:
+    io.kompose.service: contrax-celery
+  name: contrax-celery
+spec:
+  clusterIP: None
+  ports:
+  - name: headless
+    port: 55555
+    targetPort: 0
+  selector:
+    io.kompose.service: contrax-celery
+status:
+  loadBalancer: {}
+
+---
+
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  creationTimestamp: null
+  labels:
+    io.kompose.service: django-logs
+  name: django-logs
+spec:
+  accessModes:
+  - ReadWriteOnce
+  resources:
+    requests:
+      storage: 100Mi
+status: {}
+
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  annotations:
+    kompose.cmd: kompose convert -f ../../../deploy/docker-compose.yml
+    kompose.version: 1.4.0 (c7964e7)
+  creationTimestamp: null
+  labels:
+    io.kompose.service: contrax-db
+  name: contrax-db
+spec:
+  clusterIP: None
+  ports:
+  - name: headless
+    port: 55555
+    targetPort: 0
+  selector:
+    io.kompose.service: contrax-db
+status:
+  loadBalancer: {}
+
+---
+
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  annotations:
+    kompose.cmd: kompose convert -f ../../../deploy/docker-compose.yml
+    kompose.version: 1.4.0 (c7964e7)
+  creationTimestamp: null
+  labels:
+    io.kompose.service: contrax-elasticsearch
+  name: contrax-elasticsearch
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      creationTimestamp: null
+      labels:
+        io.kompose.service: contrax-elasticsearch
+    spec:
+      containers:
+      - env:
+        - name: xpack.security.enabled
+          value: "false"
+        image: docker.elastic.co/elasticsearch/elasticsearch:5.6.4
+        name: contrax-elasticsearch
+        resources: {}
+        volumeMounts:
+        - mountPath: /usr/share/elasticsearch/data
+          name: elasticsearch-data
+      restartPolicy: Always
+      volumes:
+      - name: elasticsearch-data
+        persistentVolumeClaim:
+          claimName: elasticsearch-data
+status: {}
+
+---
+
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  creationTimestamp: null
+  labels:
+    io.kompose.service: postgres-data
+  name: postgres-data
+spec:
+  accessModes:
+  - ReadWriteOnce
+  resources:
+    requests:
+      storage: 100Mi
+status: {}
+
+---
+
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  creationTimestamp: null
+  labels:
+    io.kompose.service: contraxsuite-third-party-dependencies
+  name: contraxsuite-third-party-dependencies
+spec:
+  accessModes:
+  - ReadWriteOnce
+  resources:
+    requests:
+      storage: 100Mi
+status: {}
+
+---
+
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  creationTimestamp: null
+  labels:
+    io.kompose.service: django-nginx-logs
+  name: django-nginx-logs
+spec:
+  accessModes:
+  - ReadWriteOnce
+  resources:
+    requests:
+      storage: 100Mi
+status: {}
+
+---
+
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  annotations:
+    kompose.cmd: kompose convert -f ../../../deploy/docker-compose.yml
+    kompose.version: 1.4.0 (c7964e7)
+  creationTimestamp: null
+  labels:
+    io.kompose.service: contrax-rabbitmq
+  name: contrax-rabbitmq
+spec:
+  replicas: 1
+  strategy: {}
+  template:
+    metadata:
+      creationTimestamp: null
+      labels:
+        io.kompose.service: contrax-rabbitmq
+    spec:
+      containers:
+      - env:
+        - name: RABBITMQ_DEFAULT_PASS
+        - name: RABBITMQ_DEFAULT_USER
+        - name: RABBITMQ_DEFAULT_VHOST
+        image: rabbitmq:3-management
+        name: contrax-rabbitmq
+        resources: {}
+      restartPolicy: Always
+status: {}
+
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  annotations:
+    kompose.cmd: kompose convert -f ../../../deploy/docker-compose.yml
+    kompose.version: 1.4.0 (c7964e7)
+  creationTimestamp: null
+  labels:
+    io.kompose.service: contrax-rabbitmq
+  name: contrax-rabbitmq
+spec:
+  clusterIP: None
+  ports:
+  - name: headless
+    port: 55555
+    targetPort: 0
+  selector:
+    io.kompose.service: contrax-rabbitmq
+status:
+  loadBalancer: {}
+
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  annotations:
+    kompose.cmd: kompose convert -f ../../../deploy/docker-compose.yml
+    kompose.version: 1.4.0 (c7964e7)
+  creationTimestamp: null
+  labels:
+    io.kompose.service: contrax-elasticsearch
+  name: contrax-elasticsearch
+spec:
+  clusterIP: None
+  ports:
+  - name: headless
+    port: 55555
+    targetPort: 0
+  selector:
+    io.kompose.service: contrax-elasticsearch
+status:
+  loadBalancer: {}
+
+---
+
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  annotations:
+    kompose.cmd: kompose convert -f ../../../deploy/docker-compose.yml
+    kompose.version: 1.4.0 (c7964e7)
+  creationTimestamp: null
+  labels:
+    io.kompose.service: contrax-uwsgi
+  name: contrax-uwsgi
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      creationTimestamp: null
+      labels:
+        io.kompose.service: contrax-uwsgi
+    spec:
+      containers:
+      - args:
+        - /start.sh
+        - uwsgi
+        env:
+        - name: DOCKER_DJANGO_ACCOUNT_EMAIL_VERIFICATION
+        - name: DOCKER_DJANGO_ADMIN_EMAIL
+        - name: DOCKER_DJANGO_ADMIN_NAME
+        - name: DOCKER_DJANGO_ADMIN_PASSWORD
+        - name: DOCKER_DJANGO_DEBUG
+        - name: DOCKER_DJANGO_DEBUG_SQL
+        - name: DOCKER_DJANGO_EMAIL_HOST
+        - name: DOCKER_DJANGO_EMAIL_HOST_PASSWORD
+        - name: DOCKER_DJANGO_EMAIL_HOST_USER
+        - name: DOCKER_DJANGO_EMAIL_PORT
+        - name: DOCKER_DJANGO_HOST_NAME
+        - name: DOCKER_DJANGO_JQWIDGETS_ARCHIVE
+        - name: DOCKER_DJANGO_SECRET_KEY
+        - name: DOCKER_DJANGO_THEME_ARCHIVE
+        - name: DOCKER_HOST_NAME_ELASTICSEARCH
+        - name: DOCKER_HOST_NAME_PG
+        - name: DOCKER_HOST_NAME_RABBITMQ
+        - name: DOCKER_HOST_NAME_REDIS
+        - name: DOCKER_HOST_NAME_UWSGI
+        - name: DOCKER_NGINX_CERTIFICATE
+        - name: DOCKER_NGINX_CERTIFICATE_KEY
+        - name: DOCKER_NGINX_SERVER_NAME
+        - name: DOCKER_PG_DB_NAME
+        - name: DOCKER_PG_PASSWORD
+        - name: DOCKER_PG_USER
+        - name: DOCKER_RABBITMQ_PASSWORD
+        - name: DOCKER_RABBITMQ_USER
+        - name: DOCKER_RABBITMQ_VHOST
+        - name: SHARED_USER_ID
+        - name: SHARED_USER_NAME
+        image: contrax-uwsgi
+        name: contrax-uwsgi
+        ports:
+        - containerPort: 8080
+        - containerPort: 4443
+        resources: {}
+        volumeMounts:
+        - mountPath: /deployment_uuid
+          name: contraxsuite-deployment-uuid
+        - mountPath: /etc/nginx/certificates
+          name: contraxsuite-nginx-certs
+        - mountPath: /contraxsuite_services/staticfiles
+          name: contraxsuite-static-files
+        - mountPath: /third_party_dependencies
+          name: contraxsuite-third-party-dependencies
+        - mountPath: /data/media
+          name: contraxsuite-data-media
+        - mountPath: /data/logs
+          name: django-logs
+        - mountPath: /var/log/nginx
+          name: django-nginx-logs
+      restartPolicy: Always
+      volumes:
+      - name: contraxsuite-deployment-uuid
+        persistentVolumeClaim:
+          claimName: contraxsuite-deployment-uuid
+      - name: contraxsuite-nginx-certs
+        persistentVolumeClaim:
+          claimName: contraxsuite-nginx-certs
+      - name: contraxsuite-static-files
+        persistentVolumeClaim:
+          claimName: contraxsuite-static-files
+      - name: contraxsuite-third-party-dependencies
+        persistentVolumeClaim:
+          claimName: contraxsuite-third-party-dependencies
+      - name: contraxsuite-data-media
+        persistentVolumeClaim:
+          claimName: contraxsuite-data-media
+      - name: django-logs
+        persistentVolumeClaim:
+          claimName: django-logs
+      - name: django-nginx-logs
+        persistentVolumeClaim:
+          claimName: django-nginx-logs
+status: {}
+
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  annotations:
+    kompose.cmd: kompose convert -f ../../../deploy/docker-compose.yml
+    kompose.version: 1.4.0 (c7964e7)
+  creationTimestamp: null
+  labels:
+    io.kompose.service: contrax-redis
+  name: contrax-redis
+spec:
+  clusterIP: None
+  ports:
+  - name: headless
+    port: 55555
+    targetPort: 0
+  selector:
+    io.kompose.service: contrax-redis
+status:
+  loadBalancer: {}
+
+---
+
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  creationTimestamp: null
+  labels:
+    io.kompose.service: contraxsuite-deployment-uuid
+  name: contraxsuite-deployment-uuid
+spec:
+  accessModes:
+  - ReadWriteOnce
+  resources:
+    requests:
+      storage: 100Mi
+status: {}
+
+---
+
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  creationTimestamp: null
+  labels:
+    io.kompose.service: contraxsuite-data-media
+  name: contraxsuite-data-media
+spec:
+  accessModes:
+  - ReadWriteOnce
+  resources:
+    requests:
+      storage: 100Mi
+status: {}
+
+---
+
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  annotations:
+    kompose.cmd: kompose convert -f ../../../deploy/docker-compose.yml
+    kompose.version: 1.4.0 (c7964e7)
+  creationTimestamp: null
+  labels:
+    io.kompose.service: contrax-redis
+  name: contrax-redis
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      creationTimestamp: null
+      labels:
+        io.kompose.service: contrax-redis
+    spec:
+      containers:
+      - image: redis
+        name: contrax-redis
+        resources: {}
+        volumeMounts:
+        - mountPath: /data
+          name: redis-data
+      restartPolicy: Always
+      volumes:
+      - name: redis-data
+        persistentVolumeClaim:
+          claimName: redis-data
+status: {}
+
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  annotations:
+    kompose.cmd: kompose convert -f ../../../deploy/docker-compose.yml
+    kompose.version: 1.4.0 (c7964e7)
+  creationTimestamp: null
+  labels:
+    io.kompose.service: contrax-uwsgi
+  name: contrax-uwsgi
+spec:
+  ports:
+  - name: "10080"
+    port: 10080
+    targetPort: 8080
+  - name: "10443"
+    port: 10443
+    targetPort: 4443
+  selector:
+    io.kompose.service: contrax-uwsgi
+status:
+  loadBalancer: {}
+
+---
+
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  creationTimestamp: null
+  labels:
+    io.kompose.service: contraxsuite-nginx-certs
+  name: contraxsuite-nginx-certs
+spec:
+  accessModes:
+  - ReadWriteOnce
+  resources:
+    requests:
+      storage: 100Mi
+status: {}
+
+---
+
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  annotations:
+    kompose.cmd: kompose convert -f ../../../deploy/docker-compose.yml
+    kompose.version: 1.4.0 (c7964e7)
+  creationTimestamp: null
+  labels:
+    io.kompose.service: contrax-db
+  name: contrax-db
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      creationTimestamp: null
+      labels:
+        io.kompose.service: contrax-db
+    spec:
+      containers:
+      - env:
+        - name: PGDATA
+          value: /var/lib/contraxsuite-postgres
+        - name: POSTGRES_DB
+        - name: POSTGRES_PASSWORD
+        - name: POSTGRES_USER
+        image: postgres:9.6
+        name: contrax-db
+        resources: {}
+        volumeMounts:
+        - mountPath: /var/lib/contraxsuite-postgres
+          name: postgres-data
+      restartPolicy: Always
+      volumes:
+      - name: postgres-data
+        persistentVolumeClaim:
+          claimName: postgres-data
+status: {}
+
+---
+
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  creationTimestamp: null
+  labels:
+    io.kompose.service: elasticsearch-data
+  name: elasticsearch-data
+spec:
+  accessModes:
+  - ReadWriteOnce
+  resources:
+    requests:
+      storage: 100Mi
+status: {}
+
+---
+
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  creationTimestamp: null
+  labels:
+    io.kompose.service: contraxsuite-static-files
+  name: contraxsuite-static-files
+spec:
+  accessModes:
+  - ReadWriteOnce
+  resources:
+    requests:
+      storage: 100Mi
+status: {}
+
+---
+
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  creationTimestamp: null
+  labels:
+    io.kompose.service: redis-data
+  name: redis-data
+spec:
+  accessModes:
+  - ReadWriteOnce
+  resources:
+    requests:
+      storage: 100Mi
+status: {}
+
+---
+
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  annotations:
+    kompose.cmd: kompose convert -f ../../../deploy/docker-compose.yml
+    kompose.version: 1.4.0 (c7964e7)
+  creationTimestamp: null
+  labels:
+    io.kompose.service: contrax-celery
+  name: contrax-celery
+spec:
+  replicas: 3
+  strategy: {}
+  template:
+    metadata:
+      creationTimestamp: null
+      labels:
+        io.kompose.service: contrax-celery
+    spec:
+      containers:
+      - args:
+        - /start.sh
+        - celery
+        env:
+        - name: DOCKER_DJANGO_ACCOUNT_EMAIL_VERIFICATION
+        - name: DOCKER_DJANGO_ADMIN_EMAIL
+        - name: DOCKER_DJANGO_ADMIN_NAME
+        - name: DOCKER_DJANGO_ADMIN_PASSWORD
+        - name: DOCKER_DJANGO_DEBUG
+        - name: DOCKER_DJANGO_DEBUG_SQL
+        - name: DOCKER_DJANGO_EMAIL_HOST
+        - name: DOCKER_DJANGO_EMAIL_HOST_PASSWORD
+        - name: DOCKER_DJANGO_EMAIL_HOST_USER
+        - name: DOCKER_DJANGO_EMAIL_PORT
+        - name: DOCKER_DJANGO_HOST_NAME
+        - name: DOCKER_DJANGO_SECRET_KEY
+        - name: DOCKER_HOST_NAME_ELASTICSEARCH
+        - name: DOCKER_HOST_NAME_PG
+        - name: DOCKER_HOST_NAME_RABBITMQ
+        - name: DOCKER_HOST_NAME_REDIS
+        - name: DOCKER_HOST_NAME_UWSGI
+        - name: DOCKER_NGINX_CERTIFICATE
+        - name: DOCKER_NGINX_CERTIFICATE_KEY
+        - name: DOCKER_NGINX_SERVER_NAME
+        - name: DOCKER_PG_DB_NAME
+        - name: DOCKER_PG_PASSWORD
+        - name: DOCKER_PG_USER
+        - name: DOCKER_RABBITMQ_PASSWORD
+        - name: DOCKER_RABBITMQ_USER
+        - name: DOCKER_RABBITMQ_VHOST
+        - name: SHARED_USER_ID
+        - name: SHARED_USER_NAME
+        image: contrax-celery
+        name: contrax-celery
+        resources: {}
+      restartPolicy: Always
+status: {}
+
+---
+

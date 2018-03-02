@@ -1,0 +1,24 @@
+#!/bin/sh
+
+echo "Sleeping 5 seconds to let the Postgres start"
+sleep 5
+
+echo "Ensuring Django superuser is created..."
+su - ${SHARED_USER_NAME} -c "export LANG=C.UTF-8 && cd /contraxsuite_services && \
+    . /contraxsuite_services/venv/bin/activate && \
+    python manage.py force_migrate && \
+    python manage.py shell -c \"
+from apps.users.models import User
+if not User.objects.filter(username = '${DOCKER_DJANGO_ADMIN_NAME}').exists():
+    User.objects.create_superuser('${DOCKER_DJANGO_ADMIN_NAME}', '${DOCKER_DJANGO_ADMIN_EMAIL}', '${DOCKER_DJANGO_ADMIN_PASSWORD}', role='technical_admin')
+\""
+
+echo "Starting Nginx and Django..."
+service nginx start && \
+su - ${SHARED_USER_NAME} -c "export LANG=C.UTF-8 && cd /contraxsuite_services && \
+    . /contraxsuite_services/venv/bin/activate && \
+    uwsgi --socket 0.0.0.0:3031 \
+            --plugins python3 \
+            --protocol uwsgi \
+            --wsgi wsgi:application" && \
+service nginx stop
