@@ -2,11 +2,18 @@ FROM ubuntu:16.04
 
 # Update apt first time - initial ubuntu image contains no data
 RUN apt-get -y update --fix-missing
-#RUN apt-get -y upgrade
 RUN apt-get install -y -q apt-utils
 
+RUN apt-get install -y -q lsb-release
+
+RUN echo "Ubuntu version: " && lsb_release -a
+
+RUN apt-get install -y -q gcc-5
+
+RUN echo "GCC 5 version: " && gcc-5 -v
+
 # This is required to get add-apt-repository command working
-RUN apt-get install -y software-properties-common python-software-properties
+RUN apt-get install -y -q build-essential software-properties-common python-software-properties
 
 
 
@@ -21,13 +28,20 @@ RUN apt-get install -y software-properties-common python-software-properties
 ## Install java
 #RUN apt-get install -y oracle-java8-installer
 
+RUN apt-get install -y wget
+
+# Install apt repositories
+RUN \
+ add-apt-repository "deb http://apt.postgresql.org/pub/repos/apt/ xenial-pgdg main" \
+ && wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | apt-key add - \
+ && add-apt-repository -y ppa:webupd8team/java \
+ && echo "oracle-java8-installer shared/accepted-oracle-license-v1-1 select true" | /usr/bin/debconf-set-selections \
+ && apt-get -y update --fix-missing
+
 # Install java: Webupd8, PPA for Oracle Java8 workaround
 # https://ubuntuforums.org/showthread.php?t=2374686&page=4
 RUN \
- add-apt-repository -y ppa:webupd8team/java \
- && echo "oracle-java8-installer shared/accepted-oracle-license-v1-1 select true" | /usr/bin/debconf-set-selections \
- && apt-get -y update --fix-missing \
- && apt-get install -y oracle-java8-installer || true \
+ apt-get install -y oracle-java8-installer || true \
  && cd /var/lib/dpkg/info \
  && sed -i 's|JAVA_VERSION=8u151|JAVA_VERSION=8u162|' oracle-java8-installer.* \
  && sed -i 's|PARTNER_URL=http://download.oracle.com/otn-pub/java/jdk/8u151-b12/e758a0de34e24606bca991d704f6dcbf/|PARTNER_URL=http://download.oracle.com/otn-pub/java/jdk/8u162-b12/0da788060d494f5095bf8624735fa2f1/|' oracle-java8-installer.* \
@@ -35,6 +49,8 @@ RUN \
  && sed -i 's|J_DIR=jdk1.8.0_151|J_DIR=jdk1.8.0_162|' oracle-java8-installer.* \
  && apt-get install -y oracle-java8-installer \
  && apt-get install -y oracle-java8-set-default
+
+RUN apt-get install -y postgresql-9.6
 
 
 COPY ./temp/contraxsuite_services /contraxsuite_services

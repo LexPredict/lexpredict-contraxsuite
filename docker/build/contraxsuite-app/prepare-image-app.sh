@@ -41,7 +41,8 @@ echo "Build date: $(date -u +"%Y-%m-%dT%H:%M:%SZ")" >> ./temp/build.info
 # Generate build uid used for understanding if the persistent static files need to be updated
 uuidgen>./temp/build.uuid
 
-sudo docker build -t ${CONTRAXSUITE_IMAGE} .
+
+sudo docker build --no-cache -t ${CONTRAXSUITE_IMAGE} .
 # sudo docker build --no-cache -t contraxsuite-app .
 
 rm -f -r ./temp
