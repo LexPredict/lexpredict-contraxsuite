@@ -23,6 +23,7 @@ django-rest-swagger==2.1.2
 django-simple-history==1.8.2
 django-suit==0.2.24
 djangorestframework==3.7.7
+drf-nested-routers==0.90.0
 elasticsearch==6.0.0
 fuzzywuzzy==0.15.1
 gensim==3.1.0
