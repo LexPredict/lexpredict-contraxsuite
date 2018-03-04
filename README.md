@@ -5,7 +5,7 @@ Software package for [LexPredict ContraxSuite](https://github.com/LexPredict/lex
 
 * Official Website: https://contraxsuite.com/
 * LexPredict: https://lexpredict.com/
-* [Current Documentation](https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.0.3/documentation/)
+* [Current Documentation](https://github.com/LexPredict/lexpredict-contraxsuite/blob/master/documentation/)
 * Contact: contact@lexpredict.com
 
 ![Logo](https://www.lexpredict.com/wp-content/uploads/2014/08/lexpredict_logo_horizontal_1.png)

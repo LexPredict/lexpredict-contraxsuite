@@ -12,7 +12,7 @@
 to existing in main menu (see `templates/_base_menu_style1.html`).
 In that case it will be displayed in main menu,
 as first item. If a project has more than one custom app, 
-e.g. "employment" + "leases", then there will be displayed "Utilities"
+e.g. "employment" + "leases", then there will be displayed "Contract Types"
 menu item and it will have subitems, defined in
 `apps/employment/templates/main_menu_item.html` and
 `apps/leases/templates/main_menu_item.html` templates.
@@ -308,20 +308,26 @@ which represents a history of creating and changing that note.
 
 ## Deployment.
 
-1. The App uses `fabric` for deployment,
-see http://www.fabfile.org/.
-2. But it doesn't support python3, so we use this fork
-https://pypi.python.org/pypi/Fabric3/1.10.2 which is compatible with python3.
-3. Working with fabric:
-    - all commands are in `deploy/fabfile.py`
-    - for each instance create a folder `deploy/YOUR_INSTANCE_NAME`
-    - put 3 files there:
-        - `fabrirc` which is configuration file with set of variables 
-        - `your.pem` ssh key
-        - `local_setting.py` where you can redefine django variables from `settings.py`
-    - from `deploy` directory run command `fab -c YOUR_INSTANCE_NAME/fabricrc COMMAND_NAME`
-    - f.e. `fab -c dev-alpha/fabricrc restart` or `fab -c demo/fabricrc manage:migrate`
-    - see `fabric` documentation and `fabfile.py` commands for more information
+1. Deploying via docker image:
+The app now uses continuous integration of deployment process via jenkins 
+ and docker image.
+ Read more about deploying using docker here:
+ https://github.com/LexPredict/lexpredict-contraxsuite/blob/master/docker/QUICK_DEPLOY.md
+  
+2. Deploying via Fabric:
+    * You can use `Fabric` for deployment, see http://www.fabfile.org/.
+    * But `Fabric` doesn't support python3, so we use this fork
+    https://pypi.python.org/pypi/Fabric3/1.10.2 which is compatible with python3.
+    * Working with fabric:
+        - all commands are in `deploy/fabfile.py`
+        - for each instance create a folder `deploy/YOUR_INSTANCE_NAME`
+        - put 3 files there:
+            - `fabrirc` which is configuration file with set of variables 
+            - `your.pem` ssh key
+            - `local_setting.py` where you can redefine django variables from `settings.py`
+        - from `deploy` directory run command `fab -c YOUR_INSTANCE_NAME/fabricrc COMMAND_NAME`
+        - f.e. `fab -c dev-alpha/fabricrc restart` or `fab -c demo/fabricrc manage:migrate`
+        - see `fabric` documentation and `fabfile.py` commands for more information
 
 
 ## Django settings.py and local_settings.py files.
