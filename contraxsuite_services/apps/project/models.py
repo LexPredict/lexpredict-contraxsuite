@@ -36,7 +36,7 @@ from apps.users.models import User
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
 __license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.0.5/LICENSE"
-__version__ = "1.0.6"
+__version__ = "1.0.7"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -197,6 +197,30 @@ def completed_documents_changed(instance, action, pk_set, **kwargs):
         tqh.documents.add(*list(pk_set))
 
 
+class ProjectStatus(models.Model):
+    """
+    ProjectStatus object model
+    """
+    # Status verbose name
+    name = models.CharField(max_length=100, db_index=True)
+
+    # Status code
+    code = models.CharField(max_length=100, db_index=True)
+
+    # Status order number
+    order = models.PositiveSmallIntegerField()
+
+    class Meta(object):
+        ordering = ['name', 'code', 'order']
+
+    def __str__(self):
+        """"
+        String representation
+        """
+        return "ProjectStatus (pk={0}, code={1})" \
+            .format(self.pk, self.code)
+
+
 class Project(models.Model):
     """Project object model
 
@@ -211,6 +235,15 @@ class Project(models.Model):
 
     # Task queue set
     task_queues = models.ManyToManyField(TaskQueue, blank=True)
+
+    # Owners set
+    owners = models.ManyToManyField(User, related_name="project_owners", blank=True)
+
+    # Reviewers team
+    reviewers = models.ManyToManyField(User, related_name="project_reviewers", blank=True)
+
+    # Status
+    status = models.ManyToManyField(ProjectStatus, blank=True)
 
     class Meta(object):
         ordering = ['name']

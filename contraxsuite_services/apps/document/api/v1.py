@@ -61,6 +61,13 @@ from apps.project.models import *
 from apps.users.models import User
 from rest_framework_nested import routers as nested_routers
 
+__author__ = "ContraxSuite, LLC; LexPredict, LLC"
+__copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.0.5/LICENSE"
+__version__ = "1.0.7"
+__maintainer__ = "LexPredict, LLC"
+__email__ = "support@contraxsuite.com"
+
 
 # --------------------------------------------------------
 # Document Views

@@ -33,10 +33,17 @@ from django.http import JsonResponse
 
 # Project imports
 from apps.common.mixins import JqMixin
-from apps.project.models import Project, TaskQueue
+from apps.project.models import Project, ProjectStatus, TaskQueue
 from apps.document.models import Document
 from apps.users.models import User
 from apps.analyze.models import DocumentCluster
+
+__author__ = "ContraxSuite, LLC; LexPredict, LLC"
+__copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.0.5/LICENSE"
+__version__ = "1.0.7"
+__maintainer__ = "LexPredict, LLC"
+__email__ = "support@contraxsuite.com"
 
 
 class PatchedListView(APIView):
@@ -197,20 +204,61 @@ class TaskQueueViewSet(JqMixin, viewsets.ModelViewSet):
 
 
 # --------------------------------------------------------
+# ProjectStatus Views
+# --------------------------------------------------------
+
+class ProjectStatusSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ProjectStatus
+        fields = ['pk', 'name', 'code', 'order']
+
+
+class ProjectStatusViewSet(JqMixin, viewsets.ModelViewSet):
+    """
+    list: ProjectStatus List\n
+        GET params:
+            - name: str
+            - name_contains: str
+            - code: str
+            - code_contains: str
+    retrieve: Retrieve ProjectStatus
+    create: Create ProjectStatus
+    update: Update ProjectStatus
+    partial_update: Partial Update ProjectStatus
+    delete: Delete ProjectStatus
+    """
+    queryset = ProjectStatus.objects.all()
+    serializer_class = ProjectStatusSerializer
+
+
+# --------------------------------------------------------
 # Project Views
 # --------------------------------------------------------
 
 class ProjectSerializer(serializers.ModelSerializer):
     task_queues = serializers.PrimaryKeyRelatedField(
         queryset=TaskQueue.objects.all(), many=True, required=False)
-    task_queue_data = TaskQueueSerializer(source='task_queues',
-                                          many=True, read_only=True)
+    task_queue_data = TaskQueueSerializer(
+        source='task_queues', many=True, read_only=True)
+    status = serializers.PrimaryKeyRelatedField(
+        queryset=ProjectStatus.objects.all(), many=True, required=False)
+    status_data = ProjectStatusSerializer(
+        source='status', many=True, read_only=True)
+    owners = serializers.PrimaryKeyRelatedField(
+        queryset=User.objects.all(), many=True, required=False)
+    owners_data = UserSerializer(
+        source='owners', many=True, read_only=True)
+    reviewers = serializers.PrimaryKeyRelatedField(
+        queryset=User.objects.all(), many=True, required=False)
+    reviewers_data = UserSerializer(
+        source='reviewers', many=True, read_only=True)
     progress = serializers.SerializerMethodField()
 
     class Meta:
         model = Project
-        fields = ['name', 'description', 'task_queues',
-                  'task_queue_data', 'progress']
+        fields = ['pk', 'name', 'description', 'status', 'status_data',
+                  'owners', 'owners_data', 'reviewers', 'reviewers_data',
+                  'task_queues', 'task_queue_data', 'progress']
 
     def get_progress(self, obj):
         return obj.progress(as_dict=True)
@@ -224,6 +272,12 @@ class ProjectViewSet(JqMixin, viewsets.ModelViewSet):
             - name_contains: str
             - description: str
             - description_contains: str
+            - status__name: str
+            - status__name_contains: str
+            - status__code: str
+            - status__code_contains: str
+            - owners__username: str
+            - reviewers__username: str
     retrieve: Retrieve Project
     create: Create Project
     update: Update Project
@@ -243,4 +297,5 @@ class ProjectViewSet(JqMixin, viewsets.ModelViewSet):
 
 router = routers.DefaultRouter()
 router.register(r'task-queues', TaskQueueViewSet, 'task-queue')
+router.register(r'project-statuses', ProjectStatusViewSet, 'project-status')
 router.register(r'projects', ProjectViewSet, 'project')

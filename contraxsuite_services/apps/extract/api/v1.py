@@ -54,6 +54,13 @@ from apps.extract.models import *
 from apps.common.mixins import (
     SimpleRelationSerializer, JqListAPIView, JqMixin)
 
+__author__ = "ContraxSuite, LLC; LexPredict, LLC"
+__copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.0.5/LICENSE"
+__version__ = "1.0.7"
+__maintainer__ = "LexPredict, LLC"
+__email__ = "support@contraxsuite.com"
+
 
 class BaseUsageSerializer(SimpleRelationSerializer):
     class Meta:
@@ -803,7 +810,7 @@ class DateUsageToICalView(DateUsageListAPIView):
         # Create calendar
         cal = icalendar.Calendar()
         cal.add('prodid', 'ContraxSuite (https://contraxsuite.com)')
-        cal.add('version', '1.0.6')
+        cal.add('version', '1.0.7')
 
         # Filter to text unit
         for du in self.get_queryset():

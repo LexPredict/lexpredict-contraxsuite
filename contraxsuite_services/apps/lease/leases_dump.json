@@ -1,0 +1,669 @@
+[
+    {
+        "model": "document.documentfield",
+        "pk": "fc611670-153a-4958-be5b-3a5996263f83",
+        "fields": {
+            "created_date": "2018-02-21T13:17:29.625Z",
+            "modified_date": "2018-02-23T17:03:57.126Z",
+            "created_by": null,
+            "modified_by": null,
+            "code": "alterations_allowed",
+            "title": "Alterations Allowed",
+            "type": "related_info",
+            "choices": "",
+            "item_number": "first"
+        }
+    },
+    {
+        "model": "document.documentfield",
+        "pk": "61c6ea2f-ad11-410d-a11f-8a6ac1edd0a5",
+        "fields": {
+            "created_date": "2018-02-22T15:54:31.732Z",
+            "modified_date": "2018-02-23T16:54:11.297Z",
+            "created_by": null,
+            "modified_by": null,
+            "code": "area_acres",
+            "title": "Area (acres)",
+            "type": "float",
+            "choices": "",
+            "item_number": "first"
+        }
+    },
+    {
+        "model": "document.documentfield",
+        "pk": "e323b09c-1de8-42fe-a4c5-96b44b7f44cc",
+        "fields": {
+            "created_date": "2018-02-21T13:17:11.313Z",
+            "modified_date": "2018-02-23T16:57:40.052Z",
+            "created_by": null,
+            "modified_by": null,
+            "code": "area_size_sq_ft",
+            "title": "Area Size (sq. ft.)",
+            "type": "float",
+            "choices": "",
+            "item_number": "first"
+        }
+    },
+    {
+        "model": "document.documentfield",
+        "pk": "7fe3134b-b744-4052-af2f-0dbe49093ccb",
+        "fields": {
+            "created_date": "2018-02-21T13:14:14.146Z",
+            "modified_date": "2018-02-23T17:03:40.403Z",
+            "created_by": null,
+            "modified_by": null,
+            "code": "auto_renew",
+            "title": "Auto Renew",
+            "type": "choice",
+            "choices": "Yes\r\nNo",
+            "item_number": "first"
+        }
+    },
+    {
+        "model": "document.documentfield",
+        "pk": "4dafbc9d-cf81-47d7-8b31-9a4ab292e58f",
+        "fields": {
+            "created_date": "2018-02-21T10:29:28.413Z",
+            "modified_date": "2018-02-23T17:04:20.135Z",
+            "created_by": null,
+            "modified_by": null,
+            "code": "commencement_date",
+            "title": "Commencement Date",
+            "type": "date",
+            "choices": null,
+            "item_number": "first"
+        }
+    },
+    {
+        "model": "document.documentfield",
+        "pk": "56416702-8b77-43f8-b3ab-d89ac0b33b3e",
+        "fields": {
+            "created_date": "2018-02-21T13:06:49.973Z",
+            "modified_date": "2018-02-23T16:57:52.800Z",
+            "created_by": null,
+            "modified_by": null,
+            "code": "expiration_date",
+            "title": "Expiration Date",
+            "type": "date",
+            "choices": "",
+            "item_number": "first"
+        }
+    },
+    {
+        "model": "document.documentfield",
+        "pk": "584a3f27-437b-46a8-9390-4ece0efc6e88",
+        "fields": {
+            "created_date": "2018-02-25T18:11:54.279Z",
+            "modified_date": "2018-02-25T18:11:54.279Z",
+            "created_by": null,
+            "modified_by": null,
+            "code": "field_a",
+            "title": "Field A",
+            "type": "date",
+            "choices": "",
+            "item_number": "first"
+        }
+    },
+    {
+        "model": "document.documentfield",
+        "pk": "b339fdcd-f8d6-4da3-904d-d4ceff0c7a47",
+        "fields": {
+            "created_date": "2018-02-25T18:12:23.371Z",
+            "modified_date": "2018-02-25T18:12:23.371Z",
+            "created_by": null,
+            "modified_by": null,
+            "code": "field_b",
+            "title": "Field B",
+            "type": "float",
+            "choices": "",
+            "item_number": "first"
+        }
+    },
+    {
+        "model": "document.documentfield",
+        "pk": "5cfa8a72-8ebd-47e6-9187-614f7d4e7e28",
+        "fields": {
+            "created_date": "2018-02-21T10:28:25.839Z",
+            "modified_date": "2018-02-23T17:04:16.827Z",
+            "created_by": null,
+            "modified_by": null,
+            "code": "landlord",
+            "title": "Landlord (Lessor)",
+            "type": "company",
+            "choices": null,
+            "item_number": "first"
+        }
+    },
+    {
+        "model": "document.documentfield",
+        "pk": "16c85547-b501-4f31-a47a-304a22239bd0",
+        "fields": {
+            "created_date": "2018-02-21T12:26:28.873Z",
+            "modified_date": "2018-02-23T17:04:12.098Z",
+            "created_by": null,
+            "modified_by": null,
+            "code": "lease_type",
+            "title": "Lease Type",
+            "type": "multi_choice",
+            "choices": "pay_taxes\r\npay_costs\r\npay_insurance",
+            "item_number": "first"
+        }
+    },
+    {
+        "model": "document.documentfield",
+        "pk": "ee330bf4-8e9f-4b48-badc-64122f4ed982",
+        "fields": {
+            "created_date": "2018-02-21T13:25:31.314Z",
+            "modified_date": "2018-02-23T16:57:36.132Z",
+            "created_by": null,
+            "modified_by": null,
+            "code": "mean_rent_per_month",
+            "title": "Mean Rent Per Month",
+            "type": "amount",
+            "choices": "",
+            "item_number": "first"
+        }
+    },
+    {
+        "model": "document.documentfield",
+        "pk": "db48281f-5445-47d5-b3ca-b106bce05ac0",
+        "fields": {
+            "created_date": "2018-02-21T13:09:19.424Z",
+            "modified_date": "2018-02-23T17:03:53.533Z",
+            "created_by": null,
+            "modified_by": null,
+            "code": "permitted_uses",
+            "title": "Permitted Uses",
+            "type": "related_info",
+            "choices": "",
+            "item_number": "first"
+        }
+    },
+    {
+        "model": "document.documentfield",
+        "pk": "b626c469-9c40-4956-b0f0-28776fa6a259",
+        "fields": {
+            "created_date": "2018-02-21T13:09:38.569Z",
+            "modified_date": "2018-02-23T17:03:49.868Z",
+            "created_by": null,
+            "modified_by": null,
+            "code": "prohibited_uses",
+            "title": "Prohibited Uses",
+            "type": "related_info",
+            "choices": "",
+            "item_number": "first"
+        }
+    },
+    {
+        "model": "document.documentfield",
+        "pk": "df250888-2ec8-4d8c-a291-5b75185e1b60",
+        "fields": {
+            "created_date": "2018-02-21T13:16:38.657Z",
+            "modified_date": "2018-02-23T16:57:20.375Z",
+            "created_by": null,
+            "modified_by": null,
+            "code": "property_address",
+            "title": "Property Address",
+            "type": "address",
+            "choices": "",
+            "item_number": "first"
+        }
+    },
+    {
+        "model": "document.documentfield",
+        "pk": "76d50814-5a77-4135-a4e2-ffffbd72ea7d",
+        "fields": {
+            "created_date": "2018-02-21T13:08:07.442Z",
+            "modified_date": "2018-02-23T17:21:54.104Z",
+            "created_by": null,
+            "modified_by": null,
+            "code": "property_type",
+            "title": "Property Type",
+            "type": "multi_choice",
+            "choices": "storage\r\noffice\r\nland\r\nretail\r\nfarming",
+            "item_number": "first"
+        }
+    },
+    {
+        "model": "document.documentfield",
+        "pk": "2dc16d29-f317-4ea1-9d6e-cfc0f3fd1140",
+        "fields": {
+            "created_date": "2018-02-21T13:09:58.511Z",
+            "modified_date": "2018-02-23T17:04:08.555Z",
+            "created_by": null,
+            "modified_by": null,
+            "code": "renew_non_renew_notice_duration",
+            "title": "Renew / Non-renew Notice Duration",
+            "type": "duration",
+            "choices": "",
+            "item_number": "first"
+        }
+    },
+    {
+        "model": "document.documentfield",
+        "pk": "01301fab-eae0-41cd-8220-5391dddf7ec1",
+        "fields": {
+            "created_date": "2018-02-21T13:24:56.718Z",
+            "modified_date": "2018-02-21T13:24:56.718Z",
+            "created_by": null,
+            "modified_by": null,
+            "code": "rent_due_frequency",
+            "title": "Rent Due Frequency",
+            "type": "choice",
+            "choices": "monthly\r\nannual\r\nat once",
+            "item_number": "first"
+        }
+    },
+    {
+        "model": "document.documentfield",
+        "pk": "5df4acf8-7ec7-4e50-9ff0-1a60ae8cb183",
+        "fields": {
+            "created_date": "2018-02-21T13:23:32.658Z",
+            "modified_date": "2018-02-23T16:57:07.519Z",
+            "created_by": null,
+            "modified_by": null,
+            "code": "security_deposit",
+            "title": "Security Deposit",
+            "type": "amount",
+            "choices": "",
+            "item_number": "first"
+        }
+    },
+    {
+        "model": "document.documentfield",
+        "pk": "35d6fb9f-881c-4108-b525-8dbbcabd7097",
+        "fields": {
+            "created_date": "2018-02-21T10:28:36.337Z",
+            "modified_date": "2018-02-21T10:28:36.337Z",
+            "created_by": null,
+            "modified_by": null,
+            "code": "tenant",
+            "title": "Tenant (Lessee)",
+            "type": "company",
+            "choices": null,
+            "item_number": "first"
+        }
+    },
+    {
+        "model": "document.documenttype",
+        "pk": "78425541-fe21-4ede-9445-ca88ceb3fc4c",
+        "fields": {
+            "created_date": "2018-02-19T14:30:20.502Z",
+            "modified_date": "2018-02-25T18:09:50.114Z",
+            "created_by": null,
+            "modified_by": null,
+            "code": "lease.LeaseDocument",
+            "title": "Lease Document",
+            "fields": [
+                "fc611670-153a-4958-be5b-3a5996263f83",
+                "61c6ea2f-ad11-410d-a11f-8a6ac1edd0a5",
+                "e323b09c-1de8-42fe-a4c5-96b44b7f44cc",
+                "7fe3134b-b744-4052-af2f-0dbe49093ccb",
+                "4dafbc9d-cf81-47d7-8b31-9a4ab292e58f",
+                "56416702-8b77-43f8-b3ab-d89ac0b33b3e",
+                "5cfa8a72-8ebd-47e6-9187-614f7d4e7e28",
+                "16c85547-b501-4f31-a47a-304a22239bd0",
+                "ee330bf4-8e9f-4b48-badc-64122f4ed982",
+                "db48281f-5445-47d5-b3ca-b106bce05ac0",
+                "b626c469-9c40-4956-b0f0-28776fa6a259",
+                "df250888-2ec8-4d8c-a291-5b75185e1b60",
+                "76d50814-5a77-4135-a4e2-ffffbd72ea7d",
+                "2dc16d29-f317-4ea1-9d6e-cfc0f3fd1140",
+                "01301fab-eae0-41cd-8220-5391dddf7ec1",
+                "5df4acf8-7ec7-4e50-9ff0-1a60ae8cb183",
+                "35d6fb9f-881c-4108-b525-8dbbcabd7097"
+            ],
+            "search_fields": [
+                "fc611670-153a-4958-be5b-3a5996263f83",
+                "61c6ea2f-ad11-410d-a11f-8a6ac1edd0a5",
+                "e323b09c-1de8-42fe-a4c5-96b44b7f44cc",
+                "7fe3134b-b744-4052-af2f-0dbe49093ccb",
+                "4dafbc9d-cf81-47d7-8b31-9a4ab292e58f",
+                "56416702-8b77-43f8-b3ab-d89ac0b33b3e",
+                "5cfa8a72-8ebd-47e6-9187-614f7d4e7e28",
+                "16c85547-b501-4f31-a47a-304a22239bd0",
+                "ee330bf4-8e9f-4b48-badc-64122f4ed982",
+                "db48281f-5445-47d5-b3ca-b106bce05ac0",
+                "b626c469-9c40-4956-b0f0-28776fa6a259",
+                "df250888-2ec8-4d8c-a291-5b75185e1b60",
+                "76d50814-5a77-4135-a4e2-ffffbd72ea7d",
+                "2dc16d29-f317-4ea1-9d6e-cfc0f3fd1140",
+                "01301fab-eae0-41cd-8220-5391dddf7ec1",
+                "5df4acf8-7ec7-4e50-9ff0-1a60ae8cb183",
+                "35d6fb9f-881c-4108-b525-8dbbcabd7097"
+            ]
+        }
+    },
+    {
+        "model": "document.documenttype",
+        "pk": "83455d05-5fca-4a0b-8789-2c6ef99e743c",
+        "fields": {
+            "created_date": "2018-02-25T18:13:02.715Z",
+            "modified_date": "2018-02-25T18:13:02.715Z",
+            "created_by": null,
+            "modified_by": null,
+            "code": "test_doc_type",
+            "title": "Test Document Type",
+            "fields": [
+                "584a3f27-437b-46a8-9390-4ece0efc6e88",
+                "b339fdcd-f8d6-4da3-904d-d4ceff0c7a47"
+            ],
+            "search_fields": [
+                "584a3f27-437b-46a8-9390-4ece0efc6e88",
+                "b339fdcd-f8d6-4da3-904d-d4ceff0c7a47"
+            ]
+        }
+    },
+    {
+        "model": "document.documentfielddetector",
+        "pk": "027cff0a-e179-4acf-a15a-8ce312f5514d",
+        "fields": {
+            "field": "76d50814-5a77-4135-a4e2-ffffbd72ea7d",
+            "document_type": "78425541-fe21-4ede-9445-ca88ceb3fc4c",
+            "exclude_regexps": "",
+            "include_regexps": ".*(?:tenant|lessee|premises|property|agreed).+use.+farming.*",
+            "regexps_pre_process_lower": true,
+            "regexps_pre_process_remove_numeric_separators": true,
+            "detected_value": "farming"
+        }
+    },
+    {
+        "model": "document.documentfielddetector",
+        "pk": "0308a26e-2844-49c6-8048-502998899df1",
+        "fields": {
+            "field": "b626c469-9c40-4956-b0f0-28776fa6a259",
+            "document_type": "78425541-fe21-4ede-9445-ca88ceb3fc4c",
+            "exclude_regexps": "",
+            "include_regexps": "(?:property|premises)\\s+(?:shall|may)\\s+not\\s+be\\s+used\r\n(?:tenant|lessee)\\s+(?:shall|may)\\s+not.+(?:property|premises)\r\nRestrition\\s+[Oo]n\\s+Use.*[:.]\\s+.",
+            "regexps_pre_process_lower": true,
+            "regexps_pre_process_remove_numeric_separators": true,
+            "detected_value": null
+        }
+    },
+    {
+        "model": "document.documentfielddetector",
+        "pk": "06a93a06-ac7b-4530-ae40-5463c7f861cc",
+        "fields": {
+            "field": "ee330bf4-8e9f-4b48-badc-64122f4ed982",
+            "document_type": "78425541-fe21-4ede-9445-ca88ceb3fc4c",
+            "exclude_regexps": "",
+            "include_regexps": "total.*amount.*month.*\\$\\s*([-+]?[0-9]*\\.?[0-9]+(?:[eE][-+]?[0-9]+)?)\r\nrent.*\\$\\s*([-+]?[0-9]*\\.?[0-9]+(?:[eE][-+]?[0-9]+)?).*per\\s+month\r\npay.*amount.*\\$\\s*([-+]?[0-9]*\\.?[0-9]+(?:[eE][-+]?[0-9]+)?).*per\\s+month\r\nrent.*(?:paid|payable).*monthly.*\\$\\s*([-+]?[0-9]*\\.?[0-9]+(?:[eE][-+]?[0-9]+)?)",
+            "regexps_pre_process_lower": true,
+            "regexps_pre_process_remove_numeric_separators": true,
+            "detected_value": null
+        }
+    },
+    {
+        "model": "document.documentfielddetector",
+        "pk": "1355774f-0fa4-42cd-b3f4-d4b4f7224e6b",
+        "fields": {
+            "field": "61c6ea2f-ad11-410d-a11f-8a6ac1edd0a5",
+            "document_type": "78425541-fe21-4ede-9445-ca88ceb3fc4c",
+            "exclude_regexps": "",
+            "include_regexps": "(?:premises|property)(.*?)\\s+acres?\r\n(.*?)\\s+acres?.+(?:premises|property)",
+            "regexps_pre_process_lower": true,
+            "regexps_pre_process_remove_numeric_separators": true,
+            "detected_value": null
+        }
+    },
+    {
+        "model": "document.documentfielddetector",
+        "pk": "15d8baee-c614-4343-8397-4aa56ca12139",
+        "fields": {
+            "field": "7fe3134b-b744-4052-af2f-0dbe49093ccb",
+            "document_type": "78425541-fe21-4ede-9445-ca88ceb3fc4c",
+            "exclude_regexps": "",
+            "include_regexps": "(?:lessor|tenant).+intends\\s+to.+lease.+(?:notice|notify)\r\ngiven.+option.+to\\s+(?:renew|extend)\r\nto\\s+(?:renew|extend).+(?:shall|must).+notice\r\nright\\s+to\\s+(?:renew|extend)\r\nnotice.+to\\s+(?:renew|extend|exercise)\r\nelect\\s+to\\s+extend.+notice",
+            "regexps_pre_process_lower": true,
+            "regexps_pre_process_remove_numeric_separators": true,
+            "detected_value": "No"
+        }
+    },
+    {
+        "model": "document.documentfielddetector",
+        "pk": "40b0a682-27cf-4398-bd2d-b6bcbad2d8c6",
+        "fields": {
+            "field": "7fe3134b-b744-4052-af2f-0dbe49093ccb",
+            "document_type": "78425541-fe21-4ede-9445-ca88ceb3fc4c",
+            "exclude_regexps": "",
+            "include_regexps": "shall\\s+automatically\\s+(?:extend|renew)\r\nlease.*(?:shall|may)\\s+be\\s+terminated(.*)\r\nnotice.+not\\s+to\\s+(?:renew|extend|exercise)",
+            "regexps_pre_process_lower": true,
+            "regexps_pre_process_remove_numeric_separators": true,
+            "detected_value": "Yes"
+        }
+    },
+    {
+        "model": "document.documentfielddetector",
+        "pk": "48ec554d-0a11-4e05-a1bb-6be116ba594f",
+        "fields": {
+            "field": "5cfa8a72-8ebd-47e6-9187-614f7d4e7e28",
+            "document_type": "78425541-fe21-4ede-9445-ca88ceb3fc4c",
+            "exclude_regexps": "",
+            "include_regexps": "(?:lessor|landlord|sub-lessor|sub-landlord|sublessor|sublandlord).*:\\W*(?P<landlord>.*)(?:lessee|tenant|sub-lessee|sub-tenant|sublessee|subtenant).*:\\W*(?P<tenant>.*)\\n\\n\r\n(?:lessee|tenant|sub-lessee|sub-tenant|sublessee|subtenant).*:\\W*(?P<tenant>.*)(?:lessor|landlord|sub-lessor|sub-landlord|sublessor|sublandlord).*:\\W*(?P<landlord>.*)\\n\\n\r\nbetween\\W*(?P<tenant>.*)\\W*\\(.*(?:lessee|tenant|sub-lessee|sub-tenant|sublessee|subtenant).*\\)\\W*and\\W*(?P<landlord>.*)\\W*\\(.*(?:lessor|landlord|sub-lessor|sub-landlord|sublessor|sublandlord).*\\)\r\nbetween\\W*(?P<landlord>.*)\\W*\\(.*(?:lessor|landlord|sub-lessor|sub-landlord|sublessor|sublandlord).*\\)\\W*and\\W*(?P<tenant>.*)\\W*\\(.*(?:lessee|tenant|sub-lessee|sub-tenant|sublessee|subtenant).*\\)",
+            "regexps_pre_process_lower": true,
+            "regexps_pre_process_remove_numeric_separators": true,
+            "detected_value": null
+        }
+    },
+    {
+        "model": "document.documentfielddetector",
+        "pk": "4ad5ead4-c925-493c-9970-b83f6e3f3d4b",
+        "fields": {
+            "field": "fc611670-153a-4958-be5b-3a5996263f83",
+            "document_type": "78425541-fe21-4ede-9445-ca88ceb3fc4c",
+            "exclude_regexps": "",
+            "include_regexps": ".*(?:alteration|improvement).*",
+            "regexps_pre_process_lower": true,
+            "regexps_pre_process_remove_numeric_separators": true,
+            "detected_value": null
+        }
+    },
+    {
+        "model": "document.documentfielddetector",
+        "pk": "54428d45-55e2-414d-96a5-ac9674b8f742",
+        "fields": {
+            "field": "db48281f-5445-47d5-b3ca-b106bce05ac0",
+            "document_type": "78425541-fe21-4ede-9445-ca88ceb3fc4c",
+            "exclude_regexps": "",
+            "include_regexps": "(?:property|premises)\\s+shall\\s+be\\s+used(.*)\r\n(?:tenant|lessee)\\s+(?:may|shall)\\s+use.*(?:property|premises)(.*)\r\nUse.*[:.]\\s+(.*)\r\nPermitted\\s+[Uu]se.*[:.]\\s+(.*)",
+            "regexps_pre_process_lower": true,
+            "regexps_pre_process_remove_numeric_separators": true,
+            "detected_value": null
+        }
+    },
+    {
+        "model": "document.documentfielddetector",
+        "pk": "5f0ce4b7-d64c-4c53-befd-3b81fdc7580e",
+        "fields": {
+            "field": "b339fdcd-f8d6-4da3-904d-d4ceff0c7a47",
+            "document_type": "83455d05-5fca-4a0b-8789-2c6ef99e743c",
+            "exclude_regexps": "",
+            "include_regexps": "father",
+            "regexps_pre_process_lower": true,
+            "regexps_pre_process_remove_numeric_separators": false,
+            "detected_value": null
+        }
+    },
+    {
+        "model": "document.documentfielddetector",
+        "pk": "6fd0d9c5-d9ac-4389-be57-fb549a7d167d",
+        "fields": {
+            "field": "16c85547-b501-4f31-a47a-304a22239bd0",
+            "document_type": "78425541-fe21-4ede-9445-ca88ceb3fc4c",
+            "exclude_regexps": "",
+            "include_regexps": "(?:tenant|lessee).+pay.+insurance",
+            "regexps_pre_process_lower": true,
+            "regexps_pre_process_remove_numeric_separators": true,
+            "detected_value": "pay_insurance"
+        }
+    },
+    {
+        "model": "document.documentfielddetector",
+        "pk": "7f0b0ac9-0419-438f-93f3-534190b13f54",
+        "fields": {
+            "field": "4dafbc9d-cf81-47d7-8b31-9a4ab292e58f",
+            "document_type": "78425541-fe21-4ede-9445-ca88ceb3fc4c",
+            "exclude_regexps": "",
+            "include_regexps": "shall\\s+(?:commence|start).*\\d.*\r\nfrom.*\\d.*\r\ncommencement\\s+date.*\\d.*\r\n(?:beginning|commencing|commence)\\s+.*\\d.*(?:expiring|ending|end)\\s+.*\\d+.*\r\ncommencement\\s+date.*expiration\\s+date.*",
+            "regexps_pre_process_lower": true,
+            "regexps_pre_process_remove_numeric_separators": true,
+            "detected_value": null
+        }
+    },
+    {
+        "model": "document.documentfielddetector",
+        "pk": "857ded38-b3ad-4ea4-9ba7-5207af7bdd5e",
+        "fields": {
+            "field": "76d50814-5a77-4135-a4e2-ffffbd72ea7d",
+            "document_type": "78425541-fe21-4ede-9445-ca88ceb3fc4c",
+            "exclude_regexps": "",
+            "include_regexps": ".*(?:tenant|lessee|premises|property|agreed).+use.+storage.*\r\n.*storage.+lease.*",
+            "regexps_pre_process_lower": true,
+            "regexps_pre_process_remove_numeric_separators": true,
+            "detected_value": "storage"
+        }
+    },
+    {
+        "model": "document.documentfielddetector",
+        "pk": "884caea8-9a94-4506-ae05-072e4d18709c",
+        "fields": {
+            "field": "16c85547-b501-4f31-a47a-304a22239bd0",
+            "document_type": "78425541-fe21-4ede-9445-ca88ceb3fc4c",
+            "exclude_regexps": "",
+            "include_regexps": "(?:tenant|lessee).+pay.+taxes",
+            "regexps_pre_process_lower": true,
+            "regexps_pre_process_remove_numeric_separators": true,
+            "detected_value": "pay_taxes"
+        }
+    },
+    {
+        "model": "document.documentfielddetector",
+        "pk": "967818f2-830f-4408-b6ad-667ada1b92c0",
+        "fields": {
+            "field": "76d50814-5a77-4135-a4e2-ffffbd72ea7d",
+            "document_type": "78425541-fe21-4ede-9445-ca88ceb3fc4c",
+            "exclude_regexps": "",
+            "include_regexps": ".*(?:property|premises).+\\d+\\s+acre.*",
+            "regexps_pre_process_lower": true,
+            "regexps_pre_process_remove_numeric_separators": true,
+            "detected_value": "land"
+        }
+    },
+    {
+        "model": "document.documentfielddetector",
+        "pk": "99fad954-efa4-4ede-a21a-5c4336308bba",
+        "fields": {
+            "field": "584a3f27-437b-46a8-9390-4ece0efc6e88",
+            "document_type": "83455d05-5fca-4a0b-8789-2c6ef99e743c",
+            "exclude_regexps": "",
+            "include_regexps": "hello",
+            "regexps_pre_process_lower": true,
+            "regexps_pre_process_remove_numeric_separators": false,
+            "detected_value": null
+        }
+    },
+    {
+        "model": "document.documentfielddetector",
+        "pk": "9ae90c33-55ad-4237-aa56-67fc2d25da65",
+        "fields": {
+            "field": "76d50814-5a77-4135-a4e2-ffffbd72ea7d",
+            "document_type": "78425541-fe21-4ede-9445-ca88ceb3fc4c",
+            "exclude_regexps": "",
+            "include_regexps": ".*(?:tenant|lessee|premises|property|agreed).+use.+office.*\r\n.*office.+lease.*",
+            "regexps_pre_process_lower": true,
+            "regexps_pre_process_remove_numeric_separators": true,
+            "detected_value": "office"
+        }
+    },
+    {
+        "model": "document.documentfielddetector",
+        "pk": "abb3c252-fd8b-4039-a5fd-9b6e09fdef90",
+        "fields": {
+            "field": "e323b09c-1de8-42fe-a4c5-96b44b7f44cc",
+            "document_type": "78425541-fe21-4ede-9445-ca88ceb3fc4c",
+            "exclude_regexps": "",
+            "include_regexps": "(?:premises|property)(.*?)\\s+square\\s+(?:foot|feet)\r\n(.*?)\\s+square\\s+(?:foot|feet).+(?:premises|property)",
+            "regexps_pre_process_lower": true,
+            "regexps_pre_process_remove_numeric_separators": true,
+            "detected_value": null
+        }
+    },
+    {
+        "model": "document.documentfielddetector",
+        "pk": "b26e6971-ff3b-4d6b-a7c7-bf2c4ebed70b",
+        "fields": {
+            "field": "16c85547-b501-4f31-a47a-304a22239bd0",
+            "document_type": "78425541-fe21-4ede-9445-ca88ceb3fc4c",
+            "exclude_regexps": "",
+            "include_regexps": "(?:tenant|lessee).+pay.+(?:costs|maintenance)",
+            "regexps_pre_process_lower": true,
+            "regexps_pre_process_remove_numeric_separators": true,
+            "detected_value": "pay_costs"
+        }
+    },
+    {
+        "model": "document.documentfielddetector",
+        "pk": "cfedea00-18f3-4096-b1ad-781cc6f0999a",
+        "fields": {
+            "field": "df250888-2ec8-4d8c-a291-5b75185e1b60",
+            "document_type": "78425541-fe21-4ede-9445-ca88ceb3fc4c",
+            "exclude_regexps": "",
+            "include_regexps": "(?:premises|property)\\s+located\\s+in(.*)",
+            "regexps_pre_process_lower": true,
+            "regexps_pre_process_remove_numeric_separators": true,
+            "detected_value": null
+        }
+    },
+    {
+        "model": "document.documentfielddetector",
+        "pk": "ea8a5c64-0fe4-448a-88b8-dcf722ec6147",
+        "fields": {
+            "field": "2dc16d29-f317-4ea1-9d6e-cfc0f3fd1140",
+            "document_type": "78425541-fe21-4ede-9445-ca88ceb3fc4c",
+            "exclude_regexps": "agree",
+            "include_regexps": "(?:lessor|tenant).+intends\\s+to.+lease.+(?:notice|notify)\r\nnotice.+to.+(?:extend|renew)\r\n(?:shall|must).+(?:provide|deliver|give).+notice\r\nlease.*(?:shall|may)\\s+be\\s+terminated(.*)\r\nelect\\s+to\\s+extend.+notice",
+            "regexps_pre_process_lower": true,
+            "regexps_pre_process_remove_numeric_separators": true,
+            "detected_value": null
+        }
+    },
+    {
+        "model": "document.documentfielddetector",
+        "pk": "edede469-b20e-444a-ae4d-50034a2f60f2",
+        "fields": {
+            "field": "76d50814-5a77-4135-a4e2-ffffbd72ea7d",
+            "document_type": "78425541-fe21-4ede-9445-ca88ceb3fc4c",
+            "exclude_regexps": "",
+            "include_regexps": ".*(?:tenant|lessee|premises|property|agreed).+use.+(?:sale|retail).*",
+            "regexps_pre_process_lower": true,
+            "regexps_pre_process_remove_numeric_separators": true,
+            "detected_value": "retail"
+        }
+    },
+    {
+        "model": "document.documentfielddetector",
+        "pk": "f1e300dc-c51a-4769-8a49-b4f460918926",
+        "fields": {
+            "field": "56416702-8b77-43f8-b3ab-d89ac0b33b3e",
+            "document_type": "78425541-fe21-4ede-9445-ca88ceb3fc4c",
+            "exclude_regexps": "",
+            "include_regexps": "shall\\s+(?:end).*\\d.*\r\nexpiration\\s+date.*\\d.*",
+            "regexps_pre_process_lower": false,
+            "regexps_pre_process_remove_numeric_separators": false,
+            "detected_value": null
+        }
+    },
+    {
+        "model": "document.documentfielddetector",
+        "pk": "f271c10e-b386-4260-9756-85f47a5785e0",
+        "fields": {
+            "field": "5df4acf8-7ec7-4e50-9ff0-1a60ae8cb183",
+            "document_type": "78425541-fe21-4ede-9445-ca88ceb3fc4c",
+            "exclude_regexps": "SECURITY\\s+DEPOSIT\\s*:\\s*N\\/A",
+            "include_regexps": "\\$\\s*([-+]?[0-9]*\\.?[0-9]+(?:[eE][-+]?[0-9]+)?).*(?:tenant|lessee).*deposit\r\n\\$\\s*([-+]?[0-9]*\\.?[0-9]+(?:[eE][-+]?[0-9]+)?).*deposit.*(?:tenant|lessee)\r\n(?:tenant|lessee).*\\$\\s*([-+]?[0-9]*\\.?[0-9]+(?:[eE][-+]?[0-9]+)?).*deposit\r\n(?:tenant|lessee).*deposit.*\\$\\s*([-+]?[0-9]*\\.?[0-9]+(?:[eE][-+]?[0-9]+)?)\r\nsecurity\\s+deposit\\s*:\\s*\\$\\s*([-+]?[0-9]*\\.?[0-9]+(?:[eE][-+]?[0-9]+)?)",
+            "regexps_pre_process_lower": true,
+            "regexps_pre_process_remove_numeric_separators": true,
+            "detected_value": null
+        }
+    }
+]
