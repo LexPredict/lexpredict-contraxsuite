@@ -106,6 +106,7 @@ INSTALLED_APPS = (
     'apps.project',
     'apps.task',
     'apps.users',
+    'apps.fields',
     'apps.employee',
     'apps.lease',
 )
