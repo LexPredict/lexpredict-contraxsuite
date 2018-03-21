@@ -234,7 +234,7 @@ function buildLeaseDocumentsMap(mapDataUrlProvider, leaseDocumentDetailUrlProvid
   }
 
 
-  google.maps.event.addDomListener(window, "load", windowLoaded);
+  windowLoaded();
 
 
 }
