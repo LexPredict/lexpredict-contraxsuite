@@ -35,7 +35,7 @@ from constance.admin import ConstanceForm, get_values
 
 # Django imports
 from django.contrib import messages
-from django.http import HttpResponseRedirect
+from django.http import HttpResponseRedirect, HttpResponseServerError
 from django.views.generic.edit import FormView
 from django.utils.translation import ugettext_lazy as _
 
@@ -45,7 +45,7 @@ from apps.common.mixins import TechAdminRequiredMixin
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
 __license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.0.5/LICENSE"
-__version__ = "1.0.7"
+__version__ = "1.0.8"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -72,3 +72,8 @@ class AppConfigView(TechAdminRequiredMixin, FormView):
             )
             return HttpResponseRedirect('.')
         return super().post(request, *args, **kwargs)
+
+
+def test_500_view(request):
+    raise RuntimeError('Test 500 error')
+    # return

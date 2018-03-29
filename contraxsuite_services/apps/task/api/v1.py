@@ -38,7 +38,7 @@ from apps.common.mixins import JqMixin
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
 __license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.0.5/LICENSE"
-__version__ = "1.0.7"
+__version__ = "1.0.8"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -310,7 +310,9 @@ class TaskStatusAPIView(APIView):
                        'date_done': task.date_done,
                        'time': task.time,
                        'date_start': task.date_start,
-                       'user': task.user.username}
+                       'user': task.user.username,
+                       'result': json.loads(task.celery_task_result.result)
+                       if task.celery_task_result else None}
         except Task.DoesNotExist:
             message = "Task is not found"
         return JsonResponse(message, safe=False)

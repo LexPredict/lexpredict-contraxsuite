@@ -24,50 +24,167 @@
 """
 # -*- coding: utf-8 -*-
 
+import json
+
 # Third-party imports
 from constance.admin import ConstanceForm, get_values
+from rest_framework.exceptions import APIException
+from rest_framework.response import Response
 from rest_framework.views import APIView
 
 # Django imports
 from django.conf.urls import url
-from django.http import JsonResponse
+from apps.common.models import AppVar
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
 __license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.0.5/LICENSE"
-__version__ = "1.0.7"
+__version__ = "1.0.8"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
 
 class AppConfigAPIView(APIView):
+
     def get(self, request, *args, **kwargs):
         """
         Retrieve App Config
         """
         initial = get_values()
-        return JsonResponse(initial)
+        initial['data'] = json.loads(initial['data'])
+        return Response(initial)
 
     def post(self, request, *args, **kwargs):
         """
         Update App Config\n
-            POST params:
-            - auto_login: bool
-            - standard_optional_locators: list[str]
-            see settings.OPTIONAL_LOCATORS
+            Params:
+                - auto_login: bool
+                - standard_optional_locators: list[str], see settings.OPTIONAL_LOCATORS
+                - data: json, - custom settings for project
         """
         initial = get_values()
-        form = ConstanceForm(data=request.data, initial=initial)
+        data = initial.copy()
+        data.update(request.data)
+        if 'data' in data:
+            data['data'] = json.dumps(data['data'])
+        form = ConstanceForm(data=data, initial=initial)
         form.data['version'] = initial.get('version')
         if form.is_valid():
             form.save()
-            message = 'Application settings updated successfully.'
+            return Response('Application settings updated successfully.')
         else:
-            message = form.errors
-        return JsonResponse(message, safe=False)
+            return Response(form.errors, status=500)
+
+
+class AppConfigDataAPIView(APIView):
+
+    def get(self, request, *args, **kwargs):
+        """
+        Retrieve App Config data
+        """
+        initial = get_values()
+        result = json.loads(initial['data'])
+        param = request.GET.get('param')
+        if param:
+            result = {param: result.get(param)}
+        return Response(result)
+
+    def post(self, request, *args, **kwargs):
+        """
+        Update App Config data\n
+            Params:
+                dictionary {key1: val2, key2: val2, ...} - json, custom settings for project
+        """
+        initial_config = get_values()
+
+        data = json.loads(initial_config['data'])
+        data.update(request.data)
+
+        updated_config = initial_config.copy()
+        updated_config['data'] = json.dumps(data)
+
+        form = ConstanceForm(data=updated_config, initial=initial_config)
+        form.data['version'] = initial_config.get('version')
+        if form.is_valid():
+            form.save()
+            return Response('Application settings updated successfully.')
+        else:
+            return Response(form.errors, status=500)
+
+    def delete(self, request, *args, **kwargs):
+        """
+        Delete specific key from App Config data
+        """
+        initial_config = get_values()
+        param = request.data.get('param')
+
+        if not param:
+            raise APIException('Provide key to delete')
+
+        data = json.loads(initial_config['data'])
+        data.pop(param, None)
+        updated_config = initial_config.copy()
+        updated_config['data'] = json.dumps(data)
+
+        form = ConstanceForm(data=updated_config, initial=initial_config)
+        form.data['version'] = initial_config.get('version')
+        if form.is_valid():
+            form.save()
+            return Response('OK')
+        else:
+            return Response(form.errors, status=500)
+
+
+class AppVarAPIView(APIView):
+
+    def get(self, request, *args, **kwargs):
+        """
+        Retrieve App Variable(s)\n
+            Params:
+                - name: str - retrieve specific variable
+        """
+        var_name = request.GET.get('name')
+        if var_name:
+            result = AppVar.get(var_name)
+            if not result:
+                return Response(status=404)
+        else:
+            result = list(AppVar.objects.values('name', 'value'))
+            result = {i['name']: i['value'] for i in result}
+        return Response(result)
+
+    def post(self, request, *args, **kwargs):
+        """
+        Create or update App Variables\n
+            Params:
+                key1: val1,
+                key2: val2, etc
+        """
+        data = request.data
+        for var_name, value in data.items():
+            AppVar.set(var_name, value)
+        return Response('Application settings updated successfully.')
+
+    def delete(self, request, *args, **kwargs):
+        """
+        Delete specific App Variable by name
+            Param:
+                - name: str
+        """
+        var_name = request.data.get('name')
+
+        if not var_name:
+            raise APIException('Provide variable name to delete')
+
+        AppVar.clear(var_name)
+        return Response('OK')
 
 
 urlpatterns = [
     url(r'^app-config/$', AppConfigAPIView.as_view(),
         name='app-config'),
+    url(r'^app-config-data/$', AppConfigDataAPIView.as_view(),
+        name='app-config-data'),
+    url(r'^app-variables/$', AppVarAPIView.as_view(),
+        name='app-variables'),
 ]

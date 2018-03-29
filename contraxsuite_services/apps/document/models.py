@@ -25,13 +25,15 @@
 # -*- coding: utf-8 -*-
 
 # Standard imports
+import os
 import pickle
 import re
 import uuid
-from typing import Union, List
+from typing import Union, List, Dict, Any
 
 # Django imports
 from ckeditor.fields import RichTextField
+from django.conf import settings
 from django.contrib.postgres.fields import JSONField
 from django.core.serializers.json import DjangoJSONEncoder
 from django.db import models
@@ -40,21 +42,24 @@ from django.utils.timezone import now
 from simple_history.models import HistoricalRecords
 
 # Project imports
-from apps.document.field_types import FIELD_TYPES_REGISTRY, FIELD_TYPES_CHOICE
+from apps.document.field_types import FIELD_TYPES_REGISTRY, FIELD_TYPES_CHOICE, ValueExtractionHint
 from apps.document.parsing.extractors import remove_num_separators
-from apps.document.parsing.field_annotations_classifier import SkLearnClassifierModel
+from apps.document.parsing.machine_learning import SkLearnClassifierModel
 from apps.users.models import User
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
 __license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.0.5/LICENSE"
-__version__ = "1.0.7"
+__version__ = "1.0.8"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
 
 def all_reviewers():
     return {'role': 'reviewer'}
+
+
+EXTRACTION_HINT_CHOICES = tuple((hint.name, hint.name) for hint in ValueExtractionHint)
 
 
 class TimeStampedModel(models.Model):
@@ -85,11 +90,9 @@ class DocumentField(TimeStampedModel):
     DocumentField describes manually created custom field for a document.
     """
     DOCUMENT_FIELD_TYPES = ((i, i) for i in sorted(FIELD_TYPES_REGISTRY))
-    DOCUMENT_FIELD_ITEM_NUMBERS = (
-        ('first', 'first'),
-        ('second', 'second'),
-        ('last', 'last'),
-    )
+
+    KIND_REQUIRED_FOR_CALCULATIONS = 'required_for_calculations'
+    KIND_CALCULATED = 'calculated'
 
     # Make pk field unique
     uid = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
@@ -104,13 +107,40 @@ class DocumentField(TimeStampedModel):
     type = models.CharField(max_length=30, choices=DOCUMENT_FIELD_TYPES,
                             default='string', db_index=True)
 
+    formula = models.TextField(null=True, blank=True)
+
+    depends_on_fields = models.ManyToManyField('self', blank=True, related_name='affects_fields')
+
+    def is_calculated(self):
+        return self.formula and self.formula.strip()
+
+    @staticmethod
+    def calc_formula(field_type_code: str, formula: str, depends_on_field_to_value: Dict) -> Any:
+        if not formula or not formula.strip():
+            return None
+
+        if '__' in formula:
+            raise SyntaxError('Formula contains "__" string. This may be unsafe for python eval.')
+        eval_locals = dict()
+        eval_locals.update(settings.CALCULATED_FIELDS_EVAL_LOCALS)
+
+        for field, value in depends_on_field_to_value.items():
+            field_type = FIELD_TYPES_REGISTRY[field.type]
+            eval_locals[field.code] = field_type.json_value_to_python(value)
+
+        eval_locals.update(depends_on_field_to_value)
+        value = eval(formula, {'__builtins__': {}}, eval_locals)
+        return FIELD_TYPES_REGISTRY[field_type_code].python_value_to_json(value)
+
+    def calculate(self, depends_on_field_to_value: Dict) -> Any:
+        return self.calc_formula(self.type, self.formula, depends_on_field_to_value)
+
+    def get_field_type(self):
+        return FIELD_TYPES_REGISTRY[self.type]
+
     # In case the type of the field requires selecting one of pre-defined values -
     # they should be stored \n-separated in the "choices" property
     choices = models.TextField(blank=True, null=True)
-
-    # Number of value to extract in case of multiple values
-    item_number = models.CharField(max_length=30, choices=DOCUMENT_FIELD_ITEM_NUMBERS,
-                                   default='first', db_index=True, blank=True, null=True)
 
     class Meta:
         unique_together = (('code', 'modified_by', 'modified_date'),)
@@ -124,6 +154,9 @@ class DocumentField(TimeStampedModel):
 
     def is_choice_field(self):
         return self.type in FIELD_TYPES_CHOICE
+
+    def is_value_extracting_field(self):
+        return self.type and FIELD_TYPES_REGISTRY[self.type].value_extracting
 
     def get_choice_values(self) -> List[str]:
         if not self.choices:
@@ -151,6 +184,14 @@ class DocumentType(TimeStampedModel):
     # set of DocumentFields to show in search/browse API
     search_fields = models.ManyToManyField(
         DocumentField, related_name='search_field_document_type', blank=True)
+
+    def get_classifier(self):
+        classifiers = self.classifiers.all()
+        if classifiers:
+            classifier = next(classifiers, None)
+            if classifier:
+                return classifier.get_trained_model_obj()
+        return None
 
     class Meta:
         unique_together = (('code', 'modified_by', 'modified_date'),)
@@ -203,6 +244,11 @@ class Document(models.Model):
 
     document_type = models.ForeignKey(DocumentType, blank=True, null=True, db_index=True)
 
+    project = models.ForeignKey('project.Project', blank=True, null=True, db_index=True)
+
+    upload_session = models.ForeignKey('project.UploadSession', blank=True, null=True,
+                                       db_index=True)
+
     class Meta:
         ordering = ('name',)
 
@@ -218,42 +264,16 @@ class Document(models.Model):
         return '\n'.join(self.textunit_set.values_list('text', flat=True))
 
 
-class DocumentFieldValue(TimeStampedModel):
-    """DocumentFieldValue  object model
-
-    DocumentFieldValue contains value for custom document field.
-    """
-    # related Document.
-    document = models.ForeignKey(Document, db_index=True)
-
-    # related DocumentField
-    field = models.ForeignKey(DocumentField, db_index=True)
-
-    # Datastore for extracted value
-    value = JSONField(blank=True, null=True, encoder=DjangoJSONEncoder)
-
-    # source text start position
-    location_start = models.PositiveIntegerField()
-
-    # source text end position
-    location_end = models.PositiveIntegerField()
-
-    # source text
-    location_text = models.TextField(null=True, blank=True)
-
-    # change history
-    history = HistoricalRecords()
-
-    class Meta:
-        ordering = ('document_id', 'field__code')
-
-    def __str__(self):
-        return "{0}.{1} = {2}" \
-            .format(self.document.name, self.field.code, str(self.value)[:40])
-
-    def __repr__(self):
-        return "{0}.{1} = {2} (#{3})" \
-            .format(self.document.name, self.field.code, str(self.value)[:40], self.id)
+@receiver(models.signals.post_delete, sender=Document)
+def delete_document_file(sender, instance, **kwargs):
+    file_path = os.path.join(
+        settings.MEDIA_ROOT,
+        settings.FILEBROWSER_DIRECTORY,
+        instance.source_path)
+    try:
+        os.remove(file_path)
+    except OSError:
+        pass
 
 
 class DocumentTag(models.Model):
@@ -408,6 +428,10 @@ class TextUnit(models.Model):
     # Raw text
     text = models.TextField(max_length=16384)
 
+    location_start = models.IntegerField(null=True, blank=True)
+
+    location_end = models.IntegerField(null=True, blank=True)
+
     # Cryptographic hash of raw text for identical de-duplication
     text_hash = models.CharField(max_length=1024, db_index=True, null=True)
 
@@ -551,12 +575,63 @@ class TextUnitNote(models.Model):
         return "TextUnitNote (id={0})".format(self.id)
 
 
+class DocumentFieldValue(TimeStampedModel):
+    """DocumentFieldValue  object model
+
+    DocumentFieldValue contains value for custom document field.
+    """
+    # related Document.
+    document = models.ForeignKey(Document, db_index=True)
+
+    # related DocumentField
+    field = models.ForeignKey(DocumentField, db_index=True)
+
+    # Datastore for extracted value
+    value = JSONField(blank=True, null=True, encoder=DjangoJSONEncoder)
+
+    # source text start position
+    location_start = models.PositiveIntegerField()
+
+    # source text end position
+    location_end = models.PositiveIntegerField()
+
+    # source text
+    location_text = models.TextField(null=True, blank=True)
+
+    # sentence in which this value is located
+    # Used as cache for training models.
+    # For user entered values - fields location_start, location_end, location_text
+    # can contain more detailed position inside sentences - while we train models on sentence level.
+    sentence = models.ForeignKey(TextUnit, blank=True, null=True,
+                                 related_name='related_field_values')
+
+    # Extraction hint detected at the moment of storing - used for further model training
+    extraction_hint = models.CharField(max_length=30, choices=EXTRACTION_HINT_CHOICES,
+                                       default=EXTRACTION_HINT_CHOICES[0][0], db_index=True,
+                                       blank=True, null=True)
+
+    # change history
+    history = HistoricalRecords()
+
+    class Meta:
+        ordering = ('document_id', 'field__code')
+
+    def __str__(self):
+        return "{0}.{1} = {2}" \
+            .format(self.document.name, self.field.code, str(self.value)[:40])
+
+    def __repr__(self):
+        return "{0}.{1} = {2} (#{3})" \
+            .format(self.document.name, self.field.code, str(self.value)[:40], self.id)
+
+
 class DocumentFieldDetector(models.Model):
     DEF_RE_FLAGS = re.DOTALL | re.IGNORECASE
 
     uid = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
 
-    field = models.ForeignKey(DocumentField, blank=False, null=False)
+    field = models.ForeignKey(DocumentField, blank=False, null=False,
+                              related_name='field_detectors')
 
     # Field Detectors with no document type specified work for any document type
     document_type = models.ForeignKey(DocumentType, blank=True, null=True)
@@ -576,6 +651,11 @@ class DocumentFieldDetector(models.Model):
 
     # For choice fields - the value which should be set if a sentence matches this detector
     detected_value = models.CharField(max_length=256, blank=True, null=True)
+
+    # Number of value to extract in case of multiple values
+    extraction_hint = models.CharField(max_length=30, choices=EXTRACTION_HINT_CHOICES,
+                                       default=EXTRACTION_HINT_CHOICES[0][0], db_index=True,
+                                       blank=True, null=True)
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -606,6 +686,8 @@ class DocumentFieldDetector(models.Model):
         if not sentence:
             return False
 
+        sentence = sentence.replace('\n', ' ').replace('\t', ' ')
+
         if self.regexps_pre_process_lower:
             sentence = sentence.lower()
         if self.regexps_pre_process_remove_numeric_separators:
@@ -633,7 +715,9 @@ class DocumentFieldDetector(models.Model):
 
 
 class ClassifierModel(models.Model):
-    document_type = models.ForeignKey(DocumentType, db_index=True)
+    document_type = models.ForeignKey(DocumentType, db_index=True, related_name='classifiers')
+
+    document_field = models.ForeignKey(DocumentField, db_index=True, null=True, blank=True)
 
     trained_model = models.BinaryField(null=True, blank=True)
 

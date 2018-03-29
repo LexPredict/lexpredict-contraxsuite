@@ -41,7 +41,6 @@ from celery.schedules import crontab
 
 from django.core.urlresolvers import reverse_lazy
 
-
 ROOT_DIR = environ.Path(__file__) - 2
 PROJECT_DIR = ROOT_DIR.path('contraxsuite_services')
 APPS_DIR = PROJECT_DIR.path('apps')
@@ -61,7 +60,7 @@ INSTALLED_APPS = (
     'django.contrib.messages',
     'django.contrib.staticfiles',
 
-    'suit',   # Admin
+    'suit',  # Admin
     'django.contrib.admin',
 
     # THIRD_PARTY_APPS
@@ -69,12 +68,12 @@ INSTALLED_APPS = (
     'allauth',  # registration
     'allauth.account',  # registration
     'allauth.socialaccount',  # registration
-    'simple_history',    # historical records
-    'django_celery_results',    # for celery tasks
-    'filebrowser',    # browse/upload documents
+    'simple_history',  # historical records
+    'django_celery_results',  # for celery tasks
+    'filebrowser',  # browse/upload documents
     'django_extensions',
-    'pipeline',    # compressing js, css
-    'ckeditor',    # editor
+    'pipeline',  # compressing js, css
+    'ckeditor',  # editor
     # Useful template tags:
     'django.contrib.humanize',
     'dal',
@@ -86,9 +85,9 @@ INSTALLED_APPS = (
     'django_otp.plugins.otp_static',
     # Enable two-factor auth
     'allauth_2fa',
-    'constance',     # django-constance
-    'constance.backends.database',    # django-constance backend
-    'corsheaders',     # inject CORS headers into response
+    'constance',  # django-constance
+    'constance.backends.database',  # django-constance backend
+    'corsheaders',  # inject CORS headers into response
 
     # django-rest
     'rest_framework',
@@ -107,6 +106,7 @@ INSTALLED_APPS = (
     'apps.task',
     'apps.users',
     'apps.employee',
+    'apps.fields',
     'apps.lease',
 )
 
@@ -221,13 +221,17 @@ SERVER_EMAIL = '"ContraxSuite" <support@contraxsuite.com>'
 # See: http://django-crispy-forms.readthedocs.io/en/latest/install.html#template-packs
 CRISPY_TEMPLATE_PACK = 'bootstrap4'
 
+# https://demo.contraxsuite.com/${BASE_URL}/document/documents
+# /api and /rest-auth are put to the root ignoring base path
+# If using BASE_URL for calculating other params anywhere to the bottom of config file please
+# put their definition after the local_settings is imported to allow re-configurin BASE_URL
+# in local_settings.
+BASE_URL = ''
+
 # STATIC FILE CONFIGURATION
 # ------------------------------------------------------------------------------
 # See: https://docs.djangoproject.com/en/dev/ref/settings/#static-root
 STATIC_ROOT = PROJECT_DIR('staticfiles')
-
-# See: https://docs.djangoproject.com/en/dev/ref/settings/#static-url
-STATIC_URL = '/static/'
 
 # See: https://docs.djangoproject.com/en/dev/ref/contrib/staticfiles/#std:setting-STATICFILES_DIRS
 STATICFILES_DIRS = (
@@ -245,8 +249,6 @@ STATICFILES_FINDERS = (
 # See: https://docs.djangoproject.com/en/dev/ref/settings/#media-root
 MEDIA_ROOT = PROJECT_DIR('media')
 
-# See: https://docs.djangoproject.com/en/dev/ref/settings/#media-url
-MEDIA_URL = '/media/'
 
 # URL Configuration
 # ------------------------------------------------------------------------------
@@ -321,7 +323,7 @@ AUTHENTICATION_BACKENDS = (
 # allauth settings
 # http://django-allauth.readthedocs.io/en/latest/overview.html
 ACCOUNT_LOGOUT_REDIRECT_URL = 'account_login'
-ACCOUNT_AUTHENTICATION_METHOD = 'username'
+ACCOUNT_AUTHENTICATION_METHOD = 'username_email'
 ACCOUNT_EMAIL_REQUIRED = True
 ACCOUNT_EMAIL_VERIFICATION = 'mandatory'
 ACCOUNT_ALLOW_REGISTRATION = True
@@ -386,15 +388,6 @@ CKEDITOR_CONFIGS = {
     },
 }
 
-# LoginRequiredMiddleware settings
-LOGIN_EXEMPT_URLS = (
-    r'^accounts/',    # allow any URL under /accounts/*
-    r'^rest-auth/',   # allow any URL under /rest-auth/*
-    r'^api/v',        # allow any URL under /api/v*
-    r'^__debug__/',   # allow debug toolbar
-    r'^extract/search/',
-)
-
 # django-filebrowser
 # relative path in /media dir
 FILEBROWSER_DIRECTORY = 'data/documents/'
@@ -406,7 +399,7 @@ FILEBROWSER_EXTENSIONS = {
     'Document': ['.pdf', '.doc', '.docx', '.rtf', '.txt', '.xls', '.xlsx', '.csv', '.html'],
 }
 # Max. Upload Size in Bytes
-FILEBROWSER_MAX_UPLOAD_SIZE = 10 * 1024 ** 2    # 10Mb
+FILEBROWSER_MAX_UPLOAD_SIZE = 10 * 1024 ** 2  # 10Mb
 # replace spaces and convert to lowercase
 FILEBROWSER_CONVERT_FILENAME = False
 # remove non-alphanumeric chars (except for underscores, spaces & dashes)
@@ -419,8 +412,8 @@ FILEBROWSER_LIST_PER_PAGE = 25
 
 CELERY_FILE_ACCESS_TYPE = 'Local'
 CELERY_FILE_ACCESS_LOCAL_ROOT_DIR = MEDIA_ROOT + '/' + FILEBROWSER_DIRECTORY
-#CELERY_FILE_ACCESS_TYPE = 'Nginx'
-#CELERY_FILE_ACCESS_NGINX_ROOT_URL = 'http://localhost:8888/media/'
+# CELERY_FILE_ACCESS_TYPE = 'Nginx'
+# CELERY_FILE_ACCESS_NGINX_ROOT_URL = 'http://localhost:8888/media/'
 
 # django-constance settings
 # https://django-constance.readthedocs.io/en/latest/
@@ -463,6 +456,9 @@ CONSTANCE_CONFIG = {
     'auto_login': (False,
                    'Enable Auto Login',
                    bool),
+    'data': ('{}',
+             'Custom Config Data',
+             str),
 }
 CONSTANCE_BACKEND = 'constance.backends.database.DatabaseBackend'
 
@@ -472,7 +468,7 @@ CONSTANCE_BACKEND = 'constance.backends.database.DatabaseBackend'
 REST_FRAMEWORK = {
     'DEFAULT_VERSIONING_CLASS': 'rest_framework.versioning.NamespaceVersioning',
     'DEFAULT_VERSION': 'v1',
-    'ALLOWED_VERSIONS': ('v1', ),
+    'ALLOWED_VERSIONS': ('v1',),
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'auth.CookieAuthentication',
         # 'rest_framework.authentication.TokenAuthentication',
@@ -553,6 +549,11 @@ LOGGING = {
             'level': 'DEBUG',
             'propagate': True,
         },
+        'django': {
+            'handlers': ['file'],
+            'level': 'WARNING',
+            'propagate': True,
+        },
     },
 }
 
@@ -568,15 +569,33 @@ CORS_ORIGIN_ALLOW_ALL = True
 CORS_ALLOW_CREDENTIALS = False
 CORS_URLS_REGEX = r'^/api/.*$'
 
-VERSION_NUMBER = '1.0.7'
-VERSION_COMMIT = '09dd7b8'
+VERSION_NUMBER = '1.0.8'
+VERSION_COMMIT = '9e177ff'
 
 try:
     from local_settings import *
+
     INSTALLED_APPS += LOCAL_INSTALLED_APPS
     MIDDLEWARE += LOCAL_MIDDLEWARE
 except (ImportError, NameError):
     pass
+
+import re
+BASE_URL = re.sub('^/+', '', BASE_URL)
+BASE_URL = re.sub('/+$', '', BASE_URL)
+if BASE_URL:
+    BASE_URL = BASE_URL + '/'
+
+STATIC_URL = ('/' + BASE_URL if BASE_URL else '/') + 'static/'
+MEDIA_URL = BASE_URL + 'media/'
+# LoginRequiredMiddleware settings
+LOGIN_EXEMPT_URLS = (
+    r'^' + BASE_URL + 'accounts/',  # allow any URL under /accounts/*
+    r'^rest-auth/',  # allow any URL under /rest-auth/*
+    r'^api/v',  # allow any URL under /api/v*
+    r'^' + BASE_URL + '__debug__/',  # allow debug toolbar
+    r'^' + BASE_URL + 'extract/search/',
+)
 
 TEMPLATES[0]['OPTIONS']['debug'] = DEBUG_TEMPLATE
 
@@ -584,6 +603,11 @@ if DEBUG_SQL:
     LOGGING = {
         'version': 1,
         'disable_existing_loggers': False,
+        'formatters': {
+            'verbose': {
+                'format': '%(levelname)-7s %(asctime)s | %(message)s'
+            },
+        },
         'filters': {
             'require_debug_false': {
                 '()': 'django.utils.log.RequireDebugFalse'
@@ -625,6 +649,10 @@ AUTOLOGIN_TEST_USER_FORBIDDEN_URLS = [
 DATA_UPLOAD_MAX_NUMBER_FIELDS = None
 PIPELINE['PIPELINE_ENABLED'] = PIPELINE_ENABLED
 
-ANNOTATOR_RETRAIN_MODEL_ON_ANNOTATIONS_CHANGE = False
+ANNOTATOR_RETRAIN_MODEL_ON_ANNOTATIONS_CHANGE = True
 
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTOCOL', 'https')
+
+import datetime
+
+CALCULATED_FIELDS_EVAL_LOCALS = {'datetime': datetime, 'len': len}

@@ -31,7 +31,7 @@ from apps.document.tasks import MODULE_NAME
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
 __license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.0.3/LICENSE"
-__version__ = "1.0.7"
+__version__ = "1.0.8"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -40,6 +40,8 @@ class DetectFieldValuesForm(forms.Form):
     header = 'Detect Field Values'
 
     document_type = forms.ModelChoiceField(queryset=DocumentType.objects.all(), required=False)
+
+    document_name = forms.CharField(strip=True, required=False)
 
     do_not_write = forms.BooleanField(label='Do not write detected values to DB (only log)',
                                       required=False)

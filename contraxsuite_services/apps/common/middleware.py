@@ -49,7 +49,7 @@ from apps.users.models import User
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
 __license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.0.5/LICENSE"
-__version__ = "1.0.7"
+__version__ = "1.0.8"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -202,7 +202,9 @@ class CookieMiddleware(MiddlewareMixin):
     """
     def process_response(self, request, response):
         auth_token = request.COOKIES.get('auth_token', request.META.get('HTTP_AUTHORIZATION'))
-        if request.META['PATH_INFO'] == reverse('rest_login') and response.data and response.data.get('key'):
+        if request.META['PATH_INFO'] == reverse('rest_login') \
+                and hasattr(response, 'data') \
+                and response.data and response.data.get('key'):
             response.set_cookie('auth_token', 'Token %s' % response.data['key'])
         elif auth_token:
             response.set_cookie('auth_token', auth_token)

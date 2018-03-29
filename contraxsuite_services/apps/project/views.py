@@ -46,7 +46,7 @@ from apps.project.forms import (
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
 __license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.0.5/LICENSE"
-__version__ = "1.0.7"
+__version__ = "1.0.8"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -135,7 +135,7 @@ class TaskQueueListView(JqPaginatedListView):
                         num=num + 1,
                         name=document.name,
                         description=document.description,
-                        type=document.document_type.title,
+                        type=document.document_type.title if document.document_type else None,
                         complete_date=None,
                         complete_user=None,
                         url=reverse('document:document-detail', args=[document.pk]),

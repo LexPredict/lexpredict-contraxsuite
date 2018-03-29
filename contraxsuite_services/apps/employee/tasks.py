@@ -43,7 +43,7 @@ from apps.task.utils.text.segment import segment_sentences
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
 __license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.0.5/LICENSE"
-__version__ = "1.0.7"
+__version__ = "1.0.8"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -63,14 +63,19 @@ class LocateEmployees(BaseTask):
         :param kwargs:
         :return:
         """
-        if kwargs['delete']:
+        if kwargs.get('delete'):
             deleted = Employee.objects.all().delete() + Employer.objects.all().delete() + Provision.objects.all().delete()
             self.log('Deleted: ' + str(deleted))
 
         documents = Document.objects.all()
+        # TODO: outdated
         if kwargs.get('document_type'):
             documents = documents.filter(document_type__in=kwargs['document_type'])
             self.log('Filter documents by "%s" document type.' % str(kwargs['document_type']))
+
+        if kwargs.get('document_id'):
+            documents = documents.filter(pk=kwargs['document_id'])
+            self.log('Process document id={}.'.format(kwargs['document_id']))
 
         self.task.subtasks_total = documents.count()
         self.task.save()
@@ -78,7 +83,7 @@ class LocateEmployees(BaseTask):
 
         for d in documents:
             self.parse_document_for_employee.apply_async(
-                args=(d.id, kwargs['no_detect'], kwargs['task_id']),
+                args=(d.id, kwargs.get('no_detect', True), kwargs['task_id']),
                 task_id='%d_%s' % (self.task.id, fast_uuid()))
 
     @staticmethod

@@ -24,8 +24,7 @@
 """
 
 from datetime import timedelta
-from typing import List
-from typing import Tuple
+from typing import List, Tuple
 
 import geocoder
 from celery import shared_task
@@ -44,7 +43,7 @@ from apps.task.tasks import BaseTask, log
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
 __license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.0.5/LICENSE"
-__version__ = "1.0.7"
+__version__ = "1.0.8"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -59,21 +58,26 @@ class ProcessLeaseDocuments(BaseTask):
     def process(self, **kwargs):
         self.log("Going to detect lease documents among the all loaded documents in the system...")
 
-        if kwargs['delete']:
+        if kwargs.get('delete'):
             for ld in LeaseDocument.objects.all():
                 ld.delete(keep_parents=True)
 
         documents = Document.objects.all()
+        # TODO: outdated
         if kwargs.get('document_type'):
             documents = documents.filter(document_type__in=kwargs['document_type'])
             self.log('Filter documents by "%s" document type.' % str(kwargs['document_type']))
+
+        if kwargs.get('document_id'):
+            documents = documents.filter(pk=kwargs['document_id'])
+            self.log('Process document id={}.'.format(kwargs['document_id']))
 
         self.task.subtasks_total = documents.count()
         self.task.save()
 
         for row in documents.values_list('id'):
             ProcessLeaseDocuments.detect_and_process_lease_document.apply_async(
-                args=(row[0], kwargs['no_detect'], kwargs['task_id']),
+                args=(row[0], kwargs.get('no_detect', True), kwargs['task_id']),
                 task_id='%d_%s' % (self.task.id, fast_uuid()))
 
     @staticmethod

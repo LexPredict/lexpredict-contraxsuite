@@ -30,10 +30,14 @@ RUN apt-get install -y -q build-essential software-properties-common python-soft
 
 RUN apt-get install -y wget
 
+RUN apt-get install -y apt-transport-https
+
 # Install apt repositories
 RUN \
  add-apt-repository "deb http://apt.postgresql.org/pub/repos/apt/ xenial-pgdg main" \
  && wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | apt-key add - \
+ && wget -qO - https://artifacts.elastic.co/GPG-KEY-elasticsearch | apt-key add - \
+ && echo "deb https://artifacts.elastic.co/packages/6.x/apt stable main" | tee -a /etc/apt/sources.list.d/elastic-6.x.list \
  && add-apt-repository -y ppa:webupd8team/java \
  && echo "oracle-java8-installer shared/accepted-oracle-license-v1-1 select true" | /usr/bin/debconf-set-selections \
  && apt-get -y update --fix-missing
@@ -51,6 +55,8 @@ RUN \
  && apt-get install -y oracle-java8-set-default
 
 RUN apt-get install -y postgresql-9.6
+
+RUN apt-get install -y logstash
 
 
 COPY ./temp/contraxsuite_services /contraxsuite_services
@@ -104,3 +110,9 @@ WORKDIR /contraxsuite_services
 RUN cat /build.info
 RUN cat /build.uuid
 RUN ls /static -l
+
+# kernel crashes.
+ENV TINI_VERSION v0.6.0
+ADD https://github.com/krallin/tini/releases/download/${TINI_VERSION}/tini /usr/bin/tini
+RUN chmod +x /usr/bin/tini
+ENTRYPOINT ["/usr/bin/tini", "--"]

@@ -23,187 +23,60 @@
     or shipping ContraxSuite within a closed source product.
 """
 
-from typing import List, Union
+from typing import List
 
 import numpy as np
 from celery import shared_task
-from lexnlp.nlp.en.segments.sentences import get_sentence_span_list
 from sklearn.feature_extraction.text import CountVectorizer
 from sklearn.feature_extraction.text import TfidfTransformer
 from sklearn.linear_model import SGDClassifier
-from sklearn.svm import LinearSVC
-from skmultilearn.problem_transform import BinaryRelevance
 from sklearn.pipeline import Pipeline
 from sklearn.utils import check_random_state
 
 from apps.celery import app
 from apps.common.utils import fast_uuid
-from apps.document.field_types import FIELD_TYPES_REGISTRY
-from apps.document.models import DocumentType, Document, DocumentFieldDetector, DocumentField, \
-    ClassifierModel, DocumentFieldValue
-from apps.document.parsing.field_annotations_classifier import SkLearnClassifierModel
+from apps.document.field_types import FIELD_TYPES_REGISTRY, ValueExtractionHint
+from apps.document.models import DocumentType, Document, DocumentFieldDetector, \
+    ClassifierModel, DocumentFieldValue, TextUnit, DocumentField
+from apps.document.parsing.machine_learning import SkLearnClassifierModel, \
+    encode_category, parse_category, word_position_tokenizer
 from apps.task.tasks import BaseTask, log
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
 __license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.0.3/LICENSE"
-__version__ = "1.0.7"
+__version__ = "1.0.8"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
 MODULE_NAME = __name__
 
 
-class ModelCategory:
-    def __init__(self, document_field: Union[None, DocumentField], choice_value) -> None:
-        self.document_field = document_field
-        self.choice_value = choice_value
-
-    def name(self):
-        if not self.document_field:
-            return SkLearnClassifierModel.EMPTY_CAT_NAME
-
-        return str(self.document_field.uid) + (
-            ':::' + str(self.choice_value) if self.choice_value is not None else '')
-
-    @staticmethod
-    def from_name(name: str):
-        if SkLearnClassifierModel.EMPTY_CAT_NAME == name:
-            return ModelCategory(None, None)
-        ar = name.split(':::')
-        if not ar:
-            return None
-        field_uid = ar[0]
-        choice_value = ar[1] if len(ar) > 1 else None
-        field = DocumentField.objects.get(uid=field_uid)
-        return ModelCategory(field, choice_value)
-
-
-class TrainDocumentFieldDetectorModel(BaseTask):
-    name = 'Train Document Field Detector Model'
-
-    def process(self, **kwargs):
-        self.log('Going to train field detector model based on the datasets stored in DB...')
-
-        document_type = kwargs.get('document_type')
-        task_id = kwargs.get('task_id')
-
-        if document_type:
-            self.train_model_for_document_type(document_type.pk, task_id)
-        else:
-            document_type_pks = DocumentType.objects.values_list('uid', flat=True)
-            for document_type_pk in document_type_pks:
-                self.train_model_for_document_type(
-                    document_type_pk, task_id)
-
-    @staticmethod
-    @shared_task
-    def train_model_for_document_type(document_type_pk, task_id=None):
-        log('Building classifier model for document type: {0}'.format(
-            document_type_pk),
-            task=task_id)
-
-        document_type = DocumentType.objects.get(pk=document_type_pk)
-
-        classifier_model = ClassifierModel.objects.get(
-            document_type=document_type)
-
-        document_fields = document_type.fields
-
-        categories = [ModelCategory(None, None)]
-
-        for f in document_fields.all():
-            if f.is_choice_field() and f.choices:
-                for choice in f.get_choice_values():
-                    categories.append(ModelCategory(f, choice))
-            else:
-                categories.append(ModelCategory(f, None))
-
-        target_names = sorted([cat.name() for cat in categories])
-        target_index_by_name = {name: i for i, name in enumerate(target_names)}
-        empty_target_index = target_index_by_name.get(SkLearnClassifierModel.EMPTY_CAT_NAME)
-        sentences_to_target_arrays = {}
-
-        for full_text, document_pk in Document.objects.filter(
-                document_type=document_type).values_list('full_text', 'pk'):
-            sentence_spans = get_sentence_span_list(full_text)
-            values = set(DocumentFieldValue.objects.filter(document__pk=document_pk))
-            counter = 0
-            for span in sentence_spans:
-                sentence = full_text[span[0]:span[1]]
-                targets = sentences_to_target_arrays.get(sentence)
-                if targets is None:
-                    targets = np.zeros(len(target_names), dtype=int)
-                    sentences_to_target_arrays[sentence] = targets
-
-                to_del = set()
-                for value in values:
-                    if value.location_start <= span[1] and value.location_end >= span[0]:
-                        category = ModelCategory(value.field,
-                                                 value.value
-                                                 if value.field.is_choice_field()
-                                                 else None)
-                        target_index = target_index_by_name.get(category.name())
-                        if target_index is not None:
-                            targets[target_index] = 1
-                        to_del.add(value)
-                if not to_del:
-                    targets[empty_target_index] = 1
-                    counter += 1
-                else:
-                    values = values - to_del
-                    counter += len(to_del)
-
-            log('Prepared {0} dataset entries for document #{1}'.format(
-                counter,
-                document_pk),
-                task=task_id)
-
-        data = []
-        target = []
-
-        for sentence, sentence_targets in sentences_to_target_arrays.items():
-            data.append(sentence)
-            target.append(sentence_targets)
-            sentences_to_target_arrays[sentence] = None
-
-        target = np.array(target)
-        data = np.array(data)
-
-        random_state = check_random_state(seed=None)
-        indices = np.arange(data.shape[0])
-        random_state.shuffle(indices)
-        data = data[indices]
-        target = target[indices]
-
-        text_clf = Pipeline([('vect', CountVectorizer(strip_accents='unicode', analyzer='word',
-                                                      stop_words='english')),
-                             ('tfidf', TfidfTransformer()),
-                             ('clf', BinaryRelevance(
-                                 LinearSVC(class_weight='balanced', loss='epsilon_insensitive'))),
-                             ])
-        sklearn_model = text_clf.fit(data, target)
-
-        model = SkLearnClassifierModel(sklearn_model=sklearn_model, target_names=target_names)
-
-        classifier_model.set_trained_model_obj(model)
-        classifier_model.save()
-
-        log('Trained model based on {0} dataset entries for document type: {1}'.format(
-            len(target),
-            document_type),
-            task=task_id)
-
-
 class DetectFieldValues(BaseTask):
     name = 'Detect Field Values'
 
-    def process(self, document_type: DocumentType = None, document_ids: List = None,
+    def process(self, document_type: DocumentType = None, document_name: str = None,
                 do_not_write=False, drop_classifier_model=False, task_id=None, **kwargs):
         self.log("Going to detect document field values based on "
                  "the pre-coded regexps and field values entered by users...")
 
+        document_id = kwargs.get('document_id')
+        if document_id:
+            self.task.subtasks_total = 1
+            self.task.save()
+            self.detect_field_values_for_document(document_id=document_id, do_not_write=False)
+            self.task.push()
+            return
+
         task_count = 0
+
+        document_ids = []
+        if document_name:
+            for pk in Document.objects.filter(document_type=document_type,
+                                              name=document_name).values_list('pk', flat=True):
+                document_ids.append(pk)
+            else:
+                self.log('Document {0} of type {1} not found'.format(document_name, document_type))
 
         if document_type:
             task_count += self \
@@ -237,22 +110,10 @@ class DetectFieldValues(BaseTask):
             return
 
         if drop_classifier_model:
-            log('Deleting classifier models for document type: {0}'.format(
+            log('Deleting field values and classifier models for document type: {0}'.format(
                 document_type),
                 task=task_id)
             ClassifierModel.objects.filter(document_type=document_type).delete()
-
-        classifier_model, created = ClassifierModel.objects.get_or_create(
-            document_type=document_type)
-
-        if created:
-            log('New classifier data created for document type: {0}'.format(
-                document_type),
-                task=task_id)
-        else:
-            log('Classifier data set already exists for document type: {0}'.format(
-                document_type),
-                task=task_id)
 
         task_count = 0
 
@@ -273,119 +134,281 @@ class DetectFieldValues(BaseTask):
     @shared_task
     def detect_field_values_for_document(document_id,
                                          do_not_write,
-                                         task_id=None):
+                                         task_id=None,
+                                         field_uid=None):
 
         doc = Document.objects.get(pk=document_id)
         document_type = doc.document_type
+        fields = [DocumentField.objects.get(
+            pk=field_uid)] if field_uid else document_type.fields.all()
 
         # TODO Prevent re-detecting values DELETED by a user
         # Currently it only prevents updating values created/updated by a user
         # but deleted values will not be taken into account and will be recreated.
 
-        sklearn_model = None
-        try:
-            classifier_model = ClassifierModel.objects.get(document_type=document_type)
-            sklearn_model = classifier_model.get_trained_model_obj()
-        except:
-            pass
+        sentence_text_units = list(TextUnit.objects.filter(document=doc, unit_type="sentence"))
 
-        if sklearn_model:
-            DetectFieldValues.detect_field_values_with_model(sklearn_model, doc, do_not_write,
-                                                             task_id)
-        else:
-            DetectFieldValues.detect_initial_field_values_for_document(doc, do_not_write, task_id)
+        detected_counter = 0
+        for field in fields:
+            # Delete previously detected values
+            # to avoid accumulating garbage on each iteration.
+            DocumentFieldValue.objects \
+                .filter(document=doc,
+                        field=field,
+                        created_by__isnull=True,
+                        modified_by__isnull=True) \
+                .delete()
 
-    @staticmethod
-    def detect_field_values_with_model(sklearn_model, doc, do_not_write, task_id):
-        categories_to_spans = sklearn_model.detect_category_names_to_spans(doc.full_text)
-        counter = 0
-        for category_name, spans in categories_to_spans.items():
             try:
-                category = ModelCategory.from_name(category_name)
+                classifier_model = ClassifierModel.objects \
+                    .get(document_type=document_type, document_field=field)
+                detected_counter += DetectFieldValues \
+                    .detect_field_values_with_model(classifier_model,
+                                                    doc, field, sentence_text_units,
+                                                    do_not_write, task_id)
             except:
-                log(
-                    'Unable to build category from name: {0}. '
-                    'Please try rebuilding the model.'.format(category_name), task=task_id)
-                continue
-            if not spans:
-                continue
-
-            field = category.document_field
-
-            if field:
-                field_type_adapter = FIELD_TYPES_REGISTRY.get(field.type)
-                if not do_not_write:
-                    DocumentFieldValue.objects \
-                        .filter(document=doc) \
-                        .filter(created_by__isnull=True) \
-                        .filter(modified_by__isnull=True) \
-                        .filter(field=field) \
-                        .delete()
-
-                for location_start, location_end, location_text in spans:
-                    value = category.choice_value
-                    if field_type_adapter.value_aware:
-                        value = field_type_adapter.extraction_function(field, value, location_text)
-                        if value is None:
-                            continue
-
-                    if not do_not_write:
-                        field_type_adapter.save_value(doc, field, location_start, location_end,
-                                                      location_text, value,
-                                                      user=None,
-                                                      allow_overwriting_user_data=False)
-                    # log('Detected by model: {0}.{1} = {2}'.format(doc.name, field.code,
-                    #                                              value or '[{0};{1}]'.format(
-                    #                                                  location_start,
-                    #                                                  location_end)), task=task_id)
-                    counter += 1
-        log('Model has detected {0} field values for document {1}'.format(counter, doc),
+                detected_counter += DetectFieldValues \
+                    .detect_initial_field_values_for_document_field(
+                    doc, field, sentence_text_units, do_not_write, task_id)
+        log('Detected {0} field values for document #{1} ({2})'.format(detected_counter,
+                                                                       document_id, doc.name),
             task=task_id)
 
     @staticmethod
-    def detect_initial_field_values_for_document(doc: Document, do_not_write, task_id):
-        document_type = doc.document_type
-        document_fields = document_type.fields.all()
-        if not document_fields:
-            log('Can not find any fields assigned to document type: {0}'.format(
-                document_type),
-                task=task_id)
-            return
+    def detect_field_values_with_model(classifier_model, document, field, sentence_text_units,
+                                       do_not_write, task_id) -> int:
+        sklearn_model = classifier_model.get_trained_model_obj()
+        field_type_adapter = FIELD_TYPES_REGISTRY[field.type]
 
-        field_detectors = DocumentFieldDetector.objects.filter(document_type=document_type)
+        detected_values = list()
+        for text_unit in sentence_text_units:
+            predicted = sklearn_model.sklearn_model.predict([text_unit.text])
+            target_index = predicted[0]
+            target_name = sklearn_model.target_names[target_index]
+            field_uid, value, hint = parse_category(target_name)
 
-        text = doc.full_text
+            if field_uid is not None:
+                if field_type_adapter.value_aware:
+                    hint = hint or ValueExtractionHint.TAKE_FIRST.name
+                    value, hint = field_type_adapter \
+                        .get_or_extract_value(document,
+                                              field, None,
+                                              hint,
+                                              text_unit.text)
+                    if value is None:
+                        continue
 
-        sentence_spans = get_sentence_span_list(text)
+                detected_values.append((text_unit, value, hint))
+                if not (field_type_adapter.multi_value or field.is_choice_field()):
+                    break
 
-        for span in sentence_spans:
-            sentence = text[span[0]:span[1]]
+        return DetectFieldValues.save_detected_values(document, field, field_type_adapter,
+                                                      detected_values, do_not_write)
+
+    @staticmethod
+    def save_detected_values(document, field, field_type_adapter, detected_values, do_not_write):
+        if len(detected_values) == 0:
+            return 0
+        if field.is_choice_field() and not field_type_adapter.multi_value:
+            values_order = field.get_choice_values()
+            for choice_value in values_order:
+                for text_unit, value, hint in detected_values:
+                    if choice_value == value:
+                        if not do_not_write:
+                            field_type_adapter.save_value(document,
+                                                          field,
+                                                          text_unit.location_start,
+                                                          text_unit.location_end,
+                                                          text_unit.text,
+                                                          text_unit,
+                                                          value,
+                                                          user=None,
+                                                          allow_overwriting_user_data=False,
+                                                          extraction_hint=hint)
+                        return 1
+        else:
+            for text_unit, value, hint in detected_values:
+                if not do_not_write:
+                    field_type_adapter.save_value(document,
+                                                  field,
+                                                  text_unit.location_start,
+                                                  text_unit.location_end,
+                                                  text_unit.text,
+                                                  text_unit,
+                                                  value,
+                                                  user=None,
+                                                  allow_overwriting_user_data=False,
+                                                  extraction_hint=hint)
+            return len(detected_values)
+
+    @staticmethod
+    def detect_initial_field_values_for_document_field(document, field, sentence_text_units,
+                                                       do_not_write, task_id) -> int:
+        document_type = document.document_type
+        field_detectors = DocumentFieldDetector.objects.filter(document_type=document_type,
+                                                               field=field)
+        field_type_adapter = FIELD_TYPES_REGISTRY.get(field.type)
+
+        detected_values = list()
+
+        for text_unit in sentence_text_units:
 
             for field_detector in field_detectors:
-                if field_detector.matches(sentence):
-                    field = field_detector.field
-                    field_type_adapter = FIELD_TYPES_REGISTRY.get(field.type)
-
+                if field_detector.matches(text_unit.text):
                     value = field_detector.detected_value
+                    hint = None
                     if field_type_adapter.value_aware:
-                        value = field_type_adapter.extraction_function(field, value, sentence)
+                        hint = field_detector.extraction_hint or ValueExtractionHint.TAKE_FIRST.name
+                        value, hint = field_type_adapter \
+                            .get_or_extract_value(document,
+                                                  field, value,
+                                                  hint,
+                                                  text_unit.text)
                         if value is None:
                             continue
 
-                    # log('Detected by regexps: {0}.{1} = {2}'.format(doc.name, field.code,
-                    #                                                value or '[{0};{1}]'.format(
-                    #                                                    span[0],
-                    #                                                    span[1])),
-                    #    task=task_id)
+                    detected_values.append((text_unit, value, hint))
 
-                    if not do_not_write:
-                        field_type_adapter.save_value(doc, field, span[0], span[1], sentence,
-                                                      value,
-                                                      user=None,
-                                                      allow_overwriting_user_data=False)
+                    if not (field_type_adapter.multi_value or field.is_choice_field()):
+                        break
 
-        log('Processed {0} sentences of document {1}'.format(len(sentence_spans), doc.pk),
+        return DetectFieldValues.save_detected_values(document, field, field_type_adapter,
+                                                      detected_values, do_not_write)
+
+
+class TrainDocumentFieldDetectorModel(BaseTask):
+    name = 'Train Document Field Detector Model'
+
+    def process(self, **kwargs):
+        self.log('Going to train field detector model based on the datasets stored in DB...')
+
+        document_type = kwargs.get('document_type')
+        task_id = kwargs.get('task_id')
+
+        task_count = 0
+
+        if document_type:
+            task_count += self.train_model_for_document_type(document_type.pk, task_id)
+        else:
+            document_type_pks = DocumentType.objects.values_list('uid', flat=True)
+            for document_type_pk in document_type_pks:
+                task_count += self.train_model_for_document_type(
+                    document_type_pk, task_id)
+
+        self.task.subtasks_total = task_count
+        self.task.save()
+
+    def train_model_for_document_type(self, document_type_pk, task_id=None) -> int:
+        self.log('Building classifier model for document type: {0}'.format(
+            document_type_pk))
+
+        document_type = DocumentType.objects.get(pk=document_type_pk)
+
+        no_field_sentences = list(
+            TextUnit.objects
+                .filter(unit_type='sentence', related_field_values=None)
+                .values_list('text', flat=True)[:10000])
+
+        task_count = 0
+        for field in document_type.fields.all():
+            self.train_model_for_field.apply_async(
+                args=(document_type.uid, field.uid, task_id, no_field_sentences),
+                task_id='%d_%s' % (
+                    task_id, fast_uuid()))
+            task_count += 1
+
+        return task_count
+
+    @staticmethod
+    @shared_task
+    def train_model_for_field(document_type_uid, field_uid, task_id=None, no_field_sentences=None,
+                              trigger_re_detecting_field_values=False):
+        document_type = DocumentType.objects.get(pk=document_type_uid)
+        field = DocumentField.objects.get(pk=field_uid)
+
+        log('Training model for field #{0} ({1})...'
+            .format(field_uid, field.code), task=task_id)
+
+        field_values = list(DocumentFieldValue.objects
+                            .filter(field=field, document__document_type_id=document_type_uid)
+                            .values_list('sentence__text', 'value', 'extraction_hint'))
+        if len(field_values) == 0:
+            log('No document field values found for field #{0} ({1}). Nothing to train on.'
+                .format(field_uid, field.code), task=task_id)
+            return
+
+        target_names = {SkLearnClassifierModel.EMPTY_CAT_NAME}
+        field_targets_to_sentences = dict()
+        for sentence, value, hint in field_values:
+            target_name = encode_category(field_uid,
+                                          value if field.is_choice_field() else None,
+                                          hint)
+            target_names.add(target_name)
+            sentences = field_targets_to_sentences.get(target_name)
+            if sentences is None:
+                sentences = list()
+                field_targets_to_sentences[target_name] = sentences
+            sentences.append(sentence)
+
+        target_names = sorted(list(target_names))
+        target_name_to_index = {name: index for index, name in enumerate(target_names)}
+
+        data = []
+        target = []
+
+        for target_name, sentences in field_targets_to_sentences.items():
+            target_index = target_name_to_index[target_name]
+            data.extend(sentences)
+            target.extend([target_index] * len(sentences))
+
+        if no_field_sentences is None:
+            no_field_sentences = list(
+                TextUnit.objects
+                    .filter(unit_type='sentence', related_field_values=None)
+                    .values_list('text', flat=True))
+
+        if no_field_sentences is not None:
+            data.extend(no_field_sentences)
+            no_field_target_index = target_name_to_index[SkLearnClassifierModel.EMPTY_CAT_NAME]
+            target.extend([no_field_target_index] * len(no_field_sentences))
+
+        total_samples = len(data)
+        target = np.array(target)
+        data = np.array(data)
+
+        random_state = check_random_state(seed=None)
+        indices = np.arange(data.shape[0])
+        random_state.shuffle(indices)
+        data = data[indices]
+        target = target[indices]
+
+        text_clf = Pipeline([('vect', CountVectorizer(strip_accents='unicode', analyzer='word',
+                                                      stop_words='english',
+                                                      tokenizer=word_position_tokenizer)),
+                             ('tfidf', TfidfTransformer()),
+                             ('clf', SGDClassifier(loss='hinge', penalty='l2',
+                                                   alpha=1e-3, random_state=42,
+                                                   max_iter=5, tol=None, n_jobs=-1,
+                                                   class_weight='balanced')),
+                             ])
+        sklearn_model = text_clf.fit(data, target)
+
+        model = SkLearnClassifierModel(sklearn_model=sklearn_model, target_names=target_names)
+
+        classifier_model, created = ClassifierModel.objects.get_or_create(
+            document_type_id=document_type_uid, document_field_id=field_uid)
+
+        classifier_model.set_trained_model_obj(model)
+        classifier_model.save()
+        log(
+            'Finished training model for document_type #{0} and field #{1}. '
+            'Total number of samples: {2}'.format(document_type_uid, field_uid, total_samples),
             task=task_id)
+        if trigger_re_detecting_field_values:
+            for document_id in Document.objects.filter(document_type=document_type).values_list(
+                    'pk', flat=True):
+                DetectFieldValues.detect_field_values_for_document.apply_async(
+                    args=(document_id, False, task_id, field_uid))
 
 
 app.register_task(DetectFieldValues())

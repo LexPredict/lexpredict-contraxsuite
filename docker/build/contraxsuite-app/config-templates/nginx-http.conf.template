@@ -9,8 +9,8 @@ server {
     sendfile on;
     keepalive_timeout 0;
 
-    error_page 502 /502.html;
-    location = /502.html {
+    error_page 502 ${DOCKER_DJANGO_BASE_PATH}502.html;
+    location = ${DOCKER_DJANGO_BASE_PATH}502.html {
         root /usr/share/nginx/html;
         internal;
     }
@@ -20,13 +20,14 @@ server {
         include     /etc/nginx/uwsgi_params;
     }
 
-    location /static/ {
-        rewrite  ^/static/(.*) /$1 break;
+    location ${DOCKER_DJANGO_BASE_PATH}static/ {
+        rewrite  ^${DOCKER_DJANGO_BASE_PATH}static/(.*) /$1 break;
         root /contraxsuite_services/staticfiles/;
     }
 
-    location /media/ {
-        rewrite  ^/media/(.*) /$1 break;
+    location ${DOCKER_DJANGO_BASE_PATH}media/ {
+        rewrite  ^${DOCKER_DJANGO_BASE_PATH}media/(.*) /$1 break;
         root /data/media/;
     }
+
 }

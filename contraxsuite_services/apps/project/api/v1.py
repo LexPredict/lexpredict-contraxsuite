@@ -24,24 +24,43 @@
 """
 # -*- coding: utf-8 -*-
 
+# Standard imports
+import itertools
+import os
+import sys
+
 # Third-party imports
 from rest_framework import serializers, routers, viewsets
+from rest_framework.decorators import detail_route, list_route
+from rest_framework.exceptions import ValidationError, APIException
 from rest_framework.views import APIView
+from rest_framework.response import Response
 
 # Django imports
+from django.conf import settings
+from django.core.files.storage import FileSystemStorage
 from django.http import JsonResponse
+from django.db.models import Count, Q
+from django.utils.timezone import now
 
 # Project imports
-from apps.common.mixins import JqMixin
-from apps.project.models import Project, ProjectStatus, TaskQueue
-from apps.document.models import Document
-from apps.users.models import User
 from apps.analyze.models import DocumentCluster
+from apps.common.mixins import JqMixin
+from apps.common.utils import get_api_module
+from apps.document.models import Document, DocumentType
+from apps.project.models import (
+    Project, ProjectStatus, TaskQueue, UploadSession, ProjectClustering)
+from apps.users.models import User
+from apps.task.models import Task
+from apps.task.tasks import call_task, purge_task
+from urls import custom_apps
+from apps.project.tasks import THIS_MODULE    # noqa
+
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
 __license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.0.5/LICENSE"
-__version__ = "1.0.7"
+__version__ = "1.0.8"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -235,11 +254,47 @@ class ProjectStatusViewSet(JqMixin, viewsets.ModelViewSet):
 # Project Views
 # --------------------------------------------------------
 
-class ProjectSerializer(serializers.ModelSerializer):
-    task_queues = serializers.PrimaryKeyRelatedField(
-        queryset=TaskQueue.objects.all(), many=True, required=False)
-    task_queue_data = TaskQueueSerializer(
-        source='task_queues', many=True, read_only=True)
+def project_progress(obj):
+    sessions_status_data = {str(i.pk): i.status for i in obj.uploadsession_set.all()}
+    completed_sessions = {k: v for k, v in sessions_status_data.items() if v == 'Parsed'}
+    uncompleted_sessions = {k: v for k, v in sessions_status_data.items() if v != 'Parsed'}
+    project_uploaded_documents_count = Document.objects.filter(
+        upload_session__project=obj).count()
+
+    stats = {'project_current_documents_count': obj.document_set.count(),
+             'project_uploaded_documents_count': project_uploaded_documents_count,
+             'project_tasks_progress': obj.project_tasks_progress,
+             'project_tasks_completed': obj.project_tasks_completed,
+             'completed_sessions': completed_sessions or None,
+             'uncompleted_sessions': uncompleted_sessions or None}
+
+    if obj.type is None:
+        project_clusters_documents_count = obj.projectclustering_set.last() \
+            .document_clusters.aggregate(c=Count('documents'))['c'] \
+            if obj.projectclustering_set.exists() else 0
+        project_unclustered_documents_count = project_uploaded_documents_count - \
+                                              project_clusters_documents_count
+        reassigning_ots = {'task_name': 'reassigning',
+                           'old_project_id': obj.pk}
+        stats.update({
+            'project_clusters_documents_count': project_clusters_documents_count,
+            'project_unclustered_documents_count': project_unclustered_documents_count,
+            'reassigning_progress': Task.special_tasks_progress_groups(reassigning_ots),
+            'reassigning_completed': Task.special_tasks_completed(reassigning_ots),
+            'cleanup_completed': Task.special_tasks_completed({'task_name': 'clean-project',
+                                                               '_project_id': obj.pk}),
+        })
+
+    return stats
+
+
+class DocumentTypeSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = DocumentType
+        fields = ['uid', 'code', 'title']
+
+
+class ProjectDetailSerializer(serializers.ModelSerializer):
     status = serializers.PrimaryKeyRelatedField(
         queryset=ProjectStatus.objects.all(), many=True, required=False)
     status_data = ProjectStatusSerializer(
@@ -252,16 +307,42 @@ class ProjectSerializer(serializers.ModelSerializer):
         queryset=User.objects.all(), many=True, required=False)
     reviewers_data = UserSerializer(
         source='reviewers', many=True, read_only=True)
+    type = serializers.PrimaryKeyRelatedField(
+        queryset=DocumentType.objects.all(), many=False, required=False)
+    type_data = DocumentTypeSerializer(source='type', many=False)
     progress = serializers.SerializerMethodField()
 
     class Meta:
         model = Project
         fields = ['pk', 'name', 'description', 'status', 'status_data',
                   'owners', 'owners_data', 'reviewers', 'reviewers_data',
-                  'task_queues', 'task_queue_data', 'progress']
+                  'type', 'type_data', 'progress']
 
     def get_progress(self, obj):
-        return obj.progress(as_dict=True)
+        return project_progress(obj)
+
+
+class ProjectCreateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Project
+        fields = ['pk', 'name', 'description', 'type']
+
+
+class ProjectUpdateSerializer(ProjectDetailSerializer):
+    class Meta(ProjectDetailSerializer.Meta):
+        model = Project
+        fields = ['pk', 'name', 'description', 'status',
+                  'owners', 'reviewers', 'type']
+
+
+def require_multiple_contract_type(func):
+    def decorator(cls, *args, **kwargs):
+        project = cls.get_object()
+        if project.type:
+            raise APIException('Allowed for projects with "Multiple Contract Type" only')
+        return func(cls, *args, **kwargs)
+    decorator.__doc__ = func.__doc__
+    return decorator
 
 
 class ProjectViewSet(JqMixin, viewsets.ModelViewSet):
@@ -285,13 +366,442 @@ class ProjectViewSet(JqMixin, viewsets.ModelViewSet):
     delete: Delete Project
     """
     queryset = Project.objects.all()
-    serializer_class = ProjectSerializer
+
+    def get_serializer_class(self):
+        if self.action == 'create':
+            return ProjectCreateSerializer
+        elif self.action in ['update', 'partial_update']:
+            return ProjectUpdateSerializer
+        return ProjectDetailSerializer
 
     def get_queryset(self):
         qs = super().get_queryset()
         if self.request.user.is_reviewer:
             qs = qs.filter(task_queues__reviewers=self.request.user)
-        qs = qs.prefetch_related('task_queues')
+        qs = qs.prefetch_related('status', 'owners', 'reviewers', 'uploadsession_set')
+        return qs
+
+    @detail_route(methods=['get'])
+    def progress(self, request, **kwargs):
+        """
+        Project Progress - completed/uncompleted session, status of project tasks\n
+        """
+        return Response(project_progress(self.get_object()))
+
+    @detail_route(methods=['post'])
+    @require_multiple_contract_type
+    def cluster(self, request, **kwargs):
+        """
+        Cluster Project Documents\n
+            Params:
+                - method: str[KMeans, MiniBatchKMeans, Birch, DBSCAN]
+                - n_clusters: int
+                - force: bool (optional) - force clustering if uncompleted tasks exist
+        """
+        if not request.POST.get('force') == 'true':
+            obj = self.get_object()
+            progress = project_progress(obj)
+            if progress['uncompleted_sessions'] is not None:
+                raise APIException('Project has uncompleted upload sessions.')
+            elif progress['completed_sessions'] is None:
+                raise APIException("Project hasn't completed upload sessions.")
+
+        project_id = kwargs.get('pk')
+
+        project_clustering = ProjectClustering.objects.create(project_id=project_id)
+
+        task_id = call_task(
+            task_name='ClusterProjectDocuments',
+            module_name='apps.project.tasks',
+            user_id=request.user.id,
+            project_id=project_id,
+            project_clustering_id=project_clustering.id,
+            method=request.POST.get('method', 'KMeans'),
+            metadata={'project_id': project_id},
+            n_clusters=int(request.POST.get('n_clusters', 3)))
+
+        return Response({'task_id': task_id,
+                         'project_clustering_id': project_clustering.id})
+
+    @detail_route(methods=['get'], url_path='clustering-status')
+    @require_multiple_contract_type
+    def clustering_status(self, request, **kwargs):
+        """
+        Last Clustering task status/data\n
+            Params:
+                - project_clustering_id: int (optional) - return last if not provided
+        """
+        project_clustering_id = request.GET.get('project_clustering_id')
+        project = self.get_object()
+
+        if project_clustering_id:
+            clustering = project.projectclustering_set.get(pk=project_clustering_id)
+        else:
+            clustering = project.projectclustering_set.last()
+
+        if not clustering:
+            return Response(status=404)
+
+        data = ProjectClusteringSerializer(clustering).data
+
+        reassigned_cluster_ids = clustering.metadata.get('reassigned_cluster_ids', [])
+        reassigning_data = clustering.metadata.get('reassigning')
+
+        for cluster in data['document_clusters']:
+            cluster['reassigned'] = False
+            cluster['reassigned_to_project_id'] = None
+
+            try:
+                if cluster['pk'] in reassigned_cluster_ids:
+                    cluster['reassigned'] = True
+                    cluster_reassigning_data = [i for i in reassigning_data
+                                                if cluster['pk'] in i['cluster_ids']]
+                    if len(cluster_reassigning_data) != 1:
+                        raise APIException('Found more than one reassigning of cluster id={}'
+                                           .format(cluster['pk']))
+                    cluster['reassigned_to_project_id'] = cluster_reassigning_data[0]['new_project_id']
+
+                cluster['cluster_terms'] = data['metadata']['clusters_data'][str(cluster['cluster_id'])]['cluster_terms']
+
+            except KeyError:
+                pass
+
+        return Response(data)
+
+    @detail_route(methods=['post'], url_path='send-clusters-to-project')
+    @require_multiple_contract_type
+    def send_clusters_to_project(self, request, **kwargs):
+        """
+        Send clusters to another Project\n
+            Params:
+                - cluster_ids: list[int]
+                - project_id: int
+        """
+        cluster_ids = [int(i) for i in request.POST.getlist('cluster_ids')]
+        project = self.get_object()
+        project_custering = project.projectclustering_set.last()
+        if not project_custering:
+            raise APIException('Project Clustering object not found')
+        reassigned_cluster_ids = project_custering.metadata.get('reassigned_cluster_ids', [])
+        already_reassigned_clusters = set(cluster_ids) & set(reassigned_cluster_ids)
+        if already_reassigned_clusters:
+            raise APIException('Cluster(s) id=({}) is/are already reassigned to another project'
+                               .format(', '.join(str(i) for i in already_reassigned_clusters)))
+
+        new_project_id = int(request.POST.get('project_id'))
+        call_task(
+            task_name='ReassignProjectClusterDocuments',
+            module_name='apps.project.tasks',
+            cluster_ids=cluster_ids,
+            project_id=project.id,
+            new_project_id=new_project_id,
+            user_id=request.user.id)
+
+        return Response('OK')
+
+    @detail_route(methods=['post'])
+    @require_multiple_contract_type
+    def cleanup(self, request, **kwargs):
+        """
+        Clean project (Multiple type project)
+        """
+        call_task(
+            task_name='CleanProject',
+            module_name='apps.project.tasks',
+            project_id=int(kwargs['pk']),
+            user_id=request.user.id)
+
+        return Response('OK')
+
+
+# --------------------------------------------------------
+# UploadSession Views
+# --------------------------------------------------------
+
+class UploadSessionSerializer(serializers.ModelSerializer):
+    project = serializers.PrimaryKeyRelatedField(
+        queryset=Project.objects.all(), many=False, required=True)
+
+    class Meta:
+        model = UploadSession
+        fields = ['uid', 'project']
+
+
+class UploadSessionDetailSerializer(serializers.ModelSerializer):
+    created_by = UserSerializer(many=False)
+    project = ProjectDetailSerializer(many=False)
+    document_type = DocumentTypeSerializer(source='project.type', many=False)
+    progress = serializers.SerializerMethodField()
+
+    class Meta:
+        model = UploadSession
+        fields = ['uid', 'project', 'created_by', 'created_date',
+                  'document_type', 'progress']
+
+    def get_progress(self, obj):
+        session_tasks = Task.objects\
+            .filter(metadata__session_id=str(obj.pk))\
+            .select_related('celery_task_result')
+        task_number = 3 if obj.project.type else 2
+
+        progress_data = [
+            {'file_name': i.metadata.get('file_name', i.name),
+             'task_name': i.name,
+             'task_status': i.status,
+             # 'task_progress': i.progress,   # it queries all task children
+             'task_progress': 100 if i.status == 'SUCCESS' else 0}
+            for i in session_tasks]
+        progress = {}
+
+        for file_name, task_progress_data in itertools.groupby(
+                sorted(progress_data, key=lambda i: i['file_name']),
+                key=lambda i: i['file_name']):
+            task_progress_data = list(task_progress_data)
+            document_progress = sum([int(i['task_progress'])
+                                     for i in task_progress_data][:task_number]) / task_number
+            progress[file_name] = {
+                'task_progress_data': task_progress_data,
+                'document_progress': document_progress}
+        return progress
+
+
+class UploadSessionViewSet(JqMixin, viewsets.ModelViewSet):
+    """
+    list: Session Upload List\n
+        GET params:
+            - project__name: str
+            - project__name_contains: str
+            - project__description: str
+            - project__description_contains: str
+            - project__status__name: str
+            - project__status__name_contains: str
+            - project__status__code: str
+            - project__status__code_contains: str
+            - created_by__username: str
+    retrieve: Retrieve Session Upload
+    create: Create Session Upload
+    update: Update Session Upload
+    partial_update: Partial Update Session Upload
+    delete: Delete Session Upload
+    """
+    queryset = UploadSession.objects.all()
+
+    def get_serializer_class(self):
+        if self.action in ['create', 'update', 'partial_update']:
+            return UploadSessionSerializer
+        return UploadSessionDetailSerializer
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        qs = qs.select_related('project')
+        return qs
+
+    @detail_route(methods=['get'])
+    def progress(self, request, **kwargs):
+        """
+        Get Progress for a session per files (short form)
+        """
+        session = self.get_object()
+        result = {'document_tasks_progress': session.document_tasks_progress or None,
+                  'document_tasks_progress_total': session.document_tasks_progress_total,
+                  'session_status': session.status}
+        return Response(result)
+
+    @list_route(methods=['get'])
+    def status(self, request, **kwargs):
+        """
+        Get status of Upload Sessions
+            Params:
+                - project_id: int
+        """
+        qs = self.queryset
+        project_id = request.GET.get('project_id')
+        if project_id:
+            qs = qs.filter(project_id=project_id)
+        result = {str(i.pk): i.status for i in qs}
+        return Response(result)
+
+    @detail_route(methods=['post'])
+    def upload(self, request, **kwargs):
+        """
+        Upload a File\n
+            Params:
+                - file: file object
+                - force: bool (optional) - whether rewrite existing file and Document
+        """
+        session_id = kwargs.get('pk')
+        file_ = request.FILES.dict().get('file')
+
+        if session_id and file_:
+            try:
+                storage = FileSystemStorage(
+                    location=os.path.join(
+                        settings.MEDIA_ROOT,
+                        settings.FILEBROWSER_DIRECTORY,
+                        session_id))
+
+                if storage.exists(file_.name):
+                    if request.POST.get('force') == 'true':
+                        storage.delete(file_.name)
+                        file_tasks = Task.objects\
+                            .filter(metadata__session_id=session_id)\
+                            .filter(metadata__file_name=file_.name)
+                        for file_task in file_tasks:
+                            if file_task.metadata.get('file_name') == file_.name:
+                                purge_task(file_task.id)
+                        Document.objects\
+                            .filter(upload_session_id=session_id, name=file_.name)\
+                            .delete()
+                    else:
+                        raise APIException('Already exists')
+
+                stored_file_name = storage.save(file_.name, file_.file)
+
+                linked_tasks = [
+                    {'task_name': 'Locate',
+                     'locate': ['date', 'party', 'term'],
+                     'parse': 'paragraphs',
+                     'do_delete': False,
+                     'metadata': {'session_id': session_id, 'file_name': file_.name},
+                     'user_id': request.user.id}
+                ]
+
+                document_type = UploadSession.objects.get(pk=session_id).project.type
+
+                # if Document type specified
+                if document_type:
+
+                    for app_name in custom_apps:
+                        module_str = 'apps.%s.tasks' % app_name
+                        module = sys.modules.get(module_str)
+                        if hasattr(module, 'DetectFieldValues'):
+                            linked_tasks.append(
+                                {'task_name': 'DetectFieldValues',
+                                 'module_name': module_str,
+                                 'do_not_write': False,
+                                 'metadata': {'session_id': session_id, 'file_name': file_.name},
+                                 'user_id': request.user.id})
+                call_task(
+                    task_name='LoadDocuments',
+                    source_path=os.path.join(session_id, stored_file_name),
+                    user_id=request.user.id,
+                    metadata={'session_id': session_id, 'file_name': file_.name},
+                    linked_tasks=linked_tasks)
+            except Exception as e:
+                raise APIException(str(e))
+        else:
+            raise ValidationError('Provide session_id and file in request data.')
+        return Response('Loaded')
+
+    @detail_route(methods=['delete'], url_path='delete-file')
+    def delete_file(self, request, **kwargs):
+        """
+        Delete a file from session\n
+            Params:
+                - filename: str
+        """
+        session_id = kwargs.get('pk')
+        file_name = request.POST.get('filename')
+
+        if not file_name:
+            raise APIException('Provide a file name.')
+
+        try:
+            storage = FileSystemStorage(
+                location=os.path.join(
+                    settings.MEDIA_ROOT,
+                    settings.FILEBROWSER_DIRECTORY,
+                    session_id))
+
+            if storage.exists(file_name):
+                storage.delete(file_name)
+                file_tasks = Task.objects\
+                    .filter(metadata__session_id=session_id)\
+                    .filter(metadata__file_name=file_name)
+                for file_task in file_tasks:
+                    if file_task.metadata.get('file_name') == file_name:
+                        purge_task(file_task.id)
+                Document.objects\
+                    .filter(upload_session_id=session_id, name=file_name)\
+                    .delete()
+                return Response('Deleted')
+            else:
+                raise APIException("File doesn't exist")
+
+        except Exception as e:
+            raise APIException(str(e))
+
+
+# --------------------------------------------------------
+# Project Clustering Views
+# --------------------------------------------------------
+
+analyze_api_module = get_api_module('analyze')
+
+
+class ProjectSerializer(ProjectDetailSerializer):
+    class Meta(ProjectDetailSerializer.Meta):
+        model = Project
+        fields = ['pk', 'name', 'progress']
+
+
+class TaskSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Task
+        fields = ['pk', 'name', 'progress', 'status']
+
+
+class DocumentClusterSerializer(analyze_api_module.DocumentClusterSerializer):
+    class Meta(analyze_api_module.DocumentClusterSerializer.Meta):
+        model = DocumentCluster
+        fields = ['pk', 'cluster_id', 'self_name', 'using',
+                  'documents_count', 'document_data']
+
+
+class ProjectClusteringSerializer(serializers.ModelSerializer):
+    document_clusters = DocumentClusterSerializer(many=True, read_only=True)
+    project = ProjectSerializer(many=False, read_only=True)
+    task = TaskSerializer(many=False, read_only=True)
+    project_uploaded_documents_count = serializers.SerializerMethodField()
+    project_current_documents_count = serializers.SerializerMethodField()
+    project_clusters_documents_count = serializers.SerializerMethodField()
+    project_unclustered_documents_count = serializers.SerializerMethodField()
+
+    class Meta:
+        model = ProjectClustering
+        fields = ['pk', 'project', 'document_clusters', 'task',
+                  'metadata', 'created_date',
+                  'project_uploaded_documents_count',
+                  'project_current_documents_count',
+                  'project_clusters_documents_count',
+                  'project_unclustered_documents_count']
+
+    def get_project_uploaded_documents_count(self, obj):
+        return Document.objects.filter(upload_session__project=obj.project).count()
+
+    def get_project_current_documents_count(self, obj):
+        return obj.project.document_set.count()
+
+    def get_project_clusters_documents_count(self, obj):
+        return obj.document_clusters.aggregate(c=Count('documents'))['c']
+
+    def get_project_unclustered_documents_count(self, obj):
+        return self.get_project_uploaded_documents_count(obj) - \
+               self.get_project_clusters_documents_count(obj)
+
+
+class ProjectClusteringViewSet(JqMixin, viewsets.ModelViewSet):
+    """
+    list: ProjectCluster List
+    retrieve: ProjectCluster Details
+    """
+    queryset = ProjectClustering.objects.all()
+    serializer_class = ProjectClusteringSerializer
+    http_method_names = ['get']
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        qs = qs.prefetch_related('document_clusters').select_related('project', 'task')
         return qs
 
 
@@ -299,3 +809,5 @@ router = routers.DefaultRouter()
 router.register(r'task-queues', TaskQueueViewSet, 'task-queue')
 router.register(r'project-statuses', ProjectStatusViewSet, 'project-status')
 router.register(r'projects', ProjectViewSet, 'project')
+router.register(r'project-clustering', ProjectClusteringViewSet, 'project-clustering')
+router.register(r'upload-session', UploadSessionViewSet, 'upload-session')

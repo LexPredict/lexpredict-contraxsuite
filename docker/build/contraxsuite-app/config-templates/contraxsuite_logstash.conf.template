@@ -1,0 +1,12 @@
+input {
+    tcp {
+    port => 5959
+    codec => json
+  }
+}
+output {
+  elasticsearch {
+    hosts => ["${DOCKER_HOST_NAME_ELASTICSEARCH}:9200"]
+    index => "logstash-%{+YYYY.MM.dd}"
+  }
+}

@@ -1,0 +1,82 @@
+server {
+    listen 80 default_server;
+#    listen [::]:80 default_server;
+    server_name dev.alpha.contraxsuite.com;
+    return 301 https://$host$request_uri;
+
+
+}
+
+server {
+    listen 443;
+    ssl on;
+    ssl_certificate /etc/letsencrypt/live/dev.alpha.contraxsuite.com/fullchain.pem; # managed by Certbot
+    ssl_certificate_key /etc/letsencrypt/live/dev.alpha.contraxsuite.com/privkey.pem; # managed by Certbot
+    ssl_session_timeout 5m;
+    ssl_protocols SSLv3 TLSv1 TLSv1.1 TLSv1.2;
+    ssl_ciphers "HIGH:!aNULL:!MD5 or HIGH:!aNULL:!MD5:!3DES";
+    ssl_prefer_server_ciphers on;
+    server_name dev.alpha.contraxsuite.com;
+	client_max_body_size 100M;
+
+
+	location / {
+                alias /data/contraxsuite-frontend/;
+                index index.html index.htm;
+    }
+
+	location /jupyter {
+	    proxy_pass http://localhost:8888;
+	    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header Host $http_host;
+	    proxy_http_version 1.1;
+        proxy_redirect off;
+        proxy_buffering off;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_read_timeout 86400;
+    }
+
+	location /advanced {
+        proxy_pass          http://localhost:65080/advanced/;
+        proxy_set_header    Host             $host;
+        proxy_set_header    X-Real-IP        $remote_addr;
+        proxy_set_header    X-Forwarded-For  $proxy_add_x_forwarded_for;
+	    proxy_set_header	X-Forwarded-Host $server_name;
+	    proxy_set_header	X-Forwarded-Protocol $scheme;
+	    include cors_support;
+    }
+
+	location /api {
+        proxy_pass          http://localhost:65080/api/;
+        proxy_set_header    Host             $host;
+        proxy_set_header    X-Real-IP        $remote_addr;
+        proxy_set_header    X-Forwarded-For  $proxy_add_x_forwarded_for;
+        proxy_set_header    X-Forwarded-Host $server_name;
+        proxy_set_header    X-Forwarded-Protocol $scheme;
+        include cors_support;
+    }
+
+	location /rest-auth {
+        proxy_pass          http://localhost:65080/rest-auth/;
+        proxy_set_header    Host             $host;
+        proxy_set_header    X-Real-IP        $remote_addr;
+        proxy_set_header    X-Forwarded-For  $proxy_add_x_forwarded_for;
+        proxy_set_header    X-Forwarded-Host $server_name;
+        proxy_set_header    X-Forwarded-Protocol $scheme;
+        include cors_support;
+    }
+
+	location ~ ^/kibana/(.*)$ {
+        rewrite /kibana/(.*) /$1 break;
+	    proxy_pass http://localhost:5601;
+	    proxy_http_version 1.1;
+	    proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_cache_bypass $http_upgrade;
+	    auth_basic "Contraxsuite Kibana";
+        auth_basic_user_file /etc/nginx/.kibana_htpasswd;
+    }
+}

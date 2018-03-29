@@ -43,8 +43,14 @@ required for Contraxsuite (including docker-compose.yml file).
   
 * Wait few minutes for all components to start (sudo docker service ls).
   
-* After the installation is finished the Contraxsuite application will be available 
-at **http://localhost:65080**. 
+* After the installation is finished:
+  * the Contraxsuite application will be available 
+at **http://localhost:65080**;
+  * Jupyter having access to the Contraxsuite 
+  python code and database will be at **http://localhost:8888**;
+  * Kibana connected to the Contraxsuite ElasticSearch will be at **http://localhost:5601**
+    * Contraxsuite Django logs are in **logstash*** indexes
+    * Documents indexed for search purposes are in **contraxsuite*** indexes. 
 
   Admin login/pass: Administrator/Administrator.
   
@@ -62,3 +68,18 @@ consisting of multiple machines.
 Check ./deploy/new_contraxsuite_cluster_ubuntu_16_04.sh for more info.
 
 For more complicated deployments and support please contact LexPredict team. 
+
+Contraxsuite Docker image maintains information about the last image version 
+used on this deployment in contraxsuite_contraxsuite_deployment_uuid docker volume
+(/var/lib/docker/volumes/contraxsuite_contraxsuite_deployment_uuid).
+On each start Contraxsuite checks if the image is new by testing if 
+stored uuid matches image uuid. For the case of new version Contraxsuite
+re-installs theme and jqwidgets and runs Django collectstatic.
+
+If during the installation or updating process some problems with CSS appear the following steps
+can be used to force Contraxsuite re-installing the theme:
+1. Undeploy the cluster using the script in docker/deploy.
+2. Wait approx 15 seconds for it to finish.
+3. Delete deployment uuid file from /var/lib/docker/volumes/contraxsuite_contraxsuite_deployment_uuid
+4. Deploy the cluster again.
+

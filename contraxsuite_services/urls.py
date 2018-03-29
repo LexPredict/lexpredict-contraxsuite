@@ -49,7 +49,7 @@ from apps.project.views import DashboardView
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
 __license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.0.5/LICENSE"
-__version__ = "1.0.7"
+__version__ = "1.0.8"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -57,15 +57,15 @@ __email__ = "support@contraxsuite.com"
 # Manually add all standard patterns
 urlpatterns = [
     # Base pages
-    url(r'^$', DashboardView.as_view(), name='home'),
-    url(r'^$', TemplateView.as_view(template_name='home.html'), name='home'),
-    url(r'^about/$', TemplateView.as_view(template_name='about.html'), name='about'),
+    url(r'^{0}$'.format(settings.BASE_URL), DashboardView.as_view(), name='home'),
+    # url(r'^$', TemplateView.as_view(template_name='home.html'), name='home'),
+    url(r'^{0}about/$'.format(settings.BASE_URL), TemplateView.as_view(template_name='about.html'), name='about'),
     # Django Admin, use {% url 'admin:index' %}
-    url(r'^admin/', admin.site.urls),
+    url(r'^{0}admin/'.format(settings.BASE_URL), admin.site.urls),
     # User management
     # url(r'^accounts/', include('apps.users.urls', namespace='users')),
-    url(r'^accounts/', include('allauth_2fa.urls')),
-    url(r'^accounts/', include('allauth.urls')),
+    url(r'^{0}accounts/'.format(settings.BASE_URL), include('allauth_2fa.urls')),
+    url(r'^{0}accounts/'.format(settings.BASE_URL), include('allauth.urls')),
     # Apps
     # url(r'^', include('apps.common.urls', namespace='common')),
     # url(r'^document/', include('apps.document.urls', namespace='document')),
@@ -74,10 +74,10 @@ urlpatterns = [
     # url(r'^project/', include('apps.project.urls', namespace='project')),
     # url(r'^task/', include('apps.task.urls', namespace='task')),
     # Custom
-    url(r'^admin/filebrowser/', include(filebrowser_site.urls)),
-    url(r'^api-auth/', include('rest_framework.urls')),
-    url(r'^rest-auth/', include('rest_auth.urls')),
-    url(r'^rest-auth/registration/', include('rest_auth.registration.urls')),
+    url(r'^{0}admin/filebrowser/'.format(settings.BASE_URL), include(filebrowser_site.urls)),
+    url(r'^{0}api-auth/'.format(settings.BASE_URL), include('rest_framework.urls')),
+    url(r'^rest-auth/'.format(settings.BASE_URL), include('rest_auth.urls')),
+    url(r'^rest-auth/registration/'.format(settings.BASE_URL), include('rest_auth.registration.urls')),
 
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
 
@@ -95,7 +95,7 @@ for app_name in custom_apps:
     spec = importlib.util.find_spec(module_str)
     if spec:
         include_urls = include(module_str, namespace=app_name)
-        urlpatterns += [url(r'^%s/' % app_name, include_urls)]
+        urlpatterns += [url(r'^' + settings.BASE_URL + app_name + '/', include_urls)]
 
     # add api urlpatterns
     for api_version in REST_FRAMEWORK['ALLOWED_VERSIONS']:
@@ -145,17 +145,17 @@ if settings.DEBUG:
     # This allows the error pages to be debugged during development, just visit
     # these urls in browser to see how these error pages look like.
     urlpatterns += [
-        url(r'^400/$', default_views.bad_request,
+        url(r'^' + settings.BASE_URL + '400/$', default_views.bad_request,
             kwargs={'exception': Exception('Bad Request!')}),
-        url(r'^403/$', default_views.permission_denied,
+        url(r'^' + settings.BASE_URL + '403/$', default_views.permission_denied,
             kwargs={'exception': Exception('Permission Denied')}),
-        url(r'^404/$', default_views.page_not_found,
+        url(r'^' + settings.BASE_URL + '404/$', default_views.page_not_found,
             kwargs={'exception': Exception('Page not Found')}),
-        url(r'^500/$', default_views.server_error),
+        url(r'^' + settings.BASE_URL + '500/$', default_views.server_error),
     ]
     if 'debug_toolbar' in settings.INSTALLED_APPS:
         import debug_toolbar
 
         urlpatterns += [
-            url(r'^__debug__/', include(debug_toolbar.urls)),
+            url(r'^' + settings.BASE_URL + '__debug__/', include(debug_toolbar.urls)),
         ]

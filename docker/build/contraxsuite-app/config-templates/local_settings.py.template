@@ -4,6 +4,7 @@ SECRET_KEY = '${DOCKER_DJANGO_SECRET_KEY}'
 AUTOLOGIN = False
 
 HOST_NAME = '${DOCKER_DJANGO_HOST_NAME}'
+BASE_URL = '${DOCKER_DJANGO_BASE_PATH}'
 DEBUG_SQL = ${DOCKER_DJANGO_DEBUG_SQL}
 DEBUG_TEMPLATE = False
 
@@ -16,7 +17,8 @@ DEBUG_TEMPLATE = False
 #EMAIL_PORT = 587
 
 EMAIL_HOST = '${DOCKER_DJANGO_EMAIL_HOST}'
-EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+EMAIL_BACKEND = '${DOCKER_DJANGO_EMAIL_BACKEND}'
+EMAIL_USE_TLS = ${DOCKER_DJANGO_EMAIL_USE_TLS}
 EMAIL_PORT = ${DOCKER_DJANGO_EMAIL_PORT}
 EMAIL_HOST_USER = '${DOCKER_DJANGO_EMAIL_HOST_USER}'
 EMAIL_HOST_PASSWORD = '${DOCKER_DJANGO_EMAIL_HOST_PASSWORD}'
@@ -68,6 +70,7 @@ import sys
 
 CELERY_LOG_FILE_PATH = '/data/logs/celery-{0}.log'.format(platform.node())
 LOG_FILE_PATH = '/data/logs/django-{0}.log'.format(platform.node())
+DB_LOG_FILE_PATH = '/data/logs/django-db-{0}.log'.format(platform.node())
 
 LOGGING = {
     'version': 1,
@@ -78,12 +81,24 @@ LOGGING = {
         },
     },
     'handlers': {
+        'null': {
+            'level': 'DEBUG',
+            'class': 'logging.NullHandler',
+        },
         'file': {
             'level': 'DEBUG',
             'class': 'logging.handlers.RotatingFileHandler',
             'maxBytes': 1024 * 1024 * 10,
             'backupCount': 5,
             'filename': LOG_FILE_PATH,
+            'formatter': 'verbose',
+        },
+        'db': {
+            'level': 'DEBUG',
+            'class': 'logging.handlers.RotatingFileHandler',
+            'maxBytes': 1024 * 1024 * 10,
+            'backupCount': 5,
+            'filename': DB_LOG_FILE_PATH,
             'formatter': 'verbose',
         },
         'tasks': {
@@ -104,14 +119,44 @@ LOGGING = {
         'mail_admins': {
             'level': 'ERROR',
             'class': 'django.utils.log.AdminEmailHandler',
-        }
+        },
+        'logstash': {
+            'level': 'DEBUG',
+            'class': 'logstash.TCPLogstashHandler',
+            'host': 'localhost',
+            'port': 5959, # Default value: 5959
+            'version': 1, # Version of logstash event schema. Default value: 0 (for backward compatibility of the library)
+            'message_type': 'django',  # 'type' field in logstash message. Default value: 'logstash'.
+            'fqdn': False, # Fully qualified domain name. Default value: false.
+        },
     },
     'loggers': {
         'apps.task.tasks': {
-            'handlers': ['tasks'],
+            'handlers': ['tasks', 'logstash', 'mail_admins'],
             'level': 'DEBUG',
             'propagate': True,
         },
+        'django': {
+            'handlers': ['logstash', 'console', 'file', 'mail_admins'],
+            'level': 'DEBUG',
+            'propagate': True,
+        },
+        'contraxsuite_services': {
+            'handlers': ['logstash', 'console', 'file', 'mail_admins'],
+            'level': 'DEBUG',
+            'propagate': True,
+        },
+        'apps': {
+            'handlers': ['logstash', 'console', 'file', 'mail_admins'],
+            'level': 'DEBUG',
+            'propagate': True,
+        },
+        'django.db.backends': {
+            'handlers': ['db'],  # Quiet by default!
+            'propagate': False,
+            'level': 'DEBUG',
+        },
+
     },
 }
 

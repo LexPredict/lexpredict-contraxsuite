@@ -24,19 +24,25 @@
 """
 # -*- coding: utf-8 -*-
 
+# Standard imports
+import itertools
+import uuid
+
 # Django imports
 from django.db import models
+from django.db.models import Count
 from django.db.models.signals import m2m_changed
 from django.dispatch import receiver
+from django.contrib.postgres.fields import JSONField
 
 # Project imports
-from apps.document.models import Document
 from apps.users.models import User
+from apps.task.models import Task
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
 __license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.0.5/LICENSE"
-__version__ = "1.0.7"
+__version__ = "1.0.8"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -55,11 +61,11 @@ class TaskQueue(models.Model):
     description = models.TextField(null=True, db_index=True)
 
     # Document list
-    documents = models.ManyToManyField(Document, blank=True)
+    documents = models.ManyToManyField('document.Document', blank=True)
 
     # Completed document set
     completed_documents = models.ManyToManyField(
-        Document, related_name='completed_documents_task_queue', blank=True)
+        'document.Document', related_name='completed_documents_task_queue', blank=True)
 
     # Reviewer set
     reviewers = models.ManyToManyField(
@@ -140,7 +146,7 @@ class TaskQueueHistory(models.Model):
     task_queue = models.ForeignKey(TaskQueue, db_index=True)
 
     # Affected documents
-    documents = models.ManyToManyField(Document, blank=True)
+    documents = models.ManyToManyField('document.Document', blank=True)
 
     # Date
     date = models.DateTimeField(auto_now_add=True)
@@ -231,7 +237,7 @@ class Project(models.Model):
     name = models.CharField(max_length=100, db_index=True)
 
     # Project description
-    description = models.TextField(null=True)
+    description = models.TextField(blank=True, null=True)
 
     # Task queue set
     task_queues = models.ManyToManyField(TaskQueue, blank=True)
@@ -244,6 +250,9 @@ class Project(models.Model):
 
     # Status
     status = models.ManyToManyField(ProjectStatus, blank=True)
+
+    # Document types for a Project
+    type = models.ForeignKey('document.DocumentType', null=True, blank=True, db_index=True)
 
     class Meta(object):
         ordering = ['name']
@@ -261,9 +270,8 @@ class Project(models.Model):
         :param as_dict:
         :return:
         """
-        docs = Document.objects
-        total_docs = docs.filter(taskqueue__project=self).count()
-        completed_docs = docs.filter(completed_documents_task_queue__project=self).count()
+        total_docs = sum(self.task_queues.annotate(s=Count('documents')).values_list('s', flat=True))
+        completed_docs = sum(self.task_queues.annotate(s=Count('completed_documents')).values_list('s', flat=True))
         progress = 0 if not total_docs else round(completed_docs / total_docs * 100, 2)
         if as_dict:
             return dict(
@@ -292,3 +300,150 @@ class Project(models.Model):
             task_queue__project=self,
             task_queue__action='complete_document') \
             .latest('date').date
+
+    @property
+    def project_tasks(self):
+        """
+        Get tasks related with Project
+        """
+        return Task.special_tasks({'project_id': str(self.pk)})
+
+    @property
+    def project_tasks_progress(self):
+        """
+        Detailed Progress of project tasks like Clustering
+        """
+        return Task.special_tasks_progress({'project_id': str(self.pk)})
+
+    @property
+    def project_tasks_completed(self):
+        """
+        Whether project tasks completed or not (None if no project tasks at all)
+        """
+        return Task.special_tasks_completed({'project_id': str(self.pk)})
+
+
+class UploadSession(models.Model):
+    """
+    UploadSession object to store info about uploading project documents.
+    """
+
+    # Unique id
+    uid = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+
+    # Project
+    project = models.ForeignKey(Project, db_index=True)
+
+    created_date = models.DateTimeField(auto_now_add=True, db_index=True)
+
+    created_by = models.ForeignKey(
+        User, related_name="created_%(class)s_set", null=True, blank=True, db_index=True)
+
+    completed = models.BooleanField(default=False, db_index=True)
+
+    class Meta(object):
+        ordering = ['project_id', 'created_date']
+
+    def __str__(self):
+        """"
+        String representation
+        """
+        return "Upload Session (pk={0}, project_id={1})" \
+            .format(self.pk, self.project.pk)
+
+    @property
+    def session_tasks(self):
+        """
+        Get tasks related with session
+        """
+        return Task.special_tasks({'session_id': str(self.pk)})
+
+    @property
+    def document_progress_data(self):
+        """
+        Progress per document per task
+        """
+        return [{'file_name': i.metadata['file_name'],
+                 'task_name': i.name,
+                 'task_progress': 100 if i.status == 'SUCCESS' else 0}
+                for i in self.session_tasks if i.metadata.get('file_name')]
+
+    @property
+    def document_tasks_progress(self):
+        """
+        Progress per document
+        """
+        result = {}
+        tasks_number = 3 if self.project.type else 2
+        for file_name, task_progress_data in itertools.groupby(
+                sorted(self.document_progress_data, key=lambda i: i['file_name']),
+                key=lambda i: i['file_name']):
+            document_progress = round(
+                sum([int(i['task_progress'])
+                     for i in task_progress_data][:tasks_number]) / tasks_number, 2)
+            result[file_name] = document_progress
+        return result
+
+    @property
+    def document_tasks_progress_total(self):
+        """
+        Total Progress of custom document tasks
+        """
+        _p = list(self.document_tasks_progress.values())
+        return round(sum(_p) / float(len(_p)), 2) if _p else 0
+
+    @property
+    def status(self):
+        """
+        Get session status - one of 'Parsed', 'Parsing'
+        set 'completed'
+        """
+        # no tasks started / no files processed
+        if not self.session_tasks.exists():
+            status = None
+        else:
+            document_tasks_completed = self.document_tasks_progress_total == 100
+            status = 'Parsed' if document_tasks_completed else 'Parsing'
+            if status == 'Parsed':
+                self.completed = True
+            self.save()
+        return status
+
+
+@receiver(models.signals.post_save, sender=UploadSession)
+def save_upload(sender, instance, created, **kwargs):
+    """
+    Store created_by from request
+    """
+    if hasattr(instance, 'request_user'):
+        models.signals.post_save.disconnect(save_upload, sender=sender)
+        if created:
+            instance.created_by = instance.request_user
+        instance.save()
+        models.signals.post_save.connect(save_upload, sender=sender)
+
+
+class ProjectClustering(models.Model):
+
+    project = models.ForeignKey(Project)
+
+    document_clusters = models.ManyToManyField('analyze.DocumentCluster', blank=True)
+
+    task = models.ForeignKey('task.Task', blank=True, null=True)
+
+    metadata = JSONField(default={}, blank=True, null=True)
+
+    created_date = models.DateTimeField(auto_now_add=True, db_index=True)
+
+    def __str__(self):
+        """"
+        String representation
+        """
+        return "Project Clustering (pk={0}, project_id={1})" \
+            .format(self.pk, self.project.pk)
+
+    @property
+    def completed(self):
+        if self.task:
+            return self.task.progress == 100
+        return None

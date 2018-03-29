@@ -37,9 +37,10 @@ from apps.analyze.models import *
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
 __license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.0.5/LICENSE"
-__version__ = "1.0.7"
+__version__ = "1.0.8"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
+
 
 # --------------------------------------------------------
 # TextUnitClassification Views
@@ -158,9 +159,17 @@ class TextUnitClassifierSuggestionViewSet(JqMixin, viewsets.ModelViewSet):
 # DocumentCluster Views
 # --------------------------------------------------------
 
+
+class DocumentSerializer(SimpleRelationSerializer):
+    class Meta:
+        model = Document
+        fields = ['pk', 'name', 'document_type']
+
+
 class DocumentClusterSerializer(SimpleRelationSerializer):
     documents_count = serializers.SerializerMethodField()
-    document_data = serializers.SerializerMethodField()
+    document_data = DocumentSerializer(
+        source='documents', many=True, read_only=True)
 
     class Meta:
         model = DocumentCluster
@@ -170,14 +179,6 @@ class DocumentClusterSerializer(SimpleRelationSerializer):
 
     def get_documents_count(self, obj):
         return obj.documents.count()
-
-    def get_document_data(self, obj):
-        request = self.context['request']
-        documents = obj.documents
-        if request.user.is_reviewer:
-            documents = documents.filter(taskqueue__reviewers=request.user)
-        documents = documents.values('pk', 'name', 'description', 'document_type')
-        return list(documents)
 
 
 class DocumentClusterListAPIView(JqListAPIView):

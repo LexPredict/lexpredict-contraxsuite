@@ -26,9 +26,10 @@
 
 import io
 import json
-# Standard imports
 import traceback
 from tempfile import NamedTemporaryFile
+# Standard imports
+from typing import Set
 
 import numpy as np
 import pandas as pd
@@ -45,6 +46,7 @@ from rest_framework import serializers, routers, viewsets, status
 from rest_framework.generics import ListAPIView
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from rest_framework_nested import routers as nested_routers
 
 # Project imports
 from apps.analyze.models import *
@@ -56,15 +58,14 @@ from apps.document.models import (
     DocumentField, DocumentType, DocumentFieldValue, DocumentFieldDetector,
     DocumentProperty, DocumentNote, DocumentTag, DocumentRelation,
     TextUnitProperty, TextUnitNote, TextUnitTag)
+from apps.document.tasks import TrainDocumentFieldDetectorModel
 from apps.extract.models import *
-from apps.project.models import *
 from apps.users.models import User
-from rest_framework_nested import routers as nested_routers
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
 __license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.0.5/LICENSE"
-__version__ = "1.0.7"
+__version__ = "1.0.8"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -79,13 +80,14 @@ class DocumentSerializer(SimpleRelationSerializer):
         read_only=True)
     relations = serializers.SerializerMethodField()
     text_units = serializers.SerializerMethodField()
-    field_values = serializers.SerializerMethodField()
+
+    # field_values = serializers.SerializerMethodField()
 
     class Meta:
         model = Document
         fields = ['pk', 'name', 'document_type',
                   'description', 'title',
-                  'properties', 'relations', 'text_units', 'field_values']
+                  'properties', 'relations', 'text_units']
 
     def get_relations(self, obj):
         return obj.document_a_set.distinct().count() + obj.document_b_set.distinct().count()
@@ -145,72 +147,132 @@ class DocumentViewSet(JqMixin, viewsets.ReadOnlyModelViewSet):
 
 
 class DocumentWithFieldsListAPI(viewsets.ViewSet):
-    def _prepare_documents(self, document_type, fields, field_values_query):
-        field_ids = [field.uid for field in fields]
-
-        field_values_query = field_values_query \
-            .filter(field_id__in=field_ids) \
-            .filter(value__isnull=False) \
-            .values_list('document__id',
-                         'document__name',
-                         'document__description',
-                         'document__title',
-                         'field_id',
-                         'value')
-        documents_by_id = {}
-        for document_id, \
-            document_name, \
-            document_description, \
-            document_title, \
-            field_id, \
-            value in field_values_query:
-            field_id = str(field_id)
-
-            doc = documents_by_id.get(document_id)
-            if doc is None:
-                doc = {
-                    'pk': document_id,
-                    'document_type': document_type.uid,
-                    'name': document_name,
-                    'title': document_title,
-                    'description': document_description,
-                    'field_values': {}
-                }
-                documents_by_id[document_id] = doc
-            fields = doc['field_values']
-            fv = fields.get(field_id)
-            if fv is None:
-                fv = value
-            elif type(fv) is list:
-                if value not in fv:
-                    fv.append(value)
-            elif fv != value:
-                fv = [fv, value]
-            fields[field_id] = fv
-
-        return documents_by_id.values()
-
     def list(self, request, document_type_pk):
         document_type = DocumentType.objects.get(pk=document_type_pk)
-        fields = document_type.search_fields.all()
+
+        search_fields_by_uid = dict()
+
+        calculated_search_fields = set()
+        non_calculated_search_field_ids = set()
+        depends_on_field_ids = set()
+        depends_on_fields = set()
+
+        for f in document_type.search_fields.all():
+            search_fields_by_uid[str(f.uid)] = f
+            if f.is_calculated():
+                calculated_search_fields.add(f)
+                for df in f.depends_on_fields.all():
+                    depends_on_field_ids.add(df.uid)
+                    depends_on_fields.add(df)
+            else:
+                non_calculated_search_field_ids.add(f.uid)
+
+        documents_by_id = {}
+
+        document_query = Document.objects \
+            .filter(document_type_id=document_type_pk)
+
+        for pk, name, description, title in document_query \
+                .values_list('id', 'name', 'description', 'title'):
+            doc_dict = {
+                'pk': pk,
+                'document_type': document_type_pk,
+                'name': name,
+                'description': description,
+                'title': title,
+                'field_values': {}
+            }
+            documents_by_id[pk] = doc_dict
 
         field_values_query = DocumentFieldValue.objects \
-            .filter(document__document_type_id=document_type_pk)
+            .filter(document__document_type_id=document_type_pk) \
+            .filter(field_id__in=non_calculated_search_field_ids.union(depends_on_field_ids)) \
+            .filter(value__isnull=False)
 
-        documents = list(self._prepare_documents(document_type, fields, field_values_query))
+        for document_id, field_id, value in field_values_query \
+                .values_list('document__id', 'field_id', 'value'):
+            field_id = str(field_id)
+            field = search_fields_by_uid.get(field_id)
 
-        return JsonResponse(documents, safe=False)
+            if not field:
+                continue
+
+            field_type = FIELD_TYPES_REGISTRY[field.type]
+
+            doc = documents_by_id.get(document_id)
+            if not doc:
+                continue
+
+            fields = doc['field_values']
+
+            if field_type.multi_value:
+                values = fields.get(field_id)
+                if values is None:
+                    fields[field_id] = [value]
+                elif value not in values:
+                    values.append(value)
+            else:
+                fields[field_id] = value
+
+        for doc_dict in documents_by_id.values():
+            field_values = doc_dict['field_values']
+            depends_on_field_to_value = {f: field_values.get(str(f.uid)) for f in depends_on_fields}
+
+            for field in calculated_search_fields:
+                field_values[str(field.uid)] = field.calculate(depends_on_field_to_value)
+
+            doc_dict['field_values'] = {str(uid): value for uid, value in field_values.items() if
+                                        str(uid) in search_fields_by_uid}
+
+        return JsonResponse(list(documents_by_id.values()), safe=False)
 
     def retrieve(self, request, pk, document_type_pk):
         doc = Document.objects.get(pk=pk)
-        document_type = doc.document_type
-        fields = document_type.fields.all()
-        field_values_query = DocumentFieldValue.objects \
-            .filter(document_id=pk)
-        documents = list(self._prepare_documents(document_type, fields, field_values_query))
-        document = documents[0]
-        document['full_text'] = doc.full_text
-        return JsonResponse(document)
+        field_value_objects = dict()
+        field_values = dict()
+        doc_dict = {
+            'pk': doc.id,
+            'document_type': document_type_pk,
+            'name': doc.name,
+            'description': doc.description,
+            'title': doc.title,
+            'field_values': field_values,
+            'field_value_objects': field_value_objects,
+            'full_text': doc.full_text
+        }
+
+        fields_to_values = {}
+
+        for fv in DocumentFieldValue.objects.filter(document=doc):
+            serialized_fv = DocumentFieldValueSerializer(fv).data
+            field = fv.field
+            field_uid = str(field.uid)
+            field_type = FIELD_TYPES_REGISTRY[fv.field.type]
+            if field_type.multi_value:
+                if field_value_objects.get(field_uid) is None:
+                    field_value_objects[field_uid] = [serialized_fv]
+                    fields_to_values[field] = [serialized_fv.get('value')]
+                else:
+                    field_value_objects[field_uid].append(serialized_fv)
+                    if fv.value not in fields_to_values[field]:
+                        fields_to_values[field].append(serialized_fv.get('value'))
+            else:
+                field_value_objects[field_uid] = serialized_fv
+                fields_to_values[field] = serialized_fv.get('value')
+
+        all_fields = list(doc.document_type.fields.all())
+        for f in all_fields:
+            if f not in fields_to_values:
+                fields_to_values[f] = None
+
+        for f in all_fields:
+            if f.is_calculated():
+                value = f.calculate(fields_to_values)
+            else:
+                value = fields_to_values.get(f)
+            field_values[str(f.uid)] = value
+
+        return JsonResponse(doc_dict)
 
 
 class DocumentSentimentChartAPIView(ListAPIView):
@@ -690,14 +752,14 @@ class TypeaheadDocumentProperty(TypeaheadAPIView):
 class DocumentFieldDetailSerializer(SimpleRelationSerializer):
     class Meta:
         model = DocumentField
-        fields = ['uid', 'code', 'title', 'type', 'item_number', 'choices',
+        fields = ['uid', 'code', 'title', 'type', 'choices',
                   'modified_by__username', 'modified_date']
 
 
 class DocumentFieldCreateSerializer(serializers.ModelSerializer):
     class Meta:
         model = DocumentField
-        fields = ['uid', 'code', 'title', 'type', 'item_number', 'choices']
+        fields = ['uid', 'code', 'title', 'type', 'choices']
 
 
 class DocumentFieldViewSet(JqMixin, viewsets.ModelViewSet):
@@ -762,9 +824,7 @@ class DocumentTypeViewSet(JqMixin, viewsets.ModelViewSet):
     queryset = DocumentType.objects.all()
 
     def get_serializer_class(self):
-        if self.action in 'create':
-            return DocumentTypeCreateSerializer
-        if self.action == 'update':
+        if self.action in ('create', 'update', 'partial_update'):
             return DocumentTypeCreateSerializer
         return DocumentTypeDetailSerializer
 
@@ -772,6 +832,12 @@ class DocumentTypeViewSet(JqMixin, viewsets.ModelViewSet):
 # --------------------------------------------------------
 # Document Field Value Views
 # --------------------------------------------------------
+
+def _trigger_retraining(document_type_uid, field_uid):
+    if settings.FIELDS_RETRAIN_MODEL_ON_ANNOTATIONS_CHANGE:
+        TrainDocumentFieldDetectorModel.train_model_for_field.apply_async(
+            args=(document_type_uid, field_uid, None, None, True))
+
 
 class DocumentFieldValueSerializer(serializers.ModelSerializer):
     adapter = None
@@ -791,27 +857,32 @@ class DocumentFieldValueSerializer(serializers.ModelSerializer):
         return super().save(**kwargs)
 
     def create(self, validated_data):
-        return self.adapter.save_value(validated_data['document'],
-                                       validated_data['field'],
-                                       validated_data['location_start'],
-                                       validated_data['location_end'],
-                                       validated_data['location_text'],
-                                       validated_data['value'],
-                                       self.context['request'].user,
-                                       True)
+        document = validated_data['document']
+        location_start = validated_data['location_start']
+        location_end = validated_data['location_end']
+        field = validated_data['field']
+        sentence_text_unit = TextUnit.objects.filter(document=document,
+                                                     unit_type='sentence',
+                                                     location_start__lte=location_end,
+                                                     location_end__gte=location_start).first()
+        res = self.adapter.save_value(document,
+                                      field,
+                                      location_start,
+                                      location_end,
+                                      validated_data['location_text'],
+                                      sentence_text_unit,
+                                      validated_data['value'],
+                                      self.context['request'].user,
+                                      True)
 
-    def update(self, field_value, validated_data):
-        return self.adapter.update(field_value,
-                                   validated_data['document'],
-                                   validated_data['field'],
-                                   validated_data['location_start'],
-                                   validated_data['location_end'],
-                                   validated_data['location_text'],
-                                   validated_data['value'],
-                                   self.context['request'].user)
+        _trigger_retraining(document.document_type_id, field.uid)
 
-    def delete(self, instance, validated_data):
-        return self.adapter.delete(instance)
+        return res
+
+    def delete(self, instance: DocumentFieldValue, validated_data):
+        res = self.adapter.delete(instance)
+        _trigger_retraining(instance.document.document_type_id, instance.field_id)
+        return res
 
 
 class DocumentFieldValueViewSet(JqMixin, viewsets.ModelViewSet):
@@ -856,6 +927,7 @@ class DocumentFieldValueViewSet(JqMixin, viewsets.ModelViewSet):
         instance = self.get_object()
         adapter = FIELD_TYPES_REGISTRY.get(instance.field.type)
         adapter.delete(instance)
+        _trigger_retraining(instance.document.document_type_id, instance.field_id)
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
@@ -1192,6 +1264,68 @@ class DumpDocumentTypeConfigView(APIView):
                                 status=400)
 
 
+class DocumentWithFieldsSerializer(SimpleRelationSerializer):
+    field_values = serializers.SerializerMethodField()
+    document_type = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Document
+        fields = ['pk', 'name', 'description', 'title', 'full_text', 'document_type',
+                  'field_values']
+
+    def get_document_type(self, obj):
+        uuid = obj.get('document_type')
+        return str(uuid) if uuid else None
+
+    def _build_field_value_dict(self, field_values: Set[DocumentFieldValue]):
+        if not field_values:
+            return None
+        res = dict()
+
+        for field_value in field_values:
+            value = field_value.value
+            field_id = field_value.field_id
+            existing = res.get(field_id)
+            if not existing:
+                res[field_id] = value
+            elif type(existing) is list:
+                if value not in existing:
+                    existing.append(value)
+            elif existing != value:
+                res[field_id] = [existing, value]
+        return res
+
+    def get_field_values(self, obj):
+        field_value_objects = obj.get('documentfieldvalue_set')
+        return self._build_field_value_dict(field_value_objects)
+
+
+class DocumentWithFieldsViewSet(JqMixin, viewsets.ReadOnlyModelViewSet):
+    """
+    list: Document With FieldVales List\n
+    retrieve: Document With FieldVales Detail
+    """
+    queryset = Document.objects.all()
+    serializer_class = DocumentWithFieldsSerializer
+
+    def get_queryset(self):
+        document_type = DocumentType.objects.get(pk=self.kwargs.get('document_type_pk'))
+        search_fields = document_type.search_fields.all()
+        search_field_ids = [f.uid for f in search_fields]
+        columns = ('pk', 'name', 'document_type', 'description', 'title', 'documentfieldvalue') \
+            if self.action == 'list' \
+            else (
+            'pk', 'name', 'document_type', 'description', 'title', 'full_text',
+            'documentfieldvalue')
+
+        qs = super().get_queryset() \
+            .prefetch_related('documentfieldvalue_set') \
+            .filter(document_type=document_type) \
+            .filter(documentfieldvalue__field_id__in=search_field_ids) \
+            .values(*columns)
+        return qs
+
+
 main_router = routers.DefaultRouter()
 main_router.register(r'documents', DocumentViewSet, 'document')
 main_router.register(r'document-fields', DocumentFieldViewSet, 'document-field')
@@ -1212,8 +1346,9 @@ document_type_router = routers.SimpleRouter()
 document_type_router.register(r'document-types', DocumentTypeViewSet, 'document-types')
 
 document_router = nested_routers.NestedSimpleRouter(document_type_router, r'document-types',
-                                                    lookup='document_type', trailing_slash=False)
+                                                    lookup='document_type', trailing_slash=True)
 document_router.register(r'documents', DocumentWithFieldsListAPI, 'documents')
+document_router.register(r'documents2', DocumentWithFieldsViewSet, 'documents')
 
 api_routers = [main_router, document_type_router, document_router]
 

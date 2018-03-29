@@ -57,7 +57,7 @@ from apps.common.utils import cap_words, export_qs_to_file
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
 __license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.0.5/LICENSE"
-__version__ = "1.0.7"
+__version__ = "1.0.8"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -564,7 +564,7 @@ class JqFilterBackend(BaseFilterBackend):
         jq_view = JqPaginatedListView(request=request)
         if 'enable_pagination' in request.GET and 'pagenum' in request.GET:
             queryset = jq_view.paginate(queryset)
-        if 'sortfield' in request.GET or 'filterscount' in request.GET:
+        if 'sortdatafield' in request.GET or 'filterscount' in request.GET:
             queryset = jq_view.filter_and_sort(queryset)
         return queryset
 

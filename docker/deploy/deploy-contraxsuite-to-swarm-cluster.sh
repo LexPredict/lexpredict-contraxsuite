@@ -5,7 +5,7 @@ pushd ../
 
 source setenv.sh
 
-VOLUME=/var/lib/docker/volumes/contraxsuite_contraxsuite_third_party_dependencies/_data/
+VOLUME=${DOCKER_VOLUME_DIR}/contraxsuite_contraxsuite_third_party_dependencies/_data/
 sudo mkdir -p ${VOLUME}
 sudo cp ${DOCKER_DJANGO_THEME_ARCHIVE} ${VOLUME}
 sudo cp ${DOCKER_DJANGO_JQWIDGETS_ARCHIVE} ${VOLUME}

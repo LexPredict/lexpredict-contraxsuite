@@ -53,7 +53,7 @@ from apps.task.tasks import call_task, clean_tasks, purge_task
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
 __license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.0.5/LICENSE"
-__version__ = "1.0.7"
+__version__ = "1.0.8"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -412,7 +412,7 @@ class TaskListView(AdminRequiredMixin, JqPaginatedListView):
             item['has_error'] = task.has_error
             item['purge_url'] = reverse('task:purge-task')
             if item['metadata']:
-                metadata = json.loads(item['metadata'])
+                metadata = item['metadata']
                 item['description'] = metadata.get('description')
                 result_links = metadata.get('result_links', [])
                 for link_data in result_links:

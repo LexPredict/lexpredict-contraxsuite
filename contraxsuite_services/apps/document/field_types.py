@@ -26,51 +26,162 @@
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
 __license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.0.5/LICENSE"
-__version__ = "1.0.7"
+__version__ = "1.0.8"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
-from enum import Enum, unique
-from typing import List, Union
 from datetime import datetime, date
+from enum import Enum, unique
+from random import randint, random
+from typing import List, Union, Tuple
 
 import geocoder
+import pyap
+from lexnlp.extract.en.amounts import get_amounts
 from lexnlp.extract.en.dates import get_dates_list
 from lexnlp.extract.en.durations import get_durations
-from lexnlp.extract.en.amounts import get_amounts
 from lexnlp.extract.en.entities.nltk_maxent import get_companies, get_persons
+from lexnlp.extract.en.money import get_money
 
 from apps.document import models
-from apps.document.parsing import extractors
+from apps.document.parsing.machine_learning import ModelCategory
 
 
 @unique
 class ValueExtractionHint(Enum):
-    TAKE_FIRST = "first"
-    TAKE_SECOND = "second"
-    TAKE_LAST = "last"
+    TAKE_FIRST = "TAKE_FIRST"
+    TAKE_SECOND = "TAKE_SECOND"
+    TAKE_LAST = "TAKE_LAST"
 
     @staticmethod
-    def get_value(l: List, hint):
+    def get_value(l: Union[None, List], hint):
         if not l:
             return None
 
-        if hint == ValueExtractionHint.TAKE_LAST:
+        if str(hint) == ValueExtractionHint.TAKE_LAST.name:
             return l[-1]
-        elif hint == ValueExtractionHint.TAKE_SECOND and len(l) > 1:
+        elif str(hint) == ValueExtractionHint.TAKE_SECOND.name and len(l) > 1:
             return l[1]
-        else:
+        elif str(hint) == ValueExtractionHint.TAKE_FIRST.name and len(l) > 0:
             return l[0]
+        else:
+            return None
 
 
 class FieldType:
     code = ''
     title = ''
+
+    # Does this field support storing multiple DocumentFieldValue objects per document+field
     multi_value = False
+
+    # Should this field store some value or only mark piece of text as related to this field
     value_aware = False
 
-    def extraction_function(self, field, possible_value, text):
+    # Does this field support extracting concrete value from sentence
+    # or it only allows pre-assigned values.
+    # (for value_aware fields)
+    value_extracting = False
+
+    default_hint = ValueExtractionHint.TAKE_FIRST.name
+
+    def json_value_to_python(self, json_value):
+        return json_value
+
+    def python_value_to_json(self, python_value):
+        return python_value
+
+    def _extract_variants_from_text(self, field, text: str):
+        return None
+
+    def _extract_from_possible_value(self, field, possible_value):
         return possible_value
+
+    def _pick_hint_for_text_using_matching_extractors(self, document, field, text: str):
+        if not self.value_extracting:
+            return None
+
+        classifier = document.document_type.get_classifier()
+
+        # Try detecting hint with trained model.
+        # Detect all category names of this sentence,
+        # find the first category related to this field and use its hint.
+        if classifier:
+            category_names = classifier.detect_category_names_for_sentence(text)
+            for category_name in category_names:
+                category = ModelCategory.from_name(category_name)
+                if str(field.uid) == category.document_field_uid:
+                    return category.choice_or_hint
+
+        # If there is no classifier or classifier didnt detect this field for this sentence
+        # then try detecting with regexp field detectors (if any).
+        detectors = field.field_detectors.all()
+        if not detectors:
+            return self.default_hint
+
+        for detector in detectors:
+            if detector.matches(text):
+                return detector.extraction_hint
+
+        return self.default_hint
+
+    def _pick_hint_by_searching_for_value_among_extracted(self, field, text: str, value):
+        if not self.value_extracting:
+            return None
+
+        if value is None:
+            return self.default_hint
+
+        extracted = self._extract_variants_from_text(field, text)
+
+        if not extracted:
+            return self.default_hint
+
+        for hint in ValueExtractionHint:
+            if value == ValueExtractionHint.get_value(extracted, hint):
+                return hint.name
+
+        return self.default_hint
+
+    def get_or_extract_value(self, document, field, possible_value, possible_hint, text) -> Tuple:
+        if possible_value is None and not text:
+            return None, None
+
+        # If we have some value provided - try using it and picking hint for it
+        # by simply finding this value in all values extracted from this text
+        if possible_value is not None:
+            value = self._extract_from_possible_value(field, possible_value)
+
+            if value is not None:
+                if self.value_extracting:
+                    hint = possible_hint or self \
+                        ._pick_hint_by_searching_for_value_among_extracted(field,
+                                                                           text,
+                                                                           value)
+                else:
+                    hint = None
+                return value, hint
+
+        # If we were unsuccessfull in using the provided possible value - try to extract it from
+        # string representation of the provided possible value or from the full provided text
+
+        text = str(possible_value) if possible_value else text
+
+        extracted = self._extract_variants_from_text(field, text)
+
+        if not extracted:
+            return None, None
+
+        # We need to figure out which one of the extracted values to use.
+        # For this we pick hint by finding it via trained model or field value extractors.
+        if self.value_extracting:
+            hint = possible_hint or self._pick_hint_for_text_using_matching_extractors(document,
+                                                                                       field,
+                                                                                       text)
+        else:
+            hint = None
+
+        return ValueExtractionHint.get_value(extracted, hint), hint
 
     def save_value(self,
                    document,
@@ -78,35 +189,51 @@ class FieldType:
                    location_start: int,
                    location_end: int,
                    location_text: str,
+                   sentence_text_unit,
                    value=None,
                    user=None,
-                   allow_overwriting_user_data=True):
+                   allow_overwriting_user_data=True,
+                   extraction_hint=None):
         """
         Saves a new value to the field. Depending on the field type it should either
         rewrite existing DocumentFieldValues or add new ones.
         """
-        field_values = list(
-            models.DocumentFieldValue.objects.filter(document=document, field=field))
+        if field.is_calculated():
+            return None
 
         if self.multi_value:
-            value = self.extraction_function(field, value, location_text)
+            value, hint = self.get_or_extract_value(document, field, value, extraction_hint,
+                                                    location_text)
 
-            for field_value in field_values:
-                if field_value.value == value \
-                        and field_value.location_start == location_start \
-                        and field_value.location_end == location_end:
-                    return field_value
+            q = models.DocumentFieldValue.objects.filter(document=document,
+                                                         field=field,
+                                                         location_start=location_start,
+                                                         location_end=location_end)
+            q = q.filter(value__isnull=True) if value is None else q.filter(value=value)
+
+            field_value = q.first()
+
+            if field_value:
+                return field_value
+
             field_value = models.DocumentFieldValue()
-            return self.update(field_value, document, field, location_start, location_end,
-                               location_text,
-                               value, user)
+            return self._update(field_value, document, field, location_start, location_end,
+                                location_text, sentence_text_unit,
+                                value,
+                                hint,
+                                user)
         else:
-            # For single-value fields - either update the existing value or create a new one
-            field_value = field_values[0] if len(field_values) > 0 else models.DocumentFieldValue()
+            q = models.DocumentFieldValue.objects.filter(document=document,
+                                                         field=field)
+            field_value = q.first()
 
-            # Just ensure we don't have some mistakenly added multiple values
-            for fv in field_values[1:]:
-                fv.delete()
+            if field_value:
+                models.DocumentFieldValue.objects \
+                    .filter(document=document, field=field) \
+                    .exclude(pk=field_value.pk) \
+                    .delete()
+            else:
+                field_value = models.DocumentFieldValue()
 
             # This will work only for existing field values having filled created_by or modified_by.
             if not allow_overwriting_user_data \
@@ -114,23 +241,27 @@ class FieldType:
                          or field_value.modified_by is not None):
                 return field_value
             else:
-                return self.update(field_value, document, field, location_start, location_end,
-                                   location_text,
-                                   value, user)
+                value, hint = self.get_or_extract_value(document, field, value, extraction_hint,
+                                                        location_text)
+                return self._update(field_value, document, field, location_start, location_end,
+                                    location_text, sentence_text_unit,
+                                    value, hint, user)
 
-    def update(self, field_value, document, field,
-               location_start: int, location_end: int, location_text: str, value=None, user=None):
+    def _update(self, field_value, document, field,
+                location_start: int, location_end: int, location_text: str, sentence_text_unit,
+                value=None, hint=None,
+                user=None):
         """
         Updates existing field value with the new data.
         """
-        value = self.extraction_function(field, value, location_text)
-
         field_value.document = document
         field_value.field = field
         field_value.location_start = location_start
         field_value.location_end = location_end
         field_value.location_text = location_text
+        field_value.sentence = sentence_text_unit
         field_value.value = value
+        field_value.extraction_hint = hint
         field_value.created_by = field_value.created_by or user
         field_value.modified_by = user
         field_value.created_date = field_value.created_date or datetime.now()
@@ -147,23 +278,38 @@ class FieldType:
     def value_to_string(self, field_value):
         return str(field_value.value)
 
+    def example_json_value(self, field):
+        return None
+
 
 class StringField(FieldType):
     code = 'str'
     title = 'String'
     value_aware = True
+    value_extracting = False
+
+    def example_json_value(self, field):
+        return "example_string"
 
 
 class ChoiceField(FieldType):
     code = 'choice'
     title = 'Choice'
     value_aware = True
+    value_extracting = False
 
-    def extraction_function(self, field, possible_value, text):
-        if possible_value is not None and possible_value in field.get_choice_values():
+    def _extract_from_possible_value(self, field, possible_value):
+        if possible_value in field.get_choice_values():
             return possible_value
         else:
             return None
+
+    def _extract_variants_from_text(self, field, text: str):
+        return None
+
+    def example_json_value(self, field):
+        choice_values = field.get_choice_values()
+        return choice_values[randint(0, len(choice_values) - 1)] if choice_values else None
 
 
 class MultiChoiceField(ChoiceField):
@@ -171,73 +317,107 @@ class MultiChoiceField(ChoiceField):
     title = 'Multi Choice'
     multi_value = True
     value_aware = True
+    value_extracting = False
+
+    def example_json_value(self, field):
+        choice_values = field.get_choice_values()
+        if not choice_values:
+            return None
+        res = set()
+        for i in range(randint(0, len(choice_values))):
+            res.add(choice_values[randint(0, len(choice_values) - 1)])
+        return res
 
 
 class DateField(FieldType):
     code = 'date'
-    title = 'String'
+    title = 'Date'
     value_aware = True
+    value_extracting = True
 
-    def extraction_function(self, field, possible_value, text):
-        if isinstance(possible_value, datetime) or isinstance(possible_value, date):
+    def _extract_from_possible_value(self, field, possible_value):
+        if isinstance(possible_value, datetime):
+            return possible_value.date()
+        elif isinstance(possible_value, date):
             return possible_value
-
-        if not possible_value and not text:
+        else:
             return None
 
-        possible_value = str(possible_value) if possible_value else text
+    def _extract_variants_from_text(self, field, text: str):
+        return get_dates_list(text)
 
-        dates = get_dates_list(possible_value)
-        return ValueExtractionHint.get_value(dates, field.item_number) if dates else None
+    def example_json_value(self, field):
+        return self.python_value_to_json(date.today())
+
+    def json_value_to_python(self, json_value):
+        if not json_value:
+            return None
+        return datetime.strptime(json_value, '%Y-%m-%d').date()
+
+    def python_value_to_json(self, python_value):
+        if not python_value:
+            return None
+        return datetime.strftime(python_value, '%Y-%m-%d')
 
 
 class FloatField(FieldType):
     code = 'float'
     title = 'Floating Point Number'
     value_aware = True
+    value_extracting = True
 
-    def extraction_function(self, field, possible_value, text):
-        if possible_value is None and not text:
-            return None
+    def _extract_from_possible_value(self, field, possible_value):
         try:
             return float(possible_value)
-        except:
-            possible_value = str(possible_value) if possible_value else text
-            floats = list(extractors.find_numbers(possible_value))
-            return ValueExtractionHint.get_value(floats, field.item_number) if floats else None
+        except ValueError:
+            return None
+
+    def _extract_variants_from_text(self, field, text: str):
+        amounts = get_amounts(text, return_sources=False)
+        return list(amounts) if amounts else None
+
+    def example_json_value(self, field):
+        return random() * 1000
 
 
 class IntField(FieldType):
     code = 'int'
     title = 'Integer Number'
     value_aware = True
+    value_extracting = True
 
-    def extraction_function(self, field, possible_value, text):
-        if possible_value is None and not text:
-            return None
+    def _extract_from_possible_value(self, field, possible_value):
         try:
             return int(possible_value)
-        except:
-            possible_value = str(possible_value) if possible_value else text
-            floats = list(extractors.find_numbers(possible_value))
-            return ValueExtractionHint.get_value(floats, field.item_number) if floats else None
+        except ValueError:
+            return None
+
+    def _extract_variants_from_text(self, field, text: str):
+        amounts = get_amounts(text, return_sources=False)
+        if not amounts:
+            return None
+        amounts = [n for n in amounts if n.is_integer()]
+        return amounts or None
+
+    def example_json_value(self, field):
+        return randint(0, 1000)
 
 
 class AddressField(FieldType):
     code = 'address'
     title = 'Address'
     value_aware = True
+    value_extracting = True
 
-    def extraction_function(self, field, possible_value, text):
-        if possible_value is None and not text:
+    def _extract_from_possible_value(self, field, possible_value):
+        if not possible_value:
             return None
 
-        if possible_value and type(possible_value) is dict:
+        if type(possible_value) is dict:
             address = possible_value.get('address')
-        elif possible_value and type(possible_value) is str:
-            address = possible_value
         else:
-            address = text
+            addresses = pyap.parse(str(possible_value), country='US')
+            address = addresses[0] if addresses else str(possible_value)
 
         g = geocoder.google(address)
         if g.ok:
@@ -251,61 +431,81 @@ class AddressField(FieldType):
             }
         else:
             # Google does not know such address - probably we detected it wrong.
-            return {
-                'address': address,
-                'latitude': None,
-                'longitude': None,
-                'country': None,
-                'province': None,
-                'city': None
-            }
+            # return {
+            #    'address': address,
+            #    'latitude': None,
+            #    'longitude': None,
+            #    'country': None,
+            #    'province': None,
+            #    'city': None
+            # }
+            # For the addresses we can't detect - return None to allow further scanning
+            return None
+
+    def _extract_variants_from_text(self, field, text: str):
+        return [self._extract_from_possible_value(field, str(addr)) for addr in
+                pyap.parse(text, country='US')]
 
     def value_to_string(self, field_value):
         if not field_value:
             return None
         return field_value.value['address']
 
+    def example_json_value(self, field):
+        return {
+            'address': 'Some address',
+            'latitude': None,
+            'longitude': None,
+            'country': None,
+            'province': None,
+            'city': None
+        }
+
 
 class CompanyField(FieldType):
     code = 'company'
     title = 'Company'
     value_aware = True
+    value_extracting = True
 
-    def extraction_function(self, field, possible_value, text):
+    def _extract_from_possible_value(self, field, possible_value):
         if possible_value:
-            return possible_value
-
-        if possible_value is None and not text:
-            return None
-
-        companies = list(
-            get_companies(text, detail_type=True, name_upper=True, strict=True))
-
-        company = ValueExtractionHint.get_value(companies, field.item_number)
-
-        if company:
-            return '{0}{1}'.format(company[0].upper(),
-                                   (' ' + company[1].upper()) if company[1] is not None else '')
+            return str(possible_value)
         else:
             return None
+
+    def _extract_variants_from_text(self, field, text: str):
+        companies = list(get_companies(text, detail_type=True, name_upper=True, strict=True))
+        if not companies:
+            return None
+        return ['{0}{1}'.format(company[0].upper(),
+                                (' ' + company[1].upper()) if company[1] is not None else '')
+                for company in companies]
+
+    def example_json_value(self, field):
+        return 'SOME COMPANY LLC'
 
 
 class DurationField(FieldType):
     code = 'duration'
     title = 'Duration'
     value_aware = True
+    value_extracting = True
 
-    def extraction_function(self, field, possible_value, text):
-        if possible_value is None and not text:
+    def _extract_from_possible_value(self, field, possible_value):
+        try:
+            return float(possible_value)
+        except ValueError:
             return None
 
-        if possible_value and type(possible_value) is tuple and len(possible_value) == 3:
-            return possible_value
+    def _extract_variants_from_text(self, field, text: str):
+        durations = get_durations(text)
+        if not durations:
+            return None
+        return [duration[2] for duration in durations]
 
-        possible_value = str(possible_value) if possible_value else text
-        durations = list(get_durations(possible_value))
-        duration = ValueExtractionHint.get_value(durations, field.item_number)
-        return duration
+    def example_json_value(self, field):
+        return random() * 365 * 5
 
 
 class RelatedInfoField(FieldType):
@@ -313,38 +513,88 @@ class RelatedInfoField(FieldType):
     title = 'Related Info'
     multi_value = True
     value_aware = False
+    value_extracting = False
 
 
 class PersonField(FieldType):
     code = 'person'
     title = 'Person'
     value_aware = True
+    value_extracting = True
 
-    def extraction_function(self, field, possible_value, text):
+    def _extract_from_possible_value(self, field, possible_value):
         if possible_value:
-            return possible_value
+            return str(possible_value)
+        else:
+            return None
 
-        persons = list(get_persons(text, return_source=False))
+    def _extract_variants_from_text(self, field, text: str):
+        persons = get_persons(text, return_source=False)
+        return list(persons) if persons else None
 
-        person = ValueExtractionHint.get_value(persons, field.item_number)
+    def example_json_value(self, field):
+        return 'John Doe'
 
-        return person
 
-
-class AmountField(FieldType):
+class AmountField(FloatField):
     code = 'amount'
     title = 'Amount'
     value_aware = True
+    value_extracting = True
 
-    def extraction_function(self, field, possible_value, text):
-        if possible_value is None and not text:
+    def _extract_variants_from_text(self, field, text: str):
+        amounts = get_amounts(text, return_sources=False)
+        return list(amounts) if amounts else None
+
+    def example_json_value(self, field):
+        return 25000.50
+
+
+class MoneyField(FloatField):
+    code = 'money'
+    title = 'Money'
+    value_aware = True
+    value_extracting = True
+
+    def _extract_from_possible_value(self, field, possible_value):
+        if not possible_value:
             return None
+
+        if type(possible_value) is dict \
+                and possible_value.get('currency') \
+                and possible_value.get('amount') is not None:
+            return {
+                'currency': possible_value.get('currency'),
+                'amount': possible_value.get('amount')
+            }
+
         try:
-            return float(possible_value)
-        except:
-            possible_value = str(possible_value) if possible_value else text
-            floats = list(get_amounts(possible_value, return_sources=False))
-            return ValueExtractionHint.get_value(floats, field.item_number) if floats else None
+            amount = float(str(possible_value))
+            return {
+                'currency': 'USD',
+                'amount': amount
+            }
+        except ValueError:
+            return None
+
+    def _extract_variants_from_text(self, field, text: str):
+        money = get_money(text, return_sources=False)
+        if not money:
+            return None
+        return [{'currency': m[1],
+                 'amount': m[0]} for m in money]
+
+    def value_to_string(self, field_value):
+        if not field_value:
+            return None
+        return '{amount} {currency}'.format(amount=field_value.get('amount'),
+                                            currency=field_value.get('currency'))
+
+    def example_json_value(self, field):
+        return {
+            'currency': 'USD',
+            'amount': random() * 10000000,
+        }
 
 
 _FIELD_TYPE_CHOICE = 'choice'
@@ -364,5 +614,6 @@ FIELD_TYPES_REGISTRY = {
     _FIELD_TYPE_CHOICE: ChoiceField(),
     _FIELD_TYPE_MULTI_CHOICE: MultiChoiceField(),
     'person': PersonField(),
-    'amount': AmountField()
+    'amount': AmountField(),
+    'money': MoneyField()
 }

@@ -26,13 +26,16 @@
 
 # Standard imports
 import datetime
+import itertools
 
 # Third-party inports
-from jsonfield import JSONField
+# from jsonfield import JSONField
 
 # Django imports
-from django.db import models
+from django.contrib.postgres.fields import JSONField
+from django.db import models, transaction
 from django.utils import timezone
+from django.dispatch import receiver
 from django_celery_results.models import TaskResult
 
 # Project imports
@@ -42,7 +45,7 @@ from apps.users.models import User
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
 __license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.0.5/LICENSE"
-__version__ = "1.0.7"
+__version__ = "1.0.8"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -57,6 +60,9 @@ class Task(models.Model):
 
     # celery task ID
     celery_task_id = models.CharField(max_length=36, db_index=True)
+
+    # celery task
+    celery_task_result = models.ForeignKey(TaskResult, blank=True, null=True, db_index=True)
 
     # Task start date
     date_start = models.DateTimeField(default=datetime.datetime.now, db_index=True)
@@ -77,13 +83,16 @@ class Task(models.Model):
     # additional data for a task
     metadata = JSONField(blank=True, null=True)
 
+    # if task is visible
+    visible = models.BooleanField(default=True)
+
     def __str__(self):
         return "Task (name={}, celery_id={})" \
             .format(self.name, self.celery_task_id)
 
     @property
     def celery_task(self):
-        return TaskResult.objects.get_task(task_id=self.celery_task_id)
+        return self.celery_task_result or TaskResult.objects.get_task(task_id=self.celery_task_id)
 
     @property
     def status(self):
@@ -141,11 +150,21 @@ class Task(models.Model):
     def progress(self):
         if not self.subtasks_total:
             return 0
-        return round(self.processed / int(self.subtasks_total) * 100)
+        progress = round(self.processed / int(self.subtasks_total) * 100)
+        if not self.subtasks_processed and progress == 100:
+            self.subtasks_processed = self.subtasks_total
+            self.save()
+        return progress
 
     def push(self, amount=1):
         self.subtasks_processed = (self.subtasks_processed or 0) + amount
         self.save()
+
+    @classmethod
+    def push_(cls, task_id, amount=1):
+        with transaction.atomic():
+            task = cls.objects.select_for_update().get(id=task_id)
+            task.push()
 
     def force_complete(self):
         self.subtasks_total = 1
@@ -155,3 +174,57 @@ class Task(models.Model):
     @property
     def uncompleted_subtasks(self):
         return int(self.subtasks_total) - self.processed
+
+    @classmethod
+    def special_tasks(cls, filter_opts):
+        """
+        Get tasks related with key/value
+        """
+        opts = {'metadata__%s' % k: v for k, v in filter_opts.items()}
+        return cls.objects \
+            .filter(**opts) \
+            .select_related('celery_task_result')
+
+    @classmethod
+    def special_tasks_progress(cls, filter_opts):
+        """
+        Detailed Progress of task
+        """
+        return {'{}-{}'.format(i.name, i.id):
+                    {'name': i.name,
+                     'id': i.id,
+                     'progress': i.progress,
+                     'completed': i.progress == 100}
+                for i in cls.special_tasks(filter_opts)} or None
+
+    @classmethod
+    def special_tasks_progress_groups(cls, filter_opts):
+        """
+        Detailed Progress of tasks grouped by metadata
+        """
+        data = [{'progress': i.progress,
+                 'completed': i.progress == 100,
+                 'metadata': i.metadata.items()}
+                for i in cls.special_tasks(filter_opts)]
+        result = []
+        for metadata, grouped_data in itertools.groupby(
+                sorted(data, key=lambda i: i['metadata']),
+                key=lambda i: i['metadata']):
+            progress_data = [i['progress'] for i in grouped_data]
+            group_progress = round(sum(progress_data) / len(progress_data), 2) if progress_data else 0
+            metadata = dict(metadata)
+            metadata['progress'] = group_progress
+            metadata['completed'] = group_progress == 100
+            result.append(metadata)
+        return result
+
+    @classmethod
+    def special_tasks_completed(cls, filter_opts):
+        """
+        tasks completed or not (None if no tasks at all)
+        """
+        tasks_progress = cls.special_tasks_progress(filter_opts)
+        if tasks_progress is None:
+            return None
+        progress_values = [i['progress'] for i in tasks_progress.values()]
+        return ((sum(progress_values) / len(progress_values)) == 100) if progress_values else None

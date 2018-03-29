@@ -24,8 +24,12 @@
 """
 # -*- coding: utf-8 -*-
 
+# Standard imports
+import traceback
+
 # Django imports
 from django.contrib import admin
+from django import forms
 from django.utils.html import format_html_join
 from simple_history.admin import SimpleHistoryAdmin
 
@@ -34,23 +38,52 @@ from apps.document.models import (
     Document, DocumentField, DocumentType,
     DocumentProperty, DocumentRelation, DocumentNote, DocumentFieldDetector, DocumentFieldValue,
     ClassifierModel, TextUnit, TextUnitProperty, TextUnitNote, TextUnitTag)
+from apps.document.field_types import FIELD_TYPES_REGISTRY
+import settings
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
 __license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.0.5/LICENSE"
-__version__ = "1.0.7"
+__version__ = "1.0.8"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
 
 class DocumentAdmin(SimpleHistoryAdmin):
     list_display = ('name', 'document_type', 'source_type', 'paragraphs', 'sentences')
-    search_fields = ['document_type', 'name']
+    search_fields = ['document_type__code', 'name']
+
+
+class DocumentFieldForm(forms.ModelForm):
+    class Meta:
+        model = DocumentField
+        fields = '__all__'
+
+    def clean(self):
+        formula = self.cleaned_data.get('formula')
+        type_code = self.cleaned_data.get('type')
+        if not formula or not formula.strip() or not type_code:
+            return
+        depends_on_fields = self.cleaned_data.get('depends_on_fields') or []
+        fields_to_values = {field: FIELD_TYPES_REGISTRY[field.type].example_json_value(field)
+                            for field in depends_on_fields}
+
+        try:
+            DocumentField.calc_formula(type_code, formula, fields_to_values)
+        except Exception as ex:
+            trace = traceback.format_exc()
+            raise forms.ValidationError(
+                'Tried to eval formula on example values:\n{0}\nGot error:\n{1}'.format(
+                    str(fields_to_values), trace))
+
+        return self.cleaned_data
 
 
 class DocumentFieldAdmin(admin.ModelAdmin):
-    list_display = ('code', 'title', 'type', 'user', 'modified_date')
+    form = DocumentFieldForm
+    list_display = ('code', 'title', 'type', 'formula', 'user', 'modified_date')
     search_fields = ['code', 'title', 'created_user__username']
+    filter_horizontal = ('depends_on_fields',)
 
     @staticmethod
     def user(obj):
@@ -59,9 +92,11 @@ class DocumentFieldAdmin(admin.ModelAdmin):
 
 class DocumentFieldDetectorAdmin(admin.ModelAdmin):
     list_display = (
-        'document_type', 'field', 'detected_value', 'include', 'regexps_pre_process_lower',
+        'document_type', 'field', 'detected_value', 'extraction_hint',
+        'include', 'regexps_pre_process_lower',
         'regexps_pre_process_remove_numeric_separators')
-    search_fields = ['document_type', 'field', 'detected_value', 'include_regexps']
+    search_fields = ['document_type', 'field', 'detected_value', 'extraction_hint',
+                     'include_regexps']
 
     @staticmethod
     def document_type_code(obj):
@@ -84,8 +119,9 @@ class DocumentFieldDetectorAdmin(admin.ModelAdmin):
 
 class DocumentFieldValueAdmin(admin.ModelAdmin):
     list_display = ('document_type', 'document', 'field', 'value', 'location_start',
-                    'location_end', 'location_text', 'user')
+                    'location_end', 'location_text', 'extraction_hint', 'user')
     search_fields = ['document__document_type', 'document', 'field', 'value', 'location_text',
+                     'extraction_hont',
                      'user']
 
     @staticmethod

@@ -47,10 +47,12 @@ import numpy as np
 import pandas as pd
 import sys
 from constance import config
+
 # Celery imports
 from celery import shared_task
 from celery.result import AsyncResult
 from celery.utils.log import get_task_logger
+
 # Django imports
 from django.conf import settings
 from django.db.models import Count, Q, Case, Value, When, IntegerField
@@ -65,6 +67,7 @@ from lexnlp.extract.en import (
 from lexnlp.extract.en.entities.nltk_maxent import get_companies
 from lexnlp.nlp.en.tokens import get_stems, get_token_list
 from lexnlp.nlp.en.segments.titles import get_titles
+
 # Scikit-learn imports
 from sklearn.cluster import Birch, DBSCAN, KMeans, MiniBatchKMeans
 from sklearn.ensemble import ExtraTreesClassifier, RandomForestClassifier
@@ -101,11 +104,13 @@ from apps.task.models import Task
 from apps.task.utils.nlp import lang
 from apps.task.utils.ocr.textract import textract2text
 from apps.task.utils.text.segment import segment_paragraphs, segment_sentences
+from lexnlp.nlp.en.segments.sentences import get_sentence_span_list
+from apps.project.models import UploadSession, Project
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
 __license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.0.5/LICENSE"
-__version__ = "1.0.7"
+__version__ = "1.0.8"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -150,15 +155,23 @@ def call_task(task_name, **options):
     this_module_name = options.pop('module_name', __name__)
     _this_module = sys.modules[this_module_name]
     task_class = getattr(_this_module, task_name.replace(' ', ''))
-    task_id = str(fast_uuid())
+    celery_task_id = str(fast_uuid())
+    celery_task_result = TaskResult(task_id=celery_task_id)
+    celery_task_result.save()
     task = Task.objects.create(
         name=task_name,
-        celery_task_id=task_id,
+        celery_task_id=celery_task_id,
+        celery_task_result=celery_task_result,
         user_id=options.get('user_id'),
-        metadata=options.get('metadata')
+        metadata=options.get('metadata'),
+        visible=options.get('visible', True)
     )
     options['task_id'] = task.id
-    task_class().apply_async(kwargs=options, task_id=task_id)
+    async = options.pop('async', True)
+    if async:
+        task_class().apply_async(kwargs=options, task_id=celery_task_id)
+    else:
+        task_class()(**options)
     return task.pk
 
 
@@ -207,10 +220,12 @@ class BaseTask(app.Task):
     task = None
 
     def run(self, *args, **kwargs):
+        ret = None
         self.task = Task.objects.get(id=kwargs.get('task_id'))
         self.log('Start task "%s", id=%d' % (self.task.name, self.task.id))
+        self.log('Task kwargs: {}'.format(str(kwargs)))
         try:
-            self.process(**kwargs)
+            ret = self.process(**kwargs)
         except:
             level = 'error'
             self.log('ERROR', level=level)
@@ -227,7 +242,7 @@ class BaseTask(app.Task):
             if self.task.uncompleted_subtasks:
                 self.log('There are %d uncompleted subtasks remaining. Please wait.'
                          % self.task.uncompleted_subtasks)
-        return "ok"
+        return ret or self.task.pk
 
     def log(self, message, level='info'):
         log(message, level, task=self.task)
@@ -254,7 +269,7 @@ class LoadDocuments(BaseTask):
         file_list = file_access_handler.list(path)
         self.log("Detected {0} files. Added {0} subtasks.".format(len(file_list)))
 
-        if kwargs['delete']:
+        if kwargs.get('delete'):
             Document.objects.all().delete()
 
         self.task.subtasks_total = len(file_list)
@@ -282,8 +297,11 @@ class LoadDocuments(BaseTask):
 
     def create_document_local(self, file_path, file_name, kwargs):
 
-        # Check for existing record
-        if Document.objects.filter(description=file_name).exists():
+        ret = []
+
+        # OLD API: Check for existing record
+        if kwargs['metadata'].get('session_id') is None and\
+                Document.objects.filter(description=file_name).exists():
             self.log('SKIP (EXISTS): ' + file_name)
             return
 
@@ -353,6 +371,16 @@ class LoadDocuments(BaseTask):
             title=title,
             full_text=text)
 
+        try:
+            session = UploadSession.objects.get(pk=kwargs['metadata']['session_id'])
+            document.upload_session = session
+            document.project = session.project
+            document.document_type = session.project.type
+            document.save()
+            self.log(message='Document Upload Session id={}'.format(session.pk))
+        except:
+            self.log(message='Document Upload Session Undefined!', level='warning')
+
         # create Document Properties
         document_properties = [
             DocumentProperty(
@@ -385,12 +413,19 @@ class LoadDocuments(BaseTask):
             text_hash=hashlib.sha1(paragraph.encode("utf-8")).hexdigest(),
             unit_type="paragraph",
             language=language) for paragraph in segment_paragraphs(text)]
-        sentence_list = [TextUnit(
-            document=document,
-            text=sentence,
-            text_hash=hashlib.sha1(sentence.encode("utf-8")).hexdigest(),
-            unit_type="sentence",
-            language=language) for sentence in segment_sentences(text)]
+
+        sentence_list = []
+        for span in get_sentence_span_list(text):
+            sentence = text[span[0]:span[1]]
+            text_unit = TextUnit(
+                document=document,
+                text=sentence,
+                location_start=span[0],
+                location_end=span[1],
+                text_hash=hashlib.sha1(sentence.encode("utf-8")).hexdigest(),
+                unit_type="sentence",
+                language=language)
+            sentence_list.append(text_unit)
 
         document.paragraphs = len(paragraph_list)
         document.sentences = len(sentence_list)
@@ -420,16 +455,16 @@ class LoadDocuments(BaseTask):
         self.log(message='LOADED (%s): %s' % (parser_name.upper(), file_name))
         self.log(message='Document pk: %d' % document.pk)
 
-        # to call task locate for a document right after document processed
-        if kwargs.get('locate'):
-            locate_task_id = call_task(
-                'Locate',
-                locate=kwargs['locate'],
-                document_id=document.pk,
-                parse='paragraphs',
-                user_id=kwargs['user_id'])
-            self.log(message='locate_task_id: {}'.format(locate_task_id))
-            return json.dumps({'locate_task_id': locate_task_id, 'document_id': document.pk})
+        # call post processing task
+        linked_tasks = kwargs.get('linked_tasks', [])
+        for linked_task_kwargs in linked_tasks:
+            linked_task_kwargs['document_id'] = document.pk
+            linked_task_id = call_task(**linked_task_kwargs)
+            self.log(message='linked_task_id: {}'.format(linked_task_id))
+            ret.append({'linked_task_id': linked_task_id,
+                        'document_id': document.pk})
+
+        return json.dumps(ret) if ret else None
 
 
 class UpdateElasticsearchIndex(BaseTask):
@@ -447,7 +482,8 @@ class UpdateElasticsearchIndex(BaseTask):
             'language': tu.language,
             'text_hash': tu.text_hash
         }
-        es.index(index=settings.ELASTICSEARCH_CONFIG['index'], doc_type='text_unit', id=tu.pk, body=es_doc)
+        es.index(index=settings.ELASTICSEARCH_CONFIG['index'], doc_type='text_unit', id=tu.pk,
+                 body=es_doc)
 
     def process(self, **kwargs):
         self.task.subtasks_total = 1
@@ -778,7 +814,10 @@ class Locate(BaseTask):
         # detect items to locate/delete
         if 'locate' in kwargs:
             locate = kwargs['locate']
-            do_delete = locate
+            if isinstance(locate, (tuple, list)):
+                locate = {i: {} for i in locate}
+            do_delete = kwargs.get('do_delete', True)
+            do_delete = locate if do_delete else []
         else:
             locate = {}
             do_delete = []
@@ -1115,19 +1154,19 @@ def parse_geoentity(text, text_unit_id, text_unit_lang, **kwargs):
     if entity_ids:
         unique = set(entity_ids)
         GeoEntityUsage.objects.bulk_create([
-                                               GeoEntityUsage(
-                                                   text_unit_id=text_unit_id,
-                                                   entity_id=idd,
-                                                   count=entity_ids.count(idd)) for idd in unique])
+            GeoEntityUsage(
+                text_unit_id=text_unit_id,
+                entity_id=idd,
+                count=entity_ids.count(idd)) for idd in unique])
 
     alias_ids = [dict_entities.get_alias_id(alias) for _entity, alias in entity_alias_pairs]
     if alias_ids:
         unique = set(alias_ids)
         GeoAliasUsage.objects.bulk_create([
-                                              GeoAliasUsage(
-                                                  text_unit_id=text_unit_id,
-                                                  alias_id=idd,
-                                                  count=alias_ids.count(idd)) for idd in unique if idd])
+            GeoAliasUsage(
+                text_unit_id=text_unit_id,
+                alias_id=idd,
+                count=alias_ids.count(idd)) for idd in unique if idd])
 
     return bool(entity_ids)
 
@@ -1160,10 +1199,10 @@ def parse_term(text, text_unit_id, _text_unit_lang, **kwargs):
                     term_usages.append(term_data)
                     # TODO: "responsibilities"
     TermUsage.objects.bulk_create([
-                                      TermUsage(
-                                          text_unit_id=text_unit_id,
-                                          term_id=pk,
-                                          count=count) for _, pk, count in term_usages])
+        TermUsage(
+            text_unit_id=text_unit_id,
+            term_id=pk,
+            count=count) for _, pk, count in term_usages])
     return bool(term_usages)
 
 
@@ -1562,7 +1601,8 @@ class Cluster(BaseTask):
             # use number of days since min value as feature value
             if cluster_by_item == 'date':
                 min_value = df_[prop_field].min().toordinal() - 1
-                df_['prop_count'] = df_.apply(lambda x: x[prop_field].toordinal() - min_value, axis=1)
+                df_['prop_count'] = df_.apply(lambda x: x[prop_field].toordinal() - min_value,
+                                              axis=1)
 
             # use amount value as feature value
             elif cluster_by_item in ['duration', 'currency_value']:
@@ -1589,7 +1629,8 @@ class Cluster(BaseTask):
         if using == 'LabelSpreading':
             # TODO: simplify
             objects_with_prop = {pk: prop for pk, prop in objects.filter(
-                **{'{}__key'.format(target_attrs['property_lookup']): kwargs['ls_%s_property' % target]})
+                **{'{}__key'.format(target_attrs['property_lookup']): kwargs[
+                    'ls_%s_property' % target]})
                 .values_list('pk', '{}__value'.format(target_attrs['property_lookup']))
                 .order_by('pk').distinct('pk')}
             prop_map = {n: prop for n, prop in enumerate(set(objects_with_prop.values()))}
@@ -1648,7 +1689,8 @@ class Cluster(BaseTask):
                     if not pks:
                         continue
                     cluster_self_name = '>'.join(
-                        [str(feature_names[j]) for j in order_centroids[cluster_id, :self.self_name_len]])
+                        [str(feature_names[j]) for j in
+                         order_centroids[cluster_id, :self.self_name_len]])
                     cluster = cluster_model.objects.create(
                         cluster_id=cluster_id + 1,
                         name=cluster_name[:100],
@@ -1891,8 +1933,8 @@ class Similarity(BaseTask):
                                 text_unit_b_id=pks[j + h],
                                 similarity=similarity_matrix[g, h])
                             for h in range(similarity_matrix.shape[1]) if i + g != j + h and
-                            similarity_matrix[
-                                g, h] >= similarity_threshold]
+                                                                          similarity_matrix[
+                                                                              g, h] >= similarity_threshold]
                         TextUnitSimilarity.objects.bulk_create(tu_sim)
                     self.task.push()
 

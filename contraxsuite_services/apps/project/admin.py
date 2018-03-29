@@ -28,12 +28,12 @@
 from django.contrib import admin
 
 # Project imports
-from .models import Project, TaskQueue, TaskQueueHistory
+from .models import Project, TaskQueue, TaskQueueHistory, ProjectClustering, UploadSession
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
 __license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.0.5/LICENSE"
-__version__ = "1.0.7"
+__version__ = "1.0.8"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -72,6 +72,26 @@ class ProjectAdmin(admin.ModelAdmin):
         return obj.task_queues.count()
 
 
+class ProjectClusteringAdmin(admin.ModelAdmin):
+    list_display = ('pk', 'project_id', 'project_name', 'task_id', 'created_date')
+    search_fields = ('pk', 'project__name')
+
+    @staticmethod
+    def project_name(obj):
+        return obj.project.name
+
+
+class UploadSessionAdmin(admin.ModelAdmin):
+    list_display = ('pk', 'project_id', 'project_name', 'completed', 'created_date')
+    search_fields = ('pk', 'project__name')
+
+    @staticmethod
+    def project_name(obj):
+        return obj.project.name
+
+
 admin.site.register(TaskQueue, TaskQueueAdmin)
 admin.site.register(TaskQueueHistory, TaskQueueHistoryAdmin)
 admin.site.register(Project, ProjectAdmin)
+admin.site.register(ProjectClustering, ProjectClusteringAdmin)
+admin.site.register(UploadSession, UploadSessionAdmin)

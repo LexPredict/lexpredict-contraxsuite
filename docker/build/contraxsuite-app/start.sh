@@ -61,6 +61,8 @@ envsubst < run-celery.sh.template > /contraxsuite_services/run-celery.sh
 envsubst < run-uwsgi.sh.template > /contraxsuite_services/run-uwsgi.sh
 envsubst < local_settings.py.template > /contraxsuite_services/local_settings.py
 
+envsubst < contraxsuite_logstash.conf.template > /etc/logstash/conf.d/contraxsuite_logstash.conf
+
 chmod ug+x /contraxsuite_services/run-celery.sh
 chmod ug+x /contraxsuite_services/run-uwsgi.sh
 
@@ -139,6 +141,9 @@ if not User.objects.filter(username = '${DOCKER_DJANGO_ADMIN_NAME}').exists():
         /bin/bash
     else
         echo "Starting Nginx and Django..."
+
+        /usr/share/logstash/bin/logstash -f /etc/logstash/conf.d/contraxsuite_logstash.conf &
+
         service nginx start && \
         su - ${SHARED_USER_NAME} -c "export LANG=C.UTF-8 && cd /contraxsuite_services && \
             . /contraxsuite_services/venv/bin/activate && \
@@ -148,10 +153,33 @@ if not User.objects.filter(username = '${DOCKER_DJANGO_ADMIN_NAME}').exists():
                     --wsgi wsgi:application" && \
         service nginx stop
     fi
+elif [ $1 == "jupyter" ]; then
+    echo "Sleeping 15 seconds to let Postgres start and Django migrate"
+    sleep 15
+    echo "Starting Jupyter..."
+
+    mkdir -p /contraxsuite_services/notebooks
+    chown -R -v ${SHARED_USER_NAME}:${SHARED_USER_NAME} /contraxsuite_services/notebooks
+
+    mkdir -p /home/${SHARED_USER_NAME}/.jupyter
+    envsubst < /config-templates/jupyter_notebook_config.py.template > /home/${SHARED_USER_NAME}/.jupyter/jupyter_notebook_config.py
+    chown -R -v ${SHARED_USER_NAME}:${SHARED_USER_NAME} /home/${SHARED_USER_NAME}/.jupyter
+
+    su - ${SHARED_USER_NAME} -c "export LANG=C.UTF-8 && cd /contraxsuite_services && \
+    . /contraxsuite_services/venv/bin/activate && \
+    python -c \"
+from notebook.auth import passwd
+with open('/home/${SHARED_USER_NAME}/.jupyter/jupyter_notebook_config.py', 'a') as myfile:
+    myfile.write('\\nc.NotebookApp.password = \'' + passwd('${DOCKER_DJANGO_ADMIN_PASSWORD}') + '\'')
+\""
+    su - ${SHARED_USER_NAME} -c "export LANG=C.UTF-8 && cd /contraxsuite_services && . /contraxsuite_services/venv/bin/activate && \
+        jupyter notebook --port=8888 --no-browser --ip=0.0.0.0"
 else
     echo "Sleeping 15 seconds to let Postgres start and Django migrate"
     sleep 15
     echo "Starting Celery..."
+
+    /usr/share/logstash/bin/logstash -f /etc/logstash/conf.d/contraxsuite_logstash.conf &
 
     su - ${SHARED_USER_NAME} -c "export LANG=C.UTF-8 && cd /contraxsuite_services && . /contraxsuite_services/venv/bin/activate && \
         celery worker -A apps --concurrency=4 -B"
