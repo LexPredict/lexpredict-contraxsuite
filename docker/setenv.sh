@@ -27,7 +27,7 @@ export DOCKER_DJANGO_EMAIL_BACKEND=django.core.mail.backends.console.EmailBacken
 export DOCKER_DJANGO_EMAIL_HOST=localhost
 # Base path should start and end with slashes
 export DOCKER_DJANGO_BASE_PATH=/
-export DOCKER_DJANGO_EMAIL_USE_TLS=
+export DOCKER_DJANGO_EMAIL_USE_TLS=False
 export DOCKER_DJANGO_EMAIL_PORT=587
 export DOCKER_DJANGO_EMAIL_HOST_USER=
 export DOCKER_DJANGO_EMAIL_HOST_PASSWORD=
