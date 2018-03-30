@@ -107,7 +107,6 @@ INSTALLED_APPS = (
     'apps.users',
     'apps.fields',
     'apps.employee',
-    'apps.fields',
     'apps.lease',
 )
 
