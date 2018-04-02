@@ -6,6 +6,26 @@ echo "=== This script will setup a new Contraxsuite instance"
 echo ""
 source setenv.sh
 
+if [ -e ${DOCKER_DJANGO_THEME_ARCHIVE} ]
+then
+    echo "Theme archive found at: ${DOCKER_DJANGO_THEME_ARCHIVE}"
+else
+    echo "Theme archive not found at: ${DOCKER_DJANGO_THEME_ARCHIVE}"
+    echo "Please copy it there first before starting the installation."
+    echo "See README.md"
+    exit 1
+fi
+
+if [ -e ${DOCKER_DJANGO_JQWIDGETS_ARCHIVE} ]
+then
+    echo "JQWidgets archive found at: ${DOCKER_DJANGO_JQWIDGETS_ARCHIVE}"
+else
+    echo "JQWidgets archive not found at: ${DOCKER_DJANGO_JQWIDGETS_ARCHIVE}"
+    echo "Please copy it there first before starting the installation."
+    echo "See README.md"
+    exit 1
+fi
+
 echo "=== Installing Docker..." -r
 source ./util/install-docker-ubuntu.sh
 echo ""

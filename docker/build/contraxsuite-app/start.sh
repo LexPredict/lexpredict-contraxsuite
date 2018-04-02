@@ -83,6 +83,7 @@ if [ $1 == "uwsgi" ]; then
         echo "Preparing theme..."
         THEME_ZIP=/third_party_dependencies/$(basename ${DOCKER_DJANGO_THEME_ARCHIVE})
         THEME_DIR=/static/theme
+        rm -rf ${THEME_DIR}
         mkdir -p ${THEME_DIR}
         unzip ${THEME_ZIP} "Package-HTML/HTML/js/*" -d ${THEME_DIR}
         unzip ${THEME_ZIP} "Package-HTML/HTML/css/*" -d ${THEME_DIR}
@@ -96,6 +97,7 @@ if [ $1 == "uwsgi" ]; then
         echo "Preparing jqwidgets..."
         JQWIDGETS_ZIP=/third_party_dependencies/$(basename ${DOCKER_DJANGO_JQWIDGETS_ARCHIVE})
         VENDOR_DIR=/static/vendor
+        rm -rf ${VENDOR_DIR}
         unzip ${JQWIDGETS_ZIP} "jqwidgets/*" -d ${VENDOR_DIR}
 
 
