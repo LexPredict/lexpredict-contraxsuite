@@ -26,6 +26,7 @@
 
 # Third-party imports
 from django_celery_results.models import TaskResult
+from simple_history.admin import SimpleHistoryAdmin
 
 # Django imports
 from django.contrib import admin
@@ -41,7 +42,7 @@ __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
 
-class TaskAdmin(admin.ModelAdmin):
+class TaskAdmin(SimpleHistoryAdmin):
     list_display = ('name', 'status', 'user', 'date_start', 'has_error')
     search_fields = ('name',)
 

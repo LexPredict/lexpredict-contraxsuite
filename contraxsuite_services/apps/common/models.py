@@ -90,3 +90,45 @@ def save_var(sender, instance, created, **kwargs):
             instance.user = instance.request_user
             instance.save()
         models.signals.post_save.connect(save_var, sender=sender)
+
+
+class ReviewStatus(models.Model):
+    """
+    ReviewStatus object model
+    """
+    # Status verbose name
+    name = models.CharField(unique=True, max_length=100, db_index=True)
+
+    # Status code
+    code = models.CharField(unique=True, max_length=100, db_index=True,
+                            blank=True, null=True)
+
+    # Status order number
+    order = models.PositiveSmallIntegerField()
+
+    class Meta(object):
+        ordering = ['order', 'name', 'code']
+
+    def __str__(self):
+        """"
+        String representation
+        """
+        return "ReviewStatus (pk={0}, name={1})" \
+            .format(self.pk, self.name)
+
+    def save(self, **kwargs):
+        if not self.code:
+            self.code = self.name.lower().replace(' ', '_')
+        return super().save(**kwargs)
+
+    @classmethod
+    def initial_status(cls):
+        try:
+            return cls.objects.order_by('order').first()
+        except cls.DoesNotExist:
+            return None
+
+    @classmethod
+    def initial_status_pk(cls):
+        status = cls.initial_status()
+        return cls.initial_status().pk if status else None

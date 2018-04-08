@@ -46,10 +46,10 @@ from django.utils.timezone import now
 # Project imports
 from apps.analyze.models import DocumentCluster
 from apps.common.mixins import JqMixin
+from apps.common.models import ReviewStatus
 from apps.common.utils import get_api_module
 from apps.document.models import Document, DocumentType
-from apps.project.models import (
-    Project, ProjectStatus, TaskQueue, UploadSession, ProjectClustering)
+from apps.project.models import Project, TaskQueue, UploadSession, ProjectClustering
 from apps.users.models import User
 from apps.task.models import Task
 from apps.task.tasks import call_task, purge_task
@@ -223,34 +223,6 @@ class TaskQueueViewSet(JqMixin, viewsets.ModelViewSet):
 
 
 # --------------------------------------------------------
-# ProjectStatus Views
-# --------------------------------------------------------
-
-class ProjectStatusSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = ProjectStatus
-        fields = ['pk', 'name', 'code', 'order']
-
-
-class ProjectStatusViewSet(JqMixin, viewsets.ModelViewSet):
-    """
-    list: ProjectStatus List\n
-        GET params:
-            - name: str
-            - name_contains: str
-            - code: str
-            - code_contains: str
-    retrieve: Retrieve ProjectStatus
-    create: Create ProjectStatus
-    update: Update ProjectStatus
-    partial_update: Partial Update ProjectStatus
-    delete: Delete ProjectStatus
-    """
-    queryset = ProjectStatus.objects.all()
-    serializer_class = ProjectStatusSerializer
-
-
-# --------------------------------------------------------
 # Project Views
 # --------------------------------------------------------
 
@@ -294,11 +266,14 @@ class DocumentTypeSerializer(serializers.ModelSerializer):
         fields = ['uid', 'code', 'title']
 
 
+common_api_module = get_api_module('common')
+
+
 class ProjectDetailSerializer(serializers.ModelSerializer):
     status = serializers.PrimaryKeyRelatedField(
-        queryset=ProjectStatus.objects.all(), many=True, required=False)
-    status_data = ProjectStatusSerializer(
-        source='status', many=True, read_only=True)
+        queryset=ReviewStatus.objects.all(), many=False, required=False)
+    status_data = common_api_module.ReviewStatusSerializer(
+        source='status', many=False, read_only=True)
     owners = serializers.PrimaryKeyRelatedField(
         queryset=User.objects.all(), many=True, required=False)
     owners_data = UserSerializer(
@@ -513,6 +488,24 @@ class ProjectViewSet(JqMixin, viewsets.ModelViewSet):
 
         return Response('OK')
 
+    @detail_route(methods=['post'])
+    def assign_documents(self, request, **kwargs):
+        """
+        Bulk assign batch of documents to a review team member\n
+            Params:
+                document_ids: list[int]
+                assignee_id: int
+            Returns:
+                int (number of reassigned documents)
+        """
+        document_ids = [int(i) for i in request.POST.getlist('document_ids')]
+        assignee_id = request.POST.get('assignee_id')
+        ret = Document.objects\
+            .filter(pk__in=document_ids)\
+            .update(assignee=assignee_id)
+        return Response(ret)
+
+
 
 # --------------------------------------------------------
 # UploadSession Views
@@ -657,9 +650,18 @@ class UploadSessionViewSet(JqMixin, viewsets.ModelViewSet):
 
                 stored_file_name = storage.save(file_.name, file_.file)
 
+                required_locators = ['date',
+                                     'party',
+                                     'term',
+                                     'geoentity',
+                                     'currency',
+                                     'citation',
+                                     'definition',
+                                     'duration']
+
                 linked_tasks = [
                     {'task_name': 'Locate',
-                     'locate': ['date', 'party', 'term'],
+                     'locate': required_locators,
                      'parse': 'paragraphs',
                      'do_delete': False,
                      'metadata': {'session_id': session_id, 'file_name': file_.name},
@@ -681,6 +683,7 @@ class UploadSessionViewSet(JqMixin, viewsets.ModelViewSet):
                                  'do_not_write': False,
                                  'metadata': {'session_id': session_id, 'file_name': file_.name},
                                  'user_id': request.user.id})
+
                 call_task(
                     task_name='LoadDocuments',
                     source_path=os.path.join(session_id, stored_file_name),
@@ -807,7 +810,6 @@ class ProjectClusteringViewSet(JqMixin, viewsets.ModelViewSet):
 
 router = routers.DefaultRouter()
 router.register(r'task-queues', TaskQueueViewSet, 'task-queue')
-router.register(r'project-statuses', ProjectStatusViewSet, 'project-status')
 router.register(r'projects', ProjectViewSet, 'project')
 router.register(r'project-clustering', ProjectClusteringViewSet, 'project-clustering')
 router.register(r'upload-session', UploadSessionViewSet, 'upload-session')

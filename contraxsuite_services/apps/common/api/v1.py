@@ -28,13 +28,15 @@ import json
 
 # Third-party imports
 from constance.admin import ConstanceForm, get_values
+from rest_framework import serializers, routers, viewsets
 from rest_framework.exceptions import APIException
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
 # Django imports
 from django.conf.urls import url
-from apps.common.models import AppVar
+from apps.common.models import AppVar, ReviewStatus
+from apps.common.mixins import JqMixin
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
@@ -179,6 +181,36 @@ class AppVarAPIView(APIView):
         AppVar.clear(var_name)
         return Response('OK')
 
+
+# --------------------------------------------------------
+# ReviewStatus Views
+# --------------------------------------------------------
+
+class ReviewStatusSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ReviewStatus
+        fields = ['pk', 'name', 'code', 'order']
+
+
+class ReviewStatusViewSet(JqMixin, viewsets.ModelViewSet):
+    """
+    list: ReviewStatus List\n
+        GET params:
+            - name: str
+            - name_contains: str
+            - code: str
+            - code_contains: str
+    retrieve: Retrieve ReviewStatus
+    create: Create ReviewStatus
+    update: Update ReviewStatus
+    partial_update: Partial Update ReviewStatus
+    delete: Delete ReviewStatus
+    """
+    queryset = ReviewStatus.objects.all()
+    serializer_class = ReviewStatusSerializer
+
+router = routers.DefaultRouter()
+router.register(r'review-statuses', ReviewStatusViewSet, 'review-status')
 
 urlpatterns = [
     url(r'^app-config/$', AppConfigAPIView.as_view(),

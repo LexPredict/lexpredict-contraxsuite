@@ -43,6 +43,7 @@ from django.http import JsonResponse, HttpResponse
 # Third-party imports
 from elasticsearch import Elasticsearch
 from rest_framework import serializers, routers, viewsets, status
+from rest_framework.decorators import detail_route
 from rest_framework.generics import ListAPIView
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -69,10 +70,19 @@ __version__ = "1.0.8"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
+common_api_module = get_api_module('common')
+project_api_module = get_api_module('project')
+extract_api_module = get_api_module('extract')
+
 
 # --------------------------------------------------------
 # Document Views
 # --------------------------------------------------------
+class UserSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = ['pk', 'first_name', 'last_name', 'username', 'role']
+
 
 class DocumentSerializer(SimpleRelationSerializer):
     properties = serializers.IntegerField(
@@ -80,13 +90,16 @@ class DocumentSerializer(SimpleRelationSerializer):
         read_only=True)
     relations = serializers.SerializerMethodField()
     text_units = serializers.SerializerMethodField()
-
-    # field_values = serializers.SerializerMethodField()
+    status_data = common_api_module.ReviewStatusSerializer(source='status', many=False)
+    assignee_data = UserSerializer(source='assignee', many=False)
+    available_assignees_data = serializers.SerializerMethodField()
 
     class Meta:
         model = Document
         fields = ['pk', 'name', 'document_type',
-                  'description', 'title',
+                  'status', 'status_data', 'available_assignees_data',
+                  'assignee', 'assignee_data',
+                  'project', 'description', 'title',
                   'properties', 'relations', 'text_units']
 
     def get_relations(self, obj):
@@ -95,8 +108,75 @@ class DocumentSerializer(SimpleRelationSerializer):
     def get_text_units(self, obj):
         return obj.paragraphs + obj.sentences
 
+    def get_available_assignees_data(self, obj):
+        return UserSerializer(obj.available_assignees, many=True).data
 
-class DocumentViewSet(JqMixin, viewsets.ReadOnlyModelViewSet):
+
+class DocumentWithFieldsDetailSerializer(DocumentSerializer):
+    fields_to_values = {}
+
+    field_value_objects = serializers.SerializerMethodField()
+    field_values = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Document
+        fields = ['pk', 'name', 'document_type',
+                  'status', 'status_data',
+                  'assignee', 'assignee_data', 'available_assignees_data',
+                  'description', 'title', 'full_text',
+                  'properties', 'relations', 'text_units',
+                  'field_value_objects', 'field_values']
+
+    def get_field_value_objects(self, obj):
+        field_value_objects = {}
+        for fv in obj.documentfieldvalue_set.all():
+            serialized_fv = DocumentFieldValueSerializer(fv).data
+            field = fv.field
+            field_uid = str(field.uid)
+            field_type = FIELD_TYPES_REGISTRY[fv.field.type]
+            if field_type.multi_value:
+                if field_value_objects.get(field_uid) is None:
+                    field_value_objects[field_uid] = [serialized_fv]
+                    self.fields_to_values[field] = [serialized_fv.get('value')]
+                else:
+                    field_value_objects[field_uid].append(serialized_fv)
+                    if fv.value not in self.fields_to_values[field]:
+                        self.fields_to_values[field].append(serialized_fv.get('value'))
+            else:
+                field_value_objects[field_uid] = serialized_fv
+                self.fields_to_values[field] = serialized_fv.get('value')
+        return field_value_objects
+
+    def get_field_values(self, obj):
+        all_fields = obj.document_type.fields.all()
+        field_values = {}
+
+        for f in all_fields:
+            if f not in self.fields_to_values:
+                self.fields_to_values[f] = None
+
+        for f in all_fields:
+            if f.is_calculated():
+                value = f.calculate(self.fields_to_values)
+            else:
+                value = self.fields_to_values.get(f)
+            field_values[str(f.uid)] = value
+
+        return field_values
+
+
+class DocumentWithFieldsListSerializer(DocumentWithFieldsDetailSerializer):
+    class Meta:
+        model = Document
+        fields = ['pk', 'name', 'document_type',
+                  'description', 'title',
+                  'status', 'status_data',
+                  'assignee', 'assignee_data',
+                  'properties', 'relations', 'text_units',
+                  'field_values']
+
+
+class DocumentViewSet(JqMixin, viewsets.ModelViewSet):
     """
     list:
         Document List\n
@@ -145,134 +225,66 @@ class DocumentViewSet(JqMixin, viewsets.ReadOnlyModelViewSet):
 
         return qs
 
+    def get_serializer_class(self, *args, **kwargs):
+        if self.request.GET.get('with_fields') == 'true':
+            if self.action == 'list':
+                return DocumentWithFieldsListSerializer
+            return DocumentWithFieldsDetailSerializer
+        return DocumentSerializer
 
-class DocumentWithFieldsListAPI(viewsets.ViewSet):
-    def list(self, request, document_type_pk):
-        document_type = DocumentType.objects.get(pk=document_type_pk)
+    @detail_route(methods=['get'])
+    def extraction(self, request, **kwargs):
+        """
+        Standard extracted info - Top level + details\n
+            Params:
+                - skip_details: bool - show top-level data only (skip per text-unit data)
+        """
+        class_kwargs = dict(request=request, format_kwarg=None, document_id=kwargs['pk'])
+        result = dict(
+            amounts=extract_api_module.TopAmountUsageListAPIView(**class_kwargs).data,
+            citations=extract_api_module.TopCitationUsageListAPIView(**class_kwargs).data,
+            copyrights=extract_api_module.TopCopyrightUsageListAPIView(**class_kwargs).data,
+            courts=extract_api_module.TopCourtUsageListAPIView(**class_kwargs).data,
+            currencies=extract_api_module.TopCurrencyUsageListAPIView(**class_kwargs).data,
+            dates=extract_api_module.TopDateUsageListAPIView(**class_kwargs).data,
+            date_durations=extract_api_module.TopDateDurationUsageListAPIView(**class_kwargs).data,
+            definitions=extract_api_module.TopDefinitionUsageListAPIView(**class_kwargs).data,
+            distances=extract_api_module.TopDistanceUsageListAPIView(**class_kwargs).data,
+            geo_entities=extract_api_module.TopGeoEntityUsageListAPIView(**class_kwargs).data,
+            geo_aliases=extract_api_module.TopGeoAliasUsageListAPIView(**class_kwargs).data,
+            parties=extract_api_module.TopPartyUsageListAPIView(**class_kwargs).data,
+            percents=extract_api_module.TopPercentUsageListAPIView(**class_kwargs).data,
+            ratios=extract_api_module.TopRatioUsageListAPIView(**class_kwargs).data,
+            terms=extract_api_module.TopTermUsageListAPIView(**class_kwargs).data,
+            trademarks=extract_api_module.TopTrademarkUsageListAPIView(**class_kwargs).data,
+            url=extract_api_module.TopUrlUsageListAPIView(**class_kwargs).data,
+        )
+        return Response(result)
 
-        search_fields_by_uid = dict()
 
-        calculated_search_fields = set()
-        non_calculated_search_field_ids = set()
-        depends_on_field_ids = set()
-        depends_on_fields = set()
+class DocumentWithFieldsViewSet(JqMixin, viewsets.ReadOnlyModelViewSet):
+    """
+    list: Document List with Fields
+    retrieve: Document Detail with Fields
+    """
+    queryset = Document.objects.all()
 
-        for f in document_type.search_fields.all():
-            search_fields_by_uid[str(f.uid)] = f
-            if f.is_calculated():
-                calculated_search_fields.add(f)
-                for df in f.depends_on_fields.all():
-                    depends_on_field_ids.add(df.uid)
-                    depends_on_fields.add(df)
-            else:
-                non_calculated_search_field_ids.add(f.uid)
+    def get_queryset(self):
+        qs = super().get_queryset()
 
-        documents_by_id = {}
+        document_type_pk = self.kwargs.get('document_type_pk')
+        project_pk = self.kwargs.get('project_pk')
+        if document_type_pk:
+            qs = qs.filter(document_type__pk=document_type_pk)
+        elif project_pk:
+            qs = qs.filter(project__pk=project_pk)
 
-        document_query = Document.objects \
-            .filter(document_type_id=document_type_pk)
+        return qs.prefetch_related('documentfieldvalue_set', 'documentfieldvalue_set__field')
 
-        for pk, name, description, title in document_query \
-                .values_list('id', 'name', 'description', 'title'):
-            doc_dict = {
-                'pk': pk,
-                'document_type': document_type_pk,
-                'name': name,
-                'description': description,
-                'title': title,
-                'field_values': {}
-            }
-            documents_by_id[pk] = doc_dict
-
-        field_values_query = DocumentFieldValue.objects \
-            .filter(document__document_type_id=document_type_pk) \
-            .filter(field_id__in=non_calculated_search_field_ids.union(depends_on_field_ids)) \
-            .filter(value__isnull=False)
-
-        for document_id, field_id, value in field_values_query \
-                .values_list('document__id', 'field_id', 'value'):
-            field_id = str(field_id)
-            field = search_fields_by_uid.get(field_id)
-
-            if not field:
-                continue
-
-            field_type = FIELD_TYPES_REGISTRY[field.type]
-
-            doc = documents_by_id.get(document_id)
-            if not doc:
-                continue
-
-            fields = doc['field_values']
-
-            if field_type.multi_value:
-                values = fields.get(field_id)
-                if values is None:
-                    fields[field_id] = [value]
-                elif value not in values:
-                    values.append(value)
-            else:
-                fields[field_id] = value
-
-        for doc_dict in documents_by_id.values():
-            field_values = doc_dict['field_values']
-            depends_on_field_to_value = {f: field_values.get(str(f.uid)) for f in depends_on_fields}
-
-            for field in calculated_search_fields:
-                field_values[str(field.uid)] = field.calculate(depends_on_field_to_value)
-
-            doc_dict['field_values'] = {str(uid): value for uid, value in field_values.items() if
-                                        str(uid) in search_fields_by_uid}
-
-        return JsonResponse(list(documents_by_id.values()), safe=False)
-
-    def retrieve(self, request, pk, document_type_pk):
-        doc = Document.objects.get(pk=pk)
-        field_value_objects = dict()
-        field_values = dict()
-        doc_dict = {
-            'pk': doc.id,
-            'document_type': document_type_pk,
-            'name': doc.name,
-            'description': doc.description,
-            'title': doc.title,
-            'field_values': field_values,
-            'field_value_objects': field_value_objects,
-            'full_text': doc.full_text
-        }
-
-        fields_to_values = {}
-
-        for fv in DocumentFieldValue.objects.filter(document=doc):
-            serialized_fv = DocumentFieldValueSerializer(fv).data
-            field = fv.field
-            field_uid = str(field.uid)
-            field_type = FIELD_TYPES_REGISTRY[fv.field.type]
-            if field_type.multi_value:
-                if field_value_objects.get(field_uid) is None:
-                    field_value_objects[field_uid] = [serialized_fv]
-                    fields_to_values[field] = [serialized_fv.get('value')]
-                else:
-                    field_value_objects[field_uid].append(serialized_fv)
-                    if fv.value not in fields_to_values[field]:
-                        fields_to_values[field].append(serialized_fv.get('value'))
-            else:
-                field_value_objects[field_uid] = serialized_fv
-                fields_to_values[field] = serialized_fv.get('value')
-
-        all_fields = list(doc.document_type.fields.all())
-        for f in all_fields:
-            if f not in fields_to_values:
-                fields_to_values[f] = None
-
-        for f in all_fields:
-            if f.is_calculated():
-                value = f.calculate(fields_to_values)
-            else:
-                value = fields_to_values.get(f)
-            field_values[str(f.uid)] = value
-
-        return JsonResponse(doc_dict)
+    def get_serializer_class(self, *args, **kwargs):
+        if self.action == 'list':
+            return DocumentWithFieldsListSerializer
+        return DocumentWithFieldsDetailSerializer
 
 
 class DocumentSentimentChartAPIView(ListAPIView):
@@ -753,7 +765,7 @@ class DocumentFieldDetailSerializer(SimpleRelationSerializer):
     class Meta:
         model = DocumentField
         fields = ['uid', 'code', 'title', 'type', 'choices',
-                  'modified_by__username', 'modified_date']
+                  'formula', 'modified_by__username', 'modified_date']
 
 
 class DocumentFieldCreateSerializer(serializers.ModelSerializer):
@@ -1014,7 +1026,6 @@ class StatsAPIView(APIView):
             if not admin_task_df.empty else 0
 
         # get projects data
-        project_api_module = get_api_module('project')
         project_api_view = project_api_module.ProjectViewSet(request=request)
         project_api_view.format_kwarg = {}
         project_data = project_api_view.list(request=request).data
@@ -1264,66 +1275,77 @@ class DumpDocumentTypeConfigView(APIView):
                                 status=400)
 
 
-class DocumentWithFieldsSerializer(SimpleRelationSerializer):
-    field_values = serializers.SerializerMethodField()
-    document_type = serializers.SerializerMethodField()
-
-    class Meta:
-        model = Document
-        fields = ['pk', 'name', 'description', 'title', 'full_text', 'document_type',
-                  'field_values']
-
-    def get_document_type(self, obj):
-        uuid = obj.get('document_type')
-        return str(uuid) if uuid else None
-
-    def _build_field_value_dict(self, field_values: Set[DocumentFieldValue]):
-        if not field_values:
-            return None
-        res = dict()
-
-        for field_value in field_values:
-            value = field_value.value
-            field_id = field_value.field_id
-            existing = res.get(field_id)
-            if not existing:
-                res[field_id] = value
-            elif type(existing) is list:
-                if value not in existing:
-                    existing.append(value)
-            elif existing != value:
-                res[field_id] = [existing, value]
-        return res
-
-    def get_field_values(self, obj):
-        field_value_objects = obj.get('documentfieldvalue_set')
-        return self._build_field_value_dict(field_value_objects)
+# def get_document_type(kwargs):
+#     document_type_pk = kwargs.get('document_type_pk')
+#     project_pk = kwargs.get('project_pk')
+#     if document_type_pk:
+#         return DocumentType.objects.get(pk=document_type_pk)
+#     elif project_pk:
+#         return DocumentType.objects.get(project__pk=project_pk)
+#     else:
+#         raise RuntimeError('Provide either "document_type_pk" or "project_pk".')
 
 
-class DocumentWithFieldsViewSet(JqMixin, viewsets.ReadOnlyModelViewSet):
-    """
-    list: Document With FieldVales List\n
-    retrieve: Document With FieldVales Detail
-    """
-    queryset = Document.objects.all()
-    serializer_class = DocumentWithFieldsSerializer
+# class DocumentWithFieldsSerializer(SimpleRelationSerializer):
+#     field_values = serializers.SerializerMethodField()
+#     document_type = serializers.SerializerMethodField()
+#
+#     class Meta:
+#         model = Document
+#         fields = ['pk', 'name', 'description', 'title', 'full_text', 'document_type',
+#                   'field_values']
+#
+#     def get_document_type(self, obj):
+#         uuid = obj.get('document_type')
+#         return str(uuid) if uuid else None
+#
+#     def _build_field_value_dict(self, field_values: Set[DocumentFieldValue]):
+#         if not field_values:
+#             return None
+#         res = dict()
+#
+#         for field_value in field_values:
+#             value = field_value.value
+#             field_id = field_value.field_id
+#             existing = res.get(field_id)
+#             if not existing:
+#                 res[field_id] = value
+#             elif type(existing) is list:
+#                 if value not in existing:
+#                     existing.append(value)
+#             elif existing != value:
+#                 res[field_id] = [existing, value]
+#         return res
+#
+#     def get_field_values(self, obj):
+#         field_value_objects = obj.get('documentfieldvalue_set')
+#         return self._build_field_value_dict(field_value_objects)
 
-    def get_queryset(self):
-        document_type = DocumentType.objects.get(pk=self.kwargs.get('document_type_pk'))
-        search_fields = document_type.search_fields.all()
-        search_field_ids = [f.uid for f in search_fields]
-        columns = ('pk', 'name', 'document_type', 'description', 'title', 'documentfieldvalue') \
-            if self.action == 'list' \
-            else (
-            'pk', 'name', 'document_type', 'description', 'title', 'full_text',
-            'documentfieldvalue')
 
-        qs = super().get_queryset() \
-            .prefetch_related('documentfieldvalue_set') \
-            .filter(document_type=document_type) \
-            .filter(documentfieldvalue__field_id__in=search_field_ids) \
-            .values(*columns)
-        return qs
+# class DocumentWithFieldsViewSet(JqMixin, viewsets.ReadOnlyModelViewSet):
+#     """
+#     list: Document With FieldVales List\n
+#     retrieve: Document With FieldVales Detail
+#     """
+#     queryset = Document.objects.all()
+#     serializer_class = DocumentWithFieldsSerializer
+#
+#     def get_queryset(self):
+#         document_type = get_document_type(self.kwargs)
+#         search_fields = document_type.search_fields.all()
+#         search_field_ids = [f.uid for f in search_fields]
+#         columns = ('pk', 'name', 'document_type', 'description', 'title', 'documentfieldvalue') \
+#             if self.action == 'list' \
+#             else (
+#             'pk', 'name', 'document_type', 'description', 'title', 'full_text',
+#             'documentfieldvalue')
+#
+#         qs = super().get_queryset() \
+#             .prefetch_related('documentfieldvalue_set') \
+#             .filter(document_type=document_type) \
+#             .filter(documentfieldvalue__field_id__in=search_field_ids) \
+#             .values(*columns)
+#         return qs
 
 
 main_router = routers.DefaultRouter()
@@ -1342,15 +1364,22 @@ main_router.register(r'text-unit-tags', TextUnitTagViewSet, 'text-unit-tag')
 main_router.register(r'text-unit-notes', TextUnitNoteViewSet, 'text-unit-note')
 main_router.register(r'text-unit-properties', TextUnitPropertyViewSet, 'text-unit-property')
 
+# route documents via document type
 document_type_router = routers.SimpleRouter()
 document_type_router.register(r'document-types', DocumentTypeViewSet, 'document-types')
+document_via_type_router = nested_routers.NestedSimpleRouter(
+    document_type_router, r'document-types', lookup='document_type', trailing_slash=True)
+document_via_type_router.register(r'documents', DocumentWithFieldsViewSet, 'documents')
 
-document_router = nested_routers.NestedSimpleRouter(document_type_router, r'document-types',
-                                                    lookup='document_type', trailing_slash=True)
-document_router.register(r'documents', DocumentWithFieldsListAPI, 'documents')
-document_router.register(r'documents2', DocumentWithFieldsViewSet, 'documents')
+# route documents via project
+project_router = routers.SimpleRouter()
+project_router.register(r'project', project_api_module.ProjectViewSet, 'project')
+document_via_project_router = nested_routers.NestedSimpleRouter(
+    project_router, r'project', lookup='project', trailing_slash=True)
+document_via_project_router.register(r'documents', DocumentWithFieldsViewSet, 'documents')
 
-api_routers = [main_router, document_type_router, document_router]
+api_routers = [main_router, document_type_router,
+               document_via_type_router, document_via_project_router]
 
 urlpatterns = [
     url(r'document-sentiment-chart/$', DocumentSentimentChartAPIView.as_view(),

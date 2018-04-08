@@ -62,6 +62,28 @@ def _to_dto(field_value: DocumentFieldValue):
     }
 
 
+class DocumentAnnotationSuggestFieldValueView(views.APIView):
+    def post(self, request, *args, **kwargs):
+        """
+        Suggest field value before creating an annotation.
+
+        Accepts the same JSON structure as annotation saving endpoint.
+
+        Returns suggested field value of the specified field possibly found in the provided text.
+
+        """
+        annotator_data = request.data
+        doc = Document.objects.get(pk=annotator_data['document_id'])
+        document_field = DocumentField.objects.get(pk=annotator_data.get('field_id'))
+        location_text = annotator_data['quote']
+
+        field_type = FIELD_TYPES_REGISTRY.get(document_field.type)
+
+        field_value = field_type.suggest_value(doc, document_field, location_text)
+
+        return JsonResponse({'suggested_value': field_value})
+
+
 class DocumentAnnotationStorageSearchView(views.APIView):
     def get(self, request, *args, **kwargs):
         """
@@ -162,6 +184,12 @@ urlpatterns = [
         r'^search$',
         DocumentAnnotationStorageSearchView.as_view(),
         name='annotations_search'
+    ),
+
+    url(
+        r'^suggest$',
+        DocumentAnnotationSuggestFieldValueView.as_view(),
+        name='annotations_suggest'
     ),
 
     url(

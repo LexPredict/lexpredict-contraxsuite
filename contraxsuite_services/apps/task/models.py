@@ -29,7 +29,7 @@ import datetime
 import itertools
 
 # Third-party inports
-# from jsonfield import JSONField
+from simple_history.models import HistoricalRecords
 
 # Django imports
 from django.contrib.postgres.fields import JSONField
@@ -86,23 +86,61 @@ class Task(models.Model):
     # if task is visible
     visible = models.BooleanField(default=True)
 
+    # Task history
+    history = HistoricalRecords()
+
+    # Task date done
+    _date_done = models.DateTimeField(blank=True, null=True)
+
+    # task last status
+    _status = models.CharField(max_length=10, db_index=True, blank=True, null=True)
+
+    # task last time
+    _time = models.CharField(max_length=36, blank=True, null=True)
+
+    # task last progress
+    _progress = models.PositiveSmallIntegerField(default=0, blank=True, null=True)
+
     def __str__(self):
         return "Task (name={}, celery_id={})" \
             .format(self.name, self.celery_task_id)
 
+    def save(self, *args, **kwargs):
+        """
+        Do not track each update
+        """
+        self.skip_history_when_saving = True
+        try:
+            if not self.celery_task.pk:
+                self.celery_task.save()
+            ret = super().save(*args, **kwargs)
+        finally:
+            del self.skip_history_when_saving
+        return ret
+
     @property
     def celery_task(self):
-        return self.celery_task_result or TaskResult.objects.get_task(task_id=self.celery_task_id)
+        celery_task = self.celery_task_result or \
+                      TaskResult.objects.get_task(task_id=self.celery_task_id)
+        # if not celery_task.id:
+        #     return None
+        return celery_task
 
     @property
     def status(self):
-        initial = self.celery_task.status
-        if initial == 'SUCCESS' and self.subtasks_total:
-            if self.progress == 100:
-                return 'SUCCESS'
-            else:
-                return 'PENDING'
-        return self.celery_task.status
+        if self._status == 'SUCCESS':
+            status = 'SUCCESS'
+        else:
+            status = self.celery_task.status
+            if status == 'SUCCESS' and self.subtasks_total:
+                if self.progress == 100:
+                    status = 'SUCCESS'
+                else:
+                    status = 'PENDING'
+            if self._status != status:
+                self._status = status
+                self.save()
+        return status
 
     @classmethod
     def disallow_start(cls, name):
@@ -110,33 +148,40 @@ class Task(models.Model):
 
     @property
     def date_done(self):
-        if self.status == 'SUCCESS':
+        if self._date_done:
+            result = self._date_done
+        elif self.status == 'SUCCESS':
             if self.subtasks_processed:
-                date_done = self.celery_task.date_done
+                result = self.celery_task.date_done
             elif self.subtasks_total:
-                date_done = TaskResult.objects.filter(task_id__startswith='%s_' % self.id) \
+                result = TaskResult.objects.filter(task_id__startswith='%s_' % self.id) \
                     .latest('date_done').date_done
             else:
-                date_done = TaskResult.objects.get(task_id=self.celery_task_id).date_done
-            return date_done
-        return None
+                result = self.celery_task.date_done
+        elif self.status == 'FAILURE':
+            result = self.celery_task.date_done
+        else:
+            result = None
+        if result:
+            self._date_done = result
+            self.save()
+        return result
 
     @property
     def time(self):
-        if self.status == 'PENDING':
-            end_date = timezone.now()
-        elif self.subtasks_processed:
-            end_date = self.celery_task.date_done
-        elif self.subtasks_total:
-            try:
-                end_date = TaskResult.objects.filter(task_id__startswith='%s_' % self.id) \
-                    .latest('date_done').date_done
-            except TaskResult.DoesNotExist:
-                end_date = self.date_start
+        if self.date_done and self._time:
+            result = self._time
         else:
-            end_date = self.celery_task.date_done
-
-        return str(end_date - self.date_start).split('.')[0]
+            status = self.status
+            if status == 'PENDING' or not self.date_done:
+                end_date = timezone.now()
+            else:
+                end_date = self.date_done
+            result = str(end_date - self.date_start).split('.')[0]
+            if status == 'SUCCESS':
+                self._time = result
+                self.save()
+        return result
 
     @property
     def processed(self):
@@ -148,11 +193,19 @@ class Task(models.Model):
 
     @property
     def progress(self):
+        if self._progress == 100:
+            return 100
         if not self.subtasks_total:
             return 0
+        save = False
         progress = round(self.processed / int(self.subtasks_total) * 100)
         if not self.subtasks_processed and progress == 100:
             self.subtasks_processed = self.subtasks_total
+            save = True
+        if self._progress != progress:
+            self._progress = progress
+            save = True
+        if save:
             self.save()
         return progress
 

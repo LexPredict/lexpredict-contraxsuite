@@ -353,11 +353,13 @@ class LoadDocuments(BaseTask):
         document_type = None
 
         document_type_pk = kwargs.get('document_type_pk')
-        if document_type_pk:
-            try:
+        try:
+            if document_type_pk:
                 document_type = DocumentType.objects.get(pk=document_type_pk)
-            except:
-                pass
+            else:
+                document_type = DocumentType.objects.get(code='document.GenericDocument')
+        except:
+            pass
 
         # Create document object
         document = Document.objects.create(
@@ -647,6 +649,10 @@ class LoadGeoEntities(BaseTask):
                 if not g.latlng and ',' in entity_name:
                     g = geocoder.google(entity_name.split(',')[0])
                 latitude, longitude = g.latlng if g.latlng else (None, None)
+
+            the_entity = GeoEntity.objects.filter(entity_id=entity_id)
+            if the_entity.exists:
+                the_entity.delete()
 
             entity = GeoEntity.objects.create(
                 entity_id=entity_id,

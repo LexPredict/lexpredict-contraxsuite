@@ -48,7 +48,6 @@ from django.db.models import Q, Sum, F, Min, Max
 from django.db.models.functions import TruncMonth
 from django.http import JsonResponse, HttpResponse
 
-
 # Project imports
 from apps.document.models import Document
 from apps.extract.models import *
@@ -66,16 +65,34 @@ __email__ = "support@contraxsuite.com"
 class BaseUsageSerializer(SimpleRelationSerializer):
     class Meta:
         fields = []
-        base_fields = ['pk', 'text_unit__document__pk', 'text_unit__document__name',
-                       'text_unit__document__description', 'text_unit__document__document_type',
-                       'text_unit__text', 'text_unit__pk']
+        base_fields = ['pk',
+                       'text_unit__text',
+                       'text_unit__pk']
+        document_fields = ['text_unit__document__pk',
+                           'text_unit__document__name',
+                           'text_unit__document__description',
+                           'text_unit__document__document_type']
 
     def __init__(self, instance=None, **kwargs):
         self.Meta.fields += self.Meta.base_fields
+        try:
+            _ = kwargs['context']['request'].GET.get('document_id') or \
+                getattr(kwargs['context']['view'], 'document_id')
+        except (AttributeError, KeyError):
+            self.Meta.fields += self.Meta.document_fields
         super().__init__(instance, **kwargs)
 
 
-class BaseUsageListAPIView(JqListAPIView):
+class ViewSetDataMixin(object):
+
+    @property
+    def data(self):
+        queryset = self.filter_queryset(self.get_queryset())
+        serializer = self.get_serializer(queryset, many=True)
+        return serializer.data
+
+
+class BaseUsageListAPIView(JqListAPIView, ViewSetDataMixin):
 
     filters = None
 
@@ -90,10 +107,10 @@ class BaseUsageListAPIView(JqListAPIView):
                 if value:
                     value = _callable(value)
                     qs = qs.filter(**{field: value})
-        document_id = self.request.GET.get('document_id')
+        document_id = self.request.GET.get('document_id') or getattr(self, 'document_id', None)
         if document_id:
             qs = qs.filter(text_unit__document_id=document_id)
-        return qs
+        return qs.select_related('text_unit', 'text_unit__document')
 
     @staticmethod
     def filter(search_str, qs, _or_lookup,
@@ -131,9 +148,14 @@ class BaseTopUsageSerializer(object):
         self.url_args = self.view.url_args
         self.update_item = self.view.update_item
         self.request = kwargs.get('context', {}).get('request')
-        if self.request and self.request.GET.get('document_id'):
+        document_id = self.request.GET.get('document_id') or \
+                      getattr(kwargs['context']['view'], 'document_id', None)
+        if document_id and not self.request.GET.get('skip_details'):
             self.detail_data = self.data_view(
-                request=self.request, format_kwarg=None).get(request=self.request).data
+                request=self.request, format_kwarg=None, document_id=document_id)\
+                .get(request=self.request).data
+        else:
+            self.detail_data = None
 
     def get_detail_data(self, item):
         return [i for i in self.detail_data if
@@ -147,12 +169,12 @@ class BaseTopUsageSerializer(object):
             if self.url_args:
                 item['url'] = reverse(self.url_args[0]) + \
                               '?{}={}'.format(self.url_args[1], str(item[self.url_args[2]]))
-            if "document_id" in self.request.GET:
+            if self.detail_data:
                 item['data'] = self.get_detail_data(item)
         return list(self.queryset)
 
 
-class BaseTopUsageListAPIView(BaseUsageListAPIView):
+class BaseTopUsageListAPIView(BaseUsageListAPIView, ViewSetDataMixin):
     serializer_class = BaseTopUsageSerializer
     qs_values = []
     qs_order_by = ["-count"]
@@ -203,7 +225,7 @@ class TermUsageListAPIView(BaseUsageListAPIView):
                              _not_lookup='text_unit__text__icontains')
         # filter out duplicated Terms (equal terms, but diff. term sources)
         # qs = qs.order_by('term__term').distinct('term__term', 'text_unit__pk')
-        return qs
+        return qs.select_related('term')
 
 
 class TopTermUsageListAPIView(BaseTopUsageListAPIView):
@@ -293,7 +315,7 @@ class GeoEntityUsageListAPIView(BaseUsageListAPIView):
             qs = qs.filter(
                 text_unit__document__textunit__partyusage__party_id=party_id) \
                 .distinct()
-        return qs
+        return qs.select_related('entity')
 
 
 class TopGeoEntityUsageListAPIView(BaseTopUsageListAPIView):
@@ -344,7 +366,7 @@ class GeoAliasUsageListAPIView(BaseUsageListAPIView):
             qs = qs.filter(
                 text_unit__document__textunit__partyusage__party_id=party_id) \
                 .distinct()
-        return qs
+        return qs.select_related('alias')
 
 
 class TopGeoAliasUsageListAPIView(BaseTopUsageListAPIView):
@@ -931,6 +953,10 @@ class CourtUsageListAPIView(BaseUsageListAPIView):
     filters = [('court__name', 'court_name', str),
                ('court__alias', 'court_alias', str)]
 
+    def get_queryset(self):
+        qs = super().get_queryset()
+        return qs.select_related('court')
+
 
 class TopCourtUsageListAPIView(BaseTopUsageListAPIView):
     """
@@ -978,7 +1004,7 @@ class TopCurrencyUsageListAPIView(BaseTopUsageListAPIView):
     """
     sub_app = 'currency'
     model = CurrencyUsage
-    grouping_item = 'court__name'
+    grouping_item = 'amount'
     data_view = CurrencyUsageListAPIView
     qs_values = ["currency", "usage_type"]
     url_args = ('v1:currency-usage', 'currency_search', 'currency')
@@ -1007,6 +1033,10 @@ class RegulationUsageListAPIView(BaseUsageListAPIView):
     queryset = RegulationUsage.objects.all()
     serializer_class = RegulationUsageSerializer
     # filters = [('regulation_name', 'regulation_search', str)]
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        return qs.select_related('entity')
 
 
 class TopRegulationUsageListAPIView(BaseTopUsageListAPIView):
@@ -1094,6 +1124,7 @@ class TopDistanceUsageListAPIView(BaseTopUsageListAPIView):
     """
     sub_app = 'distance'
     model = DistanceUsage
+    grouping_item = 'amount'
     data_view = DistanceUsageListAPIView
     qs_values = ["distance_type", "amount"]
 
@@ -1140,6 +1171,7 @@ class TopPercentUsageListAPIView(BaseTopUsageListAPIView):
     """
     sub_app = 'percent'
     model = PercentUsage
+    grouping_item = 'amount'
     data_view = PercentUsageListAPIView
     qs_values = ["unit_type", "amount"]
 
@@ -1188,6 +1220,7 @@ class TopRatioUsageListAPIView(BaseTopUsageListAPIView):
     """
     sub_app = 'ratio'
     model = RatioUsage
+    grouping_item = 'amount'
     data_view = RatioUsageListAPIView
     qs_values = ["amount", "amount2"]
 

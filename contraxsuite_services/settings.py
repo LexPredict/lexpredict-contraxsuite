@@ -105,8 +105,8 @@ INSTALLED_APPS = (
     'apps.project',
     'apps.task',
     'apps.users',
-    'apps.fields',
     'apps.employee',
+    'apps.fields',
     'apps.lease',
 )
 
@@ -570,7 +570,7 @@ CORS_ALLOW_CREDENTIALS = False
 CORS_URLS_REGEX = r'^/api/.*$'
 
 VERSION_NUMBER = '1.0.8'
-VERSION_COMMIT = '9e177ff'
+VERSION_COMMIT = 'eeb313b'
 
 try:
     from local_settings import *

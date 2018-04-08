@@ -292,7 +292,7 @@
         <input class="checkbox-style" id="_id_terms_scientific_1" name="terms_scientific_1" type="checkbox">
         <label for="_id_terms_scientific_1" class="checkbox-style-3-label checkbox-small">US Federal Hazardous Waste</label>
         <span class="level-3">
-          <input class="as-btn" id="_id_terms_scientific_1_locale_en" name="terms_scientific1_locale_en" type="checkbox">
+          <input class="as-btn" id="_id_terms_scientific_1_locale_en" name="terms_scientific_1_locale_en" type="checkbox">
           <label for="_id_terms_scientific_1_locale_en">en</label>
         </span>
       </p>
@@ -825,7 +825,7 @@
             ? 'warning' : row.status == 'FAILURE'
             ? 'danger' : 'default';
         value = row.has_error ? 'FAILURE' : row.status;
-        var new_value = '<span class="label label-' + cls + '">' + value + '</span>';
+        var new_value = '<span class="badge badge-' + cls + '">' + value + '</span>';
         return renderCell(defaulthtml, new_value);
       };
       var columns = [

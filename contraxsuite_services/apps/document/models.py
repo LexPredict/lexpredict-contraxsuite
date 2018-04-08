@@ -37,11 +37,13 @@ from django.conf import settings
 from django.contrib.postgres.fields import JSONField
 from django.core.serializers.json import DjangoJSONEncoder
 from django.db import models
+from django.db.models import Q
 from django.dispatch import receiver
 from django.utils.timezone import now
 from simple_history.models import HistoricalRecords
 
 # Project imports
+from apps.common.models import ReviewStatus
 from apps.document.field_types import FIELD_TYPES_REGISTRY, FIELD_TYPES_CHOICE, ValueExtractionHint
 from apps.document.parsing.extractors import remove_num_separators
 from apps.document.parsing.machine_learning import SkLearnClassifierModel
@@ -179,7 +181,8 @@ class DocumentType(TimeStampedModel):
     title = models.CharField(max_length=100, db_index=True)
 
     # set of DocumentFields allowed for this DocumentType
-    fields = models.ManyToManyField(DocumentField, related_name='field_document_type')
+    fields = models.ManyToManyField(
+        DocumentField, related_name='field_document_type', blank=True)
 
     # set of DocumentFields to show in search/browse API
     search_fields = models.ManyToManyField(
@@ -202,6 +205,17 @@ class DocumentType(TimeStampedModel):
 
     def __repr__(self):
         return "{1} (#{0})".format(self.pk, self.code)
+
+    @classmethod
+    def generic(cls):
+        obj, _ = cls.objects.get_or_create(
+            code='document.GenericDocument',
+            title='Generic Document')
+        return obj
+
+    @classmethod
+    def generic_pk(cls):
+        return cls.generic().pk
 
 
 class Document(models.Model):
@@ -246,6 +260,11 @@ class Document(models.Model):
 
     project = models.ForeignKey('project.Project', blank=True, null=True, db_index=True)
 
+    status = models.ForeignKey(ReviewStatus, default=ReviewStatus.initial_status_pk(),
+                               blank=True, null=True)
+
+    assignee = models.ForeignKey(User, blank=True, null=True, db_index=True)
+
     upload_session = models.ForeignKey('project.UploadSession', blank=True, null=True,
                                        db_index=True)
 
@@ -262,6 +281,12 @@ class Document(models.Model):
     @property
     def text(self):
         return '\n'.join(self.textunit_set.values_list('text', flat=True))
+
+    @property
+    def available_assignees(self):
+        return User.objects.filter(
+            Q(project_owners=self.project) |
+            Q(project_reviewers=self.project))
 
 
 @receiver(models.signals.post_delete, sender=Document)
@@ -323,7 +348,7 @@ class DocumentProperty(TimeStampedModel):
     key = models.CharField(max_length=1024, db_index=True)
 
     # Value - string with maximum length 1024
-    value = models.CharField(max_length=1024)
+    value = models.TextField()
 
     class Meta:
         ordering = ('document__name', 'key', 'value')

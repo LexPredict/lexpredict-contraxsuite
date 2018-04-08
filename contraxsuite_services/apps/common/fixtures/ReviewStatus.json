@@ -1,0 +1,38 @@
+[
+{
+    "model": "common.reviewstatus",
+    "pk": 1,
+    "fields": {
+        "name": "Not Started",
+        "code": "not_started",
+        "order": 1
+    }
+},
+{
+    "model": "common.reviewstatus",
+    "pk": 2,
+    "fields": {
+        "name": "In Review",
+        "code": "in_review",
+        "order": 2
+    }
+},
+{
+    "model": "common.reviewstatus",
+    "pk": 3,
+    "fields": {
+        "name": "Completed",
+        "code": "completed",
+        "order": 3
+    }
+},
+{
+    "model": "common.reviewstatus",
+    "pk": 4,
+    "fields": {
+        "name": "Excluded",
+        "code": "excluded",
+        "order": 4
+    }
+}
+]

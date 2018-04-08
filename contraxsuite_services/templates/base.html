@@ -29,7 +29,9 @@
   {% endblock %}
 
   {% block css_extra %}
-    {% stylesheet "custom_css" %}
+{#    {% stylesheet "custom_css" %}#}
+    <link rel="stylesheet" href="{% static "css/project.css" %}" type="text/css" />
+    <link rel="stylesheet" href="{% static "vendor/tagsinput/bootstrap-tagsinput.css" %}" type="text/css" />
   {% endblock %}
 
   <title>Contraxsuite Services | {% block title %}Home{% endblock title %}</title>
@@ -279,7 +281,8 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/mark.js/8.4.0/mark.min.js"
           integrity="sha256-d4W6lnqRlQIXAoSYOnZCyDTDikGIxMs2EfQ4Qy7bgJQ=" crossorigin="anonymous"></script>
 
-  {% javascript "custom_js" %}
+{#  {% javascript "custom_js" %}#}
+  <script src="{% static 'vendor/tagsinput/bootstrap-tagsinput.js' %}" style="text/javascrypt"></script>
   <script src="{% static 'js/project.js' %}" style="text/javascrypt"></script>
 {% endblock %}
 

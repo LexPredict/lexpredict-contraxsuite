@@ -42,6 +42,7 @@ from lexnlp.extract.en.dates import get_dates_list
 from lexnlp.extract.en.durations import get_durations
 from lexnlp.extract.en.entities.nltk_maxent import get_companies, get_persons
 from lexnlp.extract.en.money import get_money
+import dateparser
 
 from apps.document import models
 from apps.document.parsing.machine_learning import ModelCategory
@@ -182,6 +183,17 @@ class FieldType:
             hint = None
 
         return ValueExtractionHint.get_value(extracted, hint), hint
+
+    def suggest_value(self,
+                      document,
+                      field,
+                      location_text: str):
+        if field.is_calculated():
+            return None
+
+        value, hint = self.get_or_extract_value(document, field, location_text,
+                                                ValueExtractionHint.TAKE_FIRST.name, location_text)
+        return value
 
     def save_value(self,
                    document,
@@ -341,7 +353,10 @@ class DateField(FieldType):
         elif isinstance(possible_value, date):
             return possible_value
         else:
-            return None
+            try:
+                return dateparser.parse(possible_value)
+            except:
+                return None
 
     def _extract_variants_from_text(self, field, text: str):
         return get_dates_list(text)

@@ -36,8 +36,10 @@ from django.dispatch import receiver
 from django.contrib.postgres.fields import JSONField
 
 # Project imports
-from apps.users.models import User
+from apps.common.models import ReviewStatus
+from apps.document.models import DocumentType
 from apps.task.models import Task
+from apps.users.models import User
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
@@ -203,30 +205,6 @@ def completed_documents_changed(instance, action, pk_set, **kwargs):
         tqh.documents.add(*list(pk_set))
 
 
-class ProjectStatus(models.Model):
-    """
-    ProjectStatus object model
-    """
-    # Status verbose name
-    name = models.CharField(max_length=100, db_index=True)
-
-    # Status code
-    code = models.CharField(max_length=100, db_index=True)
-
-    # Status order number
-    order = models.PositiveSmallIntegerField()
-
-    class Meta(object):
-        ordering = ['name', 'code', 'order']
-
-    def __str__(self):
-        """"
-        String representation
-        """
-        return "ProjectStatus (pk={0}, code={1})" \
-            .format(self.pk, self.code)
-
-
 class Project(models.Model):
     """Project object model
 
@@ -249,10 +227,14 @@ class Project(models.Model):
     reviewers = models.ManyToManyField(User, related_name="project_reviewers", blank=True)
 
     # Status
-    status = models.ManyToManyField(ProjectStatus, blank=True)
+    status = models.ForeignKey(ReviewStatus, default=ReviewStatus.initial_status_pk(),
+                               blank=True, null=True)
 
     # Document types for a Project
-    type = models.ForeignKey('document.DocumentType', null=True, blank=True, db_index=True)
+    type = models.ForeignKey(
+        'document.DocumentType',
+        default=DocumentType.generic_pk,
+        null=True, blank=True, db_index=True)
 
     class Meta(object):
         ordering = ['name']
@@ -263,6 +245,11 @@ class Project(models.Model):
         """
         return "Project (pk={0}, name={1})" \
             .format(self.pk, self.name)
+
+    def save(self, **kwargs):
+        if not self.type:
+            self.type = DocumentType.generic()
+        return super().save(**kwargs)
 
     def progress(self, as_dict=False):
         """
