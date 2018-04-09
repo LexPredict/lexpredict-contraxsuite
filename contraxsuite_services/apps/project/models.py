@@ -36,7 +36,7 @@ from django.dispatch import receiver
 from django.contrib.postgres.fields import JSONField
 
 # Project imports
-from apps.common.models import ReviewStatus
+from apps.common.models import get_default_status
 from apps.document.models import DocumentType
 from apps.task.models import Task
 from apps.users.models import User
@@ -227,7 +227,7 @@ class Project(models.Model):
     reviewers = models.ManyToManyField(User, related_name="project_reviewers", blank=True)
 
     # Status
-    status = models.ForeignKey(ReviewStatus, default=ReviewStatus.initial_status_pk(),
+    status = models.ForeignKey('common.ReviewStatus', default=get_default_status,
                                blank=True, null=True)
 
     # Document types for a Project

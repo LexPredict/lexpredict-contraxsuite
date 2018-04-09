@@ -43,7 +43,7 @@ from django.utils.timezone import now
 from simple_history.models import HistoricalRecords
 
 # Project imports
-from apps.common.models import ReviewStatus
+from apps.common.models import get_default_status
 from apps.document.field_types import FIELD_TYPES_REGISTRY, FIELD_TYPES_CHOICE, ValueExtractionHint
 from apps.document.parsing.extractors import remove_num_separators
 from apps.document.parsing.machine_learning import SkLearnClassifierModel
@@ -260,7 +260,7 @@ class Document(models.Model):
 
     project = models.ForeignKey('project.Project', blank=True, null=True, db_index=True)
 
-    status = models.ForeignKey(ReviewStatus, default=ReviewStatus.initial_status_pk(),
+    status = models.ForeignKey('common.ReviewStatus', default=get_default_status,
                                blank=True, null=True)
 
     assignee = models.ForeignKey(User, blank=True, null=True, db_index=True)

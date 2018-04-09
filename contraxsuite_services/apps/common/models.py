@@ -132,3 +132,7 @@ class ReviewStatus(models.Model):
     def initial_status_pk(cls):
         status = cls.initial_status()
         return cls.initial_status().pk if status else None
+
+
+def get_default_status():
+    return ReviewStatus.initial_status_pk()
