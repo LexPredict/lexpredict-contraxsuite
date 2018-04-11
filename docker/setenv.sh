@@ -21,6 +21,8 @@ export DOCKER_RABBITMQ_PASSWORD=contrax1
 export DOCKER_JUPYTER_BASE_URL=/jupyter
 export DOCKER_JUPYTER_PORT=8888
 
+export DOCKER_KIBANA_BASE_PATH=
+
 
 export DOCKER_DJANGO_HOST_NAME=localhost
 export DOCKER_DJANGO_EMAIL_BACKEND=django.core.mail.backends.console.EmailBackend

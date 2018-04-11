@@ -31,7 +31,7 @@ services:
       - contrax-elasticsearch
     environment:
       - "ELASTICSEARCH_URL=http://${DOCKER_HOST_NAME_ELASTICSEARCH}:9200"
-      - "SERVER_BASEPATH=/kibana"
+      - "SERVER_BASEPATH=${DOCKER_KIBANA_BASE_PATH}"
     deploy:
       replicas: 1
     ports:
@@ -160,7 +160,6 @@ services:
       - contraxsuite_deployment_uuid:/deployment_uuid
       - contraxsuite_nginx_certs:/etc/nginx/certificates
       - contraxsuite_static_files:/contraxsuite_services/staticfiles
-      - contraxsuite_static:/static
       - contraxsuite_third_party_dependencies:/third_party_dependencies
       - contraxsuite_data_media:/data/media
       - django_logs:/data/logs
@@ -248,7 +247,6 @@ volumes:
   contraxsuite_deployment_uuid:
   contraxsuite_nginx_certs:
   contraxsuite_static_files:
-  contraxsuite_static:
   contraxsuite_third_party_dependencies:
   contraxsuite_data_media:
   contraxsuite_notebooks:
