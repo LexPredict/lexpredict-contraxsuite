@@ -96,7 +96,7 @@ if [ $1 == "uwsgi" ]; then
     echo "Preparing jqwidgets..."
     JQWIDGETS_ZIP=/third_party_dependencies/$(basename ${DOCKER_DJANGO_JQWIDGETS_ARCHIVE})
     VENDOR_DIR=/static/vendor
-    rm -rf ${VENDOR_DIR}
+    rm -rf ${VENDOR_DIR}/jqwidgets
     unzip ${JQWIDGETS_ZIP} "jqwidgets/*" -d ${VENDOR_DIR}
 
 
