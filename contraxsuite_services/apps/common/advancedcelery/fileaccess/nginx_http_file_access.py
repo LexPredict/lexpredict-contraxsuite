@@ -23,10 +23,11 @@
     or shipping ContraxSuite within a closed source product.
 """
 import os
-from contextlib import contextmanager
 import requests
 import tempfile
+from contextlib import contextmanager
 from typing import List
+from urllib.parse import quote
 
 
 class NginxHttpFileAccess:
@@ -35,9 +36,11 @@ class NginxHttpFileAccess:
         self.root_url = root_url
 
     def _list_impl(self, file_list: List[str], path: str):
-        if path.startswith('/'):
-            path = path[1:]
-        r = requests.get(self.root_url + ('/' + path if path else ''))
+        path = quote(path.lstrip('/'))
+        full_path = os.path.join(
+            self.root_url,
+            path if path else '')
+        r = requests.get(full_path)
         if r.status_code != 200:
             if path and not path.endswith('/'):
                 self._list_impl(file_list, path + '/')
