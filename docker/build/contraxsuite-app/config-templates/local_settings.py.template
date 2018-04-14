@@ -120,34 +120,34 @@ LOGGING = {
             'level': 'ERROR',
             'class': 'django.utils.log.AdminEmailHandler',
         },
-        'logstash': {
-            'level': 'DEBUG',
-            'class': 'logstash.TCPLogstashHandler',
-            'host': 'localhost',
-            'port': 5959, # Default value: 5959
-            'version': 1, # Version of logstash event schema. Default value: 0 (for backward compatibility of the library)
-            'message_type': 'django',  # 'type' field in logstash message. Default value: 'logstash'.
-            'fqdn': False, # Fully qualified domain name. Default value: false.
-        },
+#        'logstash': {
+#            'level': 'DEBUG',
+#            'class': 'logstash.TCPLogstashHandler',
+#            'host': 'localhost',
+#            'port': 5959, # Default value: 5959
+#            'version': 1, # Version of logstash event schema. Default value: 0 (for backward compatibility of the library)
+#            'message_type': 'django',  # 'type' field in logstash message. Default value: 'logstash'.
+#            'fqdn': False, # Fully qualified domain name. Default value: false.
+#        },
     },
     'loggers': {
         'apps.task.tasks': {
-            'handlers': ['tasks', 'logstash', 'mail_admins'],
+            'handlers': ['tasks', 'mail_admins'],
             'level': 'DEBUG',
             'propagate': True,
         },
         'django': {
-            'handlers': ['logstash', 'console', 'file', 'mail_admins'],
+            'handlers': ['console', 'file', 'mail_admins'],
             'level': 'DEBUG',
             'propagate': True,
         },
         'contraxsuite_services': {
-            'handlers': ['logstash', 'console', 'file', 'mail_admins'],
+            'handlers': ['console', 'file', 'mail_admins'],
             'level': 'DEBUG',
             'propagate': True,
         },
         'apps': {
-            'handlers': ['logstash', 'console', 'file', 'mail_admins'],
+            'handlers': ['console', 'file', 'mail_admins'],
             'level': 'DEBUG',
             'propagate': True,
         },
