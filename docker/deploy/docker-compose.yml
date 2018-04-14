@@ -49,6 +49,8 @@ services:
       replicas: 1
       placement:
         constraints: [node.role == manager]
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
 
   contrax-db:
     image: postgres:9.6
@@ -253,6 +255,7 @@ volumes:
   django_logs:
   django_nginx_logs:
   postgres_data:
+  rabbitmq_data:
   elasticsearch_data:
   redis_data:
 

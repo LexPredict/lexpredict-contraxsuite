@@ -182,5 +182,5 @@ else
     /usr/share/logstash/bin/logstash -f /etc/logstash/conf.d/contraxsuite_logstash.conf &
 
     su - ${SHARED_USER_NAME} -c "export LANG=C.UTF-8 && cd /contraxsuite_services && . /contraxsuite_services/venv/bin/activate && \
-        celery worker -A apps --concurrency=4 -B"
+        celery worker -A apps --concurrency=2 -B"
 fi
