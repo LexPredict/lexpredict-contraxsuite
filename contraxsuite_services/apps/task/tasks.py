@@ -269,6 +269,9 @@ class LoadDocuments(BaseTask):
         file_list = file_access_handler.list(path)
         self.log("Detected {0} files. Added {0} subtasks.".format(len(file_list)))
 
+        if len(file_list) == 0:
+            raise RuntimeError('Wrong file or directory name "{}"'.format(path))
+
         if kwargs.get('delete'):
             Document.objects.all().delete()
 
@@ -300,7 +303,7 @@ class LoadDocuments(BaseTask):
         ret = []
 
         # OLD API: Check for existing record
-        if kwargs['metadata'].get('session_id') is None and\
+        if kwargs['metadata'].get('session_id') is None and \
                 Document.objects.filter(description=file_name).exists():
             self.log('SKIP (EXISTS): ' + file_name)
             return
@@ -308,7 +311,9 @@ class LoadDocuments(BaseTask):
         text = None
         metadata = {}
 
-        if not settings.TIKA_DISABLE:
+        if not settings.TIKA_DISABLE and any(
+                [file_path.lower().endswith('.' + extension)
+                 for extension in settings.TIKA_FOR_EXTENSIONS]):
             # process by tika
             parser_name = 'tika'
             try:
@@ -919,7 +924,7 @@ def parse_amount(text, text_unit_id, _text_unit_lang):
             [AmountUsage(
                 text_unit_id=text_unit_id,
                 amount=item[0],
-                amount_str=item[1],
+                amount_str=item[1][:300] if item[1] else None,
                 count=found.count(item)
             ) for item in unique])
     return bool(found)
