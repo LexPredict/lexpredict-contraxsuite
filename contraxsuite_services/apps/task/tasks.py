@@ -978,12 +978,12 @@ def parse_distance(text, text_unit_id, _text_unit_lang):
 
 
 def parse_date(text, text_unit_id, _text_unit_lang, **kwargs):
-    found = list(dates.get_dates(
+    found = dates.get_dates_list(
         text,
         strict=kwargs.get('strict', False),
-        return_source=False))
+        return_source=False)
     if found:
-        unique = set(found)
+        unique = set([i.date() if isinstance(i, datetime.datetime) else i for i in found])
         DateUsage.objects.bulk_create(
             [DateUsage(
                 text_unit_id=text_unit_id,
