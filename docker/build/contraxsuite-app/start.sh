@@ -147,6 +147,7 @@ if not User.objects.filter(username = '${DOCKER_DJANGO_ADMIN_NAME}').exists():
         service nginx start && \
         su - ${SHARED_USER_NAME} -c "export LANG=C.UTF-8 && cd /contraxsuite_services && \
             . /contraxsuite_services/venv/bin/activate && \
+            ulimit -n 1000000 && \
             uwsgi --socket 0.0.0.0:3031 \
                     --plugins python3 \
                     --protocol uwsgi \
@@ -173,6 +174,7 @@ with open('/home/${SHARED_USER_NAME}/.jupyter/jupyter_notebook_config.py', 'a') 
     myfile.write('\\nc.NotebookApp.password = \'' + passwd('${DOCKER_DJANGO_ADMIN_PASSWORD}') + '\'')
 \""
     su - ${SHARED_USER_NAME} -c "export LANG=C.UTF-8 && cd /contraxsuite_services && . /contraxsuite_services/venv/bin/activate && \
+        ulimit -n 1000000 && \
         jupyter notebook --port=8888 --no-browser --ip=0.0.0.0"
 else
     echo "Sleeping 15 seconds to let Postgres start and Django migrate"
@@ -182,6 +184,7 @@ else
     #/usr/share/logstash/bin/logstash -f /etc/logstash/conf.d/contraxsuite_logstash.conf &
 
     su - ${SHARED_USER_NAME} -c "export LANG=C.UTF-8 && cd /contraxsuite_services && . /contraxsuite_services/venv/bin/activate && \
+        ulimit -n 1000000 && \
         celery worker -A apps --concurrency=2 -B"
 #    su - ${SHARED_USER_NAME} -c "export LANG=C.UTF-8 && cd /contraxsuite_services && \
 #        . /contraxsuite_services/venv/bin/activate && \
