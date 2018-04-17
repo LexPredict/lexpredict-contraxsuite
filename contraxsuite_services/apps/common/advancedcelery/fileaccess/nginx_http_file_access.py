@@ -76,8 +76,10 @@ class NginxHttpFileAccess:
                 for chunk in r.iter_content(chunk_size=4096):
                     if chunk:
                         f.write(chunk)
+            r.close()
             yield fn, rel_file_path
         finally:
+            r.close()
             os.remove(fn)
 
     def __str__(self):

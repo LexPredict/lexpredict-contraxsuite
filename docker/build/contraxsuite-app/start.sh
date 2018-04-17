@@ -183,4 +183,7 @@ else
 
     su - ${SHARED_USER_NAME} -c "export LANG=C.UTF-8 && cd /contraxsuite_services && . /contraxsuite_services/venv/bin/activate && \
         celery worker -A apps --concurrency=2 -B"
+#    su - ${SHARED_USER_NAME} -c "export LANG=C.UTF-8 && cd /contraxsuite_services && \
+#        . /contraxsuite_services/venv/bin/activate && \
+#        python run_celery.py"
 fi

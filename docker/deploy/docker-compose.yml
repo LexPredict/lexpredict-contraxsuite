@@ -39,6 +39,7 @@ services:
 
   contrax-rabbitmq:
     image: rabbitmq:3-management
+    hostname: contrax-rabbitmq
     networks:
       - contrax_net
     environment:
@@ -67,6 +68,13 @@ services:
       replicas: 1
       placement:
         constraints: [node.role == manager]
+
+  contrax-tika:
+    image: logicalspark/docker-tikaserver
+    networks:
+      - contrax_net
+    deploy:
+      replicas: 1
 
   contrax-celery:
     image: ${CONTRAXSUITE_IMAGE_FULL_NAME}
