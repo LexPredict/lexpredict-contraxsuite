@@ -493,6 +493,7 @@ SWAGGER_SETTINGS = {
 # TIKA_VERSION = '1.14'
 # TIKA_SERVER_JAR = ROOT_DIR('../libs/tika/tika-server-1.14.jar')
 TIKA_DISABLE = False
+TIKA_FOR_EXTENSIONS = ['pdf']
 
 # use jqWidgets' export, e.g. send data to jq OR handle it on client side
 # FYI: http://www.jqwidgets.com/community/topic/jqxgrid-export-data/#}

@@ -79,40 +79,38 @@ echo =================
 pushd /contraxsuite_services
 
 if [ $1 == "uwsgi" ]; then
-    if ! cmp --silent ${IMAGE_UUID_FILE} ${DEPLOYMENT_UUID_FILE} ; then
-        echo "Preparing theme..."
-        THEME_ZIP=/third_party_dependencies/$(basename ${DOCKER_DJANGO_THEME_ARCHIVE})
-        THEME_DIR=/static/theme
-        rm -rf ${THEME_DIR}
-        mkdir -p ${THEME_DIR}
-        unzip ${THEME_ZIP} "Package-HTML/HTML/js/*" -d ${THEME_DIR}
-        unzip ${THEME_ZIP} "Package-HTML/HTML/css/*" -d ${THEME_DIR}
-        unzip ${THEME_ZIP} "Package-HTML/HTML/images/*" -d ${THEME_DIR}
-        unzip ${THEME_ZIP} "Package-HTML/HTML/style.css" -d ${THEME_DIR}
-        mv ${THEME_DIR}/Package-HTML/HTML/js ${THEME_DIR}/
-        mv ${THEME_DIR}/Package-HTML/HTML/css ${THEME_DIR}/
-        mv ${THEME_DIR}/Package-HTML/HTML/images ${THEME_DIR}/
-        mv ${THEME_DIR}/Package-HTML/HTML/style.css ${THEME_DIR}/css/
+    echo "Preparing theme..."
+    THEME_ZIP=/third_party_dependencies/$(basename ${DOCKER_DJANGO_THEME_ARCHIVE})
+    THEME_DIR=/static/theme
+    rm -rf ${THEME_DIR}
+    mkdir -p ${THEME_DIR}
+    unzip ${THEME_ZIP} "Package-HTML/HTML/js/*" -d ${THEME_DIR}
+    unzip ${THEME_ZIP} "Package-HTML/HTML/css/*" -d ${THEME_DIR}
+    unzip ${THEME_ZIP} "Package-HTML/HTML/images/*" -d ${THEME_DIR}
+    unzip ${THEME_ZIP} "Package-HTML/HTML/style.css" -d ${THEME_DIR}
+    mv ${THEME_DIR}/Package-HTML/HTML/js ${THEME_DIR}/
+    mv ${THEME_DIR}/Package-HTML/HTML/css ${THEME_DIR}/
+    mv ${THEME_DIR}/Package-HTML/HTML/images ${THEME_DIR}/
+    mv ${THEME_DIR}/Package-HTML/HTML/style.css ${THEME_DIR}/css/
 
-        echo "Preparing jqwidgets..."
-        JQWIDGETS_ZIP=/third_party_dependencies/$(basename ${DOCKER_DJANGO_JQWIDGETS_ARCHIVE})
-        VENDOR_DIR=/static/vendor
-        rm -rf ${VENDOR_DIR}
-        unzip ${JQWIDGETS_ZIP} "jqwidgets/*" -d ${VENDOR_DIR}
-
+    echo "Preparing jqwidgets..."
+    JQWIDGETS_ZIP=/third_party_dependencies/$(basename ${DOCKER_DJANGO_JQWIDGETS_ARCHIVE})
+    VENDOR_DIR=/static/vendor
+    rm -rf ${VENDOR_DIR}/jqwidgets
+    unzip ${JQWIDGETS_ZIP} "jqwidgets/*" -d ${VENDOR_DIR}
 
 
-        echo "Collecting DJANGO static files..."
-        su - ${SHARED_USER_NAME} -c "export LANG=C.UTF-8 && cd /contraxsuite_services && \
-            . /contraxsuite_services/venv/bin/activate && \
-            python manage.py collectstatic --noinput"
 
-        popd
+    echo "Collecting DJANGO static files..."
+    su - ${SHARED_USER_NAME} -c "export LANG=C.UTF-8 && cd /contraxsuite_services && \
+        . /contraxsuite_services/venv/bin/activate && \
+        python manage.py collectstatic --noinput"
 
-        cat /build.info > /contraxsuite_services/staticfiles/version.txt
-        echo "" >> /contraxsuite_services/staticfiles/version.txt
-        cat /build.uuid >> /contraxsuite_services/staticfiles/version.txt
-    fi
+    popd
+
+    cat /build.info > /contraxsuite_services/staticfiles/version.txt
+    echo "" >> /contraxsuite_services/staticfiles/version.txt
+    cat /build.uuid >> /contraxsuite_services/staticfiles/version.txt
 
     # Put this build uuid to a persistent storage to avoid running preparation procedures again
     # (see start of this script)
@@ -144,11 +142,12 @@ if not User.objects.filter(username = '${DOCKER_DJANGO_ADMIN_NAME}').exists():
     else
         echo "Starting Nginx and Django..."
 
-        /usr/share/logstash/bin/logstash -f /etc/logstash/conf.d/contraxsuite_logstash.conf &
+        #/usr/share/logstash/bin/logstash -f /etc/logstash/conf.d/contraxsuite_logstash.conf &
 
         service nginx start && \
         su - ${SHARED_USER_NAME} -c "export LANG=C.UTF-8 && cd /contraxsuite_services && \
             . /contraxsuite_services/venv/bin/activate && \
+            ulimit -n 1000000 && \
             uwsgi --socket 0.0.0.0:3031 \
                     --plugins python3 \
                     --protocol uwsgi \
@@ -175,14 +174,19 @@ with open('/home/${SHARED_USER_NAME}/.jupyter/jupyter_notebook_config.py', 'a') 
     myfile.write('\\nc.NotebookApp.password = \'' + passwd('${DOCKER_DJANGO_ADMIN_PASSWORD}') + '\'')
 \""
     su - ${SHARED_USER_NAME} -c "export LANG=C.UTF-8 && cd /contraxsuite_services && . /contraxsuite_services/venv/bin/activate && \
+        ulimit -n 1000000 && \
         jupyter notebook --port=8888 --no-browser --ip=0.0.0.0"
 else
     echo "Sleeping 15 seconds to let Postgres start and Django migrate"
     sleep 15
     echo "Starting Celery..."
 
-    /usr/share/logstash/bin/logstash -f /etc/logstash/conf.d/contraxsuite_logstash.conf &
+    #/usr/share/logstash/bin/logstash -f /etc/logstash/conf.d/contraxsuite_logstash.conf &
 
     su - ${SHARED_USER_NAME} -c "export LANG=C.UTF-8 && cd /contraxsuite_services && . /contraxsuite_services/venv/bin/activate && \
-        celery worker -A apps --concurrency=4 -B"
+        ulimit -n 1000000 && \
+        celery worker -A apps --concurrency=2 -B"
+#    su - ${SHARED_USER_NAME} -c "export LANG=C.UTF-8 && cd /contraxsuite_services && \
+#        . /contraxsuite_services/venv/bin/activate && \
+#        python run_celery.py"
 fi

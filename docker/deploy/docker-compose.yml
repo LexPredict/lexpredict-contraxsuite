@@ -31,7 +31,7 @@ services:
       - contrax-elasticsearch
     environment:
       - "ELASTICSEARCH_URL=http://${DOCKER_HOST_NAME_ELASTICSEARCH}:9200"
-      - "SERVER_BASEPATH=/kibana"
+      - "SERVER_BASEPATH=${DOCKER_KIBANA_BASE_PATH}"
     deploy:
       replicas: 1
     ports:
@@ -39,6 +39,7 @@ services:
 
   contrax-rabbitmq:
     image: rabbitmq:3-management
+    hostname: contrax-rabbitmq
     networks:
       - contrax_net
     environment:
@@ -49,6 +50,8 @@ services:
       replicas: 1
       placement:
         constraints: [node.role == manager]
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
 
   contrax-db:
     image: postgres:9.6
@@ -65,6 +68,13 @@ services:
       replicas: 1
       placement:
         constraints: [node.role == manager]
+
+  contrax-tika:
+    image: logicalspark/docker-tikaserver
+    networks:
+      - contrax_net
+    deploy:
+      replicas: 1
 
   contrax-celery:
     image: ${CONTRAXSUITE_IMAGE_FULL_NAME}
@@ -160,7 +170,6 @@ services:
       - contraxsuite_deployment_uuid:/deployment_uuid
       - contraxsuite_nginx_certs:/etc/nginx/certificates
       - contraxsuite_static_files:/contraxsuite_services/staticfiles
-      - contraxsuite_static:/static
       - contraxsuite_third_party_dependencies:/third_party_dependencies
       - contraxsuite_data_media:/data/media
       - django_logs:/data/logs
@@ -248,13 +257,13 @@ volumes:
   contraxsuite_deployment_uuid:
   contraxsuite_nginx_certs:
   contraxsuite_static_files:
-  contraxsuite_static:
   contraxsuite_third_party_dependencies:
   contraxsuite_data_media:
   contraxsuite_notebooks:
   django_logs:
   django_nginx_logs:
   postgres_data:
+  rabbitmq_data:
   elasticsearch_data:
   redis_data:
 
