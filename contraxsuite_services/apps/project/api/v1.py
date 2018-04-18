@@ -310,11 +310,11 @@ class ProjectUpdateSerializer(ProjectDetailSerializer):
                   'owners', 'reviewers', 'type']
 
 
-def require_multiple_contract_type(func):
+def require_generic_contract_type(func):
     def decorator(cls, *args, **kwargs):
         project = cls.get_object()
-        if project.type:
-            raise APIException('Allowed for projects with "Multiple Contract Type" only')
+        if project.type and not project.type.is_generic():
+            raise APIException('Allowed for projects with "Generic Contract Type" only')
         return func(cls, *args, **kwargs)
     decorator.__doc__ = func.__doc__
     return decorator
@@ -364,7 +364,7 @@ class ProjectViewSet(JqMixin, viewsets.ModelViewSet):
         return Response(project_progress(self.get_object()))
 
     @detail_route(methods=['post'])
-    @require_multiple_contract_type
+    @require_generic_contract_type
     def cluster(self, request, **kwargs):
         """
         Cluster Project Documents\n
@@ -399,7 +399,7 @@ class ProjectViewSet(JqMixin, viewsets.ModelViewSet):
                          'project_clustering_id': project_clustering.id})
 
     @detail_route(methods=['get'], url_path='clustering-status')
-    @require_multiple_contract_type
+    @require_generic_contract_type
     def clustering_status(self, request, **kwargs):
         """
         Last Clustering task status/data\n
@@ -444,7 +444,7 @@ class ProjectViewSet(JqMixin, viewsets.ModelViewSet):
         return Response(data)
 
     @detail_route(methods=['post'], url_path='send-clusters-to-project')
-    @require_multiple_contract_type
+    @require_generic_contract_type
     def send_clusters_to_project(self, request, **kwargs):
         """
         Send clusters to another Project\n
@@ -475,7 +475,7 @@ class ProjectViewSet(JqMixin, viewsets.ModelViewSet):
         return Response('OK')
 
     @detail_route(methods=['post'])
-    @require_multiple_contract_type
+    @require_generic_contract_type
     def cleanup(self, request, **kwargs):
         """
         Clean project (Multiple type project)
