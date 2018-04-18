@@ -20,6 +20,10 @@ services:
       - contrax_net
     deploy:
       replicas: 1
+      resources:
+        limits:
+          cpus: '${DOCKER_ELASTICSEARCH_CPUS}'
+          memory: ${DOCKER_ELASTICSEARCH_MEMORY}
       placement:
         constraints: [node.role == manager]
 
@@ -66,6 +70,10 @@ services:
       - contrax_net
     deploy:
       replicas: 1
+      resources:
+        limits:
+          cpus: '${DOCKER_POSTGRES_CPUS}'
+          memory: ${DOCKER_POSTGRES_MEMORY}
       placement:
         constraints: [node.role == manager]
 
@@ -74,7 +82,13 @@ services:
     networks:
       - contrax_net
     deploy:
+      resources:
+        limits:
+          cpus: '${DOCKER_TIKA_CPUS}'
+          memory: ${DOCKER_TIKA_MEMORY}
       replicas: 1
+    ports:
+      - 9998:9998
 
   contrax-celery:
     image: ${CONTRAXSUITE_IMAGE_FULL_NAME}
@@ -119,10 +133,16 @@ services:
     depends_on:
       - contrax-rabbitmq
       - contrax-db
+      - contrax-tika
       - contrax-redis
       - contrax-elasticsearch
     deploy:
-      replicas: 1
+      resources:
+        limits:
+          cpus: '${DOCKER_CELERY_CPUS}'
+          memory: ${DOCKER_CELERY_MEMORY}
+      replicas: 2
+
 
   contrax-uwsgi:
     image: ${CONTRAXSUITE_IMAGE_FULL_NAME}
@@ -250,6 +270,10 @@ services:
       - 8888:8888
     deploy:
       replicas: 1
+      resources:
+        limits:
+          cpus: '${DOCKER_JUPYTER_CPUS}'
+          memory: ${DOCKER_JUPYTER_MEMORY}
       placement:
         constraints: [node.role == manager]
 
