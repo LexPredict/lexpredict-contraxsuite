@@ -583,7 +583,7 @@ class DateDurationUsageListView(BaseUsageListView):
 class TopDateDurationUsageListView(BaseTopUsageListView):
     sub_app = 'duration'
     model = DateDurationUsage
-    template_name = "extract/top_date_duration_usage_list.html"
+    # template_name = "extract/top_date_duration_usage_list.html"
     parent_list_view = DateDurationUsageListView
 
     @staticmethod
