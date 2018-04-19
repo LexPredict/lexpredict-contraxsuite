@@ -20,6 +20,10 @@ services:
       - contrax_net
     deploy:
       replicas: 1
+      resources:
+        limits:
+          cpus: '${DOCKER_ELASTICSEARCH_CPUS}'
+          memory: ${DOCKER_ELASTICSEARCH_MEMORY}
       placement:
         constraints: [node.role == manager]
 
@@ -66,6 +70,10 @@ services:
       - contrax_net
     deploy:
       replicas: 1
+      resources:
+        limits:
+          cpus: '${DOCKER_POSTGRES_CPUS}'
+          memory: ${DOCKER_POSTGRES_MEMORY}
       placement:
         constraints: [node.role == manager]
 
@@ -74,13 +82,24 @@ services:
     networks:
       - contrax_net
     deploy:
+      resources:
+        limits:
+          cpus: '${DOCKER_TIKA_CPUS}'
+          memory: ${DOCKER_TIKA_MEMORY}
       replicas: 1
+    ports:
+      - 9998:9998
 
   contrax-celery:
     image: ${CONTRAXSUITE_IMAGE_FULL_NAME}
     networks:
       - contrax_net
     command: ["/start.sh",  "celery"]
+    healthcheck:
+      test: ["CMD", "/check_celery.sh"]
+      interval: 1m
+      timeout: 5s
+      retries: 1
     environment:
       - "SHARED_USER_NAME=${SHARED_USER_NAME}"
       - "SHARED_USER_ID=${SHARED_USER_ID}"
@@ -116,13 +135,20 @@ services:
       - "DOCKER_JUPYTER_BASE_URL=${DOCKER_JUPYTER_BASE_URL}"
       - "DOCKER_JUPYTER_PORT=${DOCKER_JUPYTER_PORT}"
       - "DOCKER_DJANGO_BASE_PATH=${DOCKER_DJANGO_BASE_PATH}"
+      - "DOCKER_FLOWER_BASE_PATH=${DOCKER_FLOWER_BASE_PATH}"
     depends_on:
       - contrax-rabbitmq
       - contrax-db
+      - contrax-tika
       - contrax-redis
       - contrax-elasticsearch
     deploy:
-      replicas: 1
+      resources:
+        limits:
+          cpus: '${DOCKER_CELERY_CPUS}'
+          memory: ${DOCKER_CELERY_MEMORY}
+      replicas: 2
+
 
   contrax-uwsgi:
     image: ${CONTRAXSUITE_IMAGE_FULL_NAME}
@@ -166,6 +192,7 @@ services:
       - "DOCKER_JUPYTER_BASE_URL=${DOCKER_JUPYTER_BASE_URL}"
       - "DOCKER_JUPYTER_PORT=${DOCKER_JUPYTER_PORT}"
       - "DOCKER_DJANGO_BASE_PATH=${DOCKER_DJANGO_BASE_PATH}"
+      - "DOCKER_FLOWER_BASE_PATH=${DOCKER_FLOWER_BASE_PATH}"
     volumes:
       - contraxsuite_deployment_uuid:/deployment_uuid
       - contraxsuite_nginx_certs:/etc/nginx/certificates
@@ -230,6 +257,7 @@ services:
       - "DOCKER_JUPYTER_BASE_URL=${DOCKER_JUPYTER_BASE_URL}"
       - "DOCKER_JUPYTER_PORT=${DOCKER_JUPYTER_PORT}"
       - "DOCKER_DJANGO_BASE_PATH=${DOCKER_DJANGO_BASE_PATH}"
+      - "DOCKER_FLOWER_BASE_PATH=${DOCKER_FLOWER_BASE_PATH}"
     volumes:
       - contraxsuite_deployment_uuid:/deployment_uuid
       - contraxsuite_nginx_certs:/etc/nginx/certificates
@@ -250,6 +278,80 @@ services:
       - 8888:8888
     deploy:
       replicas: 1
+      resources:
+        limits:
+          cpus: '${DOCKER_JUPYTER_CPUS}'
+          memory: ${DOCKER_JUPYTER_MEMORY}
+      placement:
+        constraints: [node.role == manager]
+
+  contrax-flower:
+    image: ${CONTRAXSUITE_IMAGE_FULL_NAME}
+    networks:
+      - contrax_net
+    command: ["/start.sh",  "flower"]
+    environment:
+      - "SHARED_USER_NAME=${SHARED_USER_NAME}"
+      - "SHARED_USER_ID=${SHARED_USER_ID}"
+      - "DOCKER_HOST_NAME_PG=${DOCKER_HOST_NAME_PG}"
+      - "DOCKER_HOST_NAME_REDIS=${DOCKER_HOST_NAME_REDIS}"
+      - "DOCKER_HOST_NAME_RABBITMQ=${DOCKER_HOST_NAME_RABBITMQ}"
+      - "DOCKER_HOST_NAME_ELASTICSEARCH=${DOCKER_HOST_NAME_ELASTICSEARCH}"
+      - "DOCKER_HOST_NAME_UWSGI=${DOCKER_HOST_NAME_UWSGI}"
+      - "DOCKER_HOST_NAME_KIBANA=${DOCKER_HOST_NAME_KIBANA}"
+      - "DOCKER_PG_USER=${DOCKER_PG_USER}"
+      - "DOCKER_PG_PASSWORD=${DOCKER_PG_PASSWORD}"
+      - "DOCKER_PG_DB_NAME=${DOCKER_PG_DB_NAME}"
+      - "DOCKER_RABBITMQ_VHOST=${DOCKER_RABBITMQ_VHOST}"
+      - "DOCKER_RABBITMQ_USER=${DOCKER_RABBITMQ_USER}"
+      - "DOCKER_RABBITMQ_PASSWORD=${DOCKER_RABBITMQ_PASSWORD}"
+      - "DOCKER_DJANGO_HOST_NAME=${DOCKER_DJANGO_HOST_NAME}"
+      - "DOCKER_DJANGO_EMAIL_BACKEND=${DOCKER_DJANGO_EMAIL_BACKEND}"
+      - "DOCKER_DJANGO_EMAIL_HOST=${DOCKER_DJANGO_EMAIL_HOST}"
+      - "DOCKER_DJANGO_EMAIL_PORT=${DOCKER_DJANGO_EMAIL_PORT}"
+      - "DOCKER_DJANGO_EMAIL_USE_TLS=${DOCKER_DJANGO_EMAIL_USE_TLS}"
+      - "DOCKER_DJANGO_EMAIL_HOST_USER=${DOCKER_DJANGO_EMAIL_HOST_USER}"
+      - "DOCKER_DJANGO_EMAIL_HOST_PASSWORD=${DOCKER_DJANGO_EMAIL_HOST_PASSWORD}"
+      - "DOCKER_DJANGO_ADMIN_NAME=${DOCKER_DJANGO_ADMIN_NAME}"
+      - "DOCKER_DJANGO_ADMIN_PASSWORD=${DOCKER_DJANGO_ADMIN_PASSWORD}"
+      - "DOCKER_DJANGO_ADMIN_EMAIL=${DOCKER_DJANGO_ADMIN_EMAIL}"
+      - "DOCKER_DJANGO_DEBUG=${DOCKER_DJANGO_DEBUG}"
+      - "DOCKER_DJANGO_DEBUG_SQL=${DOCKER_DJANGO_DEBUG_SQL}"
+      - "DOCKER_DJANGO_SECRET_KEY=${DOCKER_DJANGO_SECRET_KEY}"
+      - "DOCKER_DJANGO_ACCOUNT_EMAIL_VERIFICATION=${DOCKER_DJANGO_ACCOUNT_EMAIL_VERIFICATION}"
+      - "DOCKER_NGINX_SERVER_NAME=${DOCKER_NGINX_SERVER_NAME}"
+      - "DOCKER_NGINX_CERTIFICATE=${DOCKER_NGINX_CERTIFICATE}"
+      - "DOCKER_NGINX_CERTIFICATE_KEY=${DOCKER_NGINX_CERTIFICATE_KEY}"
+      - "DOCKER_DJANGO_THEME_ARCHIVE=${DOCKER_DJANGO_THEME_ARCHIVE}"
+      - "DOCKER_DJANGO_JQWIDGETS_ARCHIVE=${DOCKER_DJANGO_JQWIDGETS_ARCHIVE}"
+      - "DOCKER_JUPYTER_BASE_URL=${DOCKER_JUPYTER_BASE_URL}"
+      - "DOCKER_JUPYTER_PORT=${DOCKER_JUPYTER_PORT}"
+      - "DOCKER_DJANGO_BASE_PATH=${DOCKER_DJANGO_BASE_PATH}"
+      - "DOCKER_FLOWER_BASE_PATH=${DOCKER_FLOWER_BASE_PATH}"
+    volumes:
+      - contraxsuite_deployment_uuid:/deployment_uuid
+      - contraxsuite_nginx_certs:/etc/nginx/certificates
+      - contraxsuite_static_files:/contraxsuite_services/staticfiles
+      - contraxsuite_third_party_dependencies:/third_party_dependencies
+      - contraxsuite_data_media:/data/media
+      - django_logs:/data/logs
+      - django_nginx_logs:/var/log/nginx
+      - contraxsuite_notebooks:/contraxsuite_services/notebooks
+    depends_on:
+      - contrax-db
+      - contrax-celery
+      - contrax-uwsgi
+      - contrax-redis
+      - contrax-rabbitmq
+      - contrax-elasticsearch
+    ports:
+      - 5555:5555
+    deploy:
+      replicas: 1
+      resources:
+        limits:
+          cpus: '${DOCKER_FLOWER_CPUS}'
+          memory: ${DOCKER_FLOWER_MEMORY}
       placement:
         constraints: [node.role == manager]
 

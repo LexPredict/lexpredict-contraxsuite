@@ -4,6 +4,9 @@ set -e
 
 IMAGE_UUID_FILE=/build.uuid
 DEPLOYMENT_UUID_FILE=/deployment_uuid/deployment.uuid
+PROJECT_DIR="/contraxsuite_services"
+VENV_PATH="/contraxsuite_services/venv/bin/activate"
+ACTIVATE_VENV="export LANG=C.UTF-8 && cd ${PROJECT_DIR} && . ${VENV_PATH} "
 
 echo ""
 echo ===================================================================
@@ -102,9 +105,7 @@ if [ $1 == "uwsgi" ]; then
 
 
     echo "Collecting DJANGO static files..."
-    su - ${SHARED_USER_NAME} -c "export LANG=C.UTF-8 && cd /contraxsuite_services && \
-        . /contraxsuite_services/venv/bin/activate && \
-        python manage.py collectstatic --noinput"
+    su - ${SHARED_USER_NAME} -c "${ACTIVATE_VENV} && python manage.py collectstatic --noinput"
 
     popd
 
@@ -128,8 +129,7 @@ if [ $1 == "uwsgi" ]; then
     echo "Ensuring Django superuser is created..."
 
 # Indentation makes sense here
-su - ${SHARED_USER_NAME} -c "export LANG=C.UTF-8 && cd /contraxsuite_services && \
-    . /contraxsuite_services/venv/bin/activate && \
+su - ${SHARED_USER_NAME} -c "${ACTIVATE_VENV} && \
     python manage.py force_migrate && \
     python manage.py shell -c \"
 from apps.users.models import User
@@ -145,8 +145,7 @@ if not User.objects.filter(username = '${DOCKER_DJANGO_ADMIN_NAME}').exists():
         #/usr/share/logstash/bin/logstash -f /etc/logstash/conf.d/contraxsuite_logstash.conf &
 
         service nginx start && \
-        su - ${SHARED_USER_NAME} -c "export LANG=C.UTF-8 && cd /contraxsuite_services && \
-            . /contraxsuite_services/venv/bin/activate && \
+        su - ${SHARED_USER_NAME} -c "${ACTIVATE_VENV} && \
             ulimit -n 1000000 && \
             uwsgi --socket 0.0.0.0:3031 \
                     --plugins python3 \
@@ -166,16 +165,23 @@ elif [ $1 == "jupyter" ]; then
     envsubst < /config-templates/jupyter_notebook_config.py.template > /home/${SHARED_USER_NAME}/.jupyter/jupyter_notebook_config.py
     chown -R -v ${SHARED_USER_NAME}:${SHARED_USER_NAME} /home/${SHARED_USER_NAME}/.jupyter
 
-    su - ${SHARED_USER_NAME} -c "export LANG=C.UTF-8 && cd /contraxsuite_services && \
-    . /contraxsuite_services/venv/bin/activate && \
+    su - ${SHARED_USER_NAME} -c "${ACTIVATE_VENV} && \
     python -c \"
 from notebook.auth import passwd
 with open('/home/${SHARED_USER_NAME}/.jupyter/jupyter_notebook_config.py', 'a') as myfile:
     myfile.write('\\nc.NotebookApp.password = \'' + passwd('${DOCKER_DJANGO_ADMIN_PASSWORD}') + '\'')
 \""
-    su - ${SHARED_USER_NAME} -c "export LANG=C.UTF-8 && cd /contraxsuite_services && . /contraxsuite_services/venv/bin/activate && \
+    su - ${SHARED_USER_NAME} -c "${ACTIVATE_VENV} && \
         ulimit -n 1000000 && \
         jupyter notebook --port=8888 --no-browser --ip=0.0.0.0"
+elif [ $1 == "flower" ]; then
+    echo "Sleeping 15 seconds to let Postgres start and Django migrate"
+    sleep 15
+    echo "Starting Flower..."
+
+    su - ${SHARED_USER_NAME} -c "${ACTIVATE_VENV} && \
+        ulimit -n 1000000 && \
+        flower -A apps --port=5555 --address=0.0.0.0 --url_prefix=${DOCKER_FLOWER_BASE_PATH}"
 else
     echo "Sleeping 15 seconds to let Postgres start and Django migrate"
     sleep 15
@@ -183,10 +189,25 @@ else
 
     #/usr/share/logstash/bin/logstash -f /etc/logstash/conf.d/contraxsuite_logstash.conf &
 
-    su - ${SHARED_USER_NAME} -c "export LANG=C.UTF-8 && cd /contraxsuite_services && . /contraxsuite_services/venv/bin/activate && \
-        ulimit -n 1000000 && \
-        celery worker -A apps --concurrency=2 -B"
-#    su - ${SHARED_USER_NAME} -c "export LANG=C.UTF-8 && cd /contraxsuite_services && \
-#        . /contraxsuite_services/venv/bin/activate && \
-#        python run_celery.py"
+#    su - ${SHARED_USER_NAME} -c "export LANG=C.UTF-8 && cd /contraxsuite_services && . /contraxsuite_services/venv/bin/activate && \
+#        celery worker -A apps --concurrency=2 -B"
+
+#    TASKS=60
+#    for i in {1..5};
+#    do
+#        echo "Attempt #$i";
+        su - ${SHARED_USER_NAME} -c "${ACTIVATE_VENV} && \
+            ulimit -n 1000000 && \
+            celery worker -A apps --concurrency=1 -B"
+        sleep 20
+#        REGISTERED=$(su - ${SHARED_USER_NAME} -c "${ACTIVATE_VENV} && \
+#            celery -A apps inspect registered | grep ' \* ' | wc -l")
+#        echo "Registered $REGISTERED tasks"
+#        if [ "$REGISTERED" -ne "$TASKS" ]  ; then
+#            pkill -f "celery"
+#            sleep 10
+#        else
+#            break
+#        fi
+#    done
 fi
