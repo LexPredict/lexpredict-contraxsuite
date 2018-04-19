@@ -174,6 +174,14 @@ with open('/home/${SHARED_USER_NAME}/.jupyter/jupyter_notebook_config.py', 'a') 
     su - ${SHARED_USER_NAME} -c "${ACTIVATE_VENV} && \
         ulimit -n 1000000 && \
         jupyter notebook --port=8888 --no-browser --ip=0.0.0.0"
+elif [ $1 == "flower" ]; then
+    echo "Sleeping 15 seconds to let Postgres start and Django migrate"
+    sleep 15
+    echo "Starting Flower..."
+
+    su - ${SHARED_USER_NAME} -c "${ACTIVATE_VENV} && \
+        ulimit -n 1000000 && \
+        flower -A apps --port=5555 --address=0.0.0.0 --url_prefix=${DOCKER_FLOWER_BASE_PATH}"
 else
     echo "Sleeping 15 seconds to let Postgres start and Django migrate"
     sleep 15
@@ -184,23 +192,22 @@ else
 #    su - ${SHARED_USER_NAME} -c "export LANG=C.UTF-8 && cd /contraxsuite_services && . /contraxsuite_services/venv/bin/activate && \
 #        celery worker -A apps --concurrency=2 -B"
 
-    #TASKS=30
-    #for i in {1..5};
-    #do
-    #    echo "Attempt #$i";
+#    TASKS=60
+#    for i in {1..5};
+#    do
+#        echo "Attempt #$i";
         su - ${SHARED_USER_NAME} -c "${ACTIVATE_VENV} && \
             ulimit -n 1000000 && \
             celery worker -A apps --concurrency=1 -B"
-    #    sleep 20
-    #    REGISTERED=$(su - ${SHARED_USER_NAME} -c "${ACTIVATE_VENV} && \
-    #        ulimit -n 1000000 && \
-    #        celery -A apps inspect registered | grep ' \* ' | wc -l")
-    #    echo "Registered $REGISTERED tasks"
-    #    if [ "$REGISTERED" -ne "$TASKS" ]  ; then
-    #        pkill -f "celery"
-    #        sleep 10
-    #    else
-    #        break
-    #    fi
-    #done
+        sleep 20
+#        REGISTERED=$(su - ${SHARED_USER_NAME} -c "${ACTIVATE_VENV} && \
+#            celery -A apps inspect registered | grep ' \* ' | wc -l")
+#        echo "Registered $REGISTERED tasks"
+#        if [ "$REGISTERED" -ne "$TASKS" ]  ; then
+#            pkill -f "celery"
+#            sleep 10
+#        else
+#            break
+#        fi
+#    done
 fi
