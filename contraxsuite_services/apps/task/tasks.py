@@ -1055,7 +1055,7 @@ def parse_party(text, text_unit_id, _text_unit_lang):
             )
             party, _ = Party.objects.get_or_create(
                 name=name,
-                type_abbr=type_abbr,
+                type_abbr=type_abbr or '',
                 defaults=defaults
             )
             pu_list.append(
