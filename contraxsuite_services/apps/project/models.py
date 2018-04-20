@@ -352,11 +352,11 @@ class UploadSession(models.Model):
         """
         return [{'file_name': i.metadata['file_name'],
                  'task_name': i.name,
+                 'task_status': i.status,
                  'task_progress': 100 if i.status == 'SUCCESS' else 0}
                 for i in self.session_tasks if i.metadata.get('file_name')]
 
-    @property
-    def document_tasks_progress(self):
+    def document_tasks_progress(self, details=False):
         """
         Progress per document
         """
@@ -365,10 +365,28 @@ class UploadSession(models.Model):
         for file_name, task_progress_data in itertools.groupby(
                 sorted(self.document_progress_data, key=lambda i: i['file_name']),
                 key=lambda i: i['file_name']):
+            task_progress_data = list(task_progress_data)
             document_progress = round(
                 sum([int(i['task_progress'])
                      for i in task_progress_data][:tasks_number]) / tasks_number, 2)
-            result[file_name] = document_progress
+            task_statuses = {i['task_status'] for i in task_progress_data}
+            if 'FAILURE' in task_statuses:
+                task_status = 'FAILURE'
+            elif task_statuses == {'SUCCESS'}:
+                task_status = 'SUCCESS'
+            else:
+                task_status = 'PENDING'
+            try:
+                document_id = self.document_set.get(name=file_name).pk
+            except:
+                document_id = None
+            result[file_name] = {
+                'document_id': document_id,
+                'task_progress_data': task_progress_data,
+                'tasks_overall_status': task_status,
+                'document_progress': document_progress}
+            if details:
+                result[file_name]['task_progress_data'] = task_progress_data
         return result
 
     @property
@@ -376,7 +394,7 @@ class UploadSession(models.Model):
         """
         Total Progress of custom document tasks
         """
-        _p = list(self.document_tasks_progress.values())
+        _p = [i['document_progress'] for i in self.document_tasks_progress().values()]
         return round(sum(_p) / float(len(_p)), 2) if _p else 0
 
     @property

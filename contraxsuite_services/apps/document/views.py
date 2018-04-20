@@ -111,7 +111,8 @@ class DocumentListView(JqPaginatedListView):
     CBV for list of Document records.
     """
     model = Document
-    json_fields = ['name', 'document_type', 'description', 'title',
+    json_fields = ['name', 'document_type', 'description',
+                   'title', 'language',
                    'properties', 'relations', 'text_units']
     limit_reviewers_qs_by_field = ""
     field_types = dict(
@@ -130,6 +131,10 @@ class DocumentListView(JqPaginatedListView):
         name_search = self.request.GET.get("name_search")
         if name_search:
             qs = qs.filter(name__icontains=name_search)
+
+        language_search = self.request.GET.get("language_search")
+        if language_search:
+            qs = qs.filter(language__icontains=language_search)
 
         if 'party_pk' in self.request.GET:
             qs = qs.filter(textunit__partyusage__party__pk=self.request.GET['party_pk'])
@@ -450,6 +455,8 @@ class TextUnitListView(JqPaginatedListView):
             qs = qs.filter(document__pk=self.request.GET['document_pk']).order_by('pk')
         elif "party_pk" in self.request.GET:
             qs = qs.filter(partyusage__party__pk=self.request.GET['party_pk'])
+        elif "language" in self.request.GET:
+            qs = qs.filter(language=self.request.GET['language'])
         elif "text_unit_hash" in self.request.GET:
             # Text Unit Detail identical text units tab
             qs = qs.filter(text_hash=self.request.GET['text_unit_hash']) \
@@ -471,6 +478,20 @@ class TextUnitListView(JqPaginatedListView):
         ctx['text_search'] = self.request.GET.get("text_search", "")
         ctx['is_text_unit_list_page'] = True
         return ctx
+
+
+class TextUnitByLangListView(JqPaginatedListView):
+    model = TextUnit
+    template_name = 'document/text_unit_lang_list.html'
+    limit_reviewers_qs_by_field = None
+
+    def get_json_data(self, **kwargs):
+        qs = super().get_queryset()
+        qs = qs.filter(unit_type='paragraph')
+        data = list(qs.values('language').order_by().annotate(count=Count('pk')))
+        for item in data:
+            item['url'] = reverse('document:text-unit-list') + '?language=' + item['language']
+        return {'data': data, 'total_records': len(data)}
 
 
 class TextUnitPropertyListView(JqPaginatedListView):

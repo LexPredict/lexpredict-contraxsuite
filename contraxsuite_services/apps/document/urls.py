@@ -83,6 +83,11 @@ urlpatterns += [
         name='stats'
     ),
     url(
+        r'^text-unit-by-language/list/$',
+        views.TextUnitByLangListView.as_view(),
+        name='text-unit-by-lang-list'
+    ),
+    url(
         r'^document-property/(?:(?P<pk>\d+)/)?add/$',
         views.DocumentPropertyCreateView.as_view(),
         name='document-property-add'

@@ -35,14 +35,15 @@ from enum import Enum, unique
 from random import randint, random
 from typing import List, Union, Tuple
 
+import dateparser
 import geocoder
 import pyap
+from lexnlp.extract.en.addresses.addresses import get_addresses
 from lexnlp.extract.en.amounts import get_amounts
 from lexnlp.extract.en.dates import get_dates_list
 from lexnlp.extract.en.durations import get_durations
 from lexnlp.extract.en.entities.nltk_maxent import get_companies, get_persons
 from lexnlp.extract.en.money import get_money
-import dateparser
 
 from apps.document import models
 from apps.document.parsing.machine_learning import ModelCategory
@@ -362,17 +363,18 @@ class DateField(FieldType):
         return get_dates_list(text)
 
     def example_json_value(self, field):
-        return self.python_value_to_json(date.today())
+        return self.python_value_to_json(datetime.now())
 
     def json_value_to_python(self, json_value):
         if not json_value:
             return None
-        return datetime.strptime(json_value, '%Y-%m-%d').date()
+
+        return dateparser.parse(json_value)
 
     def python_value_to_json(self, python_value):
         if not python_value:
             return None
-        return datetime.strftime(python_value, '%Y-%m-%d')
+        return python_value.isoformat()
 
 
 class FloatField(FieldType):
@@ -424,16 +426,8 @@ class AddressField(FieldType):
     value_aware = True
     value_extracting = True
 
-    def _extract_from_possible_value(self, field, possible_value):
-        if not possible_value:
-            return None
-
-        if type(possible_value) is dict:
-            address = possible_value.get('address')
-        else:
-            addresses = pyap.parse(str(possible_value), country='US')
-            address = addresses[0] if addresses else str(possible_value)
-
+    @staticmethod
+    def _get_from_geocode(address: str):
         g = geocoder.google(address)
         if g.ok:
             return {
@@ -446,20 +440,38 @@ class AddressField(FieldType):
             }
         else:
             # Google does not know such address - probably we detected it wrong.
-            # return {
-            #    'address': address,
-            #    'latitude': None,
-            #    'longitude': None,
-            #    'country': None,
-            #    'province': None,
-            #    'city': None
-            # }
-            # For the addresses we can't detect - return None to allow further scanning
+            return {
+                'address': address,
+                'latitude': None,
+                'longitude': None,
+                'country': None,
+                'province': None,
+                'city': None
+            }
+
+    def _extract_from_possible_value(self, field, possible_value):
+        if not possible_value:
             return None
 
+        if type(possible_value) is dict:
+            address = possible_value.get('address')
+        else:
+            addresses = list(pyap.parse(str(possible_value), country='US'))
+
+            if not addresses:
+                addresses = list(get_addresses(str(possible_value)))
+
+            address = addresses[0] if addresses else str(possible_value)
+
+        return AddressField._get_from_geocode(address)
+
     def _extract_variants_from_text(self, field, text: str):
-        return [self._extract_from_possible_value(field, str(addr)) for addr in
-                pyap.parse(text, country='US')]
+        addresses = list(pyap.parse(text, country='US'))
+
+        if not addresses:
+            addresses = list(get_addresses(text))
+
+        return [AddressField._get_from_geocode(address) for address in addresses]
 
     def value_to_string(self, field_value):
         if not field_value:

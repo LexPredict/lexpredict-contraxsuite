@@ -281,3 +281,14 @@ class Task(models.Model):
             return None
         progress_values = [i['progress'] for i in tasks_progress.values()]
         return ((sum(progress_values) / len(progress_values)) == 100) if progress_values else None
+
+    @classmethod
+    def delete_special_tasks(cls, kwargs):
+        tasks = cls.special_tasks(kwargs)
+        for task in tasks:
+            sub_tasks = TaskResult.objects.filter(task_id__startswith='{}_'.format(task.id))
+            if sub_tasks.exists():
+                sub_tasks.delete()
+            if task.celery_task:
+                task.celery_task.delete()
+            task.delete()
