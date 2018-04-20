@@ -506,7 +506,7 @@ class JqPaginatedListView(AjaxListView):
             pg = paginator.page(paginator.num_pages)
 
         qs = qs.filter(
-            **{'%s__in' % self.unique_field: [getattr(obj, self.unique_field)
+            **{'%s__in' % self.unique_field: [getattr(obj, self.unique_field) if hasattr(obj, self.unique_field) else obj[self.unique_field]
                                               for obj in pg.object_list]})
         return qs
 

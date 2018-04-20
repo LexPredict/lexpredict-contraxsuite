@@ -111,7 +111,7 @@ class DocumentListView(JqPaginatedListView):
     CBV for list of Document records.
     """
     model = Document
-    json_fields = ['name', 'document_type', 'description',
+    json_fields = ['name', 'document_type__title', 'description',
                    'title', 'language',
                    'properties', 'relations', 'text_units']
     limit_reviewers_qs_by_field = ""

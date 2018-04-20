@@ -204,8 +204,8 @@ class DocumentClusterListView(JqPaginatedListView):
     limit_reviewers_qs_by_field = 'documents'
 
     def get_json_data(self, **kwargs):
-        data = list(self.get_queryset())
-        for item in data:
+        data = super().get_json_data(**kwargs)
+        for item in data['data']:
             cluster = DocumentCluster.objects.get(pk=item['pk'])
             documents = cluster.documents
             if self.request.user.is_reviewer:
@@ -214,7 +214,7 @@ class DocumentClusterListView(JqPaginatedListView):
             for document in documents:
                 document['url'] = reverse('document:document-detail', args=[document['pk']]),
             item['documents'] = list(documents)
-        return {'data': data, 'total_records': len(data)}
+        return data
 
     def get_queryset(self):
         qs = super().get_queryset()
@@ -334,8 +334,8 @@ class TextUnitClusterListView(JqPaginatedListView):
     limit_reviewers_qs_by_field = 'text_units__document'
 
     def get_json_data(self, **kwargs):
-        data = list(self.get_queryset())
-        for item in data:
+        data = super().get_json_data(**kwargs)
+        for item in data['data']:
             cluster = TextUnitCluster.objects.get(pk=item['pk'])
             text_units = cluster.text_units.values(
                 'pk', 'unit_type', 'text', 'language',
@@ -347,7 +347,7 @@ class TextUnitClusterListView(JqPaginatedListView):
                 text_unit['text_unit_url'] = reverse('document:text-unit-detail',
                                                      args=[text_unit['pk']])
             item['text_units'] = list(text_units)
-        return {'data': data, 'total_records': len(data)}
+        return data
 
     def get_queryset(self):
         qs = super().get_queryset()
