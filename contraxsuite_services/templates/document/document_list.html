@@ -11,6 +11,7 @@
         { name: 'document_type', type: 'string' },
         { name: 'description', type: 'string' },
         { name: 'title', type: 'string' },
+        { name: 'language', type: 'string' },
         { name: 'properties', type: 'int' },
         { name: 'relations', type: 'int' },
         { name: 'text_units', type: 'int' },
@@ -27,6 +28,8 @@
 {#        { text: 'Description', datafield: 'description', width: 'auto',#}
 {#          align: 'center', cellsalign: 'center' },#}
         { text: 'Title', datafield: 'title', width: 'auto',
+          align: 'center', cellsalign: 'center' },
+        { text: 'Lang', datafield: 'language', width: 60,
           align: 'center', cellsalign: 'center' },
         { text: 'Properties', datafield: 'properties', width: 100,
           align: 'center', cellsalign: 'center' },

@@ -478,7 +478,7 @@ class ProjectViewSet(JqMixin, viewsets.ModelViewSet):
     @require_generic_contract_type
     def cleanup(self, request, **kwargs):
         """
-        Clean project (Multiple type project)
+        Clean project (Generic Contract Type project)
         """
         call_task(
             task_name='CleanProject',
@@ -506,7 +506,6 @@ class ProjectViewSet(JqMixin, viewsets.ModelViewSet):
         return Response(ret)
 
 
-
 # --------------------------------------------------------
 # UploadSession Views
 # --------------------------------------------------------
@@ -532,30 +531,7 @@ class UploadSessionDetailSerializer(serializers.ModelSerializer):
                   'document_type', 'progress']
 
     def get_progress(self, obj):
-        session_tasks = Task.objects\
-            .filter(metadata__session_id=str(obj.pk))\
-            .select_related('celery_task_result')
-        task_number = 3 if obj.project.type else 2
-
-        progress_data = [
-            {'file_name': i.metadata.get('file_name', i.name),
-             'task_name': i.name,
-             'task_status': i.status,
-             # 'task_progress': i.progress,   # it queries all task children
-             'task_progress': 100 if i.status == 'SUCCESS' else 0}
-            for i in session_tasks]
-        progress = {}
-
-        for file_name, task_progress_data in itertools.groupby(
-                sorted(progress_data, key=lambda i: i['file_name']),
-                key=lambda i: i['file_name']):
-            task_progress_data = list(task_progress_data)
-            document_progress = sum([int(i['task_progress'])
-                                     for i in task_progress_data][:task_number]) / task_number
-            progress[file_name] = {
-                'task_progress_data': task_progress_data,
-                'document_progress': document_progress}
-        return progress
+        return obj.document_tasks_progress(details=True)
 
 
 class UploadSessionViewSet(JqMixin, viewsets.ModelViewSet):
@@ -589,13 +565,20 @@ class UploadSessionViewSet(JqMixin, viewsets.ModelViewSet):
         qs = qs.select_related('project')
         return qs
 
+    def create(self, request, *args, **kwargs):
+        project = Project.objects.get(pk=request.data.get('project'))
+        if project.type.is_generic() and project.uploadsession_set.exists():
+            return Response("This Project already has upload session", status=500)
+        return super().create(request, *args, **kwargs)
+
     @detail_route(methods=['get'])
     def progress(self, request, **kwargs):
         """
         Get Progress for a session per files (short form)
         """
         session = self.get_object()
-        result = {'document_tasks_progress': session.document_tasks_progress or None,
+        result = {'project_id': session.project.pk,
+                  'document_tasks_progress': session.document_tasks_progress() or None,
                   'document_tasks_progress_total': session.document_tasks_progress_total,
                   'session_status': session.status}
         return Response(result)

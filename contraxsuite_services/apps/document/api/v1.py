@@ -61,6 +61,7 @@ from apps.document.models import (
     TextUnitProperty, TextUnitNote, TextUnitTag)
 from apps.document.tasks import TrainDocumentFieldDetectorModel
 from apps.extract.models import *
+from apps.task.models import Task, TaskResult
 from apps.users.models import User
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
@@ -127,42 +128,46 @@ class DocumentWithFieldsDetailSerializer(DocumentSerializer):
                   'properties', 'relations', 'text_units',
                   'field_value_objects', 'field_values']
 
-    def get_field_value_objects(self, obj):
-        field_value_objects = {}
-        for fv in obj.documentfieldvalue_set.all():
+    def get_field_value_objects(self, doc):
+        field_uids_to_field_value_objects = {}
+        for fv in doc.documentfieldvalue_set.all():
             serialized_fv = DocumentFieldValueSerializer(fv).data
             field = fv.field
             field_uid = str(field.uid)
             field_type = FIELD_TYPES_REGISTRY[fv.field.type]
             if field_type.multi_value:
-                if field_value_objects.get(field_uid) is None:
-                    field_value_objects[field_uid] = [serialized_fv]
-                    self.fields_to_values[field] = [serialized_fv.get('value')]
+                if field_uids_to_field_value_objects.get(field_uid) is None:
+                    field_uids_to_field_value_objects[field_uid] = [serialized_fv]
                 else:
-                    field_value_objects[field_uid].append(serialized_fv)
-                    if fv.value not in self.fields_to_values[field]:
-                        self.fields_to_values[field].append(serialized_fv.get('value'))
+                    field_uids_to_field_value_objects[field_uid].append(serialized_fv)
             else:
-                field_value_objects[field_uid] = serialized_fv
-                self.fields_to_values[field] = serialized_fv.get('value')
-        return field_value_objects
+                field_uids_to_field_value_objects[field_uid] = serialized_fv
+        return field_uids_to_field_value_objects
 
-    def get_field_values(self, obj):
-        all_fields = obj.document_type.fields.all()
-        field_values = {}
+    def get_field_values(self, doc):
+        all_fields = doc.document_type.fields.all()
+        fields_to_field_values = {f: None for f in all_fields}
 
-        for f in all_fields:
-            if f not in self.fields_to_values:
-                self.fields_to_values[f] = None
+        for fv in doc.documentfieldvalue_set.all():
+            field = fv.field
+            field_type = FIELD_TYPES_REGISTRY[fv.field.type]
+            if field_type.multi_value:
+                if fields_to_field_values.get(field) is None:
+                    fields_to_field_values[field] = [fv.value]
+                else:
+                    fields_to_field_values[field].append(fv.value)
+            else:
+                fields_to_field_values[field] = fv.value
+
+        field_uids_to_field_values = {}
 
         for f in all_fields:
             if f.is_calculated():
-                value = f.calculate(self.fields_to_values)
+                field_uids_to_field_values[str(f.uid)] = f.calculate(fields_to_field_values)
             else:
-                value = self.fields_to_values.get(f)
-            field_values[str(f.uid)] = value
+                field_uids_to_field_values[str(f.uid)] = fields_to_field_values[f]
 
-        return field_values
+        return field_uids_to_field_values
 
 
 class DocumentWithFieldsListSerializer(DocumentWithFieldsDetailSerializer):
@@ -260,6 +265,33 @@ class DocumentViewSet(JqMixin, viewsets.ModelViewSet):
             url=extract_api_module.TopUrlUsageListAPIView(**class_kwargs).data,
         )
         return Response(result)
+
+    def destroy(self, request, *args, **kwargs):
+        document = self.get_object()
+        session = document.upload_session
+        file_name = document.name
+
+        # delete document
+        document.delete()
+
+        # delete document tasks
+        Task.delete_special_tasks(
+            {'file_name': file_name, 'session_id': str(session.pk)})
+
+        remove_session = False
+        # get status of documents in session
+        progress = session.document_tasks_progress()
+        if not progress:
+            remove_session = True
+        else:
+            statuses = {i['tasks_overall_status'] for i in progress.values()}
+            if statuses == {'FAILURE'}:
+                remove_session = True
+        if remove_session:
+            # delete session documents' tasks
+            Task.delete_special_tasks({'session_id': str(session.pk)})
+            session.delete()
+        return Response({'session_removed': remove_session}, status=200)
 
 
 class DocumentWithFieldsViewSet(JqMixin, viewsets.ReadOnlyModelViewSet):

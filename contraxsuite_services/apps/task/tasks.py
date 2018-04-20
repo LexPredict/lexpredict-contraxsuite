@@ -317,7 +317,8 @@ class LoadDocuments(BaseTask):
             # process by tika
             parser_name = 'tika'
             try:
-                data = parser.from_file(file_path)
+                data = parser.from_file(file_path, settings.TIKA_SERVER_ENDPOINT) \
+                    if settings.TIKA_SERVER_ENDPOINT else parser.from_file(file_path)
                 parsed = data['content']
                 metadata = data['metadata']
                 # text = process_text(parsed)
@@ -325,6 +326,9 @@ class LoadDocuments(BaseTask):
                 if len(text) < 100:
                     text = None
             except:
+                msg = 'Caught exception while trying to parse file with tika.\n{0}'\
+                    .format(format_exc())
+                self.log(msg)
                 text = None
 
         # process by textract
@@ -362,7 +366,7 @@ class LoadDocuments(BaseTask):
             if document_type_pk:
                 document_type = DocumentType.objects.get(pk=document_type_pk)
             else:
-                document_type = DocumentType.objects.get(code='document.GenericDocument')
+                document_type = DocumentType.generic()
         except:
             pass
 
@@ -439,6 +443,10 @@ class LoadDocuments(BaseTask):
         document.save()
 
         TextUnit.objects.bulk_create(paragraph_list + sentence_list)
+
+        # store document language
+        if not document.language:
+            document.set_language_from_text_units()
 
         # create Text Unit Properties
         text_unit_properties = []
@@ -1120,10 +1128,10 @@ def parse_copyright(text, text_unit_id, _text_unit_lang):
             [CopyrightUsage(
                 text_unit_id=text_unit_id,
                 year=item[1],
-                name=item[2],
-                copyright_str=item[3],
+                name=item[2][:200],
+                copyright_str=item[3][:200],
                 count=found.count(item)
-            ) for item in unique])
+            ) for item in unique if len(item[2]) < 100])
     return bool(found)
 
 

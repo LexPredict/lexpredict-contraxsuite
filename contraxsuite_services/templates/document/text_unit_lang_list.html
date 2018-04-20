@@ -1,0 +1,43 @@
+{% extends "base_list_ajax.html" %}
+{% load static %}
+
+{% block page_header %}
+  Text Unit List <small>by languages</small>
+{% endblock %}
+
+{% block js_extra %}
+  {{ block.super }}
+  <script type="text/javascript">
+    $(document).ready(function () {
+      var datafields = [
+        { name: 'language', type: 'string' },
+        { name: 'count', type: 'int' },
+        { name: 'url', type: 'string' }
+      ];
+      var menu_renderer = function(row, event) {
+        var grid = $(event.currentTarget).parents('.jqxgrid');
+        row = grid.jqxGrid('getrowdata', row);
+        var menu_data = [
+          { url: row.url,
+            icon: 'fa fa-file-text-o',
+            text: 'View Text Units'}
+        ];
+        show_menu(menu_data, grid, row.pk);
+      };
+      var columns = [
+        { text: 'Language', datafield: 'language', width: 'auto',
+          align: 'center', cellsalign: 'center',
+          cellsrenderer: defaultLinkFormatter },
+        { text: 'Count', datafield: 'count', width: 'auto',
+          align: 'center', cellsalign: 'center' },
+        { text: 'Action', datafield: 'edit_url', width: 60,
+          align: 'center', exportable: false,
+          columntype: 'button',
+          sortable: false, filterable: false, menu: false,
+          cellsrenderer: function(){return 'Menu'},
+          buttonclick: menu_renderer }
+      ];
+      draw_grid(".jqxgrid", datafields, columns, true);
+    });
+  </script>
+{% endblock %}

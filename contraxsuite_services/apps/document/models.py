@@ -37,7 +37,7 @@ from django.conf import settings
 from django.contrib.postgres.fields import JSONField
 from django.core.serializers.json import DjangoJSONEncoder
 from django.db import models
-from django.db.models import Q
+from django.db.models import Q, Count
 from django.dispatch import receiver
 from django.utils.timezone import now
 from simple_history.models import HistoricalRecords
@@ -217,6 +217,9 @@ class DocumentType(TimeStampedModel):
     def generic_pk(cls):
         return cls.generic().pk
 
+    def is_generic(self):
+        return self == DocumentType.generic()
+
 
 class Document(models.Model):
     """Document object model
@@ -231,6 +234,9 @@ class Document(models.Model):
 
     # Document description, as provided by metadata or user-entered.
     description = models.TextField(null=True)
+
+    # Language,  as detected upon ingestion and stored via ISO code
+    language = models.CharField(max_length=3, blank=True, null=True, db_index=True)
 
     # Document source name, e.g., Acme File System or Acme Google Mail
     source = models.CharField(max_length=1024, db_index=True, null=True)
@@ -288,9 +294,17 @@ class Document(models.Model):
             Q(project_owners=self.project) |
             Q(project_reviewers=self.project))
 
+    def set_language_from_text_units(self):
+        langs = self.textunit_set.values('language').order_by().annotate(count=Count('pk'))
+        if langs:
+            lang = sorted(langs, key=lambda i: -i['count'])[0]['language']
+            self.language = lang
+            self.save()
+
 
 @receiver(models.signals.post_delete, sender=Document)
-def delete_document_file(sender, instance, **kwargs):
+def delete_document(sender, instance, **kwargs):
+    # delete file
     file_path = os.path.join(
         settings.MEDIA_ROOT,
         settings.FILEBROWSER_DIRECTORY,
@@ -299,6 +313,8 @@ def delete_document_file(sender, instance, **kwargs):
         os.remove(file_path)
     except OSError:
         pass
+    # delete history
+    instance.history.all().delete()
 
 
 class DocumentTag(models.Model):
@@ -432,6 +448,12 @@ class DocumentNote(models.Model):
             .format(self.document.id, self.id)
 
 
+@receiver(models.signals.post_delete, sender=DocumentNote)
+def delete_note(sender, instance, **kwargs):
+    # delete history
+    instance.history.all().delete()
+
+
 class TextUnit(models.Model):
     """TextUnit object model
 
@@ -519,7 +541,7 @@ class TextUnitProperty(TimeStampedModel):
     key = models.CharField(max_length=1024, db_index=True)
 
     # Value - string with maximum length 1024
-    value = models.CharField(max_length=1024)
+    value = models.CharField(max_length=1024, db_index=True)
 
     class Meta:
         ordering = ('text_unit__document__name', 'key', 'value')
@@ -600,6 +622,12 @@ class TextUnitNote(models.Model):
         return "TextUnitNote (id={0})".format(self.id)
 
 
+@receiver(models.signals.post_delete, sender=TextUnitNote)
+def delete_note(sender, instance, **kwargs):
+    # delete history
+    instance.history.all().delete()
+
+
 class DocumentFieldValue(TimeStampedModel):
     """DocumentFieldValue  object model
 
@@ -648,6 +676,12 @@ class DocumentFieldValue(TimeStampedModel):
     def __repr__(self):
         return "{0}.{1} = {2} (#{3})" \
             .format(self.document.name, self.field.code, str(self.value)[:40], self.id)
+
+
+@receiver(models.signals.post_delete, sender=DocumentFieldValue)
+def delete_dfv(sender, instance, **kwargs):
+    # delete history
+    instance.history.all().delete()
 
 
 class DocumentFieldDetector(models.Model):

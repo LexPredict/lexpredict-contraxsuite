@@ -343,6 +343,11 @@ class BaseAmountUsage(Usage):
         abstract = True
         ordering = ('text_unit', '-amount', 'count')
 
+    def save(self, *args, **kwargs):
+        if self.amount_str:
+            self.amount_str = self.amount_str[:300]
+        super().save(*args, **kwargs)
+
 
 class AmountUsage(BaseAmountUsage):
     """
