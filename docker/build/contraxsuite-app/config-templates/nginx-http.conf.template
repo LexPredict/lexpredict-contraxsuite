@@ -17,6 +17,7 @@ server {
 
     location / {
         uwsgi_pass  ${DOCKER_HOST_NAME_UWSGI}:3031;
+        uwsgi_read_timeout 300;
         include     /etc/nginx/uwsgi_params;
     }
 

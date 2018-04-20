@@ -426,12 +426,12 @@ class TaskListView(AdminRequiredMixin, JqPaginatedListView):
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
         ctx['active_classifiers'] = TextUnitClassifier.objects.filter(is_active=True).exists()
-        if DocumentProperty.objects.exists():
-            ctx['ls_document_properties'] = sorted(
-                set(DocumentProperty.objects.values_list('key', flat=True)),
-                key=lambda i: i.lower())
-        if TextUnitProperty.objects.exists():
-            ctx['ls_text_unit_properties'] = sorted(
-                set(TextUnitProperty.objects.values_list('key', flat=True)),
-                key=lambda i: i.lower())
+        #if DocumentProperty.objects.exists():
+        #    ctx['ls_document_properties'] = sorted(
+        #        set(DocumentProperty.objects.values_list('key', flat=True)),
+        #        key=lambda i: i.lower())
+        #if TextUnitProperty.objects.exists():
+        #    ctx['ls_text_unit_properties'] = sorted(
+        #        set(TextUnitProperty.objects.values_list('key', flat=True)),
+        #        key=lambda i: i.lower())
         return ctx
