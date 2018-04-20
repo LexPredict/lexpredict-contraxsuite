@@ -1,3 +1,4 @@
+bs4==0.0.1
 celery[redis]==4.1.0
 https://github.com/LexPredict/datefinder/archive/master.zip
 https://github.com/LexPredict/lexpredict-lexnlp/archive/master.zip
@@ -63,5 +64,6 @@ scipy==1.0.0
 textblob==0.12.0
 textract==1.5.0
 tika==1.15
+us==1.0.0
 uWSGI==2.0.15
 Werkzeug==0.12.2
