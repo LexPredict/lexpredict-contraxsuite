@@ -137,10 +137,11 @@ class TermUsageListView(BaseUsageListView):
         term_search = self.request.GET.get("term_search", "")
 
         if term_search:
-            qs = self.filter(term_search, qs,
-                             _or_lookup='term__term__exact',
-                             _and_lookup='text_unit__text__icontains',
-                             _not_lookup='text_unit__text__icontains')
+            # qs = self.filter(term_search, qs,
+            #                  _or_lookup='term__term__exact',
+            #                  _and_lookup='text_unit__text__icontains',
+            #                  _not_lookup='text_unit__text__icontains')
+            qs = qs.filter(term__term__icontains=term_search)
 
         # filter out duplicated Terms (equal terms, but diff. term sources)
         # qs = qs.order_by('term__term').distinct('term__term', 'text_unit__pk')
