@@ -488,7 +488,7 @@ class TextUnitByLangListView(JqPaginatedListView):
     def get_json_data(self, **kwargs):
         qs = super().get_queryset()
         qs = qs.filter(unit_type='paragraph')
-        data = list(qs.values('language').order_by().annotate(count=Count('pk')))
+        data = list(qs.values('language').order_by().annotate(count=Count('pk')).order_by('count'))
         for item in data:
             item['url'] = reverse('document:text-unit-list') + '?language=' + item['language']
         return {'data': data, 'total_records': len(data)}
