@@ -47,16 +47,58 @@ to improve quality of output text.
 """
 
 # Standard imports
+import importlib
+import os
 import re
 
-from textract import process
+from textract import exceptions, parsers
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.0.8/LICENSE"
-__version__ = "1.0.8"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.0.9/LICENSE"
+__version__ = "1.0.9"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
+
+EXTENSION_SYNONYMS = {
+    ".jpe": ".jpg",
+    ".jpeg": ".jpg",
+    ".htm": ".html",
+    "": ".txt",
+    ".tif": ".tiff",
+}
+
+DEFAULT_ENCODING = 'utf_8'
+
+
+def process(filename, encoding=DEFAULT_ENCODING, ext: str = None, **kwargs):
+    """
+    Try importing textract parser according to the provided extension or to the extension
+    of the specified file name and parsing the file with it.
+
+    This method is mostly copy-paste of the textract "process" method with support of
+    user-specified extensions.
+
+    :param filename:
+    :param encoding:
+    :param ext:
+    :param kwargs:
+    :return:
+    """
+    if not os.path.exists(filename):
+        raise exceptions.MissingFileError(filename)
+
+    if not ext:
+        _, ext = os.path.splitext(filename)
+        ext = ext.lower()
+
+    ext = EXTENSION_SYNONYMS.get(ext, ext)
+
+    rel_module = ext + '_parser'
+    importlib.import_module('textract.parsers')
+    filetype_module = importlib.import_module(rel_module, 'textract.parsers')
+    parser = filetype_module.Parser()
+    return parser.process(filename, encoding, **kwargs)
 
 
 def process_text(text):
@@ -69,9 +111,9 @@ def process_text(text):
     return text
 
 
-def textract2text(path, language='eng'):
+def textract2text(path, language='eng', ext: str = None):
     # extract text as bytes
-    text = process(path, method='tesseract', language=language)
+    text = process(path, ext=ext, method='tesseract', language=language)
     # convert to string
     text = text.decode('utf-8')
     # process text - remove extra symbols, etc.

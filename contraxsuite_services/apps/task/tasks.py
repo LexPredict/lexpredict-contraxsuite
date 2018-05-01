@@ -38,10 +38,13 @@ import sys
 from copy import deepcopy
 from io import StringIO
 from traceback import format_exc
+from typing import List, Dict, Set, Tuple, Any
 
 # Additional libraries
 import fuzzywuzzy.fuzz
 import geocoder
+import magic
+import mimetypes
 import nltk
 import numpy as np
 import pandas as pd
@@ -49,7 +52,7 @@ import sys
 from constance import config
 
 # Celery imports
-from celery import shared_task
+from celery import shared_task, chord
 from celery.result import AsyncResult
 from celery.utils.log import get_task_logger
 
@@ -101,7 +104,7 @@ from apps.extract.models import (
 from apps.celery import app
 from apps.common.utils import fast_uuid
 from apps.task.models import Task
-from apps.task.utils.nlp import lang
+from apps.task.utils.nlp.lang import get_language
 from apps.task.utils.ocr.textract import textract2text
 from apps.task.utils.text.segment import segment_paragraphs, segment_sentences
 from lexnlp.nlp.en.segments.sentences import get_sentence_span_list
@@ -109,8 +112,8 @@ from apps.project.models import UploadSession, Project
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.0.8/LICENSE"
-__version__ = "1.0.8"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.0.9/LICENSE"
+__version__ = "1.0.9"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -130,6 +133,8 @@ wnl = nltk.stem.WordNetLemmatizer()
 remove_punctuation_map = dict((ord(char), None) for char in string.punctuation)
 
 transfer = TransferManager()
+
+python_magic = magic.Magic(mime=True)
 
 
 def prepare_file_access_handler():
@@ -164,7 +169,10 @@ def call_task(task_name, **options):
         celery_task_result=celery_task_result,
         user_id=options.get('user_id'),
         metadata=options.get('metadata'),
-        visible=options.get('visible', True)
+        visible=options.get('visible', True),
+        log='Celery task id: {}\nCelery TaskResult id: {}\n'.format(
+            celery_task_id, celery_task_result.id
+        )
     )
     options['task_id'] = task.id
     async = options.pop('async', True)
@@ -212,6 +220,20 @@ def log(message, level='info', task=None):
     return True
 
 
+@shared_task
+def clean_cache(*args, **kwargs):
+    keys = kwargs.get('cache_keys')
+    if keys:
+        for key in keys:
+            transfer.cleanup(key)
+
+
+def chord_and_clean(sub_tasks, cache_keys):
+    callback = clean_cache.s(cache_keys=cache_keys) \
+        .on_error(clean_cache.s(cache_keys=cache_keys))
+    chord(sub_tasks)(callback)
+
+
 class BaseTask(app.Task):
     """BaseTask object
 
@@ -247,6 +269,26 @@ class BaseTask(app.Task):
     def log(self, message, level='info'):
         log(message, level, task=self.task)
         return True
+
+    def run_sub_tasks_on_shared_data(self,
+                                     sub_task_method,
+                                     args_list: List[Tuple],
+                                     shared_data: Dict[str, Any]):
+        run_key = fast_uuid()
+        shared_data_cache_keys = {}
+        for k, v in shared_data.items():
+            cache_key = '%d_%s_%s' % (self.task.id, run_key, k)
+            transfer.put(cache_key, v)
+            shared_data_cache_keys[k] = cache_key
+
+        sub_tasks = []
+        for args in args_list:
+            sub_task_signature = sub_task_method.subtask(
+                args=args + (shared_data_cache_keys, ),
+                task_id='%d_%s' % (self.task.id, fast_uuid()))
+            sub_tasks.append(sub_task_signature)
+
+        chord_and_clean(sub_tasks, list(shared_data_cache_keys.values()))
 
 
 class LoadDocuments(BaseTask):
@@ -298,6 +340,30 @@ class LoadDocuments(BaseTask):
     def save_extra_document_data(self, *args, **kwargs):
         pass
 
+    def try_parsing_with_tika(self, file_path, ext):
+        if settings.TIKA_DISABLE:
+            return None, None
+        try:
+            data = parser.from_file(file_path, settings.TIKA_SERVER_ENDPOINT) \
+                if settings.TIKA_SERVER_ENDPOINT else parser.from_file(file_path)
+            parsed = data['content']
+            if parsed and len(parsed) >= 100:
+                return parsed, 'tika'
+            else:
+                return None, None
+        except:
+            self.log('Caught exception while trying to parse file with Tika.\n{0}' \
+                     .format(format_exc()))
+            return None, None
+
+    def try_parsing_with_textract(self, file_path, ext):
+        try:
+            return textract2text(file_path, ext=ext), 'textract'
+        except:
+            self.log('Caught exception while trying to parse file with Textract.\n{0}' \
+                     .format(format_exc()))
+            return None, None
+
     def create_document_local(self, file_path, file_name, kwargs):
 
         ret = []
@@ -310,48 +376,39 @@ class LoadDocuments(BaseTask):
 
         text = None
         metadata = {}
+        new_ui = 'metadata' in kwargs and 'session_id' in kwargs['metadata']
 
-        if not settings.TIKA_DISABLE and any(
-                [file_path.lower().endswith('.' + extension)
-                 for extension in settings.TIKA_FOR_EXTENSIONS]):
-            # process by tika
-            parser_name = 'tika'
-            try:
-                data = parser.from_file(file_path, settings.TIKA_SERVER_ENDPOINT) \
-                    if settings.TIKA_SERVER_ENDPOINT else parser.from_file(file_path)
-                parsed = data['content']
-                metadata = data['metadata']
-                # text = process_text(parsed)
-                text = parsed
-                if len(text) < 100:
-                    text = None
-            except:
-                msg = 'Caught exception while trying to parse file with tika.\n{0}'\
-                    .format(format_exc())
-                self.log(msg)
-                text = None
+        _fn, ext = os.path.splitext(file_name)
+        if not ext:
+            mt = python_magic.from_file(file_path)
+            ext = mimetypes.guess_extension(mt)
 
-        # process by textract
-        if text is None:
-            try:
-                text = textract2text(file_path)
-                parser_name = 'textract'
-            except:
-                self.log('SKIP (ERROR): ' + file_name)
-                return
+        ext_no_dot = ext[1:] if ext else ''
+
+        if ext_no_dot in settings.TIKA_FOR_EXTENSIONS:
+            text, parser_name = self.try_parsing_with_tika(file_path, ext)
+            if not text:
+                text, parser_name = self.try_parsing_with_textract(file_path, ext)
+        else:
+            text, parser_name = self.try_parsing_with_textract(file_path, ext)
+            if not text:
+                text, parser_name = self.try_parsing_with_tika(file_path, ext)
 
         if not text:
+            if new_ui:
+                raise RuntimeError('No text extracted.')
             self.log('SKIP (ERROR): ' + file_name)
             return
 
         metadata['parsed_by'] = parser_name
 
         # Language identification
-        try:
-            language = lang.get_language_langid(text)[0]
-        except:
-            self.log('SKIP (LANGUAGE NOT DETECTED): ' + file_name)
-            return
+        language, lang_detector = get_language(text, get_parser=True)
+        if language:
+            self.log('Detected language: %s' % language.upper())
+            self.log('Language detector: %s' % lang_detector.upper())
+        else:
+            self.log('LANGUAGE IS NOT DETECTED: ' + file_name)
 
         # detect title
         title = metadata.get('title', None)
@@ -379,6 +436,7 @@ class LoadDocuments(BaseTask):
             source_type=kwargs.get('source_type'),
             source_path=file_name,
             metadata=metadata,
+            language=language,
             title=title,
             full_text=text)
 
@@ -423,7 +481,7 @@ class LoadDocuments(BaseTask):
             text=paragraph,
             text_hash=hashlib.sha1(paragraph.encode("utf-8")).hexdigest(),
             unit_type="paragraph",
-            language=language) for paragraph in segment_paragraphs(text)]
+            language=get_language(paragraph)) for paragraph in segment_paragraphs(text)]
 
         sentence_list = []
         for span in get_sentence_span_list(text):
@@ -435,7 +493,7 @@ class LoadDocuments(BaseTask):
                 location_end=span[1],
                 text_hash=hashlib.sha1(sentence.encode("utf-8")).hexdigest(),
                 unit_type="sentence",
-                language=language)
+                language=get_language(sentence))
             sentence_list.append(text_unit)
 
         document.paragraphs = len(paragraph_list)
@@ -886,25 +944,23 @@ class Locate(BaseTask):
         self.task.subtasks_total = text_units.count()
         self.task.save()
         self.log('Found {0} Text Units. Added {0} subtasks.'.format(
-            self.task.subtasks_total))
+            self.task.subtasks_total + 1))
 
-        # Putting 'locate' dict as large args for further multiple runs
-        # of parse_text_unit child tasks
-        locate_cache_key = Locate.__name__ + str(self.task.id)
-        transfer.put(key=locate_cache_key, value=locate)
+        locate_args = []
 
         for text_unit_id, text, text_unit_lang in text_units.values_list('pk', 'text', 'language'):
             if not text_unit_id:
                 continue
-            self.parse_text_unit.apply_async(
-                args=(text_unit_id, text_unit_lang, text, kwargs['user_id'], locate_cache_key),
-                task_id='%d_%s' % (self.task.id, fast_uuid()))
+            locate_args.append((text_unit_id, text_unit_lang, text, kwargs['user_id']))
+
+        self.run_sub_tasks_on_shared_data(self.parse_text_unit, locate_args, {'locate': locate})
 
     @staticmethod
     @shared_task
-    def parse_text_unit(text_unit_id, text_unit_lang, text, user_id, cache_key):
+    def parse_text_unit(text_unit_id, text_unit_lang, text, user_id, shared_data_cache_keys):
         tags = []
-        locate = transfer.get(cache_key) if cache_key else {}
+        locate = transfer.get(shared_data_cache_keys.get('locate')) \
+            if shared_data_cache_keys else {}
         for task_name, task_kwargs in locate.items():
             func_name = 'parse_%s' % task_name
             try:

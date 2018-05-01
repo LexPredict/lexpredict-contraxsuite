@@ -8,7 +8,7 @@
       var datafields = [
         { name: 'pk', type: 'int' },
         { name: 'text_unit__document__name', type: 'string' },
-        { name: 'text_unit__document__document_type', type: 'string' },
+        { name: 'text_unit__document__document_type__title', type: 'string' },
         { name: 'text_unit__document__description', type: 'string' },
         { name: 'amount', type: 'float' },
         { name: 'amount2', type: 'float' },
@@ -35,7 +35,7 @@
         { text: 'Name', datafield: 'text_unit__document__name', width: 300,
           align: 'center', cellsalign: 'left', enabletooltips: true,
           cellsrenderer: defaultLinkFormatter, columngroup: 'Document' },
-        { text: 'Type', datafield: 'text_unit__document__document_type', width: 100,
+        { text: 'Type', datafield: 'text_unit__document__document_type__title', width: 100,
           align: 'center', cellsalign: 'center', columngroup: 'Document' },
         { text: 'Amount 1', datafield: 'amount', width: 100,
           align: 'center', cellsalign: 'center' },

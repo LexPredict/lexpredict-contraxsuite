@@ -102,6 +102,7 @@ RUN apt-get install -y curl
 COPY ./temp/build.info /
 COPY ./temp/build.uuid /
 COPY ./start.sh /
+COPY ./check_celery.sh /
 COPY ./config-templates /config-templates
 COPY ./temp/static /static
 

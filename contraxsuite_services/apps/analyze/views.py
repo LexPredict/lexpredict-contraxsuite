@@ -46,8 +46,8 @@ from apps.common.mixins import (
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.0.8/LICENSE"
-__version__ = "1.0.8"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.0.9/LICENSE"
+__version__ = "1.0.9"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -210,7 +210,7 @@ class DocumentClusterListView(JqPaginatedListView):
             documents = cluster.documents
             if self.request.user.is_reviewer:
                 documents = documents.filter(taskqueue__reviewers=self.request.user)
-            documents = documents.values('pk', 'name', 'description', 'document_type')
+            documents = documents.values('pk', 'name', 'description', 'document_type__title')
             for document in documents:
                 document['url'] = reverse('document:document-detail', args=[document['pk']]),
             item['documents'] = list(documents)

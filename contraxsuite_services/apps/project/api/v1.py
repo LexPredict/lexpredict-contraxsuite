@@ -25,8 +25,8 @@
 # -*- coding: utf-8 -*-
 
 # Standard imports
-import itertools
 import os
+import re
 import sys
 
 # Third-party imports
@@ -38,10 +38,10 @@ from rest_framework.response import Response
 
 # Django imports
 from django.conf import settings
+from django.contrib.postgres.aggregates.general import StringAgg
 from django.core.files.storage import FileSystemStorage
 from django.http import JsonResponse
-from django.db.models import Count, Q
-from django.utils.timezone import now
+from django.db.models import Count, Min, Max
 
 # Project imports
 from apps.analyze.models import DocumentCluster
@@ -49,6 +49,7 @@ from apps.common.mixins import JqMixin
 from apps.common.models import ReviewStatus
 from apps.common.utils import get_api_module
 from apps.document.models import Document, DocumentType
+from apps.extract.models import CurrencyUsage
 from apps.project.models import Project, TaskQueue, UploadSession, ProjectClustering
 from apps.users.models import User
 from apps.task.models import Task
@@ -59,8 +60,8 @@ from apps.project.tasks import THIS_MODULE    # noqa
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.0.8/LICENSE"
-__version__ = "1.0.8"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.0.9/LICENSE"
+__version__ = "1.0.9"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -505,6 +506,59 @@ class ProjectViewSet(JqMixin, viewsets.ModelViewSet):
             .update(assignee=assignee_id)
         return Response(ret)
 
+    @detail_route(methods=['get'])
+    def documents(self, request, **kwargs):
+        """
+        Get list of project documents
+        """
+        project = self.get_object()
+
+        # if project.is_generic() and (not project.projectclustering_set.exists()
+        #         or not project.projectclustering_set.last().completed):
+        #     return Response('Project documents clustering is not completed.', status=500)
+
+        if project.type.is_generic() and (project.projectclustering_set.exists()
+                and not project.projectclustering_set.last().completed):
+            return Response('Project documents clustering is not completed.', status=500)
+
+        qs = list(
+            Document.objects
+                .filter(project=project)
+                .values('id', 'name')
+                .annotate(cluster_id=Max('documentcluster'),
+                          parties=StringAgg('textunit__partyusage__party__name',
+                                            delimiter=', ',
+                                            distinct=True),
+                          min_date=Min('textunit__dateusage__date'),
+                          # max_currency=Max('textunit__currencyusage__amount'),
+                          max_date=Max('textunit__dateusage__date'))
+                .order_by('cluster_id', 'name'))
+
+        # get max currency amount and currency itself
+        # as it's hard to get currency itself like USD
+        # along with amount in previous query
+        currencies_qs = CurrencyUsage.objects \
+            .filter(text_unit__document__project=project) \
+            .values('text_unit__document__name', 'currency') \
+            .annotate(max_currency=Max('amount')).order_by('max_currency')
+        max_currencies = {i['text_unit__document__name']:
+                              {'max_currency': i['max_currency'],
+                               'max_currency_str': '{} {}'.format(
+                                   i['currency'],
+                                   int(i['max_currency'])
+                                   if int(i['max_currency']) == i['max_currency']
+                                   else i['max_currency'])}
+                          for i in currencies_qs}
+
+        # join two queries results
+        for item in qs:
+            if item['name'] in max_currencies:
+                item.update(max_currencies[item['name']])
+            else:
+                item.update({'max_currency': None, 'max_currency_str': None})
+
+        return Response(qs)
+
 
 # --------------------------------------------------------
 # UploadSession Views
@@ -732,9 +786,24 @@ class ProjectSerializer(ProjectDetailSerializer):
 
 
 class TaskSerializer(serializers.ModelSerializer):
+    reason = serializers.SerializerMethodField()
+
     class Meta:
         model = Task
-        fields = ['pk', 'name', 'progress', 'status']
+        fields = ['pk', 'name', 'progress', 'status', 'reason']
+
+    def get_reason(self, obj):
+        reason = None
+        if obj.has_error:
+            if ('ValueError: max_df corresponds to < documents than min_df' in obj.log) or\
+                    ('ValueError: Number of samples smaller than number of clusters' in obj.log):
+                reason = 'Clustering failed.' \
+                         ' Try to increase number of documents or set lower number of clusters.'
+            else:
+                error = re.findall('ERROR.+?\|\s+((?!ERROR|Traceback)[^\n]+)', obj.log)
+                if error:
+                    reason = 'Clustering failed. Error: %s' % error
+            return reason
 
 
 class DocumentClusterSerializer(analyze_api_module.DocumentClusterSerializer):

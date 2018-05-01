@@ -15,7 +15,7 @@
       var datafields = [
         { name: 'pk', type: 'int' },
         { name: 'document__name', type: 'string' },
-        { name: 'document__document_type', type: 'string' },
+        { name: 'document__document_type__title', type: 'string' },
         { name: 'key', type: 'string' },
         { name: 'value', type: 'string' },
         { name: 'created_date', type: 'date' },
@@ -44,7 +44,7 @@
         { text: 'Name', datafield: 'document__name', width: 'auto',
           align: 'center', cellsalign: 'left', enabletooltips: true,
           cellsrenderer: defaultLinkFormatter, columngroup: 'Document' },
-        { text: 'Type', datafield: 'document__document_type', width: 100,
+        { text: 'Type', datafield: 'document__document_type__title', width: 100,
           align: 'center', cellsalign: 'center', columngroup: 'Document' },
         { text: 'Property Name', datafield: 'key', width: 110,
           align: 'center', cellsalign: 'center' },

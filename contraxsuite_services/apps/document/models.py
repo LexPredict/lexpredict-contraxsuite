@@ -51,8 +51,8 @@ from apps.users.models import User
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.0.8/LICENSE"
-__version__ = "1.0.8"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.0.9/LICENSE"
+__version__ = "1.0.9"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -105,6 +105,9 @@ class DocumentField(TimeStampedModel):
     # Verbose name for field.
     title = models.CharField(max_length=100, db_index=True)
 
+    #Display order
+    order= models.IntegerField(default=0)
+
     # Type of the field.
     type = models.CharField(max_length=30, choices=DOCUMENT_FIELD_TYPES,
                             default='string', db_index=True)
@@ -131,7 +134,8 @@ class DocumentField(TimeStampedModel):
             eval_locals[field.code] = field_type.json_value_to_python(value)
 
         eval_locals.update(depends_on_field_to_value)
-        value = eval(formula, {'__builtins__': {}}, eval_locals)
+        value = eval(formula, {}, eval_locals)
+        # value = eval(formula, {'__builtins__': {}}, eval_locals)
         return FIELD_TYPES_REGISTRY[field_type_code].python_value_to_json(value)
 
     def calculate(self, depends_on_field_to_value: Dict) -> Any:
@@ -146,7 +150,7 @@ class DocumentField(TimeStampedModel):
 
     class Meta:
         unique_together = (('code', 'modified_by', 'modified_date'),)
-        ordering = ('code', 'modified_by', 'modified_date')
+        ordering = ('order', 'code')
 
     def __str__(self):
         return "{0}".format(self.code)
@@ -295,7 +299,11 @@ class Document(models.Model):
             Q(project_reviewers=self.project))
 
     def set_language_from_text_units(self):
-        langs = self.textunit_set.values('language').order_by().annotate(count=Count('pk'))
+        langs = self.textunit_set\
+            .filter(unit_type='paragraph')\
+            .values('language')\
+            .order_by()\
+            .annotate(count=Count('pk'))
         if langs:
             lang = sorted(langs, key=lambda i: -i['count'])[0]['language']
             self.language = lang

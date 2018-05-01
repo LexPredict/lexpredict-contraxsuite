@@ -48,7 +48,7 @@
     <tbody>
     <tr>
       <td>{{ document.name }}</td>
-      <td>{{ document.document_type }}</td>
+      <td>{{ document.document_type.title }}</td>
       <td>{{ document.description }}</td>
       <td>{{ document.document_a_set.count|add:document.document_b_set.count }}</td>
     </tr>
@@ -655,8 +655,8 @@
 
       // Top Entity Usages table
       var entities_datafields = [
-        { name: 'entity__name', type: 'string' },
-        { name: 'entity__category', type: 'string' },
+        { name: 'name', type: 'string' },
+        { name: 'category', type: 'string' },
         { name: 'entity_data' },
         { name: 'count', type: 'int' }
       ];
@@ -674,9 +674,9 @@
         show_menu(menu_data, grid, row.pk, 300);
       };
       var entities_columns = [
-        { text: 'Entity Name', datafield: 'entity__name', width: 'auto',
+        { text: 'Entity Name', datafield: 'name', width: 'auto',
           align: 'center', cellsalign: 'center' },
-        { text: 'Entity Category', datafield: 'entity__category', width: 'auto',
+        { text: 'Entity Category', datafield: 'category', width: 'auto',
           align: 'center', cellsalign: 'center' },
         { text: 'Count', datafield: 'count', width: 150,
           align: 'center', cellsalign: 'center' },

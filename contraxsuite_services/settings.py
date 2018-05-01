@@ -493,7 +493,9 @@ SWAGGER_SETTINGS = {
 # TIKA_VERSION = '1.14'
 # TIKA_SERVER_JAR = ROOT_DIR('../libs/tika/tika-server-1.14.jar')
 TIKA_DISABLE = False
-TIKA_FOR_EXTENSIONS = ['pdf']
+TIKA_SERVER_ENDPOINT = None
+TIKA_FOR_EXTENSIONS = ['.pdf']
+
 
 # use jqWidgets' export, e.g. send data to jq OR handle it on client side
 # FYI: http://www.jqwidgets.com/community/topic/jqxgrid-export-data/#}
@@ -570,8 +572,8 @@ CORS_ORIGIN_ALLOW_ALL = True
 CORS_ALLOW_CREDENTIALS = False
 CORS_URLS_REGEX = r'^/api/.*$'
 
-VERSION_NUMBER = '1.0.8'
-VERSION_COMMIT = 'eeb313b'
+VERSION_NUMBER = '1.0.9'
+VERSION_COMMIT = 'ceed236'
 
 try:
     from local_settings import *
@@ -657,3 +659,10 @@ SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTOCOL', 'https')
 import datetime
 
 CALCULATED_FIELDS_EVAL_LOCALS = {'datetime': datetime, 'len': len}
+
+# Debugging Docker Deployments:
+# CELERY_BROKER_URL = 'amqp://contrax1:contrax1@127.0.0.1:56720/contrax1_vhost'
+# CELERY_CACHE_REDIS_URL = 'redis://127.0.0.1:63790/0'
+# CELERY_FILE_ACCESS_TYPE = 'Nginx'
+# CELERY_FILE_ACCESS_NGINX_ROOT_URL = 'http://127.0.0.1:800/media/data/documents/'
+# TIKA_FOR_EXTENSIONS = ['pdf']

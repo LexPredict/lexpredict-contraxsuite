@@ -56,8 +56,8 @@ from apps.common.utils import cap_words, export_qs_to_file
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.0.8/LICENSE"
-__version__ = "1.0.8"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.0.9/LICENSE"
+__version__ = "1.0.9"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -505,10 +505,12 @@ class JqPaginatedListView(AjaxListView):
             # If page is out of range (e.g. 9999), deliver last page of results.
             pg = paginator.page(paginator.num_pages)
 
-        qs = qs.filter(
-            **{'%s__in' % self.unique_field: [getattr(obj, self.unique_field) if hasattr(obj, self.unique_field) else obj[self.unique_field]
-                                              for obj in pg.object_list]})
-        return qs
+        # TODO: figure out why those 3 lines below were used before
+        # qs = qs.filter(
+        #     **{'%s__in' % self.unique_field: [getattr(obj, self.unique_field) if hasattr(obj, self.unique_field) else obj[self.unique_field]
+        #                                       for obj in pg.object_list]})
+        # return qs
+        return pg.object_list
 
     def get_json_data(self, **kwargs):
         data = []

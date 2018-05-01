@@ -32,22 +32,24 @@ import os
 
 # Celery imports
 from celery import Celery
+import django
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.0.8/LICENSE"
-__version__ = "1.0.8"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.0.9/LICENSE"
+__version__ = "1.0.9"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
 
 # Set celery environment
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'settings')  # pragma: no cover
+django.setup()
 app = Celery('apps')
 
 # Auto-configure
 app.config_from_object('django.conf:settings', namespace='CELERY')
-app.autodiscover_tasks()
+app.autodiscover_tasks(force=True)
 
 
 # Bind debug task

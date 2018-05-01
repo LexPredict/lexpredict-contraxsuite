@@ -29,8 +29,8 @@ import tika.language
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.0.8/LICENSE"
-__version__ = "1.0.8"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.0.9/LICENSE"
+__version__ = "1.0.9"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -50,7 +50,10 @@ def get_language_langid(input_buffer, encoding="utf-8"):
     if isinstance(input_buffer, bytes):
         input_buffer = input_buffer.decode(encoding)
 
-    return lang_identifier.classify(input_buffer)
+    try:
+        return lang_identifier.classify(input_buffer)[0]
+    except:
+        return ''
 
 
 def get_language_tika(input_buffer, encoding="utf-8"):
@@ -65,3 +68,30 @@ def get_language_tika(input_buffer, encoding="utf-8"):
         input_buffer = input_buffer.decode(encoding)
 
     return tika.language.from_buffer(input_buffer)
+
+
+def get_language(input_buffer, get_parser=False, encoding="utf-8"):
+    lang = parser = None
+
+    # try to extract using LANGID
+    try:
+        lang = get_language_langid(input_buffer, encoding=encoding)
+        parser = 'langid'
+    except:
+        pass
+
+    # try to extract using TIKA
+    if not lang:
+        try:
+            lang = get_language_tika(input_buffer, encoding=encoding)
+            parser = 'tika'
+        except:
+            pass
+
+    if not lang:
+        lang = parser = None
+
+    if get_parser:
+        return lang, parser
+
+    return lang

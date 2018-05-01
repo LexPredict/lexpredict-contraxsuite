@@ -70,7 +70,8 @@ class NginxHttpFileAccess:
             rel_file_path = rel_file_path[1]
         url = self.root_url + '/' + quote(rel_file_path)
         r = requests.get(url, stream=True)
-        _fd, fn = tempfile.mkstemp()
+        _, ext = os.path.splitext(rel_file_path)
+        _fd, fn = tempfile.mkstemp(suffix=ext)
         try:
             with open(fn, 'bw') as f:
                 for chunk in r.iter_content(chunk_size=4096):

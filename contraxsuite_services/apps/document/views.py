@@ -69,8 +69,8 @@ from apps.users.models import User
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.0.8/LICENSE"
-__version__ = "1.0.8"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.0.9/LICENSE"
+__version__ = "1.0.9"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -204,7 +204,7 @@ class DocumentPropertyListView(JqPaginatedListView):
                    'created_date', 'created_by__username',
                    'modified_date', 'modified_by__username',
                    'document__pk', 'document__name',
-                   'document__document_type', 'document__description']
+                   'document__document_type__title', 'document__description']
 
     def get_queryset(self):
         qs = super().get_queryset()
@@ -249,9 +249,9 @@ class DocumentRelationListView(JqPaginatedListView):
     model = DocumentRelation
     json_fields = ['relation_type',
                    'document_a__pk', 'document_a__name',
-                   'document_a__document_type', 'document_a__description',
+                   'document_a__document_type__title', 'document_a__description',
                    'document_b__pk', 'document_b__name',
-                   'document_b__document_type', 'document_b__description']
+                   'document_b__document_type__title', 'document_b__description']
     limit_reviewers_qs_by_field = ['document_a', 'document_b']
 
     def get_json_data(self, **kwargs):
@@ -317,7 +317,7 @@ class DocumentSourceView(DocumentDetailView):
 class DocumentNoteListView(JqPaginatedListView):
     model = DocumentNote
     json_fields = ['note', 'timestamp', 'document__pk',
-                   'document__name', 'document__document_type',
+                   'document__name', 'document__document_type__title',
                    'document__description']
     limit_reviewers_qs_by_field = 'document'
     ordering = ['-timestamp']
@@ -422,7 +422,7 @@ class TextUnitListView(JqPaginatedListView):
     model = TextUnit
     json_fields = ['unit_type', 'language', 'text', 'text_hash',
                    'document__pk', 'document__name',
-                   'document__document_type', 'document__description']
+                   'document__document_type__title', 'document__description']
     limit_reviewers_qs_by_field = 'document'
     es = Elasticsearch(hosts=settings.ELASTICSEARCH_CONFIG['hosts'])
 
@@ -488,7 +488,7 @@ class TextUnitByLangListView(JqPaginatedListView):
     def get_json_data(self, **kwargs):
         qs = super().get_queryset()
         qs = qs.filter(unit_type='paragraph')
-        data = list(qs.values('language').order_by().annotate(count=Count('pk')).order_by('count'))
+        data = list(qs.values('language').order_by().annotate(count=Count('pk')).order_by('-count'))
         for item in data:
             item['url'] = reverse('document:text-unit-list') + '?language=' + item['language']
         return {'data': data, 'total_records': len(data)}
@@ -500,7 +500,7 @@ class TextUnitPropertyListView(JqPaginatedListView):
     json_fields = ['key', 'value',
                    'created_date', 'created_by__username', 'modified_date', 'modified_by__username',
                    'text_unit__document__pk', 'text_unit__document__name',
-                   'text_unit__document__document_type', 'text_unit__document__description',
+                   'text_unit__document__document_type__title', 'text_unit__document__description',
                    'text_unit__unit_type', 'text_unit__language',
                    'text_unit__pk']
 
@@ -546,7 +546,7 @@ class TextUnitPropertyDeleteView(CustomDeleteView):
 class TextUnitNoteListView(JqPaginatedListView):
     model = TextUnitNote
     json_fields = ['note', 'timestamp', 'text_unit__document__pk',
-                   'text_unit__document__name', 'text_unit__document__document_type',
+                   'text_unit__document__name', 'text_unit__document__document_type__title',
                    'text_unit__document__description', 'text_unit__pk',
                    'text_unit__unit_type', 'text_unit__language']
     limit_reviewers_qs_by_field = 'text_unit__document'
@@ -604,7 +604,7 @@ class DocumentNoteDeleteView(CustomDeleteView):
 class DocumentTagListView(JqPaginatedListView):
     model = DocumentTag
     json_fields = ['tag', 'timestamp', 'user__username', 'document__pk',
-                   'document__name', 'document__document_type',
+                   'document__name', 'document__document_type__title',
                    'document__description']
     limit_reviewers_qs_by_field = 'document'
 
@@ -646,7 +646,7 @@ class DocumentTagDeleteView(CustomDeleteView):
 class TextUnitTagListView(JqPaginatedListView):
     model = TextUnitTag
     json_fields = ['tag', 'timestamp', 'user__username', 'text_unit__document__pk',
-                   'text_unit__document__name', 'text_unit__document__document_type',
+                   'text_unit__document__name', 'text_unit__document__document_type__title',
                    'text_unit__document__description', 'text_unit__pk',
                    'text_unit__unit_type', 'text_unit__language']
     limit_reviewers_qs_by_field = 'text_unit__document'

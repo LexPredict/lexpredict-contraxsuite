@@ -170,7 +170,7 @@
             { name: 'pk', type: 'int' },
             { name: 'name', type: 'string' },
             { name: 'description', type: 'string' },
-            { name: 'document_type', type: 'string' },
+            { name: 'document_type__title', type: 'string' },
             { name: 'url', type: 'string' }
           ],
           localdata: record.documents
@@ -202,7 +202,7 @@
                 align: 'center', cellsalign: 'center' },
               { text: 'Description', datafield: 'description', width: 300,
                 align: 'center', cellsalign: 'center' },
-              { text: 'Type', datafield: 'document_type', width: 100,
+              { text: 'Type', datafield: 'document_type__title', width: 100,
                 align: 'center', cellsalign: 'center' },
               { text: 'Action', datafield: 'edit_url', width: 60,
                 align: 'center', exportable: false,

@@ -30,7 +30,7 @@
       <td>
         <a href="{% url "document:document-detail" document.id %}">{{ document.name }}</a>
       </td>
-      <td>{{ document.document_type }}</td>
+      <td>{{ document.document_type.title }}</td>
       <td>{{ document.description }}</td>
       <td>{{ document.documentproperty_set.count }}</td>
       <td>{{ document.document_a_set.count|add:document.document_b_set.count }}</td>
@@ -475,7 +475,7 @@
       var itu_datafields = [
         { name: 'pk', type: 'int' },
         { name: 'document__name', type: 'string' },
-        { name: 'document__document_type', type: 'string' },
+        { name: 'document__document_type__title', type: 'string' },
         { name: 'document__description', type: 'string' },
         { name: 'unit_type', type: 'string' },
         { name: 'language', type: 'string' },
@@ -507,7 +507,7 @@
         { text: 'Name', datafield: 'document__name', width: 'auto',
           align: 'center', cellsalign: 'left', enabletooltips: true,
           cellsrenderer: defaultLinkFormatter, columngroup: 'Document' },
-        { text: 'Type', datafield: 'document__document_type', width: 100,
+        { text: 'Type', datafield: 'document__document_type__title', width: 100,
           align: 'center', cellsalign: 'center', columngroup: 'Document' },
         { text: 'Description', datafield: 'document__description',
           width: 200, enabletooltips: true, columngroup: 'Document',
@@ -596,7 +596,7 @@
             { name: 'pk', type: 'int' },
             { name: 'document__name', type: 'string' },
             { name: 'document__description', type: 'string' },
-            { name: 'document__document_type', type: 'string' },
+            { name: 'document__document_type__title', type: 'string' },
             { name: 'unit_type', type: 'string' },
             { name: 'language', type: 'string' },
             { name: 'text', type: 'string' },
@@ -633,7 +633,7 @@
               { text: 'Name', datafield: 'document__name', width: 200,
                 align: 'center', cellsalign: 'left', enabletooltips: true,
                 columngroup: 'Document' },
-              { text: 'Type', datafield: 'document__document_type', width: 100,
+              { text: 'Type', datafield: 'document__document_type__title', width: 100,
                 align: 'center', cellsalign: 'center', columngroup: 'Document' },
               { text: 'Description', datafield: 'document__description',
                 width: 200, enabletooltips: true, columngroup: 'Document',

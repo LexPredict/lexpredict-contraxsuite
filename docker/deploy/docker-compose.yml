@@ -11,6 +11,8 @@ services:
       replicas: 1
       placement:
         constraints: [node.role == manager]
+#    ports:
+#      - 127.0.0.1:63790:6379
 
   contrax-elasticsearch:
     image: docker.elastic.co/elasticsearch/elasticsearch-oss:6.0.0
@@ -39,7 +41,7 @@ services:
     deploy:
       replicas: 1
     ports:
-      - 5601:5601
+      - 127.0.0.1:5601:5601
 
   contrax-rabbitmq:
     image: rabbitmq:3-management
@@ -56,6 +58,8 @@ services:
         constraints: [node.role == manager]
     volumes:
       - rabbitmq_data:/var/lib/rabbitmq
+#    ports:
+#     - 127.0.0.1:56720:5672
 
   contrax-db:
     image: postgres:9.6
@@ -76,6 +80,8 @@ services:
           memory: ${DOCKER_POSTGRES_MEMORY}
       placement:
         constraints: [node.role == manager]
+#    ports:
+#      - 127.0.0.1:54320:5432
 
   contrax-tika:
     image: logicalspark/docker-tikaserver
@@ -87,19 +93,14 @@ services:
           cpus: '${DOCKER_TIKA_CPUS}'
           memory: ${DOCKER_TIKA_MEMORY}
       replicas: 1
-    ports:
-      - 9998:9998
+#    ports:
+#      - 127.0.0.1:9998:9998
 
   contrax-celery:
     image: ${CONTRAXSUITE_IMAGE_FULL_NAME}
     networks:
       - contrax_net
     command: ["/start.sh",  "celery"]
-    healthcheck:
-      test: ["CMD", "/check_celery.sh"]
-      interval: 1m
-      timeout: 5s
-      retries: 1
     environment:
       - "SHARED_USER_NAME=${SHARED_USER_NAME}"
       - "SHARED_USER_ID=${SHARED_USER_ID}"
@@ -147,7 +148,7 @@ services:
         limits:
           cpus: '${DOCKER_CELERY_CPUS}'
           memory: ${DOCKER_CELERY_MEMORY}
-      replicas: 2
+      replicas: 1
 
 
   contrax-uwsgi:
@@ -208,8 +209,9 @@ services:
       - contrax-rabbitmq
       - contrax-elasticsearch
     ports:
-      - 65080:8080
-      - 65443:4443
+#      - 127.0.0.1:800:80
+      - 127.0.0.1:65080:8080
+      - 127.0.0.1:65443:4443
     deploy:
       replicas: 1
       placement:
@@ -275,7 +277,7 @@ services:
       - contrax-rabbitmq
       - contrax-elasticsearch
     ports:
-      - 8888:8888
+      - 127.0.0.1:8888:8888
     deploy:
       replicas: 1
       resources:
@@ -345,7 +347,7 @@ services:
       - contrax-rabbitmq
       - contrax-elasticsearch
     ports:
-      - 5555:5555
+      - 127.0.0.1:5555:5555
     deploy:
       replicas: 1
       resources:

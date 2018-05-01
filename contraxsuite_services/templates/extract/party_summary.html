@@ -199,14 +199,14 @@
           rowdetailshidden: true
         }
       };
-      draw_grid(".jqxgrid-documents", documents_datafields, documents_columns, false,
+      draw_grid(".jqxgrid-documents", documents_datafields, documents_columns, true,
                 documents_custom_source_data, documents_custom_grid_opts);
 
       // text_units table
       var text_units_datafields = [
         { name: 'pk', type: 'int' },
         { name: 'document__name', type: 'string' },
-        { name: 'document__document_type', type: 'string' },
+        { name: 'document__document_type__title', type: 'string' },
         { name: 'document__description', type: 'string' },
         { name: 'unit_type', type: 'string' },
         { name: 'language', type: 'string' },
@@ -231,7 +231,7 @@
         { text: 'Name', datafield: 'document__name', width: 300,
           align: 'center', cellsalign: 'left', enabletooltips: true,
           cellsrenderer: defaultLinkFormatter, columngroup: 'Document' },
-        { text: 'Type', datafield: 'document__document_type', width: 100,
+        { text: 'Type', datafield: 'document__document_type__title', width: 100,
           align: 'center', cellsalign: 'center', columngroup: 'Document' },
         { text: 'Description', datafield: 'document__description',
           width: 200, enabletooltips: true, columngroup: 'Document',
@@ -259,13 +259,13 @@
           { text: 'Document', name: 'Document', align: 'center' }
         ]
       };
-      draw_grid(".jqxgrid-text-units", text_units_datafields, text_units_columns, false,
+      draw_grid(".jqxgrid-text-units", text_units_datafields, text_units_columns, true,
                 text_units_custom_source_data, text_units_grid_options);
 
       // Top Entity Usages table
       var entities_datafields = [
-        { name: 'entity__name', type: 'string' },
-        { name: 'entity__category', type: 'string' },
+        { name: 'name', type: 'string' },
+        { name: 'category', type: 'string' },
         { name: 'entity_data' },
         { name: 'count', type: 'int' }
       ];
@@ -277,15 +277,15 @@
             onclick: "expand_row(event, '.jqxgrid-entities', " + row_number + ")",
             text: 'Show Details' },
           { icon: 'fa fa-search',
-            url:  '{% url "extract:geo-entity-usage-list" %}?entity_search=' + row.entity__name,
+            url:  '{% url "extract:geo-entity-usage-list" %}?entity_search=' + row.name,
             text: 'View All Similar Entity Usages' }
         ];
         show_menu(menu_data, grid, row.pk, 300);
       };
       var entities_columns = [
-        { text: 'Entity Name', datafield: 'entity__name', width: 'auto',
+        { text: 'Entity Name', datafield: 'name', width: 'auto',
           align: 'center', cellsalign: 'center' },
-        { text: 'Entity Category', datafield: 'entity__category', width: 'auto',
+        { text: 'Entity Category', datafield: 'category', width: 'auto',
           align: 'center', cellsalign: 'center' },
         { text: 'Count', datafield: 'count', width: 150,
           align: 'center', cellsalign: 'center' },
@@ -307,7 +307,7 @@
         var details_source = {
           datafields: [
             { name: 'text_unit__document__name', type: 'string' },
-            { name: 'text_unit__document__document_type', type: 'string' },
+            { name: 'text_unit__document__document_type__title', type: 'string' },
             { name: 'text_unit__document__description', type: 'string' },
             { name: 'entity__name', type: 'string' },
             { name: 'entity__category', type: 'string' },
@@ -344,7 +344,7 @@
               { text: 'Name', datafield: 'text_unit__document__name', width: 200,
                 align: 'center', cellsalign: 'left', enabletooltips: true,
                 cellsrenderer: defaultLinkFormatter, columngroup: 'Document' },
-              { text: 'Type', datafield: 'text_unit__document__document_type', width: 100,
+              { text: 'Type', datafield: 'text_unit__document__document_type__title', width: 100,
                 align: 'center', cellsalign: 'center', columngroup: 'Document' },
               { text: 'Description', datafield: 'text_unit__document__description',
                 width: 200, enabletooltips: true, columngroup: 'Document',
@@ -421,7 +421,7 @@
         data: { 'party_pk': {{ object.pk }} },
         badgeClass: 'parties-badge'
       };
-      draw_grid(".jqxgrid-parties", parties_datafields, parties_columns, false,
+      draw_grid(".jqxgrid-parties", parties_datafields, parties_columns, true,
                 parties_custom_source_data);
 
       if (window.location.hash.indexOf('tab') != -1 ){

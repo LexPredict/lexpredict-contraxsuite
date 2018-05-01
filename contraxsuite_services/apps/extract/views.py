@@ -41,7 +41,7 @@ import geocoder
 # Django imports
 from django.core.urlresolvers import reverse
 from django.contrib.auth import authenticate
-from django.db.models import Count, F, Max, Min, Sum, Q
+from django.db.models import Count, F, Max, Min, Sum, Q, Value, IntegerField
 from django.db.models.functions import TruncMonth
 from django.http import Http404, HttpResponseForbidden, HttpResponse
 from django.views.generic import DetailView, TemplateView
@@ -58,15 +58,15 @@ from apps.extract.models import (
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.0.8/LICENSE"
-__version__ = "1.0.8"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.0.9/LICENSE"
+__version__ = "1.0.9"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
 
 class BaseUsageListView(JqPaginatedListView):
     json_fields = ['text_unit__document__pk', 'text_unit__document__name',
-                   'text_unit__document__description', 'text_unit__document__document_type',
+                   'text_unit__document__description', 'text_unit__document__document_type__title',
                    'text_unit__text', 'text_unit__pk']
     limit_reviewers_qs_by_field = 'text_unit__document'
     field_types = dict(count=int)
@@ -142,7 +142,6 @@ class TermUsageListView(BaseUsageListView):
             #                  _and_lookup='text_unit__text__icontains',
             #                  _not_lookup='text_unit__text__icontains')
             qs = qs.filter(term__term__icontains=term_search)
-
         # filter out duplicated Terms (equal terms, but diff. term sources)
         # qs = qs.order_by('term__term').distinct('term__term', 'text_unit__pk')
         return qs
@@ -249,24 +248,49 @@ class TopGeoEntityUsageListView(GeoEntityUsageListView):
     template_name = "extract/top_geo_entity_usage_list.html"
 
     def get_json_data(self, **kwargs):
-        entities_data = super().get_json_data()['data']
-        top_data = {}
-        for entity in entities_data:
-            if entity['entity__name'] in top_data:
-                top_data[entity['entity__name']]['count'] += entity['count']
-                if "document_pk" in self.request.GET or "party_pk" in self.request.GET:
-                    top_data[entity['entity__name']]['entity_data'].append(entity)
-            else:
-                top_data[entity['entity__name']] = {k: v for k, v in entity.items()
-                                                    if k in ['entity__name', 'entity__category',
-                                                             'count']}
-                top_data[entity['entity__name']]['url'] = \
-                    reverse('extract:geo-entity-usage-list') + \
-                    '?entity_search=' + entity['entity__name']
-                if "document_pk" in self.request.GET or "party_pk" in self.request.GET:
-                    top_data[entity['entity__name']]['entity_data'] = [entity]
-        ret = sorted(top_data.values(), key=lambda i: -i['count'])
-        return {'data': ret, 'total_records': len(ret)}
+        document_id = self.request.GET.get("document_pk")
+        party_id = self.request.GET.get("party_pk")
+
+        entities = {i['name']: i for i in GeoEntity.objects.values('name', 'category').annotate(
+            count=Value(0, output_field=IntegerField()))}
+        entites_filter_opts = dict(geoentityusage__isnull=False)
+        aliases_filter_opts = dict(geoalias__geoaliasusage__isnull=False)
+
+        if document_id:
+            entites_filter_opts['geoentityusage__text_unit__document_id'] = document_id
+            aliases_filter_opts['geoalias__geoaliasusage__text_unit__document_id'] = document_id
+        elif party_id:
+            entites_filter_opts[
+                'geoentityusage__text_unit__document__textunit__partyusage__party__pk'] = party_id
+            aliases_filter_opts[
+                'geoalias__geoaliasusage__text_unit__document__textunit__partyusage__party__pk'] = party_id
+
+        entities_data = list(GeoEntity.objects
+                             .filter(**entites_filter_opts)
+                             .values('name', 'category')
+                             .annotate(count=Sum('geoentityusage__count', distinct=True)))
+        aliases_data = list(GeoEntity.objects
+                            .filter(**aliases_filter_opts)
+                            .values('name', 'category')
+                            .annotate(count=Sum('geoalias__geoaliasusage__count')))
+        for i in entities_data:
+            entities[i['name']]['count'] += i['count']
+        for i in aliases_data:
+            entities[i['name']]['count'] += i['count']
+
+        if document_id or party_id:
+            entities_data = super().get_json_data()['data']
+            for entity in entities_data:
+                entity_data = entities[entity['entity__name']].get('entity_data', [])
+                entity_data.append(entity)
+                entities[entity['entity__name']]['entity_data'] = entity_data
+
+        entities = sorted([i for i in entities.values() if i['count']], key=lambda i: -i['count'])
+        for i in entities:
+            i['url'] = reverse('extract:geo-entity-usage-list') + \
+                       '?entity_search=' + i['name']
+
+        return {'data': entities, 'total_records': len(entities)}
 
 
 class GeoAliasUsageListView(BaseUsageListView):

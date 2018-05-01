@@ -53,8 +53,8 @@ from apps.task.tasks import call_task, clean_tasks, purge_task
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.0.8/LICENSE"
-__version__ = "1.0.8"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.0.9/LICENSE"
+__version__ = "1.0.9"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -426,12 +426,12 @@ class TaskListView(AdminRequiredMixin, JqPaginatedListView):
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
         ctx['active_classifiers'] = TextUnitClassifier.objects.filter(is_active=True).exists()
-        #if DocumentProperty.objects.exists():
-        #    ctx['ls_document_properties'] = sorted(
-        #        set(DocumentProperty.objects.values_list('key', flat=True)),
-        #        key=lambda i: i.lower())
-        #if TextUnitProperty.objects.exists():
-        #    ctx['ls_text_unit_properties'] = sorted(
-        #        set(TextUnitProperty.objects.values_list('key', flat=True)),
-        #        key=lambda i: i.lower())
+        if DocumentProperty.objects.exists():
+            ctx['ls_document_properties'] = sorted(
+                set(DocumentProperty.objects.values_list('key', flat=True)),
+                key=lambda i: i.lower())
+        if TextUnitProperty.objects.exists():
+            ctx['ls_text_unit_properties'] = sorted(
+                set(TextUnitProperty.objects.values_list('key', flat=True)),
+                key=lambda i: i.lower())
         return ctx

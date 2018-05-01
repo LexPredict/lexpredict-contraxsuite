@@ -8,7 +8,7 @@
       var datafields = [
         { name: 'pk', type: 'int' },
         { name: 'document__name', type: 'string' },
-        { name: 'document__document_type', type: 'string' },
+        { name: 'document__document_type__title', type: 'string' },
         { name: 'document__description', type: 'string' },
         { name: 'unit_type', type: 'string' },
         { name: 'language', type: 'string' },
@@ -41,7 +41,7 @@
         { text: 'Name', datafield: 'document__name', width: 300,
           align: 'center', cellsalign: 'left', enabletooltips: true,
           cellsrenderer: defaultLinkFormatter, columngroup: 'Document' },
-        { text: 'Type', datafield: 'document__document_type', width: 100,
+        { text: 'Type', datafield: 'document__document_type__title', width: 100,
           align: 'center', cellsalign: 'center', columngroup: 'Document' },
         { text: 'Description', datafield: 'document__description',
           width: 200, enabletooltips: true, columngroup: 'Document',

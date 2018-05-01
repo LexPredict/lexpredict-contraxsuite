@@ -147,6 +147,7 @@ if not User.objects.filter(username = '${DOCKER_DJANGO_ADMIN_NAME}').exists():
         service nginx start && \
         su - ${SHARED_USER_NAME} -c "${ACTIVATE_VENV} && \
             ulimit -n 1000000 && \
+            python manage.py check && \
             uwsgi --socket 0.0.0.0:3031 \
                     --plugins python3 \
                     --protocol uwsgi \
@@ -196,8 +197,11 @@ else
 #    for i in {1..5};
 #    do
 #        echo "Attempt #$i";
+
+
         su - ${SHARED_USER_NAME} -c "${ACTIVATE_VENV} && \
             ulimit -n 1000000 && \
+            python manage.py check && \
             celery worker -A apps --concurrency=1 -B"
         sleep 20
 #        REGISTERED=$(su - ${SHARED_USER_NAME} -c "${ACTIVATE_VENV} && \
