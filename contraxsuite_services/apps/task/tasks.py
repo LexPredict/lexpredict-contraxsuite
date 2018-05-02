@@ -219,7 +219,7 @@ def log(message, level='info', task=None):
     print('[{0}]: {1}'.format(task_name, message))
     if task:
         try:
-            task.log = (task.log or '') + '[{0}] {1}'.format(str_date, message)
+            task.log = (task.log or '') + '[{0}] {1}\n'.format(str_date, message)
             task.save()
         except:
             # ignore if this task has been already deleted by other process
