@@ -194,18 +194,18 @@ def log(message, level='info', task=None):
     message = str(message)
 
     # capture log content into log obj ("log" field)
-    log_capture_string = StringIO()
-    ch = logging.StreamHandler(log_capture_string)
-    ch.setLevel(logging.DEBUG)
-    formatter = logging.Formatter(settings.LOGGING['formatters']['verbose']['format'])
-    ch.setFormatter(formatter)
-    logger.addHandler(ch)
+    #log_capture_string = StringIO()
+    #ch = logging.StreamHandler(log_capture_string)
+    #ch.setLevel(logging.DEBUG)
+    #formatter = logging.Formatter(settings.LOGGING['formatters']['verbose']['format'])
+    #ch.setFormatter(formatter)
+    #logger.addHandler(ch)
 
-    getattr(logger, level)(message)
+    #getattr(logger, level)(message)
 
-    log_content = log_capture_string.getvalue()
-    log_capture_string.close()
-    logger.removeHandler(ch)
+    #log_content = log_capture_string.getvalue()
+    #log_capture_string.close()
+    #logger.removeHandler(ch)
 
     # TODO: set default to "" in model
     if isinstance(task, (int, str)):
@@ -213,9 +213,17 @@ def log(message, level='info', task=None):
             task = Task.objects.get(pk=task)
         except:
             task = None
+
+    str_date = str(datetime.datetime.now())
+    task_name = '{0} # {1}'.format(task.name, task.celery_task_id) if task else 'Contraxsuite'
+    print('[{0}]: {1}'.format(task_name, message))
     if task:
-        task.log = (task.log or '') + log_content
-        task.save()
+        try:
+            task.log = (task.log or '') + '[{0}] {1}'.format(str_date, message)
+            task.save()
+        except:
+            # ignore if this task has been already deleted by other process
+            pass
 
     return True
 
@@ -340,8 +348,10 @@ class LoadDocuments(BaseTask):
     def save_extra_document_data(self, *args, **kwargs):
         pass
 
-    def try_parsing_with_tika(self, file_path, ext):
+    def try_parsing_with_tika(self, file_path, ext, original_file_name):
+        self.log('Trying TIKA for file: ' + original_file_name)
         if settings.TIKA_DISABLE:
+            self.log('TIKA is disabled in config')
             return None, None
         try:
             data = parser.from_file(file_path, settings.TIKA_SERVER_ENDPOINT) \
@@ -350,18 +360,20 @@ class LoadDocuments(BaseTask):
             if parsed and len(parsed) >= 100:
                 return parsed, 'tika'
             else:
+                self.log('TIKA returned too small test for file: ' + original_file_name)
                 return None, None
         except:
-            self.log('Caught exception while trying to parse file with Tika.\n{0}' \
-                     .format(format_exc()))
+            self.log('Caught exception while trying to parse file with Tika:{0}\n{1}' \
+                     .format(original_file_name, format_exc()))
             return None, None
 
-    def try_parsing_with_textract(self, file_path, ext):
+    def try_parsing_with_textract(self, file_path, ext, original_file_name):
+        self.log('Trying Textract for file: ' + original_file_name)
         try:
             return textract2text(file_path, ext=ext), 'textract'
         except:
-            self.log('Caught exception while trying to parse file with Textract.\n{0}' \
-                     .format(format_exc()))
+            self.log('Caught exception while trying to parse file with Textract: {0}\n{1}' \
+                     .format(original_file_name, format_exc()))
             return None, None
 
     def create_document_local(self, file_path, file_name, kwargs):
@@ -386,13 +398,13 @@ class LoadDocuments(BaseTask):
         ext_no_dot = ext[1:] if ext else ''
 
         if ext_no_dot in settings.TIKA_FOR_EXTENSIONS:
-            text, parser_name = self.try_parsing_with_tika(file_path, ext)
+            text, parser_name = self.try_parsing_with_tika(file_path, ext, file_name)
             if not text:
-                text, parser_name = self.try_parsing_with_textract(file_path, ext)
+                text, parser_name = self.try_parsing_with_textract(file_path, ext, file_name)
         else:
-            text, parser_name = self.try_parsing_with_textract(file_path, ext)
+            text, parser_name = self.try_parsing_with_textract(file_path, ext, file_name)
             if not text:
-                text, parser_name = self.try_parsing_with_tika(file_path, ext)
+                text, parser_name = self.try_parsing_with_tika(file_path, ext, file_name)
 
         if not text:
             if new_ui:

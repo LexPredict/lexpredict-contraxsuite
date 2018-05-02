@@ -148,7 +148,7 @@ services:
         limits:
           cpus: '${DOCKER_CELERY_CPUS}'
           memory: ${DOCKER_CELERY_MEMORY}
-      replicas: 1
+      replicas: 2
 
 
   contrax-uwsgi:
