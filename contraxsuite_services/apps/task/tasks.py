@@ -395,9 +395,9 @@ class LoadDocuments(BaseTask):
             mt = python_magic.from_file(file_path)
             ext = mimetypes.guess_extension(mt)
 
-        ext_no_dot = ext[1:] if ext else ''
+        ext = ext or ''
 
-        if ext_no_dot in settings.TIKA_FOR_EXTENSIONS:
+        if ext in settings.TIKA_FOR_EXTENSIONS:
             text, parser_name = self.try_parsing_with_tika(file_path, ext, file_name)
             if not text:
                 text, parser_name = self.try_parsing_with_textract(file_path, ext, file_name)
