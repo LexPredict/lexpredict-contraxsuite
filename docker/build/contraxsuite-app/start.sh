@@ -202,7 +202,7 @@ else
         su - ${SHARED_USER_NAME} -c "${ACTIVATE_VENV} && \
             ulimit -n 1000000 && \
             python manage.py check && \
-            celery worker -A apps --concurrency=1 -B"
+            celery worker -A apps --concurrency=4 -B"
         sleep 20
 #        REGISTERED=$(su - ${SHARED_USER_NAME} -c "${ACTIVATE_VENV} && \
 #            celery -A apps inspect registered | grep ' \* ' | wc -l")

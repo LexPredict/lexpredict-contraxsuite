@@ -213,8 +213,12 @@ class DocumentType(TimeStampedModel):
     @classmethod
     def generic(cls):
         obj, _ = cls.objects.get_or_create(
+            uid='68f992f1-dba3-4dc0-a815-4d868b23c5b4',
             code='document.GenericDocument',
             title='Generic Document')
+        # UID for generic doc type is hardcoded here to prevent problems if
+        # uploading full config dump from one host where it has one uid to another host
+        # where generic doc type possibly has another uid.
         return obj
 
     @classmethod
