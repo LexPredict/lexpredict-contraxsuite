@@ -25,6 +25,7 @@
 # -*- coding: utf-8 -*-
 
 # Standard imports
+import json
 import os
 import re
 import sys
@@ -386,6 +387,11 @@ class ProjectViewSet(JqMixin, viewsets.ModelViewSet):
 
         project_clustering = ProjectClustering.objects.create(project_id=project_id)
 
+        try:
+            n_clusters = int(request.POST.get('n_clusters', 3))
+        except ValueError:
+            n_clusters = 3
+
         task_id = call_task(
             task_name='ClusterProjectDocuments',
             module_name='apps.project.tasks',
@@ -394,7 +400,7 @@ class ProjectViewSet(JqMixin, viewsets.ModelViewSet):
             project_clustering_id=project_clustering.id,
             method=request.POST.get('method', 'KMeans'),
             metadata={'project_id': project_id},
-            n_clusters=int(request.POST.get('n_clusters', 3)))
+            n_clusters=n_clusters)
 
         return Response({'task_id': task_id,
                          'project_clustering_id': project_clustering.id})
@@ -793,16 +799,22 @@ class TaskSerializer(serializers.ModelSerializer):
         fields = ['pk', 'name', 'progress', 'status', 'reason']
 
     def get_reason(self, obj):
-        reason = None
         if obj.has_error:
-            if ('ValueError: max_df corresponds to < documents than min_df' in obj.log) or\
-                    ('ValueError: Number of samples smaller than number of clusters' in obj.log):
-                reason = 'Clustering failed.' \
-                         ' Try to increase number of documents or set lower number of clusters.'
-            else:
-                error = re.findall('ERROR.+?\|\s+((?!ERROR|Traceback)[^\n]+)', obj.log)
-                if error:
-                    reason = 'Clustering failed. Error: %s' % error
+            message_head = 'Clustering failed. '
+            message_body = 'Unexpected error while clustering. Try again later.'
+            if obj.celery_task_result and obj.celery_task_result.result:
+                task_result = json.loads(obj.celery_task_result.result)
+                if isinstance(task_result, dict):
+                    exc_message = task_result.get('exc_message')
+                    exc_type = task_result.get('exc_type')
+                    if exc_message and exc_type:
+                        # trace = obj.celery_task_result.traceback
+                        if ('max_df corresponds to < documents than min_df' in exc_message) or\
+                           ('Number of samples smaller than number of clusters' in exc_message) or\
+                           (re.search(r'n_samples=\d+ should be >= n_clusters=\d+', exc_message)):
+                            message_body = 'Try to increase number of documents ' \
+                                           'or set lower number of clusters.'
+            reason = message_head + message_body
             return reason
 
 
