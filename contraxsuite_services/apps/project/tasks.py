@@ -27,6 +27,7 @@ import sys
 
 # Third-party imports
 import numpy as np
+from django_celery_results.models import TaskResult
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.cluster import Birch, DBSCAN, KMeans, MiniBatchKMeans
 from sklearn.decomposition import PCA
@@ -41,17 +42,15 @@ from apps.common.utils import fast_uuid
 from apps.document.models import Document
 from apps.project.models import Project, ProjectClustering
 from apps.task.models import Task
-from apps.task.tasks import BaseTask
+from apps.task.tasks import BaseTask, TaskControl
 from urls import custom_apps
-
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.0.9/LICENSE"
-__version__ = "1.0.9"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.0/LICENSE"
+__version__ = "1.1.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
-
 
 THIS_MODULE = __name__
 
@@ -69,17 +68,17 @@ class ClusterProjectDocuments(BaseTask):
         project_id = kwargs.get('project_id')
 
         project_clustering_id = kwargs.get('project_clustering_id')
-        project_clustering = ProjectClustering.objects.get(pk=project_clustering_id) if project_id else None
-        project_clustering.task = self.task
+        project_clustering = ProjectClustering.objects.get(
+            pk=project_clustering_id) if project_id else None
+        project_clustering.task = Task.objects.get(pk=self.task.main_task_id)
         project_clustering.save()
 
         project = project_clustering.project
 
-        self.log('Start clustering documents for project id={}'.format(project_id))
-        self.log('Clustering method: "{}", n_clusters={}'.format(method, n_clusters))
+        self.task.log_info('Start clustering documents for project id={}'.format(project_id))
+        self.task.log_info('Clustering method: "{}", n_clusters={}'.format(method, n_clusters))
 
-        self.task.subtasks_total = 3
-        self.task.save()
+        self.task.update_subtasks_total(3)
 
         # get documents data
         documents = Document.objects.filter(project_id=project_id)
@@ -87,10 +86,26 @@ class ClusterProjectDocuments(BaseTask):
         pks, names, data = docs[:, 0], docs[:, 1], docs[:, 2]
         docs_count = len(docs)
 
-        vectorizer = TfidfVectorizer(max_df=0.5, max_features=100,
-                                     min_df=2, stop_words='english',
-                                     use_idf=True)
-        X = vectorizer.fit_transform(data)
+        # try increase min_df if exception occurs while fit_trasform
+        for max_df in range(50, 101, 5):
+            max_df = float(max_df / 100)
+            try:
+                vectorizer = TfidfVectorizer(max_df=max_df, max_features=100,
+                                             min_df=2, stop_words='english',
+                                             use_idf=True)
+                X = vectorizer.fit_transform(data)
+            except ValueError as e:
+                if 'Try a lower min_df or a higher max_df' in str(e):
+                    continue
+                else:
+                    raise e
+            break
+
+        # vectorizer = TfidfVectorizer(max_df=0.5, max_features=100,
+        #                              min_df=2, stop_words='english',
+        #                              use_idf=True)
+        # X = vectorizer.fit_transform(data)
+
         terms = vectorizer.get_feature_names()
 
         if method == 'Birch':
@@ -133,7 +148,7 @@ class ClusterProjectDocuments(BaseTask):
             cluster_labels = set(clusters)
             # reshape cluster labels
             if -1 in cluster_labels:
-                cluster_labels = [i+1 for i in cluster_labels]
+                cluster_labels = [i + 1 for i in cluster_labels]
             cluster_terms = cluster_labels
             centers2d = None
         else:
@@ -145,8 +160,9 @@ class ClusterProjectDocuments(BaseTask):
             order_centroids = cluster_centers.argsort()[:, ::-1]
             clusters = m.labels_.tolist()
             cluster_labels = set(clusters)
+            _n_clusters = len(cluster_labels)
             cluster_terms = [[terms[ind] for ind in order_centroids[i, :10]] for i in
-                             range(n_clusters)]
+                             range(_n_clusters)]
             centers2d = pca.transform(cluster_centers)
 
         points_data = [{'document_id': pks[i],
@@ -166,7 +182,8 @@ class ClusterProjectDocuments(BaseTask):
                 cluster_id=cluster_id,
                 name='Project id={}'.format(project.pk if project else None),
                 self_name=cluster_label,
-                description='Cluster Project (id={}) with Multiple Contract Types'.format(project_id),
+                description='Cluster Project (id={}) with Multiple Contract Types'.format(
+                    project_id),
                 cluster_by='all',
                 using=method,
                 created_date=created_date)
@@ -188,7 +205,7 @@ class ClusterProjectDocuments(BaseTask):
         project_clustering.save()
 
         self.task.push()
-        self.log('Clustering completed')
+        self.task.log_info('Clustering completed')
 
         return result
 
@@ -209,19 +226,20 @@ class ReassignProjectClusterDocuments(BaseTask):
         documents = Document.objects.filter(documentcluster__pk__in=cluster_ids)
         documents.update(project_id=new_project, document_type=new_project.type)
 
-        self.task.metadata = {
+        task_model = self.task.load_task_model()
+        task_model.metadata = {
             'task_name': 'reassigning',
             'old_project_id': project_id,
             'new_project_id': new_project_id,
             'cluster_ids': cluster_ids,
         }
-        self.task.save()
+        task_model.save()
 
         reassigning = {
             'date': now().isoformat(),
             'new_project_id': new_project_id,
             'cluster_ids': cluster_ids,
-            'task_id': self.task.id
+            'task_id': self.task.main_task_id
         }
         p_cl = ProjectClustering.objects.get(document_clusters__pk=cluster_ids[0])
         reassignings = p_cl.metadata.get('reassigning', [])
@@ -232,23 +250,28 @@ class ReassignProjectClusterDocuments(BaseTask):
         p_cl.metadata['reassigned_cluster_ids'] = reassigned_cluster_ids
         p_cl.save()
 
-        tasks = []
+        task_funcs = []
         for app_name in custom_apps:
             module_str = 'apps.%s.tasks' % app_name
             module = sys.modules.get(module_str)
             detector_task = getattr(module, 'DetectFieldValues', None)
             if detector_task and hasattr(detector_task, 'detect_field_values_for_document'):
-                tasks.append(getattr(detector_task, 'detect_field_values_for_document'))
+                task_funcs.append(getattr(detector_task, 'detect_field_values_for_document'))
 
-        if tasks:
-            self.task.subtasks_total = documents.count() * len(tasks)
-            self.task.save()
+        if task_funcs:
+            self.task.update_subtasks_total(documents.count() * len(task_funcs))
 
+            sub_tasks = []
             for document in documents:
-                for task in tasks:
-                    task.apply_async(
-                        args=(document.id, False, self.task.id, None),
-                        task_id='%d_%s' % (self.task.id, fast_uuid()))
+                for task_func in task_funcs:
+                    sub_task = task_func.subtask(
+                        args=(document.id, False, None, self.task),
+                        task_id='%d_%s' % (self.task.main_task_id, fast_uuid()))
+                    sub_tasks.append(sub_task)
+            TaskControl.chord_and_clean(self.task, sub_tasks, {})
+
+        # TODO: metadata[project_id] in tasks related with reassigned documents
+        # TODO: should be updated to new project id value?
 
 
 class CleanProject(BaseTask):
@@ -262,38 +285,18 @@ class CleanProject(BaseTask):
         project_id = kwargs.get('project_id')
         project = Project.objects.get(pk=project_id)
 
-        # delete prev. CleanProject Task
-        Task.special_tasks({'task_name': 'clean-project',
-                            '_project_id': project.pk}).delete()
-        # delete prev. Reassigning Task
-        Task.special_tasks({'task_name': 'reassigning',
-                            'old_project_id': project.pk}).delete()
+        # delete project and related objects
+        project.cleanup()
 
-        self.task.subtasks_total = 1
-        self.task.metadata = {
+        # store data about cleanup in ProjectCleanup Task
+        task_model = self.task.load_task_model()
+        task_model.metadata = {
             'task_name': 'clean-project',
-            '_project_id': project_id    # added "_" to avoid detecting task as project task
+            '_project_id': project_id  # added "_" to avoid detecting task as project task
         }
-        self.task.save()
+        task_model.save()
 
-        # delete DocumentClusters
-        for pcl in project.projectclustering_set.all():
-            pcl.document_clusters.all().delete()
-        # delete ProjectClustering
-        project.projectclustering_set.all().delete()
-        # delete Documents
-        project.document_set.all().delete()
-        # delete Project Tasks
-        project.project_tasks.delete()
-        # delete UploadSession Tasks
-        for ups in project.uploadsession_set.all():
-            ups.document_set.update(upload_session=None)
-            ups.session_tasks.delete()
-
-        # delete UploadSessions
-        project.uploadsession_set.all().delete()
-
-        self.task.push()
+        self.task.force_complete()
 
 
 app.register_task(ClusterProjectDocuments())

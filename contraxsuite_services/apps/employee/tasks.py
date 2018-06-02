@@ -28,22 +28,19 @@ from celery import shared_task
 
 # Project imports
 from apps.celery import app
-from apps.common.utils import fast_uuid
 from apps.document.models import Document, TextUnit
 from apps.employee.models import Employee, Employer, Provision
 from apps.employee.services import get_employee_name, get_employer_name, get_salary, \
     get_effective_date, get_similar_to_non_compete, get_similar_to_termination, \
     get_vacation_duration, get_governing_geo, get_similar_to_benefits, \
     is_employment_doc, get_similar_to_severance
-from apps.task.tasks import BaseTask, log
-from apps.task.tasks import BaseTask, LoadDocuments
+from apps.task.tasks import BaseTask, TaskControl
 from apps.task.utils.text.segment import segment_sentences
-
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.0.9/LICENSE"
-__version__ = "1.0.9"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.0/LICENSE"
+__version__ = "1.1.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -65,40 +62,44 @@ class LocateEmployees(BaseTask):
         """
         if kwargs.get('delete'):
             deleted = Employee.objects.all().delete() + Employer.objects.all().delete() + Provision.objects.all().delete()
-            self.log('Deleted: ' + str(deleted))
+            self.task.log_info('Deleted: ' + str(deleted))
 
         documents = Document.objects.all()
         # TODO: outdated
         if kwargs.get('document_type'):
             documents = documents.filter(document_type__in=kwargs['document_type'])
-            self.log('Filter documents by "%s" document type.' % str(kwargs['document_type']))
+            self.task.log_info(
+                'Filter documents by "%s" document type.' % str(kwargs['document_type']))
 
         if kwargs.get('document_id'):
             documents = documents.filter(pk=kwargs['document_id'])
-            self.log('Process document id={}.'.format(kwargs['document_id']))
+            self.task.log_info('Process document id={}.'.format(kwargs['document_id']))
 
-        self.task.subtasks_total = documents.count()
-        self.task.save()
-        self.log('Found {0} Documents. Added {0} subtasks.'.format(self.task.subtasks_total))
+        self.task.update_subtasks_total(documents.count())
+        self.task.log_info(
+            'Found {0} Documents. Added {0} subtasks.'.format(documents.count()))
 
+        parse_document_for_employee_args = []
         for d in documents:
-            self.parse_document_for_employee.apply_async(
-                args=(d.id, kwargs.get('no_detect', True), kwargs['task_id']),
-                task_id='%d_%s' % (self.task.id, fast_uuid()))
+            parse_document_for_employee_args.append((d.id,
+                                                     kwargs.get('no_detect', True)))
+
+        self.task.run_sub_tasks('Locate Employees for Each Document',
+                                LocateEmployees.parse_document_for_employee,
+                                parse_document_for_employee_args)
 
     @staticmethod
     @shared_task
-    def parse_document_for_employee(document_id: int, no_detect: bool, task_id):
-
+    def parse_document_for_employee(document_id: int, no_detect: bool, main_task: TaskControl):
         detect = not no_detect
         document = Document.objects.get(pk=document_id)
 
-        log('Process employment document: #{}. {}'.format(
-            document_id, document.name), task=task_id)
+        main_task.log_info('Process employment document: #{}. {}'.format(
+            document_id, document.name))
 
         if detect and not is_employment_doc(document.full_text or document.text):
-            log('Not an employment document: #{}. {}'.format(
-                document_id, document.name), task=task_id)
+            main_task.log_info('Not an employment document: #{}. {}'.format(
+                document_id, document.name))
             return
 
         employee_dict = {}
@@ -110,10 +111,10 @@ class LocateEmployees(BaseTask):
             if paragraph_text == paragraph_text.upper():
                 continue
             try:
-                sentences=  segment_sentences(paragraph_text)
+                sentences = segment_sentences(paragraph_text)
             except:
-                #accept the paragraph is a sentence if segmenter errors out.
-                sentences= [paragraph_text]
+                # accept the paragraph is a sentence if segmenter errors out.
+                sentences = [paragraph_text]
             for text in sentences:
 
                 # clean
@@ -129,19 +130,21 @@ class LocateEmployees(BaseTask):
                 if employee_dict.get('annual_salary') is None:
                     get_salary_result = get_salary(text)
                     if get_salary_result is not None:
-                        employee_dict['annual_salary'] = get_salary_result[0][0] * get_salary_result[1]
+                        employee_dict['annual_salary'] = get_salary_result[0][0] * \
+                                                         get_salary_result[1]
                         employee_dict['salary_currency'] = get_salary_result[0][1]
                 if employee_dict.get('effective_date') is None:
                     employee_dict['effective_date'] = get_effective_date(text)
                 if employee_dict.get('vacation') is None:
                     get_vacation_result = get_vacation_duration(text)
                     if get_vacation_result is not None:
-                        yearly_amount = get_vacation_result[0][1]*get_vacation_result[1]
-                        employee_dict['vacation'] = str(yearly_amount) + " " + str(get_vacation_result[0][0])+"s"
+                        yearly_amount = get_vacation_result[0][1] * get_vacation_result[1]
+                        employee_dict['vacation'] = str(yearly_amount) + " " + str(
+                            get_vacation_result[0][0]) + "s"
                 if employee_dict.get('governing_geo') is None:
                     employee_dict['governing_geo'] = get_governing_geo(text)
 
-            non_compete_similarity=get_similar_to_non_compete(text)
+            non_compete_similarity = get_similar_to_non_compete(text)
             if non_compete_similarity > .5:
                 provisions.append({"text_unit": t.id,
                                    "similarity": non_compete_similarity,
@@ -179,7 +182,7 @@ class LocateEmployees(BaseTask):
 
         if len(provisions) > 0 and employee is not None:
             noncompete_found = termination_found = \
-                severance_found=benefits_found = False
+                severance_found = benefits_found = False
 
             for i in provisions:
                 if i["type"] == "noncompete":
@@ -191,8 +194,8 @@ class LocateEmployees(BaseTask):
                         if i["type"] == "benefits":
                             benefits_found = True
                         else:
-                            if i["type"]== "severance":
-                                severance_found=True
+                            if i["type"] == "severance":
+                                severance_found = True
                 Provision.objects.get_or_create(
                     text_unit=TextUnit.objects.get(pk=i["text_unit"]),
                     similarity=i["similarity"],
@@ -203,7 +206,7 @@ class LocateEmployees(BaseTask):
             employee.has_noncompete = noncompete_found
             employee.has_termination = termination_found
             employee.has_benefits = benefits_found
-            employee.has_severance= severance_found
+            employee.has_severance = severance_found
             employee.save()
 
         # create Employer

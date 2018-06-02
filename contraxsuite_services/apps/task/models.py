@@ -27,27 +27,33 @@
 # Standard imports
 import datetime
 import itertools
-
-# Third-party inports
-from simple_history.models import HistoricalRecords
+import logging
+from traceback import format_exc
+from elasticsearch import Elasticsearch
+import settings
+from dateutil import parser as date_parser
 
 # Django imports
 from django.contrib.postgres.fields import JSONField
 from django.db import models, transaction
 from django.utils import timezone
-from django.dispatch import receiver
 from django_celery_results.models import TaskResult
+
+# Third-party imports
+from simple_history.models import HistoricalRecords
 
 # Project imports
 from apps.users.models import User
 
-
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.0.9/LICENSE"
-__version__ = "1.0.9"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.0/LICENSE"
+__version__ = "1.1.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
+
+logger = logging.getLogger(__name__)
+es = Elasticsearch(hosts=settings.ELASTICSEARCH_CONFIG['hosts'])
 
 
 class Task(models.Model):
@@ -69,9 +75,6 @@ class Task(models.Model):
 
     # Task requesting user
     user = models.ForeignKey(User, db_index=True, blank=True, null=True)
-
-    # Task log
-    log = models.TextField(blank=True, null=True)
 
     # Task error status
     has_error = models.BooleanField(default=False)
@@ -119,6 +122,10 @@ class Task(models.Model):
         return ret
 
     @property
+    def propagate_exception(self):
+        return self.metadata and self.metadata.get('propagate_exception')
+
+    @property
     def celery_task(self):
         celery_task = self.celery_task_result or \
                       TaskResult.objects.get_task(task_id=self.celery_task_id)
@@ -127,9 +134,19 @@ class Task(models.Model):
         return celery_task
 
     @property
+    def subtasks(self):
+        return TaskResult.objects.filter(task_id__startswith='%s_' % self.id)
+
+    @property
+    def any_subtask_failed(self):
+        return 'FAILURE' in self.subtasks.values_list('status', flat=True)
+
+    @property
     def status(self):
-        if self._status == 'SUCCESS':
-            status = 'SUCCESS'
+        if self._status and self._status != 'PENDING':
+            status = self._status
+        elif self.propagate_exception and self.any_subtask_failed:
+            status = 'FAILURE'
         else:
             status = self.celery_task.status
             if status == 'SUCCESS' and self.subtasks_total:
@@ -137,9 +154,9 @@ class Task(models.Model):
                     status = 'SUCCESS'
                 else:
                     status = 'PENDING'
-            if self._status != status:
-                self._status = status
-                self.save()
+        if self._status != status:
+            self._status = status
+            self.save()
         return status
 
     @classmethod
@@ -150,21 +167,20 @@ class Task(models.Model):
     def date_done(self):
         if self._date_done:
             result = self._date_done
-        elif self.status == 'SUCCESS':
-            if self.subtasks_processed:
-                result = self.celery_task.date_done
-            elif self.subtasks_total:
-                result = TaskResult.objects.filter(task_id__startswith='%s_' % self.id) \
-                    .latest('date_done').date_done
-            else:
-                result = self.celery_task.date_done
-        elif self.status == 'FAILURE':
-            result = self.celery_task.date_done
         else:
-            result = None
-        if result:
-            self._date_done = result
-            self.save()
+            status = self.status
+            if status == 'SUCCESS':
+                if self.subtasks:
+                    result = self.subtasks.latest('date_done').date_done
+                else:
+                    result = self.celery_task.date_done
+            elif status == 'FAILURE':
+                result = self.celery_task.date_done
+            else:
+                result = None
+            if result:
+                self._date_done = result
+                self.save()
         return result
 
     @property
@@ -178,26 +194,33 @@ class Task(models.Model):
             else:
                 end_date = self.date_done
             result = str(end_date - self.date_start).split('.')[0]
-            if status == 'SUCCESS':
+            if self._time != result:
                 self._time = result
                 self.save()
         return result
 
     @property
     def processed(self):
+        # if manually set progress by self.push()
         if self.subtasks_processed:
             processed = self.subtasks_processed
+        # if progress is calculated from subtasks
         else:
-            processed = TaskResult.objects.filter(task_id__startswith='%s_' % self.id).count()
+            processed = self.subtasks.count()
         return processed
 
     @property
     def progress(self):
+        save = False
         if self._progress == 100:
             return 100
         if not self.subtasks_total:
-            return 0
-        save = False
+            subtasks_count = self.subtasks.count()
+            if subtasks_count:
+                self.subtasks_total = subtasks_count
+                save = True
+            else:
+                return 0
         progress = round(self.processed / int(self.subtasks_total) * 100)
         if not self.subtasks_processed and progress == 100:
             self.subtasks_processed = self.subtasks_total
@@ -221,7 +244,7 @@ class Task(models.Model):
 
     def force_complete(self):
         self.subtasks_total = 1
-        self.subtasks_processed = 1
+        self.xsubtasks_processed = 1
         self.save()
 
     @property
@@ -264,7 +287,8 @@ class Task(models.Model):
                 sorted(data, key=lambda i: i['metadata']),
                 key=lambda i: i['metadata']):
             progress_data = [i['progress'] for i in grouped_data]
-            group_progress = round(sum(progress_data) / len(progress_data), 2) if progress_data else 0
+            group_progress = round(sum(progress_data) / len(progress_data),
+                                   2) if progress_data else 0
             metadata = dict(metadata)
             metadata['progress'] = group_progress
             metadata['completed'] = group_progress == 100
@@ -292,3 +316,47 @@ class Task(models.Model):
             if task.celery_task:
                 task.celery_task.delete()
             task.delete()
+
+    @classmethod
+    def update_calculated_fields(cls):
+        for task in cls.objects.filter(_date_done__isnull=True):
+            _ = task.progress
+            _ = task.time
+
+    @classmethod
+    def get_task_log_from_elasticsearch(cls, task_id):
+        try:
+            es_query = {
+                'sort': ['@timestamp'],
+                'query': {
+                    'bool': {
+                        'must': [
+                            {'match': {'log_main_task_id': task_id}},
+                        ]
+                    }
+                },
+                '_source': ['@timestamp', 'level', 'message']
+            }
+            es_res = es.search(size=1000,
+                               index=settings.LOGGING_ELASTICSEARCH_INDEX_TEMPLATE,
+                               body=es_query)
+            logs = []
+            for hit in es_res['hits']['hits']:
+                doc = hit['_source']
+                timestamp = date_parser.parse(doc['@timestamp'])
+                timestamp = timestamp.strftime('%Y-%m-%d %H:%M:%S')
+
+                level = doc['level']
+                if not level:
+                    level = 'INFO'
+
+                message = doc['message']
+
+                log_add = '{2: <9} {0} | {1}'.format(timestamp, message, level.upper())
+                logs.append(log_add)
+            return str('\n'.join(logs))
+        except:
+            return 'Unable to fetch logs from ElasticSearch:\n{0}'.format(format_exc())
+
+    def log(self):
+        return Task.get_task_log_from_elasticsearch(self.pk)

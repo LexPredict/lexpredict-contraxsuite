@@ -33,8 +33,8 @@ from apps.users.models import User
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.0.9/LICENSE"
-__version__ = "1.0.9"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.0/LICENSE"
+__version__ = "1.1.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -61,6 +61,7 @@ class UserViewSet(JqMixin, viewsets.ModelViewSet):
     """
     list: User List\n
         GET params:
+            - username: str
             - first_name: str
             - last_name: str
             - name: str

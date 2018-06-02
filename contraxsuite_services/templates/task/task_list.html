@@ -220,6 +220,13 @@
       <li class="divider"></li>
       <li class="dropdown-item">
         <a class="task" href="#"
+           data-href="{% url "task:total-cleanup" %}"
+           data-btn-text="Go">
+          <i class="fa fa-trash"></i>
+          Total Cleanup</a>
+      </li>
+      <li class="dropdown-item">
+        <a class="task" href="#"
            data-href="{% url "task:clean-tasks" %}"
            data-btn-text="Clean"
            data-type="red"
@@ -978,11 +985,11 @@
         { name: 'description', type: 'string' },
         { name: 'user__username', type: 'string' },
         { name: 'date_start', type: 'date' },
-        { name: 'date_done', type: 'date' },
-        { name: 'time', type: 'string' },
-        { name: 'progress', type: 'float' },
+        { name: '_date_done', type: 'date' },
+        { name: '_time', type: 'string' },
+        { name: '_progress', type: 'float' },
         { name: 'has_error', type: 'bool' },
-        { name: 'status', type: 'string' },
+        { name: '_status', type: 'string' },
         { name: 'url', type: 'string' },
         { name: 'purge_url', type: 'string' },
         { name: 'result_links' }
@@ -1009,11 +1016,11 @@
         show_menu(menu_data, grid, row.pk, 300);
       };
       var status_renderer = function(index, columnfield, value, defaulthtml, columnproperties, row){
-        var cls = row.has_error ? 'danger' : row.status == 'SUCCESS'
-            ? 'success' : row.status == 'PENDING'
-            ? 'warning' : row.status == 'FAILURE'
+        var cls = row.has_error ? 'danger' : row._status == 'SUCCESS'
+            ? 'success' : row._status == 'PENDING'
+            ? 'warning' : row._status == 'FAILURE'
             ? 'danger' : 'default';
-        value = row.has_error ? 'FAILURE' : row.status;
+        value = row.has_error ? 'FAILURE' : row._status;
         var new_value = '<span class="badge badge-' + cls + '">' + value + '</span>';
         return renderCell(defaulthtml, new_value);
       };
@@ -1028,15 +1035,15 @@
         { text: 'Date Started', datafield: 'date_start', width: 120,
           filtertype: 'date', cellsformat: 'MM-dd-yyyy HH:mm',
           align: 'center', cellsalign: 'center' },
-        { text: 'Date Done', datafield: 'date_done', width: 120,
+        { text: 'Date Done', datafield: '_date_done', width: 120,
           filtertype: 'date', cellsformat: 'MM-dd-yyyy HH:mm',
           align: 'center', cellsalign: 'center' },
-        { text: 'Time', datafield: 'time', width: 100,
+        { text: 'Time', datafield: '_time', width: 100,
           align: 'center', cellsalign: 'center' },
-        { text: 'Progress', datafield: 'progress', width: 100,
+        { text: 'Progress', datafield: '_progress', width: 100,
           cellsrenderer: knob_cellsrenderer,
           align: 'center', cellsalign: 'center' },
-        { text: 'Status', datafield: 'status', width: 80,
+        { text: 'Status', datafield: '_status', width: 80,
           cellsrenderer: status_renderer,
           align: 'center', cellsalign: 'center' },
         { text: 'Action', datafield: 'url', width: 60,

@@ -48,8 +48,8 @@ from apps.project.views import DashboardView
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.0.9/LICENSE"
-__version__ = "1.0.9"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.0/LICENSE"
+__version__ = "1.1.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -58,6 +58,7 @@ __email__ = "support@contraxsuite.com"
 urlpatterns = [
     # Base pages
     url(r'^{0}$'.format(settings.BASE_URL), DashboardView.as_view(), name='home'),
+    url(r'^{0}'.format(settings.BASE_URL), include('django.contrib.auth.urls')),
     # url(r'^$', TemplateView.as_view(template_name='home.html'), name='home'),
     url(r'^{0}about/$'.format(settings.BASE_URL), TemplateView.as_view(template_name='about.html'), name='about'),
     # Django Admin, use {% url 'admin:index' %}

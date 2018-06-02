@@ -353,8 +353,6 @@ CELERY_BEAT_SCHEDULE = {
         'schedule': crontab(hour=7, minute=30, day_of_week='mon')
     },
 }
-CELERY_LOG_FILE_NAME = 'celery.log'
-CELERY_LOG_FILE_PATH = PROJECT_DIR(CELERY_LOG_FILE_NAME)
 # this needed on production. check
 CELERY_IMPORTS = ('apps.task.tasks',)
 # CELERY_TIMEZONE = 'UTC'
@@ -478,6 +476,9 @@ REST_FRAMEWORK = {
         'rest_framework.permissions.IsAuthenticated',
     )
 }
+REST_AUTH_SERIALIZERS = {
+    'TOKEN_SERIALIZER': 'auth.TokenSerializer',
+}
 SWAGGER_SETTINGS = {
     'SECURITY_DEFINITIONS': {
         'api_key': {
@@ -494,7 +495,7 @@ SWAGGER_SETTINGS = {
 # TIKA_SERVER_JAR = ROOT_DIR('../libs/tika/tika-server-1.14.jar')
 TIKA_DISABLE = False
 TIKA_SERVER_ENDPOINT = None
-TIKA_FOR_EXTENSIONS = ['.pdf']
+TEXTRACT_FIRST_FOR_EXTENSIONS = []
 
 
 # use jqWidgets' export, e.g. send data to jq OR handle it on client side
@@ -507,8 +508,19 @@ GIT_DATA_REPO_ROOT = 'https://raw.githubusercontent.com/' \
                      'LexPredict/lexpredict-legal-dictionary/1.0.5'
 
 # logging
-LOG_FILE_NAME = 'log.txt'
-LOG_FILE_PATH = PROJECT_DIR(LOG_FILE_NAME)
+import platform
+import sys
+import os
+from contraxsuite_logging import ContraxsuiteJSONFormatter, prepare_log_dirs
+
+CELERY_LOG_FILE_PATH = PROJECT_DIR('logs/celery-{0}.log'.format(platform.node()))
+LOG_FILE_PATH = PROJECT_DIR('logs/django-{0}.log'.format(platform.node()))
+DB_LOG_FILE_PATH = PROJECT_DIR('logs/db-{0}.log'.format(platform.node()))
+
+prepare_log_dirs(CELERY_LOG_FILE_PATH)
+prepare_log_dirs(LOG_FILE_PATH)
+prepare_log_dirs(DB_LOG_FILE_PATH)
+
 LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,
@@ -516,9 +528,12 @@ LOGGING = {
         'verbose': {
             'format': '%(levelname)-7s %(asctime)s | %(message)s'
         },
+        'json': {
+            '()': 'contraxsuite_logging.ContraxsuiteJSONFormatter'
+        }
     },
     'handlers': {
-        'file': {
+        'text_django': {
             'level': 'DEBUG',
             'class': 'logging.handlers.RotatingFileHandler',
             'maxBytes': 1024 * 1024 * 10,
@@ -526,12 +541,20 @@ LOGGING = {
             'filename': LOG_FILE_PATH,
             'formatter': 'verbose',
         },
-        'tasks': {
+        'text_celery': {
             'level': 'DEBUG',
             'class': 'logging.handlers.RotatingFileHandler',
             'maxBytes': 1024 * 1024 * 100,
             'backupCount': 5,
             'filename': CELERY_LOG_FILE_PATH,
+            'formatter': 'verbose',
+        },
+        'text_db': {
+            'level': 'DEBUG',
+            'class': 'logging.handlers.RotatingFileHandler',
+            'maxBytes': 1024 * 1024 * 10,
+            'backupCount': 5,
+            'filename': DB_LOG_FILE_PATH,
             'formatter': 'verbose',
         },
         'console': {
@@ -544,21 +567,64 @@ LOGGING = {
         'mail_admins': {
             'level': 'ERROR',
             'class': 'django.utils.log.AdminEmailHandler',
-        }
+        },
+        'json_django': {
+            'level': 'DEBUG',
+            'class': 'logging.handlers.RotatingFileHandler',
+            'maxBytes': 1024 * 1024 * 10,
+            'backupCount': 5,
+            'filename': LOG_FILE_PATH + '_json',
+            'formatter': 'json',
+        },
+        'json_celery': {
+            'level': 'DEBUG',
+            'class': 'logging.handlers.RotatingFileHandler',
+            'maxBytes': 1024 * 1024 * 10,
+            'backupCount': 5,
+            'filename': CELERY_LOG_FILE_PATH + '_json',
+            'formatter': 'json',
+        },
+        'json_db': {
+            'level': 'DEBUG',
+            'class': 'logging.handlers.RotatingFileHandler',
+            'maxBytes': 1024 * 1024 * 10,
+            'backupCount': 5,
+            'filename': DB_LOG_FILE_PATH + '_json',
+            'formatter': 'json',
+        },
     },
     'loggers': {
+        'apps.task.models': {
+            'handlers': ['json_celery', 'text_celery'],
+            'level': 'DEBUG',
+            'propagate': True,
+        },
         'apps.task.tasks': {
-            'handlers': ['tasks'],
+            'handlers': ['json_celery', 'text_celery'],
             'level': 'DEBUG',
             'propagate': True,
         },
         'django': {
-            'handlers': ['file'],
-            'level': 'WARNING',
+            'handlers': ['json_django', 'text_django'],
+            'level': 'DEBUG',
             'propagate': True,
+        },
+        'django.db.backends': {
+            'handlers': ['console', 'text_db', 'json_db'],  # Quiet by default!
+            'propagate': False,
+            'level': 'DEBUG',
+        },
+        'django.template': {
+            'handlers': ['json_django', 'text_django', 'mail_admins'],
+            'level': 'INFO',
         },
     },
 }
+
+# Specifies where to search for Celery task logs.
+# Index template should comply the index names to which filebeat writes logs.
+# See filebeat.yml.template - output section.
+LOGGING_ELASTICSEARCH_INDEX_TEMPLATE = 'filebeat*'
 
 # django-extensions notebook
 NOTEBOOK_ARGUMENTS = [
@@ -572,8 +638,8 @@ CORS_ORIGIN_ALLOW_ALL = True
 CORS_ALLOW_CREDENTIALS = False
 CORS_URLS_REGEX = r'^/api/.*$'
 
-VERSION_NUMBER = '1.0.9'
-VERSION_COMMIT = 'ceed236'
+VERSION_NUMBER = '1.1.0'
+VERSION_COMMIT = '930cd65'
 
 try:
     from local_settings import *

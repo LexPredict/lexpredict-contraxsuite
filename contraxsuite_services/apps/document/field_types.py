@@ -25,8 +25,8 @@
 # -*- coding: utf-8 -*-
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.0.9/LICENSE"
-__version__ = "1.0.9"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.0/LICENSE"
+__version__ = "1.1.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -413,7 +413,8 @@ class IntField(FieldType):
         amounts = get_amounts(text, return_sources=False)
         if not amounts:
             return None
-        amounts = [n for n in amounts if n.is_integer()]
+        amounts = [int(i) if int(i) == i else i for i in amounts
+                   if isinstance(i, (float, int))]
         return amounts or None
 
     def example_json_value(self, field):
@@ -431,7 +432,7 @@ class AddressField(FieldType):
         g = geocoder.google(address)
         if g.ok:
             return {
-                'address': g.address,
+                'address': str(g.address),
                 'latitude': g.lat,
                 'longitude': g.lng,
                 'country': g.country_long,
@@ -441,7 +442,7 @@ class AddressField(FieldType):
         else:
             # Google does not know such address - probably we detected it wrong.
             return {
-                'address': address,
+                'address': str(address),
                 'latitude': None,
                 'longitude': None,
                 'country': None,
@@ -476,7 +477,7 @@ class AddressField(FieldType):
     def value_to_string(self, field_value):
         if not field_value:
             return None
-        return field_value.value['address']
+        return str(field_value.value['address'])
 
     def example_json_value(self, field):
         return {

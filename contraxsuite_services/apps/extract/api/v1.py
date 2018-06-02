@@ -56,8 +56,8 @@ from apps.common.mixins import (
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.0.9/LICENSE"
-__version__ = "1.0.9"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.0/LICENSE"
+__version__ = "1.1.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -66,8 +66,10 @@ class BaseUsageSerializer(SimpleRelationSerializer):
     class Meta:
         fields = []
         base_fields = ['pk',
-                       'text_unit__text',
-                       'text_unit__pk']
+                       # 'text_unit__text',
+                       'text_unit__pk',
+                       'text_unit__location_start',
+                       'text_unit__location_end']
         document_fields = ['text_unit__document__pk',
                            'text_unit__document__name',
                            'text_unit__document__description',
@@ -98,6 +100,7 @@ class BaseUsageListAPIView(JqListAPIView, ViewSetDataMixin):
 
     def get_queryset(self):
         qs = super().get_queryset()
+        qs = qs.filter(text_unit__unit_type='sentence')
         if self.filters:
             for field, key, _callable in self.filters:
                 try:
@@ -184,7 +187,7 @@ class BaseTopUsageListAPIView(BaseUsageListAPIView, ViewSetDataMixin):
         self.queryset = self.model.objects.all()
         qs = super().get_queryset()
         qs = qs.values(*self.qs_values) \
-            .annotate(count=Sum("count")) \
+            .annotate(count=Sum("count"), value=F(self.grouping_item)) \
             .order_by(*self.qs_order_by)
         self.queryset = qs
         return qs
@@ -1006,7 +1009,7 @@ class TopCurrencyUsageListAPIView(BaseTopUsageListAPIView):
     model = CurrencyUsage
     grouping_item = 'amount'
     data_view = CurrencyUsageListAPIView
-    qs_values = ["currency", "usage_type"]
+    qs_values = ["amount", "currency", "usage_type"]
     url_args = ('v1:currency-usage', 'currency_search', 'currency')
 
 
@@ -1126,7 +1129,7 @@ class TopDistanceUsageListAPIView(BaseTopUsageListAPIView):
     model = DistanceUsage
     grouping_item = 'amount'
     data_view = DistanceUsageListAPIView
-    qs_values = ["distance_type", "amount"]
+    qs_values = ["amount", "distance_type"]
 
     def get_detail_data(self, item):
         return [i for i in self.detail_data if
@@ -1173,7 +1176,7 @@ class TopPercentUsageListAPIView(BaseTopUsageListAPIView):
     model = PercentUsage
     grouping_item = 'amount'
     data_view = PercentUsageListAPIView
-    qs_values = ["unit_type", "amount"]
+    qs_values = ["amount", "unit_type"]
 
     def get_detail_data(self, item):
         return [i for i in self.detail_data if

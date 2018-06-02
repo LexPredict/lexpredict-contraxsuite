@@ -38,8 +38,8 @@ from apps.task.views import BaseAjaxTaskView
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.0.9/LICENSE"
-__version__ = "1.0.9"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.0/LICENSE"
+__version__ = "1.1.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -128,7 +128,7 @@ class DocumentAnnotationStorageView(JSONResponseView):
     def trigger_retraining_model(document_class, document_id):
         if settings.FIELDS_RETRAIN_MODEL_ON_ANNOTATIONS_CHANGE:
             BuildFieldDetectorDataset.build_dataset_on_document.apply_async(
-                args=(document_class, document_id, True))
+                args=(None, document_class, document_id, True))
 
     @staticmethod
     def replace_annotation_suggested_by_system(request, data):

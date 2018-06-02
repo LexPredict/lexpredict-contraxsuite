@@ -18,7 +18,7 @@ django-extensions==1.7.7
 django-filebrowser-no-grappelli==3.7.0
 django-filter==1.1.0
 django-picklefield==1.0.0
-django-pipeline==1.6.13
+django-pipeline==1.6.14
 django-rest-auth==0.9.3
 django-rest-swagger==2.1.2
 django-simple-history==1.8.2
@@ -31,7 +31,9 @@ gensim==3.1.0
 geocoder==1.23.1
 icalendar==3.11.7
 Jinja2==2.9.6
+JSON-log-formatter==0.2.0
 jsonfield==2.0.2
+kombu==4.1.0
 langid==1.1.6
 markdown==2.6.11
 psycopg2==2.7.3.2

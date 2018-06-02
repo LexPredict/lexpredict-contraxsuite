@@ -42,7 +42,7 @@ echo "Build date: $(date -u +"%Y-%m-%dT%H:%M:%SZ")" >> ./temp/build.info
 uuidgen>./temp/build.uuid
 
 
-sudo docker build --no-cache -t ${CONTRAXSUITE_IMAGE} .
+sudo docker build ${DOCKER_BUILD_FLAGS} --no-cache -t ${CONTRAXSUITE_IMAGE} .
 # sudo docker build --no-cache -t contraxsuite-app .
 
 rm -f -r ./temp

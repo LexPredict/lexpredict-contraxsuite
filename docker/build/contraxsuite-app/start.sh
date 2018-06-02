@@ -34,6 +34,7 @@ usermod -a -G root ${SHARED_USER_NAME}
 echo "Creating data dirs..."
 mkdir -p /data/data
 mkdir -p /data/logs
+mkdir -p /data/celery_worker_state
 mkdir -p /data/media/data/documents
 mkdir -p $(dirname ${DEPLOYMENT_UUID_FILE})
 
@@ -63,8 +64,6 @@ envsubst < nginx-internal.conf.template > /etc/nginx/conf.d/internal.conf
 envsubst < run-celery.sh.template > /contraxsuite_services/run-celery.sh
 envsubst < run-uwsgi.sh.template > /contraxsuite_services/run-uwsgi.sh
 envsubst < local_settings.py.template > /contraxsuite_services/local_settings.py
-
-envsubst < contraxsuite_logstash.conf.template > /etc/logstash/conf.d/contraxsuite_logstash.conf
 
 chmod ug+x /contraxsuite_services/run-celery.sh
 chmod ug+x /contraxsuite_services/run-uwsgi.sh
@@ -107,6 +106,9 @@ if [ $1 == "uwsgi" ]; then
     echo "Collecting DJANGO static files..."
     su - ${SHARED_USER_NAME} -c "${ACTIVATE_VENV} && python manage.py collectstatic --noinput"
 
+    echo "Set site domain/name for Site application..."
+    su - ${SHARED_USER_NAME} -c "${ACTIVATE_VENV} && python manage.py set_site"
+
     popd
 
     cat /build.info > /contraxsuite_services/staticfiles/version.txt
@@ -142,8 +144,9 @@ if not User.objects.filter(username = '${DOCKER_DJANGO_ADMIN_NAME}').exists():
     else
         echo "Starting Nginx and Django..."
 
-        #/usr/share/logstash/bin/logstash -f /etc/logstash/conf.d/contraxsuite_logstash.conf &
+        chmod 755 /var/log/nginx && chmod 644 /var/log/nginx/*
 
+        service cron start && \
         service nginx start && \
         su - ${SHARED_USER_NAME} -c "${ACTIVATE_VENV} && \
             ulimit -n 1000000 && \
@@ -152,7 +155,8 @@ if not User.objects.filter(username = '${DOCKER_DJANGO_ADMIN_NAME}').exists():
                     --plugins python3 \
                     --protocol uwsgi \
                     --wsgi wsgi:application" && \
-        service nginx stop
+        service nginx stop && \
+        service cron stop
     fi
 elif [ $1 == "jupyter" ]; then
     echo "Sleeping 15 seconds to let Postgres start and Django migrate"
@@ -188,30 +192,9 @@ else
     sleep 15
     echo "Starting Celery..."
 
-    #/usr/share/logstash/bin/logstash -f /etc/logstash/conf.d/contraxsuite_logstash.conf &
-
-#    su - ${SHARED_USER_NAME} -c "export LANG=C.UTF-8 && cd /contraxsuite_services && . /contraxsuite_services/venv/bin/activate && \
-#        celery worker -A apps --concurrency=2 -B"
-
-#    TASKS=60
-#    for i in {1..5};
-#    do
-#        echo "Attempt #$i";
-
-
-        su - ${SHARED_USER_NAME} -c "${ACTIVATE_VENV} && \
-            ulimit -n 1000000 && \
-            python manage.py check && \
-            celery worker -A apps --concurrency=4 -B"
-        sleep 20
-#        REGISTERED=$(su - ${SHARED_USER_NAME} -c "${ACTIVATE_VENV} && \
-#            celery -A apps inspect registered | grep ' \* ' | wc -l")
-#        echo "Registered $REGISTERED tasks"
-#        if [ "$REGISTERED" -ne "$TASKS" ]  ; then
-#            pkill -f "celery"
-#            sleep 10
-#        else
-#            break
-#        fi
-#    done
+    su - ${SHARED_USER_NAME} -c "${ACTIVATE_VENV} && \
+        ulimit -n 1000000 && \
+        python manage.py check && \
+        celery worker -A apps --concurrency=4 -B --statedb=/data/celery_worker_state/worker.state"
+    sleep 20
 fi

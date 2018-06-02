@@ -37,14 +37,15 @@ from apps.common.widgets import LTRRadioField
 from apps.common.forms import checkbox_field
 from apps.analyze.models import TextUnitClassification, TextUnitClassifier
 from apps.document.models import DocumentProperty, TextUnitProperty, DocumentType
+from apps.task.models import Task
+from apps.task.tasks import TaskControl
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.0.9/LICENSE"
-__version__ = "1.0.9"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.0/LICENSE"
+__version__ = "1.1.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
-
 
 path_help_text_sample = '''
 Relative path to a file with {}. A file should be in "&lt;ROOT_DIR&gt;/data/"
@@ -163,7 +164,8 @@ class LocateForm(forms.Form):
             if field in ['parse', 'locate_all']:
                 continue
             field_name = field.split('_')[0]
-            available_locators = list(settings.REQUIRED_LOCATORS) + list(config.standard_optional_locators)
+            available_locators = list(settings.REQUIRED_LOCATORS) + list(
+                config.standard_optional_locators)
             if field_name not in available_locators:
                 del self.fields[field]
 
@@ -541,3 +543,17 @@ class PartySimilarityForm(forms.Form):
 class UpdateElasticSearchForm(forms.Form):
     header = 'The update index command will freshen all of the content ' \
              'in Elasticsearch index. Use it after loading new documents.'
+
+
+class TotalCleanupForm(forms.Form):
+    header = 'Delete all existing Projects, Documents, Tasks, etc.'
+
+
+class TaskDetailForm(forms.Form):
+    name = forms.CharField(disabled=True)
+    log = forms.CharField(widget=forms.Textarea, disabled=True)
+
+    def __init__(self, prefix, instance: Task, initial):
+        super().__init__()
+        self.fields['name'].initial = instance.name
+        self.fields['log'].initial = TaskControl.get_task_log_from_elasticsearch(instance.pk)

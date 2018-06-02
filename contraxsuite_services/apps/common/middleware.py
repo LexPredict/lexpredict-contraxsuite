@@ -48,8 +48,8 @@ from apps.users.models import User
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.0.9/LICENSE"
-__version__ = "1.0.9"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.0/LICENSE"
+__version__ = "1.1.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -208,4 +208,6 @@ class CookieMiddleware(MiddlewareMixin):
             response.set_cookie('auth_token', 'Token %s' % response.data['key'])
         elif auth_token:
             response.set_cookie('auth_token', auth_token)
+        if request.user and hasattr(request.user, 'get_full_name'):
+            response.set_cookie('user_name', request.user.get_full_name())
         return response

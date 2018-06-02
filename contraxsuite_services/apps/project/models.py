@@ -43,8 +43,8 @@ from apps.users.models import User
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.0.9/LICENSE"
-__version__ = "1.0.9"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.0/LICENSE"
+__version__ = "1.1.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -308,6 +308,43 @@ class Project(models.Model):
         Whether project tasks completed or not (None if no project tasks at all)
         """
         return Task.special_tasks_completed({'project_id': str(self.pk)})
+
+    def cleanup(self, delete=False):
+
+        project = self
+
+        # delete prev. CleanProject Task
+        Task.special_tasks({'task_name': 'clean-project',
+                            '_project_id': project.pk}).delete()
+        # delete prev. Reassigning Task
+        Task.special_tasks({'task_name': 'reassigning',
+                            'old_project_id': project.pk}).delete()
+
+        # delete DocumentClusters
+        for pcl in project.projectclustering_set.all():
+            pcl.document_clusters.all().delete()
+
+        # delete ProjectClustering
+        project.projectclustering_set.all().delete()
+
+        # delete Documents in loop to not hung a server
+        for document in project.document_set.all():
+            document.delete()
+
+        # delete Project Tasks
+        project.project_tasks.delete()
+
+        # delete UploadSession Tasks
+        for ups in project.uploadsession_set.all():
+            ups.document_set.update(upload_session=None)
+            ups.session_tasks.delete()
+
+        # delete UploadSessions
+        project.uploadsession_set.all().delete()
+
+        # delete project itself
+        if delete:
+            project.delete()
 
 
 class UploadSession(models.Model):

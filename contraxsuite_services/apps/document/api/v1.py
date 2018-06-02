@@ -36,9 +36,11 @@ import pandas as pd
 # Django imports
 from django.conf import settings
 from django.conf.urls import url
+from django.contrib.postgres.aggregates.general import StringAgg
 from django.core import serializers as core_serializers
 from django.core.management import call_command
 from django.core.urlresolvers import reverse
+from django.db.models import Count, Min, Max, F
 from django.http import JsonResponse, HttpResponse
 # Third-party imports
 from elasticsearch import Elasticsearch
@@ -52,7 +54,7 @@ from rest_framework_nested import routers as nested_routers
 # Project imports
 from apps.analyze.models import *
 from apps.common.mixins import (
-    SimpleRelationSerializer, JqMixin, TypeaheadAPIView)
+    SimpleRelationSerializer, JqMixin, JqFilterBackend, TypeaheadAPIView)
 from apps.common.utils import get_api_module
 from apps.document.field_types import FIELD_TYPES_REGISTRY
 from apps.document.models import (
@@ -61,13 +63,14 @@ from apps.document.models import (
     TextUnitProperty, TextUnitNote, TextUnitTag)
 from apps.document.tasks import TrainDocumentFieldDetectorModel
 from apps.extract.models import *
-from apps.task.models import Task, TaskResult
+from apps.task.models import Task
+from apps.task.tasks import call_task_func
 from apps.users.models import User
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.0.9/LICENSE"
-__version__ = "1.0.9"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.0/LICENSE"
+__version__ = "1.1.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -111,6 +114,27 @@ class DocumentSerializer(SimpleRelationSerializer):
 
     def get_available_assignees_data(self, obj):
         return UserSerializer(obj.available_assignees, many=True).data
+
+
+class GenericDocumentSerializer(SimpleRelationSerializer):
+    cluster_id = serializers.IntegerField()
+    parties = serializers.CharField()
+    min_date = serializers.CharField()
+    max_date = serializers.CharField()
+    max_currency = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Document
+        fields = ['pk', 'name', 'cluster_id',
+                  'parties', 'min_date', 'max_date',
+                  'max_currency']
+
+    def get_max_currency(self, obj):
+        qs = CurrencyUsage.objects \
+            .filter(text_unit__document=obj['id']) \
+            .values('currency') \
+            .annotate(value=Max('amount')).order_by('currency')
+        return qs[0] if qs.exists() else None
 
 
 class DocumentWithFieldsDetailSerializer(DocumentSerializer):
@@ -181,7 +205,7 @@ class DocumentWithFieldsListSerializer(DocumentWithFieldsDetailSerializer):
                   'field_values']
 
 
-class DocumentViewSet(JqMixin, viewsets.ModelViewSet):
+class DocumentViewSet(viewsets.ModelViewSet):
     """
     list:
         Document List\n
@@ -221,13 +245,29 @@ class DocumentViewSet(JqMixin, viewsets.ModelViewSet):
     """
     queryset = Document.objects.all()
     serializer_class = DocumentSerializer
+    filter_backends = [JqFilterBackend]
 
     def get_queryset(self):
         qs = super().get_queryset()
+
         party_id = self.request.GET.get("party_id")
         if party_id:
             qs = qs.filter(textunit__partyusage__party__pk=party_id)
 
+        project_id = self.request.GET.get("project_id")
+        if project_id:
+            qs = qs.filter(project_id=project_id).values('id', 'name') \
+                .annotate(cluster_id=Max('documentcluster'),
+                          parties=StringAgg('textunit__partyusage__party__name',
+                                            delimiter=', ',
+                                            distinct=True),
+                          min_date=Min('textunit__dateusage__date'),
+                          # max_currency=Max('textunit__currencyusage__amount'),
+                          max_date=Max('textunit__dateusage__date'))
+            # filter by cluster_id
+            cluster_id = self.request.GET.get("cluster_id")
+            if cluster_id:
+                qs = qs.filter(cluster_id=int(cluster_id))
         return qs
 
     def get_serializer_class(self, *args, **kwargs):
@@ -235,6 +275,8 @@ class DocumentViewSet(JqMixin, viewsets.ModelViewSet):
             if self.action == 'list':
                 return DocumentWithFieldsListSerializer
             return DocumentWithFieldsDetailSerializer
+        elif self.request.GET.get('project_id'):
+            return GenericDocumentSerializer
         return DocumentSerializer
 
     @detail_route(methods=['get'])
@@ -264,6 +306,13 @@ class DocumentViewSet(JqMixin, viewsets.ModelViewSet):
             trademarks=extract_api_module.TopTrademarkUsageListAPIView(**class_kwargs).data,
             url=extract_api_module.TopUrlUsageListAPIView(**class_kwargs).data,
         )
+        # reformat output
+        for item_name, item_data in result.items():
+            for value_data in item_data:
+                value_data['title'] = item_name.upper().replace('_', ' ')
+                for row in value_data['data']:
+                    row['ranges'] = [{'startOffset': row['text_unit__location_start'],
+                                      'endOffset': row['text_unit__location_end']}]
         return Response(result)
 
     def destroy(self, request, *args, **kwargs):
@@ -877,10 +926,10 @@ class DocumentTypeViewSet(JqMixin, viewsets.ModelViewSet):
 # Document Field Value Views
 # --------------------------------------------------------
 
-def _trigger_retraining(document_type_uid, field_uid):
+def _trigger_retraining(document_type_uid, field_uid, user_id):
     if settings.FIELDS_RETRAIN_MODEL_ON_ANNOTATIONS_CHANGE:
-        TrainDocumentFieldDetectorModel.train_model_for_field.apply_async(
-            args=(document_type_uid, field_uid, None, None, True))
+        call_task_func(TrainDocumentFieldDetectorModel.train_model_for_field,
+                       (document_type_uid, field_uid, None, True), user_id=user_id)
 
 
 class DocumentFieldValueSerializer(serializers.ModelSerializer):

@@ -56,8 +56,6 @@ RUN \
 
 RUN apt-get install -y postgresql-9.6
 
-RUN apt-get install -y logstash
-
 
 COPY ./temp/contraxsuite_services /contraxsuite_services
 
@@ -105,12 +103,17 @@ COPY ./start.sh /
 COPY ./check_celery.sh /
 COPY ./config-templates /config-templates
 COPY ./temp/static /static
+COPY ./config-templates/logrotate_nginx /etc/logrotate.d/nginx
 
 WORKDIR /contraxsuite_services
 
 RUN cat /build.info
 RUN cat /build.uuid
 RUN ls /static -l
+
+RUN apt-get clean autoclean && \
+    apt-get autoremove -y && \
+    rm -rf /var/lib/{apt,dpkg,cache,log}/
 
 # kernel crashes.
 ENV TINI_VERSION v0.6.0

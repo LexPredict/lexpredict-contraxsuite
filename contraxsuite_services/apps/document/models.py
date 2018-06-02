@@ -51,8 +51,8 @@ from apps.users.models import User
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.0.9/LICENSE"
-__version__ = "1.0.9"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.0/LICENSE"
+__version__ = "1.1.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -193,7 +193,7 @@ class DocumentType(TimeStampedModel):
         DocumentField, related_name='search_field_document_type', blank=True)
 
     def get_classifier(self):
-        classifiers = self.classifiers.all()
+        classifiers = self.classifiers.iterator()
         if classifiers:
             classifier = next(classifiers, None)
             if classifier:
@@ -315,7 +315,9 @@ class Document(models.Model):
 
 
 @receiver(models.signals.post_delete, sender=Document)
-def delete_document(sender, instance, **kwargs):
+def full_delete(sender, instance, **kwargs):
+    # automatically removes Document, TextUnits, ThingUsages
+
     # delete file
     file_path = os.path.join(
         settings.MEDIA_ROOT,
@@ -325,8 +327,9 @@ def delete_document(sender, instance, **kwargs):
         os.remove(file_path)
     except OSError:
         pass
-    # delete history
-    instance.history.all().delete()
+
+    from apps.document.utils import cleanup_document_relations
+    cleanup_document_relations(instance)
 
 
 class DocumentTag(models.Model):

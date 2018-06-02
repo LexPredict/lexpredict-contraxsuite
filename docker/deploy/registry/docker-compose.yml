@@ -1,0 +1,27 @@
+version: "3.3"
+services:
+
+  registry:
+    image: registry:latest
+    environment:
+      - "REGISTRY_HTTP_ADDR=0.0.0.0:5001"
+      - "REGISTRY_STORAGE_DELETE_ENABLED=true"
+    volumes:
+      - registry_storage:/var/lib/registry
+      - registry_storage:/docker/registry
+    ports:
+      - 5001:5001
+    networks:
+      - net
+    deploy:
+      replicas: 1
+      placement:
+        constraints: [node.role==manager]
+
+networks:
+  net:
+      driver: overlay
+      attachable: true
+
+volumes:
+  registry_storage:

@@ -61,8 +61,8 @@ from apps.project.tasks import THIS_MODULE    # noqa
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.0.9/LICENSE"
-__version__ = "1.0.9"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.0/LICENSE"
+__version__ = "1.1.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -353,8 +353,8 @@ class ProjectViewSet(JqMixin, viewsets.ModelViewSet):
 
     def get_queryset(self):
         qs = super().get_queryset()
-        if self.request.user.is_reviewer:
-            qs = qs.filter(task_queues__reviewers=self.request.user)
+        # if self.request.user.is_reviewer:
+        #     qs = qs.filter(task_queues__reviewers=self.request.user)
         qs = qs.prefetch_related('status', 'owners', 'reviewers', 'uploadsession_set')
         return qs
 
@@ -461,10 +461,10 @@ class ProjectViewSet(JqMixin, viewsets.ModelViewSet):
         """
         cluster_ids = [int(i) for i in request.POST.getlist('cluster_ids')]
         project = self.get_object()
-        project_custering = project.projectclustering_set.last()
-        if not project_custering:
+        project_clustering = project.projectclustering_set.last()
+        if not project_clustering:
             raise APIException('Project Clustering object not found')
-        reassigned_cluster_ids = project_custering.metadata.get('reassigned_cluster_ids', [])
+        reassigned_cluster_ids = project_clustering.metadata.get('reassigned_cluster_ids', [])
         already_reassigned_clusters = set(cluster_ids) & set(reassigned_cluster_ids)
         if already_reassigned_clusters:
             raise APIException('Cluster(s) id=({}) is/are already reassigned to another project'
@@ -482,7 +482,7 @@ class ProjectViewSet(JqMixin, viewsets.ModelViewSet):
         return Response('OK')
 
     @detail_route(methods=['post'])
-    @require_generic_contract_type
+    # @require_generic_contract_type
     def cleanup(self, request, **kwargs):
         """
         Clean project (Generic Contract Type project)
@@ -518,10 +518,6 @@ class ProjectViewSet(JqMixin, viewsets.ModelViewSet):
         Get list of project documents
         """
         project = self.get_object()
-
-        # if project.is_generic() and (not project.projectclustering_set.exists()
-        #         or not project.projectclustering_set.last().completed):
-        #     return Response('Project documents clustering is not completed.', status=500)
 
         if project.type.is_generic() and (project.projectclustering_set.exists()
                 and not project.projectclustering_set.last().completed):
@@ -666,30 +662,54 @@ class UploadSessionViewSet(JqMixin, viewsets.ModelViewSet):
                 - force: bool (optional) - whether rewrite existing file and Document
         """
         session_id = kwargs.get('pk')
+        project = self.get_object().project
         file_ = request.FILES.dict().get('file')
 
         if session_id and file_:
             try:
+                project_storages = {
+                    str(_session_id): FileSystemStorage(
+                        location=os.path.join(
+                            settings.MEDIA_ROOT,
+                            settings.FILEBROWSER_DIRECTORY,
+                            str(_session_id)))
+                    for _session_id in project.uploadsession_set.values_list('pk', flat=True)}
+
+                # check existing documents with the same name
+                this_file_documents = project.document_set.filter(name=file_.name)
+
+                # check existing files with the same name but not stored yet as Document
+                this_file_storages = {
+                    _session_id: _storage
+                    for _session_id, _storage in project_storages.items()
+                    if _storage.exists(file_.name) and not Document.objects.filter(
+                        source_path=os.path.join(
+                            _session_id, file_.name)).exists()}
+
+                if this_file_documents.exists() or this_file_storages:
+                    if request.POST.get('force') == 'true':
+                        for _session_id, _storage in this_file_storages.items():
+                            _storage.delete(file_.name)
+                            file_tasks = Task.objects\
+                                .filter(metadata__session_id=_session_id)\
+                                .filter(metadata__file_name=file_.name)
+                            for file_task in file_tasks:
+                                if file_task.metadata.get('file_name') == file_.name:
+                                    purge_task(file_task.id)
+                            # redundant?
+                            Document.objects\
+                                .filter(upload_session_id=_session_id, name=file_.name)\
+                                .delete()
+                        for doc in this_file_documents:
+                            doc.delete()
+                    else:
+                        raise APIException('Already exists')
+
                 storage = FileSystemStorage(
                     location=os.path.join(
                         settings.MEDIA_ROOT,
                         settings.FILEBROWSER_DIRECTORY,
                         session_id))
-
-                if storage.exists(file_.name):
-                    if request.POST.get('force') == 'true':
-                        storage.delete(file_.name)
-                        file_tasks = Task.objects\
-                            .filter(metadata__session_id=session_id)\
-                            .filter(metadata__file_name=file_.name)
-                        for file_task in file_tasks:
-                            if file_task.metadata.get('file_name') == file_.name:
-                                purge_task(file_task.id)
-                        Document.objects\
-                            .filter(upload_session_id=session_id, name=file_.name)\
-                            .delete()
-                    else:
-                        raise APIException('Already exists')
 
                 stored_file_name = storage.save(file_.name, file_.file)
 
@@ -705,7 +725,7 @@ class UploadSessionViewSet(JqMixin, viewsets.ModelViewSet):
                 linked_tasks = [
                     {'task_name': 'Locate',
                      'locate': required_locators,
-                     'parse': 'paragraphs',
+                     'parse': 'sentences',
                      'do_delete': False,
                      'metadata': {'session_id': session_id, 'file_name': file_.name},
                      'user_id': request.user.id}
@@ -814,6 +834,10 @@ class TaskSerializer(serializers.ModelSerializer):
                            (re.search(r'n_samples=\d+ should be >= n_clusters=\d+', exc_message)):
                             message_body = 'Try to increase number of documents ' \
                                            'or set lower number of clusters.'
+                        elif re.search(r'n_components=\d+ must be between \d+ and n_features=\d+',
+                                exc_message):
+                            message_body = 'Chosen documents seems are very similar,' \
+                                           ' clustering algorithm is not able to form clusters.'
             reason = message_head + message_body
             return reason
 

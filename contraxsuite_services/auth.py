@@ -23,13 +23,15 @@
     or shipping ContraxSuite within a closed source product.
 """
 # -*- coding: utf-8 -*-
+from rest_auth.models import TokenModel
+from rest_framework import serializers
 from rest_framework.authentication import TokenAuthentication
 from django.core.urlresolvers import reverse
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.0.9/LICENSE"
-__version__ = "1.0.9"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.0/LICENSE"
+__version__ = "1.1.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -41,3 +43,20 @@ class CookieAuthentication(TokenAuthentication):
         if not request.META.get('HTTP_AUTHORIZATION') and request.META['PATH_INFO'] not in token_exempt_urls:
             request.META['HTTP_AUTHORIZATION'] = request.COOKIES.get('auth_token', '')
         return super().authenticate(request)
+
+
+class TokenSerializer(serializers.ModelSerializer):
+    """
+    Serializer for Token model.
+    """
+    user_name = serializers.SerializerMethodField()
+
+    class Meta:
+        model = TokenModel
+        fields = ('key', 'user_name')
+
+    def get_user_name(self, obj):
+        try:
+            return self.context['request'].user.get_full_name()
+        except:
+            return None

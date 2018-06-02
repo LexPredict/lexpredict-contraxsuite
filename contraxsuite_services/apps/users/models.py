@@ -35,8 +35,8 @@ from django.utils.translation import ugettext_lazy as _
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.0.9/LICENSE"
-__version__ = "1.0.9"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.0/LICENSE"
+__version__ = "1.1.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -46,6 +46,7 @@ ROLES = [
     'technical_admin',
     'manager',
     'reviewer',
+    'project_creator'
 ]
 
 ROLE_CHOICES = list(zip(ROLES, ROLES))
@@ -74,7 +75,11 @@ class User(AbstractUser):
 
     @property
     def role_abbr(self):
-        return ''.join([word[0].upper() for word in self.role.split('_  ')])
+        return ''.join([word[0].upper() for word in self.role.split('_')])
+
+    @property
+    def role_title(self):
+        return ' '.join([word.capitalize() for word in self.role.split('_')])
 
     @property
     def is_admin(self):
@@ -86,7 +91,7 @@ class User(AbstractUser):
 
     @property
     def is_reviewer(self):
-        return self.role == 'reviewer'
+        return self.role not in ['manager', 'technical_admin']
 
     def can_view_document(self, document):
         return self.is_superuser or self.is_manager or self.taskqueue_set. \

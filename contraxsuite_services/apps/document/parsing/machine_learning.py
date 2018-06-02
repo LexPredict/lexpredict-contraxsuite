@@ -30,8 +30,8 @@ from lexnlp.nlp.en.segments.sentences import get_sentence_span_list
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.0.9/LICENSE"
-__version__ = "1.0.9"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.0/LICENSE"
+__version__ = "1.1.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -113,7 +113,7 @@ class SkLearnClassifierModel:
         self.target_names = target_names
 
     def detect_category_names_for_sentence(self, sentence: str) -> List[str]:
-        predicted = self.sklearn_model.predict([sentence])[0]
+        predicted = self.sklearn_model.predict([sentence])#[0]
 
         res = set()
         for target_index, value in enumerate(predicted):

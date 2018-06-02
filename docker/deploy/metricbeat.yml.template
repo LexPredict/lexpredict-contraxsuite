@@ -1,0 +1,54 @@
+metricbeat.modules:
+- module: system
+  metricsets:
+    - cpu
+    - filesystem
+    - memory
+    - network
+    - process
+  enabled: true
+  period: 10s
+  processes: ['.*']
+  cpu_ticks: false
+- module: docker
+  metricsets: ["container", "cpu", "diskio", "healthcheck", "info", "memory", "network"]
+  hosts: ["unix:///var/run/docker.sock"]
+  period: 10s
+- module: postgresql
+  metricsets:
+    - database
+    - bgwriter
+    - activity
+  period: 10s
+  hosts: ["postgres://${DOCKER_HOST_NAME_PG}:5432"]
+  username: ${DOCKER_PG_USER}
+  password: ${DOCKER_PG_PASSWORD}
+- module: redis
+  metricsets: ["info", "keyspace"]
+  period: 10s
+  hosts: ["${DOCKER_HOST_NAME_REDIS}:6379"]
+- module: elasticsearch
+  metricsets: ["node", "node_stats"]
+  period: 10s
+  hosts: ["http://${DOCKER_HOST_NAME_ELASTICSEARCH}:9200"]
+- module: rabbitmq
+  metricsets: ["node", "queue"]
+  period: 10s
+  hosts: ["${DOCKER_HOST_NAME_RABBITMQ}:15672"]
+  username: ${DOCKER_RABBITMQ_USER}
+  password: ${DOCKER_RABBITMQ_PASSWORD}
+
+output.elasticsearch:
+  hosts: ["http://${DOCKER_HOST_NAME_ELASTICSEARCH}:9200"]
+  index: "metricbeat-%{[beat.version]}-%{+yyyy.MM.dd}"
+
+setup.template.name: "metricbeat"
+setup.template.pattern: "metricbeat-*"
+setup.dashboards.index: "metricbeat-*"
+setup.template.overwrite: true
+
+setup.dashboards.enabled: true
+
+setup.kibana.host: "contrax-kibana"
+setup.kibana.protocol: "http"
+#setup.kibana.path: "${DOCKER_KIBANA_BASE_PATH}"

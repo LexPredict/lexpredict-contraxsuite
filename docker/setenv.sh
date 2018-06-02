@@ -69,10 +69,15 @@ export DOCKER_ELASTICSEARCH_CPU=1
 export DOCKER_ELASTICSEARCH_MEMORY=4G
 export DOCKER_TIKA_CPU=1
 export DOCKER_TIKA_MEMORY=4G
+export DOCKER_TIKA_REPLICAS=1
+
+
+export DOCKER_BUILD_FLAGS=
 
 
 if [ -e setenv_local.sh ]
 then
+    echo "Loading setenv_local.sh"
     source setenv_local.sh
 fi
 

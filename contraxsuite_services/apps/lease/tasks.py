@@ -31,19 +31,18 @@ from celery import shared_task
 from lexnlp.nlp.en.segments.sentences import get_sentence_list
 
 from apps.celery import app
-from apps.common.utils import fast_uuid
 from apps.document.models import Document
 from apps.extract.models import Party
 from apps.lease.models import LeaseDocument
 from apps.lease.parsing.lease_doc_detector import LeaseDocDetector
 from apps.lease.parsing.lease_doc_properties_locator import find_landlord_tenant, detect_fields, \
     detect_address_default
-from apps.task.tasks import BaseTask, log
+from apps.task.tasks import BaseTask, TaskControl
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.0.9/LICENSE"
-__version__ = "1.0.9"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.0/LICENSE"
+__version__ = "1.1.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -56,7 +55,8 @@ class ProcessLeaseDocuments(BaseTask):
     lease_doc_detector = LeaseDocDetector()
 
     def process(self, **kwargs):
-        self.log("Going to detect lease documents among the all loaded documents in the system...")
+        self.task.log_info(
+            "Going to detect lease documents among the all loaded documents in the system...")
 
         if kwargs.get('delete'):
             for ld in LeaseDocument.objects.all():
@@ -66,23 +66,27 @@ class ProcessLeaseDocuments(BaseTask):
         # TODO: outdated
         if kwargs.get('document_type'):
             documents = documents.filter(document_type__in=kwargs['document_type'])
-            self.log('Filter documents by "%s" document type.' % str(kwargs['document_type']))
+            self.task.log_info(
+                'Filter documents by "%s" document type.' % str(kwargs['document_type']))
 
         if kwargs.get('document_id'):
             documents = documents.filter(pk=kwargs['document_id'])
-            self.log('Process document id={}.'.format(kwargs['document_id']))
+            self.task.log_info('Process document id={}.'.format(kwargs['document_id']))
 
-        self.task.subtasks_total = documents.count()
-        self.task.save()
+        self.task.update_subtasks_total(documents.count())
 
+        detect_and_process_lease_document_args = []
         for row in documents.values_list('id'):
-            ProcessLeaseDocuments.detect_and_process_lease_document.apply_async(
-                args=(row[0], kwargs.get('no_detect', True), kwargs['task_id']),
-                task_id='%d_%s' % (self.task.id, fast_uuid()))
+            detect_and_process_lease_document_args \
+                .append((row[0], kwargs.get('no_detect', True)))
+        self.task.run_sub_tasks('Detect And Process Each Lease Document',
+                                ProcessLeaseDocuments.detect_and_process_lease_document,
+                                detect_and_process_lease_document_args)
 
     @staticmethod
     @shared_task
-    def detect_and_process_lease_document(document_id: int, no_detect: bool, task_id):
+    def detect_and_process_lease_document(document_id: int, no_detect: bool,
+                                          main_task: TaskControl):
         doc = Document.objects.get(pk=document_id)
         doc_text = doc.full_text
 
@@ -93,21 +97,21 @@ class ProcessLeaseDocuments(BaseTask):
 
         if lease_doc or no_detect or ProcessLeaseDocuments.lease_doc_detector.is_lease_document(
                 doc_text):
-            log('{2} lease document: #{0}. {1}'.format(document_id,
-                                                       doc.name,
-                                                       'Processing' if no_detect else 'Detected'),
-                task=task_id)
+            main_task.log_info('{2} lease document: #{0}. {1}'
+                               .format(document_id,
+                                       doc.name,
+                                       'Processing' if no_detect else 'Detected'))
             if not lease_doc:
                 lease_doc = LeaseDocument(document_ptr=doc)
                 lease_doc.__dict__.update(doc.__dict__)
 
             ProcessLeaseDocuments.process_landlord_tenant(lease_doc, doc_text)
-            ProcessLeaseDocuments.process_fields(lease_doc, doc_text, task_id)
+            ProcessLeaseDocuments.process_fields(lease_doc, doc_text, main_task)
 
             lease_doc.save()
 
         else:
-            log('Not a lease document: #{0}. {1}'.format(document_id, doc.name), task=task_id)
+            main_task.log_info('Not a lease document: #{0}. {1}'.format(document_id, doc.name))
 
     @staticmethod
     def get_or_create_party(company_desc: Tuple) -> Party:
@@ -142,7 +146,7 @@ class ProcessLeaseDocuments(BaseTask):
         return separator.join(sentence_list_no_repeat)
 
     @staticmethod
-    def process_fields(doc: LeaseDocument, doc_text: str, task_id):
+    def process_fields(doc: LeaseDocument, doc_text: str, task: TaskControl):
         sentences = get_sentence_list(doc_text)
         # fields = detect_fields(sentences, groups=('address',))
         fields = detect_fields(sentences)
@@ -166,9 +170,9 @@ class ProcessLeaseDocuments(BaseTask):
                 doc.address_longitude = None
                 doc.address_latitude = None
             else:
-                log('Google did not return geocode info for: {0}\nResponse: {1}'.format(doc.address,
-                                                                                        g),
-                    task=task_id)
+                task.log_warn(
+                    'Google did not return geocode info for: {0}\nResponse: {1}'.format(doc.address,
+                                                                                        g))
         # return
 
         # term

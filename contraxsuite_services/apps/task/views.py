@@ -36,6 +36,9 @@ from django.core.urlresolvers import reverse
 from django.http import JsonResponse, HttpResponseForbidden
 from django.shortcuts import redirect
 from django.views.generic.edit import FormView
+from django.forms import models as model_forms
+from django.forms import fields as form_fields
+from django.db import models
 
 # Project imports
 from apps.analyze.models import TextUnitClassifier
@@ -47,14 +50,14 @@ from apps.task.forms import (
     LoadDocumentsForm, LocateTermsForm, LocateForm,
     ExistedClassifierClassifyForm, CreateClassifierClassifyForm,
     ClusterForm, SimilarityForm, PartySimilarityForm,
-    UpdateElasticSearchForm)
+    UpdateElasticSearchForm, TaskDetailForm, TotalCleanupForm)
 from apps.task.models import Task
 from apps.task.tasks import call_task, clean_tasks, purge_task
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.0.9/LICENSE"
-__version__ = "1.0.9"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.0/LICENSE"
+__version__ = "1.1.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -378,7 +381,9 @@ class PartySimilarityView(BaseAjaxTaskView):
 
 class TaskDetailView(CustomDetailView):
     model = Task
-    fields = ('name', 'log')
+
+    def get_form_class(self):
+        return TaskDetailForm
 
     def get_update_url(self):
         return None
@@ -399,18 +404,14 @@ class PurgeTaskView(TechAdminRequiredMixin, JSONResponseView):
 class TaskListView(AdminRequiredMixin, JqPaginatedListView):
     model = Task
     ordering = '-date_start'
-    json_fields = ['name', 'date_start', 'user__username', 'metadata']
+    json_fields = ['name', 'date_start', 'user__username', 'metadata',
+                   '_date_done', '_status', '_progress', '_time', 'has_error']
 
     def get_json_data(self, **kwargs):
+        Task.update_calculated_fields()
         data = super().get_json_data()
         for item in data['data']:
             item['url'] = reverse('task:task-detail', args=[item['pk']])
-            task = Task.objects.get(pk=item['pk'])
-            item['date_done'] = task.date_done
-            item['progress'] = task.progress
-            item['time'] = task.time
-            item['status'] = task.status
-            item['has_error'] = task.has_error
             item['purge_url'] = reverse('task:purge-task')
             if item['metadata']:
                 metadata = item['metadata']
@@ -435,3 +436,8 @@ class TaskListView(AdminRequiredMixin, JqPaginatedListView):
                 set(TextUnitProperty.objects.values_list('key', flat=True)),
                 key=lambda i: i.lower())
         return ctx
+
+
+class TotalCleanupView(BaseAjaxTaskView):
+    task_name = 'Total Cleanup'
+    form_class = TotalCleanupForm

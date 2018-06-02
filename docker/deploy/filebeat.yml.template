@@ -1,0 +1,52 @@
+filebeat.modules:
+- module: nginx
+  access:
+    enabled: true
+    var.paths: ["/data/nginx_logs/access.log*"]
+  error:
+    enabled: true
+    var.paths: ["/data/nginx_logs/error.log*"]
+filebeat.prospectors:
+- type: log
+  paths:
+    - /data/logs/celery-*.log_json
+  fields:
+    logger: celery
+  json.keys_under_root: true
+  json.add_error_key: true
+  json.overwrite_keys: true
+- type: log
+  paths:
+    - /data/logs/django-*.log_json
+  fields:
+    logger: django
+  json.keys_under_root: true
+  json.add_error_key: true
+  json.overwrite_keys: true
+- type: log
+  paths:
+    - /data/logs/db-*.log_json
+  fields:
+    logger: db
+  json.keys_under_root: true
+  json.add_error_key: true
+  json.overwrite_keys: true
+
+# If changing index names here - don't forget to change them in settings.py.
+# Celery task logs are loaded in Django UI by requesting Elasticsearch
+# with index pattern specified in settings.LOGGING_ELASTICSEARCH_INDEX_TEMPLATE
+
+output.elasticsearch:
+  hosts: ["http://${DOCKER_HOST_NAME_ELASTICSEARCH}:9200"]
+  index: "filebeat-%{[beat.version]}-%{+yyyy.MM.dd}"
+
+setup.template.name: "filebeat"
+setup.template.pattern: "filebeat-*"
+setup.dashboards.index: "filebeat-*"
+setup.template.overwrite: true
+
+setup.dashboards.enabled: true
+
+setup.kibana.host: "contrax-kibana"
+setup.kibana.protocol: "http"
+#setup.kibana.path: "${DOCKER_KIBANA_BASE_PATH}"

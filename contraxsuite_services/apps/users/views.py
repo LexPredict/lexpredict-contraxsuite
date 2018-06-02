@@ -39,8 +39,8 @@ from apps.users.models import User
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.0.9/LICENSE"
-__version__ = "1.0.9"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.0/LICENSE"
+__version__ = "1.1.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -75,6 +75,11 @@ class UserDetailView(BaseUserView, CustomDetailView):
     def get_update_url(self):
         return reverse('users:user-update', args=[self.kwargs[self.slug_field]])
 
+    def get_object(self, queryset=None):
+        if self.kwargs.get('username') == '-':
+            return self.request.user
+        return super().get_object(queryset)
+
 
 class UserRedirectView(RedirectView):
     permanent = False
@@ -93,3 +98,7 @@ class UserListView(TechAdminRequiredMixin, JqPaginatedListView):
             item['url'] = reverse('users:user-detail', args=[item['username']]) + \
                           '?next=' + self.request.path
         return data
+
+
+from allauth.account.views import PasswordChangeView, reverse_lazy
+PasswordChangeView.success_url = reverse_lazy('users:user-detail', args=['-'])

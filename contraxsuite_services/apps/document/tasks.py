@@ -22,30 +22,32 @@
     provider, processing documents on the fly in a web application,
     or shipping ContraxSuite within a closed source product.
 """
-
+import os
+import sys
 from typing import List
 
 import numpy as np
+import pandas as pd
+
 from celery import shared_task
 from sklearn.feature_extraction.text import CountVectorizer
 from sklearn.feature_extraction.text import TfidfTransformer
 from sklearn.linear_model import SGDClassifier
 from sklearn.pipeline import Pipeline
-from sklearn.utils import check_random_state
+from sklearn.utils import check_random_state, shuffle
 
 from apps.celery import app
-from apps.common.utils import fast_uuid
 from apps.document.field_types import FIELD_TYPES_REGISTRY, ValueExtractionHint
 from apps.document.models import DocumentType, Document, DocumentFieldDetector, \
     ClassifierModel, DocumentFieldValue, TextUnit, DocumentField
 from apps.document.parsing.machine_learning import SkLearnClassifierModel, \
     encode_category, parse_category, word_position_tokenizer
-from apps.task.tasks import BaseTask, log
+from apps.task.tasks import BaseTask, TaskControl, ExtendedTask
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.0.9/LICENSE"
-__version__ = "1.0.9"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.0/LICENSE"
+__version__ = "1.1.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -56,15 +58,17 @@ class DetectFieldValues(BaseTask):
     name = 'Detect Field Values'
 
     def process(self, document_type: DocumentType = None, document_name: str = None,
-                do_not_write=False, drop_classifier_model=False, task_id=None, **kwargs):
-        self.log("Going to detect document field values based on "
-                 "the pre-coded regexps and field values entered by users...")
+                do_not_write=False, drop_classifier_model=False, **kwargs):
+        self.task.log_info("Going to detect document field values based on "
+                           "the pre-coded regexps and field values entered by users...")
 
         document_id = kwargs.get('document_id')
         if document_id:
-            self.task.subtasks_total = 1
-            self.task.save()
-            self.detect_field_values_for_document(document_id=document_id, do_not_write=False)
+            self.task.update_subtasks_total(1)
+
+            self.task.run_sub_tasks('Detect Field Values For Single Document',
+                                    DetectFieldValues.detect_field_values_for_document,
+                                    [(document_id, False, None)])
             self.task.push()
             return
 
@@ -76,67 +80,64 @@ class DetectFieldValues(BaseTask):
                                               name=document_name).values_list('pk', flat=True):
                 document_ids.append(pk)
             else:
-                self.log('Document {0} of type {1} not found'.format(document_name, document_type))
+                self.task.log_info(
+                    'Document {0} of type {1} not found'.format(document_name, document_type))
 
         if document_type:
             task_count += self \
                 .detect_field_values_for_document_type(
-                document_type.pk, document_ids, do_not_write, drop_classifier_model, task_id)
+                document_type.pk, document_ids, do_not_write, drop_classifier_model, self.task)
         else:
             document_type_pks = DocumentType.objects.all().values_list('uid', flat=True)
             for document_type_pk in document_type_pks:
                 task_count += DetectFieldValues \
                     .detect_field_values_for_document_type(
-                    document_type_pk, document_ids, do_not_write, drop_classifier_model, task_id)
+                    document_type_pk, document_ids, do_not_write, drop_classifier_model, self.task)
 
-        self.task.subtasks_total = task_count
-        self.task.save()
+        self.task.update_subtasks_total(task_count)
 
     @staticmethod
     def detect_field_values_for_document_type(document_type_pk, document_ids: List,
                                               do_not_write,
                                               drop_classifier_model,
-                                              task_id):
-        log(
+                                              main_task: TaskControl):
+        main_task.log_info(
             'Detecting field values for document type: {0}'.format(
-                document_type_pk),
-            task=task_id)
+                document_type_pk))
         document_type = DocumentType.objects.get(pk=document_type_pk)
         document_fields = document_type.fields
         if not document_fields:
-            log('Can not find any fields assigned to document type: {0}'.format(
-                document_type),
-                task=task_id)
+            main_task.log_info('Can not find any fields assigned to document type: {0}'.format(
+                document_type))
             return
 
         if drop_classifier_model:
-            log('Deleting field values and classifier models for document type: {0}'.format(
-                document_type),
-                task=task_id)
+            main_task.log_info(
+                'Deleting field values and classifier models for document type: {0}'.format(
+                    document_type))
             ClassifierModel.objects.filter(document_type=document_type).delete()
 
         task_count = 0
 
+        detect_field_values_for_document_args = []
         for doc_id in document_ids or Document.objects.filter(
                 document_type=document_type).values_list('id', flat=True):
-            DetectFieldValues.detect_field_values_for_document.apply_async(
-                args=(doc_id, do_not_write, task_id),
-                task_id='%d_%s' % (
-                    task_id, fast_uuid()))
+            detect_field_values_for_document_args.append((doc_id, do_not_write, None))
             task_count += 1
+        main_task.run_sub_tasks('Detect Field Values For Each Document',
+                                DetectFieldValues.detect_field_values_for_document,
+                                detect_field_values_for_document_args)
         if task_count == 0:
-            log('No documents in DB for document type: {0}'.format(
-                document_type),
-                task=task_id)
+            main_task.log_info('No documents in DB for document type: {0}'.format(
+                document_type))
         return task_count
 
     @staticmethod
     @shared_task
     def detect_field_values_for_document(document_id,
                                          do_not_write,
-                                         task_id=None,
-                                         field_uid=None):
-
+                                         field_uid,
+                                         parent_task: TaskControl):
         doc = Document.objects.get(pk=document_id)
         document_type = doc.document_type
         fields = [DocumentField.objects.get(
@@ -165,18 +166,17 @@ class DetectFieldValues(BaseTask):
                 detected_counter += DetectFieldValues \
                     .detect_field_values_with_model(classifier_model,
                                                     doc, field, sentence_text_units,
-                                                    do_not_write, task_id)
+                                                    do_not_write, parent_task)
             except:
                 detected_counter += DetectFieldValues \
                     .detect_initial_field_values_for_document_field(
-                    doc, field, sentence_text_units, do_not_write, task_id)
-        log('Detected {0} field values for document #{1} ({2})'.format(detected_counter,
-                                                                       document_id, doc.name),
-            task=task_id)
+                    doc, field, sentence_text_units, do_not_write, parent_task)
+        parent_task.log_info('Detected {0} field values for document #{1} ({2})'.format(
+            detected_counter, document_id, doc.name))
 
     @staticmethod
     def detect_field_values_with_model(classifier_model, document, field, sentence_text_units,
-                                       do_not_write, task_id) -> int:
+                                       do_not_write, main_task: TaskControl) -> int:
         sklearn_model = classifier_model.get_trained_model_obj()
         field_type_adapter = FIELD_TYPES_REGISTRY[field.type]
 
@@ -243,7 +243,7 @@ class DetectFieldValues(BaseTask):
 
     @staticmethod
     def detect_initial_field_values_for_document_field(document, field, sentence_text_units,
-                                                       do_not_write, task_id) -> int:
+                                                       do_not_write, main_task) -> int:
         document_type = document.document_type
         field_detectors = DocumentFieldDetector.objects.filter(document_type=document_type,
                                                                field=field)
@@ -280,26 +280,25 @@ class TrainDocumentFieldDetectorModel(BaseTask):
     name = 'Train Document Field Detector Model'
 
     def process(self, **kwargs):
-        self.log('Going to train field detector model based on the datasets stored in DB...')
+        self.task.log_info(
+            'Going to train field detector model based on the datasets stored in DB...')
 
         document_type = kwargs.get('document_type')
-        task_id = kwargs.get('task_id')
 
         task_count = 0
 
         if document_type:
-            task_count += self.train_model_for_document_type(document_type.pk, task_id)
+            task_count += self.train_model_for_document_type(document_type.pk)
         else:
             document_type_pks = DocumentType.objects.values_list('uid', flat=True)
             for document_type_pk in document_type_pks:
                 task_count += self.train_model_for_document_type(
-                    document_type_pk, task_id)
+                    document_type_pk)
 
-        self.task.subtasks_total = task_count
-        self.task.save()
+        self.task.update_subtasks_total(task_count)
 
-    def train_model_for_document_type(self, document_type_pk, task_id=None) -> int:
-        self.log('Building classifier model for document type: {0}'.format(
+    def train_model_for_document_type(self, document_type_pk) -> int:
+        self.task.log_info('Building classifier model for document type: {0}'.format(
             document_type_pk))
 
         document_type = DocumentType.objects.get(pk=document_type_pk)
@@ -310,31 +309,43 @@ class TrainDocumentFieldDetectorModel(BaseTask):
                 .values_list('text', flat=True)[:10000])
 
         task_count = 0
+
+        train_model_for_field_args = []
+
         for field in document_type.fields.all():
-            self.train_model_for_field.apply_async(
-                args=(document_type.uid, field.uid, task_id, no_field_sentences),
-                task_id='%d_%s' % (
-                    task_id, fast_uuid()))
+            train_model_for_field_args.append((document_type.uid,
+                                               field.uid,
+                                               no_field_sentences,
+                                               False))
             task_count += 1
+
+        self.task.run_sub_tasks('Train Model For Each Field',
+                                TrainDocumentFieldDetectorModel.train_model_for_field,
+                                train_model_for_field_args)
 
         return task_count
 
     @staticmethod
-    @shared_task
-    def train_model_for_field(document_type_uid, field_uid, task_id=None, no_field_sentences=None,
-                              trigger_re_detecting_field_values=False):
+    @shared_task(base=ExtendedTask)
+    def train_model_for_field(document_type_uid,
+                              field_uid,
+                              no_field_sentences,
+                              trigger_re_detecting_field_values,
+                              parent_task: TaskControl):
         document_type = DocumentType.objects.get(pk=document_type_uid)
         field = DocumentField.objects.get(pk=field_uid)
 
-        log('Training model for field #{0} ({1})...'
-            .format(field_uid, field.code), task=task_id)
+        parent_task.log_info('Training model for field #{0} ({1})...'
+                             .format(field_uid, field.code))
 
         field_values = list(DocumentFieldValue.objects
                             .filter(field=field, document__document_type_id=document_type_uid)
                             .values_list('sentence__text', 'value', 'extraction_hint'))
         if len(field_values) == 0:
-            log('No document field values found for field #{0} ({1}). Nothing to train on.'
-                .format(field_uid, field.code), task=task_id)
+            parent_task.log_warn(
+                'No document field values found for field #{0} ({1}). Nothing to train on.'
+                    .format(field_uid, field.code))
+            parent_task.force_complete()
             return
 
         target_names = {SkLearnClassifierModel.EMPTY_CAT_NAME}
@@ -374,13 +385,56 @@ class TrainDocumentFieldDetectorModel(BaseTask):
 
         total_samples = len(data)
         target = np.array(target)
-        data = np.array(data)
 
-        random_state = check_random_state(seed=None)
-        indices = np.arange(data.shape[0])
-        random_state.shuffle(indices)
-        data = data[indices]
-        target = target[indices]
+        # # V.1 - may raise memory error
+        # #data = np.array(data)
+
+        # # V.3 - should limit number of false values to increase accuracy
+        # merged = list(zip(data, target))
+        # random.shuffle(merged)
+        # data, target = zip(*merged)
+
+        # # V.2 - bad idea to cut data[:N] because true values may appear only at data[N:]
+        # # get array depending on free memory size to not raise memory error
+        # min_data_len = min([1000, len(data)])
+        # min_decr = sys.getsizeof(np.array(data[:min_data_len])) / min_data_len
+        #
+        # done = free = max_data_len = decr_factor = None
+        # for _factor in range(30, 50, 5):
+        #     try:
+        #         decr_factor = _factor / 10
+        #         free = int(list(map(int, os.popen('free -b').readlines()[1].split()[1:]))[2])
+        #         max_data_len = int(free / min_decr / decr_factor)
+        #         data_arr = np.array(data[:max_data_len])
+        #
+        #         random_state = check_random_state(seed=None)
+        #         indices = np.arange(data_arr.shape[0])
+        #         random_state.shuffle(indices)
+        #         data_arr = data_arr[indices]
+        #         target = target[indices]
+        #
+        #         done = True
+        #         break
+        #     except MemoryError:
+        #         continue
+        # if not done:
+        #     raise MemoryError(
+        #         "Cannot collect data. Free memory: {}. "
+        #         "Data length: {}. Decr_factor: {}".format(
+        #             free, max_data_len, decr_factor
+        #         )
+        #     )
+
+        # V.4 - try to use lower data set with min group size to not loose true values
+        df = pd.DataFrame({'data': data, 'target': target})
+        min_group_data_len = 10000
+        res_df = pd.DataFrame()
+
+        for group_index, group_df in df.groupby('target'):
+            if group_df.shape[0] > min_group_data_len:
+                group_df = shuffle(group_df)[:min_group_data_len]
+            res_df = res_df.append(group_df)
+        res_df = shuffle(res_df)
 
         text_clf = Pipeline([('vect', CountVectorizer(strip_accents='unicode', analyzer='word',
                                                       stop_words='english',
@@ -391,7 +445,7 @@ class TrainDocumentFieldDetectorModel(BaseTask):
                                                    max_iter=5, tol=None, n_jobs=-1,
                                                    class_weight='balanced')),
                              ])
-        sklearn_model = text_clf.fit(data, target)
+        sklearn_model = text_clf.fit(res_df['data'], res_df['target'])
 
         model = SkLearnClassifierModel(sklearn_model=sklearn_model, target_names=target_names)
 
@@ -400,15 +454,28 @@ class TrainDocumentFieldDetectorModel(BaseTask):
 
         classifier_model.set_trained_model_obj(model)
         classifier_model.save()
-        log(
+        parent_task.log_info(
             'Finished training model for document_type #{0} and field #{1}. '
-            'Total number of samples: {2}'.format(document_type_uid, field_uid, total_samples),
-            task=task_id)
+            'Total number of samples: {2}'.format(document_type_uid, field_uid, total_samples))
+
         if trigger_re_detecting_field_values:
-            for document_id in Document.objects.filter(document_type=document_type).values_list(
-                    'pk', flat=True):
-                DetectFieldValues.detect_field_values_for_document.apply_async(
-                    args=(document_id, False, task_id, field_uid))
+
+            detect_field_values_for_document_args = []
+
+            document_ids = Document.objects.filter(document_type=document_type).values_list(
+                'pk', flat=True)
+            parent_task.update_subtasks_total(len(document_ids))
+
+            for document_id in document_ids:
+                detect_field_values_for_document_args.append((document_id,
+                                                              False,
+                                                              field_uid))
+            parent_task.run_sub_tasks('Detect Values of Field {0} for Each Document'.format(
+                                          field.code),
+                                      DetectFieldValues.detect_field_values_for_document,
+                                      detect_field_values_for_document_args)
+        else:
+            parent_task.force_complete()
 
 
 app.register_task(DetectFieldValues())

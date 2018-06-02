@@ -35,11 +35,12 @@ import settings
 from apps.document.field_types import FIELD_TYPES_REGISTRY
 from apps.document.models import Document, DocumentField, DocumentFieldValue, TextUnit
 from apps.document.tasks import TrainDocumentFieldDetectorModel
+from apps.task.tasks import call_task_func
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.0.9/LICENSE"
-__version__ = "1.0.9"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.0/LICENSE"
+__version__ = "1.1.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -60,6 +61,10 @@ def _to_dto(field_value: DocumentFieldValue):
         'value': field_value.value,
         'field_id': field_value.field_id
     }
+
+
+class AnnotatorError(RuntimeError):
+    pass
 
 
 class DocumentAnnotationSuggestFieldValueView(views.APIView):
@@ -102,10 +107,10 @@ class DocumentAnnotationStorageSearchView(views.APIView):
         return JsonResponse({'rows': [_to_dto(a) for a in field_values]})
 
 
-def _trigger_retraining_model(document, field):
+def _trigger_retraining_model(document, field, user_id):
     if settings.ANNOTATOR_RETRAIN_MODEL_ON_ANNOTATIONS_CHANGE:
-        TrainDocumentFieldDetectorModel.train_model_for_field.apply_async(
-            args=(document.document_type_id, field.uid, None, None, True))
+        call_task_func(TrainDocumentFieldDetectorModel.train_model_for_field,
+                       (document.document_type_id, field.uid, None, True), user_id=user_id)
 
 
 def _save_annotation(annotator_data: Dict, user, field_value_id=None) -> Dict:
@@ -115,6 +120,11 @@ def _save_annotation(annotator_data: Dict, user, field_value_id=None) -> Dict:
      """
     doc = Document.objects.get(pk=annotator_data['document_id'])
     document_field = DocumentField.objects.get(pk=annotator_data.get('field_id'))
+
+    if document_field.is_calculated():
+        raise AnnotatorError('Cannot save annotation. '
+                             'This field should be calculated form other fields.')
+
     value = annotator_data.get('value')
     selection_range = annotator_data['ranges'][0]
     location_start = selection_range['startOffset']
@@ -138,14 +148,19 @@ def _save_annotation(annotator_data: Dict, user, field_value_id=None) -> Dict:
                                         user,
                                         True)
 
-    _trigger_retraining_model(doc, document_field)
+    _trigger_retraining_model(doc, document_field, user.id)
 
     return _to_dto(field_value)
 
 
 class DocumentAnnotationsView(views.APIView):
     def post(self, request, *args, **kwargs):
-        return JsonResponse(_save_annotation(request.data, request.user))
+        try:
+            return JsonResponse(_save_annotation(request.data, request.user))
+        except AnnotatorError as e:
+            return JsonResponse({'message': str(e)}, status=500)
+        except Exception as e:
+            raise e
 
 
 class DocumentAnnotationView(views.APIView):
@@ -175,7 +190,7 @@ class DocumentAnnotationView(views.APIView):
 
         field_type.delete(field_value)
 
-        _trigger_retraining_model(doc, field)
+        _trigger_retraining_model(doc, field, request.user.id)
         return JsonResponse(_to_dto(field_value))
 
 

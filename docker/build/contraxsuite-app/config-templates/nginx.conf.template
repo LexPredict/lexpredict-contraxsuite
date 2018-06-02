@@ -37,7 +37,11 @@ http {
 	# Logging Settings
 	##
 
-	access_log /var/log/nginx/access.log;
+	log_format with_real_ip  '${DOLLAR}http_x_real_ip - ${DOLLAR}remote_user [${DOLLAR}time_local] '
+                             '"${DOLLAR}request" ${DOLLAR}status ${DOLLAR}body_bytes_sent '
+                             '"${DOLLAR}http_referer" "${DOLLAR}http_user_agent"';
+
+	access_log /var/log/nginx/access.log with_real_ip;
 	error_log /var/log/nginx/error.log;
 
 	##
