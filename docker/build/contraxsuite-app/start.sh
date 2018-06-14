@@ -123,7 +123,7 @@ if [ $1 == "uwsgi" ]; then
 # Indentation makes sense here
 su - ${SHARED_USER_NAME} -c "${ACTIVATE_VENV} && \
     python manage.py force_migrate && \
-    manage.py collectstatic --noinput && \
+    python manage.py collectstatic --noinput && \
     python manage.py set_site && \
     python manage.py shell -c \"
 from apps.users.models import User
