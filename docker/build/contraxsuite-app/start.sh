@@ -101,16 +101,6 @@ if [ $1 == "uwsgi" ]; then
     rm -rf ${VENDOR_DIR}/jqwidgets
     unzip ${JQWIDGETS_ZIP} "jqwidgets/*" -d ${VENDOR_DIR}
 
-
-
-    echo "Collecting DJANGO static files..."
-    su - ${SHARED_USER_NAME} -c "${ACTIVATE_VENV} && python manage.py collectstatic --noinput"
-
-    echo "Set site domain/name for Site application..."
-    su - ${SHARED_USER_NAME} -c "${ACTIVATE_VENV} && python manage.py set_site"
-
-    popd
-
     cat /build.info > /contraxsuite_services/staticfiles/version.txt
     echo "" >> /contraxsuite_services/staticfiles/version.txt
     cat /build.uuid >> /contraxsuite_services/staticfiles/version.txt
@@ -133,6 +123,8 @@ if [ $1 == "uwsgi" ]; then
 # Indentation makes sense here
 su - ${SHARED_USER_NAME} -c "${ACTIVATE_VENV} && \
     python manage.py force_migrate && \
+    manage.py collectstatic --noinput && \
+    python manage.py set_site && \
     python manage.py shell -c \"
 from apps.users.models import User
 if not User.objects.filter(username = '${DOCKER_DJANGO_ADMIN_NAME}').exists():
@@ -195,6 +187,6 @@ else
     su - ${SHARED_USER_NAME} -c "${ACTIVATE_VENV} && \
         ulimit -n 1000000 && \
         python manage.py check && \
-        celery worker -A apps --concurrency=4 -B --statedb=/data/celery_worker_state/worker.state"
+        celery worker -A apps --concurrency=4 -Ofair -B --statedb=/data/celery_worker_state/worker.state"
     sleep 20
 fi
