@@ -21,9 +21,17 @@ services:
       - contrax_net
     environment:
       - "PERIOD=15min"
-      - "KEEP_DAYS=10"
+      - "KEEP_DAYS=7"
       - "INDEX_PREFIX=filebeat-"
     command: "--host contrax-elasticsearch --port 9200"
+    depends_on:
+      - contrax-rabbitmq
+      - contrax-db
+      - contrax-tika
+      - contrax-redis
+      - contrax-elasticsearch
+      - contrax-uwsgi
+      - contrax-celery
 
   contrax-curator_metricbeat:
     image: stefanprodan/es-curator-cron
@@ -31,9 +39,17 @@ services:
       - contrax_net
     environment:
       - "PERIOD=15min"
-      - "KEEP_DAYS=10"
+      - "KEEP_DAYS=3"
       - "INDEX_PREFIX=metricbeat-"
     command: "--host contrax-elasticsearch --port 9200"
+    depends_on:
+      - contrax-rabbitmq
+      - contrax-db
+      - contrax-tika
+      - contrax-redis
+      - contrax-elasticsearch
+      - contrax-uwsgi
+      - contrax-celery
 
   contrax-redis:
     image: redis
@@ -228,6 +244,7 @@ services:
       - contrax-tika
       - contrax-redis
       - contrax-elasticsearch
+      - contrax-uwsgi
     volumes:
       - contraxsuite_logs:/data/logs
       - celery_worker_state:/data/celery_worker_state
@@ -292,7 +309,6 @@ services:
       - contraxsuite_internal_nginx_logs:/var/log/nginx
     depends_on:
       - contrax-db
-      - contrax-celery
       - contrax-redis
       - contrax-rabbitmq
       - contrax-elasticsearch
