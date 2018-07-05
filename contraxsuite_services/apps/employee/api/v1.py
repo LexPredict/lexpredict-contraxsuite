@@ -38,14 +38,14 @@ from django.db.models import Count, F
 from django.urls import reverse
 
 # Project imports
-from apps.common.mixins import JqListAPIView, JqMixin, SimpleRelationSerializer
+from apps.common.mixins import JqListAPIView, JqListAPIMixin, SimpleRelationSerializer
 from apps.employee.models import *
 from apps.employee.views import LocateEmployeesView
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.0/LICENSE"
-__version__ = "1.1.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.1/LICENSE"
+__version__ = "1.1.1"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -64,7 +64,7 @@ class EmployeeSerializer(SimpleRelationSerializer):
                   'has_severance', 'vacation_yearly', 'governing_geo']
 
 
-class EmployeeViewSet(JqMixin, viewsets.ReadOnlyModelViewSet):
+class EmployeeViewSet(JqListAPIMixin, viewsets.ReadOnlyModelViewSet):
     """
     list: Employee List\n
         GET params:
@@ -99,7 +99,7 @@ class EmployerSerializer(SimpleRelationSerializer):
         return obj.employee_set.values('name').annotate(Count('name')).count()
 
 
-class EmployerViewSet(JqMixin, viewsets.ReadOnlyModelViewSet):
+class EmployerViewSet(JqListAPIMixin, viewsets.ReadOnlyModelViewSet):
     """
     list: Employer List\n
         GET params:

@@ -1,0 +1,73 @@
+{% load humanize project_tags %}
+
+<!DOCTYPE html>
+<html dir="ltr" lang="en-US">
+<head>
+  {% block css %}
+    <style>
+      body {
+        width: 100%;
+      }
+      .card {
+        width: 80%;
+        margin: 10px auto;
+        border: 1px solid #ddd;
+      }
+      .wrapper {
+        padding: 20px;
+        background-color: #f9f6f6;
+      }
+      .header {
+{#        background-color: #555;#}
+        padding: 5px 20px;
+      }
+      a.scorecard-url {
+        color: #EB4102;
+        text-decoration: none;
+      }
+      table {
+        width: 80%;
+        text-align: center;
+        font-size: 12px;
+      }
+      table th {
+        padding: 6px;
+        background-color: lightgrey;
+      }
+      table td {
+        padding: 6px;
+        font-weight: normal;
+        background-color: #ececec;
+      }
+      .text-success {
+        color: green;
+      }
+      .text-danger {
+        color: red;
+      }
+      @media only screen and (max-width: 480px){
+        .card {
+          width: 100%;
+        }
+      }
+    </style>
+    {% block css_extra %}{% endblock %}
+  {% endblock %}
+
+</head>
+<body class="{% block bodyclass %}{% endblock %}">
+{% block content_wrapper %}
+  <div class="card">
+    <div class="header">
+      {% include "email/logo_new.html" %}
+    </div>
+    <div class="wrapper">
+      <h2>{% block content_header %}{% endblock %}</h2>
+      <hr />
+      {% block content %}{% endblock %}
+    </div>
+  </div>
+{% endblock %}
+
+</body>
+</html>

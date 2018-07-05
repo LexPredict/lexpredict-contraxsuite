@@ -28,27 +28,31 @@
 import datetime
 import itertools
 import logging
+import sys
 from traceback import format_exc
-from elasticsearch import Elasticsearch
-import settings
+
+from celery import states
 from dateutil import parser as date_parser
-
-# Django imports
 from django.contrib.postgres.fields import JSONField
-from django.db import models, transaction
-from django.utils import timezone
-from django_celery_results.models import TaskResult
+from django.core.serializers.json import DjangoJSONEncoder
+from django.db import models
+# Django imports
+from django.utils.translation import ugettext_lazy as _
+from elasticsearch import Elasticsearch
 
-# Third-party imports
-from simple_history.models import HistoricalRecords
-
+import settings
+from apps.common.utils import fast_uuid
+from apps.task.celery_backend.managers import TaskManager
+from apps.task.celery_backend.utils import now
 # Project imports
 from apps.users.models import User
 
+# Third-party imports
+
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.0/LICENSE"
-__version__ = "1.1.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.1/LICENSE"
+__version__ = "1.1.1"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -56,200 +60,93 @@ logger = logging.getLogger(__name__)
 es = Elasticsearch(hosts=settings.ELASTICSEARCH_CONFIG['hosts'])
 
 
+class TaskConfig(models.Model):
+    name = models.CharField(max_length=100, db_index=True, primary_key=True)
+
+    soft_time_limit = models.PositiveIntegerField(blank=True, null=True)
+
+
+ALL_STATES = sorted(states.ALL_STATES)
+TASK_STATE_CHOICES = sorted(zip(ALL_STATES, ALL_STATES))
+
+
 class Task(models.Model):
     """Task object
 
     Task object designed to record the metadata around distributed celery tasks."""
 
-    # Task name
-    name = models.CharField(max_length=100, db_index=True)
+    id = models.CharField(
+        max_length=255, unique=True, db_index=True, null=False, blank=False, primary_key=True,
+        default=fast_uuid
+    )
 
-    # celery task ID
-    celery_task_id = models.CharField(max_length=36, db_index=True)
+    main_task = models.ForeignKey('self', blank=True, null=True)
 
-    # celery task
-    celery_task_result = models.ForeignKey(TaskResult, blank=True, null=True, db_index=True)
-
-    # Task start date
+    name = models.CharField(max_length=100, db_index=True, null=True, blank=True)
+    description = models.CharField(max_length=1024, db_index=False, null=True, blank=True)
     date_start = models.DateTimeField(default=datetime.datetime.now, db_index=True)
-
-    # Task requesting user
     user = models.ForeignKey(User, db_index=True, blank=True, null=True)
-
-    # Task error status
-    has_error = models.BooleanField(default=False)
-
-    # Task statistics
-    subtasks_total = models.IntegerField(default=0, blank=True, null=True)
-    subtasks_processed = models.IntegerField(default=0, blank=True, null=True)
-
-    # additional data for a task
+    celery_metadata = JSONField(blank=True, null=True)
     metadata = JSONField(blank=True, null=True)
-
-    # if task is visible
     visible = models.BooleanField(default=True)
 
-    # Task history
-    history = HistoricalRecords()
+    own_date_done = models.DateTimeField(blank=True, null=True)
+    own_status = models.CharField(
+        _('state'),
+        max_length=50, default=states.PENDING,
+        choices=TASK_STATE_CHOICES,
+        db_index=True,
+        null=True,
+        blank=True
+    )
+    own_progress = models.PositiveSmallIntegerField(default=0, blank=True, null=True)
 
-    # Task date done
-    _date_done = models.DateTimeField(blank=True, null=True)
+    result = JSONField(blank=True, null=True, encoder=DjangoJSONEncoder)
+    traceback = models.TextField(_('traceback'), blank=True, null=True)
+    hidden = models.BooleanField(editable=False, default=False, db_index=True)
+    propagate_exceptions = models.BooleanField(editable=False, default=False, db_index=True)
 
-    # task last status
-    _status = models.CharField(max_length=10, db_index=True, blank=True, null=True)
+    status = models.CharField(max_length=50, default=states.PENDING,
+                              choices=TASK_STATE_CHOICES, db_index=True, null=True,
+                              blank=True)
+    progress = models.PositiveIntegerField(default=0, null=True, blank=True)
 
-    # task last time
-    _time = models.CharField(max_length=36, blank=True, null=True)
+    date_done = models.DateTimeField(blank=True, null=True)
 
-    # task last progress
-    _progress = models.PositiveSmallIntegerField(default=0, blank=True, null=True)
+    title = models.CharField(max_length=1024, db_index=False, null=True, blank=True)
+
+    log_extra = JSONField(blank=True, null=True, encoder=DjangoJSONEncoder)
+    push_steps = models.IntegerField(null=True, blank=True, default=1)
+    failure_processed = models.BooleanField(null=False, blank=False, default=False)
+
+    objects = TaskManager()
 
     def __str__(self):
         return "Task (name={}, celery_id={})" \
-            .format(self.name, self.celery_task_id)
+            .format(self.name, self.id)
 
-    def save(self, *args, **kwargs):
-        """
-        Do not track each update
-        """
-        self.skip_history_when_saving = True
-        try:
-            if not self.celery_task.pk:
-                self.celery_task.save()
-            ret = super().save(*args, **kwargs)
-        finally:
-            del self.skip_history_when_saving
-        return ret
+    def is_sub_task(self):
+        return self.main_task_id and self.main_task_id != self.id
 
     @property
-    def propagate_exception(self):
-        return self.metadata and self.metadata.get('propagate_exception')
+    def has_error(self) -> bool:
+        return self.status == states.FAILURE
 
     @property
-    def celery_task(self):
-        celery_task = self.celery_task_result or \
-                      TaskResult.objects.get_task(task_id=self.celery_task_id)
-        # if not celery_task.id:
-        #     return None
-        return celery_task
+    def duration(self):
+        if not self.date_start:
+            return None
+        date_done = self.date_done or now()
+        duration = date_done - self.date_start
+        return duration
 
     @property
     def subtasks(self):
-        return TaskResult.objects.filter(task_id__startswith='%s_' % self.id)
-
-    @property
-    def any_subtask_failed(self):
-        return 'FAILURE' in self.subtasks.values_list('status', flat=True)
-
-    @property
-    def status(self):
-        if self._status and self._status != 'PENDING':
-            status = self._status
-        elif self.propagate_exception and self.any_subtask_failed:
-            status = 'FAILURE'
-        else:
-            status = self.celery_task.status
-            if status == 'SUCCESS' and self.subtasks_total:
-                if self.progress == 100:
-                    status = 'SUCCESS'
-                else:
-                    status = 'PENDING'
-        if self._status != status:
-            self._status = status
-            self.save()
-        return status
+        return Task.objects.filter(main_task=self)
 
     @classmethod
     def disallow_start(cls, name):
-        return any([t.status == 'PENDING' for t in Task.objects.filter(name=name)])
-
-    @property
-    def date_done(self):
-        if self._date_done:
-            result = self._date_done
-        else:
-            status = self.status
-            if status == 'SUCCESS':
-                if self.subtasks:
-                    result = self.subtasks.latest('date_done').date_done
-                else:
-                    result = self.celery_task.date_done
-            elif status == 'FAILURE':
-                result = self.celery_task.date_done
-            else:
-                result = None
-            if result:
-                self._date_done = result
-                self.save()
-        return result
-
-    @property
-    def time(self):
-        if self.date_done and self._time:
-            result = self._time
-        else:
-            status = self.status
-            if status == 'PENDING' or not self.date_done:
-                end_date = timezone.now()
-            else:
-                end_date = self.date_done
-            result = str(end_date - self.date_start).split('.')[0]
-            if self._time != result:
-                self._time = result
-                self.save()
-        return result
-
-    @property
-    def processed(self):
-        # if manually set progress by self.push()
-        if self.subtasks_processed:
-            processed = self.subtasks_processed
-        # if progress is calculated from subtasks
-        else:
-            processed = self.subtasks.count()
-        return processed
-
-    @property
-    def progress(self):
-        save = False
-        if self._progress == 100:
-            return 100
-        if not self.subtasks_total:
-            subtasks_count = self.subtasks.count()
-            if subtasks_count:
-                self.subtasks_total = subtasks_count
-                save = True
-            else:
-                return 0
-        progress = round(self.processed / int(self.subtasks_total) * 100)
-        if not self.subtasks_processed and progress == 100:
-            self.subtasks_processed = self.subtasks_total
-            save = True
-        if self._progress != progress:
-            self._progress = progress
-            save = True
-        if save:
-            self.save()
-        return progress
-
-    def push(self, amount=1):
-        self.subtasks_processed = (self.subtasks_processed or 0) + amount
-        self.save()
-
-    @classmethod
-    def push_(cls, task_id, amount=1):
-        with transaction.atomic():
-            task = cls.objects.select_for_update().get(id=task_id)
-            task.push()
-
-    def force_complete(self):
-        self.subtasks_total = 1
-        self.xsubtasks_processed = 1
-        self.save()
-
-    @property
-    def uncompleted_subtasks(self):
-        return int(self.subtasks_total) - self.processed
+        return Task.objects.filter(name=name, status='PENDING').exists()
 
     @classmethod
     def special_tasks(cls, filter_opts):
@@ -257,9 +154,7 @@ class Task(models.Model):
         Get tasks related with key/value
         """
         opts = {'metadata__%s' % k: v for k, v in filter_opts.items()}
-        return cls.objects \
-            .filter(**opts) \
-            .select_related('celery_task_result')
+        return cls.objects.filter(**opts)
 
     @classmethod
     def special_tasks_progress(cls, filter_opts):
@@ -310,32 +205,54 @@ class Task(models.Model):
     def delete_special_tasks(cls, kwargs):
         tasks = cls.special_tasks(kwargs)
         for task in tasks:
-            sub_tasks = TaskResult.objects.filter(task_id__startswith='{}_'.format(task.id))
+            sub_tasks = Task.objects.filter(main_task=task)
             if sub_tasks.exists():
                 sub_tasks.delete()
-            if task.celery_task:
-                task.celery_task.delete()
             task.delete()
 
-    @classmethod
-    def update_calculated_fields(cls):
-        for task in cls.objects.filter(_date_done__isnull=True):
-            _ = task.progress
-            _ = task.time
+    def write_log(self, message, level='info', **kwargs):
+        message = str(message)
+        extra = {
+            'log_task_id': self.id,
+            'log_main_task_id': self.main_task_id or self.id,
+            'log_task_name': self.name,
+            'log_user_id': self.user.id if self.user else None,
+            'log_user_login': self.user.username if self.user else None
+        }
 
-    @classmethod
-    def get_task_log_from_elasticsearch(cls, task_id):
+        if self.log_extra:
+            extra.update(dict(self.log_extra))
+
+        if kwargs:
+            extra.update(kwargs)
+
+        try:
+            getattr(logger, level)(message, extra=extra)
+
+            return True
+        except Exception as exception:
+            trace = format_exc()
+            exc_class, exception, _ = sys.exc_info()
+            exception_str = '%s: %s' % (exc_class.__name__, str(exception))
+
+            logger.error(
+                'Exception caught while trying to log a message:\n{0}\n{1}'.format(exception_str,
+                                                                                   trace),
+                extra=extra)
+            pass
+
+    def get_task_log_from_elasticsearch(self):
         try:
             es_query = {
                 'sort': ['@timestamp'],
                 'query': {
                     'bool': {
                         'must': [
-                            {'match': {'log_main_task_id': task_id}},
+                            {'match': {'log_main_task_id': self.id}},
                         ]
                     }
                 },
-                '_source': ['@timestamp', 'level', 'message']
+                '_source': ['@timestamp', 'level', 'message', 'log_task_id', 'log_main_task_id']
             }
             es_res = es.search(size=1000,
                                index=settings.LOGGING_ELASTICSEARCH_INDEX_TEMPLATE,
@@ -352,11 +269,19 @@ class Task(models.Model):
 
                 message = doc['message']
 
-                log_add = '{2: <9} {0} | {1}'.format(timestamp, message, level.upper())
+                # log_add = '{2: <9} {0} | {1}'.format(timestamp, message, level.upper())
+                log_add = 'Main task: {3} | Sub-task: {4}\n{2: <9} {0} | {1}'.format(timestamp,
+                                                                                     message,
+                                                                                     level.upper(),
+                                                                                     doc[
+                                                                                         'log_main_task_id'],
+                                                                                     doc[
+                                                                                         'log_task_id'])
                 logs.append(log_add)
             return str('\n'.join(logs))
         except:
             return 'Unable to fetch logs from ElasticSearch:\n{0}'.format(format_exc())
 
+    @property
     def log(self):
-        return Task.get_task_log_from_elasticsearch(self.pk)
+        return self.get_task_log_from_elasticsearch()

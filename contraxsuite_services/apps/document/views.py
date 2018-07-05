@@ -35,6 +35,7 @@ import urllib
 import pandas as pd
 # Django imports
 from django.conf import settings
+from django.contrib.postgres.fields.jsonb import KeyTextTransform
 from django.contrib.sites.models import Site
 from django.core.urlresolvers import reverse
 from django.db.models import Count, F, Prefetch
@@ -69,8 +70,8 @@ from apps.users.models import User
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.0/LICENSE"
-__version__ = "1.1.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.1/LICENSE"
+__version__ = "1.1.1"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -112,7 +113,7 @@ class DocumentListView(JqPaginatedListView):
     """
     model = Document
     json_fields = ['name', 'document_type__title', 'description',
-                   'title', 'language',
+                   'title', 'language', 'is_contract',
                    'properties', 'relations', 'text_units']
     limit_reviewers_qs_by_field = ""
     field_types = dict(
@@ -141,6 +142,7 @@ class DocumentListView(JqPaginatedListView):
 
         # Populate with child counts
         qs = qs.annotate(
+            is_contract=KeyTextTransform('is_contract', 'metadata'),
             properties=Count('documentproperty', distinct=True),
             text_units=F('paragraphs') + F('sentences'),
             num_relation_a=Count('document_a_set', distinct=True),

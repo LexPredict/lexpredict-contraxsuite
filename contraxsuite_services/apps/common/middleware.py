@@ -36,7 +36,7 @@ from django.contrib import messages
 from django.contrib.auth import authenticate, login
 from django.core.urlresolvers import reverse
 from django.db.models import signals
-from django.http import HttpResponseNotAllowed, HttpResponse, Http404, HttpResponseForbidden
+from django.http import HttpResponseNotAllowed, HttpResponseForbidden
 from django.shortcuts import render, redirect
 from django.urls import reverse_lazy
 from django.utils.deprecation import MiddlewareMixin
@@ -44,12 +44,13 @@ from django.utils.functional import curry
 
 # Project imports
 from allauth.account.models import EmailAddress
-from apps.users.models import User
+from apps.users.models import User, Role
+from auth import CookieAuthentication
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.0/LICENSE"
-__version__ = "1.1.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.1/LICENSE"
+__version__ = "1.1.1"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -104,7 +105,7 @@ class AutoLoginMiddleware(MiddlewareMixin):
                         last_name='User',
                         name='Test User',
                         email='test@user.com',
-                        role='manager',
+                        role=Role.objects.filter(is_manager=True).first().pk,
                         is_active=True))
                 if created:
                     test_user.set_password('test_user')
@@ -153,6 +154,13 @@ class RequestUserMiddleware(MiddlewareMixin):
         if request.method not in ('HEAD', 'OPTIONS', 'TRACE'):
             if hasattr(request, 'user') and request.user.is_authenticated():
                 user = request.user
+            elif 'auth.CookieAuthentication' in settings.REST_FRAMEWORK.get('DEFAULT_AUTHENTICATION_CLASSES', []):
+                try:
+                    user = CookieAuthentication().authenticate(request)[0]
+                    if not user.is_authenticated():
+                        user = None
+                except:
+                    user = None
             else:
                 user = None
             update_save_info = curry(self.insert_user, user)
@@ -210,4 +218,5 @@ class CookieMiddleware(MiddlewareMixin):
             response.set_cookie('auth_token', auth_token)
         if request.user and hasattr(request.user, 'get_full_name'):
             response.set_cookie('user_name', request.user.get_full_name())
+            response.set_cookie('user_id', request.user.pk)
         return response

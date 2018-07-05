@@ -28,12 +28,12 @@
 from django.contrib import admin
 
 # Project imports
-from apps.common.models import AppVar
+from apps.common.models import AppVar, ReviewStatus
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.0/LICENSE"
-__version__ = "1.1.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.1/LICENSE"
+__version__ = "1.1.1"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -42,4 +42,11 @@ class AppVarAdmin(admin.ModelAdmin):
     list_display = ('name', 'value', 'user', 'date')
     search_fields = ('name',)
 
+
+class ReviewStatusAdmin(admin.ModelAdmin):
+    list_display = ('name', 'code', 'order', 'is_active')
+    search_fields = ('name', 'code')
+
+
 admin.site.register(AppVar, AppVarAdmin)
+admin.site.register(ReviewStatus, ReviewStatusAdmin)

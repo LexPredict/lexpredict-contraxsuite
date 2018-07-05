@@ -35,21 +35,39 @@ from django.utils.translation import ugettext_lazy as _
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.0/LICENSE"
-__version__ = "1.1.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.1/LICENSE"
+__version__ = "1.1.1"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
 
-# TODO: Document role definitions.
-ROLES = [
-    'technical_admin',
-    'manager',
-    'reviewer',
-    'project_creator'
-]
+class Role(models.Model):
+    """
+    Role model for user roles
+    """
+    name = models.CharField(_('Name of Role'), max_length=50)
+    code = models.CharField(_('Role Code'), max_length=50)
+    order = models.PositiveSmallIntegerField()
+    is_admin = models.BooleanField(default=False, db_index=True)
+    is_manager = models.BooleanField(default=False, db_index=True)
 
-ROLE_CHOICES = list(zip(ROLES, ROLES))
+    class Meta(object):
+        ordering = ('order', 'name')
+
+    def __str__(self):
+        return '{} (pk={})'.format(self.name, self.pk)
+
+    @property
+    def is_reviewer(self):
+        return not (self.is_manager or self.is_admin)
+
+    @classmethod
+    def get_default_role(cls):
+        return cls.objects.last().pk
+
+    @property
+    def abbr(self):
+        return ''.join([w[0].upper() for w in self.name.split()])
 
 
 @python_2_unicode_compatible
@@ -64,7 +82,7 @@ class User(AbstractUser):
     # First Name and Last Name do not cover name patterns
     # around the globe.
     name = models.CharField(_('Name of User'), blank=True, max_length=255)
-    role = models.CharField(_('Role'), max_length=30, choices=ROLE_CHOICES, default='reviewer')
+    role = models.ForeignKey(Role, blank=False, null=False, default=Role.get_default_role)
     organization = models.CharField(_('Organization'), max_length=100, blank=True, null=True)
 
     class Meta(object):
@@ -74,24 +92,16 @@ class User(AbstractUser):
         return self.get_full_name()
 
     @property
-    def role_abbr(self):
-        return ''.join([word[0].upper() for word in self.role.split('_')])
-
-    @property
-    def role_title(self):
-        return ' '.join([word.capitalize() for word in self.role.split('_')])
-
-    @property
     def is_admin(self):
-        return self.role == 'technical_admin'
+        return self.role.is_admin
 
     @property
     def is_manager(self):
-        return self.role == 'manager'
+        return self.role.is_manager
 
     @property
     def is_reviewer(self):
-        return self.role not in ['manager', 'technical_admin']
+        return self.role.is_reviewer
 
     def can_view_document(self, document):
         return self.is_superuser or self.is_manager or self.taskqueue_set. \

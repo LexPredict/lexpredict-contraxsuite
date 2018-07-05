@@ -36,10 +36,12 @@ from functools import reduce
 from rest_framework import serializers
 from rest_framework.filters import BaseFilterBackend
 from rest_framework.generics import ListAPIView
+from rest_framework.response import Response
 
 # Django imports
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin, PermissionRequiredMixin
+from django.contrib.postgres.fields.jsonb import KeyTextTransform
 from django.core.exceptions import FieldError
 from django.core.paginator import Paginator, EmptyPage
 from django.core.serializers.json import DjangoJSONEncoder
@@ -56,8 +58,8 @@ from apps.common.utils import cap_words, export_qs_to_file
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.0/LICENSE"
-__version__ = "1.1.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.1/LICENSE"
+__version__ = "1.1.1"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -428,20 +430,24 @@ class JqPaginatedListView(AjaxListView):
         """
         Filter and sort data on server side.
         """
-        sortfield = self.request.GET.get('sortdatafield')
-        sortorder = self.request.GET.get('sortorder')
-        filterscount = int(self.request.GET.get('filterscount'))
+        qs = self.filter(qs)
 
+        qs = self.sort(qs)
+
+        return qs
+
+    def filter(self, qs):
+        filterscount = int(self.request.GET.get('filterscount', 0))
         # server-side filtering
         if filterscount:
             filters = dict()
             for filter_num in range(filterscount):
                 num = str(filter_num)
-                field = self.request.GET.get('filterdatafield' + num)
+                field = self.request.GET.get('filterdatafield' + num).replace('-', '_')
                 value = (self.get_field_types() or self.field_types).get(field, str)(
                     self.request.GET.get('filtervalue' + num))
                 condition = self.request.GET.get('filtercondition' + num)
-                op = int(self.request.GET.get('filteroperator' + num))
+                op = int(self.request.GET.get('filteroperator' + num, 0))
                 if not filters.get(field):
                     filters[field] = list()
                 filters[field].append(
@@ -481,14 +487,18 @@ class JqPaginatedListView(AjaxListView):
                         q_prev = q_curr
                         q_curr = Q()
                 qs = qs.filter(q_prev | q_curr) if op else qs.filter(q_prev & q_curr)
+        return qs
 
+    def sort(self, qs):
         # server-side sorting
+        sortfield = self.request.GET.get('sortdatafield')
+        sortorder = self.request.GET.get('sortorder', 'asc')
         if sortfield:
+            sortfield = sortfield.replace('-', '_')
             if sortorder == 'desc':
                 qs = qs.order_by('-%s' % sortfield)
             elif sortorder == 'asc':
                 qs = qs.order_by(sortfield)
-
         return qs
 
     def paginate(self, qs):
@@ -564,10 +574,11 @@ class JqFilterBackend(BaseFilterBackend):
 
     def filter_queryset(self, request, queryset, *args):
         jq_view = JqPaginatedListView(request=request)
-        if 'enable_pagination' in request.GET and 'pagenum' in request.GET:
-            queryset = jq_view.paginate(queryset)
         if 'sortdatafield' in request.GET or 'filterscount' in request.GET:
             queryset = jq_view.filter_and_sort(queryset)
+        enable_pagination = json.loads(request.GET.get('enable_pagination', 'null'))
+        if enable_pagination and 'pagenum' in request.GET:
+            queryset = jq_view.paginate(queryset)
         return queryset
 
 
@@ -584,19 +595,62 @@ class ModelFieldFilterBackend(BaseFilterBackend):
         return queryset
 
 
-class JqListAPIView(ListAPIView):
+class JqListAPIMixin(object):
+    """
+    Filter, sort and paginate queryset using jqWidgets' grid GET params
+    return {'data': [.....], 'total_records': N}
+    """
+    extra_data = None
+
+    def filter_queryset(self, queryset):
+        jq_view = JqPaginatedListView(request=self.request)
+        if 'sortdatafield' in self.request.GET or 'filterscount' in self.request.GET:
+            queryset = jq_view.filter_and_sort(queryset)
+        return queryset
+
+    def paginate_queryset(self, queryset):
+        jq_view = JqPaginatedListView(request=self.request)
+        enable_pagination = json.loads(self.request.GET.get('enable_pagination', 'null'))
+        if enable_pagination and 'pagenum' in self.request.GET:
+            queryset = jq_view.paginate(queryset)
+        return queryset
+
+    def list(self, request, *args, **kwargs):
+        # 1. get full queryset
+        queryset = self.get_queryset()
+        # 2. filter and sort
+        queryset = self.filter_queryset(queryset)
+        # 3. count total records
+        try:
+            total_records = queryset.count()
+        except:
+            total_records = len(queryset)
+        # 4. get extra data
+        extra_data = self.get_extra_data(queryset)
+        # 5. paginate
+        queryset = self.paginate_queryset(queryset)
+        # 6. serialize
+        serializer = self.get_serializer(queryset, many=True)
+        # 7. compose returned data
+        show_total_records = json.loads(self.request.GET.get('total_records', 'false'))
+        if show_total_records:
+            ret = {'data': serializer.data,
+                   'total_records': total_records}
+            if extra_data:
+                ret.update(extra_data)
+            return Response(ret)
+        return Response(serializer.data)
+
+    def get_extra_data(self, queryset):
+        return self.extra_data or {}
+
+
+class JqListAPIView(JqListAPIMixin, ListAPIView):
     """
     Filter, sort and paginate queryset using jqWidgets' grid GET params
     """
-    filter_backends = [JqFilterBackend, ModelFieldFilterBackend]
+    pass
 
-
-class JqMixin(object):
-    """
-    Filter, sort and paginate queryset using jqWidgets' grid GET params
-    Filter using model's field name as query param
-    """
-    filter_backends = [JqFilterBackend, ModelFieldFilterBackend]
 
 
 class TypeaheadAPIView(ReviewerQSMixin, ListAPIView):
@@ -617,3 +671,70 @@ class TypeaheadAPIView(ReviewerQSMixin, ListAPIView):
 
     def qs_to_values(self, qs, field_name):
         return [{"value": i} for i in qs.values_list(field_name, flat=True)]
+
+
+class NestedKeyTextTransform(KeyTextTransform):
+    """
+    Create annotation for nested json fields.
+    F.e. for field like "metadata__level1__level2":
+    >>> NestedKeyTextTransform(['level1', 'level2'], 'metadata')
+    >>> NestedKeyTextTransform(['level1', 'level2'], 'metadata', output_field=FloatField())
+    """
+    def __init__(self, nested_key_names, *args, **kwargs):
+        super().__init__(nested_key_names, *args, **kwargs)
+        self.nested_key_names = nested_key_names
+        self._output_field = kwargs.get('output_field') or self._output_field
+
+    def as_sql(self, compiler, connection):
+        """
+        Postgres specific way to cast data type!
+        f.e. see django/db/models/functions/base.py:Cast
+        """
+        lhs, params = compiler.compile(self.lhs)
+        return "(%s %s %%s)::%s" % (lhs, self.nested_operator,
+                                    self._output_field.db_type(connection)),\
+               [self.nested_key_names] + params
+
+
+def get_group_by(self, select, order_by):
+    """
+    See original get_group_by at django.db.models.sql.compiler>SQLCompiler
+    """
+    if self.query.group_by is None:
+        return []
+    expressions = []
+    if self.query.group_by is not True:
+        for expr in self.query.group_by:
+            if not hasattr(expr, 'as_sql'):
+                expressions.append(self.query.resolve_ref(expr))
+            else:
+                expressions.append(expr)
+    for expr, _, _ in select:
+        cols = expr.get_group_by_cols()
+        for col in cols:
+            expressions.append(col)
+    for expr, (sql, params, is_ref) in order_by:
+        if expr.contains_aggregate:
+            continue
+        if is_ref:
+            continue
+        expressions.extend(expr.get_source_expressions())
+    having_group_by = self.having.get_group_by_cols() if self.having else ()
+    for expr in having_group_by:
+        expressions.append(expr)
+    result = []
+    # changed from set() to []
+    seen = []
+    expressions = self.collapse_group_by(expressions, having_group_by)
+
+    for expr in expressions:
+        sql, params = self.compile(expr)
+        if (sql, tuple(params)) not in seen:
+            result.append((sql, params))
+            # changed from add to append
+            seen.append((sql, tuple(params)))
+    return result
+
+
+from django.db.models.sql.compiler import SQLCompiler
+SQLCompiler.get_group_by = get_group_by

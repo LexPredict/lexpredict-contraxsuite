@@ -28,10 +28,13 @@ from rest_framework import serializers
 from rest_framework.authentication import TokenAuthentication
 from django.core.urlresolvers import reverse
 
+from apps.common.utils import get_api_module
+
+
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.0/LICENSE"
-__version__ = "1.1.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.1/LICENSE"
+__version__ = "1.1.1"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -45,18 +48,31 @@ class CookieAuthentication(TokenAuthentication):
         return super().authenticate(request)
 
 
+# do not move above CookieAuthentication as it throws error
+user_api_module = get_api_module('users')
+
+
 class TokenSerializer(serializers.ModelSerializer):
     """
     Serializer for Token model.
     """
     user_name = serializers.SerializerMethodField()
+    user = serializers.SerializerMethodField()
 
     class Meta:
         model = TokenModel
-        fields = ('key', 'user_name')
+        fields = ('key',
+                  'user_name',
+                  'user')
 
     def get_user_name(self, obj):
         try:
             return self.context['request'].user.get_full_name()
         except:
             return None
+
+    def get_user(self, obj):
+        user = self.context['request'].user
+        serializer = user_api_module.UserSerializer(user)
+        serializer.context['request'] = self.context['request']
+        return serializer.data

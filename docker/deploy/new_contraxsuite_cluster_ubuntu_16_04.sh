@@ -40,7 +40,7 @@ echo "==="
 echo "Please execute the following steps to add a worker node to this cluster:"
 echo "1. Ensure the worker node has network access to private Docker registry ${DOCKER_REGISTRY}"
 echo "2. Install Docker to worker node machine (install-docker-ubuntu.sh)."
-echo "3. Make required config: allow-insecure-registry.sh, configure_max_map_count.sh"
+echo "3. Make required config: allow-insecure-registry.sh, configure_host.sh"
 echo "4. Connect node to this cluster:"
 sudo docker swarm join-token worker
 echo "(please replace IP address with the host name of this machine to avoid problems with dynamic IPs - probably $(hostname))"

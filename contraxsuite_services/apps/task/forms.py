@@ -38,12 +38,11 @@ from apps.common.forms import checkbox_field
 from apps.analyze.models import TextUnitClassification, TextUnitClassifier
 from apps.document.models import DocumentProperty, TextUnitProperty, DocumentType
 from apps.task.models import Task
-from apps.task.tasks import TaskControl
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.0/LICENSE"
-__version__ = "1.1.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.1/LICENSE"
+__version__ = "1.1.1"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -67,6 +66,7 @@ class LoadDocumentsForm(forms.Form):
         max_length=100,
         required=True)
     document_type = forms.ModelChoiceField(queryset=DocumentType.objects.all(), required=False)
+    detect_contract = checkbox_field("Detect if a document is contract.", initial=True)
     delete = checkbox_field("Delete existing Documents")
 
 
@@ -556,4 +556,4 @@ class TaskDetailForm(forms.Form):
     def __init__(self, prefix, instance: Task, initial):
         super().__init__()
         self.fields['name'].initial = instance.name
-        self.fields['log'].initial = TaskControl.get_task_log_from_elasticsearch(instance.pk)
+        self.fields['log'].initial = instance.get_task_log_from_elasticsearch()

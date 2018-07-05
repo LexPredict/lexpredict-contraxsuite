@@ -21,9 +21,17 @@ services:
       - contrax_net
     environment:
       - "PERIOD=15min"
-      - "KEEP_DAYS=10"
+      - "KEEP_DAYS=7"
       - "INDEX_PREFIX=filebeat-"
     command: "--host contrax-elasticsearch --port 9200"
+    depends_on:
+      - contrax-rabbitmq
+      - contrax-db
+      - contrax-tika
+      - contrax-redis
+      - contrax-elasticsearch
+      - contrax-uwsgi
+      - contrax-celery
 
   contrax-curator_metricbeat:
     image: stefanprodan/es-curator-cron
@@ -31,9 +39,17 @@ services:
       - contrax_net
     environment:
       - "PERIOD=15min"
-      - "KEEP_DAYS=10"
+      - "KEEP_DAYS=3"
       - "INDEX_PREFIX=metricbeat-"
     command: "--host contrax-elasticsearch --port 9200"
+    depends_on:
+      - contrax-rabbitmq
+      - contrax-db
+      - contrax-tika
+      - contrax-redis
+      - contrax-elasticsearch
+      - contrax-uwsgi
+      - contrax-celery
 
   contrax-redis:
     image: redis
@@ -77,10 +93,12 @@ services:
     environment:
       - "ELASTICSEARCH_URL=http://${DOCKER_HOST_NAME_ELASTICSEARCH}:9200"
       - "SERVER_BASEPATH=${DOCKER_KIBANA_BASE_PATH}"
+#    ports:
+#      - 127.0.0.1:5601:5601
     deploy:
       replicas: 1
-    ports:
-      - 127.0.0.1:5601:5601
+      placement:
+        constraints: [node.role == manager]
 
   contrax-filebeat:
     image: docker.elastic.co/beats/filebeat:6.2.4
@@ -89,7 +107,7 @@ services:
       - filebeat_data:/usr/share/filebeat/data
       - contraxsuite_internal_nginx_logs:/data/nginx_logs
     configs:
-      - source: filebeat_config_7
+      - source: filebeat_config_10
         target: /usr/share/filebeat/filebeat.yml
     networks:
       - contrax_net
@@ -114,7 +132,7 @@ services:
     command: -e -system.hostfs=/hostfs
     user: root
     configs:
-      - source: metricbeat_config_6
+      - source: metricbeat_config_9
         target: /usr/share/metricbeat/metricbeat.yml
     networks:
       - contrax_net
@@ -173,11 +191,13 @@ services:
     networks:
       - contrax_net
     deploy:
-      replicas: 3
+      mode: global
       resources:
         limits:
           cpus: '${DOCKER_TIKA_CPUS}'
           memory: ${DOCKER_TIKA_MEMORY}
+      placement:
+        constraints: [node.role != manager]
 #    ports: #
 #      - 127.0.0.1:9998:9998 #
 
@@ -186,6 +206,64 @@ services:
     networks:
       - contrax_net
     command: ["/start.sh",  "celery"]
+    environment:
+      - "SHARED_USER_NAME=${SHARED_USER_NAME}"
+      - "SHARED_USER_ID=${SHARED_USER_ID}"
+      - "DOCKER_HOST_NAME_PG=${DOCKER_HOST_NAME_PG}"
+      - "DOCKER_HOST_NAME_REDIS=${DOCKER_HOST_NAME_REDIS}"
+      - "DOCKER_HOST_NAME_RABBITMQ=${DOCKER_HOST_NAME_RABBITMQ}"
+      - "DOCKER_HOST_NAME_ELASTICSEARCH=${DOCKER_HOST_NAME_ELASTICSEARCH}"
+      - "DOCKER_HOST_NAME_UWSGI=${DOCKER_HOST_NAME_UWSGI}"
+      - "DOCKER_HOST_NAME_KIBANA=${DOCKER_HOST_NAME_KIBANA}"
+      - "DOCKER_PG_USER=${DOCKER_PG_USER}"
+      - "DOCKER_PG_PASSWORD=${DOCKER_PG_PASSWORD}"
+      - "DOCKER_PG_DB_NAME=${DOCKER_PG_DB_NAME}"
+      - "DOCKER_RABBITMQ_VHOST=${DOCKER_RABBITMQ_VHOST}"
+      - "DOCKER_RABBITMQ_USER=${DOCKER_RABBITMQ_USER}"
+      - "DOCKER_RABBITMQ_PASSWORD=${DOCKER_RABBITMQ_PASSWORD}"
+      - "DOCKER_DJANGO_HOST_NAME=${DOCKER_DJANGO_HOST_NAME}"
+      - "DOCKER_DJANGO_EMAIL_BACKEND=${DOCKER_DJANGO_EMAIL_BACKEND}"
+      - "DOCKER_DJANGO_EMAIL_HOST=${DOCKER_DJANGO_EMAIL_HOST}"
+      - "DOCKER_DJANGO_EMAIL_PORT=${DOCKER_DJANGO_EMAIL_PORT}"
+      - "DOCKER_DJANGO_EMAIL_USE_TLS=${DOCKER_DJANGO_EMAIL_USE_TLS}"
+      - "DOCKER_DJANGO_EMAIL_HOST_USER=${DOCKER_DJANGO_EMAIL_HOST_USER}"
+      - "DOCKER_DJANGO_EMAIL_HOST_PASSWORD=${DOCKER_DJANGO_EMAIL_HOST_PASSWORD}"
+      - "DOCKER_DJANGO_ADMIN_NAME=${DOCKER_DJANGO_ADMIN_NAME}"
+      - "DOCKER_DJANGO_ADMIN_PASSWORD=${DOCKER_DJANGO_ADMIN_PASSWORD}"
+      - "DOCKER_DJANGO_ADMIN_EMAIL=${DOCKER_DJANGO_ADMIN_EMAIL}"
+      - "DOCKER_DJANGO_DEBUG=${DOCKER_DJANGO_DEBUG}"
+      - "DOCKER_DJANGO_DEBUG_SQL=${DOCKER_DJANGO_DEBUG_SQL}"
+      - "DOCKER_DJANGO_SECRET_KEY=${DOCKER_DJANGO_SECRET_KEY}"
+      - "DOCKER_DJANGO_ACCOUNT_EMAIL_VERIFICATION=${DOCKER_DJANGO_ACCOUNT_EMAIL_VERIFICATION}"
+      - "DOCKER_NGINX_SERVER_NAME=${DOCKER_NGINX_SERVER_NAME}"
+      - "DOCKER_JUPYTER_BASE_URL=${DOCKER_JUPYTER_BASE_URL}"
+      - "DOCKER_JUPYTER_PORT=${DOCKER_JUPYTER_PORT}"
+      - "DOCKER_DJANGO_BASE_PATH=${DOCKER_DJANGO_BASE_PATH}"
+      - "DOCKER_FLOWER_BASE_PATH=${DOCKER_FLOWER_BASE_PATH}"
+    depends_on:
+      - contrax-rabbitmq
+      - contrax-db
+      - contrax-tika
+      - contrax-redis
+      - contrax-elasticsearch
+      - contrax-uwsgi
+    volumes:
+      - contraxsuite_logs:/data/logs
+      - celery_worker_state:/data/celery_worker_state
+    deploy:
+      mode: global # Exactly one instance per node. Primitive AWS autoscaling solution.
+      resources:
+        limits:
+          cpus: '${DOCKER_CELERY_CPUS}'
+          memory: ${DOCKER_CELERY_MEMORY}
+      placement:
+        constraints: [node.role != manager]
+
+  contrax-celery-beat:
+    image: ${CONTRAXSUITE_IMAGE_FULL_NAME}
+    networks:
+      - contrax_net
+    command: ["/start.sh",  "celery-beat"]
     environment:
       - "SHARED_USER_NAME=${SHARED_USER_NAME}"
       - "SHARED_USER_ID=${SHARED_USER_ID}"
@@ -228,15 +306,19 @@ services:
       - contrax-tika
       - contrax-redis
       - contrax-elasticsearch
+      - contrax-uwsgi
+      - contrax-celery
     volumes:
       - contraxsuite_logs:/data/logs
       - celery_worker_state:/data/celery_worker_state
     deploy:
       resources:
         limits:
-          cpus: '${DOCKER_CELERY_CPUS}'
-          memory: ${DOCKER_CELERY_MEMORY}
-      replicas: 2
+          cpus: '${DOCKER_CELERY_BEAT_CPUS}'
+          memory: ${DOCKER_CELERY_BEAT_MEMORY}
+      replicas: 1
+      placement:
+        constraints: [node.role == manager]
 
 
   contrax-uwsgi:
@@ -274,8 +356,6 @@ services:
       - "DOCKER_DJANGO_SECRET_KEY=${DOCKER_DJANGO_SECRET_KEY}"
       - "DOCKER_DJANGO_ACCOUNT_EMAIL_VERIFICATION=${DOCKER_DJANGO_ACCOUNT_EMAIL_VERIFICATION}"
       - "DOCKER_NGINX_SERVER_NAME=${DOCKER_NGINX_SERVER_NAME}"
-      - "DOCKER_NGINX_CERTIFICATE=${DOCKER_NGINX_CERTIFICATE}"
-      - "DOCKER_NGINX_CERTIFICATE_KEY=${DOCKER_NGINX_CERTIFICATE_KEY}"
       - "DOCKER_DJANGO_THEME_ARCHIVE=${DOCKER_DJANGO_THEME_ARCHIVE}"
       - "DOCKER_DJANGO_JQWIDGETS_ARCHIVE=${DOCKER_DJANGO_JQWIDGETS_ARCHIVE}"
       - "DOCKER_JUPYTER_BASE_URL=${DOCKER_JUPYTER_BASE_URL}"
@@ -284,22 +364,38 @@ services:
       - "DOCKER_FLOWER_BASE_PATH=${DOCKER_FLOWER_BASE_PATH}"
     volumes:
       - contraxsuite_deployment_uuid:/deployment_uuid
-      - contraxsuite_nginx_certs:/etc/nginx/certificates
       - contraxsuite_static_files:/contraxsuite_services/staticfiles
       - contraxsuite_third_party_dependencies:/third_party_dependencies
       - contraxsuite_data_media:/data/media
       - contraxsuite_logs:/data/logs
-      - contraxsuite_internal_nginx_logs:/var/log/nginx
     depends_on:
       - contrax-db
-      - contrax-celery
       - contrax-redis
       - contrax-rabbitmq
       - contrax-elasticsearch
+    deploy:
+      replicas: 1
+      placement:
+        constraints: [node.role == manager]
+
+  contrax-nginx:
+    image: nginx
+    networks:
+      - contrax_net
+    volumes:
+      - contraxsuite_nginx_conf:/etc/nginx
+      - contraxsuite_nginx_certs:/etc/nginx/certificates
+      - contraxsuite_frontend:/contraxsuite_frontend
+      - contraxsuite_static_files:/contraxsuite_services/staticfiles
+      - contraxsuite_data_media:/data/media
+      - contraxsuite_internal_nginx_logs:/var/log/nginx
     ports:
-#      - 127.0.0.1:800:80
-      - 127.0.0.1:65080:8080
-      - 127.0.0.1:65443:4443
+      - 0.0.0.0:80:8080
+      - 0.0.0.0:443:4443
+    depends_on:
+      - contrax-uwsgi
+      - contrax-jupyter
+      - contrax-kibana
     deploy:
       replicas: 1
       placement:
@@ -340,8 +436,6 @@ services:
       - "DOCKER_DJANGO_SECRET_KEY=${DOCKER_DJANGO_SECRET_KEY}"
       - "DOCKER_DJANGO_ACCOUNT_EMAIL_VERIFICATION=${DOCKER_DJANGO_ACCOUNT_EMAIL_VERIFICATION}"
       - "DOCKER_NGINX_SERVER_NAME=${DOCKER_NGINX_SERVER_NAME}"
-      - "DOCKER_NGINX_CERTIFICATE=${DOCKER_NGINX_CERTIFICATE}"
-      - "DOCKER_NGINX_CERTIFICATE_KEY=${DOCKER_NGINX_CERTIFICATE_KEY}"
       - "DOCKER_DJANGO_THEME_ARCHIVE=${DOCKER_DJANGO_THEME_ARCHIVE}"
       - "DOCKER_DJANGO_JQWIDGETS_ARCHIVE=${DOCKER_DJANGO_JQWIDGETS_ARCHIVE}"
       - "DOCKER_JUPYTER_BASE_URL=${DOCKER_JUPYTER_BASE_URL}"
@@ -364,8 +458,8 @@ services:
       - contrax-redis
       - contrax-rabbitmq
       - contrax-elasticsearch
-    ports:
-      - 127.0.0.1:8888:8888
+#    ports:
+#      - 127.0.0.1:8888:8888
     deploy:
       replicas: 1
       resources:
@@ -410,8 +504,6 @@ services:
       - "DOCKER_DJANGO_SECRET_KEY=${DOCKER_DJANGO_SECRET_KEY}"
       - "DOCKER_DJANGO_ACCOUNT_EMAIL_VERIFICATION=${DOCKER_DJANGO_ACCOUNT_EMAIL_VERIFICATION}"
       - "DOCKER_NGINX_SERVER_NAME=${DOCKER_NGINX_SERVER_NAME}"
-      - "DOCKER_NGINX_CERTIFICATE=${DOCKER_NGINX_CERTIFICATE}"
-      - "DOCKER_NGINX_CERTIFICATE_KEY=${DOCKER_NGINX_CERTIFICATE_KEY}"
       - "DOCKER_DJANGO_THEME_ARCHIVE=${DOCKER_DJANGO_THEME_ARCHIVE}"
       - "DOCKER_DJANGO_JQWIDGETS_ARCHIVE=${DOCKER_DJANGO_JQWIDGETS_ARCHIVE}"
       - "DOCKER_JUPYTER_BASE_URL=${DOCKER_JUPYTER_BASE_URL}"
@@ -434,8 +526,6 @@ services:
       - contrax-redis
       - contrax-rabbitmq
       - contrax-elasticsearch
-    ports:
-      - 127.0.0.1:5555:5555
     deploy:
       replicas: 1
       resources:
@@ -445,15 +535,34 @@ services:
       placement:
         constraints: [node.role == manager]
 
+  contrax-logrotate:
+    image: tutum/logrotate
+    networks:
+      - contrax_net
+    configs:
+      - source: logrotate_9
+        target: /etc/logrotate.conf
+      - source: logs_cron_config_9
+        target: /etc/crontabs/root
+    volumes:
+      - contraxsuite_internal_nginx_logs:/logs/nginx
+      - contraxsuite_logs:/logs/contraxsuite
+      - contraxsuite_logrotate:/logrotate
+    deploy:
+      mode: global
+
 volumes:
   contraxsuite_deployment_uuid:
+  contraxsuite_nginx_conf:
   contraxsuite_nginx_certs:
   contraxsuite_static_files:
+  contraxsuite_frontend:
   contraxsuite_third_party_dependencies:
   contraxsuite_data_media:
   contraxsuite_notebooks:
   contraxsuite_logs:
   contraxsuite_internal_nginx_logs:
+  contraxsuite_logrotate:
   postgres_data:
   rabbitmq_data:
   elasticsearch_data:
@@ -466,9 +575,13 @@ networks:
   contrax_net:
 
 configs:
-  filebeat_config_7:
+  filebeat_config_10:
     file: ./temp/filebeat.yml
-  metricbeat_config_6:
+  metricbeat_config_9:
     file: ./temp/metricbeat.yml
   elasticsearch_config_1:
     file: ./temp/elasticsearch.yml
+  logrotate_9:
+    file: ./logrotate.conf
+  logs_cron_config_9:
+    file: ./logs-cron.conf

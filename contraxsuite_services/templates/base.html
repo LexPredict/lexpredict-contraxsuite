@@ -144,7 +144,7 @@
 
           {% if request.user.is_authenticated %}
             <span class="user-info">
-            {{ user.username }}/{{ user.role_abbr }}
+            {{ user.username }}/{{ user.role.abbr }}
               {% if user.is_admin %}
                 <a href="{% url "admin:index" %}"
                    class="fa fa-cog"

@@ -134,23 +134,6 @@ status: {}
 
 ---
 
-apiVersion: v1
-kind: PersistentVolumeClaim
-metadata:
-  creationTimestamp: null
-  labels:
-    io.kompose.service: django-nginx-logs
-  name: django-nginx-logs
-spec:
-  accessModes:
-  - ReadWriteOnce
-  resources:
-    requests:
-      storage: 100Mi
-status: {}
-
----
-
 apiVersion: extensions/v1beta1
 kind: Deployment
 metadata:
@@ -273,8 +256,6 @@ spec:
         - name: DOCKER_HOST_NAME_RABBITMQ
         - name: DOCKER_HOST_NAME_REDIS
         - name: DOCKER_HOST_NAME_UWSGI
-        - name: DOCKER_NGINX_CERTIFICATE
-        - name: DOCKER_NGINX_CERTIFICATE_KEY
         - name: DOCKER_NGINX_SERVER_NAME
         - name: DOCKER_PG_DB_NAME
         - name: DOCKER_PG_PASSWORD
@@ -293,8 +274,6 @@ spec:
         volumeMounts:
         - mountPath: /deployment_uuid
           name: contraxsuite-deployment-uuid
-        - mountPath: /etc/nginx/certificates
-          name: contraxsuite-nginx-certs
         - mountPath: /contraxsuite_services/staticfiles
           name: contraxsuite-static-files
         - mountPath: /third_party_dependencies
@@ -303,16 +282,11 @@ spec:
           name: contraxsuite-data-media
         - mountPath: /data/logs
           name: django-logs
-        - mountPath: /var/log/nginx
-          name: django-nginx-logs
       restartPolicy: Always
       volumes:
       - name: contraxsuite-deployment-uuid
         persistentVolumeClaim:
           claimName: contraxsuite-deployment-uuid
-      - name: contraxsuite-nginx-certs
-        persistentVolumeClaim:
-          claimName: contraxsuite-nginx-certs
       - name: contraxsuite-static-files
         persistentVolumeClaim:
           claimName: contraxsuite-static-files
@@ -325,9 +299,6 @@ spec:
       - name: django-logs
         persistentVolumeClaim:
           claimName: django-logs
-      - name: django-nginx-logs
-        persistentVolumeClaim:
-          claimName: django-nginx-logs
 status: {}
 
 ---
@@ -447,23 +418,6 @@ spec:
     io.kompose.service: contrax-uwsgi
 status:
   loadBalancer: {}
-
----
-
-apiVersion: v1
-kind: PersistentVolumeClaim
-metadata:
-  creationTimestamp: null
-  labels:
-    io.kompose.service: contraxsuite-nginx-certs
-  name: contraxsuite-nginx-certs
-spec:
-  accessModes:
-  - ReadWriteOnce
-  resources:
-    requests:
-      storage: 100Mi
-status: {}
 
 ---
 
@@ -601,8 +555,6 @@ spec:
         - name: DOCKER_HOST_NAME_RABBITMQ
         - name: DOCKER_HOST_NAME_REDIS
         - name: DOCKER_HOST_NAME_UWSGI
-        - name: DOCKER_NGINX_CERTIFICATE
-        - name: DOCKER_NGINX_CERTIFICATE_KEY
         - name: DOCKER_NGINX_SERVER_NAME
         - name: DOCKER_PG_DB_NAME
         - name: DOCKER_PG_PASSWORD

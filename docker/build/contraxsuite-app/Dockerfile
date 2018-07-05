@@ -93,8 +93,6 @@ RUN . /contraxsuite_services/venv/bin/activate && \
 RUN . /contraxsuite_services/venv/bin/activate && \
     python -m nltk.downloader averaged_perceptron_tagger punkt stopwords words maxent_ne_chunker wordnet
 
-
-RUN apt-get install -y nginx
 RUN apt-get install -y curl
 
 COPY ./temp/build.info /
@@ -103,7 +101,6 @@ COPY ./start.sh /
 COPY ./check_celery.sh /
 COPY ./config-templates /config-templates
 COPY ./temp/static /static
-COPY ./config-templates/logrotate_nginx /etc/logrotate.d/nginx
 
 WORKDIR /contraxsuite_services
 

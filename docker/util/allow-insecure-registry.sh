@@ -9,4 +9,8 @@ then
     source ../setenv_local.sh
 fi
 
+if [ -z "${DOCKER_REGISTRY}" ]; then
+    exit 0
+fi
+
 echo "{ \"insecure-registries\" : [\"${DOCKER_REGISTRY}\"] }" | sudo tee /etc/docker/daemon.json

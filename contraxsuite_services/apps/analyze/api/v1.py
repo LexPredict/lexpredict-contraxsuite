@@ -31,13 +31,14 @@ from rest_framework import serializers, routers, viewsets
 from django.conf.urls import url
 
 # Project imports
-from apps.common.mixins import JqListAPIView, SimpleRelationSerializer, TypeaheadAPIView, JqMixin
+from apps.common.mixins import JqListAPIView, JqListAPIMixin,\
+    SimpleRelationSerializer, TypeaheadAPIView
 from apps.analyze.models import *
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.0/LICENSE"
-__version__ = "1.1.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.1/LICENSE"
+__version__ = "1.1.1"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -68,16 +69,9 @@ class TextUnitClassificationCreateSerializer(serializers.ModelSerializer):
         return self.context['request'].user.pk
 
 
-class TextUnitClassificationViewSet(JqMixin, viewsets.ModelViewSet):
+class TextUnitClassificationViewSet(JqListAPIMixin, viewsets.ModelViewSet):
     """
-    list: Text Unit Classification List\n
-        GET params:
-          - class_name: str
-          - class_name_contains: str
-          - class_value: str
-          - class_value_contains: str
-          - user__username: str
-          - text_unit_id: int
+    list: Text Unit Classification List
     retrieve: Retrieve Text Unit Classification
     create: Create Text Unit Classification
     update: Update Text Unit Classification
@@ -112,12 +106,9 @@ class TextUnitClassifierSerializer(SimpleRelationSerializer):
         return obj.textunitclassifiersuggestion_set.count()
 
 
-class TextUnitClassifierViewSet(JqMixin, viewsets.ModelViewSet):
+class TextUnitClassifierViewSet(JqListAPIMixin, viewsets.ModelViewSet):
     """
     list: Text Unit Classifier List
-        GET params:
-            - name: str
-            - class_name: str
     delete: Delete Text Unit Classifier
     """
     queryset = TextUnitClassifier.objects.all()
@@ -139,15 +130,9 @@ class TextUnitClassifierSuggestionSerializer(TextUnitClassificationSerializer):
                   'classifier_run', 'classifier_confidence']
 
 
-class TextUnitClassifierSuggestionViewSet(JqMixin, viewsets.ModelViewSet):
+class TextUnitClassifierSuggestionViewSet(JqListAPIMixin, viewsets.ModelViewSet):
     """
-    list: Text Unit Classifier Suggestion List\n
-        GET params:
-          - class_name: str
-          - class_name_contains: str
-          - class_value: str
-          - class_value_contains: str
-          - text_unit_id: int
+    list: Text Unit Classifier Suggestion List
     delete: Delete Text Unit Classifier Suggestion
     """
     queryset = TextUnitClassifierSuggestion.objects.all()
@@ -183,14 +168,7 @@ class DocumentClusterSerializer(SimpleRelationSerializer):
 
 class DocumentClusterListAPIView(JqListAPIView):
     """
-    Document Cluster List\n
-    GET params:
-      - document_id: int
-      - name: str
-      - name_contains: str
-      - description_contains: str
-      - cluster_by: str
-      - using: str
+    Document Cluster List
     """
     queryset = DocumentCluster.objects.all()
     serializer_class = DocumentClusterSerializer
@@ -231,14 +209,7 @@ class TextUnitClusterSerializer(SimpleRelationSerializer):
 
 class TextUnitClusterListAPIView(JqListAPIView):
     """
-    Text Unit Cluster List\n
-    GET params:
-      - text_unit_id: int
-      - name: str
-      - name_contains: str
-      - description_contains: str
-      - cluster_by: str
-      - using: str
+    Text Unit Cluster List
     """
     queryset = TextUnitCluster.objects.all()
     serializer_class = TextUnitClusterSerializer
@@ -269,9 +240,7 @@ class DocumentSimilaritySerializer(SimpleRelationSerializer):
 
 class DocumentSimilarityListAPIView(JqListAPIView):
     """
-    Document Similarity List\n
-    GET params:
-      - document_id: int
+    Document Similarity List
     """
     queryset = DocumentSimilarity.objects.all()
     serializer_class = DocumentSimilaritySerializer
@@ -302,9 +271,7 @@ class TextUnitSimilaritySerializer(SimpleRelationSerializer):
 
 class TextUnitSimilarityListAPIView(JqListAPIView):
     """
-    Text Unit Similarity List\n
-    GET params:
-      - text_unit_id: int
+    Text Unit Similarity List
     """
     queryset = TextUnitSimilarity.objects.all()
     serializer_class = TextUnitSimilaritySerializer
@@ -333,9 +300,7 @@ class PartySimilaritySerializer(SimpleRelationSerializer):
 
 class PartySimilarityListAPIView(JqListAPIView):
     """
-    Party Similarity List\n
-    GET params:
-      - party_id: int
+    Party Similarity List
     """
     queryset = PartySimilarity.objects.all()
     serializer_class = PartySimilaritySerializer

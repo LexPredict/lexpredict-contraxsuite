@@ -29,11 +29,14 @@ import itertools
 import uuid
 
 # Django imports
+from django.conf import settings
+from django.contrib.postgres.fields import JSONField
+from django.core.mail import send_mail, get_connection, EmailMultiAlternatives
 from django.db import models
-from django.db.models import Count
+from django.db.models import Count, Max
 from django.db.models.signals import m2m_changed
 from django.dispatch import receiver
-from django.contrib.postgres.fields import JSONField
+from django.template.loader import render_to_string
 
 # Project imports
 from apps.common.models import get_default_status
@@ -43,14 +46,14 @@ from apps.users.models import User
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.0/LICENSE"
-__version__ = "1.1.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.1/LICENSE"
+__version__ = "1.1.1"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
 
 def all_reviewers_and_managers():
-    return {'role__in': ['reviewer', 'manager']}
+    return {'role__is_admin': False}
 
 
 class TaskQueue(models.Model):
@@ -309,6 +312,16 @@ class Project(models.Model):
         """
         return Task.special_tasks_completed({'project_id': str(self.pk)})
 
+    def drop_clusters(self):
+        project = self
+        # delete DocumentClusters
+        for pcl in project.projectclustering_set.all():
+            pcl.document_clusters.all().delete()
+        # delete ProjectClustering
+        project.projectclustering_set.all().delete()
+        # delete ClusterProjectDocuments Tasks
+        project.project_tasks.filter(name='ClusterProjectDocuments').delete()
+
     def cleanup(self, delete=False):
 
         project = self
@@ -320,16 +333,8 @@ class Project(models.Model):
         Task.special_tasks({'task_name': 'reassigning',
                             'old_project_id': project.pk}).delete()
 
-        # delete DocumentClusters
-        for pcl in project.projectclustering_set.all():
-            pcl.document_clusters.all().delete()
-
-        # delete ProjectClustering
-        project.projectclustering_set.all().delete()
-
-        # delete Documents in loop to not hung a server
-        for document in project.document_set.all():
-            document.delete()
+        # delete clusters/tasks
+        project.drop_clusters()
 
         # delete Project Tasks
         project.project_tasks.delete()
@@ -351,6 +356,8 @@ class UploadSession(models.Model):
     """
     UploadSession object to store info about uploading project documents.
     """
+    # temporary variables to prevent recalculating while one db request session
+    _document_tasks_progress = None
 
     # Unique id
     uid = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
@@ -364,6 +371,9 @@ class UploadSession(models.Model):
         User, related_name="created_%(class)s_set", null=True, blank=True, db_index=True)
 
     completed = models.BooleanField(default=False, db_index=True)
+
+    notified_upload_started = models.BooleanField(default=False, db_index=True)
+    notified_upload_completed = models.BooleanField(default=False, db_index=True)
 
     class Meta(object):
         ordering = ['project_id', 'created_date']
@@ -388,17 +398,18 @@ class UploadSession(models.Model):
         Progress per document per task
         """
         return [{'file_name': i.metadata['file_name'],
+                 'task_id': str(i.pk),
                  'task_name': i.name,
                  'task_status': i.status,
-                 'task_progress': 100 if i.status == 'SUCCESS' else 0}
+                 'task_progress': 100 if i.status in ['SUCCESS', 'FAILURE'] else i.progress}
                 for i in self.session_tasks if i.metadata.get('file_name')]
 
     def document_tasks_progress(self, details=False):
         """
-        Progress per document
+        Progress per document (avg session document tasks progress)
         """
         result = {}
-        tasks_number = 3 if self.project.type else 2
+        tasks_number = 3
         for file_name, task_progress_data in itertools.groupby(
                 sorted(self.document_progress_data, key=lambda i: i['file_name']),
                 key=lambda i: i['file_name']):
@@ -419,19 +430,23 @@ class UploadSession(models.Model):
                 document_id = None
             result[file_name] = {
                 'document_id': document_id,
+                'file_name': file_name,
                 'task_progress_data': task_progress_data,
                 'tasks_overall_status': task_status,
                 'document_progress': document_progress}
             if details:
                 result[file_name]['task_progress_data'] = task_progress_data
+        # store result for further processing in status() and document_tasks_progress_total()
+        self._document_tasks_progress = result
         return result
 
     @property
     def document_tasks_progress_total(self):
         """
-        Total Progress of custom document tasks
+        Total Progress of session document tasks (i.e. session progress)
         """
-        _p = [i['document_progress'] for i in self.document_tasks_progress().values()]
+        document_tasks_progress = self._document_tasks_progress or self.document_tasks_progress()
+        _p = [i['document_progress'] for i in document_tasks_progress.values()]
         return round(sum(_p) / float(len(_p)), 2) if _p else 0
 
     @property
@@ -444,12 +459,39 @@ class UploadSession(models.Model):
         if not self.session_tasks.exists():
             status = None
         else:
-            document_tasks_completed = self.document_tasks_progress_total == 100
-            status = 'Parsed' if document_tasks_completed else 'Parsing'
+            status = 'Parsing' if self.session_tasks.filter(status='PENDING').exists()\
+                else 'Parsed'
             if status == 'Parsed':
                 self.completed = True
             self.save()
         return status
+
+    def is_completed(self):
+        return self.status == 'Parsed'
+
+    def notify_upload_started(self):
+        ctx = {'session': self}
+        to = [self.created_by.email]
+        subject = 'ContraxSuite: Batch upload job is started'
+        text_message = render_to_string("email/notify_upload_started.txt", ctx)
+        html_message = render_to_string("email/notify_upload_started.html", ctx)
+        send_mail(subject=subject, message=text_message, from_email=settings.DEFAULT_FROM_EMAIL,
+                  recipient_list=to, html_message=html_message)
+        self.notified_upload_started = True
+        self.save()
+
+    def notify_upload_completed(self):
+        ctx = {'session': self,
+               'data': self.document_tasks_progress().values(),
+               'completed_at': self.session_tasks.values('date_done').aggregate(m=Max('date_done'))['m']}
+        to = [self.created_by.email]
+        subject = 'ContraxSuite: Batch upload job is completed'
+        text_message = render_to_string("email/notify_upload_completed.txt", ctx)
+        html_message = render_to_string("email/notify_upload_completed.html", ctx)
+        send_mail(subject=subject, message=text_message, from_email=settings.DEFAULT_FROM_EMAIL,
+                  recipient_list=to, html_message=html_message)
+        self.notified_upload_completed = True
+        self.save()
 
 
 @receiver(models.signals.post_save, sender=UploadSession)
@@ -459,9 +501,9 @@ def save_upload(sender, instance, created, **kwargs):
     """
     if hasattr(instance, 'request_user'):
         models.signals.post_save.disconnect(save_upload, sender=sender)
-        if created:
+        if created and not instance.created_by:
             instance.created_by = instance.request_user
-        instance.save()
+            instance.save()
         models.signals.post_save.connect(save_upload, sender=sender)
 
 

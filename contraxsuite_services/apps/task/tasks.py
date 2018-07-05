@@ -34,9 +34,10 @@ import os
 import pickle
 import string
 import sys
+import traceback
 from copy import deepcopy
 from traceback import format_exc
-from typing import List, Dict, Tuple, Any, Union, Callable
+from typing import List, Dict, Tuple, Any, Callable
 
 # Additional libraries
 import fuzzywuzzy.fuzz
@@ -46,14 +47,15 @@ import nltk
 import numpy as np
 import pandas as pd
 # Celery imports
-from celery import shared_task, chord
+from celery import shared_task, chord, chain
+from celery.exceptions import SoftTimeLimitExceeded, TimeLimitExceeded, Retry
 from celery.result import AsyncResult
 from celery.utils.log import get_task_logger
 from constance import config
-from dateutil import parser as date_parser
 # Django imports
 from django.conf import settings
-from django.db.models import Count, Q, Case, Value, When, IntegerField, F
+from django.db import transaction
+from django.db.models import Count, Q, Case, Value, When, IntegerField
 from django.utils.timezone import now
 from django_celery_results.models import TaskResult
 from elasticsearch import Elasticsearch
@@ -63,7 +65,7 @@ from lexnlp.extract.en import (
     durations, geoentities, money, percents, ratios, regulations, trademarks, urls,
     dict_entities)
 from lexnlp.extract.en.entities.nltk_maxent import get_companies
-from lexnlp.nlp.en.segments.sentences import get_sentence_span_list
+from lexnlp.nlp.en.segments.sentences import get_sentence_span_list, pre_process_document
 from lexnlp.nlp.en.segments.titles import get_titles
 from lexnlp.nlp.en.tokens import get_stems, get_token_list
 # Scikit-learn imports
@@ -77,6 +79,8 @@ from sklearn.semi_supervised import LabelSpreading
 from sklearn.svm import SVC
 from textblob import TextBlob
 from tika import parser
+from celery import app
+from celery.states import UNREADY_STATES
 
 # Project imports
 import settings
@@ -100,16 +104,16 @@ from apps.extract.models import (
     PercentUsage, RatioUsage, RegulationUsage,
     Party, PartyUsage, Term, TermUsage, TrademarkUsage, UrlUsage)
 from apps.project.models import Project, UploadSession
-from apps.task.models import Task
+from apps.task.celery_backend.task_utils import revoke_task
+from apps.task.models import Task, TaskConfig
 from apps.task.utils.nlp.lang import get_language
 from apps.task.utils.ocr.textract import textract2text
 from apps.task.utils.text.segment import segment_paragraphs
-from apps.users.models import User
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.0/LICENSE"
-__version__ = "1.1.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.1/LICENSE"
+__version__ = "1.1.1"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -148,213 +152,121 @@ def prepare_file_access_handler():
 file_access_handler = prepare_file_access_handler()
 
 
-class TaskControl:
+def _get_or_create_task_config(celery_task) -> TaskConfig:
+    return TaskConfig.objects.get_or_create(defaults={
+        'name': celery_task.name,
+        'soft_time_limit': celery_task.soft_time_limit
+    }, name=celery_task.name)[0]
+
+
+class ExtendedTask(app.Task):
     """
-    Lightweight class containing all common info about an async task required for sub-tasks
-    and methods for operating on the task - logging, setting number of subtasks, showing progress.
+    Extended Task class, allows to log exceptions
+    Can be applied to concrete function like this:
+      @shared_task(base=ExtendedTask)
+      def concrete_task(*args, **kwargs):
+          ....
 
-    Main purpose of this class is for transferring it as a Celery task argument via RabbitMQ to
-    Celery workers possibly running in other process and on different hosts.
 
-    Currently this class contains only task model id and task name. After receiving an object
-    of this class a sub-task can use it for making log entries wired to the main task without
-    the need for additional loading the task model from DB.
-    (Transferring the task model itself in task arguments is not a good idea because it contains
-    a lot of unneeded fields.)
-
-    Methods of this class manipulate task model data in DB using UPDATE queries. This is for
-    avoidin race conditions between parallel Celery processes running in different processes and
-    at different hosts. If loading a task model into memory, editing its fields and next
-    storing it back to DB we will get data lost in case of parallel processes doing the same.
-    They will overwrite data of each other.
-
-    REMEMBER: OBJECTS OF THIS CLASS SHOULD BE KEPT AS SMALL AS POSSIBLE.
-    Don't add complicated fields to it - they will be transferred through RabbitMQ between
-    cluster machines.
-
+    WARNING:    Beware storing anything in the self fields of instances of this class.
+                Looks like they are reused and it is safer to store anything in self.request
     """
 
-    def __init__(self,
-                 main_task_id,
-                 name: str = None,
-                 user_id=None,
-                 user_login: str = None,
-                 log_extra: Dict[str, Any] = None) -> None:
-        self.main_task_id = main_task_id
-        self.name = name
-        self.log_extra = log_extra
-        self.user_id = user_id
-        self.user_login = user_login
+    @property
+    def task(self) -> Task:
+        return Task.objects.get(id=self.request.id)
 
-    @staticmethod
-    def create(main_task: Task, log_extra: Dict[str, Any] = None):
-        user_id = main_task.user_id
-        user_login = None
-        if user_id is not None:
-            user = User.objects.get(pk=user_id)
-            if user:
-                user_login = user.username
+    @property
+    def log_extra(self) -> Dict:
+        return self.task.log_extra
 
-        return TaskControl(main_task.id, main_task.name, user_id, user_login, log_extra)
-
-    def create_child(self, child_task_name: str,
-                     sub_task_log_extra: Dict[str, Any] = None):
-        name = self.name or 'Main Task'
-        child_task_name = child_task_name or 'Sub-task'
-        extra = self.log_extra
-        if sub_task_log_extra:
-            extra = dict(extra) if extra else {}
-            extra.update(sub_task_log_extra)
-
-        return TaskControl(self.main_task_id,
-                           name + ' / ' + child_task_name,
-                           self.user_id,
-                           self.user_login,
-                           extra)
-
-    def log(self, message, level='info', **kwargs):
-        message = str(message)
-        extra = {
-            'log_main_task_id': self.main_task_id,
-            'log_task_name': self.name,
-            'log_user_id': self.user_id,
-            'log_user_login': self.user_login
-        }
-
-        if self.log_extra:
-            extra.update(self.log_extra)
-
-        if kwargs:
-            extra.update(kwargs)
-
-        try:
-            getattr(logger, level)(message, extra=extra)
-
-            return True
-        except Exception as exception:
-            trace = format_exc()
-            exc_class, exception, _ = sys.exc_info()
-            exception_str = '%s: %s' % (exc_class.__name__, str(exception))
-
-            logger.error(
-                'Exception caught while trying to log a message:\n{0}\n{1}'.format(exception_str,
-                                                                                   trace),
-                extra=extra)
-            pass
+    @log_extra.setter
+    def log_extra(self, v: Dict):
+        Task.objects.set_log_extra(self.request.id, v)
 
     def log_info(self, message, **kwargs):
-        self.log(message, level='info', **kwargs)
+        self.task.write_log(message, level='info', **kwargs)
 
     def log_error(self, message, **kwargs):
-        self.log(message, level='error', **kwargs)
+        self.task.write_log(message, level='error', **kwargs)
 
     def log_debug(self, message, **kwargs):
-        self.log(message, level='debug', **kwargs)
+        self.task.write_log(message, level='debug', **kwargs)
 
     def log_warn(self, message, **kwargs):
-        self.log(message, level='warning', **kwargs)
+        self.task.write_log(message, level='warn', **kwargs)
 
-    def get_log_from_elasticsearch(self):
-        return TaskControl.get_task_log_from_elasticsearch(self.main_task_id)
+    @property
+    def main_task_id(self):
+        this_task = self.task
+        return this_task.main_task_id or this_task.id
 
-    @staticmethod
-    def get_task_log_from_elasticsearch(task_id):
-        try:
-            es_query = {
-                'sort': ['@timestamp'],
-                'query': {
-                    'bool': {
-                        'must': [
-                            {'match': {'log_main_task_id': task_id}},
-                        ]
-                    }
-                },
-                '_source': ['@timestamp', 'level', 'message']
-            }
-            es_res = es.search(size=1000,
-                               index=settings.LOGGING_ELASTICSEARCH_INDEX_TEMPLATE,
-                               body=es_query)
-            logs = []
-            for hit in es_res['hits']['hits']:
-                doc = hit['_source']
-                timestamp = date_parser.parse(doc['@timestamp'])
-                timestamp = timestamp.strftime('%Y-%m-%d %H:%M:%S')
-
-                level = doc['level']
-                if not level:
-                    level = 'INFO'
-
-                message = doc['message']
-
-                log_add = '{2: <9} {0} | {1}'.format(timestamp, message, level.upper())
-                logs.append(log_add)
-            return str('\n'.join(logs))
-        except:
-            return 'Unable to fetch logs from ElasticSearch:\n{0}'.format(format_exc())
-
-    def update_subtasks_total(self, value):
-        Task.objects.filter(pk=self.main_task_id).update(subtasks_total=value)
-
-    def update_subtasks_processed(self, value):
-        Task.objects.filter(pk=self.main_task_id).update(subtasks_processed=value)
-
-    def update_has_error(self, value):
-        Task.objects.filter(pk=self.main_task_id).update(has_error=value)
+    def set_push_steps(self, value: int):
+        Task.objects.set_push_steps(self.request.id, value)
 
     def push(self):
-        Task.objects.filter(pk=self.main_task_id) \
-            .update(subtasks_processed=F('subtasks_processed') + 1)
+        Task.objects.push(self.request.id)
 
-    def push_value(self, value):
-        Task.objects.filter(pk=self.main_task_id) \
-            .update(subtasks_processed=F('subtasks_processed') + value)
+    def get_progress(self):
+        return Task.objects.get(id=self.request.id).progress
 
-    def force_complete(self):
-        Task.objects.filter(pk=self.main_task_id).update(subtasks_total=1, subtasks_processed=1)
+    def update_progress(self, value: float):
+        Task.objects.update_progress(self.request.id, int(value))
 
-    def load_task_model(self):
-        return Task.objects.get(pk=self.main_task_id)
+    def _render_task_failed(self, args, kwargs, exc, exception_trace) -> str:
+        if isinstance(exc, SoftTimeLimitExceeded):
+            problem_str = 'Soft time limit exceeded: {0} seconds'.format(
+                self.request.timelimit[1] or self.soft_time_limit)
+        elif isinstance(exc, TimeLimitExceeded):
+            problem_str = 'Time limit exceeded: {0} seconds'.format(
+                self.request.timelimit[0] or self.time_limit)
+        else:
+            problem_str = '{0}\n{1}'.format(exc, traceback.format_exc())
 
-    @classmethod
-    def load_task_model1(cls, main_task_id):
-        return Task.objects.get(pk=main_task_id)
+        return 'Task has been failed{4}:\n' \
+               '{0}\n' \
+               'Args: {1}\n' \
+               'Kwargs: {2}\n' \
+               'Reason: {3}'.format(self.name, str(args), str(kwargs), problem_str,
+                                    ' (retry {0})'.format(
+                                        self.request.retries) if self.request.retries else '')
 
-    @shared_task
-    def end_chord(*args, **kwargs):
-        status = kwargs.get('status')
-        parent_task_control = kwargs.get('parent_task')  # type: TaskControl
-        title = parent_task_control.name
-        keys = kwargs.get('cache_keys')
-        if keys:
-            for key in keys:
-                transfer.cleanup(key)
+    def chord_and_clean(self, sub_tasks, cache_keys):
+        self.log_info(
+            '{0}: starting {1} sub-tasks...'.format(self.task.name, len(sub_tasks)))
 
-        try:
-            if status == 'success':
-                parent_task_control.log_info(
-                    '{0}: all sub-tasks have been processed successfully'.format(title))
-            else:
-                parent_task_control.log_error('{0}: sub-tasks processing crashed'.format(title))
-        except:
-            if status == 'success':
-                logger.info('{0}: all sub-tasks have been processed successfully'.format(title))
-            else:
-                logger.error('{0}: sub-tasks processing crashed'.format(title))
+        success_callback_id = str(fast_uuid())
+        error_callback_id = str(fast_uuid())
+        task_on_success = end_chord.subtask(kwargs={'status': 'success',
+                                                    'cache_keys': cache_keys},
+                                            root_id=self.main_task_id,
+                                            parent_id=self.task.id,
+                                            task_id=success_callback_id
+                                            )
+        # On-success callback will be touched both in error and success cases.
+        # If success it will be executed.
+        # If error it will be marked as failed without execution and on-error callback will be
+        # executed - see task_on_error.
+        # And for the case of error the Task manager's store_result method
+        # will be called with exception result + task id without any other info about the task.
+        # To track task name and root_id correctly we initialize it here.
+        Task.objects.init_task(success_callback_id, task_on_success.name, self.main_task_id)
 
-                # task_model = self.loa
+        # No need for pre-initializing the on-error callback - it will be executed normally
+        # in case of error and task_name/root_id will be provided.
+        task_on_error = end_chord.subtask(kwargs={'status': 'error',
+                                                  'cache_keys': cache_keys},
+                                          root_id=self.main_task_id,
+                                          parent_id=self.task.id,
+                                          task_id=error_callback_id
+                                          )
 
-    @staticmethod
-    def chord_and_clean(parent_task_control: 'TaskControl', sub_tasks, cache_keys):
-        parent_task_control.log_info(
-            '{0}: starting {1} subtasks...'.format(parent_task_control.name, len(sub_tasks)))
-
-        callback = TaskControl.end_chord.s(parent_task=parent_task_control,
-                                           status='success',
-                                           cache_keys=cache_keys) \
-            .on_error(TaskControl.end_chord.s(parent_task=parent_task_control,
-                                              status='error',
-                                              cache_keys=cache_keys))
-        chord(sub_tasks)(callback)
+        if len(sub_tasks) == 1:
+            # Workaround for: https://github.com/celery/celery/issues/3709
+            chain(sub_tasks[0], task_on_success).on_error(task_on_error).delay()
+        else:
+            callback = task_on_success.on_error(task_on_error)
+            chord(sub_tasks)(callback)
 
     def run_sub_tasks_on_shared_data(self,
                                      sub_tasks_group_title: str,
@@ -366,8 +278,8 @@ class TaskControl:
         transferring shared_data using redis single time for each cluster node per run.
 
         Sub-task function should expect:
-        parent_task: TaskControl, shared_data_cache_keys: Dict[str, str]
-        as its last parameters.
+        shared_data_cache_keys: Dict[str, str]
+        as its last parameter.
 
         :param sub_tasks_group_title:
         :param sub_task_function:
@@ -375,27 +287,29 @@ class TaskControl:
         :param shared_data:
         :return:
         """
-        group_task_control = self.create_child(sub_tasks_group_title)
+
         run_key = fast_uuid()
         shared_data_cache_keys = {}
         for k, v in shared_data.items():
-            cache_key = '%d_%s_%s' % (self.main_task_id, run_key, k)
+            cache_key = '%s_%s_%s' % (self.task.id, run_key, k)
             transfer.put(cache_key, v)
             shared_data_cache_keys[k] = cache_key
 
         sub_tasks = []
+        task_config = _get_or_create_task_config(sub_task_function)
         for args in args_list:
-            args = args + (group_task_control,)
             if shared_data_cache_keys:
                 args = args + (shared_data_cache_keys,)
             sub_task_signature = sub_task_function.subtask(
                 args=args,
-                task_id='%d_%s' % (self.main_task_id, fast_uuid()))
+                soft_time_limit=task_config.soft_time_limit,
+                root_id=self.main_task_id,
+                parent_id=self.task.id,
+                title=sub_tasks_group_title)
             sub_tasks.append(sub_task_signature)
 
-        TaskControl.chord_and_clean(group_task_control,
-                                    sub_tasks,
-                                    list(shared_data_cache_keys.values()))
+        self.chord_and_clean(sub_tasks,
+                             list(shared_data_cache_keys.values()))
 
     def run_sub_tasks(self,
                       sub_tasks_group_title: str,
@@ -403,9 +317,6 @@ class TaskControl:
                       args_list: List[Tuple]):
         """
         Asynchronously execute sub_task_method on each tuple of arguments from the provided list.
-
-        Sub-task function should expect parent_task: TaskControl as its last parameter
-        or have **kwargs in the parameter list.
 
         :param sub_tasks_group_title:
         :param sub_task_function:
@@ -415,102 +326,65 @@ class TaskControl:
         self.run_sub_tasks_on_shared_data(sub_tasks_group_title, sub_task_function,
                                           args_list, {})
 
-
-class BaseErrorHandlerMixin:
-    """
-    Mixin class, allows to log exceptions
-    if TaskControl is in args or kwargs,
-    otherwise just prints error.
-    """
-
-    def on_failure(self, exc_message, task_id, args, kwargs, exc_traceback):
-        _args = list(args) + list(kwargs.values())
-        task = None
-        if hasattr(self, 'task'):
-            task = self.task
-        else:
-            for i in _args:
-                if isinstance(i, TaskControl):
-                    task = i
-                    break
-        print_func = task.log_error if task else print
-        print_func('Args: {}'.format(str(args)))
-        print_func('Kwargs: {}'.format(str(kwargs)))
-        print_func(exc_traceback)
-        print_func(exc_message)
-
-
-class ExtendedTask(BaseErrorHandlerMixin, app.Task):
-    """
-    Extended Task class, allows to log exceptions
-    Can be applied to concrete function like this:
-      @shared_task(base=ExtendedTask)
-      def concrete_task(*args, **kwargs):
-          ....
-    """
-    pass
-
-
-def _find_task_arg(args, kwargs) -> Union[TaskControl, None]:
-    _args = list(args) + list(kwargs.values())
-    for i in _args:
-        if isinstance(i, TaskControl):
-            return i
-    return None
-
-
-def _log_exception(task, args, kwargs):
-    trace = format_exc()
-    exc_class, exception, _ = sys.exc_info()
-    exception_str = '%s: %s' % (exc_class.__name__, str(exception))
-    print_func = task.log_error if task else print
-    print_func('Args: %s' % str(args))
-    print_func('kwargs: %s' % str(kwargs))
-    print_func(trace)
-    print_func(exception_str)
-
-
-def log_exception(func):
-    """
-    Helper decorator to log task exceptions
-    Can be applied to concrete function like this:
-      @shared_task
-      @log_exception
-      def concrete_task(*args, **kwargs):
-          ....
-    """
-
-    def wrapper(*args, **kwargs):
+    def __call__(self, *args: Any, **kwargs: Any) -> Any:
         try:
-            args += ('extra_arg',)
-            return func(*args, **kwargs)
-        except:
-            _log_exception(_find_task_arg(args, kwargs), args, kwargs)
+            return super().__call__(*args, **kwargs)
+        except Exception as exc:
+            if isinstance(exc, Retry):
+                task_failed_msg = self._render_task_failed(args, kwargs, exc.exc,
+                                                           traceback.format_exc())
+                self.log_warn(
+                    '{0}\nGoing to retry in {1} seconds...'.format(task_failed_msg, exc.when))
+            else:
+                self.log_error(self._render_task_failed(args, kwargs, exc, traceback.format_exc()))
+            Task.objects.set_failure_processed(self.request.id, True)
+            raise exc
 
-    return wrapper
+    def on_failure(self, exc, task_id, args, kwargs, exc_traceback):
+        if not self.task.failure_processed:
+            self.log_error(self._render_task_failed(args, kwargs, exc, exc_traceback))
+
+
+@shared_task(base=ExtendedTask, bind=True, name='advanced_celery.end_chord')
+def end_chord(task: ExtendedTask, *args, **kwargs):
+    status = kwargs.get('status')
+    title = task.task.title or task.task.name
+    keys = kwargs.get('cache_keys')
+    if keys:
+        for key in keys:
+            transfer.cleanup(key)
+
+    try:
+        if status == 'success':
+            task.log_info(
+                '{0}: all sub-tasks have been processed successfully'.format(title))
+        else:
+            task.log_error('{0}: sub-tasks processing crashed'.format(title))
+    except:
+        if status == 'success':
+            logger.info('{0}: all sub-tasks have been processed successfully'.format(title))
+        else:
+            logger.error('{0}: sub-tasks processing crashed'.format(title))
 
 
 def call_task_func(task_func: Callable, task_args: Tuple,
                    user_id, metadata: Dict = None, visible: bool = True):
     celery_task_id = str(fast_uuid())
-    celery_task_result = TaskResult(task_id=celery_task_id)
-    celery_task_result.save()
 
     task = Task.objects.create(
+        id=celery_task_id,
         name=task_func.__name__,
-        celery_task_id=celery_task_id,
-        celery_task_result=celery_task_result,
         user_id=user_id,
         metadata=metadata,
         visible=visible if visible is not None else True,
     )
 
-    task_control = TaskControl.create(task)
-    task_control.log_info('Celery task id: {}\nCelery TaskResult id: {}\n'.format(
-        celery_task_id, celery_task_result.id
-    ))
-    task_args = task_args + (task_control,)
-    task_func.apply_async(args=task_args, task_id=celery_task_id)
+    task.write_log('Celery task id: {}\n'.format(celery_task_id))
+    task_config = _get_or_create_task_config(task_func)
+    task_func.apply_async(args=task_args,
+                          task_id=celery_task_id,
+                          soft_time_limit=task_config.soft_time_limit,
+                          as_main_task=True)
     return task.pk
 
 
@@ -531,27 +405,24 @@ def call_task(task_name, **options):
         options['metadata']['propagate_exception'] = True
 
     celery_task_id = str(fast_uuid())
-    celery_task_result = TaskResult(task_id=celery_task_id)
-    celery_task_result.save()
 
     task = Task.objects.create(
+        id=celery_task_id,
         name=task_name,
-        celery_task_id=celery_task_id,
-        celery_task_result=celery_task_result,
         user_id=options.get('user_id'),
         metadata=options.get('metadata'),
         visible=options.get('visible', True),
     )
 
-    task_control = TaskControl.create(task)
-    task_control.log_info('Celery task id: {}\nCelery TaskResult id: {}\n'.format(
-        celery_task_id, celery_task_result.id
-    ))
+    task.write_log('Celery task id: {}\n'.format(celery_task_id))
     options['task_id'] = task.id
-    options['main_task'] = task_control
     async = options.pop('async', True)
+    task_config = _get_or_create_task_config(task_class)
     if async:
-        task_class().apply_async(kwargs=options, task_id=celery_task_id)
+        task_class().apply_async(kwargs=options,
+                                 task_id=celery_task_id,
+                                 soft_time_limit=task_config.soft_time_limit,
+                                 as_main_task=True)
     else:
         task_class()(**options)
     return task.pk
@@ -563,21 +434,17 @@ class BaseTask(ExtendedTask):
     Adds logging for start/end events of task
      and optional error handling.
     """
-    task = None
 
     def run(self, *args, **kwargs):
-        self.task = kwargs.get('main_task')  # type: TaskControl
-        self.task.log_info('Start task "%s", id=%d' % (self.task.name, self.task.main_task_id))
-        self.task.log_info('Task kwargs: {}'.format(str(kwargs)))
+        self.log_info(
+            'Start task "{0}", id={1}\nKwargs: {2}'.format(self.task.name, self.task.main_task_id,
+                                                           str(kwargs)))
         try:
             ret = self.process(**kwargs)
-        except:
-            self.task.update_has_error(True)
-            raise
         finally:
-            self.task.log_info('End of main task "%s", id=%d. '
-                               'Sub-tasks may be still running.' % (
-                                   self.task.name, self.task.main_task_id))
+            self.log_info('End of main task "{0}", id={1}. '
+                          'Sub-tasks may be still running.'.format(
+                self.task.name, self.task.main_task_id))
         return ret or self.task.main_task_id
 
 
@@ -597,9 +464,10 @@ class LoadDocuments(BaseTask):
     def process(self, **kwargs):
 
         path = kwargs['source_path']
-        self.task.log_info('Parse {0} at {1}'.format(path, file_access_handler))
+        self.log_info('Parse {0} at {1}'.format(path, file_access_handler))
         file_list = file_access_handler.list(path)
-        self.task.log_info("Detected {0} files. Added {0} subtasks.".format(len(file_list)))
+
+        self.log_info("Detected {0} files. Added {0} subtasks.".format(len(file_list)))
 
         if len(file_list) == 0:
             raise RuntimeError('Wrong file or directory name or directory is empty: {}'
@@ -608,33 +476,34 @@ class LoadDocuments(BaseTask):
         if kwargs.get('delete'):
             Document.objects.all().delete()
 
-        self.task.update_subtasks_total(len(file_list))
-
         # prevent transferring document type objects to sub-tasks
         document_type = kwargs.get('document_type')
         if document_type:
             kwargs['document_type_pk'] = document_type.pk
             del kwargs['document_type']
-
         load_docs_args = [(file_path, kwargs) for file_path in file_list]
-        self.task.run_sub_tasks('Load Each Document',
-                                LoadDocuments.create_document,
-                                load_docs_args)
+        self.run_sub_tasks('Load Each Document',
+                           LoadDocuments.create_document,
+                           load_docs_args)
 
     @staticmethod
-    @shared_task(base=ExtendedTask)
-    def create_document(uri: str, kwargs, parent_task: TaskControl):
+    @shared_task(base=ExtendedTask,
+                 bind=True,
+                 soft_time_limit=600,
+                 default_retry_delay=10,
+                 retry_backoff=True)
+    def create_document(task: ExtendedTask, uri: str, kwargs):
         with file_access_handler.get_local_fn(uri) as (fn, file_name):
-            log_extra = {'log_document_name': uri}
-            return LoadDocuments.create_document_local(parent_task.create_child(uri, log_extra), fn,
-                                                       uri, kwargs)
+            task.task.title = 'Load Document: {0}'.format(uri)
+            task.log_extra = {'log_document_name': uri}
+            return LoadDocuments.create_document_local(task, fn, uri, kwargs)
 
     @staticmethod
     def save_extra_document_data(*args, **kwargs):
         pass
 
     @staticmethod
-    def try_parsing_with_tika(task: TaskControl, file_path, ext, original_file_name):
+    def try_parsing_with_tika(task: ExtendedTask, file_path, ext, original_file_name):
         task.log_info('Trying TIKA for file: ' + original_file_name)
         if settings.TIKA_DISABLE:
             task.log_info('TIKA is disabled in config')
@@ -654,7 +523,7 @@ class LoadDocuments(BaseTask):
             return None, None
 
     @staticmethod
-    def try_parsing_with_textract(task: TaskControl, file_path, ext, original_file_name):
+    def try_parsing_with_textract(task: ExtendedTask, file_path, ext, original_file_name):
         task.log_info('Trying Textract for file: ' + original_file_name)
         try:
             return textract2text(file_path, ext=ext), 'textract'
@@ -664,43 +533,19 @@ class LoadDocuments(BaseTask):
             return None, None
 
     @staticmethod
-    def _remove_blank_start(text: str):
-        """
-        Allow max 10 empty lines on text start, remove other empty lines from start.
-        Also remove all empty lines from the end.
-        :param text:
-        :return:
-        """
-        text = text.rstrip()
-
-        num_lines = 0
-        num_blank = 0
-        for ch in text:
-            if ch == '\n':
-                num_lines += 1
-            elif not ch.isspace():
-                break
-            num_blank += 1
-
-        if num_lines > 10:
-            num_lines = 10
-
-        text = ''.join(num_lines*'\n') + text[num_blank:]
-
-        return text
-
-    @staticmethod
-    def create_document_local(task: TaskControl, file_path, file_name, kwargs):
+    def create_document_local(task: ExtendedTask, file_path, file_name, kwargs):
 
         ret = []
+        document_name = os.path.basename(file_name)
+        document_source = os.path.dirname(file_name)
 
         # OLD API: Check for existing record
         if kwargs['metadata'].get('session_id') is None and \
-                Document.objects.filter(description=file_name).exists():
+                Document.objects.filter(name=document_name, source=document_source).exists():
             task.log_info('SKIP (EXISTS): ' + file_name)
             return
 
-        text = None # type: str
+        text = None  # type: str
         metadata = {}
         new_ui = kwargs.get('propagate_exception')
 
@@ -724,7 +569,7 @@ class LoadDocuments(BaseTask):
                 text, parser_name = LoadDocuments.try_parsing_with_textract(task, file_path,
                                                                             ext, file_name)
         if text is not None:
-            text = LoadDocuments._remove_blank_start(text)
+            text = pre_process_document(text)
 
         if not text:
             if new_ui:
@@ -732,9 +577,17 @@ class LoadDocuments(BaseTask):
             task.log_info('SKIP (ERROR): ' + file_name)
             return
 
-
-
         metadata['parsed_by'] = parser_name
+
+        # detect if document is contract
+        if kwargs.get('detect_contract'):
+            try:
+                from lexnlp.extract.en.contracts.detector import is_contract
+                res = is_contract(text, return_probability=True)
+                if res is not None:
+                    metadata['is_contract'], metadata['is_contract_probability'] = res
+            except ImportError:
+                task.log_warn('Cannot import lexnlp.extract.en.contracts.detector.is_contract')
 
         # Language identification
         language, lang_detector = get_language(text, get_parser=True)
@@ -761,106 +614,107 @@ class LoadDocuments(BaseTask):
         except:
             pass
 
-        # Create document object
-        document = Document.objects.create(
-            document_type=document_type,
-            name=os.path.basename(file_name),
-            description=file_name,
-            source=os.path.dirname(file_name),
-            source_type=kwargs.get('source_type'),
-            source_path=file_name,
-            metadata=metadata,
-            language=language,
-            title=title,
-            full_text=text)
+        with transaction.atomic():
+            # Create document object
+            document = Document.objects.create(
+                document_type=document_type,
+                name=document_name,
+                description=file_name,
+                source=document_source,
+                source_type=kwargs.get('source_type'),
+                source_path=file_name,
+                metadata=metadata,
+                language=language,
+                title=title,
+                full_text=text)
 
-        task.log_extra['log_document_id'] = document.pk
+            task.log_extra['log_document_id'] = document.pk
 
-        try:
-            session = UploadSession.objects.get(pk=kwargs['metadata']['session_id'])
-            task.log_extra['log_upload_session'] = session.pk
-            document.upload_session = session
-            document.project = session.project
-            document.document_type = session.project.type
-            document.save()
-            task.log_info(message='Document Upload Session id={}'.format(session.pk))
-        except:
-            task.log_warn(message='Document Upload Session Undefined!')
+            try:
+                session = UploadSession.objects.get(pk=kwargs['metadata']['session_id'])
+                task.log_extra['log_upload_session'] = session.pk
+                document.upload_session = session
+                document.project = session.project
+                document.document_type = session.project.type
+                document.save()
+                task.log_info(message='Document Upload Session id={}'.format(session.pk))
+            except:
+                task.log_warn(message='Document Upload Session Undefined!')
 
-        # create Document Properties
-        document_properties = [
-            DocumentProperty(
-                created_by_id=kwargs['user_id'],
-                modified_by_id=kwargs['user_id'],
-                document_id=document.pk,
-                key=k,
-                value=v) for k, v in metadata.items() if v]
+            # create Document Properties
+            document_properties = [
+                DocumentProperty(
+                    created_by_id=kwargs['user_id'],
+                    modified_by_id=kwargs['user_id'],
+                    document_id=document.pk,
+                    key=k,
+                    value=v) for k, v in metadata.items() if v]
 
-        polarity, subjectivity = TextBlob(text).sentiment
-        document_properties += [
-            DocumentProperty(
-                created_by_id=kwargs['user_id'],
-                modified_by_id=kwargs['user_id'],
-                document_id=document.pk,
-                key='polarity',
-                value=str(round(polarity, 3))),
-            DocumentProperty(
-                created_by_id=kwargs['user_id'],
-                modified_by_id=kwargs['user_id'],
-                document_id=document.pk,
-                key='subjectivity',
-                value=str(round(subjectivity, 3)))]
-        DocumentProperty.objects.bulk_create(document_properties)
-
-        # create text units
-        paragraph_list = [TextUnit(
-            document=document,
-            text=paragraph,
-            text_hash=hashlib.sha1(paragraph.encode("utf-8")).hexdigest(),
-            unit_type="paragraph",
-            language=get_language(paragraph)) for paragraph in segment_paragraphs(text)]
-
-        sentence_list = []
-        for span in get_sentence_span_list(text):
-            sentence = text[span[0]:span[1]]
-            text_unit = TextUnit(
-                document=document,
-                text=sentence,
-                location_start=span[0],
-                location_end=span[1],
-                text_hash=hashlib.sha1(sentence.encode("utf-8")).hexdigest(),
-                unit_type="sentence",
-                language=get_language(sentence))
-            sentence_list.append(text_unit)
-
-        document.paragraphs = len(paragraph_list)
-        document.sentences = len(sentence_list)
-        document.save()
-
-        TextUnit.objects.bulk_create(paragraph_list + sentence_list)
-
-        # store document language
-        if not document.language:
-            document.set_language_from_text_units()
-
-        # create Text Unit Properties
-        text_unit_properties = []
-        for pk, text in document.textunit_set.values_list('pk', 'text'):
             polarity, subjectivity = TextBlob(text).sentiment
-            text_unit_properties += [
-                TextUnitProperty(
-                    text_unit_id=pk,
+            document_properties += [
+                DocumentProperty(
+                    created_by_id=kwargs['user_id'],
+                    modified_by_id=kwargs['user_id'],
+                    document_id=document.pk,
                     key='polarity',
-                    value=str(round(polarity))),
-                TextUnitProperty(
-                    text_unit_id=pk,
+                    value=str(round(polarity, 3))),
+                DocumentProperty(
+                    created_by_id=kwargs['user_id'],
+                    modified_by_id=kwargs['user_id'],
+                    document_id=document.pk,
                     key='subjectivity',
-                    value=str(round(subjectivity)))]
-        TextUnitProperty.objects.bulk_create(text_unit_properties)
+                    value=str(round(subjectivity, 3)))]
+            DocumentProperty.objects.bulk_create(document_properties)
 
-        # save extra document info
-        kwargs['document'] = document
-        LoadDocuments.save_extra_document_data(**kwargs)
+            # create text units
+            paragraph_list = [TextUnit(
+                document=document,
+                text=paragraph,
+                text_hash=hashlib.sha1(paragraph.encode("utf-8")).hexdigest(),
+                unit_type="paragraph",
+                language=get_language(paragraph)) for paragraph in segment_paragraphs(text)]
+
+            sentence_list = []
+            for span in get_sentence_span_list(text):
+                sentence = text[span[0]:span[1]]
+                text_unit = TextUnit(
+                    document=document,
+                    text=sentence,
+                    location_start=span[0],
+                    location_end=span[1],
+                    text_hash=hashlib.sha1(sentence.encode("utf-8")).hexdigest(),
+                    unit_type="sentence",
+                    language=get_language(sentence))
+                sentence_list.append(text_unit)
+
+            document.paragraphs = len(paragraph_list)
+            document.sentences = len(sentence_list)
+            document.save()
+
+            TextUnit.objects.bulk_create(paragraph_list + sentence_list)
+
+            # store document language
+            if not document.language:
+                document.set_language_from_text_units()
+
+            # create Text Unit Properties
+            text_unit_properties = []
+            for pk, text in document.textunit_set.values_list('pk', 'text'):
+                polarity, subjectivity = TextBlob(text).sentiment
+                text_unit_properties += [
+                    TextUnitProperty(
+                        text_unit_id=pk,
+                        key='polarity',
+                        value=str(round(polarity))),
+                    TextUnitProperty(
+                        text_unit_id=pk,
+                        key='subjectivity',
+                        value=str(round(subjectivity)))]
+            TextUnitProperty.objects.bulk_create(text_unit_properties)
+
+            # save extra document info
+            kwargs['document'] = document
+            LoadDocuments.save_extra_document_data(**kwargs)
 
         task.log_info(message='LOADED (%s): %s' % (parser_name.upper(), file_name))
         task.log_info(message='Document pk: %d' % document.pk)
@@ -896,27 +750,27 @@ class UpdateElasticsearchIndex(BaseTask):
                  body=es_doc)
 
     def process(self, **kwargs):
-        self.task.update_subtasks_total(1)
+        self.set_push_steps(1)
         es = Elasticsearch(hosts=settings.ELASTICSEARCH_CONFIG['hosts'])
 
         es_index = settings.ELASTICSEARCH_CONFIG['index']
 
         try:
             es.indices.create(index=es_index)
-            self.task.log_info('Created index: {0}'.format(es_index))
+            self.log_info('Created index: {0}'.format(es_index))
         except RequestError:
-            self.task.log_info('Index already exists: {0}'.format(es_index))
+            self.log_info('Index already exists: {0}'.format(es_index))
 
         count = 0
         for tu in TextUnit.objects.iterator():
             self.elastic_index(es, tu)
             count += 1
             if count % 100 == 0:
-                self.task.log_info('Indexing text units: {0} done'.format(count))
-        self.task.log_info('Finished indexing text units. Refreshing ES index.')
+                self.log_info('Indexing text units: {0} done'.format(count))
+        self.log_info('Finished indexing text units. Refreshing ES index.')
         es.indices.refresh(index=es_index)
-        self.task.log_info('Done')
-        self.task.push()
+        self.log_info('Done')
+        self.push()
 
 
 class LoadTerms(BaseTask):
@@ -932,7 +786,7 @@ class LoadTerms(BaseTask):
         :return:
         """
 
-        self.task.update_subtasks_total(3)
+        self.set_push_steps(3)
 
         paths = kwargs['repo_paths']
 
@@ -947,24 +801,24 @@ class LoadTerms(BaseTask):
                 raise RuntimeError('Unable to parse path "%s"' % path)
             paths.append(path)
 
-        self.task.push()
+        self.push()
 
         if kwargs['delete']:
             Term.objects.all().delete()
-        self.task.push()
+        self.push()
 
         terms_df = pd.DataFrame()
         for path in paths:
-            self.task.log_info('Parse "%s"' % path)
+            self.log_info('Parse "%s"' % path)
             data = pd.read_csv(path)
-            self.task.log_info('Detected %d terms' % len(data))
+            self.log_info('Detected %d terms' % len(data))
             terms_df = terms_df.append(data)
 
         terms_df.drop_duplicates(inplace=True)
         terms_df.loc[terms_df["CaseSensitive"] == False, "Term"] = terms_df.loc[
             terms_df["CaseSensitive"] == False, "Term"].str.lower()
         terms_df = terms_df.drop_duplicates(subset="Term").dropna(subset=["Term"])
-        self.task.log_info('Total %d unique terms' % len(terms_df))
+        self.log_info('Total %d unique terms' % len(terms_df))
 
         terms = []
         for row_id, row in terms_df.iterrows():
@@ -977,7 +831,7 @@ class LoadTerms(BaseTask):
                 terms.append(lt)
 
         Term.objects.bulk_create(terms)
-        self.task.push()
+        self.push()
 
 
 class LoadGeoEntities(BaseTask):
@@ -1020,16 +874,16 @@ class LoadGeoEntities(BaseTask):
 
         entities_df = pd.DataFrame()
         for path in paths:
-            self.task.log_info('Parse "%s"' % path)
+            self.log_info('Parse "%s"' % path)
             data = pd.read_csv(path)
-            self.task.log_info('Detected %d entities' % len(data))
+            self.log_info('Detected %d entities' % len(data))
             entities_df = entities_df.append(data)
         if entities_df.empty:
             raise RuntimeError('Received 0 entities to process, exit.')
         entities_df = entities_df.drop_duplicates().fillna('')
 
-        self.task.update_subtasks_total(len(entities_df) + 2)
-        self.task.push()
+        self.set_push_steps(len(entities_df) + 2)
+        self.push()
 
         # create Geo Entities
         geo_aliases = []
@@ -1077,12 +931,12 @@ class LoadGeoEntities(BaseTask):
                         locale=locale,
                         alias=row[column_name],
                         type=alias_type))
-            self.task.push()
+            self.push()
 
         GeoAlias.objects.bulk_create(geo_aliases)
-        self.task.log_info('Total created: %d GeoAliases' % len(geo_aliases))
-        self.task.log_info('Total created: %d GeoEntities' % geo_entities_count)
-        self.task.push()
+        self.log_info('Total created: %d GeoAliases' % len(geo_aliases))
+        self.log_info('Total created: %d GeoEntities' % geo_entities_count)
+        self.push()
 
 
 class LoadCourts(BaseTask):
@@ -1098,7 +952,7 @@ class LoadCourts(BaseTask):
         :return:
         """
 
-        self.task.update_subtasks_total(3)
+        self.set_push_steps(3)
 
         paths = kwargs['repo_paths']
 
@@ -1113,17 +967,17 @@ class LoadCourts(BaseTask):
                 raise RuntimeError('Unable to parse path "%s"' % path)
             paths.append(path)
 
-        self.task.push()
+        self.push()
 
         if 'delete' in kwargs:
             Court.objects.all().delete()
-        self.task.push()
+        self.push()
 
         for path in paths:
-            self.task.log_info('Parse "%s"' % path)
+            self.log_info('Parse "%s"' % path)
             dictionary_data = pd.read_csv(path).dropna(subset=['Court ID']).fillna('')
             dictionary_data['Court ID'] = dictionary_data['Court ID'].astype(int)
-            self.task.log_info('Detected %d courts' % len(dictionary_data))
+            self.log_info('Detected %d courts' % len(dictionary_data))
 
             courts = []
             for _, row in dictionary_data.iterrows():
@@ -1141,7 +995,7 @@ class LoadCourts(BaseTask):
                     courts.append(court)
 
             Court.objects.bulk_create(courts)
-        self.task.push()
+        self.push()
 
 
 class Locate(BaseTask):
@@ -1208,13 +1062,13 @@ class Locate(BaseTask):
                     usage_model_objects = usage_model_objects.filter(
                         text_unit__document_id=document_id)
                 deleted = usage_model_objects.delete()
-                self.task.log_info('Deleted {} {} objects'.format(
+                self.log_info('Deleted {} {} objects'.format(
                     deleted[0], usage_model_name))
             tag_objects = TextUnitTag.objects.filter(tag=locator_name)
             if document_id:
                 tag_objects = tag_objects.filter(text_unit__document_id=document_id)
             tags_deleted = tag_objects.delete()
-            self.task.log_info('Deleted {} TextUnitTag(tag={})'.format(
+            self.log_info('Deleted {} TextUnitTag(tag={})'.format(
                 tags_deleted[0], locator_name))
 
     def process(self, **kwargs):
@@ -1249,7 +1103,6 @@ class Locate(BaseTask):
 
         # interrupt if no items to locate
         if not locate:
-            self.task.force_complete()
             return
 
         # create data for specific tasks
@@ -1274,11 +1127,9 @@ class Locate(BaseTask):
         else:
             locate_in = 'paragraphs and sentences'
 
-        self.task.log_info('Run location of [{}].'.format('; '.join(locate.keys())))
-        self.task.log_info('Locate in [{}].'.format(locate_in))
-        subtasks_total = text_units.count()
-        self.task.update_subtasks_total(subtasks_total)
-        self.task.log_info('Found {0} Text Units. Added {0} subtasks.'.format(subtasks_total + 1))
+        self.log_info('Run location of [{}].'.format('; '.join(locate.keys())))
+        self.log_info('Locate in [{}].'.format(locate_in))
+        self.log_info('Found {0} Text Units.'.format(text_units.count()))
 
         locate_args = []
 
@@ -1287,14 +1138,22 @@ class Locate(BaseTask):
                 continue
             locate_args.append((text_unit_id, text_unit_lang, text, kwargs['user_id']))
 
-        self.task.run_sub_tasks_on_shared_data('Locate Data In Each Text Unit',
-                                               Locate.parse_text_unit,
-                                               locate_args, {'locate': locate})
+        self.run_sub_tasks_on_shared_data('Locate Data In Each Text Unit',
+                                          Locate.parse_text_unit,
+                                          locate_args, {'locate': locate})
+
+        if kwargs.get('notify_task_done'):
+            self.run_sub_tasks('Uploading Completed',
+                               Locate.notify_task_done,
+                               locate_args)
 
     @staticmethod
-    @shared_task(base=ExtendedTask)
-    def parse_text_unit(text_unit_id, text_unit_lang, text, user_id,
-                        parent_task: TaskControl,
+    @shared_task(base=ExtendedTask,
+                 bind=True,
+                 soft_time_limit=60,
+                 default_retry_delay=10,
+                 retry_backoff=True)
+    def parse_text_unit(self, text_unit_id, text_unit_lang, text, user_id,
                         shared_data_cache_keys):
         tags = []
         locate = transfer.get(shared_data_cache_keys.get('locate')) \
@@ -1304,7 +1163,7 @@ class Locate(BaseTask):
             try:
                 task_func = getattr(this_module, func_name)
             except AttributeError:
-                parent_task.log_error('Warning: "%s" method not found' % func_name)
+                self.log_error('Warning: "%s" method not found' % func_name)
                 continue
             found = task_func(text, text_unit_id, text_unit_lang, **task_kwargs)
             if found:
@@ -1637,15 +1496,12 @@ class LocateTerms(BaseTask):
 
         if kwargs['delete'] or kwargs['locate']:
             deleted = TermUsage.objects.all().delete()
-            self.task.log_info('Deleted %d Term Usages' % deleted[0])
+            self.log_info('Deleted %d Term Usages' % deleted[0])
 
         if not kwargs['locate']:
-            self.task.force_complete()
             return
 
-        subtasks_total = Term.objects.count()
-        self.task.update_subtasks_total(subtasks_total)
-        self.task.log_info('Found {0} Terms. Added {0} subtasks.'.format(subtasks_total))
+        self.log_info('Found {0} Terms. Added {0} subtasks.'.format(Term.objects.count()))
 
         create_ltu_args = []
         for lt in Term.objects.all():
@@ -1654,13 +1510,16 @@ class LocateTerms(BaseTask):
                     Term.objects.filter(term=term).exists():
                 continue
             create_ltu_args.append((term, lt.id))
-        self.task.run_sub_tasks('Create LTU For Each Term',
-                                LocateTerms.create_ltu,
-                                create_ltu_args)
+        self.run_sub_tasks('Create LTU For Each Term',
+                           LocateTerms.create_ltu,
+                           create_ltu_args)
 
     @staticmethod
-    @shared_task(base=ExtendedTask)
-    def create_ltu(term, term_id, parent_task: TaskControl):
+    @shared_task(base=ExtendedTask,
+                 soft_time_limit=60,
+                 default_retry_delay=10,
+                 retry_backoff=True)
+    def create_ltu(term, term_id):
         ltu_list = []
 
         for tu in TextUnit.objects.filter(
@@ -1718,7 +1577,7 @@ class Classify(BaseTask):
         :return:
         """
 
-        self.task.update_subtasks_total(3)
+        self.set_push_steps(3)
 
         classifier_id = kwargs.get('classifier')
         min_confidence = kwargs['min_confidence'] / 100
@@ -1733,11 +1592,11 @@ class Classify(BaseTask):
                 filter_opts = {'classifier_id': classifier_id}
             TextUnitClassifierSuggestion.objects.filter(**filter_opts).delete()
 
-        self.task.push()  # 1
+        self.push()  # 1
 
         clf, clf_model = self.get_classifier(kwargs, classifier_id)
 
-        self.task.push()  # 2
+        self.push()  # 2
 
         # Apply to other documents
         tf_idf_transformer = TfidfTransformer()
@@ -1776,7 +1635,7 @@ class Classify(BaseTask):
                 tucs_list.append(tucs)
             TextUnitClassifierSuggestion.objects.bulk_create(tucs_list)
 
-        self.task.push()  # 3
+        self.push()  # 3
 
     def get_classifier(self, kwargs, classifier_id):
         """
@@ -1970,7 +1829,7 @@ class Cluster(BaseTask):
             cluster_model.objects.filter(cluster_by=cluster_by_str, using=using).delete()
         if kwargs['delete']:
             cluster_model.objects.all().delete()
-        self.task.push()
+        self.push()
 
         # step #2 - prepare data
         # filter objects
@@ -1978,7 +1837,7 @@ class Cluster(BaseTask):
         for c in cluster_by:
             q_object.add(Q(**{filter_map[c]: False}), Q.OR)
         objects = source_model.objects.filter(q_object).distinct()
-        self.task.push()
+        self.push()
 
         # prepare features dataframe
         df = pd.DataFrame()
@@ -2027,14 +1886,13 @@ class Cluster(BaseTask):
             df = df.join(dft, how='outer')
 
         if df.empty:
-            self.task.log_info('Empty date set. Exit.')
-            self.task.force_complete()
+            self.log_info('Empty date set. Exit.')
             return
 
         X = df.fillna(0).values.tolist()
         y = df.index.tolist()
         feature_names = df.columns.tolist()
-        self.task.push()
+        self.push()
 
         # step #4 - get model, clustering
         created_date = datetime.datetime.now()
@@ -2073,8 +1931,8 @@ class Cluster(BaseTask):
                 labels = m.labels_
                 unique_labels = set(labels)
                 if unique_labels == {-1}:
-                    self.task.log_info('Unable to cluster, perhaps because of small data set.')
-                    self.task.push()
+                    self.log_info('Unable to cluster, perhaps because of small data set.')
+                    self.push()
                     return
                 for cluster_id in unique_labels:
                     if cluster_id == -1:
@@ -2114,7 +1972,7 @@ class Cluster(BaseTask):
                         using=using[:20],
                         created_date=created_date)
                     getattr(cluster, target).set(pks)
-        self.task.push()
+        self.push()
 
     def get_model(self, **kwargs):
         using = kwargs['using']
@@ -2157,7 +2015,7 @@ class Cluster(BaseTask):
         do_cluster_documents = kwargs['do_cluster_documents']
         do_cluster_text_units = kwargs['do_cluster_text_units']
 
-        self.task.update_subtasks_total(8 if do_cluster_documents and do_cluster_text_units else 4)
+        self.set_push_steps(8 if do_cluster_documents and do_cluster_text_units else 4)
 
         # cluster Documents
         if do_cluster_documents:
@@ -2204,7 +2062,7 @@ class PartySimilarity(BaseTask):
         :param kwargs: dict, form data
         """
         parties = Party.objects.values_list('pk', 'name')
-        self.task.update_subtasks_total(len(parties) + 1)
+        self.set_push_steps(len(parties) + 1)
 
         # 1. Delete if requested
         if kwargs['delete']:
@@ -2232,11 +2090,11 @@ class PartySimilarity(BaseTask):
                             party_a_id=party_a_pk,
                             party_b_id=party_b_pk,
                             similarity=score))
-            self.task.push()
+            self.push()
 
         # 4. Bulk create similarity objects
         PartySimilarityModel.objects.bulk_create(similar_results)
-        self.task.push()
+        self.push()
 
 
 class Similarity(BaseTask):
@@ -2259,19 +2117,19 @@ class Similarity(BaseTask):
         search_similar_documents = kwargs['search_similar_documents']
         search_similar_text_units = kwargs['search_similar_text_units']
         similarity_threshold = kwargs['similarity_threshold']
-        self.task.log_info('Min similarity: %d' % similarity_threshold)
+        self.log_info('Min similarity: %d' % similarity_threshold)
 
         # get text units with min length 100 signs
         text_units = TextUnit.objects.filter(unit_type='paragraph',
                                              text__regex=r'.{100}.*')
         len_tu_set = text_units.count()
 
-        subtasks_total = 0
+        push_steps = 0
         if search_similar_documents:
-            subtasks_total += 4
+            push_steps += 4
         if search_similar_text_units:
-            subtasks_total += math.ceil(len_tu_set / self.step) ** 2 + 3
-        self.task.update_subtasks_total(subtasks_total)
+            push_steps += math.ceil(len_tu_set / self.step) ** 2 + 3
+        self.set_push_steps(push_steps)
 
         # similar Documents
         if search_similar_documents:
@@ -2279,19 +2137,19 @@ class Similarity(BaseTask):
             # step #1 - delete
             if kwargs['delete']:
                 DocumentSimilarity.objects.all().delete()
-            self.task.push()
+            self.push()
 
             # step #2 - prepare data
             texts_set = ['\n'.join(d.textunit_set.values_list('text', flat=True))
                          for d in Document.objects.all()]
-            self.task.push()
+            self.push()
 
             # step #3
             vectorizer = TfidfVectorizer(max_df=0.5, max_features=self.n_features,
                                          min_df=2, stop_words='english',
                                          use_idf=kwargs['use_idf'])
             X = vectorizer.fit_transform(texts_set)
-            self.task.push()
+            self.push()
 
             # step #4
             similarity_matrix = cosine_similarity(X) * 100
@@ -2309,7 +2167,7 @@ class Similarity(BaseTask):
                         document_a_id=document_a,
                         document_b_id=document_b,
                         similarity=similarity)
-            self.task.push()
+            self.push()
 
         # similar Text Units
         if search_similar_text_units:
@@ -2317,11 +2175,11 @@ class Similarity(BaseTask):
             # step #1 - delete
             if kwargs['delete']:
                 TextUnitSimilarity.objects.all().delete()
-            self.task.push()
+            self.push()
 
             # step #2 - prepare data
             texts_set, pks = zip(*text_units.values_list('text', 'pk'))
-            self.task.push()
+            self.push()
 
             # step #3
             vectorizer = TfidfVectorizer(tokenizer=normalize,
@@ -2329,7 +2187,7 @@ class Similarity(BaseTask):
                                          min_df=2, stop_words='english',
                                          use_idf=kwargs['use_idf'])
             X = vectorizer.fit_transform(texts_set)
-            self.task.push()
+            self.push()
 
             # step #4
             for i in range(0, len_tu_set, self.step):
@@ -2347,10 +2205,10 @@ class Similarity(BaseTask):
                                                                           similarity_matrix[
                                                                               g, h] >= similarity_threshold]
                         TextUnitSimilarity.objects.bulk_create(tu_sim)
-                    self.task.push()
+                    self.push()
 
 
-@shared_task(name='celery.clean_tasks')
+@shared_task(name='advanced_celery.clean_tasks')
 def clean_tasks(delta_days=2):
     """
     Clean Task and TaskResult
@@ -2368,9 +2226,9 @@ def clean_tasks(delta_days=2):
         else:
             logger.info('remove...')
             # remove subtasks
-            res = TaskResult.objects \
-                .filter(Q(task_id__startswith='%d_' % task.id) |
-                        Q(task_id=task.celery_task_id)) \
+            res = Task.objects \
+                .filter(Q(main_task_id=task.id) |
+                        Q(id=task.id)) \
                 .delete()
             removed_task_results += res[0]
             # remove task
@@ -2382,6 +2240,12 @@ def clean_tasks(delta_days=2):
     return ret
 
 
+@app.task(name='advanced_celery.track_tasks', bind=True)
+def track_tasks(self):
+    for task in Task.objects.unready_main_tasks():
+        Task.objects.update_main_task(task.id)
+
+
 def purge_task(task_pk):
     """
     Purge task method.
@@ -2389,42 +2253,25 @@ def purge_task(task_pk):
     :return:
     """
 
-    task = Task.objects.get(pk=task_pk)
+    try:
+        task = Task.objects.get(pk=task_pk)
+    except Task.DoesNotExist:
+        return
+
     message = 'Task "Purge task", app task id={}'.format(task_pk)
     logger.info(message)
 
-    celery_task = AsyncResult(task.celery_task_id)
-    logger.info('Celery task id={}'.format(task.celery_task_id))
-
-    def revoke_task(_task):
-        if getattr(_task, 'children', None) is not None:
-            for child_task in _task.children:
-                revoke_task(child_task)
-        if getattr(_task, 'status', None) == 'PENDING':
-            try:
-                _task.revoke(terminate=True)
-            except RuntimeError as e:
-                if "Acquire on closed pool" in str(e):
-                    # TODO: define what we should do in this case
-                    # TODO: celery bug?
-                    pass
-                else:
-                    raise e
+    celery_task = AsyncResult(task.id)
+    logger.info('Celery task id={}'.format(task.id))
 
     revoke_task(celery_task)
     ret = 'Deleted '
-
-    # delete TaskResult for task
-    task.celery_task_result.delete()
 
     # delete TaskResults for subtasks
     subtask_results_deleted = task.subtasks.delete()
 
     # delete Task
     task.delete()
-
-    # delete Task history
-    Task.history.filter(id=task_pk).delete()
 
     ret += 'Task(id={}), TaskHistory, '.format(task_pk)
 
@@ -2445,23 +2292,21 @@ class TotalCleanup(BaseTask):
     def process(self, **kwargs):
         projects = Project.objects.all()
 
-        self.task.update_subtasks_total(projects.count() + 2)
+        self.set_push_steps(projects.count() + 2)
 
         # purge all tasks being executed
         app.control.purge()
-        self.task.push()
+        self.push()
 
         # delete projects one-by-one to not hang server
         for project in projects:
             project.cleanup()
             project.delete()
-            self.task.push()
+            self.push()
 
         # check that all tasks deleted EXCEPT THIS ONE
         Task.objects.exclude(pk=self.task.main_task_id).delete()
-        Task.history.exclude(id=self.task.main_task_id).delete()
-        TaskResult.objects.exclude(task__pk=self.task.main_task_id).delete()
-        self.task.push()
+        self.push()
 
 
 # Register all load tasks

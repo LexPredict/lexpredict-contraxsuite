@@ -33,13 +33,25 @@ https://docs.djangoproject.com/en/dev/ref/settings/
 """
 from __future__ import absolute_import, unicode_literals
 
-import sys
+# Standard imports
+import datetime
 import environ
+import platform
+import os
+import re
+import sys
 
-from apps.common.advancedcelery.fileaccess.local_file_access import LocalFileAccess
+# Third-party imports
 from celery.schedules import crontab
+from kombu import Queue
 
+# Django imports
 from django.core.urlresolvers import reverse_lazy
+
+# App imports
+from contraxsuite_logging import ContraxsuiteJSONFormatter, prepare_log_dirs
+from apps.common.advancedcelery.fileaccess.local_file_access import LocalFileAccess
+
 
 ROOT_DIR = environ.Path(__file__) - 2
 PROJECT_DIR = ROOT_DIR.path('contraxsuite_services')
@@ -249,7 +261,6 @@ STATICFILES_FINDERS = (
 # See: https://docs.djangoproject.com/en/dev/ref/settings/#media-root
 MEDIA_ROOT = PROJECT_DIR('media')
 
-
 # URL Configuration
 # ------------------------------------------------------------------------------
 ROOT_URLCONF = 'urls'
@@ -344,21 +355,44 @@ AUTOSLUG_SLUGIFY_FUNCTION = 'slugify.slugify'
 # celery
 # CELERY_BROKER_URL = 'redis://127.0.0.1:6379/0'
 CELERY_BROKER_URL = 'amqp://contrax1:contrax1@localhost:5672/contrax1_vhost'
-CELERY_RESULT_BACKEND = 'django-db'
+CELERY_RESULT_BACKEND = 'apps.task.celery_backend.database:DatabaseBackend'
 CELERY_RESULT_EXPIRES = 0
 # CELERY_WORKER_HIJACK_ROOT_LOGGER = False
 CELERY_BEAT_SCHEDULE = {
-    'celery.backend_cleanup': {
-        'task': 'celery.clean_tasks',
+    'advanced_celery.backend_cleanup': {
+        'task': 'advanced_celery.clean_tasks',
         'schedule': crontab(hour=7, minute=30, day_of_week='mon')
     },
+    'advanced_celery.track_tasks': {
+        'task': 'advanced_celery.track_tasks',
+        'schedule': 10.0,
+        'options': {'queue': 'serial', 'expires': 10},
+    },
+    'advanced_celery.track_session_completed': {
+        'task': 'advanced_celery.track_session_completed',
+        'schedule': 30.0,
+        'options': {'queue': 'serial', 'expires': 30},
+    },
 }
+CELERY_TIMEZONE = 'UTC'
+CELERY_ENABLE_UTC = True
+
+CELERY_ACKS_LATE = True
+CELERY_TASK_REJECT_ON_WORKER_LOST = True
+
 # this needed on production. check
 CELERY_IMPORTS = ('apps.task.tasks',)
-# CELERY_TIMEZONE = 'UTC'
 
 CELERY_TASK_SERIALIZER = 'pickle'
 CELERY_ACCEPT_CONTENT = ['json', 'pickle']
+
+CELERY_TASK_QUEUES = (
+    Queue('default', routing_key='task_default.#'),
+    Queue('high_priority', routing_key='task_high_priority.#'),
+    Queue('serial', routing_key='task_serial.#'),
+)
+
+CELERY_TASK_DEFAULT_QUEUE = 'default'
 
 # Redis for Celery args caching
 CELERY_CACHE_REDIS_URL = 'redis://127.0.0.1:6379/0'
@@ -497,7 +531,6 @@ TIKA_DISABLE = False
 TIKA_SERVER_ENDPOINT = None
 TEXTRACT_FIRST_FOR_EXTENSIONS = []
 
-
 # use jqWidgets' export, e.g. send data to jq OR handle it on client side
 # FYI: http://www.jqwidgets.com/community/topic/jqxgrid-export-data/#}
 JQ_EXPORT = True
@@ -508,11 +541,6 @@ GIT_DATA_REPO_ROOT = 'https://raw.githubusercontent.com/' \
                      'LexPredict/lexpredict-legal-dictionary/1.0.5'
 
 # logging
-import platform
-import sys
-import os
-from contraxsuite_logging import ContraxsuiteJSONFormatter, prepare_log_dirs
-
 CELERY_LOG_FILE_PATH = PROJECT_DIR('logs/celery-{0}.log'.format(platform.node()))
 LOG_FILE_PATH = PROJECT_DIR('logs/django-{0}.log'.format(platform.node()))
 DB_LOG_FILE_PATH = PROJECT_DIR('logs/db-{0}.log'.format(platform.node()))
@@ -610,7 +638,7 @@ LOGGING = {
             'propagate': True,
         },
         'django.db.backends': {
-            'handlers': ['console', 'text_db', 'json_db'],  # Quiet by default!
+            'handlers': ['text_db', 'json_db'],  # Quiet by default!
             'propagate': False,
             'level': 'DEBUG',
         },
@@ -638,8 +666,8 @@ CORS_ORIGIN_ALLOW_ALL = True
 CORS_ALLOW_CREDENTIALS = False
 CORS_URLS_REGEX = r'^/api/.*$'
 
-VERSION_NUMBER = '1.1.0'
-VERSION_COMMIT = '930cd65'
+VERSION_NUMBER = '1.1.1'
+VERSION_COMMIT = '4e1fe29'
 
 try:
     from local_settings import *
@@ -649,11 +677,10 @@ try:
 except (ImportError, NameError):
     pass
 
-import re
 BASE_URL = re.sub('^/+', '', BASE_URL)
 BASE_URL = re.sub('/+$', '', BASE_URL)
 if BASE_URL:
-    BASE_URL = BASE_URL + '/'
+    BASE_URL += '/'
 
 STATIC_URL = ('/' + BASE_URL if BASE_URL else '/') + 'static/'
 MEDIA_URL = BASE_URL + 'media/'
@@ -718,11 +745,9 @@ AUTOLOGIN_TEST_USER_FORBIDDEN_URLS = [
 DATA_UPLOAD_MAX_NUMBER_FIELDS = None
 PIPELINE['PIPELINE_ENABLED'] = PIPELINE_ENABLED
 
-ANNOTATOR_RETRAIN_MODEL_ON_ANNOTATIONS_CHANGE = True
+ANNOTATOR_RETRAIN_MODEL_ON_ANNOTATIONS_CHANGE = False
 
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTOCOL', 'https')
-
-import datetime
 
 CALCULATED_FIELDS_EVAL_LOCALS = {'datetime': datetime, 'len': len}
 

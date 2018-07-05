@@ -46,7 +46,7 @@ from django.db.models import Count, Min, Max
 
 # Project imports
 from apps.analyze.models import DocumentCluster
-from apps.common.mixins import JqMixin
+from apps.common.mixins import JqListAPIMixin
 from apps.common.models import ReviewStatus
 from apps.common.utils import get_api_module
 from apps.document.models import Document, DocumentType
@@ -61,8 +61,8 @@ from apps.project.tasks import THIS_MODULE    # noqa
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.0/LICENSE"
-__version__ = "1.1.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.1/LICENSE"
+__version__ = "1.1.1"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -185,15 +185,9 @@ class TaskQueueSerializer(serializers.ModelSerializer):
         return instance
 
 
-class TaskQueueViewSet(JqMixin, viewsets.ModelViewSet):
+class TaskQueueViewSet(JqListAPIMixin, viewsets.ModelViewSet):
     """
-    list: Task Queue List\n
-        GET params:
-          - only_completed: bool
-          - only_assigned: bool
-          - document_id: int
-          - with_documents: bool
-          - description_contains: str
+    list: Task Queue List
     retrieve: Retrieve Task Queue
     create: Create Task Queue
     update: Update Task Queue\n
@@ -322,20 +316,9 @@ def require_generic_contract_type(func):
     return decorator
 
 
-class ProjectViewSet(JqMixin, viewsets.ModelViewSet):
+class ProjectViewSet(JqListAPIMixin, viewsets.ModelViewSet):
     """
-    list: Project List\n
-        GET params:
-            - name: str
-            - name_contains: str
-            - description: str
-            - description_contains: str
-            - status__name: str
-            - status__name_contains: str
-            - status__code: str
-            - status__code_contains: str
-            - owners__username: str
-            - reviewers__username: str
+    list: Project List
     retrieve: Retrieve Project
     create: Create Project
     update: Update Project
@@ -422,7 +405,7 @@ class ProjectViewSet(JqMixin, viewsets.ModelViewSet):
             clustering = project.projectclustering_set.last()
 
         if not clustering:
-            return Response(status=404)
+            return Response({'details': 'Cluster session not found'}, status=200)
 
         data = ProjectClusteringSerializer(clustering).data
 
@@ -519,9 +502,9 @@ class ProjectViewSet(JqMixin, viewsets.ModelViewSet):
         """
         project = self.get_object()
 
-        if project.type.is_generic() and (project.projectclustering_set.exists()
-                and not project.projectclustering_set.last().completed):
-            return Response('Project documents clustering is not completed.', status=500)
+        # if project.type.is_generic() and (project.projectclustering_set.exists()
+        #         and not project.projectclustering_set.last().completed):
+        #     return Response('Project documents clustering is not completed.', status=500)
 
         qs = list(
             Document.objects
@@ -569,10 +552,12 @@ class ProjectViewSet(JqMixin, viewsets.ModelViewSet):
 class UploadSessionSerializer(serializers.ModelSerializer):
     project = serializers.PrimaryKeyRelatedField(
         queryset=Project.objects.all(), many=False, required=True)
+    created_by = serializers.PrimaryKeyRelatedField(
+        queryset=User.objects.all(), many=False, required=False)
 
     class Meta:
         model = UploadSession
-        fields = ['uid', 'project']
+        fields = ['uid', 'project', 'created_by']
 
 
 class UploadSessionDetailSerializer(serializers.ModelSerializer):
@@ -590,19 +575,9 @@ class UploadSessionDetailSerializer(serializers.ModelSerializer):
         return obj.document_tasks_progress(details=True)
 
 
-class UploadSessionViewSet(JqMixin, viewsets.ModelViewSet):
+class UploadSessionViewSet(JqListAPIMixin, viewsets.ModelViewSet):
     """
-    list: Session Upload List\n
-        GET params:
-            - project__name: str
-            - project__name_contains: str
-            - project__description: str
-            - project__description_contains: str
-            - project__status__name: str
-            - project__status__name_contains: str
-            - project__status__code: str
-            - project__status__code_contains: str
-            - created_by__username: str
+    list: Session Upload List
     retrieve: Retrieve Session Upload
     create: Create Session Upload
     update: Update Session Upload
@@ -623,8 +598,9 @@ class UploadSessionViewSet(JqMixin, viewsets.ModelViewSet):
 
     def create(self, request, *args, **kwargs):
         project = Project.objects.get(pk=request.data.get('project'))
-        if project.type.is_generic() and project.uploadsession_set.exists():
-            return Response("This Project already has upload session", status=500)
+        # if project.type.is_generic() and project.uploadsession_set.exists():
+        #     return Response("This Project already has upload session", status=500)
+        project.drop_clusters()
         return super().create(request, *args, **kwargs)
 
     @detail_route(methods=['get'])
@@ -633,8 +609,9 @@ class UploadSessionViewSet(JqMixin, viewsets.ModelViewSet):
         Get Progress for a session per files (short form)
         """
         session = self.get_object()
+        document_tasks_progress = session.document_tasks_progress()
         result = {'project_id': session.project.pk,
-                  'document_tasks_progress': session.document_tasks_progress() or None,
+                  'document_tasks_progress': document_tasks_progress or None,
                   'document_tasks_progress_total': session.document_tasks_progress_total,
                   'session_status': session.status}
         return Response(result)
@@ -660,9 +637,11 @@ class UploadSessionViewSet(JqMixin, viewsets.ModelViewSet):
             Params:
                 - file: file object
                 - force: bool (optional) - whether rewrite existing file and Document
+                - send_email_notifications: bool (optional) - sent notification email that batch uploading started
         """
+        session = self.get_object()
         session_id = kwargs.get('pk')
-        project = self.get_object().project
+        project = session.project
         file_ = request.FILES.dict().get('file')
 
         if session_id and file_:
@@ -696,7 +675,7 @@ class UploadSessionViewSet(JqMixin, viewsets.ModelViewSet):
                             for file_task in file_tasks:
                                 if file_task.metadata.get('file_name') == file_.name:
                                     purge_task(file_task.id)
-                            # redundant?
+                            # TODO: redundant?
                             Document.objects\
                                 .filter(upload_session_id=_session_id, name=file_.name)\
                                 .delete()
@@ -753,6 +732,11 @@ class UploadSessionViewSet(JqMixin, viewsets.ModelViewSet):
                     user_id=request.user.id,
                     metadata={'session_id': session_id, 'file_name': file_.name},
                     linked_tasks=linked_tasks)
+
+                if request.POST.get('send_email_notifications') == 'true' and \
+                        not session.notified_upload_started:
+                    session.notify_upload_started()
+
             except Exception as e:
                 raise APIException(str(e))
         else:
@@ -822,13 +806,13 @@ class TaskSerializer(serializers.ModelSerializer):
         if obj.has_error:
             message_head = 'Clustering failed. '
             message_body = 'Unexpected error while clustering. Try again later.'
-            if obj.celery_task_result and obj.celery_task_result.result:
-                task_result = json.loads(obj.celery_task_result.result)
+            if obj.result:
+                task_result = obj.result
                 if isinstance(task_result, dict):
                     exc_message = task_result.get('exc_message')
                     exc_type = task_result.get('exc_type')
                     if exc_message and exc_type:
-                        # trace = obj.celery_task_result.traceback
+                        # trace = obj.traceback
                         if ('max_df corresponds to < documents than min_df' in exc_message) or\
                            ('Number of samples smaller than number of clusters' in exc_message) or\
                            (re.search(r'n_samples=\d+ should be >= n_clusters=\d+', exc_message)):
@@ -881,7 +865,7 @@ class ProjectClusteringSerializer(serializers.ModelSerializer):
                self.get_project_clusters_documents_count(obj)
 
 
-class ProjectClusteringViewSet(JqMixin, viewsets.ModelViewSet):
+class ProjectClusteringViewSet(JqListAPIMixin, viewsets.ModelViewSet):
     """
     list: ProjectCluster List
     retrieve: ProjectCluster Details

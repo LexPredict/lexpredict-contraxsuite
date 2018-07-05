@@ -15,6 +15,7 @@
         { name: 'properties', type: 'int' },
         { name: 'relations', type: 'int' },
         { name: 'text_units', type: 'int' },
+        { name: 'is_contract', type: 'bool' },
         { name: 'url', type: 'string' }
       ];
       var columns = [
@@ -25,8 +26,6 @@
           cellsrenderer: defaultLinkFormatter },
         { text: 'Type', datafield: 'document_type__title', width: 100,
           align: 'center', cellsalign: 'center' },
-{#        { text: 'Description', datafield: 'description', width: 'auto',#}
-{#          align: 'center', cellsalign: 'center' },#}
         { text: 'Title', datafield: 'title', width: 'auto',
           align: 'center', cellsalign: 'center' },
         { text: 'Lang', datafield: 'language', width: 60,
@@ -35,6 +34,10 @@
           align: 'center', cellsalign: 'center' },
         { text: 'Relations', datafield: 'relations', width: 100,
           align: 'center', cellsalign: 'center' },
+        { text: 'Is Contract', datafield: 'is_contract', width: 100,
+          align: 'center', cellsalign: 'center',
+{#          threestatecheckbox: true,#}
+          columntype: 'checkbox' },
         { text: 'Text Units', datafield: 'text_units', width: 100,
           align: 'center', cellsalign: 'center' }
       ];

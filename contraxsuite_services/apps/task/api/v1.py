@@ -33,12 +33,12 @@ from django.conf.urls import url
 
 # Project imports
 from apps.task.views import *
-from apps.common.mixins import JqMixin
+from apps.common.mixins import JqListAPIMixin
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.0/LICENSE"
-__version__ = "1.1.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.1/LICENSE"
+__version__ = "1.1.1"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -81,14 +81,9 @@ class TaskSerializer(serializers.HyperlinkedModelSerializer):
         return result
 
 
-class TaskViewSet(JqMixin, viewsets.ReadOnlyModelViewSet):
+class TaskViewSet(JqListAPIMixin, viewsets.ReadOnlyModelViewSet):
     """
-    list: Task List\n
-        GET params:
-            - name: str
-            - name_contains: str
-            - user_id: int
-            - user__username: str
+    list: Task List
     retrieve: Retrieve Task
     """
     queryset = Task.objects.all()
@@ -311,8 +306,7 @@ class TaskStatusAPIView(APIView):
                        'time': task.time,
                        'date_start': task.date_start,
                        'user': task.user.username,
-                       'result': json.loads(task.celery_task_result.result)
-                       if task.celery_task_result else None}
+                       'result':task.result}
         except Task.DoesNotExist:
             message = "Task is not found"
         return JsonResponse(message, safe=False)

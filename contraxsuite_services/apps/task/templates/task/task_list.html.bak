@@ -1,0 +1,864 @@
+{% extends "base_list_ajax.html" %}
+{% load static %}
+
+{% block css_extra %}
+  {{ block.super }}
+  <link rel="stylesheet" href="{% static "theme/css/components/radio-checkbox.css" %}" type="text/css" />
+  <link rel="stylesheet" href="{% static "theme/css/components/bs-switches.css" %}" type="text/css" />
+  <link rel="stylesheet" type="text/css" href="https://cdnjs.cloudflare.com/ajax/libs/chosen/1.6.2/chosen.min.css">
+  <style>
+    .load-form-template {
+      display: none
+    }
+    .dropdown-submenu {
+      position: relative;
+    }
+    .dropdown-submenu>.dropdown-menu {
+      top: 0;
+      left: 100%;
+      margin-top: -6px;
+      margin-left: -1px;
+      -webkit-border-radius: 0 6px 6px 6px;
+      -moz-border-radius: 0 6px 6px;
+      border-radius: 0 6px 6px 6px;
+    }
+    .dropdown-submenu:hover>.dropdown-menu {
+      display: block;
+    }
+    .dropdown-submenu>a:after {
+      display: block;
+      content: " ";
+      float: right;
+      width: 0;
+      height: 0;
+      border-color: transparent;
+      border-style: solid;
+      border-width: 5px 0 5px 5px;
+      border-left-color: #ccc;
+      margin-top: 5px;
+      margin-right: -10px;
+    }
+    .dropdown-submenu:hover>a:after {
+      border-left-color: #fff;
+    }
+    .dropdown-submenu.pull-left {
+      float: none;
+    }
+    .dropdown-submenu.pull-left>.dropdown-menu {
+      left: -100%;
+      margin-left: 10px;
+      -webkit-border-radius: 6px 0 6px 6px;
+      -moz-border-radius: 6px 0 6px 6px;
+      border-radius: 6px 0 6px 6px;
+    }
+
+    li.divider {
+      margin: 5px 0 !important;
+      border-top: 1px solid;
+    }
+
+    .level-1, .level-2 {
+      margin-left: 40px;
+    }
+    .load-form p {
+      margin-bottom: 0;
+    }
+    .load-form label.checkbox-style-3-label {
+      margin-left: 0;
+    }
+    .load-form .fancy-title {
+      margin-bottom: 10px;
+      margin-top: 10px;
+    }
+    .load-form .fancy-title h4 {
+      padding-bottom: 3px;
+    }
+    input.as-btn {
+      display: none;
+    }
+    input.as-btn + label {
+      line-height: normal;
+      cursor:pointer;
+      padding: 0 4px;
+      background-color: #EFEFEF;
+      border-radius: 2px;
+      border: 1px solid #D0D0D0;
+      margin: 4px;
+    }
+    input.as-btn + label:hover {
+      border-color: #555;
+      background-color: #eee;
+      color: #555;
+    }
+    input.as-btn:checked + label {
+      border-color: #555;
+      background-color: #1ABC9C;
+      color: #fff;
+    }
+    .chosen-single {
+      height: 34px;
+      padding-top: 3px;
+    }
+    .checkbox-parent {
+      width: 30%;
+      display: inline-block;
+    }
+    .checkbox-child {
+      width: 60%;
+      display: inline-block;
+    }
+    .checkbox-child label {
+      margin-left: 5px;
+    }
+    .locate-form .helptext {
+      text-align: left;
+      margin-left: 43px;
+    }
+    .disabled {
+      opacity: 0.3
+    }
+  </style>
+{% endblock %}
+
+{% block button_block %}
+  {{ block.super }}
+  <div class="dropdown btn-group pull-left">
+    <a href="#" class="btn-u btn-sm"
+       data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+      Run Task<span class="caret"></span>
+    </a>
+    <ul class="dropdown-menu multi-level" role="menu" aria-labelledby="dropdownMenu">
+      <li class="dropdown-submenu">
+        <a class="dropdown-item" href="#" tabindex="-1">
+          <i class="fa fa-file-text-o"></i> Load Data</a>
+        <ul class="dropdown-menu">
+          <li class="dropdown-item">
+            <a class="task" href="#" tabindex="-1"
+               data-href="{% url "task:load-documents" %}"
+               data-btn-text="Load">
+              <i class="fa fa-file-text-o"></i>
+              Load Documents</a>
+          </li>
+          <li class="dropdown-item">
+            <a class="task-load" href="#"
+               data-href="{% url "task:load" %}"
+               data-btn-text="Load">
+              <i class="fa fa-bars"></i>
+              Load Dictionary Data</a>
+          </li>
+        </ul>
+      </li>
+
+      {% if custom_task_menu_item_templates|length > 0 %}
+        {% for template in custom_task_menu_item_templates %}
+          <li class="divider"></li>
+          {% include template %}
+        {% endfor %}
+      {% endif %}
+
+      <li class="divider"></li>
+      <li class="dropdown-item">
+        <a class="task" href="#"
+           data-href="{% url "task:locate" %}"
+           data-btn-text="Locate">
+          <i class="fa fa-search"></i>
+          Locate</a>
+      </li>
+      <li class="divider"></li>
+
+      <li class="dropdown-submenu">
+        <a class="dropdown-item" href="#" tabindex="-1">
+          <i class="fa fa-object-group"></i> Analyze</a>
+        <ul class="dropdown-menu">
+          <li class="dropdown-item">
+            <a class="task" href="#"
+               data-href="{% url "task:cluster" %}"
+               data-btn-text="Cluster">
+              <i class="fa fa-object-group"></i>
+              Cluster Documents/Text Units</a>
+          </li>
+          {% if active_classifiers %}
+            <li class="dropdown-item">
+              <a class="task" href="#"
+                 data-href="{% url "task:existed-classifier-classify" %}"
+                 data-btn-text="Classify">
+                <i class="fa fa-object-group"></i>
+                Classify Text Units (Use Existing Classifier)</a>
+            </li>
+          {% endif %}
+          <li class="dropdown-item">
+            <a class="task" href="#"
+               data-href="{% url "task:create-classifier-classify" %}"
+               data-btn-text="Classify">
+              <i class="fa fa-object-group"></i>
+              Classify Text Units (Create New Classifier)</a>
+          </li>
+          <li class="dropdown-item">
+            <a class="task" href="#"
+               data-href="{% url "task:similarity" %}"
+               data-btn-text="Search">
+              <i class="fa fa-copy"></i>
+              Identify Similar Documents/Text Units</a>
+          </li>
+          <li class="dropdown-item">
+            <a class="task" href="#"
+               data-href="{% url "task:party-similarity" %}"
+               data-btn-text="Search">
+              <i class="fa fa-copy"></i>
+              Identify Similar Parties</a>
+          </li>
+        </ul>
+      </li>
+      <li class="divider"></li>
+      <li class="dropdown-item">
+        <a class="task" href="#"
+           data-href="{% url "task:update-elasticsearch-index" %}"
+           data-btn-text="Update Index">
+          <i class="fa fa-refresh"></i>
+          Update Elasticsearch Index</a>
+      </li>
+      <li class="divider"></li>
+      <li class="dropdown-item">
+        <a class="task" href="#"
+           data-href="{% url "task:clean-tasks" %}"
+           data-btn-text="Clean"
+           data-type="red"
+           data-btn-class="btn-u btn-sm btn-d"
+           data-content="Clean tasks with <span class='tag tag-success'>SUCCESS</span> or <span class='tag tag-danger'>FAILURE</span> statuses?<br />
+                         Note: this task scheduled on Mondays.">
+          <i class="fa fa-trash"></i>
+          Clean Task List</a>
+      </li>
+    </ul>
+  </div>
+{% endblock %}
+
+{% block js_extra %}
+  <form class="popup-form ltr load-form-template">
+
+    <div class="fancy-title title-bottom-border">
+      <h4>Load Terms</h4>
+    </div>
+
+    <div class="level-1">
+      <input class="checkbox-style" id="_id_terms_accounting" name="terms_accounting" type="checkbox">
+      <label for="_id_terms_accounting" class="checkbox-style-3-label">Accounting</label>
+      <p class="level-2">
+        <input class="checkbox-style" id="_id_terms_accounting_1" name="terms_accounting_1" type="checkbox">
+        <label for="_id_terms_accounting_1" class="checkbox-style-3-label checkbox-small">IFRS FASB</label>
+        <span class="level-3">
+          <input class="as-btn" id="_id_terms_accounting_1_locale_en" name="terms_accounting_1_locale_en" type="checkbox">
+          <label for="_id_terms_accounting_1_locale_en">en</label>
+        </span>
+      </p>
+      <p class="level-2">
+        <input class="checkbox-style" id="_id_terms_accounting_2" name="terms_accounting_2" type="checkbox">
+        <label for="_id_terms_accounting_2" class="checkbox-style-3-label checkbox-small">UK GAAP</label>
+        <span class="level-3">
+          <input class="as-btn" id="_id_terms_accounting_2_locale_en" name="terms_accounting_2_locale_en" type="checkbox">
+          <label for="_id_terms_accounting_2_locale_en">en</label>
+        </span>
+      </p>
+      <p class="level-2">
+        <input class="checkbox-style" id="_id_terms_accounting_3" name="terms_accounting_3" type="checkbox">
+        <label for="_id_terms_accounting_3" class="checkbox-style-3-label checkbox-small">US FASB</label>
+        <span class="level-3">
+          <input class="as-btn" id="_id_terms_accounting_3_locale_en" name="terms_accounting_3_locale_en" type="checkbox">
+          <label for="_id_terms_accounting_3_locale_en">en</label>
+        </span>
+      </p>
+      <p class="level-2">
+        <input class="checkbox-style" id="_id_terms_accounting_4" name="terms_accounting_4" type="checkbox">
+        <label for="_id_terms_accounting_4" class="checkbox-style-3-label checkbox-small">US GAAP</label>
+        <span class="level-3">
+          <input class="as-btn" id="_id_terms_accounting_4_locale_en" name="terms_accounting_4_locale_en" type="checkbox">
+          <label for="_id_terms_accounting_4_locale_en">en</label>
+        </span>
+      </p>
+      <p class="level-2">
+        <input class="checkbox-style" id="_id_terms_accounting_5" name="terms_accounting_5" type="checkbox">
+        <label for="_id_terms_accounting_5" class="checkbox-style-3-label checkbox-small">US GASB</label>
+        <span class="level-3">
+          <input class="as-btn" id="_id_terms_accounting_5_locale_en" name="terms_accounting_5_locale_en" type="checkbox">
+          <label for="_id_terms_accounting_5_locale_en">en</label>
+        </span>
+      </p>
+    </div>
+
+    <div class="level-1">
+      <input class="checkbox-style" id="_id_terms_scientific" name="terms_scientific" type="checkbox">
+      <label for="_id_terms_scientific" class="checkbox-style-3-label">Scientific</label>
+      <p class="level-2">
+        <input class="checkbox-style" id="_id_terms_scientific_1" name="terms_scientific_1" type="checkbox">
+        <label for="_id_terms_scientific_1" class="checkbox-style-3-label checkbox-small">US Federal Hazardous Waste</label>
+        <span class="level-3">
+          <input class="as-btn" id="_id_terms_scientific_1_locale_en" name="terms_scientific_1_locale_en" type="checkbox">
+          <label for="_id_terms_scientific_1_locale_en">en</label>
+        </span>
+      </p>
+    </div>
+
+    <div class="level-1">
+      <input class="checkbox-style" id="_id_terms_financial" name="terms_financial" type="checkbox">
+      <label for="_id_terms_financial" class="checkbox-style-3-label">Financial</label>
+      <p class="level-2">
+        <input class="checkbox-style" id="_id_terms_financial_1" name="terms_financial_1" type="checkbox">
+        <label for="_id_terms_financial_1" class="checkbox-style-3-label checkbox-small">Common Financial Terms</label>
+        <span class="level-3">
+          <input class="as-btn" id="_id_terms_financial_1_locale_en" name="terms_financial_1_locale_en" type="checkbox">
+          <label for="_id_terms_financial_1_locale_en">en</label>
+        </span>
+      </p>
+    </div>
+
+    <div class="level-1">
+      <input class="checkbox-style" id="_id_terms_legal" name="terms_legal" type="checkbox">
+      <label for="_id_terms_legal" class="checkbox-style-3-label">Legal</label>
+      <p class="level-2">
+        <input class="checkbox-style" id="_id_terms_legal_1" name="terms_legal_1" type="checkbox">
+        <label for="_id_terms_legal_1" class="checkbox-style-3-label checkbox-small">Common Law (Black's 1910 Law Dictionary)</label>
+        <span class="level-3">
+          <input class="as-btn" id="_id_terms_legal_1_locale_en" name="terms_legal_1_locale_en" type="checkbox">
+          <label for="_id_terms_legal_1_locale_en">en</label>
+        </span>
+      </p>
+      <p class="level-2">
+        <input class="checkbox-style" id="_id_terms_legal_2" name="terms_legal_2" type="checkbox">
+        <label for="_id_terms_legal_2" class="checkbox-style-3-label checkbox-small">US Code of Federal Regulations</label>
+        <span class="level-3">
+          <input class="as-btn" id="_id_terms_legal_2_locale_en" name="terms_legal_2_locale_en" type="checkbox">
+          <label for="_id_terms_legal_2_locale_en">en</label>
+        </span>
+      </p>
+      <p class="level-2">
+        <input class="checkbox-style" id="_id_terms_legal_3" name="terms_legal_3" type="checkbox">
+        <label for="_id_terms_legal_3" class="checkbox-style-3-label checkbox-small">United States Code</label>
+        <span class="level-3">
+          <input class="as-btn" id="_id_terms_legal_3_locale_en" name="terms_legal_3_locale_en" type="checkbox">
+          <label for="_id_terms_legal_3_locale_en">en</label>
+        </span>
+      </p>
+      <p class="level-2">
+        <input class="checkbox-style" id="_id_terms_legal_4" name="terms_legal_4" type="checkbox">
+        <label for="_id_terms_legal_4" class="checkbox-style-3-label checkbox-small">Common Law (top 1000)</label>
+        <span class="level-3">
+          <input class="as-btn" id="_id_terms_legal_4_locale_en" name="terms_legal_4_locale_en" type="checkbox">
+          <label for="_id_terms_legal_4_locale_en">en</label>
+        </span>
+      </p>
+    </div>
+
+    <div class="level-1">
+      <label for="_id_terms_file_path">Custom file path:</label>
+      <input id="_id_terms_file_path" name="terms_file_path" maxlength="1000" type="text"><br />
+      <small>Relative path to a data file. A file should be in "&lt;ROOT_DIR&gt;/data/" or "&lt;APPS_DIR&gt;/media/data/documents/" folder.</small>
+    </div>
+
+    <div class="level-1">
+      <input class="checkbox-style" id="_id_terms_delete" name="terms_delete" type="checkbox">
+      <label for="_id_terms_delete" class="checkbox-style-3-label">Delete existing Terms</label>
+    </div>
+
+    {% if 'court' in available_locators %}
+      <div class="fancy-title title-bottom-border">
+        <h4>Load Courts</h4>
+      </div>
+
+      <div class="level-1">
+        <input class="checkbox-style" id="_id_courts" name="courts" type="checkbox">
+        <label for="_id_courts" class="checkbox-style-3-label">Courts</label>
+        <p class="level-2">
+          <input class="checkbox-style" id="_id_courts_1" name="courts_1" type="checkbox">
+          <label for="_id_courts_1" class="checkbox-style-3-label checkbox-small">Canadian Courts</label>
+        <span class="level-3">
+          <input class="as-btn" id="_id_courts_1_locale_en" name="courts_1_locale_en" type="checkbox">
+          <label for="_id_courts_1_locale_en">en</label>
+        </span>
+        </p>
+        <p class="level-2">
+          <input class="checkbox-style" id="_id_courts_2" name="courts_2" type="checkbox">
+          <label for="_id_courts_2" class="checkbox-style-3-label checkbox-small">US Courts</label>
+        <span class="level-3">
+          <input class="as-btn" id="_id_courts_2_locale_en" name="courts_2_locale_en" type="checkbox">
+          <label for="_id_courts_2_locale_en">en</label>
+        </span>
+        </p>
+      </div>
+      <p class="level-1">
+        <label for="_id_courts_file_path">Custom file path:</label>
+        <input id="_id_courts_file_path" name="courts_file_path" maxlength="1000" type="text"><br />
+        <small>Relative path to a data file. A file should be in "&lt;ROOT_DIR&gt;/data/" or "&lt;APPS_DIR&gt;/media/data/documents/" folder.</small>
+      </p>
+      <p class="level-1">
+        <input class="checkbox-style" id="_id_courts_delete" name="courts_delete" type="checkbox">
+        <label for="_id_courts_delete" class="checkbox-style-3-label">Delete existing Courts</label>
+      </p>
+    {% endif %}
+
+    <div class="fancy-title title-bottom-border">
+      <h4>Load Geo Entities</h4>
+    </div>
+
+    <div class="level-1">
+      <input class="checkbox-style" id="_id_geoentities" name="geoentities" type="checkbox">
+      <label for="_id_geoentities" class="checkbox-style-3-label">Geo Entities</label>
+      <p class="level-2">
+        <input class="checkbox-style" id="_id_geoentities_1" name="geoentities_1" type="checkbox">
+        <label for="_id_geoentities_1" class="checkbox-style-3-label checkbox-small">Geopolitical Divisions</label>
+        <span class="level-3">
+          <input class="as-btn" id="_id_geoentities_1_locale_multi" name="geoentities_1_locale_multi" type="checkbox">
+          <label for="_id_geoentities_1_locale_multi">multi</label>
+        </span>
+      </p>
+    </div>
+    <p class="level-1">
+      <label for="_id_geoentities_file_path">Custom file path:</label>
+      <input id="_id_geoentities_file_path" name="geoentities_file_path" maxlength="1000" type="text"><br />
+      <small>Relative path to a data file. A file should be in "&lt;ROOT_DIR&gt;/data/" or "&lt;APPS_DIR&gt;/media/data/documents/" folder.</small>
+    </p>
+    <p class="level-1">
+      <input class="checkbox-style" id="_id_geoentities_delete" name="geoentities_delete" type="checkbox">
+      <label for="_id_geoentities_delete" class="checkbox-style-3-label">Delete existing Geo Entities, Geo Aliases and Geo Relations</label>
+    </p>
+    <br />
+
+  </form>
+
+  {{ block.super }}
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-confirm/3.1.1/jquery-confirm.min.js"></script>
+  <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/jQuery-Knob/1.2.13/jquery.knob.min.js"></script>
+  <script type="text/javascript" src="{% static "theme/js/components/bs-switches.js" %}"></script>
+  <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/chosen/1.6.2/chosen.jquery.min.js"></script>
+  <script type="text/javascript">
+    var show_options = function($form){
+      {# clustering form #}
+      if ($('.cluster-form').length) {
+        $form.find('[name="do_cluster_documents"], [name="do_cluster_text_units"]').parent('p').show();
+        var using =  $form.find('select[name="using"]').val();
+        var is_simple =  $form.find('input[name="options"]').is(':checked');
+        if (using == 'MiniBatchKMeans') {
+          var advanced = ', [name="kmeans_max_iter"], [name^="mb_kmeans_"]';
+          var hidden_advanced = is_simple ? advanced : '';
+          var visible_advanced = is_simple ? '' : advanced;
+          $form.find('[name="n_clusters"]' + visible_advanced).parent('p').show();
+          $form.find('[name^="kmeans_n_init"], [name^="birch_"], [name^="dbscan_"], [name^="ls_"]' + hidden_advanced).parent('p').hide()
+        }
+        else if (using == 'KMeans') {
+          advanced = ', [name^="kmeans_"]';
+          hidden_advanced = is_simple ? advanced : '';
+          visible_advanced = is_simple ? '' : advanced;
+          $form.find('[name="n_clusters"]' + visible_advanced).parent('p').show();
+          $form.find('[name^="mb_kmeans_"], [name^="birch_"], [name^="dbscan_"], [name^="ls_"]' + hidden_advanced).parent('p').hide()
+        }
+        else if (using == 'Birch') {
+          advanced = ', [name^="birch_"]';
+          hidden_advanced = is_simple ? advanced : '';
+          visible_advanced = is_simple ? '' : advanced;
+          $form.find('[name="n_clusters"]' + visible_advanced).parent('p').show();
+          $form.find('[name^="kmeans_"], [name^="mb_kmeans_"], [name^="dbscan_"], [name^="ls_"]' + hidden_advanced).parent('p').hide()
+        }
+        else if (using == 'DBSCAN') {
+          advanced = ', [name^="dbscan_"]';
+          hidden_advanced = is_simple ? advanced : '';
+          if (!is_simple) {
+            $form.find('[name^="dbscan_"]').parent('p').show();
+          }
+          $form.find('[name="n_clusters"], [name^="kmeans_"], [name^="mb_kmeans_"], [name^="birch_"], [name^="ls_"]' + hidden_advanced).parent('p').hide()
+        }
+        else if (using == 'LabelSpreading') {
+          advanced = '[name="ls_max_iter"]';
+          hidden_advanced = is_simple ? advanced : '';
+          visible_advanced = is_simple ? '' : advanced;
+          var cluster_docs = $form.find('[name="do_cluster_documents"]').is(':checked');
+          var visible_doc_props = cluster_docs ? '[name="ls_documents_property"]' : '';
+          var hidden_doc_props = cluster_docs ? '' : '[name="ls_documents_property"]';
+          var cluster_tus = $form.find('[name="do_cluster_text_units"]').is(':checked');
+          var visible_tu_props = cluster_tus ? '[name="ls_text_units_property"]' : '';
+          var hidden_tu_props = cluster_tus ? '' : '[name="ls_text_units_property"]';
+          var visible = $.grep([visible_advanced, visible_doc_props, visible_tu_props], function(n){ return (n!==''); });
+          visible = visible.join(', ');
+          $form.find(visible).parent('p').show();
+          var hidden = $.grep([hidden_advanced, hidden_doc_props, hidden_tu_props], function(n){ return (n!==''); });
+          hidden = hidden ? ', ' + hidden.join(', ') : '';
+          $form.find(
+              '[name="n_clusters"], [name^="kmeans_"], [name^="mb_kmeans_"], [name^="dbscan_"]' +
+              hidden).parent('p').hide();
+          if (!$form.find('[name="ls_documents_property"]').length){
+            $form.find('[name="do_cluster_documents"]').parent('p').hide()
+          }
+          else if (!$form.find('[name="ls_text_units_property"]').length){
+            $form.find('[name="do_cluster_text_units"]').parent('p').hide()
+          }
+        }
+      }
+          {# classify form #}
+      else if ($('.classify-form').length){
+        var algorithm = $('select[name="algorithm"]').val();
+        is_simple = $('input[name="options"]').is(':checked');
+        if (algorithm == 'SVC') {
+          hidden_advanced = is_simple ? ', [name^="svc_"]' : '';
+          if (!is_simple) {
+            $form.find('[name^="svc_"]').parent('p').show();
+          }
+          $form.find('[name^="mnb_"], [name^="rfc_etc_"], [name^="lrcv_"]' + hidden_advanced).parent('p').hide()
+        }
+        else if (algorithm == 'MultinomialNB') {
+          hidden_advanced = is_simple ? ', [name^="mnb_"]' : '';
+          if (!is_simple) {
+            $form.find('[name^="mnb_"]').parent('p').show();
+          }
+          $form.find('[name^="svc_"], [name^="rfc_etc_"], [name^="lrcv_"]' + hidden_advanced).parent('p').hide()
+        }
+        else if (algorithm == 'ExtraTreesClassifier' || algorithm == 'RandomForestClassifier') {
+          hidden_advanced = is_simple ? ', [name^="rfc_etc_"]' : '';
+          if (!is_simple) {
+            $form.find('[name^="rfc_etc_"]').parent('p').show();
+          }
+          $form.find('[name^="svc_"], [name^="mnb_"], [name^="lrcv_"]' + hidden_advanced).parent('p').hide()
+        }
+        else if (algorithm == 'LogisticRegressionCV') {
+          hidden_advanced = is_simple ? ', [name^="lrcv_"]' : '';
+          if (!is_simple) {
+            $form.find('[name^="lrcv_"]').parent('p').show();
+          }
+          $form.find('[name^="svc_"], [name^="mnb_"], [name^="rfc_etc_"]' + hidden_advanced).parent('p').hide()
+        }
+      }
+    };
+    var onLoadJC = function(jc){
+      var $form = jc.$content;
+      {# activate chosen plugin #}
+      $form.find('select.chosen:enabled').chosen();
+      $form.find('form > p:visible:last:has(select)').css('height', '80px');
+      $form.find('.chosen-single').css({'height': '34px', 'padding-top': '3px'});
+      {# activate bt-switch plugin #}
+      $form.find(".bt-switch").bootstrapSwitch();
+      {# activate max-one-of class #}
+      $form.find('input[class*="max-one-of"]').change(function () {
+        var cls = $(this).attr('class').split(' ');
+        if (this.checked) {
+          $('.' + cls.join('.')).not(this).prop("checked", false)
+        }
+      });
+      {# activate min-one-of class #}
+      $form.find('input[class*="min-one-of"]').change(function () {
+        var cls = $(this).attr('class').split(' ');
+        if (!$('input[class*="min-one-of"]:checked').length) {
+          $('.' + cls.join('.')).not(this).first().prop("checked", true)
+        }
+      });
+      {# activate switcher class #}
+      $form.find('.switcher-off').parent('p').toggle();
+      $form.find('.switcher').change(function () {
+        $form.find('[class*="switcher-"]').parent('p').toggle()
+      });
+      {# activate locate-all checkbox #}
+      $form.find('[name="locate_all"]').click(function () {
+        var checkBoxes = $form.find('[id$="_locate"]');
+        checkBoxes.trigger("click");
+      });
+      {# locate form #}
+      if ($form.find('form.locate-form').length){
+        {# remove if locate #}
+        $form.find('[name$="_locate"]').change(function(){
+          $form.find('[name$="' + $(this).prop('name').replace('locate', 'delete') + '"]')
+              .prop("checked", $(this).is(':checked'))
+        });
+        {# uncheck locate if not remove #}
+        $form.find('[name$="_delete"]').change(function(){
+          if (!$(this).is(':checked')){
+            $form.find('[name$="' + $(this).prop('name').replace('delete', 'locate') + '"]')
+                .prop("checked", false)
+          }
+        });
+        {# LocateGeoEntities: locate if priority checked #}
+        $form.find('[name="LocateGeoEntities_priority"]').change(function(){
+          if ($(this).is(':checked')){
+            $form.find('[name="LocateGeoEntities_locate"]').prop("checked", true)
+          }
+        });
+        {# LocateGeoEntities: uncheck priority if locate unchecked #}
+        $form.find('[name="LocateGeoEntities_locate"]').change(function(){
+          if (!$(this).is(':checked')){
+            $form.find('[name="LocateGeoEntities_priority"]').prop("checked", false)
+          }
+        });
+        {# LocateCurrencies: check all "use .." if locate checked #}
+        $form.find('[name="LocateCurrencies_locate"]').change(function(){
+          $form.find('[name^="LocateCurrencies_use_"]')
+              .prop("checked", $(this).is(':checked'))
+        });
+        {# LocateCurrencies: check locate if one of "use .." checked #}
+        $form.find('[name^="LocateCurrencies_use_"]').change(function(){
+          $form.find('[name^="LocateCurrencies_locate"]')
+              .prop("checked", true)
+        });
+        {# LocateCurrencies: uncheck all if delete unchecked #}
+        $form.find('[name="LocateCurrencies_delete"]').change(function(){
+          if (!$(this).is(':checked')){
+            $form.find('[name^="LocateCurrencies_use_"]')
+                .prop("checked", false)
+          }
+        });
+      }
+      {# clustering / classify #}
+      $form.find('[name="do_cluster_documents"], ' +
+          '[name="do_cluster_text_units"], ' +
+          'select[name="using"], select[name="algorithm"], ' +
+          'input[name="options"]').on('change switchChange.bootstrapSwitch', function () {
+        show_options($form)
+      });
+      show_options($form);
+      // activate form using small delay to enable all plugins !!!
+      $form.find('input[type="checkbox"]').prop("disabled", false);
+      $form.find('form').animate({opacity: 1}, 400);
+    };
+
+    $('.task').click(function(){
+      var $that = $(this);
+      var jc = $.confirm({
+        title: 'Are you sure?',
+        backgroundDismiss: true,
+        content: $that.data('content') || function(){
+          var self = this;
+          $.get($that.data('href')).done(function(data){
+            var content = '<form class="' + data.form_class + '">' +
+                '<p class="header">' + data.header + '</p>' +
+                data.form_data + '</form>';
+            var $content = $(content);
+            $content.find('input.checkbox-style').each(function(){
+              $(this).parent().addClass('checkbox-ltr-full-width');
+            });
+            $content.find('input.checkbox-parent').each(function(){
+              $(this).parent().addClass('checkbox-parent');
+            });
+            $content.find('input.checkbox-child').each(function(){
+              $(this).parent().addClass('checkbox-child');
+            });
+            self.setContent($content);
+            // disable form checkboxes for 1 s to allow to activate all handlers firstly
+            $content.find('input[type="checkbox"]:not(.bt-switch)').prop("disabled", true);
+            $content.addClass('disabled');
+          }).fail(function(xhr) {
+            jc.close();
+            $.alert({
+              icon: 'fa fa-warning text-danger',
+              title: xhr.responseText,
+              type: 'red',
+              content: '',
+              columnClass: 'col-md-6 offset-md-3',
+              onClose: function () {
+                $('.jqxgrid').jqxGrid('updatebounddata')
+              }
+            })
+          })
+        },
+        onContentReady: function(){
+          setTimeout(function() {
+            onLoadJC(jc);
+          }, 1000);
+        },
+        columnClass: 'col-md-8 offset-md-2',
+        type: $that.data('type') || 'blue',
+        icon: 'fa fa-warning text-warning',
+        buttons: {
+          confirm: {
+            text: $that.data('btn-text'),
+            btnClass: $that.data('btn-class') || 'btn-u btn-sm',
+            action: function(){
+              var jc = this;
+              var form = jc.$content.find('form');
+              form.find('.error').remove();
+              $.post($that.data('href'), form.serialize())
+                  .done(function(data){
+                    jc.close();
+                    $.alert({
+                      icon: 'fa fa-spinner fa-spin text-warning',
+                      title: 'Working!',
+                      type: 'orange',
+                      content: data,
+                      columnClass: 'col-md-4 offset-md-4',
+                      onClose: function(){
+                        $('.jqxgrid').jqxGrid('updatebounddata')
+                      }
+                    });
+                  })
+                  .fail(function(data){
+                    $.each(data.responseJSON, function(field, error){
+                      var error_p = '<p class="error">' + error[0] + '</p>';
+                      form.find('[name=' + field + ']').parent().prepend(error_p)
+                    })
+                  });
+              return false
+            }
+          },
+          cancel: {
+            btnClass: 'btn-u btn-sm btn-l'
+          }
+        }
+      });
+    });
+
+    $('.task-load').click(function(){
+      var $that = $(this);
+      $.confirm({
+        title: 'Load data from github repository or from filesystem.',
+        backgroundDismiss: true,
+        content: function(){
+          var $form = $('.load-form-template').clone().toggleClass('load-form-template load-form');
+          $form.find('input').each(function(n, el){
+            $(el).attr('id', $(el).attr('id').replace('_id', 'id'))
+          });
+          $form.find('label').each(function(n, el){
+            $(el).attr('for', $(el).attr('for').replace('_id', 'id'))
+          });
+          return $form[0].outerHTML;
+        },
+        onContentReady: function(){
+          $('.level-1>input').change(function() {
+            $(this).parent().find('.level-2>input').prop('checked', $(this).is(':checked'));
+          });
+          $('.level-1>input, .level-2>input').change(function() {
+            if ($(this).is(':checked')){
+              $(this).parent().find('label+.level-3>input').prop('checked', true);
+            }
+            else {
+              $(this).parent().find('label+.level-3>input').prop('checked', false);
+            }
+          });
+          $('.level-2>input').change(function(){
+            var level_id = $(this).prop('id').replace(/_\d+$/,'');
+            $(this).parents('.level-1').find('input').first().prop('checked', $('[id^="' + level_id + '_"]:checked').length > 0);
+          });
+          $('.level-3>input').change(function(){
+            var level_id = $(this).prop('id').replace(/_[^_]+$/,'');
+            var $parent = $(this).parents('.level-2').find('input').first();
+            $parent.prop('checked', $('[id^="' + level_id + '_"]:checked').length > 0);
+            var parent_id = $parent.prop('id').replace(/_\d+$/,'');
+            $(this).parents('.level-1').find('input').first().prop('checked', $('[id^="' + parent_id + '_"]:checked').length > 0);
+          });
+        },
+        columnClass: 'col-md-8 offset-md-2',
+        type: 'blue',
+        icon: 'fa fa-download text-info',
+        buttons: {
+          confirm: {
+            text: $that.data('btn-text'),
+            btnClass: $that.data('btn-class') || 'btn-u btn-sm',
+            action: function(){
+              var jc = this;
+              var form = jc.$content.find('form');
+              var any_input = $(".load-form input[type='text']").filter(function() {
+                return this.value.length !== 0;
+              }).length;
+              var any_checkbox = $('.load-form input:checked').length;
+              if (any_input == 0 && any_checkbox == 0){
+                return false
+              }
+              $.post($that.data('href'), form.serialize())
+                  .done(function(data){
+                    jc.close();
+                    $.alert({
+                      icon: 'fa fa-spinner fa-spin text-warning',
+                      title: 'Working!',
+                      type: 'orange',
+                      content: data,
+                      columnClass: 'col-md-4 offset-md-4',
+                      onClose: function(){
+                        $('.jqxgrid').jqxGrid('updatebounddata')
+                      }
+                    });
+                  })
+                  .fail(function(data){
+                    console.log(data)
+                  });
+              return false
+            }
+          },
+          cancel: {
+            btnClass: 'btn-u btn-sm btn-l'
+          }
+        }
+      });
+    });
+
+    $(document).ready(function () {
+      var datafields = [
+        { name: 'pk', type: 'int' },
+        { name: 'name', type: 'string' },
+        { name: 'description', type: 'string' },
+        { name: 'user__username', type: 'string' },
+        { name: 'date_start', type: 'date' },
+        { name: 'date_done', type: 'date' },
+        { name: 'time', type: 'string' },
+        { name: 'progress', type: 'float' },
+        { name: 'has_error', type: 'bool' },
+        { name: 'status', type: 'string' },
+        { name: 'url', type: 'string' },
+        { name: 'purge_url', type: 'string' },
+        { name: 'result_links' }
+      ];
+      var menu_renderer = function(row, event) {
+        var grid = $(event.currentTarget).parents('.jqxgrid');
+        row = grid.jqxGrid('getrowdata', row);
+        var menu_data = [
+          { url: row.url,
+            icon: 'fa fa-info-circle',
+            text: 'View Details'},
+          { url: row.purge_url,
+            cls: 'purge-task',
+            icon: 'fa fa-eraser',
+            text: 'Purge Task'}
+        ];
+        $.each(row.result_links, function(n, i){
+          menu_data.push(
+              { url: i.link,
+                icon: 'fa fa-bars',
+                text: i.name}
+          )
+        });
+        show_menu(menu_data, grid, row.pk, 300);
+      };
+      var status_renderer = function(index, columnfield, value, defaulthtml, columnproperties, row){
+        var cls = row.has_error ? 'danger' : row.status == 'SUCCESS'
+            ? 'success' : row.status == 'PENDING'
+            ? 'warning' : row.status == 'FAILURE'
+            ? 'danger' : 'default';
+        value = row.has_error ? 'FAILURE' : row.status;
+        var new_value = '<span class="badge badge-' + cls + '">' + value + '</span>';
+        return renderCell(defaulthtml, new_value);
+      };
+      var columns = [
+        { text: 'Task Name', datafield: 'name', width: 'auto',
+          align: 'center', cellsalign: 'left',
+          cellsrenderer: defaultLinkFormatter },
+        { text: 'Description', datafield: 'description', width: 'auto',
+          align: 'center', cellsalign: 'left' },
+        { text: 'User', datafield: 'user__username', width: 100,
+          align: 'center', cellsalign: 'center' },
+        { text: 'Date Started', datafield: 'date_start', width: 120,
+          filtertype: 'date', cellsformat: 'MM-dd-yyyy HH:mm',
+          align: 'center', cellsalign: 'center' },
+        { text: 'Date Done', datafield: 'date_done', width: 120,
+          filtertype: 'date', cellsformat: 'MM-dd-yyyy HH:mm',
+          align: 'center', cellsalign: 'center' },
+        { text: 'Time', datafield: 'time', width: 100,
+          align: 'center', cellsalign: 'center' },
+        { text: 'Progress', datafield: 'progress', width: 100,
+          cellsrenderer: knob_cellsrenderer,
+          align: 'center', cellsalign: 'center' },
+        { text: 'Status', datafield: 'status', width: 80,
+          cellsrenderer: status_renderer,
+          align: 'center', cellsalign: 'center' },
+        { text: 'Action', datafield: 'url', width: 60,
+          align: 'center', exportable: false,
+          columntype: 'button',
+          sortable: false, filterable: false, menu: false,
+          cellsrenderer: function(){return 'Menu'},
+          buttonclick: menu_renderer }
+      ];
+      var custom_grid_options = { rowsheight: 60 };
+      draw_grid(".jqxgrid", datafields, columns, true, null, custom_grid_options);
+    });
+  </script>
+{% endblock %}
