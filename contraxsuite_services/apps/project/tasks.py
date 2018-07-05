@@ -27,9 +27,8 @@ import sys
 
 # Third-party imports
 import numpy as np
-from django_celery_results.models import TaskResult
 from sklearn.feature_extraction.text import TfidfVectorizer
-from sklearn.cluster import Birch, DBSCAN, KMeans, MiniBatchKMeans
+from sklearn.cluster import Birch, KMeans, MiniBatchKMeans
 from sklearn.decomposition import PCA
 
 # Django imports
@@ -38,17 +37,15 @@ from django.utils.timezone import now
 # Project imports
 from apps.analyze.models import DocumentCluster
 from apps.celery import app
-from apps.common.utils import fast_uuid
 from apps.document.models import Document
-from apps.project.models import Project, ProjectClustering
-from apps.task.models import Task
-from apps.task.tasks import BaseTask, TaskControl
+from apps.project.models import Project, ProjectClustering, UploadSession
+from apps.task.tasks import BaseTask
 from urls import custom_apps
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.0/LICENSE"
-__version__ = "1.1.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.1/LICENSE"
+__version__ = "1.1.1"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -61,6 +58,8 @@ class ClusterProjectDocuments(BaseTask):
     """
     name = 'Cluster Project Documents'
 
+    queue = 'high_priority'
+
     def process(self, **kwargs):
 
         n_clusters = kwargs.get('n_clusters')
@@ -70,15 +69,15 @@ class ClusterProjectDocuments(BaseTask):
         project_clustering_id = kwargs.get('project_clustering_id')
         project_clustering = ProjectClustering.objects.get(
             pk=project_clustering_id) if project_id else None
-        project_clustering.task = Task.objects.get(pk=self.task.main_task_id)
+        project_clustering.task = self.task
         project_clustering.save()
 
         project = project_clustering.project
 
-        self.task.log_info('Start clustering documents for project id={}'.format(project_id))
-        self.task.log_info('Clustering method: "{}", n_clusters={}'.format(method, n_clusters))
+        self.log_info('Start clustering documents for project id={}'.format(project_id))
+        self.log_info('Clustering method: "{}", n_clusters={}'.format(method, n_clusters))
 
-        self.task.update_subtasks_total(3)
+        self.set_push_steps(3)
 
         # get documents data
         documents = Document.objects.filter(project_id=project_id)
@@ -137,7 +136,7 @@ class ClusterProjectDocuments(BaseTask):
         #         leaf_size=30)
         m.fit(X)
 
-        self.task.push()
+        self.push()
 
         XX = X.toarray()
         pca = PCA(n_components=2).fit(XX)
@@ -170,7 +169,7 @@ class ClusterProjectDocuments(BaseTask):
                         'coord': data2d[i].tolist(),
                         'cluster_id': str(clusters[i])} for i in range(docs_count)]
 
-        self.task.push()
+        self.push()
 
         clusters_data = {}
         created_date = now()
@@ -204,8 +203,8 @@ class ClusterProjectDocuments(BaseTask):
         project_clustering.metadata = result
         project_clustering.save()
 
-        self.task.push()
-        self.task.log_info('Clustering completed')
+        self.push()
+        self.log_info('Clustering completed')
 
         return result
 
@@ -226,7 +225,7 @@ class ReassignProjectClusterDocuments(BaseTask):
         documents = Document.objects.filter(documentcluster__pk__in=cluster_ids)
         documents.update(project_id=new_project, document_type=new_project.type)
 
-        task_model = self.task.load_task_model()
+        task_model = self.task
         task_model.metadata = {
             'task_name': 'reassigning',
             'old_project_id': project_id,
@@ -239,7 +238,7 @@ class ReassignProjectClusterDocuments(BaseTask):
             'date': now().isoformat(),
             'new_project_id': new_project_id,
             'cluster_ids': cluster_ids,
-            'task_id': self.task.main_task_id
+            'task_id': task_model.main_task_id
         }
         p_cl = ProjectClustering.objects.get(document_clusters__pk=cluster_ids[0])
         reassignings = p_cl.metadata.get('reassigning', [])
@@ -259,16 +258,13 @@ class ReassignProjectClusterDocuments(BaseTask):
                 task_funcs.append(getattr(detector_task, 'detect_field_values_for_document'))
 
         if task_funcs:
-            self.task.update_subtasks_total(documents.count() * len(task_funcs))
-
             sub_tasks = []
             for document in documents:
                 for task_func in task_funcs:
                     sub_task = task_func.subtask(
-                        args=(document.id, False, None, self.task),
-                        task_id='%d_%s' % (self.task.main_task_id, fast_uuid()))
+                        args=(document.id, False, None))
                     sub_tasks.append(sub_task)
-            TaskControl.chord_and_clean(self.task, sub_tasks, {})
+            self.chord_and_clean(sub_tasks, {})
 
         # TODO: metadata[project_id] in tasks related with reassigned documents
         # TODO: should be updated to new project id value?
@@ -289,14 +285,28 @@ class CleanProject(BaseTask):
         project.cleanup()
 
         # store data about cleanup in ProjectCleanup Task
-        task_model = self.task.load_task_model()
+        task_model = self.task
         task_model.metadata = {
             'task_name': 'clean-project',
             '_project_id': project_id  # added "_" to avoid detecting task as project task
         }
         task_model.save()
 
-        self.task.force_complete()
+
+@app.task(name='advanced_celery.track_session_completed', bind=True)
+def track_session_completed(*args, **kwargs):
+    """
+    Filter sessions where users were notified that upload job started
+    i.e. a user set "send email notifications" flag,
+    filter sessions where users were not notified that a session job is completed and
+    check that upload job is completed,
+    send notification email.
+    """
+    for session in UploadSession.objects.filter(
+            notified_upload_started=True,
+            notified_upload_completed=False):
+        if session.is_completed():
+            session.notify_upload_completed()
 
 
 app.register_task(ClusterProjectDocuments())

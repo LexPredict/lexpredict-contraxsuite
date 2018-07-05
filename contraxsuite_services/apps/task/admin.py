@@ -32,12 +32,12 @@ from simple_history.admin import SimpleHistoryAdmin
 from django.contrib import admin
 
 # Project imports
-from .models import Task
+from .models import Task, TaskConfig
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.0/LICENSE"
-__version__ = "1.1.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.1/LICENSE"
+__version__ = "1.1.1"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -47,11 +47,19 @@ class TaskAdmin(SimpleHistoryAdmin):
     search_fields = ('name',)
 
 
+class TaskConfigAdmin(SimpleHistoryAdmin):
+    list_display = (
+        'name', 'soft_time_limit')
+    search_fields = ('name',)
+
+
 class CeleryResultAdmin(admin.ModelAdmin):
     list_display = ('task_id', 'status', 'date_done')
     search_fields = ('task_id',)
 
+
 admin.site.register(Task, TaskAdmin)
+admin.site.register(TaskConfig, TaskConfigAdmin)
 
 admin.site.unregister(TaskResult)
 admin.site.register(TaskResult, CeleryResultAdmin)

@@ -1,0 +1,68 @@
+location / {
+    alias /contraxsuite_frontend/;
+    index index.html index.htm;
+}
+
+location /advanced {
+    uwsgi_pass  ${DOCKER_HOST_NAME_UWSGI}:3031;
+    uwsgi_read_timeout 300;
+    include     /etc/nginx/uwsgi_params;
+}
+
+location /api {
+    uwsgi_pass  ${DOCKER_HOST_NAME_UWSGI}:3031;
+    uwsgi_read_timeout 300;
+    include     /etc/nginx/uwsgi_params;
+}
+
+location /rest-auth {
+    uwsgi_pass  ${DOCKER_HOST_NAME_UWSGI}:3031;
+    uwsgi_read_timeout 300;
+    include     /etc/nginx/uwsgi_params;
+}
+
+location ${DOCKER_DJANGO_BASE_PATH}static/ {
+    rewrite  ^${DOCKER_DJANGO_BASE_PATH}static/(.*) /$1 break;
+    root /contraxsuite_services/staticfiles/;
+}
+
+location ${DOCKER_JUPYTER_BASE_URL} {
+	proxy_pass http://${DOCKER_JUPYTER_HOST_NAME}:${DOCKER_JUPYTER_PORT};
+	proxy_set_header X-Forwarded-For ${DOLLAR}proxy_add_x_forwarded_for;
+    proxy_set_header X-Real-IP ${DOLLAR}remote_addr;
+    proxy_set_header Host ${DOLLAR}http_host;
+	proxy_http_version 1.1;
+    proxy_redirect off;
+    proxy_buffering off;
+    proxy_set_header Upgrade ${DOLLAR}http_upgrade;
+    proxy_set_header Connection "upgrade";
+    proxy_read_timeout 86400;
+}
+
+location ~ ^/kibana/(.*)${DOLLAR} {
+    rewrite /kibana/(.*) /${DOLLAR}1 break;
+	proxy_pass http://${DOCKER_HOST_NAME_KIBANA}:5601;
+	proxy_http_version 1.1;
+	proxy_set_header Upgrade ${DOLLAR}http_upgrade;
+    proxy_set_header Connection 'upgrade';
+    proxy_set_header Host ${DOLLAR}host;
+    proxy_cache_bypass ${DOLLAR}http_upgrade;
+    auth_basic "Contraxsuite Kibana";
+    auth_basic_user_file /etc/nginx/.kibana_htpasswd;
+}
+
+location /flower {
+    proxy_pass http://${DOCKER_HOST_NAME_FLOWER}:5555;
+    rewrite ^/flower/(.*)${DOLLAR} /${DOLLAR}1 break;
+    proxy_set_header X-Forwarded-For ${DOLLAR}proxy_add_x_forwarded_for;
+    proxy_set_header X-Real-IP ${DOLLAR}remote_addr;
+    proxy_set_header Host ${DOLLAR}http_host;
+    proxy_http_version 1.1;
+    proxy_redirect off;
+    proxy_buffering off;
+    proxy_set_header Upgrade ${DOLLAR}http_upgrade;
+    proxy_set_header Connection "upgrade";
+    proxy_read_timeout 86400;
+    auth_basic "Contraxsuite";
+    auth_basic_user_file /etc/nginx/.kibana_htpasswd;
+}

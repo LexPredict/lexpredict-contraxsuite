@@ -38,12 +38,12 @@ from apps.celery import app
 from apps.fields.document_fields_repository import DOCUMENT_FIELDS
 from apps.fields.models import DocumentAnnotation, ClassifierModel, ClassifierDataSetEntry
 from apps.fields.parsing.field_annotations_classifier import SkLearnClassifierModel
-from apps.task.tasks import BaseTask, TaskControl
+from apps.task.tasks import BaseTask, ExtendedTask
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.0/LICENSE"
-__version__ = "1.1.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.1/LICENSE"
+__version__ = "1.1.1"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -59,20 +59,20 @@ class TrainFieldDetectorModel(BaseTask):
         document_class = kwargs.get('document_class')
 
         if document_class:
-            TrainFieldDetectorModel.train_model_for_document_class(
-                document_class, self.task)
+            TrainFieldDetectorModel.train_model_for_document_class(self,
+                                                                   document_class)
         else:
             train_model_for_document_class_args = []
             for document_class, fields in DOCUMENT_FIELDS.items():
-                train_model_for_document_class_args.append((document_class))
-            self.task.run_sub_tasks('Train Model For Each Document Class',
-                                    TrainFieldDetectorModel.train_model_for_document_class,
-                                    train_model_for_document_class_args)
+                train_model_for_document_class_args.append((document_class,))
+            self.run_sub_tasks('Train Model For Each Document Class',
+                               TrainFieldDetectorModel.train_model_for_document_class,
+                               train_model_for_document_class_args)
 
     @staticmethod
-    @shared_task
-    def train_model_for_document_class(document_class_name: str, main_task: TaskControl):
-        main_task.log_info('Building classifier model for document class: {0}'.format(
+    @shared_task(base=ExtendedTask, bind=True)
+    def train_model_for_document_class(task: ExtendedTask, document_class_name: str):
+        task.log_info('Building classifier model for document class: {0}'.format(
             document_class_name))
 
         classifier_model = ClassifierModel.objects.get(
@@ -114,7 +114,7 @@ class TrainFieldDetectorModel(BaseTask):
         classifier_model.set_trained_model_obj(model)
         classifier_model.save()
 
-        main_task.log_info(
+        task.log_info(
             'Trained model based on {0} dataset entries for document class: {1}'.format(
                 len(target),
                 document_class_name))
@@ -124,24 +124,20 @@ class BuildFieldDetectorDataset(BaseTask):
     name = 'Build Field Detector Dataset'
 
     def process(self, **kwargs):
-        self.task.log_info(
+        self.log_info(
             "Going to prepare datasets based on the pre-coded regexps and annotations"
             "entered by users...")
 
         document_class = kwargs.get('document_class')
         document_ids = kwargs.get('document_ids')
 
-        task_count = 0
-
         if document_class:
-            task_count += BuildFieldDetectorDataset.build_sentences_to_fields_relations_dataset(
-                document_class, document_ids, self.task)
+            self.build_sentences_to_fields_relations_dataset(
+                document_class, document_ids)
         else:
             for document_class, fields in DOCUMENT_FIELDS.items():
-                task_count += BuildFieldDetectorDataset.build_sentences_to_fields_relations_dataset(
-                    document_class, document_ids, self.task)
-
-        self.task.update_subtasks_total(task_count)
+                self.build_sentences_to_fields_relations_dataset(
+                    document_class, document_ids)
 
     @staticmethod
     def _sentence_matches_annotations(sentence_span: Tuple[int, int],
@@ -165,16 +161,15 @@ class BuildFieldDetectorDataset(BaseTask):
         for field_config in field_configs.values():
             return field_config.document_class
 
-    @staticmethod
-    def build_sentences_to_fields_relations_dataset(document_class_name: str, document_ids: List,
-                                                    task: TaskControl):
-        task.log_info(
+    def build_sentences_to_fields_relations_dataset(self, document_class_name: str,
+                                                    document_ids: List):
+        self.log_info(
             'Building classifier for detecting sentences related to fields '
             'for document class: {0}'.format(
                 document_class_name))
         field_configs = DOCUMENT_FIELDS[document_class_name]
         if not field_configs:
-            task.log_warn('Can not find any field configs for document class: {0}'.format(
+            self.log_warn('Can not find any field configs for document class: {0}'.format(
                 document_class_name))
             return
 
@@ -186,10 +181,10 @@ class BuildFieldDetectorDataset(BaseTask):
             document_field=None)
 
         if created:
-            task.log_info('Classifier data set already exists for document class: {0}'.format(
+            self.log_info('Classifier data set already exists for document class: {0}'.format(
                 document_class_name))
         else:
-            task.log_info('New classifier data created for document class: {0}'.format(
+            self.log_info('New classifier data created for document class: {0}'.format(
                 document_class_name))
 
         task_count = 0
@@ -198,20 +193,20 @@ class BuildFieldDetectorDataset(BaseTask):
         for doc_id in document_ids or document_class.objects.all().values_list('id', flat=True):
             build_dataset_on_document_args.append((document_class_name, doc_id, False))
             task_count += 1
-        task.run_sub_tasks('Build Dataset on Each Document',
+        self.run_sub_tasks('Build Dataset on Each Document',
                            BuildFieldDetectorDataset.build_dataset_on_document,
                            build_dataset_on_document_args)
         if task_count == 0:
-            task.log_info('No documents in DB for document class: {0}'.format(
+            self.log_info('No documents in DB for document class: {0}'.format(
                 document_class_name))
         return task_count
 
     @staticmethod
-    @shared_task
-    def build_dataset_on_document(document_class_name: str,
+    @shared_task(base=ExtendedTask, bind=True)
+    def build_dataset_on_document(task: ExtendedTask,
+                                  document_class_name: str,
                                   document_id,
-                                  retrain_model: bool,
-                                  parent_task: TaskControl):
+                                  retrain_model: bool):
         field_configs = DOCUMENT_FIELDS[document_class_name]
         if not field_configs:
             return
@@ -229,7 +224,7 @@ class BuildFieldDetectorDataset(BaseTask):
             field_detection_model=classifier_model,
             document=doc).delete()
         if deleted > 0:
-            parent_task.log_info(
+            task.log_info(
                 'Deleted {0} data set entries of document {1}'.format(deleted, doc.pk))
 
         def add(code, sentence):
@@ -238,7 +233,7 @@ class BuildFieldDetectorDataset(BaseTask):
                                                   category=code,
                                                   text=sentence)
 
-            parent_task.log_info('Extracting training data from document: {0}'.format(doc.pk))
+            task.log_info('Extracting training data from document: {0}'.format(doc.pk))
 
         text = doc.full_text
         annotations = list(DocumentAnnotation.objects.filter(document__pk=doc.pk))
@@ -263,8 +258,8 @@ class BuildFieldDetectorDataset(BaseTask):
                     added = True
             if not added:
                 add('', sentence)
-            parent_task.log_info('Processed {0} sentences of document {1}'
-                                 .format(len(sentence_spans), doc.pk))
+            task.log_info('Processed {0} sentences of document {1}'
+                          .format(len(sentence_spans), doc.pk))
 
         if retrain_model:
             TrainFieldDetectorModel.train_model_for_document_class.apply_async(

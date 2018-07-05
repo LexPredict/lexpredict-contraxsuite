@@ -34,13 +34,13 @@ from apps.employee.services import get_employee_name, get_employer_name, get_sal
     get_effective_date, get_similar_to_non_compete, get_similar_to_termination, \
     get_vacation_duration, get_governing_geo, get_similar_to_benefits, \
     is_employment_doc, get_similar_to_severance
-from apps.task.tasks import BaseTask, TaskControl
+from apps.task.tasks import BaseTask, ExtendedTask
 from apps.task.utils.text.segment import segment_sentences
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.0/LICENSE"
-__version__ = "1.1.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.1/LICENSE"
+__version__ = "1.1.1"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -62,21 +62,20 @@ class LocateEmployees(BaseTask):
         """
         if kwargs.get('delete'):
             deleted = Employee.objects.all().delete() + Employer.objects.all().delete() + Provision.objects.all().delete()
-            self.task.log_info('Deleted: ' + str(deleted))
+            self.log_info('Deleted: ' + str(deleted))
 
         documents = Document.objects.all()
         # TODO: outdated
         if kwargs.get('document_type'):
             documents = documents.filter(document_type__in=kwargs['document_type'])
-            self.task.log_info(
+            self.log_info(
                 'Filter documents by "%s" document type.' % str(kwargs['document_type']))
 
         if kwargs.get('document_id'):
             documents = documents.filter(pk=kwargs['document_id'])
-            self.task.log_info('Process document id={}.'.format(kwargs['document_id']))
+            self.log_info('Process document id={}.'.format(kwargs['document_id']))
 
-        self.task.update_subtasks_total(documents.count())
-        self.task.log_info(
+        self.log_info(
             'Found {0} Documents. Added {0} subtasks.'.format(documents.count()))
 
         parse_document_for_employee_args = []
@@ -84,21 +83,21 @@ class LocateEmployees(BaseTask):
             parse_document_for_employee_args.append((d.id,
                                                      kwargs.get('no_detect', True)))
 
-        self.task.run_sub_tasks('Locate Employees for Each Document',
-                                LocateEmployees.parse_document_for_employee,
-                                parse_document_for_employee_args)
+        self.run_sub_tasks('Locate Employees for Each Document',
+                           LocateEmployees.parse_document_for_employee,
+                           parse_document_for_employee_args)
 
     @staticmethod
-    @shared_task
-    def parse_document_for_employee(document_id: int, no_detect: bool, main_task: TaskControl):
+    @shared_task(base=ExtendedTask, bind=True)
+    def parse_document_for_employee(task: ExtendedTask, document_id: int, no_detect: bool):
         detect = not no_detect
         document = Document.objects.get(pk=document_id)
 
-        main_task.log_info('Process employment document: #{}. {}'.format(
+        task.log_info('Process employment document: #{}. {}'.format(
             document_id, document.name))
 
         if detect and not is_employment_doc(document.full_text or document.text):
-            main_task.log_info('Not an employment document: #{}. {}'.format(
+            task.log_info('Not an employment document: #{}. {}'.format(
                 document_id, document.name))
             return
 

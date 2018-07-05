@@ -52,12 +52,12 @@ from django.http import JsonResponse, HttpResponse
 from apps.document.models import Document
 from apps.extract.models import *
 from apps.common.mixins import (
-    SimpleRelationSerializer, JqListAPIView, JqMixin)
+    SimpleRelationSerializer, JqListAPIView, JqListAPIMixin)
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.0/LICENSE"
-__version__ = "1.1.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.1/LICENSE"
+__version__ = "1.1.1"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -208,11 +208,7 @@ class TermUsageSerializer(BaseUsageSerializer):
 
 class TermUsageListAPIView(BaseUsageListAPIView):
     """
-    Term Usage List\n
-    GET params:
-      - document_id: int
-      - text_unit_id: int
-      - term_search: str
+    Term Usage List
     """
     queryset = TermUsage.objects.all()
     serializer_class = TermUsageSerializer
@@ -233,9 +229,7 @@ class TermUsageListAPIView(BaseUsageListAPIView):
 
 class TopTermUsageListAPIView(BaseTopUsageListAPIView):
     """
-    Top Term Usage List\n
-    GET params:
-      - document_id: int
+    Top Term Usage List
     """
     sub_app = 'term'
     model = TermUsage
@@ -268,7 +262,7 @@ class GeoEntityUpdateSerializer(serializers.ModelSerializer):
         fields = ['pk', 'priority']
 
 
-class GeoEntityViewSet(JqMixin, viewsets.ModelViewSet):
+class GeoEntityViewSet(JqListAPIMixin, viewsets.ModelViewSet):
     """
     list: Geo Entity List
     retrieve: Retrieve Geo Entity
@@ -297,11 +291,7 @@ class GeoEntityUsageSerializer(BaseUsageSerializer):
 
 class GeoEntityUsageListAPIView(BaseUsageListAPIView):
     """
-    Geo Entity Usage List\n
-    GET params:
-      - document_id: int
-      - party_id: int
-      - entity_search: str
+    Geo Entity Usage List
     """
     queryset = GeoEntityUsage.objects.all()
     serializer_class = GeoEntityUsageSerializer
@@ -323,9 +313,7 @@ class GeoEntityUsageListAPIView(BaseUsageListAPIView):
 
 class TopGeoEntityUsageListAPIView(BaseTopUsageListAPIView):
     """
-    Top Geo Entity Usage List\n
-    GET params:
-      - document_id: int
+    Top Geo Entity Usage List
     """
     sub_app = 'geoentity'
     model = GeoEntityUsage
@@ -345,13 +333,7 @@ class GeoAliasUsageSerializer(BaseUsageSerializer):
 
 class GeoAliasUsageListAPIView(BaseUsageListAPIView):
     """
-    Geo Alias Usage List\n
-    GET params:
-      - document_id: int
-      - text_unit_id: int
-      - party_id: int
-      - entity_name: str
-      - alias_name: str
+    Geo Alias Usage List
     """
     sub_app = 'geoentity'
     queryset = GeoAliasUsage.objects.all()
@@ -374,9 +356,7 @@ class GeoAliasUsageListAPIView(BaseUsageListAPIView):
 
 class TopGeoAliasUsageListAPIView(BaseTopUsageListAPIView):
     """
-    Top Geo Alias Usage List\n
-    GET params:
-      - document_id: int
+    Top Geo Alias Usage List
     """
     sub_app = 'geoentity'
     model = GeoAliasUsage
@@ -580,16 +560,9 @@ class PartySerializer(serializers.ModelSerializer):
                   'type_description', 'description']
 
 
-class PartyViewSet(JqMixin, viewsets.ReadOnlyModelViewSet):
+class PartyViewSet(JqListAPIMixin, viewsets.ReadOnlyModelViewSet):
     """
     list: Party List
-        GET params:
-            - name: str
-            - type: str
-            - type_abbr: str
-            - type_label: str
-            - type_description: str
-            - description: str
     retrieve: Retrieve Party
     """
     queryset = Party.objects.all()

@@ -51,16 +51,6 @@ pushd /config-templates
 
 export DOLLAR='$' # escape $ in envsubst
 
-if [ -z "${DOCKER_NGINX_CERTIFICATE}" ]; then
-    echo "Embedded Nginx is going to serve plain HTTP."
-    envsubst < nginx-http.conf.template > /etc/nginx/conf.d/default.conf
-else
-    echo "Embedded Nginx is going to serve HTTPS."
-    envsubst < nginx-https.conf.template > /etc/nginx/conf.d/default.conf
-fi
-
-envsubst < nginx.conf.template > /etc/nginx/nginx.conf
-envsubst < nginx-internal.conf.template > /etc/nginx/conf.d/internal.conf
 envsubst < run-celery.sh.template > /contraxsuite_services/run-celery.sh
 envsubst < run-uwsgi.sh.template > /contraxsuite_services/run-uwsgi.sh
 envsubst < local_settings.py.template > /contraxsuite_services/local_settings.py
@@ -125,6 +115,8 @@ su - ${SHARED_USER_NAME} -c "${ACTIVATE_VENV} && \
     python manage.py force_migrate && \
     python manage.py collectstatic --noinput && \
     python manage.py set_site && \
+    python manage.py load_review_statuses && \
+    python manage.py load_roles && \
     python manage.py shell -c \"
 from apps.users.models import User
 if not User.objects.filter(username = '${DOCKER_DJANGO_ADMIN_NAME}').exists():
@@ -134,21 +126,15 @@ if not User.objects.filter(username = '${DOCKER_DJANGO_ADMIN_NAME}').exists():
     if [ $2 == "shell" ]; then
         /bin/bash
     else
-        echo "Starting Nginx and Django..."
+        echo "Starting Django..."
 
-        chmod 755 /var/log/nginx && chmod 644 /var/log/nginx/*
-
-        service cron start && \
-        service nginx start && \
         su - ${SHARED_USER_NAME} -c "${ACTIVATE_VENV} && \
             ulimit -n 1000000 && \
             python manage.py check && \
             uwsgi --socket 0.0.0.0:3031 \
                     --plugins python3 \
                     --protocol uwsgi \
-                    --wsgi wsgi:application" && \
-        service nginx stop && \
-        service cron stop
+                    --wsgi wsgi:application"
     fi
 elif [ $1 == "jupyter" ]; then
     echo "Sleeping 15 seconds to let Postgres start and Django migrate"
@@ -179,14 +165,38 @@ elif [ $1 == "flower" ]; then
     su - ${SHARED_USER_NAME} -c "${ACTIVATE_VENV} && \
         ulimit -n 1000000 && \
         flower -A apps --port=5555 --address=0.0.0.0 --url_prefix=${DOCKER_FLOWER_BASE_PATH}"
+elif [ $1 == "celery-beat" ]; then
+    echo "Sleeping 15 seconds to let Postgres start and Django migrate"
+    sleep 15
+    echo "Starting Celery Beat and Serial Tasks Worker..."
+
+    su - ${SHARED_USER_NAME} -c "${ACTIVATE_VENV} && \
+        ulimit -n 1000000 && \
+        celery -A apps worker -B -Q serial --concurrency=1 -Ofair -n beat@%h --statedb=/data/celery_worker_state/worker.state"
+elif [ $1 == "celery-high-prio" ]; then
+    echo "Sleeping 15 seconds to let Postgres start and Django migrate"
+    sleep 15
+    echo "Starting Celery High Priority Tasks Worker..."
+
+    su - ${SHARED_USER_NAME} -c "${ACTIVATE_VENV} && \
+        ulimit -n 1000000 && \
+        celery -A apps worker -Q high_priority --concurrency=4 -Ofair -n high_priority@%h --statedb=/data/celery_worker_state/worker.state"
+elif [ $1 == "celery-master" ]; then
+    echo "Sleeping 15 seconds to let Postgres start and Django migrate"
+    sleep 15
+    echo "Starting Celery Master Low Resources Worker..."
+
+    su - ${SHARED_USER_NAME} -c "${ACTIVATE_VENV} && \
+        ulimit -n 1000000 && \
+        celery -A apps worker -Q default,high_priority --concurrency=2 -Ofair -n master@%h --statedb=/data/celery_worker_state/worker.state"
 else
     echo "Sleeping 15 seconds to let Postgres start and Django migrate"
     sleep 15
-    echo "Starting Celery..."
+    echo "Starting Celery Default Priority Tasks Worker..."
 
     su - ${SHARED_USER_NAME} -c "${ACTIVATE_VENV} && \
         ulimit -n 1000000 && \
         python manage.py check && \
-        celery worker -A apps --concurrency=4 -Ofair -B --statedb=/data/celery_worker_state/worker.state"
+        celery -A apps worker -Q default,high_priority --concurrency=4 -Ofair -n default_priority@%h --statedb=/data/celery_worker_state/worker.state"
     sleep 20
 fi

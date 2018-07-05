@@ -25,11 +25,12 @@
 # -*- coding: utf-8 -*-
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.0/LICENSE"
-__version__ = "1.1.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.1/LICENSE"
+__version__ = "1.1.1"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
+import pickle
 from datetime import datetime, date
 from enum import Enum, unique
 from random import randint, random
@@ -38,15 +39,23 @@ from typing import List, Union, Tuple
 import dateparser
 import geocoder
 import pyap
+import redis
 from lexnlp.extract.en.addresses.addresses import get_addresses
 from lexnlp.extract.en.amounts import get_amounts
 from lexnlp.extract.en.dates import get_dates_list
 from lexnlp.extract.en.durations import get_durations
 from lexnlp.extract.en.entities.nltk_maxent import get_companies, get_persons
 from lexnlp.extract.en.money import get_money
+from lexnlp.extract.en.geoentities import get_geoentities
+
+from django.conf import settings
 
 from apps.document import models
 from apps.document.parsing.machine_learning import ModelCategory
+from apps.extract import models as extract_models
+
+
+_redis = redis.Redis.from_url(url=settings.CELERY_CACHE_REDIS_URL)
 
 
 @unique
@@ -54,6 +63,8 @@ class ValueExtractionHint(Enum):
     TAKE_FIRST = "TAKE_FIRST"
     TAKE_SECOND = "TAKE_SECOND"
     TAKE_LAST = "TAKE_LAST"
+    TAKE_MIN = "TAKE_MIN"
+    TAKE_MAX = "TAKE_MAX"
 
     @staticmethod
     def get_value(l: Union[None, List], hint):
@@ -66,9 +77,32 @@ class ValueExtractionHint(Enum):
             return l[1]
         elif str(hint) == ValueExtractionHint.TAKE_FIRST.name and len(l) > 0:
             return l[0]
+        # WARNING: currently doesn't check if min/max are possible.
+        # ...That is checked exclusively by model.clean_fields() in ./models.py
+        elif str(hint) == ValueExtractionHint.TAKE_MIN.name:
+            if type(l[0]) is dict \
+                and (l[0]).get('currency') \
+                and (l[0]).get('amount') is not None:
+                amount_list = [x.get('amount') for x in l]
+                result = [e for e in l if e['amount'] == min(amount_list)]
+                return result
+            else:
+                # Return min of list of amounts
+                return min(l)
+        # WARNING: currently doesn't check if min/max are possible.
+        # ...That is checked exclusively by model.clean_fields() in ./models.py
+        elif str(hint) == ValueExtractionHint.TAKE_MAX.name:
+            if type(l[0]) is dict \
+                and (l[0]).get('currency') \
+                and (l[0]).get('amount') is not None:
+                amount_list = [x.get('amount') for x in l]
+                result = [e for e in l if e['amount'] == max(amount_list)]
+                return result
+            else:
+                # Return max of list of amounts
+                return max(l)
         else:
             return None
-
 
 class FieldType:
     code = ''
@@ -93,7 +127,7 @@ class FieldType:
     def python_value_to_json(self, python_value):
         return python_value
 
-    def _extract_variants_from_text(self, field, text: str):
+    def _extract_variants_from_text(self, field, text: str, **kwargs):
         return None
 
     def _extract_from_possible_value(self, field, possible_value):
@@ -115,7 +149,7 @@ class FieldType:
                 if str(field.uid) == category.document_field_uid:
                     return category.choice_or_hint
 
-        # If there is no classifier or classifier didnt detect this field for this sentence
+        # If there is no classifier or classifier didn't detect this field for this sentence
         # then try detecting with regexp field detectors (if any).
         detectors = field.field_detectors.all()
         if not detectors:
@@ -127,14 +161,14 @@ class FieldType:
 
         return self.default_hint
 
-    def _pick_hint_by_searching_for_value_among_extracted(self, field, text: str, value):
+    def _pick_hint_by_searching_for_value_among_extracted(self, field, text: str, value, **kwargs):
         if not self.value_extracting:
             return None
 
         if value is None:
             return self.default_hint
 
-        extracted = self._extract_variants_from_text(field, text)
+        extracted = self._extract_variants_from_text(field, text, **kwargs)
 
         if not extracted:
             return self.default_hint
@@ -149,7 +183,7 @@ class FieldType:
         if possible_value is None and not text:
             return None, None
 
-        # If we have some value provided - try using it and picking hint for it
+        # If we have some value provided, then try using it and picking hint for it
         # by simply finding this value in all values extracted from this text
         if possible_value is not None:
             value = self._extract_from_possible_value(field, possible_value)
@@ -157,19 +191,21 @@ class FieldType:
             if value is not None:
                 if self.value_extracting:
                     hint = possible_hint or self \
-                        ._pick_hint_by_searching_for_value_among_extracted(field,
-                                                                           text,
-                                                                           value)
+                        ._pick_hint_by_searching_for_value_among_extracted(
+                            field,
+                            text,
+                            value,
+                            document=document)
                 else:
                     hint = None
                 return value, hint
 
-        # If we were unsuccessfull in using the provided possible value - try to extract it from
+        # If we were unsuccessful in using the provided possible value, then try to extract it from
         # string representation of the provided possible value or from the full provided text
 
         text = str(possible_value) if possible_value else text
 
-        extracted = self._extract_variants_from_text(field, text)
+        extracted = self._extract_variants_from_text(field, text, document=document)
 
         if not extracted:
             return None, None
@@ -177,9 +213,10 @@ class FieldType:
         # We need to figure out which one of the extracted values to use.
         # For this we pick hint by finding it via trained model or field value extractors.
         if self.value_extracting:
-            hint = possible_hint or self._pick_hint_for_text_using_matching_extractors(document,
-                                                                                       field,
-                                                                                       text)
+            hint = possible_hint or self._pick_hint_for_text_using_matching_extractors(
+                document,
+                field,
+                text)
         else:
             hint = None
 
@@ -317,7 +354,7 @@ class ChoiceField(FieldType):
         else:
             return None
 
-    def _extract_variants_from_text(self, field, text: str):
+    def _extract_variants_from_text(self, field, text: str, **kwargs):
         return None
 
     def example_json_value(self, field):
@@ -359,7 +396,7 @@ class DateField(FieldType):
             except:
                 return None
 
-    def _extract_variants_from_text(self, field, text: str):
+    def _extract_variants_from_text(self, field, text: str, **kwargs):
         return get_dates_list(text)
 
     def example_json_value(self, field):
@@ -389,7 +426,7 @@ class FloatField(FieldType):
         except ValueError:
             return None
 
-    def _extract_variants_from_text(self, field, text: str):
+    def _extract_variants_from_text(self, field, text: str, **kwargs):
         amounts = get_amounts(text, return_sources=False)
         return list(amounts) if amounts else None
 
@@ -409,7 +446,7 @@ class IntField(FieldType):
         except ValueError:
             return None
 
-    def _extract_variants_from_text(self, field, text: str):
+    def _extract_variants_from_text(self, field, text: str, **kwargs):
         amounts = get_amounts(text, return_sources=False)
         if not amounts:
             return None
@@ -466,7 +503,7 @@ class AddressField(FieldType):
 
         return AddressField._get_from_geocode(address)
 
-    def _extract_variants_from_text(self, field, text: str):
+    def _extract_variants_from_text(self, field, text: str, **kwargs):
         addresses = list(pyap.parse(text, country='US'))
 
         if not addresses:
@@ -502,7 +539,7 @@ class CompanyField(FieldType):
         else:
             return None
 
-    def _extract_variants_from_text(self, field, text: str):
+    def _extract_variants_from_text(self, field, text: str, **kwargs):
         companies = list(get_companies(text, detail_type=True, name_upper=True, strict=True))
         if not companies:
             return None
@@ -526,7 +563,7 @@ class DurationField(FieldType):
         except ValueError:
             return None
 
-    def _extract_variants_from_text(self, field, text: str):
+    def _extract_variants_from_text(self, field, text: str, **kwargs):
         durations = get_durations(text)
         if not durations:
             return None
@@ -543,7 +580,6 @@ class RelatedInfoField(FieldType):
     value_aware = False
     value_extracting = False
 
-
 class PersonField(FieldType):
     code = 'person'
     title = 'Person'
@@ -556,7 +592,7 @@ class PersonField(FieldType):
         else:
             return None
 
-    def _extract_variants_from_text(self, field, text: str):
+    def _extract_variants_from_text(self, field, text: str, **kwargs):
         persons = get_persons(text, return_source=False)
         return list(persons) if persons else None
 
@@ -570,7 +606,7 @@ class AmountField(FloatField):
     value_aware = True
     value_extracting = True
 
-    def _extract_variants_from_text(self, field, text: str):
+    def _extract_variants_from_text(self, field, text: str, **kwargs):
         amounts = get_amounts(text, return_sources=False)
         return list(amounts) if amounts else None
 
@@ -605,7 +641,7 @@ class MoneyField(FloatField):
         except ValueError:
             return None
 
-    def _extract_variants_from_text(self, field, text: str):
+    def _extract_variants_from_text(self, field, text: str, **kwargs):
         money = get_money(text, return_sources=False)
         if not money:
             return None
@@ -623,6 +659,67 @@ class MoneyField(FloatField):
             'currency': 'USD',
             'amount': random() * 10000000,
         }
+
+
+class GeographyField(FieldType):
+    code = 'geography'
+    title = 'Geography'
+    value_aware = True
+    value_extracting = True
+
+    def _extract_from_possible_value(self, field, possible_value):
+        if possible_value:
+            return str(possible_value)
+        else:
+            return None
+
+    def _extract_variants_from_text(self, field, text: str, **kwargs):
+
+        geo_entities = None
+        document = kwargs.get('document')
+        if document is not None:
+            # try to extract from GeoEntityUsage
+            # pros: faster extraction
+            # cons: we may extract extra entities
+            geo_entities = extract_models.GeoEntityUsage.objects.filter(
+                text_unit__document=document,
+                text_unit__unit_type='sentence',
+                text_unit__text__contains=text).values('entity_id', 'entity__name')
+
+        if not geo_entities:
+            # try to get geo config from cache
+            geo_config = _redis.get('geo_config')
+            if geo_config:
+                geo_config = pickle.loads(geo_config)
+            else:
+                try:
+                    geo_config_locate_storage_key = _redis.keys('*_locate')[0]
+                    geo_config_locate_storage = pickle.loads(
+                        _redis.get(geo_config_locate_storage_key))
+                    geo_config = geo_config_locate_storage['geoentity']['geo_config']
+                except (KeyError, IndexError):
+                    from apps.task.tasks import Locate
+                    geo_config = Locate.load_geo_config()
+                _redis.set('geo_config', pickle.dumps(geo_config))
+
+            text_languages = None
+            if document:
+                text_languages = models.TextUnit.objects.filter(
+                    document=document,
+                    text__contains=text).values_list('language', flat=True)
+                if document.language and not text_languages :
+                    text_languages = [document.language]
+
+            geo_entities = [{'entity_id': i[0][0], 'entity__name': i[0][1]} for i in
+                            get_geoentities(text,
+                                            geo_config_list=geo_config,
+                                            text_languages=text_languages,
+                                            priority=True)]
+
+        return list(geo_entities) or None
+
+    def example_json_value(self, field):
+        return [{'entity_id': 12, 'entity__name': 'New York'}]
 
 
 _FIELD_TYPE_CHOICE = 'choice'
@@ -643,5 +740,6 @@ FIELD_TYPES_REGISTRY = {
     _FIELD_TYPE_MULTI_CHOICE: MultiChoiceField(),
     'person': PersonField(),
     'amount': AmountField(),
-    'money': MoneyField()
+    'money': MoneyField(),
+    'geography': GeographyField(),
 }

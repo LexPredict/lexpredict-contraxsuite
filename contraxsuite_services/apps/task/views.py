@@ -53,11 +53,16 @@ from apps.task.forms import (
     UpdateElasticSearchForm, TaskDetailForm, TotalCleanupForm)
 from apps.task.models import Task
 from apps.task.tasks import call_task, clean_tasks, purge_task
+from apps.task.celery_backend.utils import now
+from celery import states
+from django.db.models import F, OuterRef, Subquery, Q, Value
+from django.db.models.functions import Now, Coalesce
+from django.db.models.aggregates import Avg, Max
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.0/LICENSE"
-__version__ = "1.1.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.1/LICENSE"
+__version__ = "1.1.1"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -119,7 +124,6 @@ class BaseAjaxTaskView(AdminRequiredMixin, JSONResponseView):
 
 
 class LoadTaskView(AdminRequiredMixin, JSONResponseView):
-
     # TODO: parse github repo?
     # f.e.: https://api.github.com/repos/LexPredict/lexpredict-legal-dictionary/contents/en
     paths_map = dict(
@@ -253,21 +257,33 @@ class LocateTaskView(BaseAjaxTaskView):
                 lexnlp_task_data[task_name] = kwargs
 
         if lexnlp_task_data:
-            if Task.disallow_start('Locate'):
-                rejected_tasks.append('Locate')
-            else:
-                started_tasks.append('Locate')
-                call_task('Locate',
-                          tasks=lexnlp_task_data,
-                          parse=data['parse'],
-                          user_id=request.user.pk,
-                          metadata={
-                              'description': [i for i, j in lexnlp_task_data.items()
-                                              if j.get('locate')],
-                              'result_links': [self.locator_result_links_map[i]
-                                               for i, j in lexnlp_task_data.items()
-                                               if j.get('locate')]})
+            # if Task.disallow_start('Locate'):
+            #     rejected_tasks.append('Locate')
+            # else:
+            #     started_tasks.append('Locate')
+            #     call_task('Locate',
+            #               tasks=lexnlp_task_data,
+            #               parse=data['parse'],
+            #               user_id=request.user.pk,
+            #               metadata={
+            #                   'description': [i for i, j in lexnlp_task_data.items()
+            #                                   if j.get('locate')],
+            #                   'result_links': [self.locator_result_links_map[i]
+            #                                    for i, j in lexnlp_task_data.items()
+            #                                    if j.get('locate')]})
 
+            # allow to start "Locate" task anytime
+            started_tasks.append('Locate({})'.format(', '.join(lexnlp_task_data.keys())))
+            call_task('Locate',
+                      tasks=lexnlp_task_data,
+                      parse=data['parse'],
+                      user_id=request.user.pk,
+                      metadata={
+                          'description': [i for i, j in lexnlp_task_data.items()
+                                          if j.get('locate')],
+                          'result_links': [self.locator_result_links_map[i]
+                                           for i, j in lexnlp_task_data.items()
+                                           if j.get('locate')]})
         response_text = ''
         if started_tasks:
             response_text += 'The Task is started. It can take a while.<br />'
@@ -390,13 +406,11 @@ class TaskDetailView(CustomDetailView):
 
 
 class CleanTasksView(TechAdminRequiredMixin, JSONResponseView):
-
     def get_json_data(self, request, *args, **kwargs):
         return clean_tasks(delta_days=0)
 
 
 class PurgeTaskView(TechAdminRequiredMixin, JSONResponseView):
-
     def get_json_data(self, request, *args, **kwargs):
         return purge_task(task_pk=request.POST.get('task_pk'))
 
@@ -404,11 +418,20 @@ class PurgeTaskView(TechAdminRequiredMixin, JSONResponseView):
 class TaskListView(AdminRequiredMixin, JqPaginatedListView):
     model = Task
     ordering = '-date_start'
-    json_fields = ['name', 'date_start', 'user__username', 'metadata',
-                   '_date_done', '_status', '_progress', '_time', 'has_error']
+    json_fields = ['name', 'date_start', 'username', 'metadata',
+                   'date_done', 'status', 'progress', 'time', 'description']
+
+    db_time = Coalesce(F('date_done') - F('date_start'), Now() - F('date_start'))
+    db_user = Coalesce(F('user__username'), F('main_task__user__username'))
+
+    def get_queryset(self):
+        qs = super().get_queryset() \
+            .filter(Q(main_task_id__isnull=True) | Q(main_task_id=F('id'))) \
+            .exclude(name__in=Task.objects.EXCLUDE_FROM_TRACKING)
+        qs = qs.annotate(time=self.db_time, username=self.db_user)
+        return qs
 
     def get_json_data(self, **kwargs):
-        Task.update_calculated_fields()
         data = super().get_json_data()
         for item in data['data']:
             item['url'] = reverse('task:task-detail', args=[item['pk']])

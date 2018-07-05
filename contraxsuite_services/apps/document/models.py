@@ -35,6 +35,7 @@ from typing import Union, List, Dict, Any
 from ckeditor.fields import RichTextField
 from django.conf import settings
 from django.contrib.postgres.fields import JSONField
+from django.core.exceptions import ValidationError
 from django.core.serializers.json import DjangoJSONEncoder
 from django.db import models
 from django.db.models import Q, Count
@@ -43,7 +44,7 @@ from django.utils.timezone import now
 from simple_history.models import HistoricalRecords
 
 # Project imports
-from apps.common.models import get_default_status
+from apps.common.models import ReviewStatus, get_default_status
 from apps.document.field_types import FIELD_TYPES_REGISTRY, FIELD_TYPES_CHOICE, ValueExtractionHint
 from apps.document.parsing.extractors import remove_num_separators
 from apps.document.parsing.machine_learning import SkLearnClassifierModel
@@ -51,8 +52,8 @@ from apps.users.models import User
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.0/LICENSE"
-__version__ = "1.1.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.1/LICENSE"
+__version__ = "1.1.1"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -106,7 +107,7 @@ class DocumentField(TimeStampedModel):
     title = models.CharField(max_length=100, db_index=True)
 
     #Display order
-    order= models.IntegerField(default=0)
+    order = models.IntegerField(default=0)
 
     # Type of the field.
     type = models.CharField(max_length=30, choices=DOCUMENT_FIELD_TYPES,
@@ -229,6 +230,12 @@ class DocumentType(TimeStampedModel):
         return self == DocumentType.generic()
 
 
+class DocketManager(models.Manager):
+
+    def active(self):
+        return self.filter(status__is_active=True)
+
+
 class Document(models.Model):
     """Document object model
 
@@ -268,7 +275,10 @@ class Document(models.Model):
     title = models.CharField(max_length=1024, db_index=True, null=True)
 
     # Document history
-    history = HistoricalRecords()
+    history = HistoricalRecords(excluded_fields=['full_text'])
+
+    # apply custom objects manager
+    objects = DocketManager()
 
     document_type = models.ForeignKey(DocumentType, blank=True, null=True, db_index=True)
 
@@ -284,6 +294,7 @@ class Document(models.Model):
 
     class Meta:
         ordering = ('name',)
+        unique_together = ('name', 'source',)
 
     def __str__(self):
         return self.name
@@ -312,6 +323,46 @@ class Document(models.Model):
             lang = sorted(langs, key=lambda i: -i['count'])[0]['language']
             self.language = lang
             self.save()
+
+    def get_field_values(self, save=False):
+        # TODO: get/save field value for specific field
+        all_fields = self.document_type.fields.all()
+        fields_to_field_values = {f: None for f in all_fields}
+
+        for fv in self.documentfieldvalue_set.all():
+            field = fv.field
+            field_type = FIELD_TYPES_REGISTRY[fv.field.type]
+            if field_type.multi_value:
+                if fields_to_field_values.get(field) is None:
+                    fields_to_field_values[field] = [fv.value]
+                else:
+                    fields_to_field_values[field].append(fv.value)
+            else:
+                fields_to_field_values[field] = fv.value
+
+        field_uids_to_field_values = {}
+
+        for f in all_fields:
+            if f.is_calculated():
+                field_uids_to_field_values[str(f.uid)] = f.calculate(fields_to_field_values)
+            else:
+                field_uids_to_field_values[str(f.uid)] = fields_to_field_values[f]
+
+        if save:
+            self.metadata['field_values'] = field_uids_to_field_values
+            self.save()
+
+        return field_uids_to_field_values
+
+    @property
+    def field_values(self):
+        _field_values = self.metadata.get('field_values')
+        if not _field_values:
+            _field_values = self.get_field_values(save=True)
+        return _field_values
+
+    def is_completed(self):
+        return self.status.is_active
 
 
 @receiver(models.signals.post_delete, sender=Document)
@@ -356,7 +407,6 @@ class DocumentTag(models.Model):
 
     def __repr__(self):
         return "DocumentTag (id={0})".format(self.id)
-
 
 class DocumentProperty(TimeStampedModel):
     """DocumentProperty object model
@@ -699,6 +749,13 @@ def delete_dfv(sender, instance, **kwargs):
     instance.history.all().delete()
 
 
+@receiver(models.signals.post_save, sender=DocumentFieldValue)
+def save_dfv(sender, instance, **kwargs):
+    # update document.metadata.field_values
+    document = instance.document
+    document.get_field_values(save=True)
+
+
 class DocumentFieldDetector(models.Model):
     DEF_RE_FLAGS = re.DOTALL | re.IGNORECASE
 
@@ -730,6 +787,19 @@ class DocumentFieldDetector(models.Model):
     extraction_hint = models.CharField(max_length=30, choices=EXTRACTION_HINT_CHOICES,
                                        default=EXTRACTION_HINT_CHOICES[0][0], db_index=True,
                                        blank=True, null=True)
+
+    # Validator. If field is not of an ordinal type and TAKE_MIN/MAX are selected, throw error
+    def clean_fields(self, exclude = ('uid', 'field', 'document_type', 'exclude_regexps', \
+                                      'include_regexps', 'regexps_pre_process_lower', \
+                                      'regexps_pre_process_remove_numeric_separators', \
+                                      'detected_value')):
+        # should the below be refactored to not be hard-coded?
+        ORDINAL_FIELD_TYPES = ['amount', 'money', 'date', 'duration', 'int', 'float']
+        ORDINAL_EXTRACTION_HINTS = ['TAKE_MIN', 'TAKE_MAX']
+        # MAYBE LIKE: ORDINAL_EXTRACTION_HINTS = tuple((hint.name, hint.name) for hint in ValueExtractionHint[-2])
+
+        if (self.field).type not in ORDINAL_FIELD_TYPES and self.extraction_hint in ORDINAL_EXTRACTION_HINTS:
+            raise ValidationError(('Cannot take min or max of <Field> because its type is not amount, money, int, float, date, or duration. Please select TAKE_FIRST, TAKE_SECOND, or TAKE_THIRD, or change the field type.'))
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -786,7 +856,6 @@ class DocumentFieldDetector(models.Model):
     def __repr__(self):
         return "{0}: {1}".format(self.field, self.include_regexps)[:50] \
                + " (#{0})".format(self.uid)
-
 
 class ClassifierModel(models.Model):
     document_type = models.ForeignKey(DocumentType, db_index=True, related_name='classifiers')

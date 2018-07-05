@@ -31,8 +31,8 @@ import settings
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.0/LICENSE"
-__version__ = "1.1.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.1/LICENSE"
+__version__ = "1.1.1"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -112,5 +112,10 @@ class TransferManager:
         :return:
         """
         full_key = TransferManager._full_key(key)
-        del self._local_cache[full_key]
-        self._redis.delete([full_key])
+        if full_key in self._local_cache.keys():
+            del self._local_cache[full_key]
+        try:
+            self._redis.delete([full_key])
+        except KeyError:
+            pass
+

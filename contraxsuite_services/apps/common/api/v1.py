@@ -36,12 +36,12 @@ from rest_framework.views import APIView
 # Django imports
 from django.conf.urls import url
 from apps.common.models import AppVar, ReviewStatus
-from apps.common.mixins import JqMixin
+from apps.common.mixins import JqListAPIMixin
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.0/LICENSE"
-__version__ = "1.1.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.1/LICENSE"
+__version__ = "1.1.1"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -189,17 +189,12 @@ class AppVarAPIView(APIView):
 class ReviewStatusSerializer(serializers.ModelSerializer):
     class Meta:
         model = ReviewStatus
-        fields = ['pk', 'name', 'code', 'order']
+        fields = ['pk', 'name', 'code', 'order', 'is_active']
 
 
-class ReviewStatusViewSet(JqMixin, viewsets.ModelViewSet):
+class ReviewStatusViewSet(JqListAPIMixin, viewsets.ModelViewSet):
     """
-    list: ReviewStatus List\n
-        GET params:
-            - name: str
-            - name_contains: str
-            - code: str
-            - code_contains: str
+    list: ReviewStatus List
     retrieve: Retrieve ReviewStatus
     create: Create ReviewStatus
     update: Update ReviewStatus

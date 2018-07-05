@@ -1,0 +1,15 @@
+Batch upload job is completed
+
+Project ID: {{ session.project.pk }}
+Project Name: {{ session.project.name }}
+Session ID: {{ session.uid }}
+Session created by: {{ session.created_by.get_full_name }}
+Session created at: {{ session.created_date|date:"F j, Y, h:i A" }}
+Batch upload job is completed at: {{ completed_at|date:"F j, Y, h:i A" }}
+
+{% for file_data in data %}
+File Name: {{ file_data.file_name }}
+Document ID: {{ file_data.document_id }}
+Upload Status: {{ file_data.tasks_overall_status }}
+
+{% endfor %}

@@ -88,25 +88,19 @@ LOGGING = {
     'handlers': {
         'text_django': {
             'level': 'DEBUG',
-            'class': 'logging.handlers.RotatingFileHandler',
-            'maxBytes': 1024 * 1024 * 10,
-            'backupCount': 5,
+            'class': 'logging.handlers.WatchedFileHandler',
             'filename': LOG_FILE_PATH,
             'formatter': 'verbose',
         },
         'text_celery': {
             'level': 'DEBUG',
-            'class': 'logging.handlers.RotatingFileHandler',
-            'maxBytes': 1024 * 1024 * 100,
-            'backupCount': 5,
+            'class': 'logging.handlers.WatchedFileHandler',
             'filename': CELERY_LOG_FILE_PATH,
             'formatter': 'verbose',
         },
         'text_db': {
             'level': 'DEBUG',
-            'class': 'logging.handlers.RotatingFileHandler',
-            'maxBytes': 1024 * 1024 * 10,
-            'backupCount': 5,
+            'class': 'logging.handlers.WatchedFileHandler',
             'filename': DB_LOG_FILE_PATH,
             'formatter': 'verbose',
         },
@@ -123,25 +117,19 @@ LOGGING = {
         },
         'json_django': {
             'level': 'DEBUG',
-            'class': 'logging.handlers.RotatingFileHandler',
-            'maxBytes': 1024 * 1024 * 10,
-            'backupCount': 5,
+            'class': 'logging.handlers.WatchedFileHandler',
             'filename': LOG_FILE_PATH + '_json',
             'formatter': 'json',
         },
         'json_celery': {
             'level': 'DEBUG',
-            'class': 'logging.handlers.RotatingFileHandler',
-            'maxBytes': 1024 * 1024 * 10,
-            'backupCount': 5,
+            'class': 'logging.handlers.WatchedFileHandler',
             'filename': CELERY_LOG_FILE_PATH + '_json',
             'formatter': 'json',
         },
         'json_db': {
             'level': 'DEBUG',
-            'class': 'logging.handlers.RotatingFileHandler',
-            'maxBytes': 1024 * 1024 * 10,
-            'backupCount': 5,
+            'class': 'logging.handlers.WatchedFileHandler',
             'filename': DB_LOG_FILE_PATH + '_json',
             'formatter': 'json',
         },
@@ -149,29 +137,29 @@ LOGGING = {
     'loggers': {
         'apps.task.models': {
             'handlers': ['json_celery', 'text_celery'],
-            'level': 'DEBUG',
+            'level': 'INFO',
             'propagate': True,
         },
         'apps.task.tasks': {
             'handlers': ['json_celery', 'text_celery'],
-            'level': 'DEBUG',
+            'level': 'INFO',
             'propagate': True,
         },
         'django': {
             'handlers': ['json_django', 'text_django'],
-            'level': 'DEBUG',
+            'level': 'INFO',
             'propagate': True,
         },
         'django.db.backends': {
             'handlers': ['text_db', 'json_db'],  # Quiet by default!
             'propagate': False,
-            'level': 'DEBUG',
+            'level': 'ERROR',
         },
     },
 }
 
 CELERY_FILE_ACCESS_TYPE = 'Nginx'
-CELERY_FILE_ACCESS_NGINX_ROOT_URL = 'http://${DOCKER_HOST_NAME_UWSGI}:80/media/data/documents/'
+CELERY_FILE_ACCESS_NGINX_ROOT_URL = 'http://${DOCKER_NGINX_SERVER_NAME}:80/media/data/documents/'
 
 ACCOUNT_EMAIL_VERIFICATION='${DOCKER_DJANGO_ACCOUNT_EMAIL_VERIFICATION}'
 

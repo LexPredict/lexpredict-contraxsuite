@@ -1,0 +1,224 @@
+version: "3.3"
+services:
+# Service names should comply with the rules of building DNS names - they will be available
+# under these domain names inside the cluster virtual network.
+# (Service names should not contain underscores.)
+
+# When changing contents of any config file references here as a "config"
+# it is required to change config name (filebeat_config_1 -> filebeat_config_2, e.t.c.)
+# in service record and in the configs list in the bottom of this file.
+# Reason: current Docker/Swarm is not able to update configs shared by cluster nodes,
+# it is only able to create a new config.
+
+
+  # There are two curator serivices deleting old log indexes here - one for filebeat and one for metricbeat.
+  # This is done because there was an existing simple cron+curator docker image which supports
+  # only specifying a single index prefix. It doesn't use a lot of memory and debugging/maintaining
+  # more complicated config is worse than having two services.
+  contrax-curator_filebeat:
+    image: stefanprodan/es-curator-cron
+    networks:
+      - contrax_net
+    environment:
+      - "PERIOD=15min"
+      - "KEEP_DAYS=7"
+      - "INDEX_PREFIX=filebeat-"
+    command: "--host contrax-elasticsearch --port 9200"
+    depends_on:
+      - contrax-rabbitmq
+      - contrax-db
+      - contrax-tika
+      - contrax-redis
+      - contrax-elasticsearch
+
+  contrax-curator_metricbeat:
+    image: stefanprodan/es-curator-cron
+    networks:
+      - contrax_net
+    environment:
+      - "PERIOD=15min"
+      - "KEEP_DAYS=3"
+      - "INDEX_PREFIX=metricbeat-"
+    command: "--host contrax-elasticsearch --port 9200"
+    depends_on:
+      - contrax-rabbitmq
+      - contrax-db
+      - contrax-tika
+      - contrax-redis
+      - contrax-elasticsearch
+
+  contrax-redis:
+    image: redis
+    volumes:
+      - redis_data:/data
+    networks:
+      - contrax_net
+    deploy:
+      replicas: 1
+      placement:
+        constraints: [node.role == manager]
+    ports: #
+      - 127.0.0.1:63790:6379 #
+
+  contrax-elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch-oss:6.3.0
+    volumes:
+      - elasticsearch_data:/usr/share/elasticsearch/data
+    configs:
+      - source: elasticsearch_config_1
+        target: /usr/share/elasticsearch/config/elasticsearch.yml
+    networks:
+      - contrax_net
+    deploy:
+      replicas: 1
+      resources:
+        limits:
+          cpus: '${DOCKER_ELASTICSEARCH_CPUS}'
+          memory: ${DOCKER_ELASTICSEARCH_MEMORY}
+      placement:
+        constraints: [node.role == manager]
+    ports: #
+      - 127.0.0.1:19200:9200 #
+
+  contrax-kibana:
+    image: docker.elastic.co/kibana/kibana-oss:6.3.0
+    networks:
+      - contrax_net
+    depends_on:
+      - contrax-elasticsearch
+    environment:
+      - "ELASTICSEARCH_URL=http://${DOCKER_HOST_NAME_ELASTICSEARCH}:9200"
+      - "SERVER_BASEPATH=${DOCKER_KIBANA_BASE_PATH}"
+    ports:
+      - 127.0.0.1:5601:5601
+    deploy:
+      replicas: 1
+
+  contrax-filebeat:
+    image: docker.elastic.co/beats/filebeat:6.3.0
+    volumes:
+      - contraxsuite_logs:/data/logs
+      - filebeat_data:/usr/share/filebeat/data
+      - contraxsuite_internal_nginx_logs:/data/nginx_logs
+    configs:
+      - source: filebeat_config_10
+        target: /usr/share/filebeat/filebeat.yml
+    networks:
+      - contrax_net
+    depends_on:
+      - contrax-elasticsearch
+      - contrax-kibana
+    deploy:
+      mode: global
+      resources:
+        limits:
+          cpus: '1'
+          memory: 2GB
+
+  contrax-metricbeat:
+    image: docker.elastic.co/beats/metricbeat:6.3.0
+    volumes:
+      - metricbeat_data:/usr/share/metricbeat/data
+      - /var/run/docker.sock:/hostfs/var/run/docker.sock
+      - /proc:/hostfs/proc:ro
+      - /sys/fs/cgroup:/hostfs/sys/fs/cgroup:ro
+      - /:/hostfs:ro
+    command: -e -system.hostfs=/hostfs
+    user: root
+    configs:
+      - source: metricbeat_config_9
+        target: /usr/share/metricbeat/metricbeat.yml
+    networks:
+      - contrax_net
+    depends_on:
+      - contrax-elasticsearch
+      - contrax-kibana
+    deploy:
+      mode: global
+      resources:
+        limits:
+          cpus: '1'
+          memory: 2GB
+
+  contrax-rabbitmq:
+    image: rabbitmq:3-management
+    hostname: contrax-rabbitmq
+    networks:
+      - contrax_net
+    environment:
+      - "RABBITMQ_DEFAULT_USER=${DOCKER_RABBITMQ_USER}"
+      - "RABBITMQ_DEFAULT_PASS=${DOCKER_RABBITMQ_PASSWORD}"
+      - "RABBITMQ_DEFAULT_VHOST=${DOCKER_RABBITMQ_VHOST}"
+    deploy:
+      replicas: 1
+      placement:
+        constraints: [node.role == manager]
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    ports: #
+     - 127.0.0.1:56720:5672 #
+
+  contrax-db:
+    image: postgres:9.6
+    environment:
+      - "PGDATA=/var/lib/contraxsuite-postgres"
+      - "POSTGRES_USER=${DOCKER_PG_USER}"
+      - "POSTGRES_PASSWORD=${DOCKER_PG_PASSWORD}"
+      - "POSTGRES_DB=${DOCKER_PG_DB_NAME}"
+    volumes:
+      - postgres_data:/var/lib/contraxsuite-postgres
+    networks:
+      - contrax_net
+    deploy:
+      replicas: 1
+      resources:
+        limits:
+          cpus: '${DOCKER_POSTGRES_CPUS}'
+          memory: ${DOCKER_POSTGRES_MEMORY}
+      placement:
+        constraints: [node.role == manager]
+    ports: #
+      - 127.0.0.1:54320:5432 #
+
+  contrax-tika:
+    image: lexpredict/tika-server:latest
+    networks:
+      - contrax_net
+    deploy:
+      replicas: 3
+      resources:
+        limits:
+          cpus: '${DOCKER_TIKA_CPUS}'
+          memory: ${DOCKER_TIKA_MEMORY}
+    ports: #
+      - 127.0.0.1:9998:9998 #
+
+volumes:
+  contraxsuite_deployment_uuid:
+  contraxsuite_nginx_conf:
+  contraxsuite_nginx_certs:
+  contraxsuite_static_files:
+  contraxsuite_frontend:
+  contraxsuite_third_party_dependencies:
+  contraxsuite_data_media:
+  contraxsuite_notebooks:
+  contraxsuite_logs:
+  contraxsuite_internal_nginx_logs:
+  postgres_data:
+  rabbitmq_data:
+  elasticsearch_data:
+  redis_data:
+  filebeat_data:
+  metricbeat_data:
+  celery_worker_state:
+
+networks:
+  contrax_net:
+
+configs:
+  filebeat_config_10:
+    file: ./temp/filebeat.yml
+  metricbeat_config_9:
+    file: ./temp/metricbeat.yml
+  elasticsearch_config_1:
+    file: ./temp/elasticsearch.yml

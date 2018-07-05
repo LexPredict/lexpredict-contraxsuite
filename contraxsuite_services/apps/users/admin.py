@@ -34,12 +34,12 @@ from django.contrib.auth.admin import UserAdmin as AuthUserAdmin
 from django.contrib.auth.forms import UserChangeForm, UserCreationForm
 
 # Project imports
-from .models import User
+from apps.users.models import User, Role
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.0/LICENSE"
-__version__ = "1.1.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.1/LICENSE"
+__version__ = "1.1.1"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -76,4 +76,10 @@ class MyUserAdmin(AuthUserAdmin):
     search_fields = ['name', 'role', 'organization']
 
 
+class RoleAdmin(admin.ModelAdmin):
+    list_display = ('name', 'code', 'abbr', 'order', 'is_admin', 'is_manager')
+    search_fields = ['name', 'code']
+
+
 admin.site.register(User, MyUserAdmin)
+admin.site.register(Role, RoleAdmin)

@@ -1,0 +1,44 @@
+{% extends "email/email_base.html" %}
+
+{% block css_extra %}
+  <style>
+    .SUCCESS {
+      color: green;
+    }
+    .FAILURE {
+      color: red;
+    }
+    .PENDING {
+      color: orange;
+    }
+  </style>
+{% endblock %}
+
+{% block content_header %}
+  Batch upload job is completed
+{% endblock %}
+
+{% block content %}
+  <p><b>Project ID: </b>{{ session.project.pk }}</p>
+  <p><b>Project Name: </b>{{ session.project.name }}</p>
+  <p><b>Session ID: </b>{{ session.uid }}</p>
+  <p><b>Session created by: </b>{{ session.created_by.get_full_name }}</p>
+  <p><b>Session created at: </b>{{ session.created_date|date:"F j, Y, h:i A" }}</p>
+  <p><b>Batch upload job is completed at: </b>{{ completed_at|date:"F j, Y, h:i A" }}</p>
+  <table>
+    <tr>
+      <th>#</th>
+      <th>File Name</th>
+      <th>Document ID</th>
+      <th>Upload Status</th>
+    </tr>
+    {% for file_data in data %}
+      <tr>
+        <td>{{ forloop.counter }}</td>
+        <td>{{ file_data.file_name }}</td>
+        <td>{{ file_data.document_id }}</td>
+        <td class="{{ file_data.tasks_overall_status }}">{{ file_data.tasks_overall_status }}</td>
+      </tr>
+    {% endfor %}
+  </table>
+{% endblock %}

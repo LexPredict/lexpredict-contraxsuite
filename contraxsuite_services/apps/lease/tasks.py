@@ -37,12 +37,12 @@ from apps.lease.models import LeaseDocument
 from apps.lease.parsing.lease_doc_detector import LeaseDocDetector
 from apps.lease.parsing.lease_doc_properties_locator import find_landlord_tenant, detect_fields, \
     detect_address_default
-from apps.task.tasks import BaseTask, TaskControl
+from apps.task.tasks import BaseTask, ExtendedTask
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.0/LICENSE"
-__version__ = "1.1.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.1/LICENSE"
+__version__ = "1.1.1"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -55,7 +55,7 @@ class ProcessLeaseDocuments(BaseTask):
     lease_doc_detector = LeaseDocDetector()
 
     def process(self, **kwargs):
-        self.task.log_info(
+        self.log_info(
             "Going to detect lease documents among the all loaded documents in the system...")
 
         if kwargs.get('delete'):
@@ -66,27 +66,24 @@ class ProcessLeaseDocuments(BaseTask):
         # TODO: outdated
         if kwargs.get('document_type'):
             documents = documents.filter(document_type__in=kwargs['document_type'])
-            self.task.log_info(
+            self.log_info(
                 'Filter documents by "%s" document type.' % str(kwargs['document_type']))
 
         if kwargs.get('document_id'):
             documents = documents.filter(pk=kwargs['document_id'])
-            self.task.log_info('Process document id={}.'.format(kwargs['document_id']))
-
-        self.task.update_subtasks_total(documents.count())
+            self.log_info('Process document id={}.'.format(kwargs['document_id']))
 
         detect_and_process_lease_document_args = []
         for row in documents.values_list('id'):
             detect_and_process_lease_document_args \
                 .append((row[0], kwargs.get('no_detect', True)))
-        self.task.run_sub_tasks('Detect And Process Each Lease Document',
+        self.run_sub_tasks('Detect And Process Each Lease Document',
                                 ProcessLeaseDocuments.detect_and_process_lease_document,
                                 detect_and_process_lease_document_args)
 
     @staticmethod
-    @shared_task
-    def detect_and_process_lease_document(document_id: int, no_detect: bool,
-                                          main_task: TaskControl):
+    @shared_task(base=ExtendedTask, bind=True)
+    def detect_and_process_lease_document(task:ExtendedTask, document_id: int, no_detect: bool):
         doc = Document.objects.get(pk=document_id)
         doc_text = doc.full_text
 
@@ -97,7 +94,7 @@ class ProcessLeaseDocuments(BaseTask):
 
         if lease_doc or no_detect or ProcessLeaseDocuments.lease_doc_detector.is_lease_document(
                 doc_text):
-            main_task.log_info('{2} lease document: #{0}. {1}'
+            task.log_info('{2} lease document: #{0}. {1}'
                                .format(document_id,
                                        doc.name,
                                        'Processing' if no_detect else 'Detected'))
@@ -106,12 +103,12 @@ class ProcessLeaseDocuments(BaseTask):
                 lease_doc.__dict__.update(doc.__dict__)
 
             ProcessLeaseDocuments.process_landlord_tenant(lease_doc, doc_text)
-            ProcessLeaseDocuments.process_fields(lease_doc, doc_text, main_task)
+            ProcessLeaseDocuments.process_fields(lease_doc, doc_text, task)
 
             lease_doc.save()
 
         else:
-            main_task.log_info('Not a lease document: #{0}. {1}'.format(document_id, doc.name))
+            task.log_info('Not a lease document: #{0}. {1}'.format(document_id, doc.name))
 
     @staticmethod
     def get_or_create_party(company_desc: Tuple) -> Party:
@@ -146,7 +143,7 @@ class ProcessLeaseDocuments(BaseTask):
         return separator.join(sentence_list_no_repeat)
 
     @staticmethod
-    def process_fields(doc: LeaseDocument, doc_text: str, task: TaskControl):
+    def process_fields(doc: LeaseDocument, doc_text: str, task: ExtendedTask):
         sentences = get_sentence_list(doc_text)
         # fields = detect_fields(sentences, groups=('address',))
         fields = detect_fields(sentences)
