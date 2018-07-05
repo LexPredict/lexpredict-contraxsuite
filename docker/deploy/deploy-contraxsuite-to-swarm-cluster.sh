@@ -45,7 +45,7 @@ if sudo [ ! -f ${VOLUME_NGINX_CONF}/.kibana_htpasswd ]; then
     sudo htpasswd -b -c ${VOLUME_NGINX_CONF}/.kibana_htpasswd ${DOCKER_DJANGO_ADMIN_NAME} ${DOCKER_DJANGO_ADMIN_PASSWORD}
 fi
 
-if [ ! -z ${DOCKER_NGINX_CERTIFICATE} ]; then
+if sudo [ ! -z ${DOCKER_NGINX_CERTIFICATE} ]; then
     echo "Nginx will serve HTTPS."
 
     sudo cp ${DOCKER_NGINX_CERTIFICATE} ${VOLUME_NGINX_CERTS}/certificate.pem
@@ -54,7 +54,7 @@ if [ ! -z ${DOCKER_NGINX_CERTIFICATE} ]; then
 fi
 
 export NGINX_EXTERNAL_ROUTES=$(envsubst < ./config-templates/nginx-external-routes.conf.template | sed 's/^/    /')
-if [ -f ${VOLUME_NGINX_CERTS}/certificate.pem ]; then
+if sudo [ -f ${VOLUME_NGINX_CERTS}/certificate.pem ]; then
     echo "Nginx will serve HTTPS."
     envsubst < ./config-templates/nginx-https.conf.template > ./temp/default.conf
 else
