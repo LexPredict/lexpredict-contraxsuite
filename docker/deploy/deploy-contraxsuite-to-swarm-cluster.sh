@@ -27,7 +27,7 @@ envsubst < ./config-templates/nginx.conf.template > ./temp/nginx.conf
 envsubst < ./config-templates/nginx-internal.conf.template > ./temp/internal.conf
 
 if [ -z "$(sudo ls -A ${VOLUME_FRONTEND})" ]; then
-   wget --user=lexpredict --ask-password https://demo.contraxsuite.com/pfiles/contraxsuite-frontend-demo.tar.gz -O ./temp/contraxsuite-frontend-demo.tar.gz
+   wget --user=lexpredict --ask-password https://demo.contraxsuite.com:444/pfiles/contraxsuite-frontend-demo.tar.gz -O ./temp/contraxsuite-frontend-demo.tar.gz
    sudo tar -xzf ./temp/contraxsuite-frontend-demo.tar.gz -C ${VOLUME_FRONTEND}
    rm ./temp/contraxsuite-frontend-demo.tar.gz
 
