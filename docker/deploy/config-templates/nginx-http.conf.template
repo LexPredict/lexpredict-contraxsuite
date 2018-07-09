@@ -11,4 +11,6 @@ server {
 
 ${NGINX_EXTERNAL_ROUTES}
 
+    include /etc/nginx/server_include/*.conf;
+
 }
