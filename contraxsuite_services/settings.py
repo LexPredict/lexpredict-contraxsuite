@@ -429,9 +429,10 @@ STRICT_PIL = True
 FILEBROWSER_EXTENSIONS = {
     'Image': ['.jpg', '.jpeg', '.png', '.tif', '.tiff'],
     'Document': ['.pdf', '.doc', '.docx', '.rtf', '.txt', '.xls', '.xlsx', '.csv', '.html'],
+    'Archive': ['.zip']
 }
 # Max. Upload Size in Bytes
-FILEBROWSER_MAX_UPLOAD_SIZE = 10 * 1024 ** 2  # 10Mb
+FILEBROWSER_MAX_UPLOAD_SIZE = 300 * 1024 ** 2  # 300Mb
 # replace spaces and convert to lowercase
 FILEBROWSER_CONVERT_FILENAME = False
 # remove non-alphanumeric chars (except for underscores, spaces & dashes)
