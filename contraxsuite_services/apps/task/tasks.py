@@ -56,8 +56,8 @@ from constance import config
 from django.conf import settings
 from django.db import transaction
 from django.db.models import Count, Q, Case, Value, When, IntegerField
+from django.db.utils import IntegrityError
 from django.utils.timezone import now
-from django_celery_results.models import TaskResult
 from elasticsearch import Elasticsearch
 from elasticsearch.exceptions import RequestError
 from lexnlp.extract.en import (
@@ -112,8 +112,8 @@ from apps.task.utils.text.segment import segment_paragraphs
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.1/LICENSE"
-__version__ = "1.1.1"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.1b/LICENSE"
+__version__ = "1.1.1b"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -533,11 +533,17 @@ class LoadDocuments(BaseTask):
             return None, None
 
     @staticmethod
+    def get_title(text):
+        titles = list(get_titles(text))
+        return titles[0] if titles else None
+
+    @staticmethod
     def create_document_local(task: ExtendedTask, file_path, file_name, kwargs):
 
         ret = []
         document_name = os.path.basename(file_name)
         document_source = os.path.dirname(file_name)
+        file_size = os.path.getsize(file_path)
 
         # OLD API: Check for existing record
         if kwargs['metadata'].get('session_id') is None and \
@@ -598,10 +604,7 @@ class LoadDocuments(BaseTask):
             task.log_info('LANGUAGE IS NOT DETECTED: ' + file_name)
 
         # detect title
-        title = metadata.get('title', None)
-        if not title:
-            _titles = list(get_titles(text))
-            title = _titles[0] if _titles else None
+        title = metadata.get('title', None) or LoadDocuments.get_title(text)
 
         document_type = None
 
@@ -626,6 +629,7 @@ class LoadDocuments(BaseTask):
                 metadata=metadata,
                 language=language,
                 title=title,
+                file_size=file_size,
                 full_text=text)
 
             task.log_extra['log_document_id'] = document.pk
@@ -1165,7 +1169,14 @@ class Locate(BaseTask):
             except AttributeError:
                 self.log_error('Warning: "%s" method not found' % func_name)
                 continue
-            found = task_func(text, text_unit_id, text_unit_lang, **task_kwargs)
+            try:
+                found = task_func(text, text_unit_id, text_unit_lang, **task_kwargs)
+            except IntegrityError as e:
+                # just skip if duplicated values BUT keep log to investigate issue
+                if 'duplicate key value violates unique constraint' in str(e):
+                    self.log_error('Function "%s" caused error:' % func_name)
+                    self.log_error(str(e))
+                    continue
             if found:
                 tag_name = found if not isinstance(found, bool) else task_name
                 tags.append(tag_name)

@@ -40,6 +40,7 @@ from rest_framework.response import Response
 # Django imports
 from django.conf import settings
 from django.contrib.postgres.aggregates.general import StringAgg
+from django.core.files import File
 from django.core.files.storage import FileSystemStorage
 from django.http import JsonResponse
 from django.db.models import Count, Min, Max
@@ -61,8 +62,8 @@ from apps.project.tasks import THIS_MODULE    # noqa
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.1/LICENSE"
-__version__ = "1.1.1"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.1b/LICENSE"
+__version__ = "1.1.1b"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -613,6 +614,7 @@ class UploadSessionViewSet(JqListAPIMixin, viewsets.ModelViewSet):
         result = {'project_id': session.project.pk,
                   'document_tasks_progress': document_tasks_progress or None,
                   'document_tasks_progress_total': session.document_tasks_progress_total,
+                  'documents_total_size': session.documents_total_size,
                   'session_status': session.status}
         return Response(result)
 
@@ -631,6 +633,26 @@ class UploadSessionViewSet(JqListAPIMixin, viewsets.ModelViewSet):
         return Response(result)
 
     @detail_route(methods=['post'])
+    def batch_upload(self, request, **kwargs):
+        """
+        Upload batch of files\n
+            Params:
+                - folder (source_path): str - absolute path to a directory containing files
+                - force: bool (optional) - whether rewrite existing file and Document
+                - send_email_notifications: bool (optional) - sent notification email that batch uploading started
+        """
+        folder = request.POST.get('folder') or request.POST.get('source_path')
+        files = []
+        if folder:
+            files = os.listdir(folder)
+            for file_name in files:
+                a_file = File(open(os.path.join(folder, file_name)), name=file_name)
+                request.FILES['file'] = a_file
+                self.upload(request, **kwargs)
+
+        return Response('Uploading of {} files started'.format(len(files)))
+
+    @detail_route(methods=['post'])
     def upload(self, request, **kwargs):
         """
         Upload a File\n
@@ -639,8 +661,8 @@ class UploadSessionViewSet(JqListAPIMixin, viewsets.ModelViewSet):
                 - force: bool (optional) - whether rewrite existing file and Document
                 - send_email_notifications: bool (optional) - sent notification email that batch uploading started
         """
-        session = self.get_object()
         session_id = kwargs.get('pk')
+        session = UploadSession.objects.get(pk=session_id)
         project = session.project
         file_ = request.FILES.dict().get('file')
 

@@ -56,8 +56,8 @@ from apps.common.mixins import (
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.1/LICENSE"
-__version__ = "1.1.1"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.1b/LICENSE"
+__version__ = "1.1.1b"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -670,7 +670,8 @@ class TopDateUsageListAPIView(BaseTopUsageListAPIView):
     model = DateUsage
     grouping_item = 'date'
     data_view = DateUsageListAPIView
-    qs_values = ["date"]
+    qs_values = ['date']
+    qs_order_by = ['-date', '-count']
 
     def update_item(self, item):
         item['url'] = reverse('v1:date-usage') + '?date_search=' + item['date'].isoformat()
@@ -863,7 +864,8 @@ class TopDateDurationUsageListAPIView(BaseTopUsageListAPIView):
     model = DateDurationUsage
     grouping_item = 'duration_days'
     data_view = DateDurationUsageListAPIView
-    qs_values = ["amount", "duration_type", "duration_days"]
+    qs_values = ['amount', 'duration_type', 'duration_days']
+    qs_order_by = ['-duration_days', '-count']
     url_args = ('v1:date-duration-usage', 'duration_search', 'duration_days')
 
 
@@ -982,7 +984,8 @@ class TopCurrencyUsageListAPIView(BaseTopUsageListAPIView):
     model = CurrencyUsage
     grouping_item = 'amount'
     data_view = CurrencyUsageListAPIView
-    qs_values = ["amount", "currency", "usage_type"]
+    qs_values = ['amount', 'currency', 'usage_type']
+    qs_order_by = ['-amount', '-count']
     url_args = ('v1:currency-usage', 'currency_search', 'currency')
 
 
@@ -1064,7 +1067,8 @@ class TopAmountUsageListAPIView(BaseTopUsageListAPIView):
     model = AmountUsage
     grouping_item = 'amount'
     data_view = AmountUsageListAPIView
-    qs_values = ["amount"]
+    qs_values = ['amount']
+    qs_order_by = ['-amount', '-count']
     url_args = ('v1:amount-usage', 'amount_search', 'amount')
 
 
@@ -1102,7 +1106,8 @@ class TopDistanceUsageListAPIView(BaseTopUsageListAPIView):
     model = DistanceUsage
     grouping_item = 'amount'
     data_view = DistanceUsageListAPIView
-    qs_values = ["amount", "distance_type"]
+    qs_values = ['amount', 'distance_type']
+    qs_order_by = ['-amount', '-count']
 
     def get_detail_data(self, item):
         return [i for i in self.detail_data if
@@ -1149,7 +1154,8 @@ class TopPercentUsageListAPIView(BaseTopUsageListAPIView):
     model = PercentUsage
     grouping_item = 'amount'
     data_view = PercentUsageListAPIView
-    qs_values = ["amount", "unit_type"]
+    qs_values = ['amount', 'unit_type']
+    qs_order_by = ['-amount', '-count']
 
     def get_detail_data(self, item):
         return [i for i in self.detail_data if
@@ -1198,7 +1204,8 @@ class TopRatioUsageListAPIView(BaseTopUsageListAPIView):
     model = RatioUsage
     grouping_item = 'amount'
     data_view = RatioUsageListAPIView
-    qs_values = ["amount", "amount2"]
+    qs_values = ['amount', 'amount2']
+    qs_order_by = ['-amount', '-count']
 
     def get_detail_data(self, item):
         return [i for i in self.detail_data if

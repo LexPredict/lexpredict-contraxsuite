@@ -46,8 +46,8 @@ from apps.users.models import User
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.1/LICENSE"
-__version__ = "1.1.1"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.1b/LICENSE"
+__version__ = "1.1.1b"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -271,6 +271,12 @@ class Project(models.Model):
             )
         return progress
 
+    def last_session(self, create=True, created_by=None):
+        session = self.uploadsession_set.order_by('created_date').last()
+        if not session and create:
+            session = UploadSession.objects.create(project=self, created_by=created_by)
+        return session
+
     @property
     def progress_as_dict(self):
         return self.progress(as_dict=True)
@@ -397,12 +403,13 @@ class UploadSession(models.Model):
         """
         Progress per document per task
         """
-        return [{'file_name': i.metadata['file_name'],
-                 'task_id': str(i.pk),
-                 'task_name': i.name,
-                 'task_status': i.status,
-                 'task_progress': 100 if i.status in ['SUCCESS', 'FAILURE'] else i.progress}
-                for i in self.session_tasks if i.metadata.get('file_name')]
+        return [{'file_name': i['metadata']['file_name'],
+                 'task_id': str(i['pk']),
+                 'task_name': i['name'],
+                 'task_status': i['status'],
+                 'task_progress': 100 if i['status'] in ['SUCCESS', 'FAILURE'] else i['progress']}
+                for i in self.session_tasks.values('pk', 'metadata', 'name', 'status', 'progress')
+                if i['metadata'].get('file_name')]
 
     def document_tasks_progress(self, details=False):
         """
@@ -424,13 +431,17 @@ class UploadSession(models.Model):
                 task_status = 'SUCCESS'
             else:
                 task_status = 'PENDING'
+            file_size = None
             try:
-                document_id = self.document_set.get(name=file_name).pk
+                document = self.document_set.get(name=file_name)
+                document_id = document.pk
+                file_size = document.file_size
             except:
                 document_id = None
             result[file_name] = {
                 'document_id': document_id,
                 'file_name': file_name,
+                'file_size': file_size,
                 'task_progress_data': task_progress_data,
                 'tasks_overall_status': task_status,
                 'document_progress': document_progress}
@@ -448,6 +459,10 @@ class UploadSession(models.Model):
         document_tasks_progress = self._document_tasks_progress or self.document_tasks_progress()
         _p = [i['document_progress'] for i in document_tasks_progress.values()]
         return round(sum(_p) / float(len(_p)), 2) if _p else 0
+
+    @property
+    def documents_total_size(self):
+        return sum(self.document_set.values_list('file_size', flat=True))
 
     @property
     def status(self):

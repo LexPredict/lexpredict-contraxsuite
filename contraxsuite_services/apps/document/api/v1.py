@@ -73,8 +73,8 @@ from apps.users.models import User
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.1/LICENSE"
-__version__ = "1.1.1"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.1b/LICENSE"
+__version__ = "1.1.1b"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -103,7 +103,7 @@ class BaseDocumentSerializer(SimpleRelationSerializer):
 
     class Meta:
         model = Document
-        fields = ['pk', 'name', 'document_type',
+        fields = ['pk', 'name', 'document_type', 'file_size',
                   'status', 'status_data', 'available_statuses_data',
                   'assignee', 'assignee_data', 'available_assignees_data',
                   'project', 'description', 'title']
@@ -128,7 +128,7 @@ class GenericDocumentSerializer(SimpleRelationSerializer):
 
     class Meta:
         model = Document
-        fields = ['pk', 'name', 'cluster_id',
+        fields = ['pk', 'name', 'cluster_id', 'file_size',
                   'parties', 'min_date', 'max_date',
                   'max_currency']
 
@@ -150,7 +150,7 @@ class DocumentWithFieldsDetailSerializer(BaseDocumentSerializer):
 
     class Meta:
         model = Document
-        fields = ['pk', 'name', 'document_type',
+        fields = ['pk', 'name', 'document_type', 'file_size',
                   'status', 'status_data', 'available_statuses_data',
                   'assignee', 'assignee_data', 'available_assignees_data',
                   'description', 'title', 'full_text',
@@ -180,7 +180,7 @@ class DocumentWithFieldsListSerializer(BaseDocumentSerializer):
     class Meta:
         model = Document
         fields = ['pk', 'name', 'document_type',
-                  'description', 'title',
+                  'description', 'title', 'file_size',
                   'status', 'status_data',
                   'assignee', 'assignee_data',
                   'field_values']
@@ -195,7 +195,7 @@ class ExtendedDocumentWithFieldsListSerializer(GenericDocumentSerializer,
     class Meta:
         model = Document
         fields = ['pk', 'name', 'document_type', 'cluster_id',
-                  'description', 'title',
+                  'description', 'title', 'file_size',
                   'status', 'status_data',
                   'assignee', 'assignee_data',
                   'field_values',

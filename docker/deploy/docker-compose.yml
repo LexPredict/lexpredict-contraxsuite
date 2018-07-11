@@ -183,8 +183,8 @@ services:
           memory: ${DOCKER_POSTGRES_MEMORY}
       placement:
         constraints: [node.role == manager]
-#    ports: #
-#      - 127.0.0.1:54320:5432 #
+    ports: #
+      - 127.0.0.1:54320:5432 #
 
   contrax-tika:
     image: lexpredict/tika-server:latest
@@ -389,6 +389,7 @@ services:
       - contraxsuite_static_files:/contraxsuite_services/staticfiles
       - contraxsuite_data_media:/data/media
       - contraxsuite_internal_nginx_logs:/var/log/nginx
+      - contraxsuite_nginx_server_include:/etc/nginx/server_include
     ports:
       - 0.0.0.0:80:8080
       - 0.0.0.0:443:4443
@@ -570,6 +571,7 @@ volumes:
   filebeat_data:
   metricbeat_data:
   celery_worker_state:
+  contraxsuite_nginx_server_include:
 
 networks:
   contrax_net:

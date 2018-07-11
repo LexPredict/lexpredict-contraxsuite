@@ -52,8 +52,8 @@ from apps.users.models import User
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.1/LICENSE"
-__version__ = "1.1.1"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.1b/LICENSE"
+__version__ = "1.1.1b"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -262,6 +262,10 @@ class Document(models.Model):
     # If relevant, URI/path within document source
     source_path = models.CharField(max_length=1024, db_index=True, null=True)
 
+    # source file size, bytes
+    file_size = models.PositiveIntegerField(default=0, null=False)
+
+    # full document text
     full_text = models.TextField(null=True)
 
     # Pre-calculated length statistics for paragraph and sentence

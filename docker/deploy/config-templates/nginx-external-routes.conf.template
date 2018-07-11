@@ -1,24 +1,19 @@
-location / {
-    alias /contraxsuite_frontend/;
-    index index.html index.htm;
-}
-
 location /advanced {
     uwsgi_pass  ${DOCKER_HOST_NAME_UWSGI}:3031;
     uwsgi_read_timeout 300;
-    include     /etc/nginx/uwsgi_params;
+    include /etc/nginx/uwsgi_params;
 }
 
 location /api {
     uwsgi_pass  ${DOCKER_HOST_NAME_UWSGI}:3031;
     uwsgi_read_timeout 300;
-    include     /etc/nginx/uwsgi_params;
+    include /etc/nginx/uwsgi_params;
 }
 
 location /rest-auth {
     uwsgi_pass  ${DOCKER_HOST_NAME_UWSGI}:3031;
     uwsgi_read_timeout 300;
-    include     /etc/nginx/uwsgi_params;
+    include /etc/nginx/uwsgi_params;
 }
 
 location ${DOCKER_DJANGO_BASE_PATH}static/ {

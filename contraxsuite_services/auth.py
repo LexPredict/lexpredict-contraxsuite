@@ -24,17 +24,22 @@
 """
 # -*- coding: utf-8 -*-
 from rest_auth.models import TokenModel
+from rest_auth.serializers import PasswordChangeSerializer
 from rest_framework import serializers
 from rest_framework.authentication import TokenAuthentication
 from django.core.urlresolvers import reverse
+from django.contrib.auth.forms import SetPasswordForm, password_validation
+from django import forms
+from django.conf import settings
+from django.utils.translation import ugettext as _
 
 from apps.common.utils import get_api_module
 
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.1/LICENSE"
-__version__ = "1.1.1"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.1b/LICENSE"
+__version__ = "1.1.1b"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -76,3 +81,80 @@ class TokenSerializer(serializers.ModelSerializer):
         serializer = user_api_module.UserSerializer(user)
         serializer.context['request'] = self.context['request']
         return serializer.data
+
+
+class CustomSetPasswordForm(forms.Form):
+    """
+    A form that lets a user change set their password without entering the old
+    password
+    """
+    new_password = forms.CharField(
+        label=_("New password"),
+        widget=forms.PasswordInput,
+        strip=False,
+        help_text=password_validation.password_validators_help_text_html(),
+    )
+
+    def __init__(self, user, *args, **kwargs):
+        self.user = user
+        super().__init__(*args, **kwargs)
+
+    def clean_new_password(self):
+        password = self.cleaned_data.get('new_password')
+        password_validation.validate_password(password, self.user)
+        return password
+
+    def save(self, commit=True):
+        password = self.cleaned_data["new_password"]
+        self.user.set_password(password)
+        if commit:
+            self.user.save()
+        return self.user
+
+
+class CustomPasswordChangeSerializer(serializers.Serializer):
+    old_password = serializers.CharField(max_length=128)
+    new_password = serializers.CharField(max_length=128)
+
+    set_password_form_class = CustomSetPasswordForm
+
+    def __init__(self, *args, **kwargs):
+        # TODO: made old_password field optional
+        self.old_password_field_enabled = True
+
+        self.logout_on_password_change = getattr(
+            settings, 'LOGOUT_ON_PASSWORD_CHANGE', False
+        )
+        super().__init__(*args, **kwargs)
+
+        if not self.old_password_field_enabled:
+            self.fields.pop('old_password')
+
+        self.request = self.context.get('request')
+        self.user = getattr(self.request, 'user', None)
+
+    def validate_old_password(self, value):
+        invalid_password_conditions = (
+            self.old_password_field_enabled,
+            self.user,
+            not self.user.check_password(value)
+        )
+
+        if all(invalid_password_conditions):
+            raise serializers.ValidationError('Invalid password')
+        return value
+
+    def validate(self, attrs):
+        self.set_password_form = self.set_password_form_class(
+            user=self.user, data=attrs
+        )
+
+        if not self.set_password_form.is_valid():
+            raise serializers.ValidationError(self.set_password_form.errors)
+        return attrs
+
+    def save(self):
+        self.set_password_form.save()
+        if not self.logout_on_password_change:
+            from django.contrib.auth import update_session_auth_hash
+            update_session_auth_hash(self.request, self.user)

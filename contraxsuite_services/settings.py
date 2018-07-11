@@ -370,14 +370,14 @@ CELERY_BEAT_SCHEDULE = {
     },
     'advanced_celery.track_session_completed': {
         'task': 'advanced_celery.track_session_completed',
-        'schedule': 30.0,
-        'options': {'queue': 'serial', 'expires': 30},
+        'schedule': 120.0,
+        'options': {'queue': 'serial', 'expires': 120},
     },
 }
 CELERY_TIMEZONE = 'UTC'
 CELERY_ENABLE_UTC = True
 
-CELERY_ACKS_LATE = True
+CELERY_TASK_ACKS_LATE = True
 CELERY_TASK_REJECT_ON_WORKER_LOST = True
 
 # this needed on production. check
@@ -429,9 +429,10 @@ STRICT_PIL = True
 FILEBROWSER_EXTENSIONS = {
     'Image': ['.jpg', '.jpeg', '.png', '.tif', '.tiff'],
     'Document': ['.pdf', '.doc', '.docx', '.rtf', '.txt', '.xls', '.xlsx', '.csv', '.html'],
+    'Archive': ['.zip']
 }
 # Max. Upload Size in Bytes
-FILEBROWSER_MAX_UPLOAD_SIZE = 10 * 1024 ** 2  # 10Mb
+FILEBROWSER_MAX_UPLOAD_SIZE = 300 * 1024 ** 2  # 300Mb
 # replace spaces and convert to lowercase
 FILEBROWSER_CONVERT_FILENAME = False
 # remove non-alphanumeric chars (except for underscores, spaces & dashes)
@@ -512,6 +513,7 @@ REST_FRAMEWORK = {
 }
 REST_AUTH_SERIALIZERS = {
     'TOKEN_SERIALIZER': 'auth.TokenSerializer',
+    'PASSWORD_CHANGE_SERIALIZER': 'auth.CustomPasswordChangeSerializer',
 }
 SWAGGER_SETTINGS = {
     'SECURITY_DEFINITIONS': {
@@ -666,8 +668,8 @@ CORS_ORIGIN_ALLOW_ALL = True
 CORS_ALLOW_CREDENTIALS = False
 CORS_URLS_REGEX = r'^/api/.*$'
 
-VERSION_NUMBER = '1.1.1'
-VERSION_COMMIT = '4e1fe29'
+VERSION_NUMBER = '1.1.1b'
+VERSION_COMMIT = 'fce4dc0'
 
 try:
     from local_settings import *

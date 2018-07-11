@@ -26,34 +26,23 @@ sudo cp -a ./config-templates/nginx/. ${VOLUME_NGINX_CONF}
 envsubst < ./config-templates/nginx.conf.template > ./temp/nginx.conf
 envsubst < ./config-templates/nginx-internal.conf.template > ./temp/internal.conf
 
-if [ -z "$(sudo ls -A ${VOLUME_FRONTEND})" ]; then
-   wget --user=lexpredict --ask-password https://demo.contraxsuite.com/pfiles/contraxsuite-frontend-demo.tar.gz -O ./temp/contraxsuite-frontend-demo.tar.gz
-   sudo tar -xzf ./temp/contraxsuite-frontend-demo.tar.gz -C ${VOLUME_FRONTEND}
-   rm ./temp/contraxsuite-frontend-demo.tar.gz
-
-   if [ ! -z ${DOCKER_NGINX_CERTIFICATE} ]; then
-       FRONTEND_PROTOCOL="https"
-   else
-       FRONTEND_PROTOCOL="http"
-   fi
-
-   sudo sed -i "s/https:\/\/demo.contraxsuite.com/${FRONTEND_PROTOCOL}:\/\/${DOCKER_DJANGO_HOST_NAME}/g" ${VOLUME_FRONTEND}/app.bundle.js
-fi
-
 if sudo [ ! -f ${VOLUME_NGINX_CONF}/.kibana_htpasswd ]; then
     sudo apt-get install -y apache2-utils
     sudo htpasswd -b -c ${VOLUME_NGINX_CONF}/.kibana_htpasswd ${DOCKER_DJANGO_ADMIN_NAME} ${DOCKER_DJANGO_ADMIN_PASSWORD}
 fi
 
 if sudo [ ! -z ${DOCKER_NGINX_CERTIFICATE} ]; then
-    echo "Nginx will serve HTTPS."
-
     sudo cp ${DOCKER_NGINX_CERTIFICATE} ${VOLUME_NGINX_CERTS}/certificate.pem
     sudo cp ${DOCKER_NGINX_CERTIFICATE_KEY} ${VOLUME_NGINX_CERTS}/certificate.key
     sudo chown -R ${SHARED_USER_NAME}:${SHARED_USER_NAME} ${VOLUME_NGINX_CERTS}
 fi
 
 export NGINX_EXTERNAL_ROUTES=$(envsubst < ./config-templates/nginx-external-routes.conf.template | sed 's/^/    /')
+if sudo [ ! -z "$(sudo ls -A ${VOLUME_FRONTEND})" ]; then
+   NGINX_FORNTEND_ROUTES=$(envsubst < ./config-templates/nginx-frontend-routes.conf.template | sed 's/^/    /')
+   export NGINX_EXTERNAL_ROUTES=${NGINX_FORNTEND_ROUTES}$'\n\n'${NGINX_EXTERNAL_ROUTES}
+fi
+
 if sudo [ -f ${VOLUME_NGINX_CERTS}/certificate.pem ]; then
     echo "Nginx will serve HTTPS."
     envsubst < ./config-templates/nginx-https.conf.template > ./temp/default.conf

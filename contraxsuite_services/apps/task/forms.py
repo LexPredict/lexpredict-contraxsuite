@@ -37,12 +37,13 @@ from apps.common.widgets import LTRRadioField
 from apps.common.forms import checkbox_field
 from apps.analyze.models import TextUnitClassification, TextUnitClassifier
 from apps.document.models import DocumentProperty, TextUnitProperty, DocumentType
+from apps.project.models import Project
 from apps.task.models import Task
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.1/LICENSE"
-__version__ = "1.1.1"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.1b/LICENSE"
+__version__ = "1.1.1b"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -53,21 +54,23 @@ Relative path to a file with {}. A file should be in "&lt;ROOT_DIR&gt;/data/"
 
 class LoadDocumentsForm(forms.Form):
     header = 'Parse documents to create Documents and Text Units.'
+    project = forms.ModelChoiceField(queryset=Project.objects.all(), required=False)
     source_path = forms.CharField(
         max_length=1000,
         required=True,
         help_text='''
-        Relative path to a folder with uploaded files.\n
-        You can choose any folder or file in "/media/%s" folder.\n
-        For example, "new" or "/".\n
-        Create new folders and upload new documents if needed.'''
-                  % settings.FILEBROWSER_DIRECTORY)
+        1. Absolute full path to a folder if "Project" and "Run Standard Locators" are specified<br /><br />
+        2. Relative path to a folder with uploaded files. For example, "new" or "/".<br />
+        You can choose any folder or file in "/media/%s" folder.<br />
+        Create new folders and upload new documents if needed.
+        ''' % settings.FILEBROWSER_DIRECTORY)
     source_type = forms.CharField(
         max_length=100,
-        required=True)
+        required=False)
     document_type = forms.ModelChoiceField(queryset=DocumentType.objects.all(), required=False)
-    detect_contract = checkbox_field("Detect if a document is contract.", initial=True)
+    detect_contract = checkbox_field("Detect if a document is contract", initial=True)
     delete = checkbox_field("Delete existing Documents")
+    run_standard_locators = checkbox_field("Run Standard Locators", initial=False)
 
 
 # sample form for custom task

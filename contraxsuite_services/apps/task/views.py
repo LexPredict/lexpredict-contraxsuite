@@ -27,18 +27,14 @@
 # Future imports
 from __future__ import absolute_import, unicode_literals
 
-# Standard imports
-import json
-
 # Django imports
 from django.conf import settings
 from django.core.urlresolvers import reverse
+from django.db.models import F, Q
+from django.db.models.functions import Now, Coalesce
 from django.http import JsonResponse, HttpResponseForbidden
 from django.shortcuts import redirect
 from django.views.generic.edit import FormView
-from django.forms import models as model_forms
-from django.forms import fields as form_fields
-from django.db import models
 
 # Project imports
 from apps.analyze.models import TextUnitClassifier
@@ -53,16 +49,16 @@ from apps.task.forms import (
     UpdateElasticSearchForm, TaskDetailForm, TotalCleanupForm)
 from apps.task.models import Task
 from apps.task.tasks import call_task, clean_tasks, purge_task
-from apps.task.celery_backend.utils import now
-from celery import states
-from django.db.models import F, OuterRef, Subquery, Q, Value
-from django.db.models.functions import Now, Coalesce
-from django.db.models.aggregates import Avg, Max
+from apps.common.utils import get_api_module
+
+
+project_api_module = get_api_module('project')
+
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.1/LICENSE"
-__version__ = "1.1.1"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.1b/LICENSE"
+__version__ = "1.1.1b"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -191,6 +187,25 @@ class LoadDocumentsView(BaseAjaxTaskView):
     metadata = dict(
         result_links=[{'name': 'View Document List', 'link': 'document:document-list'},
                       {'name': 'View Text Unit List', 'link': 'document:text-unit-list'}])
+
+    def post(self, request, *args, **kwargs):
+        form = self.form_class(request.POST)
+        if not form.is_valid():
+            return self.json_response(form.errors, status=400)
+        data = form.cleaned_data
+
+        if data['project'] and data['run_standard_locators']:
+            project = data['project']
+            upload_session = project.last_session(create=True, created_by=request.user)
+            pk = str(upload_session.pk)
+            project_api_module.UploadSessionViewSet(request=request)\
+                .batch_upload(request, pk=pk)
+        else:
+            data['user_id'] = request.user.pk
+            data['metadata'] = self.get_metadata()
+            data['module_name'] = self.__module__.replace('views', 'tasks')
+            call_task(self.task_name, **data)
+        return self.json_response('The task is started. It can take a while.')
 
 
 class LocateTaskView(BaseAjaxTaskView):

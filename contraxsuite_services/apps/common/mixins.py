@@ -47,6 +47,10 @@ from django.core.paginator import Paginator, EmptyPage
 from django.core.serializers.json import DjangoJSONEncoder
 from django.core.urlresolvers import reverse
 from django.db.models import Q, fields as django_fields
+from django.db.models.expressions import OrderBy, Random, RawSQL, Ref
+from django.db.models.sql.constants import ORDER_DIR
+from django.db.models.sql.query import get_order_dir
+from django.db.utils import DatabaseError
 from django.http import JsonResponse
 from django.views.generic import ListView
 from django.views.generic.base import View
@@ -58,8 +62,8 @@ from apps.common.utils import cap_words, export_qs_to_file
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.1/LICENSE"
-__version__ = "1.1.1"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.1b/LICENSE"
+__version__ = "1.1.1b"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -736,5 +740,111 @@ def get_group_by(self, select, order_by):
     return result
 
 
+def get_order_by(self):
+    """
+    See original get_group_by at django.db.models.sql.compiler>SQLCompiler
+    """
+    if self.query.extra_order_by:
+        ordering = self.query.extra_order_by
+    elif not self.query.default_ordering:
+        ordering = self.query.order_by
+    else:
+        ordering = (self.query.order_by or self.query.get_meta().ordering or [])
+    if self.query.standard_ordering:
+        asc, desc = ORDER_DIR['ASC']
+    else:
+        asc, desc = ORDER_DIR['DESC']
+
+    order_by = []
+    for field in ordering:
+        if hasattr(field, 'resolve_expression'):
+            if not isinstance(field, OrderBy):
+                field = field.asc()
+            if not self.query.standard_ordering:
+                field.reverse_ordering()
+            order_by.append((field, False))
+            continue
+        if field == '?':  # random
+            order_by.append((OrderBy(Random()), False))
+            continue
+
+        col, order = get_order_dir(field, asc)
+        descending = True if order == 'DESC' else False
+
+        if col in self.query.annotation_select:
+            # Reference to expression in SELECT clause
+            order_by.append((
+                OrderBy(Ref(col, self.query.annotation_select[col]), descending=descending),
+                True))
+            continue
+        if col in self.query.annotations:
+            # References to an expression which is masked out of the SELECT clause
+            order_by.append((
+                OrderBy(self.query.annotations[col], descending=descending),
+                False))
+            continue
+
+        if '.' in field:
+            # This came in through an extra(order_by=...) addition. Pass it
+            # on verbatim.
+            table, col = col.split('.', 1)
+            order_by.append((
+                OrderBy(
+                    RawSQL('%s.%s' % (self.quote_name_unless_alias(table), col), []),
+                    descending=descending
+                ), False))
+            continue
+
+        if not self.query._extra or col not in self.query._extra:
+            # 'col' is of the form 'field' or 'field1__field2' or
+            # '-field1__field2__field', etc.
+            order_by.extend(self.find_ordering_name(
+                field, self.query.get_meta(), default_order=asc))
+        else:
+            if col not in self.query.extra_select:
+                order_by.append((
+                    OrderBy(RawSQL(*self.query.extra[col]), descending=descending),
+                    False))
+            else:
+                order_by.append((
+                    OrderBy(Ref(col, RawSQL(*self.query.extra[col])), descending=descending),
+                    True))
+    result = []
+    # changed from set() to []
+    seen = []
+
+    for expr, is_ref in order_by:
+        if self.query.combinator:
+            src = expr.get_source_expressions()[0]
+            # Relabel order by columns to raw numbers if this is a combined
+            # query; necessary since the columns can't be referenced by the
+            # fully qualified name and the simple column names may collide.
+            for idx, (sel_expr, _, col_alias) in enumerate(self.select):
+                if is_ref and col_alias == src.refs:
+                    src = src.source
+                elif col_alias:
+                    continue
+                if src == sel_expr:
+                    expr.set_source_expressions([RawSQL('%d' % (idx + 1), ())])
+                    break
+            else:
+                raise DatabaseError('ORDER BY term does not match any column in the result set.')
+        resolved = expr.resolve_expression(
+            self.query, allow_joins=True, reuse=None)
+        sql, params = self.compile(resolved)
+        # Don't add the same column twice, but the order direction is
+        # not taken into account so we strip it. When this entire method
+        # is refactored into expressions, then we can check each part as we
+        # generate it.
+        without_ordering = self.ordering_parts.search(sql).group(1)
+        if (without_ordering, tuple(params)) in seen:
+            continue
+        # changed from add to append
+        seen.append((without_ordering, tuple(params)))
+        result.append((resolved, (sql, params, is_ref)))
+    return result
+
+
 from django.db.models.sql.compiler import SQLCompiler
 SQLCompiler.get_group_by = get_group_by
+SQLCompiler.get_order_by = get_order_by

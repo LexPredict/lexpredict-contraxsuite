@@ -51,8 +51,8 @@ from apps.users.models import User
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.1/LICENSE"
-__version__ = "1.1.1"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.1b/LICENSE"
+__version__ = "1.1.1b"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -154,19 +154,19 @@ class Task(models.Model):
         Get tasks related with key/value
         """
         opts = {'metadata__%s' % k: v for k, v in filter_opts.items()}
-        return cls.objects.filter(**opts)
+        return cls.objects.main_tasks().filter(**opts)
 
     @classmethod
     def special_tasks_progress(cls, filter_opts):
         """
         Detailed Progress of task
         """
-        return {'{}-{}'.format(i.name, i.id):
-                    {'name': i.name,
-                     'id': i.id,
-                     'progress': i.progress,
-                     'completed': i.progress == 100}
-                for i in cls.special_tasks(filter_opts)} or None
+        return {'{}-{}'.format(i['name'], i['id']):
+                    {'name': i['name'],
+                     'id': i['id'],
+                     'progress': i['progress'],
+                     'completed': i['progress'] == 100}
+                for i in cls.special_tasks(filter_opts).values('id', 'name', 'progress')} or None
 
     @classmethod
     def special_tasks_progress_groups(cls, filter_opts):
