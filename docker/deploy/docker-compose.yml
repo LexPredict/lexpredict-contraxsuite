@@ -91,7 +91,7 @@ services:
     depends_on:
       - contrax-elasticsearch
     environment:
-      - "ELASTICSEARCH_URL=http://${DOCKER_HOST_NAME_ELASTICSEARCH}:9200"
+      - "ELASTI/home/alex/dev/michael/contraxsuite/lexpredict-contraxsuite-coreCSEARCH_URL=http://${DOCKER_HOST_NAME_ELASTICSEARCH}:9200"
       - "SERVER_BASEPATH=${DOCKER_KIBANA_BASE_PATH}"
 #    ports:
 #      - 127.0.0.1:5601:5601
