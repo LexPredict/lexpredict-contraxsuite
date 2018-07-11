@@ -120,7 +120,7 @@ su - ${SHARED_USER_NAME} -c "${ACTIVATE_VENV} && \
     python manage.py shell -c \"
 from apps.users.models import User
 if not User.objects.filter(username = '${DOCKER_DJANGO_ADMIN_NAME}').exists():
-    User.objects.create_superuser('${DOCKER_DJANGO_ADMIN_NAME}', '${DOCKER_DJANGO_ADMIN_EMAIL}', '${DOCKER_DJANGO_ADMIN_PASSWORD}', role='technical_admin')
+    User.objects.create_superuser('${DOCKER_DJANGO_ADMIN_NAME}', '${DOCKER_DJANGO_ADMIN_EMAIL}', '${DOCKER_DJANGO_ADMIN_PASSWORD}', role_id=1)
 \""
 
     if [ $2 == "shell" ]; then
