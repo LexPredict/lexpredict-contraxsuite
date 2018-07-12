@@ -642,6 +642,7 @@ class UploadSessionViewSet(JqListAPIMixin, viewsets.ModelViewSet):
                 - send_email_notifications: bool (optional) - sent notification email that batch uploading started
         """
         folder_name = request.POST.get('folder') or request.POST.get('source_path')
+        kwargs['folder'] = folder_name
         if folder_name:
             dir_path = os.path.join(settings.MEDIA_ROOT,
                                     settings.FILEBROWSER_DIRECTORY,
@@ -650,7 +651,12 @@ class UploadSessionViewSet(JqListAPIMixin, viewsets.ModelViewSet):
             for file_name in files:
                 a_file = File(open(os.path.join(dir_path, file_name)), name=file_name)
                 request.FILES['file'] = a_file
-                self.upload(request, **kwargs)
+                try:
+                    self.upload(request, **kwargs)
+                except APIException as e:
+                    if 'Already exists' in str(e):
+                        pass
+
             return Response('Uploading of {} files started'.format(len(files)))
 
         return Response('No folder specified', status=400)
@@ -668,6 +674,7 @@ class UploadSessionViewSet(JqListAPIMixin, viewsets.ModelViewSet):
         session = UploadSession.objects.get(pk=session_id)
         project = session.project
         file_ = request.FILES.dict().get('file')
+        folder_name = kwargs.get('folder')
 
         if session_id and file_:
             try:
@@ -682,7 +689,8 @@ class UploadSessionViewSet(JqListAPIMixin, viewsets.ModelViewSet):
                 # check existing documents with the same name
                 this_file_documents = project.document_set.filter(name=file_.name)
 
-                # check existing files with the same name but not stored yet as Document
+                # check existing files with the same name in sessions' folders
+                # but not stored yet as Document
                 this_file_storages = {
                     _session_id: _storage
                     for _session_id, _storage in project_storages.items()
@@ -709,13 +717,17 @@ class UploadSessionViewSet(JqListAPIMixin, viewsets.ModelViewSet):
                     else:
                         raise APIException('Already exists')
 
-                storage = FileSystemStorage(
-                    location=os.path.join(
-                        settings.MEDIA_ROOT,
-                        settings.FILEBROWSER_DIRECTORY,
-                        session_id))
+                if not folder_name:
+                    storage = FileSystemStorage(
+                        location=os.path.join(
+                            settings.MEDIA_ROOT,
+                            settings.FILEBROWSER_DIRECTORY,
+                            session_id))
 
-                stored_file_name = storage.save(file_.name, file_.file)
+                    stored_file_name = storage.save(file_.name, file_.file)
+                    source_path = os.path.join(session_id, stored_file_name)
+                else:
+                    source_path = os.path.join(folder_name, file_.name)
 
                 required_locators = ['date',
                                      'party',
@@ -753,7 +765,7 @@ class UploadSessionViewSet(JqListAPIMixin, viewsets.ModelViewSet):
 
                 call_task(
                     task_name='LoadDocuments',
-                    source_path=os.path.join(session_id, stored_file_name),
+                    source_path=source_path,
                     user_id=request.user.id,
                     metadata={'session_id': session_id, 'file_name': file_.name},
                     linked_tasks=linked_tasks)
