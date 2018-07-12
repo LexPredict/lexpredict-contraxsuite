@@ -641,16 +641,19 @@ class UploadSessionViewSet(JqListAPIMixin, viewsets.ModelViewSet):
                 - force: bool (optional) - whether rewrite existing file and Document
                 - send_email_notifications: bool (optional) - sent notification email that batch uploading started
         """
-        folder = request.POST.get('folder') or request.POST.get('source_path')
-        files = []
-        if folder:
-            files = os.listdir(folder)
+        folder_name = request.POST.get('folder') or request.POST.get('source_path')
+        if folder_name:
+            dir_path = os.path.join(settings.MEDIA_ROOT,
+                                    settings.FILEBROWSER_DIRECTORY,
+                                    folder_name)
+            files = os.listdir(dir_path)
             for file_name in files:
-                a_file = File(open(os.path.join(folder, file_name)), name=file_name)
+                a_file = File(open(os.path.join(dir_path, file_name)), name=file_name)
                 request.FILES['file'] = a_file
                 self.upload(request, **kwargs)
+            return Response('Uploading of {} files started'.format(len(files)))
 
-        return Response('Uploading of {} files started'.format(len(files)))
+        return Response('No folder specified', status=400)
 
     @detail_route(methods=['post'])
     def upload(self, request, **kwargs):

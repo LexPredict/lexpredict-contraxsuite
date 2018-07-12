@@ -59,8 +59,7 @@ class LoadDocumentsForm(forms.Form):
         max_length=1000,
         required=True,
         help_text='''
-        1. Absolute full path to a folder if "Project" and "Run Standard Locators" are specified<br /><br />
-        2. Relative path to a folder with uploaded files. For example, "new" or "/".<br />
+        Relative path to a folder with uploaded files. For example, "new" or "/".<br />
         You can choose any folder or file in "/media/%s" folder.<br />
         Create new folders and upload new documents if needed.
         ''' % settings.FILEBROWSER_DIRECTORY)
