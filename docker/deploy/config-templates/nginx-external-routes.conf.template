@@ -32,6 +32,8 @@ location ${DOCKER_JUPYTER_BASE_URL} {
     proxy_set_header Upgrade ${DOLLAR}http_upgrade;
     proxy_set_header Connection "upgrade";
     proxy_read_timeout 86400;
+    auth_basic "Contraxsuite";
+    auth_basic_user_file /etc/nginx/.kibana_htpasswd;
 }
 
 location ~ ^/kibana/(.*)${DOLLAR} {
