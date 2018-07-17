@@ -35,15 +35,17 @@ import django
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.1b/LICENSE"
-__version__ = "1.1.1b"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.1c/LICENSE"
+__version__ = "1.1.1c"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
 # Set celery environment
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'settings')  # pragma: no cover
 django.setup()
-from apps.task.celery_backend.advanced_celery import AdvancedCelery
+
+# advanced_celery adds workarounds for celery issue which requires specific import order
+from apps.task.celery_backend.advanced_celery import AdvancedCelery  # noqa
 
 app = AdvancedCelery('apps')
 

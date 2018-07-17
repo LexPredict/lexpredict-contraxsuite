@@ -21,4 +21,6 @@ sudo curl -L https://github.com/docker/compose/releases/download/1.17.0/docker-c
 sudo chmod +x /usr/local/bin/docker-compose
 sudo docker-compose --version
 
+./move-docker-to-target-dir.sh
+
 sudo docker run hello-world

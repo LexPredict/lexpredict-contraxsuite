@@ -91,7 +91,7 @@ services:
     depends_on:
       - contrax-elasticsearch
     environment:
-      - "ELASTI/home/alex/dev/michael/contraxsuite/lexpredict-contraxsuite-coreCSEARCH_URL=http://${DOCKER_HOST_NAME_ELASTICSEARCH}:9200"
+      - "ELASTICSEARCH_URL=http://${DOCKER_HOST_NAME_ELASTICSEARCH}:9200"
       - "SERVER_BASEPATH=${DOCKER_KIBANA_BASE_PATH}"
 #    ports:
 #      - 127.0.0.1:5601:5601
@@ -171,8 +171,12 @@ services:
       - "POSTGRES_USER=${DOCKER_PG_USER}"
       - "POSTGRES_PASSWORD=${DOCKER_PG_PASSWORD}"
       - "POSTGRES_DB=${DOCKER_PG_DB_NAME}"
+    command: postgres -c config_file=/etc/contraxsuite/postgresql.conf
     volumes:
       - postgres_data:/var/lib/contraxsuite-postgres
+    configs:
+      - source: pg_config_3
+        target: /etc/contraxsuite/postgresql.conf
     networks:
       - contrax_net
     deploy:
@@ -587,3 +591,5 @@ configs:
     file: ./logrotate.conf
   logs_cron_config_9:
     file: ./logs-cron.conf
+  pg_config_3:
+    file: ./temp/postgresql.conf

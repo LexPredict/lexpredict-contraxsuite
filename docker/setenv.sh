@@ -43,7 +43,7 @@ export DOCKER_DJANGO_SECRET_KEY=Welcome1
 export DOCKER_DJANGO_ACCOUNT_EMAIL_VERIFICATION=optional
 export DOCKER_DJANGO_THEME_ARCHIVE=./deploy/dependencies/theme-example.zip
 export DOCKER_DJANGO_JQWIDGETS_ARCHIVE=./deploy/dependencies/jqwidgets-example.zip
-export DOCKER_VOLUME_DIR=/var/lib/docker/volumes
+export DOCKER_DIR=/var/lib/docker
 
 export DOCKER_NGINX_SERVER_NAME=contrax-nginx
 export DOCKER_NGINX_CERTIFICATE=
@@ -79,6 +79,8 @@ export DOCKER_TIKA_MEMORY=4G
 
 
 export DOCKER_BUILD_FLAGS=
+
+export PG_STATISTICS_ENABLED=false
 
 
 if [ -e setenv_local.sh ]

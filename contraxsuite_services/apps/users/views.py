@@ -39,8 +39,8 @@ from apps.users.models import User
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.1b/LICENSE"
-__version__ = "1.1.1b"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.1c/LICENSE"
+__version__ = "1.1.1c"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -50,7 +50,7 @@ class BaseUserView(object):
     slug_field = 'username'
     slug_url_kwarg = 'username'
     fields = ['username', 'first_name', 'last_name', 'name',
-              'organization', 'email', 'role', 'is_active']
+              'organization', 'email', 'role', 'is_active', 'photo']
 
     def has_permission(self):
         obj = self.get_object()
@@ -62,7 +62,7 @@ class BaseUserView(object):
 class UserUpdateView(BaseUserView, CustomUpdateView):
     def get_fields(self):
         if self.request.user.is_reviewer:
-            return ['username', 'first_name', 'last_name', 'name']
+            return ['username', 'first_name', 'last_name', 'name', 'photo']
         return self.fields
 
     def get_success_url(self):
@@ -91,6 +91,7 @@ class UserRedirectView(RedirectView):
 
 class UserListView(TechAdminRequiredMixin, JqPaginatedListView):
     model = User
+    extra_json_fields = ['role__name']
 
     def get_json_data(self, **kwargs):
         data = super().get_json_data()

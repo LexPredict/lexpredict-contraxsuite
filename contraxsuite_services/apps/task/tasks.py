@@ -46,10 +46,13 @@ import magic
 import nltk
 import numpy as np
 import pandas as pd
+import tabula
+from celery import app
 # Celery imports
 from celery import shared_task, chord, chain
 from celery.exceptions import SoftTimeLimitExceeded, TimeLimitExceeded, Retry
 from celery.result import AsyncResult
+from celery.states import READY_STATES
 from celery.utils.log import get_task_logger
 from constance import config
 # Django imports
@@ -65,6 +68,7 @@ from lexnlp.extract.en import (
     durations, geoentities, money, percents, ratios, regulations, trademarks, urls,
     dict_entities)
 from lexnlp.extract.en.entities.nltk_maxent import get_companies
+from lexnlp.extract.en.contracts.detector import is_contract
 from lexnlp.nlp.en.segments.sentences import get_sentence_span_list, pre_process_document
 from lexnlp.nlp.en.segments.titles import get_titles
 from lexnlp.nlp.en.tokens import get_stems, get_token_list
@@ -79,8 +83,6 @@ from sklearn.semi_supervised import LabelSpreading
 from sklearn.svm import SVC
 from textblob import TextBlob
 from tika import parser
-from celery import app
-from celery.states import UNREADY_STATES
 
 # Project imports
 import settings
@@ -108,12 +110,14 @@ from apps.task.celery_backend.task_utils import revoke_task
 from apps.task.models import Task, TaskConfig
 from apps.task.utils.nlp.lang import get_language
 from apps.task.utils.ocr.textract import textract2text
+from apps.task.utils.task_utils import TaskUtils
 from apps.task.utils.text.segment import segment_paragraphs
+from django.db.models import F
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.1b/LICENSE"
-__version__ = "1.1.1b"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.1c/LICENSE"
+__version__ = "1.1.1c"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -327,6 +331,8 @@ class ExtendedTask(app.Task):
                                           args_list, {})
 
     def __call__(self, *args: Any, **kwargs: Any) -> Any:
+        TaskUtils.prepare_task_execution()
+
         try:
             return super().__call__(*args, **kwargs)
         except Exception as exc:
@@ -588,12 +594,21 @@ class LoadDocuments(BaseTask):
         # detect if document is contract
         if kwargs.get('detect_contract'):
             try:
-                from lexnlp.extract.en.contracts.detector import is_contract
                 res = is_contract(text, return_probability=True)
                 if res is not None:
                     metadata['is_contract'], metadata['is_contract_probability'] = res
             except ImportError:
                 task.log_warn('Cannot import lexnlp.extract.en.contracts.detector.is_contract')
+
+        # detect tables
+        # if kwargs.get('detect_tables') and ext == '.pdf':
+        if ext == '.pdf':
+            document_tables = tabula.read_pdf(
+                file_path,
+                multiple_tables=True,
+                pages='all')
+            metadata['tables'] = [[list(j) for j in list(i.fillna('').to_records(index=False))]
+                                  for i in document_tables]
 
         # Language identification
         language, lang_detector = get_language(text, get_parser=True)
@@ -2253,8 +2268,22 @@ def clean_tasks(delta_days=2):
 
 @app.task(name='advanced_celery.track_tasks', bind=True)
 def track_tasks(self):
+    TaskUtils.prepare_task_execution()
+
     for task in Task.objects.unready_main_tasks():
         Task.objects.update_main_task(task.id)
+
+
+@app.task(name='advanced_celery.clean_sub_tasks', bind=True)
+def clean_sub_tasks(self):
+    del_sub_tasks_date = now() - datetime.timedelta(seconds=60)
+
+    # Delete sub-tasks of all main tasks finished more than a minute ago
+    Task.objects.filter(main_task__date_done__lt=del_sub_tasks_date).delete()
+
+    # Delete all completed system/periodic tasks from DB
+    Task.objects.filter(name__in=Task.objects.EXCLUDE_FROM_TRACKING,
+                        own_date_done__lt=del_sub_tasks_date).delete()
 
 
 def purge_task(task_pk):

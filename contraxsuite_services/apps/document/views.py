@@ -70,8 +70,8 @@ from apps.users.models import User
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.1b/LICENSE"
-__version__ = "1.1.1b"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.1c/LICENSE"
+__version__ = "1.1.1c"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -295,6 +295,13 @@ class DocumentDetailView(PermissionRequiredMixin, DetailView):
                     "party_list": list(party_list),
                     "extra_task_queue_list": extra_task_queue_list,
                     "highlight": self.request.GET.get("highlight", "")})
+
+        rel_url = os.path.join('/media',
+                               settings.FILEBROWSER_DIRECTORY.lstrip('/'),
+                               self.object.description.lstrip('/'))
+        ctx['document_path'] = 'https://{host}{rel_url}'.format(
+                host=Site.objects.get_current().domain, rel_url=rel_url)
+
         return ctx
 
 

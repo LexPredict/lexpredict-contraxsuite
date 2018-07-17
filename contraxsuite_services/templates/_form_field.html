@@ -8,11 +8,8 @@
 
   <div class="col-md-{{ form_control_col_md|default:4 }}{% if field|get_field_type == 'booleanfield' %} checkbox checkbox-inline{% endif %}">
     {% if field|get_field_type == 'booleanfield' %}
-      <label for="{{ field.auto_id }}" class="custom-control custom-checkbox">
-        {{ field|add_class:'custom-control-input' }}
-        <span class="custom-control-indicator"></span>
-        <span class="custom-control-description"></span>
-      </label>
+      {{ field|add_class:"checkbox-style " }}
+      <label for="{{ field.auto_id }}" class="checkbox-style-3-label "></label>
     {% else %}
       {{ field|add_class:'form-control' }}
     {% endif %}

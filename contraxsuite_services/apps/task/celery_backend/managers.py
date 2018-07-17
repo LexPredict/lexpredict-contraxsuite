@@ -71,9 +71,11 @@ class TaskManager(models.Manager):
 
     EXCLUDE_FROM_TRACKING = {
         'celery.chord_unlock',
+        'celery.chord_unlock_shim',
         'advanced_celery.track_tasks',
         'advanced_celery.track_session_completed',
         'advanced_celery.update_main_task',
+        'advanced_celery.clean_sub_tasks',
         'advanced_celery.clean_dead_tasks',
         'advanced_celery.clean_tasks',
         'advanced_celery.end_chord'
