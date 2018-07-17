@@ -8,7 +8,8 @@
       var datafields = [
         { name: 'pk', type: 'int' },
         { name: 'username', type: 'string' },
-        { name: 'role', type: 'string' },
+        { name: 'role__name', type: 'string' },
+        { name: 'photo', type: 'string' },
         { name: 'first_name', type: 'string' },
         { name: 'last_name', type: 'string' },
         { name: 'name', type: 'string' },
@@ -24,7 +25,7 @@
           align: 'center', cellsalign: 'left',
           cellsrenderer: defaultLinkFormatter,
           cellclassname: inactive_cellsclassrenderer },
-        { text: 'Role', datafield: 'role', width: 150,
+        { text: 'Role', datafield: 'role__name', width: 150,
           cellclassname: inactive_cellsclassrenderer,
           align: 'center', cellsalign: 'center' },
         { text: 'First Name', datafield: 'first_name', width: 100,
@@ -41,7 +42,17 @@
           align: 'center', cellsalign: 'center' },
         { text: 'Email', datafield: 'email', width: 'auto',
           cellclassname: inactive_cellsclassrenderer,
-          align: 'center', cellsalign: 'center' }
+          align: 'center', cellsalign: 'center' },
+        { text: 'Photo', datafield: 'photo', width: 'auto',
+          cellclassname: inactive_cellsclassrenderer,
+          align: 'center', cellsalign: 'center',
+          cellsrenderer: function(row_num, row_type, value, defaulthtml, columnproperties, row) {
+            var new_value = value ? '<img height="40" src="/media/' + value + '" />' : null;
+            defaulthtml = $(defaulthtml);
+            defaulthtml.css('margin', '1px');
+            return renderCell(defaulthtml, new_value)
+          }
+        }
       ];
       draw_grid(".jqxgrid", datafields, columns, false);
     });

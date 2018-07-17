@@ -368,6 +368,11 @@ CELERY_BEAT_SCHEDULE = {
         'schedule': 10.0,
         'options': {'queue': 'serial', 'expires': 10},
     },
+    'advanced_celery.clean_sub_tasks': {
+        'task': 'advanced_celery.clean_sub_tasks',
+        'schedule': 60.0,
+        'options': {'queue': 'serial', 'expires': 60},
+    },
     'advanced_celery.track_session_completed': {
         'task': 'advanced_celery.track_session_completed',
         'schedule': 120.0,
@@ -376,6 +381,7 @@ CELERY_BEAT_SCHEDULE = {
 }
 CELERY_TIMEZONE = 'UTC'
 CELERY_ENABLE_UTC = True
+CELERY_CHORD_UNLOCK_MAX_RETRIES = 3
 
 CELERY_TASK_ACKS_LATE = True
 CELERY_TASK_REJECT_ON_WORKER_LOST = True
@@ -516,15 +522,13 @@ REST_AUTH_SERIALIZERS = {
     'PASSWORD_CHANGE_SERIALIZER': 'auth.CustomPasswordChangeSerializer',
 }
 SWAGGER_SETTINGS = {
-    'SECURITY_DEFINITIONS': {
-        'api_key': {
-            'type': 'apiKey',
-            'in': 'header',
-            'name': 'Authorization'
-        }
-    },
-    'USE_SESSION_AUTH': False,
+    'USE_SESSION_AUTH': True,
     'JSON_EDITOR': True,
+    'SHOW_REQUEST_HEADERS': True,
+    'CUSTOM_HEADERS': {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json'
+    }
 }
 # tika settings (is not used for now)
 # TIKA_VERSION = '1.14'
@@ -642,7 +646,7 @@ LOGGING = {
         'django.db.backends': {
             'handlers': ['text_db', 'json_db'],  # Quiet by default!
             'propagate': False,
-            'level': 'DEBUG',
+            'level': 'ERROR',
         },
         'django.template': {
             'handlers': ['json_django', 'text_django', 'mail_admins'],
@@ -668,8 +672,8 @@ CORS_ORIGIN_ALLOW_ALL = True
 CORS_ALLOW_CREDENTIALS = False
 CORS_URLS_REGEX = r'^/api/.*$'
 
-VERSION_NUMBER = '1.1.1b'
-VERSION_COMMIT = 'fce4dc0'
+VERSION_NUMBER = '1.1.1c'
+VERSION_COMMIT = '4f8f404'
 
 try:
     from local_settings import *

@@ -35,7 +35,8 @@ DATABASES = {
         'USER': '${DOCKER_PG_USER}',
         'PASSWORD': '${DOCKER_PG_PASSWORD}',
         'HOST': '${DOCKER_HOST_NAME_PG}',
-        'PORT': '5432'
+        'PORT': '5432',
+        'CONN_MAX_AGE': 500
     },
 }
 

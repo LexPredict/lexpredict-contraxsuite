@@ -43,7 +43,7 @@ from apps.common.mixins import (
     JSONResponseView, JqPaginatedListView, TechAdminRequiredMixin)
 from apps.document.models import DocumentProperty, TextUnitProperty
 from apps.task.forms import (
-    LoadDocumentsForm, LocateTermsForm, LocateForm,
+    LoadDocumentsForm, BatchLoadDocumentsForm, LocateTermsForm, LocateForm,
     ExistedClassifierClassifyForm, CreateClassifierClassifyForm,
     ClusterForm, SimilarityForm, PartySimilarityForm,
     UpdateElasticSearchForm, TaskDetailForm, TotalCleanupForm)
@@ -57,8 +57,8 @@ project_api_module = get_api_module('project')
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.1b/LICENSE"
-__version__ = "1.1.1b"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.1c/LICENSE"
+__version__ = "1.1.1c"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -188,23 +188,22 @@ class LoadDocumentsView(BaseAjaxTaskView):
         result_links=[{'name': 'View Document List', 'link': 'document:document-list'},
                       {'name': 'View Text Unit List', 'link': 'document:text-unit-list'}])
 
+
+class BatchLoadDocumentsView(BaseAjaxTaskView):
+    form_class = BatchLoadDocumentsForm
+    metadata = dict(
+        result_links=[{'name': 'View Document List', 'link': 'document:document-list'},
+                      {'name': 'View Text Unit List', 'link': 'document:text-unit-list'}])
+
     def post(self, request, *args, **kwargs):
         form = self.form_class(request.POST)
         if not form.is_valid():
             return self.json_response(form.errors, status=400)
         data = form.cleaned_data
-
-        if data['project'] and data['run_standard_locators']:
-            project = data['project']
-            upload_session = project.last_session(create=True, created_by=request.user)
-            pk = str(upload_session.pk)
-            project_api_module.UploadSessionViewSet(request=request)\
-                .batch_upload(request, pk=pk)
-        else:
-            data['user_id'] = request.user.pk
-            data['metadata'] = self.get_metadata()
-            data['module_name'] = self.__module__.replace('views', 'tasks')
-            call_task(self.task_name, **data)
+        project = data['project']
+        upload_session = project.last_session(create=True, created_by=request.user)
+        project_api_module.UploadSessionViewSet(request=request)\
+            .batch_upload(request, pk=str(upload_session.pk))
         return self.json_response('The task is started. It can take a while.')
 
 
@@ -440,9 +439,7 @@ class TaskListView(AdminRequiredMixin, JqPaginatedListView):
     db_user = Coalesce(F('user__username'), F('main_task__user__username'))
 
     def get_queryset(self):
-        qs = super().get_queryset() \
-            .filter(Q(main_task_id__isnull=True) | Q(main_task_id=F('id'))) \
-            .exclude(name__in=Task.objects.EXCLUDE_FROM_TRACKING)
+        qs = Task.objects.main_tasks()
         qs = qs.annotate(time=self.db_time, username=self.db_user)
         return qs
 
@@ -466,13 +463,11 @@ class TaskListView(AdminRequiredMixin, JqPaginatedListView):
         ctx = super().get_context_data(**kwargs)
         ctx['active_classifiers'] = TextUnitClassifier.objects.filter(is_active=True).exists()
         if DocumentProperty.objects.exists():
-            ctx['ls_document_properties'] = sorted(
-                set(DocumentProperty.objects.values_list('key', flat=True)),
-                key=lambda i: i.lower())
+            ctx['ls_document_properties'] = DocumentProperty.objects.order_by('key')\
+                .values_list('key', flat=True).distinct()
         if TextUnitProperty.objects.exists():
-            ctx['ls_text_unit_properties'] = sorted(
-                set(TextUnitProperty.objects.values_list('key', flat=True)),
-                key=lambda i: i.lower())
+            ctx['ls_text_unit_properties'] = TextUnitProperty.objects.order_by('key')\
+                .values_list('key', flat=True).distinct()
         return ctx
 
 

@@ -28,7 +28,8 @@
 {% block content %}
   <div>
     <a class="btn-u btn-sm" id="button_view_raw_document"
-       href="{% url "document:document-source" document.id %}" target="_blank">
+       href="{{ document_path }}" target="_blank">
+{#       href="{% url "document:document-source" document.id %}" target="_blank">#}
       View Source Document
     </a>
     <a class="btn-u btn-sm"
@@ -390,6 +391,7 @@
       <li><a data-toggle="tab" href="#tab-31" class="active">Task Queues<span class="badge badge-s task-queues-badge"></span></a></li>
       <li><a data-toggle="tab" href="#tab-32">Clusters<span class="badge badge-s clusters-badge"></span></a></li>
       <li><a data-toggle="tab" href="#tab-33">Document Similarity<span class="badge badge-s similarity-badge"></span></a></li>
+      <li><a data-toggle="tab" href="#tab-34">Extracted Tables<span class="badge badge-s tables-badge">{{ document.metadata.tables|length }}</span></a></li>
     </ul>
 
     <div class="tab-content">
@@ -436,7 +438,11 @@
         </div>
       </div>
 
-    </div>
+      <div class="tab-pane clearfix" id="tab-34">
+        {% include 'document/_document_tables.html' %}
+      </div>
+
+   </div>
   </div>
 
 {% endblock %}

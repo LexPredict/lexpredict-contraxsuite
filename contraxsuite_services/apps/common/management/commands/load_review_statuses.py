@@ -25,6 +25,7 @@
 
 import os
 
+from django.conf import settings
 from django.core.management import BaseCommand
 from django.core.management import call_command
 
@@ -33,8 +34,8 @@ from apps.common.models import ReviewStatus
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.1b/LICENSE"
-__version__ = "1.1.1b"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.1c/LICENSE"
+__version__ = "1.1.1c"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -46,10 +47,9 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         if not ReviewStatus.objects.exists():
             fixture_path = os.path.join(
-                os.path.dirname(os.path.realpath(__file__)),
-                '../..',
+                str(settings.PROJECT_DIR),
                 'fixtures',
-                'ReviewStatus.json'
+                '3_ReviewStatus.json'
             )
             call_command('loaddata', fixture_path, app_label='common', interactive=False)
 

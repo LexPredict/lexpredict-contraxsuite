@@ -24,6 +24,9 @@
 """
 # -*- coding: utf-8 -*-
 
+# Standard imports
+import os
+
 # Third-party imports
 from constance import config
 
@@ -42,8 +45,8 @@ from apps.task.models import Task
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.1b/LICENSE"
-__version__ = "1.1.1b"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.1c/LICENSE"
+__version__ = "1.1.1c"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -70,6 +73,22 @@ class LoadDocumentsForm(forms.Form):
     detect_contract = checkbox_field("Detect if a document is contract", initial=True)
     delete = checkbox_field("Delete existing Documents")
     run_standard_locators = checkbox_field("Run Standard Locators", initial=False)
+
+
+class BatchLoadDocumentsForm(forms.Form):
+    header = 'Parse documents to create Documents and Text Units. <br />' \
+             'Assign Documents to a Project.<br />' \
+             'Run standard locators.'
+    project = forms.ModelChoiceField(queryset=Project.objects.all(), required=True)
+    source_path = forms.CharField(
+        max_length=1000,
+        required=True,
+        help_text='''
+        Relative path to a folder with uploaded files. For example, "new" or "/".<br />
+        You can choose any folder under "{}".
+        '''.format(os.path.join(settings.MEDIA_ROOT,
+                                settings.FILEBROWSER_DIRECTORY)))
+    # run_standard_locators = checkbox_field("Run Standard Locators", initial=False)
 
 
 # sample form for custom task
