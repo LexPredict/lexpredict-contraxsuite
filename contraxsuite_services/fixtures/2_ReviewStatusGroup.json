@@ -1,0 +1,32 @@
+[
+{
+    "model": "common.reviewstatusgroup",
+    "pk": 1,
+    "fields": {
+        "name": "Starting",
+        "code": "starting",
+        "order": 1,
+        "is_active": true
+    }
+},
+{
+    "model": "common.reviewstatusgroup",
+    "pk": 2,
+    "fields": {
+        "name": "In Progress",
+        "code": "in_progress",
+        "order": 2,
+        "is_active": true
+    }
+},
+{
+    "model": "common.reviewstatusgroup",
+    "pk": 3,
+    "fields": {
+        "name": "Final",
+        "code": "final",
+        "order": 3,
+        "is_active": false
+    }
+}
+]

@@ -1,0 +1,58 @@
+[
+{
+    "model": "common.reviewstatus",
+    "pk": 1,
+    "fields": {
+        "name": "Loaded",
+        "code": "loaded",
+        "order": 1,
+        "group_id": 1,
+        "is_active": true
+    }
+},
+{
+    "model": "common.reviewstatus",
+    "pk": 2,
+    "fields": {
+        "name": "In Review",
+        "code": "in_review",
+        "order": 3,
+        "group_id": 2,
+        "is_active": true
+    }
+},
+{
+    "model": "common.reviewstatus",
+    "pk": 3,
+    "fields": {
+        "name": "Not Started",
+        "code": "not_started",
+        "order": 2,
+        "group_id": 1,
+        "is_active": true
+    }
+},
+{
+    "model": "common.reviewstatus",
+    "pk": 4,
+    "fields": {
+        "name": "Completed",
+        "code": "completed",
+        "order": 4,
+        "group_id": 3,
+        "is_active": false
+    }
+},
+{
+    "model": "common.reviewstatus",
+    "pk": 5,
+    "fields": {
+        "name": "Excluded",
+        "code": "excluded",
+        "order": 5,
+        "group_id": 3,
+        "is_active": false
+    }
+}
+
+]
