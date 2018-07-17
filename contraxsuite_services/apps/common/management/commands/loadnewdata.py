@@ -35,6 +35,17 @@ __email__ = "support@contraxsuite.com"
 
 class Command(Command):
 
+    @lru_cache.lru_cache(maxsize=None)
+    def find_fixtures(self, fixture_label):
+        try:
+            res = super().find_fixtures(fixture_label)
+        except CommandError as e:
+            if 'No fixture named' in str(e):
+                res = []
+            else:
+                raise e
+        return res
+
     def load_label(self, fixture_label):
         """
         Loads fixtures files for a given label.
