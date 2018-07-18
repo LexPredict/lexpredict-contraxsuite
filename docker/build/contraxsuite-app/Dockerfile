@@ -18,16 +18,6 @@ RUN apt-get install -y -q build-essential software-properties-common python-soft
 
 
 ## Add apd repositories for all required components
-#RUN add-apt-repository -y ppa:webupd8team/java
-#RUN echo "oracle-java8-installer shared/accepted-oracle-license-v1-1 select true" | debconf-set-selections
-#
-## Update to get apt data fetched from the added repositories
-#RUN apt-get -y update --fix-missing
-#
-#
-## Install java
-#RUN apt-get install -y oracle-java8-installer
-
 RUN apt-get install -y wget
 
 RUN apt-get install -y apt-transport-https
@@ -38,21 +28,10 @@ RUN \
  && wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | apt-key add - \
  && wget -qO - https://artifacts.elastic.co/GPG-KEY-elasticsearch | apt-key add - \
  && echo "deb https://artifacts.elastic.co/packages/6.x/apt stable main" | tee -a /etc/apt/sources.list.d/elastic-6.x.list \
- && add-apt-repository -y ppa:webupd8team/java \
- && echo "oracle-java8-installer shared/accepted-oracle-license-v1-1 select true" | /usr/bin/debconf-set-selections \
+ && add-apt-repository -y ppa:openjdk-r/ppa \
  && apt-get -y update --fix-missing
 
-# Install java: Webupd8, PPA for Oracle Java8 workaround
-# https://ubuntuforums.org/showthread.php?t=2374686&page=4
-RUN \
- apt-get install -y oracle-java8-installer || true \
- && cd /var/lib/dpkg/info \
- && sed -i 's|JAVA_VERSION=8u151|JAVA_VERSION=8u162|' oracle-java8-installer.* \
- && sed -i 's|PARTNER_URL=http://download.oracle.com/otn-pub/java/jdk/8u151-b12/e758a0de34e24606bca991d704f6dcbf/|PARTNER_URL=http://download.oracle.com/otn-pub/java/jdk/8u162-b12/0da788060d494f5095bf8624735fa2f1/|' oracle-java8-installer.* \
- && sed -i 's|SHA256SUM_TGZ="c78200ce409367b296ec39be4427f020e2c585470c4eed01021feada576f027f"|SHA256SUM_TGZ="68ec82d47fd9c2b8eb84225b6db398a72008285fafc98631b1ff8d2229680257"|' oracle-java8-installer.* \
- && sed -i 's|J_DIR=jdk1.8.0_151|J_DIR=jdk1.8.0_162|' oracle-java8-installer.* \
- && apt-get install -y oracle-java8-installer \
- && apt-get install -y oracle-java8-set-default
+RUN apt-get install -y openjdk-8-jdk
 
 RUN apt-get install -y postgresql-9.6
 
