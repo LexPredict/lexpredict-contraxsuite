@@ -1,0 +1,46 @@
+[
+{
+    "model": "users.role",
+    "pk": 1,
+    "fields": {
+        "name": "Technical Admin",
+        "code": "technical_admin",
+        "order": 1,
+        "is_admin": true,
+        "is_manager": false
+    }
+},
+{
+    "model": "users.role",
+    "pk": 2,
+    "fields": {
+        "name": "Manager",
+        "code": "manager",
+        "order": 2,
+        "is_admin": false,
+        "is_manager": true
+    }
+},
+{
+    "model": "users.role",
+    "pk": 3,
+    "fields": {
+        "name": "Project Creator",
+        "code": "project_creator",
+        "order": 3,
+        "is_admin": false,
+        "is_manager": true
+    }
+},
+{
+    "model": "users.role",
+    "pk": 4,
+    "fields": {
+        "name": "Reviewer",
+        "code": "reviewer",
+        "order": 4,
+        "is_admin": false,
+        "is_manager": false
+    }
+}
+]

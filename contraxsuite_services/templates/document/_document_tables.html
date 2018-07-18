@@ -1,0 +1,19 @@
+{% for table in document.metadata.tables %}
+  <table class="table table-bordered table-striped">
+    {% for row in table %}
+      <tr>
+        {% if forloop.counter == 1 %}
+          {% for cell in row %}
+            <th class="table-secondary">{{ cell }}</th>
+          {% endfor %}
+        {% else %}
+          {% for cell in row %}
+            <td>{{ cell }}</td>
+          {% endfor %}
+        {% endif %}
+      </tr>
+    {% endfor %}
+  </table>
+  <br />
+{% endfor %}
+

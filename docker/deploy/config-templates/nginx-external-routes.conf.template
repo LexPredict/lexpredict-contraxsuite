@@ -21,6 +21,12 @@ location ${DOCKER_DJANGO_BASE_PATH}static/ {
     root /contraxsuite_services/staticfiles/;
 }
 
+location /media {
+    root /data;
+    auth_basic "Contraxsuite";
+    auth_basic_user_file /etc/nginx/.kibana_htpasswd;
+}
+
 location ${DOCKER_JUPYTER_BASE_URL} {
 	proxy_pass http://${DOCKER_JUPYTER_HOST_NAME}:${DOCKER_JUPYTER_PORT};
 	proxy_set_header X-Forwarded-For ${DOLLAR}proxy_add_x_forwarded_for;

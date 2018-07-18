@@ -35,8 +35,8 @@ from apps.users.models import User
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.1b/LICENSE"
-__version__ = "1.1.1b"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.1c/LICENSE"
+__version__ = "1.1.1c"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -92,6 +92,38 @@ def save_var(sender, instance, created, **kwargs):
         models.signals.post_save.connect(save_var, sender=sender)
 
 
+class ReviewStatusGroup(models.Model):
+    """
+    ReviewStatusGroup object model
+    """
+    # Group verbose name
+    name = models.CharField(unique=True, max_length=100, db_index=True)
+
+    # Group code
+    code = models.CharField(unique=True, max_length=100, db_index=True,
+                            blank=True, null=True)
+
+    # Group order number
+    order = models.PositiveSmallIntegerField()
+
+    is_active = models.BooleanField(default=True, db_index=True)
+
+    class Meta(object):
+        ordering = ['order', 'name', 'code']
+
+    def __str__(self):
+        """"
+        String representation
+        """
+        return "ReviewStatusGroup (pk={0}, name={1})" \
+            .format(self.pk, self.name)
+
+    def save(self, **kwargs):
+        if not self.code:
+            self.code = self.name.lower().replace(' ', '_')
+        return super().save(**kwargs)
+
+
 class ReviewStatus(models.Model):
     """
     ReviewStatus object model
@@ -105,6 +137,9 @@ class ReviewStatus(models.Model):
 
     # Status order number
     order = models.PositiveSmallIntegerField()
+
+    # Status group
+    group = models.ForeignKey(ReviewStatusGroup, blank=True, null=True, db_index=True)
 
     # flag to detect f.e. whether we should recalculate fields for a document
     is_active = models.BooleanField(default=True, db_index=True)

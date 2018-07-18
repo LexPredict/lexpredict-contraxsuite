@@ -62,8 +62,8 @@ from apps.project.tasks import THIS_MODULE    # noqa
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.1b/LICENSE"
-__version__ = "1.1.1b"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.1c/LICENSE"
+__version__ = "1.1.1c"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -264,6 +264,7 @@ class DocumentTypeSerializer(serializers.ModelSerializer):
 
 
 common_api_module = get_api_module('common')
+users_api_module = get_api_module('users')
 
 
 class ProjectDetailSerializer(serializers.ModelSerializer):
@@ -273,11 +274,11 @@ class ProjectDetailSerializer(serializers.ModelSerializer):
         source='status', many=False, read_only=True)
     owners = serializers.PrimaryKeyRelatedField(
         queryset=User.objects.all(), many=True, required=False)
-    owners_data = UserSerializer(
+    owners_data = users_api_module.UserSerializer(
         source='owners', many=True, read_only=True)
     reviewers = serializers.PrimaryKeyRelatedField(
         queryset=User.objects.all(), many=True, required=False)
-    reviewers_data = UserSerializer(
+    reviewers_data = users_api_module.UserSerializer(
         source='reviewers', many=True, read_only=True)
     type = serializers.PrimaryKeyRelatedField(
         queryset=DocumentType.objects.all(), many=False, required=False)

@@ -165,10 +165,15 @@ services:
       - "POSTGRES_USER=${DOCKER_PG_USER}"
       - "POSTGRES_PASSWORD=${DOCKER_PG_PASSWORD}"
       - "POSTGRES_DB=${DOCKER_PG_DB_NAME}"
+    command: postgres -c config_file=/etc/contraxsuite/postgresql.conf
     volumes:
       - postgres_data:/var/lib/contraxsuite-postgres
+    configs:
+      - source: pg_config_2
+        target: /etc/contraxsuite/postgresql.conf
     networks:
       - contrax_net
+    read_only: false
     deploy:
       replicas: 1
       resources:
@@ -222,3 +227,5 @@ configs:
     file: ./temp/metricbeat.yml
   elasticsearch_config_1:
     file: ./temp/elasticsearch.yml
+  pg_config_2:
+    file: ./temp/postgresql.conf

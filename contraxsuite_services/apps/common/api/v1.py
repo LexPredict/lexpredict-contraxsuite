@@ -35,13 +35,13 @@ from rest_framework.views import APIView
 
 # Django imports
 from django.conf.urls import url
-from apps.common.models import AppVar, ReviewStatus
+from apps.common.models import AppVar, ReviewStatusGroup, ReviewStatus
 from apps.common.mixins import JqListAPIMixin
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.1b/LICENSE"
-__version__ = "1.1.1b"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.1c/LICENSE"
+__version__ = "1.1.1c"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -183,13 +183,38 @@ class AppVarAPIView(APIView):
 
 
 # --------------------------------------------------------
+# ReviewStatusGroup Views
+# --------------------------------------------------------
+
+class ReviewStatusGroupSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ReviewStatusGroup
+        fields = ['pk', 'name', 'code', 'order', 'is_active']
+
+
+class ReviewStatusGroupViewSet(JqListAPIMixin, viewsets.ModelViewSet):
+    """
+    list: ReviewStatusGroup List
+    retrieve: Retrieve ReviewStatusGroup
+    create: Create ReviewStatusGroup
+    update: Update ReviewStatusGroup
+    partial_update: Partial Update ReviewStatusGroup
+    delete: Delete ReviewStatusGroup
+    """
+    queryset = ReviewStatusGroup.objects.all()
+    serializer_class = ReviewStatusGroupSerializer
+
+
+# --------------------------------------------------------
 # ReviewStatus Views
 # --------------------------------------------------------
 
 class ReviewStatusSerializer(serializers.ModelSerializer):
+    group_data = ReviewStatusGroupSerializer(source='group', many=False)
+
     class Meta:
         model = ReviewStatus
-        fields = ['pk', 'name', 'code', 'order', 'is_active']
+        fields = ['pk', 'name', 'code', 'order', 'group', 'group_data', 'is_active']
 
 
 class ReviewStatusViewSet(JqListAPIMixin, viewsets.ModelViewSet):
@@ -204,7 +229,9 @@ class ReviewStatusViewSet(JqListAPIMixin, viewsets.ModelViewSet):
     queryset = ReviewStatus.objects.all()
     serializer_class = ReviewStatusSerializer
 
+
 router = routers.DefaultRouter()
+router.register(r'review-status-groups', ReviewStatusGroupViewSet, 'review-status-group')
 router.register(r'review-statuses', ReviewStatusViewSet, 'review-status')
 
 urlpatterns = [

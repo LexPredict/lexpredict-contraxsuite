@@ -51,6 +51,13 @@ else
     envsubst < ./config-templates/nginx-http.conf.template > ./temp/default.conf
 fi
 
+envsubst < ./config-templates/postgresql.conf.template > ./temp/postgresql.conf
+if [ ${PG_STATISTICS_ENABLED} = true ]; then
+    echo "shared_preload_libraries = 'pg_stat_statements'" >> ./temp/postgresql.conf
+    echo "pg_stat_statements.max = 1000" >> ./temp/postgresql.conf
+    echo "pg_stat_statements.track = all" >> ./temp/postgresql.conf
+fi
+
 sudo cp ./temp/nginx.conf ${VOLUME_NGINX_CONF}/nginx.conf
 sudo cp ./temp/internal.conf ${VOLUME_NGINX_CONF}/conf.d/internal.conf
 sudo cp ./temp/default.conf ${VOLUME_NGINX_CONF}/conf.d/default.conf
@@ -66,4 +73,3 @@ if [ "$1" == "develop" ]; then
 else
      sudo -E docker stack deploy --compose-file docker-compose.yml contraxsuite
 fi
-

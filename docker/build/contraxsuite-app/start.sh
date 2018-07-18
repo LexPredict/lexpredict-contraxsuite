@@ -115,13 +115,10 @@ su - ${SHARED_USER_NAME} -c "${ACTIVATE_VENV} && \
     python manage.py force_migrate && \
     python manage.py collectstatic --noinput && \
     python manage.py set_site && \
-    python manage.py load_review_statuses && \
-    python manage.py load_roles && \
-    python manage.py shell -c \"
-from apps.users.models import User
-if not User.objects.filter(username = '${DOCKER_DJANGO_ADMIN_NAME}').exists():
-    User.objects.create_superuser('${DOCKER_DJANGO_ADMIN_NAME}', '${DOCKER_DJANGO_ADMIN_EMAIL}', '${DOCKER_DJANGO_ADMIN_PASSWORD}', role_id=1)
-\""
+    python manage.py create_superuser --username=${DOCKER_DJANGO_ADMIN_NAME} --email=${DOCKER_DJANGO_ADMIN_EMAIL} --password=${DOCKER_DJANGO_ADMIN_PASSWORD} && \
+    python manage.py loadnewdata fixtures/common/*.json && \
+    python manage.py loadnewdata fixtures/private/*.json
+"
 
     if [ $2 == "shell" ]; then
         /bin/bash

@@ -20,7 +20,7 @@ django-filter==1.1.0
 django-picklefield==1.0.0
 django-pipeline==1.6.14
 django-rest-auth==0.9.3
-django-rest-swagger==2.1.2
+django-rest-swagger==2.2.0
 django-simple-history==2.1.0
 django-suit==0.2.24
 django-test-plus==1.0.19
@@ -63,6 +63,7 @@ requests==2.18.4
 scikit-learn==0.19.1
 scikit-multilearn==0.0.5
 scipy==1.0.0
+tabula-py==1.2.0
 textblob==0.12.0
 textract==1.5.0
 tika==1.15

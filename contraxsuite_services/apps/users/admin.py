@@ -38,8 +38,8 @@ from apps.users.models import User, Role
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.1b/LICENSE"
-__version__ = "1.1.1b"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.1c/LICENSE"
+__version__ = "1.1.1c"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -71,7 +71,7 @@ class MyUserAdmin(AuthUserAdmin):
     form = MyUserChangeForm
     add_form = MyUserCreationForm
     fieldsets = (('User Profile',
-                  {'fields': ('name', 'role', 'organization')}),) + AuthUserAdmin.fieldsets
+                  {'fields': ('name', 'role', 'organization', 'photo')}),) + AuthUserAdmin.fieldsets
     list_display = ('username', 'name', 'role', 'is_superuser', 'organization')
     search_fields = ['name', 'role', 'organization']
 
