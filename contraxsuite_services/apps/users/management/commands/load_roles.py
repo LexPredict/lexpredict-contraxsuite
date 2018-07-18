@@ -49,6 +49,7 @@ class Command(BaseCommand):
             fixture_path = os.path.join(
                 str(settings.PROJECT_DIR),
                 'fixtures',
+                'common',
                 '1_Role.json'
             )
             call_command('loaddata', fixture_path, app_label='users', interactive=False)

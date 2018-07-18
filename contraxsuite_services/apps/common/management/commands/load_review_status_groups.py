@@ -49,6 +49,7 @@ class Command(BaseCommand):
             fixture_path = os.path.join(
                 str(settings.PROJECT_DIR),
                 'fixtures',
+                'common',
                 '2_ReviewStatusGroup.json'
             )
             call_command('loaddata', fixture_path, app_label='common', interactive=False)
