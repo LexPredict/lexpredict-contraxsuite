@@ -68,8 +68,6 @@ envsubst < ./elasticsearch.yml.template > ./temp/elasticsearch.yml
 
 echo "Starting with image: ${CONTRAXSUITE_IMAGE_FULL_NAME}"
 
-if [ "$1" == "develop" ]; then
-     sudo -E docker stack deploy --compose-file docker-compose-backend-develop.yml contraxsuite
-else
-     sudo -E docker stack deploy --compose-file docker-compose.yml contraxsuite
-fi
+echo "Starting with docker-compose config: ${DOCKER_COMPOSE_FILE}"
+
+sudo -E docker stack deploy --compose-file ${DOCKER_COMPOSE_FILE} contraxsuite

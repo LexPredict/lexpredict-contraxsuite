@@ -2,7 +2,7 @@
 
 #set -e
 
-echo "=== This script will update local Contraxsuite instance to the latest docker image"
+echo "=== This script will update local Contraxsuite instance to the latest public docker image"
 
 echo "=== Assume Contraxsuite is configured in ./setenv_local.sh file."
 
