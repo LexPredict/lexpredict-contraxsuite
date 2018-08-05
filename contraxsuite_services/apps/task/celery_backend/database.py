@@ -4,6 +4,8 @@ from celery import shared_task
 from celery.backends.base import BaseDictBackend
 
 from apps.task.models import Task
+from apps.task.utils.task_utils import TaskUtils
+from django.conf import settings
 
 TASK_NAME_UPDATE_MAIN_TASK = 'advanced_celery.update_main_task'
 
@@ -18,6 +20,8 @@ class DatabaseBackend(BaseDictBackend):
     @staticmethod
     @shared_task(bind=True, name=TASK_NAME_UPDATE_MAIN_TASK)
     def update_main_task(self, main_task_id: str):
+        TaskUtils.prepare_task_execution()
+
         if self.request.id != main_task_id:
             Task.objects.update_main_task(main_task_id)
 
@@ -61,7 +65,9 @@ class DatabaseBackend(BaseDictBackend):
             metadata=metadata,
         )
 
-        if getattr(request, 'root_id', None) != task_id and task_name != TASK_NAME_UPDATE_MAIN_TASK:
+        if settings.CELERY_UPDATE_MAIN_TASK_ON_EACH_SUB_TASK \
+                and getattr(request, 'root_id', None) != task_id \
+                and task_name != TASK_NAME_UPDATE_MAIN_TASK:
             self.plan_update_main_task(request.root_id)
 
         return result

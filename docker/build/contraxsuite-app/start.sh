@@ -70,7 +70,15 @@ echo =================
 
 pushd /contraxsuite_services
 
-if [ $1 == "uwsgi" ]; then
+
+if [ $1 == "save-dump" ]; then
+
+su - ${SHARED_USER_NAME} -c "${ACTIVATE_VENV} && \
+    python manage.py force_migrate && \
+    python manage.py dump_data --dst-file=fixtures/additional/app-dump.json \
+"
+
+elif [ $1 == "uwsgi" ]; then
     echo "Preparing theme..."
     THEME_ZIP=/third_party_dependencies/$(basename ${DOCKER_DJANGO_THEME_ARCHIVE})
     THEME_DIR=/static/theme
@@ -113,11 +121,18 @@ if [ $1 == "uwsgi" ]; then
 # Indentation makes sense here
 su - ${SHARED_USER_NAME} -c "${ACTIVATE_VENV} && \
     python manage.py force_migrate && \
+    python manage.py shell -c \"
+from apps.deployment.models import Deployment
+from apps.deployment.tasks import usage_stats
+Deployment.objects.get_or_create(pk=1)
+usage_stats.apply()
+\" && \
     python manage.py collectstatic --noinput && \
     python manage.py set_site && \
     python manage.py create_superuser --username=${DOCKER_DJANGO_ADMIN_NAME} --email=${DOCKER_DJANGO_ADMIN_EMAIL} --password=${DOCKER_DJANGO_ADMIN_PASSWORD} && \
     python manage.py loadnewdata fixtures/common/*.json && \
-    python manage.py loadnewdata fixtures/private/*.json
+    python manage.py loadnewdata fixtures/private/*.json && \
+    python manage.py loadnewdata fixtures/additional/*.json \
 "
 
     if [ $2 == "shell" ]; then

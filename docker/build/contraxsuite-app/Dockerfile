@@ -18,6 +18,16 @@ RUN apt-get install -y -q build-essential software-properties-common python-soft
 
 
 ## Add apd repositories for all required components
+#RUN add-apt-repository -y ppa:webupd8team/java
+#RUN echo "oracle-java8-installer shared/accepted-oracle-license-v1-1 select true" | debconf-set-selections
+#
+## Update to get apt data fetched from the added repositories
+#RUN apt-get -y update --fix-missing
+#
+#
+## Install java
+#RUN apt-get install -y oracle-java8-installer
+
 RUN apt-get install -y wget
 
 RUN apt-get install -y apt-transport-https
@@ -77,6 +87,7 @@ RUN apt-get install -y curl
 COPY ./temp/build.info /
 COPY ./temp/build.uuid /
 COPY ./start.sh /
+COPY ./dump.sh /contraxsuite_services
 COPY ./check_celery.sh /
 COPY ./config-templates /config-templates
 COPY ./temp/static /static

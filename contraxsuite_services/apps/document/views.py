@@ -29,16 +29,21 @@ from __future__ import absolute_import, unicode_literals
 
 # Standard imports
 import datetime
+import mimetypes
 import os
 import urllib
 
+# Third-party imports
+import magic
 import pandas as pd
+
 # Django imports
 from django.conf import settings
 from django.contrib.postgres.fields.jsonb import KeyTextTransform
 from django.contrib.sites.models import Site
 from django.core.urlresolvers import reverse
 from django.db.models import Count, F, Prefetch
+from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect
 from django.shortcuts import render
 from django.views.generic import DetailView
@@ -70,10 +75,13 @@ from apps.users.models import User
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.1c/LICENSE"
-__version__ = "1.1.1c"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.2/LICENSE"
+__version__ = "1.1.2"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
+
+
+python_magic = magic.Magic(mime=True)
 
 
 def search(request):
@@ -310,9 +318,11 @@ class DocumentSourceView(DocumentDetailView):
 
     def get_context_data(self, **kwargs):
         # TODO: detect protocol, don't hardcode
-        rel_url = os.path.join('/media',
-                               settings.FILEBROWSER_DIRECTORY.lstrip('/'),
-                               self.object.description.lstrip('/'))
+        # rel_url = os.path.join('/media',
+        #                        settings.FILEBROWSER_DIRECTORY.lstrip('/'),
+        #                        self.object.description.lstrip('/'))
+
+        rel_url = reverse('document:show-document', args=[self.object.pk])
         attachment = dict(
             name=self.object.name,
             path='https://{host}{rel_url}'.format(
@@ -321,6 +331,25 @@ class DocumentSourceView(DocumentDetailView):
         )
         ctx = {'attachment': attachment}
         return ctx
+
+
+def show_document(request, pk):
+    """
+    Show documents via django's view, not via media files
+    to avoid nginx base authentication
+    """
+    document = Document.objects.get(pk=pk)
+    file_name = document.name
+    file_source = document.source
+    file_path = os.path.join(settings.MEDIA_ROOT,
+                             settings.FILEBROWSER_DIRECTORY.lstrip('/'),
+                             file_source,
+                             file_name)
+    mimetype = python_magic.from_file(file_path)
+    with open(file_path, 'rb') as a_file:
+        response = HttpResponse(a_file.read(), content_type=mimetype)
+        response['Content-Disposition'] = 'inline;filename={}'.format(file_name)
+        return response
 
 
 class DocumentNoteListView(JqPaginatedListView):

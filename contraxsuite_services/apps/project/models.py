@@ -40,14 +40,15 @@ from django.template.loader import render_to_string
 
 # Project imports
 from apps.common.models import get_default_status
+from apps.common.fields import StringUUIDField
 from apps.document.models import DocumentType
 from apps.task.models import Task
 from apps.users.models import User
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.1c/LICENSE"
-__version__ = "1.1.1c"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.2/LICENSE"
+__version__ = "1.1.2"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -229,6 +230,9 @@ class Project(models.Model):
     # Reviewers team
     reviewers = models.ManyToManyField(User, related_name="project_reviewers", blank=True)
 
+    # Reviewers who can upload docs
+    super_reviewers = models.ManyToManyField(User, related_name="project_super_reviewers", blank=True)
+
     # Status
     status = models.ForeignKey('common.ReviewStatus', default=get_default_status,
                                blank=True, null=True)
@@ -302,21 +306,20 @@ class Project(models.Model):
         """
         Get tasks related with Project
         """
-        return Task.special_tasks({'project_id': str(self.pk)})
+        return self.task_set.all()
 
-    @property
-    def project_tasks_progress(self):
+    def project_tasks_progress(self, get_completed=False):
         """
         Detailed Progress of project tasks like Clustering
         """
-        return Task.special_tasks_progress({'project_id': str(self.pk)})
+        return self.project_tasks.progress(get_completed=get_completed)
 
     @property
     def project_tasks_completed(self):
         """
         Whether project tasks completed or not (None if no project tasks at all)
         """
-        return Task.special_tasks_completed({'project_id': str(self.pk)})
+        return self.project_tasks.completed()
 
     def drop_clusters(self):
         project = self
@@ -333,11 +336,12 @@ class Project(models.Model):
         project = self
 
         # delete prev. CleanProject Task
-        Task.special_tasks({'task_name': 'clean-project',
-                            '_project_id': project.pk}).delete()
+        Task.objects.filter_metadata(task_name='clean-project',
+                                     _project_id=project.pk).delete()
+
         # delete prev. Reassigning Task
-        Task.special_tasks({'task_name': 'reassigning',
-                            'old_project_id': project.pk}).delete()
+        Task.objects.filter_metadata(task_name='reassigning',
+                                     old_project_id= project.pk).delete()
 
         # delete clusters/tasks
         project.drop_clusters()
@@ -358,6 +362,24 @@ class Project(models.Model):
             project.delete()
 
 
+@receiver(m2m_changed, sender=Project.super_reviewers.through)
+def super_reviewers_changed(instance, action, **kwargs):
+    if action == 'post_add':
+        all_reviewers_pk = set(instance.reviewers.values_list('pk', flat=True))
+        super_reviewers_pk = set(instance.super_reviewers.values_list('pk', flat=True))
+        extra_pk = super_reviewers_pk - all_reviewers_pk
+        instance.super_reviewers.remove(*extra_pk)
+
+
+@receiver(m2m_changed, sender=Project.reviewers.through)
+def reviewers_changed(instance, action, **kwargs):
+    if action == 'post_remove':
+        all_reviewers_pk = set(instance.reviewers.values_list('pk', flat=True))
+        super_reviewers_pk = set(instance.super_reviewers.values_list('pk', flat=True))
+        extra_pk = super_reviewers_pk - all_reviewers_pk
+        instance.super_reviewers.remove(*extra_pk)
+
+
 class UploadSession(models.Model):
     """
     UploadSession object to store info about uploading project documents.
@@ -366,7 +388,7 @@ class UploadSession(models.Model):
     _document_tasks_progress = None
 
     # Unique id
-    uid = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    uid = StringUUIDField(primary_key=True, default=uuid.uuid4, editable=False)
 
     # Project
     project = models.ForeignKey(Project, db_index=True)
@@ -376,7 +398,7 @@ class UploadSession(models.Model):
     created_by = models.ForeignKey(
         User, related_name="created_%(class)s_set", null=True, blank=True, db_index=True)
 
-    completed = models.BooleanField(default=False, db_index=True)
+    completed = models.NullBooleanField(null=True, blank=True, db_index=True)
 
     notified_upload_started = models.BooleanField(default=False, db_index=True)
     notified_upload_completed = models.BooleanField(default=False, db_index=True)
@@ -396,18 +418,18 @@ class UploadSession(models.Model):
         """
         Get tasks related with session
         """
-        return Task.special_tasks({'session_id': str(self.pk)})
+        return self.task_set.all()
 
     @property
-    def document_progress_data(self):
+    def session_tasks_progress(self):
         """
         Progress per document per task
         """
         return [{'file_name': i['metadata']['file_name'],
-                 'task_id': str(i['pk']),
+                 'task_id': i['pk'],
                  'task_name': i['name'],
                  'task_status': i['status'],
-                 'task_progress': 100 if i['status'] in ['SUCCESS', 'FAILURE'] else i['progress']}
+                 'task_progress': i['progress']}
                 for i in self.session_tasks.values('pk', 'metadata', 'name', 'status', 'progress')
                 if i['metadata'].get('file_name')]
 
@@ -418,7 +440,7 @@ class UploadSession(models.Model):
         result = {}
         tasks_number = 3
         for file_name, task_progress_data in itertools.groupby(
-                sorted(self.document_progress_data, key=lambda i: i['file_name']),
+                sorted(self.session_tasks_progress, key=lambda i: i['file_name']),
                 key=lambda i: i['file_name']):
             task_progress_data = list(task_progress_data)
             document_progress = round(
@@ -431,13 +453,12 @@ class UploadSession(models.Model):
                 task_status = 'SUCCESS'
             else:
                 task_status = 'PENDING'
-            file_size = None
             try:
                 document = self.document_set.get(name=file_name)
                 document_id = document.pk
                 file_size = document.file_size
             except:
-                document_id = None
+                document_id = file_size = None
             result[file_name] = {
                 'document_id': document_id,
                 'file_name': file_name,
@@ -467,22 +488,31 @@ class UploadSession(models.Model):
     @property
     def status(self):
         """
-        Get session status - one of 'Parsed', 'Parsing'
-        set 'completed'
+        Verbose status - one of 'Parsed', 'Parsing'
         """
-        # no tasks started / no files processed
-        if not self.session_tasks.exists():
-            status = None
-        else:
-            status = 'Parsing' if self.session_tasks.filter(status='PENDING').exists()\
-                else 'Parsed'
-            if status == 'Parsed':
-                self.completed = True
-            self.save()
-        return status
+        if self.completed is None:
+            return None
+        return 'Parsed' if self.completed else 'Parsing'
+
+    def status_check(self):
+        """
+        The same as status() - but make check if session is completed
+        """
+        self.is_completed()
+        return self.status
 
     def is_completed(self):
-        return self.status == 'Parsed'
+        """
+        Check and set "completed"
+        """
+        if self.completed:
+            return True
+        if not self.session_tasks.exists():
+            return None
+        completed = not self.session_tasks.filter(status='PENDING').exists()
+        self.completed = completed
+        self.save()
+        return completed
 
     def notify_upload_started(self):
         ctx = {'session': self}

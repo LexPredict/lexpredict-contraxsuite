@@ -28,7 +28,7 @@
 {% block content %}
   <div>
     <a class="btn-u btn-sm" id="button_view_raw_document"
-       href="{{ document_path }}" target="_blank">
+       href="{% url "document:show-document" document.id %}" target="_blank">
 {#       href="{% url "document:document-source" document.id %}" target="_blank">#}
       View Source Document
     </a>

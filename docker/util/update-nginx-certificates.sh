@@ -17,9 +17,13 @@ echo "=== Stopping docker service ==="
 
 sudo service docker stop
 
+# To not block port 80
+sudo update-rc.d apache2 disable
+sudo service apache2 stop
+
 sudo certbot certonly --standalone --preferred-challenges http -d ${FQDN} --config-dir ./.certs
-sudo cat ./.certs/live/${FQDN}/fullchain.pem > ${VOLUME_NGINX_CERTS}/certificate.pem
-sudo cat ./.certs/live/${FQDN}/privkey.pem > ${VOLUME_NGINX_CERTS}/certificate.key
+sudo cp ./.certs/live/${FQDN}/fullchain.pem ${VOLUME_NGINX_CERTS}certificate.pem
+sudo cp ./.certs/live/${FQDN}/privkey.pem ${VOLUME_NGINX_CERTS}certificate.key
 sudo rm -r ./.certs
 
 echo "=== Starting docker service ==="

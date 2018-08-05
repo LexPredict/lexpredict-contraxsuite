@@ -9,6 +9,9 @@ server {
     sendfile on;
     keepalive_timeout 0;
 
+    # this is the internal Docker DNS
+    resolver 127.0.0.11;
+
 ${NGINX_EXTERNAL_ROUTES}
 
     include /etc/nginx/server_include/*.conf;

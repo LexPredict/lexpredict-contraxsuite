@@ -52,14 +52,14 @@ from celery import app
 from celery import shared_task, chord, chain
 from celery.exceptions import SoftTimeLimitExceeded, TimeLimitExceeded, Retry
 from celery.result import AsyncResult
+# Django imports
 from celery.states import READY_STATES
 from celery.utils.log import get_task_logger
 from constance import config
-# Django imports
 from django.conf import settings
 from django.db import transaction
 from django.db.models import Count, Q, Case, Value, When, IntegerField
-from django.db.utils import IntegrityError
+from django.db.utils import IntegrityError, DataError
 from django.utils.timezone import now
 from elasticsearch import Elasticsearch
 from elasticsearch.exceptions import RequestError
@@ -67,8 +67,8 @@ from lexnlp.extract.en import (
     amounts, citations, copyright, courts, dates, distances, definitions,
     durations, geoentities, money, percents, ratios, regulations, trademarks, urls,
     dict_entities)
-from lexnlp.extract.en.entities.nltk_maxent import get_companies
 from lexnlp.extract.en.contracts.detector import is_contract
+from lexnlp.extract.en.entities.nltk_maxent import get_companies
 from lexnlp.nlp.en.segments.sentences import get_sentence_span_list, pre_process_document
 from lexnlp.nlp.en.segments.titles import get_titles
 from lexnlp.nlp.en.tokens import get_stems, get_token_list
@@ -112,12 +112,11 @@ from apps.task.utils.nlp.lang import get_language
 from apps.task.utils.ocr.textract import textract2text
 from apps.task.utils.task_utils import TaskUtils
 from apps.task.utils.text.segment import segment_paragraphs
-from django.db.models import F
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.1c/LICENSE"
-__version__ = "1.1.1c"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.2/LICENSE"
+__version__ = "1.1.2"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -412,12 +411,16 @@ def call_task(task_name, **options):
 
     celery_task_id = str(fast_uuid())
 
+    project_id = options.get('project_id')
+    session_id = options.get('session_id')
     task = Task.objects.create(
         id=celery_task_id,
         name=task_name,
         user_id=options.get('user_id'),
         metadata=options.get('metadata'),
         visible=options.get('visible', True),
+        project=Project.objects.get(pk=project_id) if project_id else None,
+        upload_session=UploadSession.objects.get(pk=session_id) if session_id else None
     )
 
     task.write_log('Celery task id: {}\n'.format(celery_task_id))
@@ -497,7 +500,10 @@ class LoadDocuments(BaseTask):
                  bind=True,
                  soft_time_limit=600,
                  default_retry_delay=10,
-                 retry_backoff=True)
+                 retry_backoff=True,
+                 autoretry_for=(SoftTimeLimitExceeded,),
+                 max_retries=3
+                 )
     def create_document(task: ExtendedTask, uri: str, kwargs):
         with file_access_handler.get_local_fn(uri) as (fn, file_name):
             task.task.title = 'Load Document: {0}'.format(uri)
@@ -1171,7 +1177,10 @@ class Locate(BaseTask):
                  bind=True,
                  soft_time_limit=60,
                  default_retry_delay=10,
-                 retry_backoff=True)
+                 retry_backoff=True,
+                 autoretry_for=(SoftTimeLimitExceeded,),
+                 max_retries=3
+                 )
     def parse_text_unit(self, text_unit_id, text_unit_lang, text, user_id,
                         shared_data_cache_keys):
         tags = []
@@ -1221,19 +1230,22 @@ def parse_citation(text, text_unit_id, _text_unit_lang):
     found = list(citations.get_citations(text, return_source=True))
     if found:
         unique = set(found)
-        CitationUsage.objects.bulk_create(
-            [CitationUsage(
-                text_unit_id=text_unit_id,
-                volume=item[0],
-                reporter=item[1],
-                reporter_full_name=item[2],
-                page=item[3],
-                page2=item[4],
-                court=item[5],
-                year=item[6],
-                citation_str=item[7],
-                count=found.count(item)
-            ) for item in unique])
+        found = len(unique)
+        for item in unique:
+            try:
+                CitationUsage.objects.create(
+                    text_unit_id=text_unit_id,
+                    volume=item[0],
+                    reporter=item[1],
+                    reporter_full_name=item[2],
+                    page=item[3],
+                    page2=item[4],
+                    court=item[5],
+                    year=item[6],
+                    citation_str=item[7],
+                    count=found.count(item))
+            except DataError:
+                found -= 1
     return bool(found)
 
 
@@ -1544,7 +1556,10 @@ class LocateTerms(BaseTask):
     @shared_task(base=ExtendedTask,
                  soft_time_limit=60,
                  default_retry_delay=10,
-                 retry_backoff=True)
+                 retry_backoff=True,
+                 autoretry_for=(SoftTimeLimitExceeded,),
+                 max_retries=3
+                 )
     def create_ltu(term, term_id):
         ltu_list = []
 
@@ -2276,10 +2291,13 @@ def track_tasks(self):
 
 @app.task(name='advanced_celery.clean_sub_tasks', bind=True)
 def clean_sub_tasks(self):
+    TaskUtils.prepare_task_execution()
+
     del_sub_tasks_date = now() - datetime.timedelta(seconds=60)
 
     # Delete sub-tasks of all main tasks finished more than a minute ago
-    Task.objects.filter(main_task__date_done__lt=del_sub_tasks_date).delete()
+    Task.objects.filter(main_task__date_done__lt=del_sub_tasks_date,
+                        own_status__in=READY_STATES).delete()
 
     # Delete all completed system/periodic tasks from DB
     Task.objects.filter(name__in=Task.objects.EXCLUDE_FROM_TRACKING,

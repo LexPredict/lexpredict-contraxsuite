@@ -27,7 +27,7 @@ djangorestframework==3.7.7
 drf-nested-routers==0.90.0
 elasticsearch==6.0.0
 fuzzywuzzy==0.15.1
-gensim==3.1.0
+gensim==3.4.0
 geocoder==1.23.1
 icalendar==3.11.7
 Jinja2==2.9.6

@@ -23,23 +23,25 @@
     or shipping ContraxSuite within a closed source product.
 """
 # -*- coding: utf-8 -*-
+
+from constance import config
 from rest_auth.models import TokenModel
-from rest_auth.serializers import PasswordChangeSerializer
 from rest_framework import serializers
-from rest_framework.authentication import TokenAuthentication
+from rest_framework.authentication import TokenAuthentication, exceptions
+from rest_framework.authtoken.models import Token
+
 from django.core.urlresolvers import reverse
-from django.contrib.auth.forms import SetPasswordForm, password_validation
+from django.contrib.auth.forms import password_validation
 from django import forms
 from django.conf import settings
 from django.utils.translation import ugettext as _
 
-from apps.common.utils import get_api_module
-
+from apps.common.utils import get_api_module, get_test_user
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.1c/LICENSE"
-__version__ = "1.1.1c"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.2/LICENSE"
+__version__ = "1.1.2"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -48,9 +50,23 @@ class CookieAuthentication(TokenAuthentication):
 
     def authenticate(self, request):
         token_exempt_urls = [reverse('rest_login')]
+
         if not request.META.get('HTTP_AUTHORIZATION') and request.META['PATH_INFO'] not in token_exempt_urls:
-            request.META['HTTP_AUTHORIZATION'] = request.COOKIES.get('auth_token', '')
-        return super().authenticate(request)
+            auth_token = request.GET.get('auth_token')
+            if auth_token:
+                auth_token = 'Token ' + request.GET.get('auth_token')
+            else:
+                auth_token = request.COOKIES.get('auth_token', '')
+            request.META['HTTP_AUTHORIZATION'] = auth_token
+        try:
+            res = super().authenticate(request)
+        except exceptions.AuthenticationFailed:
+            res = None
+        if not res and config.auto_login:
+            user = get_test_user()
+            token, _ = Token.objects.get_or_create(user=user)
+            res = (user, token)
+        return res
 
 
 # do not move above CookieAuthentication as it throws error

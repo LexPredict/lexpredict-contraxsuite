@@ -34,8 +34,8 @@ from apps.task.tasks import purge_task
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.1c/LICENSE"
-__version__ = "1.1.1c"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.2/LICENSE"
+__version__ = "1.1.2"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -58,11 +58,10 @@ def cleanup_document_relations(document):
     TextUnitCluster.objects.filter(text_units__isnull=True).delete()
 
     # delete Tasks, Task history, TaskResults, child tasks
-    task_kwargs = dict(
-        file_name=document.name)
+    task_kwargs = dict(file_name=document.name)
     if document.upload_session_id:
         task_kwargs['session_id'] = str(document.upload_session_id)
-    file_tasks = Task.special_tasks(task_kwargs)
+    file_tasks = Task.objects.filter_metadata(**task_kwargs)
     for file_task in file_tasks:
         if file_task.metadata.get('file_name') == document.name:
             purge_task(file_task.id)

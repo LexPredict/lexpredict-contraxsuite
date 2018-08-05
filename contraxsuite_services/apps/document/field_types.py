@@ -25,12 +25,13 @@
 # -*- coding: utf-8 -*-
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.1c/LICENSE"
-__version__ = "1.1.1c"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.2/LICENSE"
+__version__ = "1.1.2"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
 import pickle
+import re
 from datetime import datetime, date
 from enum import Enum, unique
 from random import randint, random
@@ -49,6 +50,7 @@ from lexnlp.extract.en.money import get_money
 from lexnlp.extract.en.geoentities import get_geoentities
 
 from django.conf import settings
+from django.db import transaction
 
 from apps.document import models
 from apps.document.parsing.machine_learning import ModelCategory
@@ -66,6 +68,8 @@ class ValueExtractionHint(Enum):
     TAKE_MIN = "TAKE_MIN"
     TAKE_MAX = "TAKE_MAX"
 
+    ORDINAL_EXTRACTION_HINTS = ['TAKE_MIN', 'TAKE_MAX']
+
     @staticmethod
     def get_value(l: Union[None, List], hint):
         if not l:
@@ -81,8 +85,8 @@ class ValueExtractionHint(Enum):
         # ...That is checked exclusively by model.clean_fields() in ./models.py
         elif str(hint) == ValueExtractionHint.TAKE_MIN.name:
             if type(l[0]) is dict \
-                and (l[0]).get('currency') \
-                and (l[0]).get('amount') is not None:
+                    and (l[0]).get('currency') \
+                    and (l[0]).get('amount') is not None:
                 amount_list = [x.get('amount') for x in l]
                 result = [e for e in l if e['amount'] == min(amount_list)]
                 return result
@@ -93,8 +97,8 @@ class ValueExtractionHint(Enum):
         # ...That is checked exclusively by model.clean_fields() in ./models.py
         elif str(hint) == ValueExtractionHint.TAKE_MAX.name:
             if type(l[0]) is dict \
-                and (l[0]).get('currency') \
-                and (l[0]).get('amount') is not None:
+                    and (l[0]).get('currency') \
+                    and (l[0]).get('amount') is not None:
                 amount_list = [x.get('amount') for x in l]
                 result = [e for e in l if e['amount'] == max(amount_list)]
                 return result
@@ -103,6 +107,7 @@ class ValueExtractionHint(Enum):
                 return max(l)
         else:
             return None
+
 
 class FieldType:
     code = ''
@@ -118,6 +123,8 @@ class FieldType:
     # or it only allows pre-assigned values.
     # (for value_aware fields)
     value_extracting = False
+
+    ordinal = False
 
     default_hint = ValueExtractionHint.TAKE_FIRST.name
 
@@ -242,6 +249,7 @@ class FieldType:
                    sentence_text_unit,
                    value=None,
                    user=None,
+                   removed_by_user=None,
                    allow_overwriting_user_data=True,
                    extraction_hint=None):
         """
@@ -264,6 +272,9 @@ class FieldType:
             field_value = q.first()
 
             if field_value:
+                if field_value.removed_by_user:
+                    field_value.removed_by_user = False
+                    field_value.save()
                 return field_value
 
             field_value = models.DocumentFieldValue()
@@ -271,7 +282,7 @@ class FieldType:
                                 location_text, sentence_text_unit,
                                 value,
                                 hint,
-                                user)
+                                user, removed_by_user)
         else:
             q = models.DocumentFieldValue.objects.filter(document=document,
                                                          field=field)
@@ -295,12 +306,12 @@ class FieldType:
                                                         location_text)
                 return self._update(field_value, document, field, location_start, location_end,
                                     location_text, sentence_text_unit,
-                                    value, hint, user)
+                                    value, hint, user, removed_by_user)
 
     def _update(self, field_value, document, field,
                 location_start: int, location_end: int, location_text: str, sentence_text_unit,
                 value=None, hint=None,
-                user=None):
+                user=None, removed_by_user=None):
         """
         Updates existing field value with the new data.
         """
@@ -316,7 +327,15 @@ class FieldType:
         field_value.modified_by = user
         field_value.created_date = field_value.created_date or datetime.now()
         field_value.modified_date = field_value.modified_date or datetime.now()
-        field_value.save()
+
+        if removed_by_user is not None:
+            field_value.removed_by_user = removed_by_user
+
+        with transaction.atomic():
+            field_value.save()
+            if user:
+                models.DocumentTypeField.objects.set_dirty_for_value(field_value)
+
         return field_value
 
     def get_value(self, field_value):
@@ -324,6 +343,10 @@ class FieldType:
 
     def delete(self, field_value, **kwargs):
         field_value.delete()
+
+    def mark_removed_by_user(self, field_value):
+        field_value.removed_by_user = True
+        field_value.save()
 
     def value_to_string(self, field_value):
         return str(field_value.value)
@@ -336,10 +359,20 @@ class StringField(FieldType):
     code = 'str'
     title = 'String'
     value_aware = True
-    value_extracting = False
+    value_extracting = True
 
     def example_json_value(self, field):
         return "example_string"
+
+    def _extract_variants_from_text(self, field, text: str, **kwargs):
+        regexp = field.value_regexp
+        extracted = None
+        if regexp:
+            extracted = re.findall(regexp, text)
+            for index, value in enumerate(extracted):
+                extracted[index] = value.strip()
+
+        return extracted or None
 
 
 class ChoiceField(FieldType):
@@ -384,6 +417,7 @@ class DateField(FieldType):
     title = 'Date'
     value_aware = True
     value_extracting = True
+    ordinal = True
 
     def _extract_from_possible_value(self, field, possible_value):
         if isinstance(possible_value, datetime):
@@ -419,6 +453,7 @@ class FloatField(FieldType):
     title = 'Floating Point Number'
     value_aware = True
     value_extracting = True
+    ordinal = True
 
     def _extract_from_possible_value(self, field, possible_value):
         try:
@@ -439,6 +474,7 @@ class IntField(FieldType):
     title = 'Integer Number'
     value_aware = True
     value_extracting = True
+    ordinal = True
 
     def _extract_from_possible_value(self, field, possible_value):
         try:
@@ -556,6 +592,7 @@ class DurationField(FieldType):
     title = 'Duration'
     value_aware = True
     value_extracting = True
+    ordinal = True
 
     def _extract_from_possible_value(self, field, possible_value):
         try:
@@ -579,6 +616,7 @@ class RelatedInfoField(FieldType):
     multi_value = True
     value_aware = False
     value_extracting = False
+
 
 class PersonField(FieldType):
     code = 'person'
@@ -605,6 +643,7 @@ class AmountField(FloatField):
     title = 'Amount'
     value_aware = True
     value_extracting = True
+    ordinal = True
 
     def _extract_variants_from_text(self, field, text: str, **kwargs):
         amounts = get_amounts(text, return_sources=False)
@@ -619,6 +658,7 @@ class MoneyField(FloatField):
     title = 'Money'
     value_aware = True
     value_extracting = True
+    ordinal = True
 
     def _extract_from_possible_value(self, field, possible_value):
         if not possible_value:

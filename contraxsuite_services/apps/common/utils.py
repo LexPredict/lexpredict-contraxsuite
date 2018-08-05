@@ -27,21 +27,31 @@
 # Standard imports
 import datetime
 import importlib
+import io
 import random
 import re
 import uuid
+
+# Third-party imports
+import django_excel as excel
+import pandas as pd
+from allauth.account.models import EmailAddress
 
 # Django imports
 from django.conf import settings
 from django.conf.urls import url
 from django.core.urlresolvers import reverse
+from django.http import HttpResponse
 from django.utils.text import slugify
-import django_excel as excel
+
+# App imports
+from apps.users.models import User, Role
+
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.1c/LICENSE"
-__version__ = "1.1.1c"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.2/LICENSE"
+__version__ = "1.1.2"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -234,3 +244,54 @@ def get_api_module(app_name):
         api_version=settings.REST_FRAMEWORK['DEFAULT_VERSION']
     )
     return importlib.import_module(module_path_str)
+
+
+def download_xls(data: [list, pd.DataFrame], file_name='output', sheet_name='doc'):
+    buffer = io.BytesIO()
+    writer = pd.ExcelWriter(buffer, engine='xlsxwriter')
+    if not isinstance(data, pd.DataFrame):
+        data = pd.DataFrame(data)
+    data[data.select_dtypes(['object']).columns] = data.select_dtypes(['object']).apply(lambda x: x.astype(str))
+    data.fillna('', inplace=True)
+    data.to_excel(writer, index=False, sheet_name=sheet_name, encoding='utf-8')
+    writer.save()
+    response = HttpResponse(
+        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+    response['Content-Disposition'] = 'attachment; filename="{}.{}"'.format(file_name, 'xlsx')
+    response.write(buffer.getvalue())
+    return response
+
+
+def download_csv(data: [list, pd.DataFrame], file_name='output'):
+    buffer = io.StringIO()
+    if not isinstance(data, pd.DataFrame):
+        data = pd.DataFrame(data)
+    data[data.select_dtypes(['object']).columns] = data.select_dtypes(['object']).apply(lambda x: x.astype(str))
+    data.fillna('', inplace=True)
+    data.to_csv(buffer, index=False, encoding='utf-8')
+    response = HttpResponse(content_type='text/csv')
+    response['Content-Disposition'] = 'attachment; filename="{}.{}"'.format(file_name, 'csv')
+    response.write(buffer.getvalue())
+    return response
+
+
+def get_test_user():
+    test_user, created = User.objects.update_or_create(
+        username='test_user',
+        defaults=dict(
+            first_name='Test',
+            last_name='User',
+            name='Test User',
+            email='test@user.com',
+            role=Role.objects.filter(is_manager=True).first(),
+            is_active=True))
+    if created:
+        test_user.set_password('test_user')
+        test_user.save()
+        EmailAddress.objects.create(
+            user=test_user,
+            email=test_user.email,
+            verified=True,
+            primary=True)
+
+    return test_user

@@ -27,7 +27,10 @@ else
 fi
 
 echo "=== Installing Docker..." -r
-source ./util/install-docker-ubuntu.sh
+pushd ./util
+    source install-docker-ubuntu.sh
+    source set-docker-target-dir.sh
+popd
 echo ""
 
 echo "=== Creating user shared between Docker containers and host machine..."

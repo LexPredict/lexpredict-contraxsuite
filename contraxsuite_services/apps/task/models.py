@@ -51,8 +51,8 @@ from apps.users.models import User
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.1c/LICENSE"
-__version__ = "1.1.1c"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.2/LICENSE"
+__version__ = "1.1.2"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -110,6 +110,7 @@ class Task(models.Model):
                               choices=TASK_STATE_CHOICES, db_index=True, null=True,
                               blank=True)
     progress = models.PositiveIntegerField(default=0, null=True, blank=True)
+    completed = models.BooleanField(null=False, blank=False, default=False)
 
     date_done = models.DateTimeField(blank=True, null=True)
 
@@ -118,6 +119,9 @@ class Task(models.Model):
     log_extra = JSONField(blank=True, null=True, encoder=DjangoJSONEncoder)
     push_steps = models.IntegerField(null=True, blank=True, default=1)
     failure_processed = models.BooleanField(null=False, blank=False, default=False)
+
+    project = models.ForeignKey('project.Project', blank=True, null=True, db_index=True)
+    upload_session = models.ForeignKey('project.UploadSession', blank=True, null=True, db_index=True)
 
     objects = TaskManager()
 
@@ -155,60 +159,6 @@ class Task(models.Model):
         """
         opts = {'metadata__%s' % k: v for k, v in filter_opts.items()}
         return cls.objects.main_tasks().filter(**opts)
-
-    @classmethod
-    def special_tasks_progress(cls, filter_opts):
-        """
-        Detailed Progress of task
-        """
-        return {'{}-{}'.format(i['name'], i['id']):
-                    {'name': i['name'],
-                     'id': i['id'],
-                     'progress': i['progress'],
-                     'completed': i['progress'] == 100}
-                for i in cls.special_tasks(filter_opts).values('id', 'name', 'progress')} or None
-
-    @classmethod
-    def special_tasks_progress_groups(cls, filter_opts):
-        """
-        Detailed Progress of tasks grouped by metadata
-        """
-        data = [{'progress': i.progress,
-                 'completed': i.progress == 100,
-                 'metadata': i.metadata.items()}
-                for i in cls.special_tasks(filter_opts)]
-        result = []
-        for metadata, grouped_data in itertools.groupby(
-                sorted(data, key=lambda i: i['metadata']),
-                key=lambda i: i['metadata']):
-            progress_data = [i['progress'] for i in grouped_data]
-            group_progress = round(sum(progress_data) / len(progress_data),
-                                   2) if progress_data else 0
-            metadata = dict(metadata)
-            metadata['progress'] = group_progress
-            metadata['completed'] = group_progress == 100
-            result.append(metadata)
-        return result
-
-    @classmethod
-    def special_tasks_completed(cls, filter_opts):
-        """
-        tasks completed or not (None if no tasks at all)
-        """
-        tasks_progress = cls.special_tasks_progress(filter_opts)
-        if tasks_progress is None:
-            return None
-        progress_values = [i['progress'] for i in tasks_progress.values()]
-        return ((sum(progress_values) / len(progress_values)) == 100) if progress_values else None
-
-    @classmethod
-    def delete_special_tasks(cls, kwargs):
-        tasks = cls.special_tasks(kwargs)
-        for task in tasks:
-            sub_tasks = Task.objects.filter(main_task=task)
-            if sub_tasks.exists():
-                sub_tasks.delete()
-            task.delete()
 
     def write_log(self, message, level='info', **kwargs):
         message = str(message)

@@ -33,6 +33,7 @@ import re
 from functools import reduce
 
 # Third-party imports
+import pandas as pd
 from rest_framework import serializers
 from rest_framework.filters import BaseFilterBackend
 from rest_framework.generics import ListAPIView
@@ -58,12 +59,12 @@ from django.views.generic.edit import CreateView, DeleteView, UpdateView
 from django.views.generic.list import MultipleObjectMixin
 
 # Project imports
-from apps.common.utils import cap_words, export_qs_to_file
+from apps.common.utils import cap_words, export_qs_to_file, download_xls, download_csv
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.1c/LICENSE"
-__version__ = "1.1.1c"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.2/LICENSE"
+__version__ = "1.1.2"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -624,12 +625,20 @@ class JqListAPIMixin(object):
         queryset = self.get_queryset()
         # 2. filter and sort
         queryset = self.filter_queryset(queryset)
-        # 3. count total records
+        # 2.1 export in xlsx if needed
+        if request.GET.get('export_to') in ['csv', 'xlsx']:
+            serializer = self.get_serializer(queryset, many=True)
+            data = serializer.data
+            return self.export(data,
+                               source_name=self.get_export_file_name() or
+                                           queryset.model.__name__.lower(),
+                               fmt=request.GET.get('export_to'))
+        # 3. count total records !before queryset paginated
         try:
             total_records = queryset.count()
         except:
             total_records = len(queryset)
-        # 4. get extra data
+        # 4. get extra data !before queryset paginated
         extra_data = self.get_extra_data(queryset)
         # 5. paginate
         queryset = self.paginate_queryset(queryset)
@@ -648,13 +657,26 @@ class JqListAPIMixin(object):
     def get_extra_data(self, queryset):
         return self.extra_data or {}
 
+    def export(self, data, source_name, fmt='xlsx'):
+        data = pd.DataFrame(data).fillna('')
+        data = self.process_export_data(data)
+        if fmt == 'xlsx':
+            return download_xls(data, file_name=source_name)
+        else:
+            return download_csv(data, file_name=source_name)
+
+    def get_export_file_name(self):
+        pass
+
+    def process_export_data(self, data):
+        return data
+
 
 class JqListAPIView(JqListAPIMixin, ListAPIView):
     """
     Filter, sort and paginate queryset using jqWidgets' grid GET params
     """
     pass
-
 
 
 class TypeaheadAPIView(ReviewerQSMixin, ListAPIView):

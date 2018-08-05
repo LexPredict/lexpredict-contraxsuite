@@ -28,7 +28,11 @@ location /media {
 }
 
 location ${DOCKER_JUPYTER_BASE_URL} {
-	proxy_pass http://${DOCKER_JUPYTER_HOST_NAME}:${DOCKER_JUPYTER_PORT};
+    # workaround to start nginx, if host is unreachable
+    set ${DOLLAR}target http://${DOCKER_JUPYTER_HOST_NAME}:${DOCKER_JUPYTER_PORT};
+    error_page 502 /404.html;
+
+    proxy_pass ${DOLLAR}target;
 	proxy_set_header X-Forwarded-For ${DOLLAR}proxy_add_x_forwarded_for;
     proxy_set_header X-Real-IP ${DOLLAR}remote_addr;
     proxy_set_header Host ${DOLLAR}http_host;
@@ -43,8 +47,12 @@ location ${DOCKER_JUPYTER_BASE_URL} {
 }
 
 location ~ ^/kibana/(.*)${DOLLAR} {
+    # workaround to start nginx, if host is unreachable
+    set ${DOLLAR}target http://${DOCKER_HOST_NAME_KIBANA}:5601;
+    error_page 502 /404.html;
+
     rewrite /kibana/(.*) /${DOLLAR}1 break;
-	proxy_pass http://${DOCKER_HOST_NAME_KIBANA}:5601;
+	proxy_pass ${DOLLAR}target;
 	proxy_http_version 1.1;
 	proxy_set_header Upgrade ${DOLLAR}http_upgrade;
     proxy_set_header Connection 'upgrade';
@@ -55,7 +63,11 @@ location ~ ^/kibana/(.*)${DOLLAR} {
 }
 
 location /flower {
-    proxy_pass http://${DOCKER_HOST_NAME_FLOWER}:5555;
+    # workaround to start nginx, if host is unreachable
+    set ${DOLLAR}target http://${DOCKER_HOST_NAME_FLOWER}:5555;
+    error_page 502 /404.html;
+
+    proxy_pass ${DOLLAR}target;
     rewrite ^/flower/(.*)${DOLLAR} /${DOLLAR}1 break;
     proxy_set_header X-Forwarded-For ${DOLLAR}proxy_add_x_forwarded_for;
     proxy_set_header X-Real-IP ${DOLLAR}remote_addr;

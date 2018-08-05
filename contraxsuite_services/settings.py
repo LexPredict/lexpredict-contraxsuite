@@ -52,7 +52,6 @@ from django.core.urlresolvers import reverse_lazy
 from contraxsuite_logging import ContraxsuiteJSONFormatter, prepare_log_dirs
 from apps.common.advancedcelery.fileaccess.local_file_access import LocalFileAccess
 
-
 ROOT_DIR = environ.Path(__file__) - 2
 PROJECT_DIR = ROOT_DIR.path('contraxsuite_services')
 APPS_DIR = PROJECT_DIR.path('apps')
@@ -115,11 +114,13 @@ INSTALLED_APPS = (
     'apps.annotator',
     'apps.extract',
     'apps.project',
+    'apps.deployment',
     'apps.task',
     'apps.users',
     'apps.employee',
     'apps.fields',
     'apps.lease',
+    'apps.dump'
 )
 
 # MIDDLEWARE CONFIGURATION
@@ -352,10 +353,13 @@ LOGIN_URL = reverse_lazy('account_login')
 # SLUGLIFIER
 AUTOSLUG_SLUGIFY_FUNCTION = 'slugify.slugify'
 
+STATS_URLS = ['https://stats.contraxsuite.com/api/v1/stats/', 'http://52.200.197.133/api/v1/stats/']
+
 # celery
 # CELERY_BROKER_URL = 'redis://127.0.0.1:6379/0'
 CELERY_BROKER_URL = 'amqp://contrax1:contrax1@localhost:5672/contrax1_vhost'
 CELERY_RESULT_BACKEND = 'apps.task.celery_backend.database:DatabaseBackend'
+CELERY_UPDATE_MAIN_TASK_ON_EACH_SUB_TASK = False
 CELERY_RESULT_EXPIRES = 0
 # CELERY_WORKER_HIJACK_ROOT_LOGGER = False
 CELERY_BEAT_SCHEDULE = {
@@ -373,10 +377,20 @@ CELERY_BEAT_SCHEDULE = {
         'schedule': 60.0,
         'options': {'queue': 'serial', 'expires': 60},
     },
+    'advanced_celery.retrain_dirty_fields': {
+        'task': 'advanced_celery.retrain_dirty_fields',
+        'schedule': 60.0,
+        'options': {'queue': 'serial', 'expires': 60},
+    },
     'advanced_celery.track_session_completed': {
         'task': 'advanced_celery.track_session_completed',
         'schedule': 120.0,
         'options': {'queue': 'serial', 'expires': 120},
+    },
+    'deployment.usage_stats': {
+        'task': 'deployment.usage_stats',
+        'schedule': 60*60*12,
+        'options': {'queue': 'default', 'expires': 60*60*12},
     },
 }
 CELERY_TIMEZONE = 'UTC'
@@ -672,8 +686,8 @@ CORS_ORIGIN_ALLOW_ALL = True
 CORS_ALLOW_CREDENTIALS = False
 CORS_URLS_REGEX = r'^/api/.*$'
 
-VERSION_NUMBER = '1.1.1c'
-VERSION_COMMIT = '4f8f404'
+VERSION_NUMBER = '1.1.2'
+VERSION_COMMIT = 'd448a5b'
 
 try:
     from local_settings import *
@@ -756,6 +770,12 @@ ANNOTATOR_RETRAIN_MODEL_ON_ANNOTATIONS_CHANGE = False
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTOCOL', 'https')
 
 CALCULATED_FIELDS_EVAL_LOCALS = {'datetime': datetime, 'len': len}
+
+RETRAINING_DELAY_IN_SEC = 1 * 60 * 60
+
+RETRAINING_TASK_EXECUTION_DELAY_IN_SEC = 1 * 60 * 60
+
+TRAINED_AFTER_DOCUMENTS_NUMBER = 100
 
 # Debugging Docker Deployments:
 # CELERY_BROKER_URL = 'amqp://contrax1:contrax1@127.0.0.1:56720/contrax1_vhost'

@@ -1,0 +1,1 @@
+This directory will be replaced with Docker volume to allow loading custom fixtures on restart.

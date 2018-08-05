@@ -36,14 +36,15 @@ from rest_framework.renderers import CoreJSONRenderer
 from rest_framework.response import Response
 from rest_framework.schemas import SchemaGenerator
 from rest_framework.views import APIView
-
 from rest_framework_swagger import renderers
+
+from apps.common.utils import download_xls
 
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.1c/LICENSE"
-__version__ = "1.1.1c"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.2/LICENSE"
+__version__ = "1.1.2"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -84,24 +85,13 @@ def get_swagger_view():
                 schema._data = _data
 
             if 'download' in request.GET:
-                return download_xls(generator.get_simple_links(request))
+                return download_xls(generator.get_simple_links(request),
+                                    file_name='contraxsuite-api',
+                                    sheet_name='api')
 
             return Response(schema)
 
     return SwaggerSchemaView.as_view()
-
-
-def download_xls(a_dict, file_name='contraxsuite-api.xlsx', sheet_name='api'):
-    output = io.BytesIO()
-    writer = pd.ExcelWriter(output, engine='xlsxwriter')
-    df = pd.DataFrame(a_dict)
-    df.to_excel(writer, index=False, sheet_name=sheet_name, encoding='utf-8')
-    writer.save()
-    response = HttpResponse(
-        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
-    response['Content-Disposition'] = 'attachment; filename="%s"' % file_name
-    response.write(output.getvalue())
-    return response
 
 
 class CustomSchemaGenerator(SchemaGenerator):

@@ -43,14 +43,13 @@ from django.utils.deprecation import MiddlewareMixin
 from django.utils.functional import curry
 
 # Project imports
-from allauth.account.models import EmailAddress
-from apps.users.models import User, Role
+from apps.common.utils import get_test_user
 from auth import CookieAuthentication
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.1c/LICENSE"
-__version__ = "1.1.1c"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.2/LICENSE"
+__version__ = "1.1.2"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -98,24 +97,7 @@ class AutoLoginMiddleware(MiddlewareMixin):
                 return
 
             if not request.user.is_authenticated():
-                test_user, created = User.objects.update_or_create(
-                    username='test_user',
-                    defaults=dict(
-                        first_name='Test',
-                        last_name='User',
-                        name='Test User',
-                        email='test@user.com',
-                        role=Role.objects.filter(is_manager=True).first().pk,
-                        is_active=True))
-                if created:
-                    test_user.set_password('test_user')
-                    test_user.save()
-                    EmailAddress.objects.create(
-                        user=test_user,
-                        email=test_user.email,
-                        verified=True,
-                        primary=True)
-
+                get_test_user()
                 user = authenticate(username='test_user', password='test_user')
                 request.user = user
                 login(request, user)

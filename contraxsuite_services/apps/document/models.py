@@ -24,6 +24,7 @@
 """
 # -*- coding: utf-8 -*-
 
+import datetime
 # Standard imports
 import os
 import pickle
@@ -37,13 +38,17 @@ from django.conf import settings
 from django.contrib.postgres.fields import JSONField
 from django.core.exceptions import ValidationError
 from django.core.serializers.json import DjangoJSONEncoder
+from django.core.validators import MinValueValidator
 from django.db import models
 from django.db.models import Q, Count
 from django.dispatch import receiver
 from django.utils.timezone import now
+from lexnlp.extract.en.definitions import get_definitions_in_sentence
 from simple_history.models import HistoricalRecords
 
+import settings
 # Project imports
+from apps.common.fields import StringUUIDField
 from apps.common.models import ReviewStatus, get_default_status
 from apps.document.field_types import FIELD_TYPES_REGISTRY, FIELD_TYPES_CHOICE, ValueExtractionHint
 from apps.document.parsing.extractors import remove_num_separators
@@ -52,8 +57,8 @@ from apps.users.models import User
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.1c/LICENSE"
-__version__ = "1.1.1c"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.2/LICENSE"
+__version__ = "1.1.2"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -98,7 +103,7 @@ class DocumentField(TimeStampedModel):
     KIND_CALCULATED = 'calculated'
 
     # Make pk field unique
-    uid = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    uid = StringUUIDField(primary_key=True, default=uuid.uuid4, editable=False)
 
     # Short name for field.
     code = models.CharField(max_length=50, db_index=True)
@@ -106,7 +111,10 @@ class DocumentField(TimeStampedModel):
     # Verbose name for field.
     title = models.CharField(max_length=100, db_index=True)
 
-    #Display order
+    # Verbose description - information which does not fit into title
+    description = models.TextField(null=True, blank=True)
+
+    # Display order
     order = models.IntegerField(default=0)
 
     # Type of the field.
@@ -114,6 +122,8 @@ class DocumentField(TimeStampedModel):
                             default='string', db_index=True)
 
     formula = models.TextField(null=True, blank=True)
+
+    value_regexp = models.TextField(null=True, blank=True)
 
     depends_on_fields = models.ManyToManyField('self', blank=True, related_name='affects_fields')
 
@@ -177,7 +187,7 @@ class DocumentType(TimeStampedModel):
     DocumentType describes custom document type.
     """
     # Make pk field unique
-    uid = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    uid = StringUUIDField(primary_key=True, default=uuid.uuid4, editable=False)
 
     # Short name for field.
     code = models.CharField(max_length=50, db_index=True)
@@ -185,11 +195,11 @@ class DocumentType(TimeStampedModel):
     # Verbose name for field.
     title = models.CharField(max_length=100, db_index=True)
 
-    # set of DocumentFields allowed for this DocumentType
+    # full set of fields to annotate on Document detail page
     fields = models.ManyToManyField(
-        DocumentField, related_name='field_document_type', blank=True)
+        DocumentField, related_name='field_document_type', blank=True, through='DocumentTypeField')
 
-    # set of DocumentFields to show in search/browse API
+    # lesser set of fields to filter/sort on Document list page
     search_fields = models.ManyToManyField(
         DocumentField, related_name='search_field_document_type', blank=True)
 
@@ -230,8 +240,68 @@ class DocumentType(TimeStampedModel):
         return self == DocumentType.generic()
 
 
-class DocketManager(models.Manager):
+class DocumentTypeFieldManager(models.Manager):
 
+    def set_dirty_for_value(self, value):
+        document_type_field = self.get(document_field_id=value.field_id,
+                                       document_type_id=value.document.document_type_id)
+        document_type_field.dirty = True
+        document_type_field.save()
+
+    def _get_dirty_fields_filter(self):
+        user_delay = DocumentTypeFieldManager.get_user_delay()
+        return self.filter(dirty=True, training_finished=False, modified_date__lt=user_delay, use_regexp_always=False)
+
+    def has_dirty_fields(self):
+        return self._get_dirty_fields_filter().exists()
+
+    def get_dirty_fields(self):
+        return self._get_dirty_fields_filter().all()
+
+    @staticmethod
+    def get_user_delay():
+        return now() - datetime.timedelta(seconds=settings.RETRAINING_DELAY_IN_SEC)
+
+
+class DocumentTypeField(models.Model):
+    document_type = models.ForeignKey(DocumentType, on_delete=models.CASCADE,
+                                      db_column='documenttype_id')
+
+    document_field = models.ForeignKey(DocumentField, on_delete=models.CASCADE,
+                                       db_column='documentfield_id')
+
+    training_finished = models.BooleanField(default=False)
+
+    dirty = models.BooleanField(default=False)
+
+    trained_after_documents_number = models.PositiveIntegerField(default=settings.TRAINED_AFTER_DOCUMENTS_NUMBER,
+                                                                 null=False, validators=[MinValueValidator(1)])
+
+    use_regexp_always = models.BooleanField(default=False)
+
+    modified_date = models.DateTimeField(auto_now=True)
+
+    created_date = models.DateTimeField(auto_now_add=True)
+
+    objects = DocumentTypeFieldManager()
+
+    class Meta:
+        unique_together = ('document_type', 'document_field',)
+        indexes = [
+            models.Index(fields=['dirty']),
+            models.Index(fields=['training_finished']),
+            models.Index(fields=['modified_date']),
+        ]
+
+    def __str__(self):
+        return 'Document type field'
+
+    def can_retrain(self):
+        return self.dirty and not self.training_finished and \
+               self.modified_date < DocumentTypeFieldManager.get_user_delay() and not self.use_regexp_always
+
+
+class DocketManager(models.Manager):
     def active(self):
         return self.filter(status__is_active=True)
 
@@ -305,7 +375,7 @@ class Document(models.Model):
 
     def __repr__(self):
         return "{1} ({0})" \
-            .format(self.document_type, self.name)
+            .format(self.document_type.title, self.name)
 
     @property
     def text(self):
@@ -318,10 +388,10 @@ class Document(models.Model):
             Q(project_reviewers=self.project))
 
     def set_language_from_text_units(self):
-        langs = self.textunit_set\
-            .filter(unit_type='paragraph')\
-            .values('language')\
-            .order_by()\
+        langs = self.textunit_set \
+            .filter(unit_type='paragraph') \
+            .values('language') \
+            .order_by() \
             .annotate(count=Count('pk'))
         if langs:
             lang = sorted(langs, key=lambda i: -i['count'])[0]['language']
@@ -333,7 +403,7 @@ class Document(models.Model):
         all_fields = self.document_type.fields.all()
         fields_to_field_values = {f: None for f in all_fields}
 
-        for fv in self.documentfieldvalue_set.all():
+        for fv in self.documentfieldvalue_set.filter(removed_by_user=False):
             field = fv.field
             field_type = FIELD_TYPES_REGISTRY[fv.field.type]
             if field_type.multi_value:
@@ -348,9 +418,9 @@ class Document(models.Model):
 
         for f in all_fields:
             if f.is_calculated():
-                field_uids_to_field_values[str(f.uid)] = f.calculate(fields_to_field_values)
+                field_uids_to_field_values[f.uid] = f.calculate(fields_to_field_values)
             else:
-                field_uids_to_field_values[str(f.uid)] = fields_to_field_values[f]
+                field_uids_to_field_values[f.uid] = fields_to_field_values[f]
 
         if save:
             self.metadata['field_values'] = field_uids_to_field_values
@@ -361,7 +431,7 @@ class Document(models.Model):
     @property
     def field_values(self):
         _field_values = self.metadata.get('field_values')
-        if not _field_values:
+        if _field_values is None:
             _field_values = self.get_field_values(save=True)
         return _field_values
 
@@ -411,6 +481,7 @@ class DocumentTag(models.Model):
 
     def __repr__(self):
         return "DocumentTag (id={0})".format(self.id)
+
 
 class DocumentProperty(TimeStampedModel):
     """DocumentProperty object model
@@ -732,6 +803,8 @@ class DocumentFieldValue(TimeStampedModel):
                                        default=EXTRACTION_HINT_CHOICES[0][0], db_index=True,
                                        blank=True, null=True)
 
+    removed_by_user = models.BooleanField(default=False)
+
     # change history
     history = HistoricalRecords()
 
@@ -751,6 +824,8 @@ class DocumentFieldValue(TimeStampedModel):
 def delete_dfv(sender, instance, **kwargs):
     # delete history
     instance.history.all().delete()
+    document = instance.document
+    document.get_field_values(save=True)
 
 
 @receiver(models.signals.post_save, sender=DocumentFieldValue)
@@ -760,13 +835,52 @@ def save_dfv(sender, instance, **kwargs):
     document.get_field_values(save=True)
 
 
+class ExternalFieldValue(TimeStampedModel):
+    """ExternalFieldValue  object model
+
+    ExternalFieldValue contains external field values to train classifier.
+    Transfer container for Training Data For Document Field Values.
+    """
+
+    # DocumentType uid
+    type_id = models.CharField(max_length=36)
+
+    # DocumentField uid
+    field_id = models.CharField(max_length=36)
+
+    # Datastore for extracted value
+    value = JSONField(blank=True, null=True, encoder=DjangoJSONEncoder)
+
+    # source text
+    sentence_text = models.TextField()
+
+    # Extraction hint detected at the moment of storing - used for further model training
+    extraction_hint = models.CharField(max_length=30, choices=EXTRACTION_HINT_CHOICES,
+                                       default=EXTRACTION_HINT_CHOICES[0][0], db_index=True,
+                                       blank=True, null=True)
+
+    def __str__(self):
+        return "{0}.{1} = {2}" \
+            .format(self.type_id, self.field_id, str(self.value)[:40])
+
+    def __repr__(self):
+        return "{0}.{1} = {2} (#{3})" \
+            .format(self.type_id, self.field_id, str(self.value)[:40], self.id)
+
+
 class DocumentFieldDetector(models.Model):
     DEF_RE_FLAGS = re.DOTALL | re.IGNORECASE
 
-    uid = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    uid = StringUUIDField(primary_key=True, default=uuid.uuid4, editable=False)
 
     field = models.ForeignKey(DocumentField, blank=False, null=False,
                               related_name='field_detectors')
+
+    # \n-separated list of words to search in the list of terms returned by get_definitions()
+    # If set - this detector checks if the sentence if a definition of any term in this list.
+    #          Include/exclude regexps are additionally checked next only if the definition matches.
+    # If not set - apply include/exclude regexps to all sentences.
+    definition_words = models.TextField(blank=True, null=True)
 
     # Field Detectors with no document type specified work for any document type
     document_type = models.ForeignKey(DocumentType, blank=True, null=True)
@@ -793,24 +907,35 @@ class DocumentFieldDetector(models.Model):
                                        blank=True, null=True)
 
     # Validator. If field is not of an ordinal type and TAKE_MIN/MAX are selected, throw error
-    def clean_fields(self, exclude = ('uid', 'field', 'document_type', 'exclude_regexps', \
-                                      'include_regexps', 'regexps_pre_process_lower', \
-                                      'regexps_pre_process_remove_numeric_separators', \
-                                      'detected_value')):
-        # should the below be refactored to not be hard-coded?
-        ORDINAL_FIELD_TYPES = ['amount', 'money', 'date', 'duration', 'int', 'float']
-        ORDINAL_EXTRACTION_HINTS = ['TAKE_MIN', 'TAKE_MAX']
-        # MAYBE LIKE: ORDINAL_EXTRACTION_HINTS = tuple((hint.name, hint.name) for hint in ValueExtractionHint[-2])
+    def clean_fields(self, exclude=('uid', 'field', 'document_type', 'exclude_regexps',
+                                    'include_regexps', 'regexps_pre_process_lower',
+                                    'regexps_pre_process_remove_numeric_separators',
+                                    'detected_value')):
+        field_type = FIELD_TYPES_REGISTRY[self.field.type]
 
-        if (self.field).type not in ORDINAL_FIELD_TYPES and self.extraction_hint in ORDINAL_EXTRACTION_HINTS:
-            raise ValidationError(('Cannot take min or max of <Field> because its type is not amount, money, int, float, date, or duration. Please select TAKE_FIRST, TAKE_SECOND, or TAKE_THIRD, or change the field type.'))
+        if field_type.ordinal \
+                and self.extraction_hint in ValueExtractionHint.ORDINAL_EXTRACTION_HINTS:
+            raise ValidationError(('Cannot take min or max of <Field> because its type is not '
+                                   'amount, money, int, float, date, or duration. Please select '
+                                   'TAKE_FIRST, TAKE_SECOND, or TAKE_THIRD, or change the field '
+                                   'type.'))
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._include_matchers = None
         self._exclude_matchers = None
+        self._definition_words = None
 
     def compile_regexps(self):
+
+        if self.definition_words:
+            dw = []
+            for w in self.definition_words.split('\n'):
+                w = w.strip()
+                if w:
+                    dw.append(self._clean_def_words(w))
+            self._definition_words = dw or None
+
         self._include_matchers = []
 
         if self.include_regexps:
@@ -827,6 +952,36 @@ class DocumentFieldDetector(models.Model):
                 if r:
                     self._exclude_matchers.append(re.compile(r, self.DEF_RE_FLAGS))
 
+    def _matches_exclude_regexp(self, sentence: str) -> bool:
+        if self._exclude_matchers:
+            for matcher_re in self._exclude_matchers:
+                for m in matcher_re.findall(sentence):
+                    return True
+        return False
+
+    def _matches_include_regexp(self, sentence: str) -> bool:
+        if self._include_matchers:
+            for matcher_re in self._include_matchers:
+                for m in matcher_re.findall(sentence):
+                    return True
+        return False
+
+    def _clean_def_words(self, s: str):
+        res = ''.join(filter(lambda ss: ss.isalpha() or ss.isnumeric() or ss.isspace(), s))
+        return ' '.join(res.split())
+
+    def _matches_definition_words(self, sentence: str) -> bool:
+        if self._definition_words:
+            terms = get_definitions_in_sentence(sentence)
+            if not terms:
+                return False
+            terms = set([self._clean_def_words(t) for t in terms])
+
+            for w in self._definition_words:
+                if w in terms:
+                    return True
+        return False
+
     def matches(self, sentence: str):
         if self._include_matchers is None or self._exclude_matchers is None:
             self.compile_regexps()
@@ -841,14 +996,16 @@ class DocumentFieldDetector(models.Model):
         if self.regexps_pre_process_remove_numeric_separators:
             sentence = remove_num_separators(sentence)
 
-        if self._exclude_matchers:
-            for matcher_re in self._exclude_matchers:
-                for m in matcher_re.findall(sentence):
-                    return False
-        if self._include_matchers:
-            for matcher_re in self._include_matchers:
-                for m in matcher_re.findall(sentence):
-                    return True
+        if self._matches_exclude_regexp(sentence):
+            return False
+
+        if self._definition_words:
+            if not self._matches_definition_words(sentence):
+                return False
+
+            return not self._include_matchers or self._matches_include_regexp(sentence)
+        else:
+            return self._matches_include_regexp(sentence)
 
     class Meta:
         ordering = ('uid',)
@@ -860,6 +1017,11 @@ class DocumentFieldDetector(models.Model):
     def __repr__(self):
         return "{0}: {1}".format(self.field, self.include_regexps)[:50] \
                + " (#{0})".format(self.uid)
+
+
+class DocumentFieldDetectingConfig(models.Model):
+    pass
+
 
 class ClassifierModel(models.Model):
     document_type = models.ForeignKey(DocumentType, db_index=True, related_name='classifiers')

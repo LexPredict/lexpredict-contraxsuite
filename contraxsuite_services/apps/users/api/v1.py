@@ -28,13 +28,14 @@
 from rest_framework import routers, viewsets, serializers
 
 # Project imports
+from apps.common.api.permissions import ReviewerReadOnlyPermission
 from apps.common.mixins import JqListAPIMixin, SimpleRelationSerializer
 from apps.users.models import User, Role
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.1c/LICENSE"
-__version__ = "1.1.1c"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.2/LICENSE"
+__version__ = "1.1.2"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -61,6 +62,7 @@ class RoleViewSet(JqListAPIMixin, viewsets.ModelViewSet):
     queryset = Role.objects.all()
     serializer_class = RoleSerializer
     http_method_names = ['get', 'post', 'put', 'patch']
+    permission_classes = (ReviewerReadOnlyPermission,)
 
 
 # --------------------------------------------------------
@@ -93,9 +95,10 @@ class UserViewSet(JqListAPIMixin, viewsets.ModelViewSet):
     update: Update User
     partial_update: Partial Update User
     """
-    queryset = User.objects.all()
+    queryset = User.objects.all().select_related('role')
     serializer_class = UserSerializer
     http_method_names = ['get', 'post', 'put', 'patch']
+    permission_classes = (ReviewerReadOnlyPermission,)
 
 
 router = routers.DefaultRouter()

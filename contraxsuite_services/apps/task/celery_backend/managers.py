@@ -3,8 +3,7 @@ from __future__ import absolute_import, unicode_literals
 
 import warnings
 from functools import wraps
-from itertools import count
-from typing import Union
+from itertools import count, groupby
 
 from celery.result import AsyncResult
 from celery.states import READY_STATES, PROPAGATE_STATES, SUCCESS, UNREADY_STATES
@@ -66,6 +65,66 @@ def transaction_retry(max_retries=1):
     return _outer
 
 
+class QuerySet(models.QuerySet):
+
+    def filter_metadata(self, **kwargs):
+        opts = {'metadata__%s' % k: v for k, v in kwargs.items()}
+        return self.filter(**opts)
+
+    def progress(self, get_completed=False):
+        """
+        Detailed Progress of tasks
+        """
+        result = {'{}-{}'.format(i['name'], i['id']): dict(i)
+                  for i in self.values('id', 'name', 'progress', 'completed')} or None
+        if get_completed:
+            if result:
+                progress_values = [i['progress'] for i in result.values()]
+                completed = ((sum(progress_values) / len(progress_values)) == 100)\
+                    if progress_values else None
+            else:
+                completed = None
+            result = (result, completed)
+        return result
+
+    def progress_groups(self, get_completed=False):
+        """
+        Detailed Progress of tasks grouped by metadata
+        """
+        data = [{'progress': i['progress'],
+                 'completed': i['completed'],
+                 'metadata': i['metadata'].items()}
+                for i in self.values('progress', 'completed', 'metadata')]
+        result = []
+        for metadata, grouped_data in groupby(
+                sorted(data, key=lambda i: i['metadata']),
+                key=lambda i: i['metadata']):
+            progress_data = [i['progress'] for i in grouped_data]
+            group_progress = round(sum(progress_data) / len(progress_data),
+                                   2) if progress_data else 0
+            metadata = dict(metadata)
+            metadata['progress'] = group_progress
+            metadata['completed'] = group_progress == 100
+            result.append(metadata)
+        if get_completed:
+            if result:
+                completed = all([i['completed'] for i in result])
+            else:
+                completed = None
+            result = (result, completed)
+        return result
+
+    def completed(self):
+        """
+        Tasks completed or not (None if no tasks at all)
+        """
+        tasks_progress = self.progress()
+        if tasks_progress is None:
+            return None
+        progress_values = [i['progress'] for i in tasks_progress.values()]
+        return ((sum(progress_values) / len(progress_values)) == 100) if progress_values else None
+
+
 class TaskManager(models.Manager):
     _last_id = None
 
@@ -78,8 +137,16 @@ class TaskManager(models.Manager):
         'advanced_celery.clean_sub_tasks',
         'advanced_celery.clean_dead_tasks',
         'advanced_celery.clean_tasks',
-        'advanced_celery.end_chord'
+        'advanced_celery.end_chord',
+        'deployment.usage_stats',
+        'advanced_celery.retrain_dirty_fields'
     }
+
+    def get_queryset(self):
+        return QuerySet(self.model, using=self._db)
+
+    def filter_metadata(self, **kwargs):
+        return self.get_queryset().main_tasks().filter_metadata(**kwargs)
 
     def get_task(self, task_id):
         """Get result for task by ``task_id``.
@@ -247,6 +314,7 @@ class TaskManager(models.Manager):
 
         self.filter(id=main_task_id).update(date_done=total_date_done,
                                             status=total_status,
+                                            completed=total_progress == 100,
                                             progress=total_progress)
 
         if total_status_propagating_exceptions in PROPAGATE_STATES:
@@ -347,3 +415,7 @@ class TaskManager(models.Manager):
                 'DELETE FROM {0.db_table} WHERE hidden=%s'.format(meta),
                 (True,),
             )
+
+    def filter_metadata(self, **kwargs):
+        opts = {'metadata__%s' % k: v for k, v in kwargs.items()}
+        return self.main_tasks().filter(**opts)

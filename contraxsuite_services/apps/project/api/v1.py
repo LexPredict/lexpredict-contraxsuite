@@ -34,16 +34,17 @@ import sys
 from rest_framework import serializers, routers, viewsets
 from rest_framework.decorators import detail_route, list_route
 from rest_framework.exceptions import ValidationError, APIException
+from rest_framework.permissions import BasePermission, IsAuthenticated
 from rest_framework.views import APIView
-from rest_framework.response import Response
 
 # Django imports
 from django.conf import settings
-from django.contrib.postgres.aggregates.general import StringAgg
 from django.core.files import File
 from django.core.files.storage import FileSystemStorage
 from django.http import JsonResponse
-from django.db.models import Count, Min, Max
+from django.db.models import Count
+
+from rest_framework.response import Response
 
 # Project imports
 from apps.analyze.models import DocumentCluster
@@ -51,7 +52,6 @@ from apps.common.mixins import JqListAPIMixin
 from apps.common.models import ReviewStatus
 from apps.common.utils import get_api_module
 from apps.document.models import Document, DocumentType
-from apps.extract.models import CurrencyUsage
 from apps.project.models import Project, TaskQueue, UploadSession, ProjectClustering
 from apps.users.models import User
 from apps.task.models import Task
@@ -62,8 +62,8 @@ from apps.project.tasks import THIS_MODULE    # noqa
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.1c/LICENSE"
-__version__ = "1.1.1c"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.2/LICENSE"
+__version__ = "1.1.2"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -224,20 +224,22 @@ class TaskQueueViewSet(JqListAPIMixin, viewsets.ModelViewSet):
 # --------------------------------------------------------
 
 def project_progress(obj):
-    sessions_status_data = {str(i.pk): i.status for i in obj.uploadsession_set.all()}
-    completed_sessions = {k: v for k, v in sessions_status_data.items() if v == 'Parsed'}
-    uncompleted_sessions = {k: v for k, v in sessions_status_data.items() if v != 'Parsed'}
-    project_uploaded_documents_count = Document.objects.filter(
-        upload_session__project=obj).count()
+    sessions_status_data = {i.pk: i.is_completed() for i in obj.uploadsession_set.prefetch_related('task_set')}
+    completed_sessions = {k: v for k, v in sessions_status_data.items() if v is True}
+    uncompleted_sessions = {k: v for k, v in sessions_status_data.items() if v is False}
+    empty_sessions = {k: v for k, v in sessions_status_data.items() if v is None}
+    project_uploaded_documents_count = obj.document_set.count()
 
+    project_tasks_progress, project_tasks_completed = obj.project_tasks_progress(get_completed=True)
     stats = {'project_current_documents_count': obj.document_set.count(),
              'project_uploaded_documents_count': project_uploaded_documents_count,
-             'project_tasks_progress': obj.project_tasks_progress,
-             'project_tasks_completed': obj.project_tasks_completed,
+             'project_tasks_progress': project_tasks_progress,
+             'project_tasks_completed': project_tasks_completed,
              'completed_sessions': completed_sessions or None,
+             'empty_sessions': empty_sessions or None,
              'uncompleted_sessions': uncompleted_sessions or None}
 
-    if obj.type is None:
+    if obj.type.is_generic():
         project_clusters_documents_count = obj.projectclustering_set.last() \
             .document_clusters.aggregate(c=Count('documents'))['c'] \
             if obj.projectclustering_set.exists() else 0
@@ -245,13 +247,15 @@ def project_progress(obj):
                                               project_clusters_documents_count
         reassigning_ots = {'task_name': 'reassigning',
                            'old_project_id': obj.pk}
+        reassigning_progress, reassigning_completed = Task.objects.filter_metadata(
+            **reassigning_ots).progress_groups(get_completed=True)
         stats.update({
             'project_clusters_documents_count': project_clusters_documents_count,
             'project_unclustered_documents_count': project_unclustered_documents_count,
-            'reassigning_progress': Task.special_tasks_progress_groups(reassigning_ots),
-            'reassigning_completed': Task.special_tasks_completed(reassigning_ots),
-            'cleanup_completed': Task.special_tasks_completed({'task_name': 'clean-project',
-                                                               '_project_id': obj.pk}),
+            'reassigning_progress': reassigning_progress,
+            'reassigning_completed': reassigning_completed,
+            'cleanup_completed': Task.objects.filter_metadata(
+                task_name='clean-project', _project_id=obj.pk).completed()
         })
 
     return stats
@@ -280,6 +284,10 @@ class ProjectDetailSerializer(serializers.ModelSerializer):
         queryset=User.objects.all(), many=True, required=False)
     reviewers_data = users_api_module.UserSerializer(
         source='reviewers', many=True, read_only=True)
+    super_reviewers = serializers.PrimaryKeyRelatedField(
+        queryset=User.objects.all(), many=True, required=False)
+    super_reviewers_data = users_api_module.UserSerializer(
+        source='super_reviewers', many=True, read_only=True)
     type = serializers.PrimaryKeyRelatedField(
         queryset=DocumentType.objects.all(), many=False, required=False)
     type_data = DocumentTypeSerializer(source='type', many=False)
@@ -288,7 +296,9 @@ class ProjectDetailSerializer(serializers.ModelSerializer):
     class Meta:
         model = Project
         fields = ['pk', 'name', 'description', 'status', 'status_data',
-                  'owners', 'owners_data', 'reviewers', 'reviewers_data',
+                  'owners', 'owners_data',
+                  'reviewers', 'reviewers_data',
+                  'super_reviewers', 'super_reviewers_data',
                   'type', 'type_data', 'progress']
 
     def get_progress(self, obj):
@@ -305,7 +315,7 @@ class ProjectUpdateSerializer(ProjectDetailSerializer):
     class Meta(ProjectDetailSerializer.Meta):
         model = Project
         fields = ['pk', 'name', 'description', 'status',
-                  'owners', 'reviewers', 'type']
+                  'owners', 'reviewers', 'super_reviewers', 'type']
 
 
 def require_generic_contract_type(func):
@@ -318,7 +328,32 @@ def require_generic_contract_type(func):
     return decorator
 
 
-class ProjectViewSet(JqListAPIMixin, viewsets.ModelViewSet):
+class ProjectPermissions(BasePermission):
+    def has_permission(self, request, view):
+        if request.user.is_reviewer:
+            if request.method == 'GET' or view.action in ['cluster', 'send_clusters_to_project']:
+                return True
+            return False
+        return True
+
+    def has_object_permission(self, request, view, obj):
+        # Warn! self.get_object() initializes this check! so include it in custom view func!
+        if request.user.is_reviewer:
+            return obj.reviewers.filter(pk=request.user.pk).exists()
+        return True
+
+
+class ProjectPermissionViewMixin(object):
+    permission_classes = (IsAuthenticated, ProjectPermissions)
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        if self.request.user.is_reviewer:
+            qs = qs.filter(reviewers=self.request.user)
+        return qs
+
+
+class ProjectViewSet(ProjectPermissionViewMixin, JqListAPIMixin, viewsets.ModelViewSet):
     """
     list: Project List
     retrieve: Retrieve Project
@@ -328,6 +363,10 @@ class ProjectViewSet(JqListAPIMixin, viewsets.ModelViewSet):
     delete: Delete Project
     """
     queryset = Project.objects.all()
+
+    def perform_create(self, serializer):
+        project = serializer.save()
+        project.owners.add(self.request.user)
 
     def get_serializer_class(self):
         if self.action == 'create':
@@ -340,7 +379,10 @@ class ProjectViewSet(JqListAPIMixin, viewsets.ModelViewSet):
         qs = super().get_queryset()
         # if self.request.user.is_reviewer:
         #     qs = qs.filter(task_queues__reviewers=self.request.user)
-        qs = qs.prefetch_related('status', 'owners', 'reviewers', 'uploadsession_set')
+        qs = qs.select_related('type')\
+            .prefetch_related('status', 'owners', 'owners__role',
+                              'reviewers', 'reviewers__role',
+                              'uploadsession_set')
         return qs
 
     @detail_route(methods=['get'])
@@ -360,17 +402,16 @@ class ProjectViewSet(JqListAPIMixin, viewsets.ModelViewSet):
                 - n_clusters: int
                 - force: bool (optional) - force clustering if uncompleted tasks exist
         """
+        project = self.get_object()
+
         if not request.POST.get('force') == 'true':
-            obj = self.get_object()
-            progress = project_progress(obj)
+            progress = project_progress(project)
             if progress['uncompleted_sessions'] is not None:
                 raise APIException('Project has uncompleted upload sessions.')
             elif progress['completed_sessions'] is None:
                 raise APIException("Project hasn't completed upload sessions.")
 
-        project_id = kwargs.get('pk')
-
-        project_clustering = ProjectClustering.objects.create(project_id=project_id)
+        project_clustering = ProjectClustering.objects.create(project=project)
 
         try:
             n_clusters = int(request.POST.get('n_clusters', 3))
@@ -381,10 +422,10 @@ class ProjectViewSet(JqListAPIMixin, viewsets.ModelViewSet):
             task_name='ClusterProjectDocuments',
             module_name='apps.project.tasks',
             user_id=request.user.id,
-            project_id=project_id,
+            project_id=project.id,
             project_clustering_id=project_clustering.id,
             method=request.POST.get('method', 'KMeans'),
-            metadata={'project_id': project_id},
+            metadata={'project_id': project.id},
             n_clusters=n_clusters)
 
         return Response({'task_id': task_id,
@@ -398,13 +439,16 @@ class ProjectViewSet(JqListAPIMixin, viewsets.ModelViewSet):
             Params:
                 - project_clustering_id: int (optional) - return last if not provided
         """
-        project_clustering_id = request.GET.get('project_clustering_id')
         project = self.get_object()
+        project_clustering_id = request.GET.get('project_clustering_id')
 
+        clustering = project.projectclustering_set \
+            .select_related('project', 'task') \
+            .prefetch_related('document_clusters__documents')
         if project_clustering_id:
-            clustering = project.projectclustering_set.get(pk=project_clustering_id)
+            clustering = clustering.get(pk=project_clustering_id)
         else:
-            clustering = project.projectclustering_set.last()
+            clustering = clustering.last()
 
         if not clustering:
             return Response({'details': 'Cluster session not found'}, status=200)
@@ -444,8 +488,8 @@ class ProjectViewSet(JqListAPIMixin, viewsets.ModelViewSet):
                 - cluster_ids: list[int]
                 - project_id: int
         """
-        cluster_ids = [int(i) for i in request.POST.getlist('cluster_ids')]
         project = self.get_object()
+        cluster_ids = [int(i) for i in request.POST.getlist('cluster_ids')]
         project_clustering = project.projectclustering_set.last()
         if not project_clustering:
             raise APIException('Project Clustering object not found')
@@ -490,61 +534,15 @@ class ProjectViewSet(JqListAPIMixin, viewsets.ModelViewSet):
             Returns:
                 int (number of reassigned documents)
         """
+        # permissions check
+        project = self.get_object()
+
         document_ids = [int(i) for i in request.POST.getlist('document_ids')]
         assignee_id = request.POST.get('assignee_id')
         ret = Document.objects\
-            .filter(pk__in=document_ids)\
+            .filter(project=project, pk__in=document_ids)\
             .update(assignee=assignee_id)
         return Response(ret)
-
-    @detail_route(methods=['get'])
-    def documents(self, request, **kwargs):
-        """
-        Get list of project documents
-        """
-        project = self.get_object()
-
-        # if project.type.is_generic() and (project.projectclustering_set.exists()
-        #         and not project.projectclustering_set.last().completed):
-        #     return Response('Project documents clustering is not completed.', status=500)
-
-        qs = list(
-            Document.objects
-                .filter(project=project)
-                .values('id', 'name')
-                .annotate(cluster_id=Max('documentcluster'),
-                          parties=StringAgg('textunit__partyusage__party__name',
-                                            delimiter=', ',
-                                            distinct=True),
-                          min_date=Min('textunit__dateusage__date'),
-                          # max_currency=Max('textunit__currencyusage__amount'),
-                          max_date=Max('textunit__dateusage__date'))
-                .order_by('cluster_id', 'name'))
-
-        # get max currency amount and currency itself
-        # as it's hard to get currency itself like USD
-        # along with amount in previous query
-        currencies_qs = CurrencyUsage.objects \
-            .filter(text_unit__document__project=project) \
-            .values('text_unit__document__name', 'currency') \
-            .annotate(max_currency=Max('amount')).order_by('max_currency')
-        max_currencies = {i['text_unit__document__name']:
-                              {'max_currency': i['max_currency'],
-                               'max_currency_str': '{} {}'.format(
-                                   i['currency'],
-                                   int(i['max_currency'])
-                                   if int(i['max_currency']) == i['max_currency']
-                                   else i['max_currency'])}
-                          for i in currencies_qs}
-
-        # join two queries results
-        for item in qs:
-            if item['name'] in max_currencies:
-                item.update(max_currencies[item['name']])
-            else:
-                item.update({'max_currency': None, 'max_currency_str': None})
-
-        return Response(qs)
 
 
 # --------------------------------------------------------
@@ -577,7 +575,27 @@ class UploadSessionDetailSerializer(serializers.ModelSerializer):
         return obj.document_tasks_progress(details=True)
 
 
-class UploadSessionViewSet(JqListAPIMixin, viewsets.ModelViewSet):
+class UploadSessionPermissions(BasePermission):
+    def has_object_permission(self, request, view, obj):
+        if request.user.is_reviewer:
+            if view.action in ['upload', 'batch_upload'] and \
+                    not obj.project.super_reviewers.filter(pk=request.user.pk).exists():
+                return False
+            return obj.project.reviewers.filter(pk=request.user.pk).exists()
+        return True
+
+
+class UploadSessionPermissionViewMixin(object):
+    permission_classes = (IsAuthenticated, UploadSessionPermissions)
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        if self.request.user.is_reviewer:
+            qs = qs.filter(project__reviewers=self.request.user)
+        return qs
+
+
+class UploadSessionViewSet(UploadSessionPermissionViewMixin, JqListAPIMixin, viewsets.ModelViewSet):
     """
     list: Session Upload List
     retrieve: Retrieve Session Upload
@@ -595,7 +613,12 @@ class UploadSessionViewSet(JqListAPIMixin, viewsets.ModelViewSet):
 
     def get_queryset(self):
         qs = super().get_queryset()
-        qs = qs.select_related('project')
+        qs = qs.select_related('project', 'created_by', 'created_by',
+                               'project__type', 'project__status', 'project__status__group')\
+            .prefetch_related('project__owners', 'project__owners__role',
+                              'project__reviewers', 'project__reviewers__role',
+                              'project__document_set', 'project__uploadsession_set',
+                              'project__projectclustering_set')
         return qs
 
     def create(self, request, *args, **kwargs):
@@ -611,6 +634,7 @@ class UploadSessionViewSet(JqListAPIMixin, viewsets.ModelViewSet):
         Get Progress for a session per files (short form)
         """
         session = self.get_object()
+        session.is_completed()
         document_tasks_progress = session.document_tasks_progress()
         result = {'project_id': session.project.pk,
                   'document_tasks_progress': document_tasks_progress or None,
@@ -630,7 +654,7 @@ class UploadSessionViewSet(JqListAPIMixin, viewsets.ModelViewSet):
         project_id = request.GET.get('project_id')
         if project_id:
             qs = qs.filter(project_id=project_id)
-        result = {str(i.pk): i.status for i in qs}
+        result = {i.pk: i.status_check() for i in qs}
         return Response(result)
 
     @detail_route(methods=['post'])
@@ -642,6 +666,9 @@ class UploadSessionViewSet(JqListAPIMixin, viewsets.ModelViewSet):
                 - force: bool (optional) - whether rewrite existing file and Document
                 - send_email_notifications: bool (optional) - sent notification email that batch uploading started
         """
+        # permissions check
+        _ = self.get_object()
+
         folder_name = request.POST.get('folder') or request.POST.get('source_path')
         kwargs['folder'] = folder_name
         if folder_name:
@@ -672,7 +699,7 @@ class UploadSessionViewSet(JqListAPIMixin, viewsets.ModelViewSet):
                 - send_email_notifications: bool (optional) - sent notification email that batch uploading started
         """
         session_id = kwargs.get('pk')
-        session = UploadSession.objects.get(pk=session_id)
+        session = self.get_object()
         project = session.project
         file_ = request.FILES.dict().get('file')
         folder_name = kwargs.get('folder')
@@ -680,11 +707,11 @@ class UploadSessionViewSet(JqListAPIMixin, viewsets.ModelViewSet):
         if session_id and file_:
             try:
                 project_storages = {
-                    str(_session_id): FileSystemStorage(
+                    _session_id: FileSystemStorage(
                         location=os.path.join(
                             settings.MEDIA_ROOT,
                             settings.FILEBROWSER_DIRECTORY,
-                            str(_session_id)))
+                            _session_id))
                     for _session_id in project.uploadsession_set.values_list('pk', flat=True)}
 
                 # check existing documents with the same name
@@ -744,6 +771,7 @@ class UploadSessionViewSet(JqListAPIMixin, viewsets.ModelViewSet):
                      'locate': required_locators,
                      'parse': 'sentences',
                      'do_delete': False,
+                     'session_id': session_id,
                      'metadata': {'session_id': session_id, 'file_name': file_.name},
                      'user_id': request.user.id}
                 ]
@@ -761,6 +789,7 @@ class UploadSessionViewSet(JqListAPIMixin, viewsets.ModelViewSet):
                                 {'task_name': 'DetectFieldValues',
                                  'module_name': module_str,
                                  'do_not_write': False,
+                                 'session_id': session_id,
                                  'metadata': {'session_id': session_id, 'file_name': file_.name},
                                  'user_id': request.user.id})
 
@@ -768,6 +797,7 @@ class UploadSessionViewSet(JqListAPIMixin, viewsets.ModelViewSet):
                     task_name='LoadDocuments',
                     source_path=source_path,
                     user_id=request.user.id,
+                    session_id=session_id,
                     metadata={'session_id': session_id, 'file_name': file_.name},
                     linked_tasks=linked_tasks)
 
@@ -788,7 +818,7 @@ class UploadSessionViewSet(JqListAPIMixin, viewsets.ModelViewSet):
             Params:
                 - filename: str
         """
-        session_id = kwargs.get('pk')
+        session_id = self.get_object().pk
         file_name = request.POST.get('filename')
 
         if not file_name:
@@ -878,7 +908,6 @@ class ProjectClusteringSerializer(serializers.ModelSerializer):
     project_uploaded_documents_count = serializers.SerializerMethodField()
     project_current_documents_count = serializers.SerializerMethodField()
     project_clusters_documents_count = serializers.SerializerMethodField()
-    project_unclustered_documents_count = serializers.SerializerMethodField()
 
     class Meta:
         model = ProjectClustering
@@ -886,8 +915,7 @@ class ProjectClusteringSerializer(serializers.ModelSerializer):
                   'metadata', 'created_date',
                   'project_uploaded_documents_count',
                   'project_current_documents_count',
-                  'project_clusters_documents_count',
-                  'project_unclustered_documents_count']
+                  'project_clusters_documents_count']
 
     def get_project_uploaded_documents_count(self, obj):
         return Document.objects.filter(upload_session__project=obj.project).count()
@@ -898,19 +926,20 @@ class ProjectClusteringSerializer(serializers.ModelSerializer):
     def get_project_clusters_documents_count(self, obj):
         return obj.document_clusters.aggregate(c=Count('documents'))['c']
 
-    def get_project_unclustered_documents_count(self, obj):
-        return self.get_project_uploaded_documents_count(obj) - \
-               self.get_project_clusters_documents_count(obj)
+    def to_representation(self, instance):
+        ret = super().to_representation(instance)
+        ret['project_unclustered_documents_count'] = ret['project_uploaded_documents_count'] - \
+               ret['project_clusters_documents_count']
+        return ret
 
 
-class ProjectClusteringViewSet(JqListAPIMixin, viewsets.ModelViewSet):
+class ProjectClusteringViewSet(JqListAPIMixin, viewsets.ReadOnlyModelViewSet):
     """
     list: ProjectCluster List
     retrieve: ProjectCluster Details
     """
     queryset = ProjectClustering.objects.all()
     serializer_class = ProjectClusteringSerializer
-    http_method_names = ['get']
 
     def get_queryset(self):
         qs = super().get_queryset()

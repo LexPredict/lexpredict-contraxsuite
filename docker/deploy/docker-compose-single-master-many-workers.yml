@@ -369,6 +369,7 @@ services:
     volumes:
       - contraxsuite_deployment_uuid:/deployment_uuid
       - contraxsuite_static_files:/contraxsuite_services/staticfiles
+      - contraxsuite_additional_fixtures:/contraxsuite_services/fixtures/additional
       - contraxsuite_third_party_dependencies:/third_party_dependencies
       - contraxsuite_data_media:/data/media
       - contraxsuite_logs:/data/logs
@@ -399,8 +400,6 @@ services:
       - 0.0.0.0:443:4443
     depends_on:
       - contrax-uwsgi
-      - contrax-jupyter
-      - contrax-kibana
     deploy:
       replicas: 1
       placement:
@@ -576,6 +575,7 @@ volumes:
   metricbeat_data:
   celery_worker_state:
   contraxsuite_nginx_server_include:
+  contraxsuite_additional_fixtures:
 
 networks:
   contrax_net:

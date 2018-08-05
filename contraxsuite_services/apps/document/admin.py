@@ -36,15 +36,16 @@ from simple_history.admin import SimpleHistoryAdmin
 # Project imports
 from apps.document.models import (
     Document, DocumentField, DocumentType,
-    DocumentProperty, DocumentRelation, DocumentNote, DocumentFieldDetector, DocumentFieldValue,
-    ClassifierModel, TextUnit, TextUnitProperty, TextUnitNote, TextUnitTag)
+    DocumentProperty, DocumentRelation, DocumentNote,
+    DocumentFieldDetector, DocumentFieldValue, ExternalFieldValue,
+    ClassifierModel, TextUnit, TextUnitProperty, TextUnitNote, TextUnitTag, DocumentTypeField)
 from apps.document.field_types import FIELD_TYPES_REGISTRY
-import settings
+
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.1c/LICENSE"
-__version__ = "1.1.1c"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.2/LICENSE"
+__version__ = "1.1.2"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -81,8 +82,8 @@ class DocumentFieldForm(forms.ModelForm):
 
 class DocumentFieldAdmin(admin.ModelAdmin):
     form = DocumentFieldForm
-    list_display = ('code', 'title', 'type', 'formula', 'user', 'modified_date')
-    search_fields = ['code', 'title', 'created_user__username']
+    list_display = ('code', 'title', 'description', 'type', 'formula', 'value_regexp', 'user', 'modified_date')
+    search_fields = ['code', 'title', 'description', 'created_user__username']
     filter_horizontal = ('depends_on_fields',)
 
     @staticmethod
@@ -137,10 +138,20 @@ class DocumentFieldValueAdmin(admin.ModelAdmin):
         return obj.modified_by.username if obj.modified_by else None
 
 
+class ExternalFieldValueAdmin(admin.ModelAdmin):
+    list_display = ('type_id', 'field_id', 'value', 'extraction_hint')
+    search_fields = ('type_id', 'field_id', 'value', 'extraction_hint')
+
+
+class FieldInlineAdmin(admin.TabularInline):
+    model = DocumentType.fields.through
+
+
 class DocumentTypeAdmin(admin.ModelAdmin):
-    list_display = ('code', 'title', 'fields_num', 'user', 'modified_date')
+    list_display = ('code', 'title', 'fields_num', 'user', 'fields', 'modified_date')
     search_fields = ['code', 'title', 'created_user__username']
     filter_horizontal = ('fields', 'search_fields')
+    inlines = (FieldInlineAdmin,)
 
     @staticmethod
     def fields_num(obj):
@@ -191,10 +202,16 @@ class ClassifierModelAdmin(SimpleHistoryAdmin):
     search_fields = ('document_type',)
 
 
+class DocumentTypeFieldAdmin(admin.ModelAdmin):
+    list_display = ('document_type', 'document_field', 'training_finished')
+    search_fields = ['document_type', 'document_field']
+
+
 admin.site.register(Document, DocumentAdmin)
 admin.site.register(DocumentField, DocumentFieldAdmin)
 admin.site.register(DocumentFieldDetector, DocumentFieldDetectorAdmin)
 admin.site.register(DocumentFieldValue, DocumentFieldValueAdmin)
+admin.site.register(ExternalFieldValue, ExternalFieldValueAdmin)
 admin.site.register(ClassifierModel, ClassifierModelAdmin)
 admin.site.register(DocumentType, DocumentTypeAdmin)
 admin.site.register(DocumentRelation, DocumentRelationAdmin)
@@ -204,3 +221,4 @@ admin.site.register(TextUnit, TextUnitAdmin)
 admin.site.register(TextUnitTag, TextUnitTagAdmin)
 admin.site.register(TextUnitNote, TextUnitNoteAdmin)
 admin.site.register(DocumentNote, DocumentNoteAdmin)
+admin.site.register(DocumentTypeField, DocumentTypeFieldAdmin)

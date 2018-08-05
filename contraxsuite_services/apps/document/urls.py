@@ -39,8 +39,8 @@ from apps.document.models import (
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.1c/LICENSE"
-__version__ = "1.1.1c"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.2/LICENSE"
+__version__ = "1.1.2"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -96,6 +96,11 @@ urlpatterns += [
         r'^document/(?P<pk>\d+)/source/$',
         views.DocumentSourceView.as_view(),
         name='document-source'
+    ),
+    url(
+        r'^document/(?P<pk>\d+)/show/$',
+        views.show_document,
+        name='show-document'
     ),
     url(
         r'^document/(?P<pk>\d+)/enhanced-view/$',

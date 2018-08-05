@@ -16,6 +16,7 @@ export VOLUME_DB=${DOCKER_VOLUME_DIR}/contraxsuite_postgres_data/_data/
 export VOLUME_REGISTRY=${DOCKER_VOLUME_DIR}/contraxsuite_registry_registry_storage/_data
 export VOLUME_RABBIT=${DOCKER_VOLUME_DIR}/contraxsuite_rabbitmq_data/_data
 export VOLUME_CELERY_WORK_STATE=${DOCKER_VOLUME_DIR}/contraxsuite_celery_worker_state/_data
+export VOLUME_DATA_MEDIA=${DOCKER_VOLUME_DIR}/contraxsuite_contraxsuite_data_media/_data
 
 # Initialize volumes
 sudo mkdir -p ${VOLUME_NGINX_CONF}

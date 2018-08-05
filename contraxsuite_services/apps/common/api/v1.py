@@ -37,16 +37,18 @@ from rest_framework.views import APIView
 from django.conf.urls import url
 from apps.common.models import AppVar, ReviewStatusGroup, ReviewStatus
 from apps.common.mixins import JqListAPIMixin
+from apps.common.api.permissions import ReviewerReadOnlyPermission
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.1c/LICENSE"
-__version__ = "1.1.1c"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.2/LICENSE"
+__version__ = "1.1.2"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
 
 class AppConfigAPIView(APIView):
+    permission_classes = (ReviewerReadOnlyPermission,)
 
     def get(self, request, *args, **kwargs):
         """
@@ -79,6 +81,7 @@ class AppConfigAPIView(APIView):
 
 
 class AppConfigDataAPIView(APIView):
+    permission_classes = (ReviewerReadOnlyPermission,)
 
     def get(self, request, *args, **kwargs):
         """
@@ -138,6 +141,7 @@ class AppConfigDataAPIView(APIView):
 
 
 class AppVarAPIView(APIView):
+    permission_classes = (ReviewerReadOnlyPermission,)
 
     def get(self, request, *args, **kwargs):
         """
@@ -203,6 +207,7 @@ class ReviewStatusGroupViewSet(JqListAPIMixin, viewsets.ModelViewSet):
     """
     queryset = ReviewStatusGroup.objects.all()
     serializer_class = ReviewStatusGroupSerializer
+    permission_classes = (ReviewerReadOnlyPermission,)
 
 
 # --------------------------------------------------------
@@ -226,8 +231,9 @@ class ReviewStatusViewSet(JqListAPIMixin, viewsets.ModelViewSet):
     partial_update: Partial Update ReviewStatus
     delete: Delete ReviewStatus
     """
-    queryset = ReviewStatus.objects.all()
+    queryset = ReviewStatus.objects.select_related('group')
     serializer_class = ReviewStatusSerializer
+    permission_classes = (ReviewerReadOnlyPermission,)
 
 
 router = routers.DefaultRouter()
