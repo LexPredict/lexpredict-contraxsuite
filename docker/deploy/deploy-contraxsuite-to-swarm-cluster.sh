@@ -65,6 +65,7 @@ sudo cp ./temp/default.conf ${VOLUME_NGINX_CONF}/conf.d/default.conf
 envsubst < ./metricbeat.yml.template > ./temp/metricbeat.yml
 envsubst < ./filebeat.yml.template > ./temp/filebeat.yml
 envsubst < ./elasticsearch.yml.template > ./temp/elasticsearch.yml
+envsubst < ./config-templates/db-backup.sh.template > ./temp/db-backup.sh
 
 echo "Starting with image: ${CONTRAXSUITE_IMAGE_FULL_NAME}"
 

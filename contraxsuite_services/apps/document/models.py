@@ -27,6 +27,7 @@
 import datetime
 # Standard imports
 import os
+import sys, traceback
 import pickle
 import re
 import uuid
@@ -131,7 +132,7 @@ class DocumentField(TimeStampedModel):
         return self.formula and self.formula.strip()
 
     @staticmethod
-    def calc_formula(field_type_code: str, formula: str, depends_on_field_to_value: Dict) -> Any:
+    def calc_formula(field_code: str, field_type_code: str, formula: str, depends_on_field_to_value: Dict) -> Any:
         if not formula or not formula.strip():
             return None
 
@@ -145,12 +146,23 @@ class DocumentField(TimeStampedModel):
             eval_locals[field.code] = field_type.json_value_to_python(value)
 
         eval_locals.update(depends_on_field_to_value)
-        value = eval(formula, {}, eval_locals)
+        try:
+            value = eval(formula, {}, eval_locals)
+        except:
+            exc_type, exc_obj, exc_tb = sys.exc_info()
+            tb = traceback.extract_tb(exc_tb)[-1]
+            msg = '{0} in formula of field \'{1}\'\n' \
+                  'Formula:' \
+                  '\n{2}\n' \
+                  'At line: {3}\n' \
+                  'Field values:\n' \
+                  '{4}'.format(exc_type.__name__, field_code, formula, tb[1], depends_on_field_to_value)
+            raise RuntimeError(msg)
         # value = eval(formula, {'__builtins__': {}}, eval_locals)
         return FIELD_TYPES_REGISTRY[field_type_code].python_value_to_json(value)
 
     def calculate(self, depends_on_field_to_value: Dict) -> Any:
-        return self.calc_formula(self.type, self.formula, depends_on_field_to_value)
+        return self.calc_formula(self.code, self.type, self.formula, depends_on_field_to_value)
 
     def get_field_type(self):
         return FIELD_TYPES_REGISTRY[self.type]

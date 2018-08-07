@@ -687,7 +687,7 @@ CORS_ALLOW_CREDENTIALS = False
 CORS_URLS_REGEX = r'^/api/.*$'
 
 VERSION_NUMBER = '1.1.2'
-VERSION_COMMIT = 'd448a5b'
+VERSION_COMMIT = '16b7b15'
 
 try:
     from local_settings import *
@@ -776,6 +776,8 @@ RETRAINING_DELAY_IN_SEC = 1 * 60 * 60
 RETRAINING_TASK_EXECUTION_DELAY_IN_SEC = 1 * 60 * 60
 
 TRAINED_AFTER_DOCUMENTS_NUMBER = 100
+
+TEXT_UNITS_TO_PARSE_PACKAGE_SIZE = 100
 
 # Debugging Docker Deployments:
 # CELERY_BROKER_URL = 'amqp://contrax1:contrax1@127.0.0.1:56720/contrax1_vhost'

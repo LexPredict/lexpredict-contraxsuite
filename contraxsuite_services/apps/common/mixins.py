@@ -407,23 +407,23 @@ class AjaxListView(ReviewerQSMixin, AjaxResponseMixin, BaseCustomListView):
 
 
 class JqPaginatedListView(AjaxListView):
-    conditions = dict(EQUAL='exact',
-                      EQUAL_CASE_SENSITIVE='iexact',
-                      CONTAINS='contains',
-                      CONTAINS_CASE_SENSITIVE='icontains',
+    conditions = dict(EQUAL='iexact',
+                      EQUAL_CASE_SENSITIVE='exact',
+                      CONTAINS='icontains',
+                      CONTAINS_CASE_SENSITIVE='contains',
                       LESS_THAN='lt',
                       LESS_THAN_OR_EQUAL='lte',
                       GREATER_THAN='gt',
                       GREATER_THAN_OR_EQUAL='gte',
-                      STARTS_WITH='startswith',
-                      ENDS_WITH='endswith',
-                      STARTS_WITH_CASE_SENSITIVE='istartswith',
-                      ENDS_WITH_CASE_SENSITIVE='iendswith')
+                      STARTS_WITH='istartswith',
+                      ENDS_WITH='iendswith',
+                      STARTS_WITH_CASE_SENSITIVE='startswith',
+                      ENDS_WITH_CASE_SENSITIVE='endswith')
     conditions_empty = dict(EMPTY=('exact', ''),
                             NULL=('isnull', True),
                             NOT_NULL=('isnull', False))
-    conditions_neg = dict(DOES_NOT_CONTAIN='contains',
-                          DOES_NOT_CONTAIN_CASE_SENSITIVE='icontains',
+    conditions_neg = dict(DOES_NOT_CONTAIN='icontains',
+                          DOES_NOT_CONTAIN_CASE_SENSITIVE='contains',
                           NOT_EQUAL='exact')
     field_types = dict()
     unique_field = 'pk'

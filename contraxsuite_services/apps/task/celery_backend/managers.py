@@ -351,6 +351,9 @@ class TaskManager(models.Manager):
 
         obj, created = self.get_or_create(id=task_id, defaults=initial_values)
 
+        if traceback:
+            obj.write_log('Traceback:\n{0}'.format(traceback))
+
         if not created:
             if task_name and not obj.name:
                 obj.name = task_name

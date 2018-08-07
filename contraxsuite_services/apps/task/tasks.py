@@ -613,8 +613,9 @@ class LoadDocuments(BaseTask):
                 file_path,
                 multiple_tables=True,
                 pages='all')
-            metadata['tables'] = [[list(j) for j in list(i.fillna('').to_records(index=False))]
-                                  for i in document_tables]
+            metadata['tables'] = [
+                [list(j) for j in list(i.fillna('').to_records(index=False)) if not i.empty]
+                for i in document_tables if not i.empty]
 
         # Language identification
         language, lang_detector = get_language(text, get_parser=True)
@@ -1157,14 +1158,25 @@ class Locate(BaseTask):
         self.log_info('Found {0} Text Units.'.format(text_units.count()))
 
         locate_args = []
+        text_unit_package = []
+        text_unit_packages = []
 
         for text_unit_id, text, text_unit_lang in text_units.values_list('pk', 'text', 'language'):
             if not text_unit_id:
                 continue
-            locate_args.append((text_unit_id, text_unit_lang, text, kwargs['user_id']))
+            if settings.TEXT_UNITS_TO_PARSE_PACKAGE_SIZE <= len(text_unit_package):
+                text_unit_packages.append(text_unit_package)
+                text_unit_package = []
+            text_unit_package.append((text_unit_id, text_unit_lang, text))
+
+        if len(text_unit_package) > 0:
+            text_unit_packages.append(text_unit_package)
+
+        for text_unit_package in text_unit_packages:
+            locate_args.append((text_unit_package, kwargs['user_id']))
 
         self.run_sub_tasks_on_shared_data('Locate Data In Each Text Unit',
-                                          Locate.parse_text_unit,
+                                          Locate.parse_text_units,
                                           locate_args, {'locate': locate})
 
         if kwargs.get('notify_task_done'):
@@ -1181,11 +1193,12 @@ class Locate(BaseTask):
                  autoretry_for=(SoftTimeLimitExceeded,),
                  max_retries=3
                  )
-    def parse_text_unit(self, text_unit_id, text_unit_lang, text, user_id,
+    def parse_text_units(self, text_units, user_id,
                         shared_data_cache_keys):
         tags = []
         locate = transfer.get(shared_data_cache_keys.get('locate')) \
             if shared_data_cache_keys else {}
+
         for task_name, task_kwargs in locate.items():
             func_name = 'parse_%s' % task_name
             try:
@@ -1193,19 +1206,21 @@ class Locate(BaseTask):
             except AttributeError:
                 self.log_error('Warning: "%s" method not found' % func_name)
                 continue
-            try:
-                found = task_func(text, text_unit_id, text_unit_lang, **task_kwargs)
-            except IntegrityError as e:
-                # just skip if duplicated values BUT keep log to investigate issue
-                if 'duplicate key value violates unique constraint' in str(e):
-                    self.log_error('Function "%s" caused error:' % func_name)
-                    self.log_error(str(e))
-                    continue
-            if found:
-                tag_name = found if not isinstance(found, bool) else task_name
-                tags.append(tag_name)
+
+            for text_unit_id, text_unit_lang, text in text_units:
+                try:
+                    found = task_func(text, text_unit_id, text_unit_lang, **task_kwargs)
+                except IntegrityError as e:
+                    # just skip if duplicated values BUT keep log to investigate issue
+                    if 'duplicate key value violates unique constraint' in str(e):
+                        self.log_error('Function "%s" caused error:' % func_name)
+                        self.log_error(str(e))
+                        continue
+                if found:
+                    tag_name = found if not isinstance(found, bool) else task_name
+                    tags.append((text_unit_id, tag_name))
         if tags:
-            for tag in tags:
+            for text_unit_id, tag in tags:
                 TextUnitTag.objects.get_or_create(
                     text_unit_id=text_unit_id,
                     tag=tag,
@@ -1230,7 +1245,7 @@ def parse_citation(text, text_unit_id, _text_unit_lang):
     found = list(citations.get_citations(text, return_source=True))
     if found:
         unique = set(found)
-        found = len(unique)
+        unique_len = len(unique)
         for item in unique:
             try:
                 CitationUsage.objects.create(
@@ -1245,8 +1260,9 @@ def parse_citation(text, text_unit_id, _text_unit_lang):
                     citation_str=item[7],
                     count=found.count(item))
             except DataError:
-                found -= 1
-    return bool(found)
+                unique_len -= 1
+        return bool(unique_len)
+    return False
 
 
 def parse_court(text, text_unit_id, text_unit_lang, **kwargs):

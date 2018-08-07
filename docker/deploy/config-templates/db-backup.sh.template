@@ -1,0 +1,24 @@
+#!/usr/bin/env bash
+
+POSTGRES_MAX_BACKUP_NUMBER=${DOCKER_PG_MAX_BACKUP_NUMBER}
+POSTGRES_DB=${DOCKER_PG_USER}
+POSTGRES_USER=${DOCKER_PG_PASSWORD}
+
+BACKUP_DIR=/backup/db
+BACKUP_FILE=backup_${DOLLAR}(date +%Y-%m-%d_%H-%M-%S).backup
+MAX_BACKUP_NUMBER=${DOLLAR}((${DOLLAR}{POSTGRES_MAX_BACKUP_NUMBER}+1))
+
+if [ ! -z ${DOLLAR}{POSTGRES_MAX_BACKUP_NUMBER} ] && [ ${DOLLAR}{POSTGRES_MAX_BACKUP_NUMBER} -gt 0 ]; then
+    mkdir -p ${DOLLAR}{BACKUP_DIR}
+    pushd ${DOLLAR}{BACKUP_DIR}
+
+    mkdir -p ./tmp
+
+    pg_dump --dbname=${DOLLAR}{POSTGRES_DB} --username=${DOLLAR}{POSTGRES_USER} --format=c -Z 9 --file=./tmp/${DOLLAR}{BACKUP_FILE}
+    mv ./tmp/${DOLLAR}{BACKUP_FILE} ${DOLLAR}{BACKUP_FILE}
+    rm -r ./tmp
+
+    ls -tp | grep -v '/$' | tail -n +${DOLLAR}{MAX_BACKUP_NUMBER} | xargs -I {} rm -- {}
+
+    popd
+fi

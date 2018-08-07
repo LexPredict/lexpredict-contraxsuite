@@ -544,6 +544,26 @@ class ProjectViewSet(ProjectPermissionViewMixin, JqListAPIMixin, viewsets.ModelV
             .update(assignee=assignee_id)
         return Response(ret)
 
+    @detail_route(methods=['post'])
+    def set_status(self, request, **kwargs):
+        """
+        Bulk set status for batch of documents\n
+            Params:
+                document_ids: list[int]
+                status_id: int
+            Returns:
+                int (number of reassigned documents)
+        """
+        # permissions check
+        project = self.get_object()
+
+        document_ids = [int(i) for i in request.POST.getlist('document_ids')]
+        status_id = request.POST.get('status_id')
+        ret = Document.objects\
+            .filter(project=project, pk__in=document_ids)\
+            .update(status=status_id)
+        return Response(ret)
+
 
 # --------------------------------------------------------
 # UploadSession Views

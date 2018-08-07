@@ -61,6 +61,7 @@ class DocumentFieldForm(forms.ModelForm):
         fields = '__all__'
 
     def clean(self):
+        field_code = self.cleaned_data.get('code')
         formula = self.cleaned_data.get('formula')
         type_code = self.cleaned_data.get('type')
         if not formula or not formula.strip() or not type_code:
@@ -70,7 +71,7 @@ class DocumentFieldForm(forms.ModelForm):
                             for field in depends_on_fields}
 
         try:
-            DocumentField.calc_formula(type_code, formula, fields_to_values)
+            DocumentField.calc_formula(field_code, type_code, formula, fields_to_values)
         except Exception as ex:
             trace = traceback.format_exc()
             raise forms.ValidationError(

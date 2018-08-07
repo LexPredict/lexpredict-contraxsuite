@@ -440,8 +440,6 @@ class DocumentWithFieldsViewSet(DocumentPermissionViewMixin, JqListAPIMixin, vie
         if cluster_id:
             qs = qs.filter(cluster_id=int(cluster_id))
 
-        qs.total_records = qs.count()
-
         qs = qs.select_related('document_type', 'status', 'status__group')
 
         # annotate documents with fields data document.a_field_uid = value

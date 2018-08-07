@@ -56,7 +56,6 @@ from apps.document import models
 from apps.document.parsing.machine_learning import ModelCategory
 from apps.extract import models as extract_models
 
-
 _redis = redis.Redis.from_url(url=settings.CELERY_CACHE_REDIS_URL)
 
 
@@ -199,10 +198,10 @@ class FieldType:
                 if self.value_extracting:
                     hint = possible_hint or self \
                         ._pick_hint_by_searching_for_value_among_extracted(
-                            field,
-                            text,
-                            value,
-                            document=document)
+                        field,
+                        text,
+                        value,
+                        document=document)
                 else:
                     hint = None
                 return value, hint
@@ -431,7 +430,9 @@ class DateField(FieldType):
                 return None
 
     def _extract_variants_from_text(self, field, text: str, **kwargs):
-        return get_dates_list(text)
+        dates = get_dates_list(text) or []
+        dates = [d for d in dates if d.year < 3000]
+        return dates or None
 
     def example_json_value(self, field):
         return self.python_value_to_json(datetime.now())
@@ -442,7 +443,7 @@ class DateField(FieldType):
 
         return dateparser.parse(json_value)
 
-    def python_value_to_json(self, python_value):
+    def python_value_to_json(self, python_value: datetime):
         if not python_value:
             return None
         return python_value.isoformat()
@@ -593,6 +594,7 @@ class DurationField(FieldType):
     value_aware = True
     value_extracting = True
     ordinal = True
+    MAX_DURATION = 5000 * 365
 
     def _extract_from_possible_value(self, field, possible_value):
         try:
@@ -604,7 +606,7 @@ class DurationField(FieldType):
         durations = get_durations(text)
         if not durations:
             return None
-        return [duration[2] for duration in durations]
+        return [duration[2] for duration in durations if duration[2] < DurationField.MAX_DURATION]
 
     def example_json_value(self, field):
         return random() * 365 * 5
@@ -747,7 +749,7 @@ class GeographyField(FieldType):
                 text_languages = models.TextUnit.objects.filter(
                     document=document,
                     text__contains=text).values_list('language', flat=True)
-                if document.language and not text_languages :
+                if document.language and not text_languages:
                     text_languages = [document.language]
 
             geo_entities = [{'entity_id': i[0][0], 'entity__name': i[0][1]} for i in

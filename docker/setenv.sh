@@ -13,6 +13,7 @@ export DOCKER_HOST_NAME_KIBANA=contrax-kibana
 export DOCKER_PG_USER=contrax1
 export DOCKER_PG_PASSWORD=contrax1
 export DOCKER_PG_DB_NAME=contrax1
+export DOCKER_PG_MAX_BACKUP_NUMBER=3
 
 export DOCKER_RABBITMQ_VHOST=contrax1_vhost
 export DOCKER_RABBITMQ_USER=contrax1

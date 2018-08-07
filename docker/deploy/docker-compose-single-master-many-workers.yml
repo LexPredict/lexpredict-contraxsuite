@@ -171,12 +171,18 @@ services:
       - "POSTGRES_USER=${DOCKER_PG_USER}"
       - "POSTGRES_PASSWORD=${DOCKER_PG_PASSWORD}"
       - "POSTGRES_DB=${DOCKER_PG_DB_NAME}"
-    command: postgres -c config_file=/etc/contraxsuite/postgresql.conf
+      - "POSTGRES_MAX_BACKUP_NUMBER=${DOCKER_PG_MAX_BACKUP_NUMBER}"
+    command: bash -c "service cron start && /usr/local/bin/docker-entrypoint.sh postgres -c config_file=/contraxsuite/postgresql.conf"
     volumes:
       - postgres_data:/var/lib/contraxsuite-postgres
+      - backup:/backup
     configs:
       - source: pg_config_3
-        target: /etc/contraxsuite/postgresql.conf
+        target: /contraxsuite/postgresql.conf
+      - source: pg_backup_script_1
+        target: /contraxsuite/db-backup.sh
+      - source: pg_backup_cron_1
+        target: /etc/crontab
     networks:
       - contrax_net
     deploy:
@@ -573,6 +579,7 @@ volumes:
   redis_data:
   filebeat_data:
   metricbeat_data:
+  backup:
   celery_worker_state:
   contraxsuite_nginx_server_include:
   contraxsuite_additional_fixtures:
@@ -593,3 +600,7 @@ configs:
     file: ./logs-cron.conf
   pg_config_3:
     file: ./temp/postgresql.conf
+  pg_backup_script_1:
+    file: ./temp/db-backup.sh
+  pg_backup_cron_1:
+    file: ./backup-cron.conf
