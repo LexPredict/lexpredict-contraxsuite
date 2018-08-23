@@ -42,8 +42,8 @@ from apps.task.tasks import BaseTask, ExtendedTask
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.2/LICENSE"
-__version__ = "1.1.2"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.3/LICENSE"
+__version__ = "1.1.3"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -54,13 +54,12 @@ class TrainFieldDetectorModel(BaseTask):
     name = 'Train Field Detector Model'
 
     def process(self, **kwargs):
-        self.log('Going to train field detector model based on the datasets stored in DB...')
+        self.log_info('Going to train field detector model based on the datasets stored in DB...')
 
         document_class = kwargs.get('document_class')
 
         if document_class:
-            TrainFieldDetectorModel.train_model_for_document_class(self,
-                                                                   document_class)
+            TrainFieldDetectorModel.local_train_model_for_document_class(self, document_class)
         else:
             train_model_for_document_class_args = []
             for document_class, fields in DOCUMENT_FIELDS.items():
@@ -72,6 +71,10 @@ class TrainFieldDetectorModel(BaseTask):
     @staticmethod
     @shared_task(base=ExtendedTask, bind=True)
     def train_model_for_document_class(task: ExtendedTask, document_class_name: str):
+        TrainFieldDetectorModel.local_train_model_for_document_class(task, document_class_name)
+
+    @staticmethod
+    def local_train_model_for_document_class(task: ExtendedTask, document_class_name: str):
         task.log_info('Building classifier model for document class: {0}'.format(
             document_class_name))
 

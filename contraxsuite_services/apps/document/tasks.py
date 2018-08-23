@@ -26,14 +26,13 @@ import datetime
 from typing import List
 
 import pandas as pd
-
-from django.conf import settings
-from django.db.models import F, Value, IntegerField
-from django.utils.timezone import now
-
 from celery import shared_task
 from celery.exceptions import SoftTimeLimitExceeded
+from django.conf import settings
+from django.db.models import F, Value, IntegerField
 from django.db.models import Q, Subquery
+from django.utils.timezone import now
+from psycopg2 import InterfaceError, OperationalError
 from sklearn.feature_extraction.text import CountVectorizer
 from sklearn.feature_extraction.text import TfidfTransformer
 from sklearn.linear_model import SGDClassifier
@@ -43,7 +42,8 @@ from sklearn.utils import shuffle
 from apps.celery import app
 from apps.document.field_types import FIELD_TYPES_REGISTRY, ValueExtractionHint
 from apps.document.models import DocumentType, Document, DocumentFieldDetector, \
-    ClassifierModel, DocumentFieldValue, ExternalFieldValue, TextUnit, DocumentField, DocumentTypeField
+    ClassifierModel, DocumentFieldValue, ExternalFieldValue, TextUnit, DocumentField, \
+    DocumentTypeField
 from apps.document.parsing.machine_learning import SkLearnClassifierModel, \
     encode_category, parse_category, word_position_tokenizer
 from apps.task.models import Task
@@ -52,8 +52,8 @@ from apps.task.utils.task_utils import TaskUtils
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.2/LICENSE"
-__version__ = "1.1.2"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.3/LICENSE"
+__version__ = "1.1.3"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -78,25 +78,16 @@ class DetectFieldValues(BaseTask):
             self.push()
             return
 
-        document_ids = []
-        if document_name:
-            for pk in Document.objects.filter(document_type=document_type,
-                                              name=document_name).values_list('pk', flat=True):
-                document_ids.append(pk)
-            else:
-                self.log_info(
-                    'Document {0} of type {1} not found'.format(document_name, document_type))
-
         if document_type:
             self.detect_field_values_for_document_type(
-                document_type.pk, document_ids, do_not_write, drop_classifier_model)
+                document_type.pk, document_name, do_not_write, drop_classifier_model)
         else:
             document_type_pks = DocumentType.objects.all().values_list('uid', flat=True)
             for document_type_pk in document_type_pks:
                 self.detect_field_values_for_document_type(
-                    document_type_pk, document_ids, do_not_write, drop_classifier_model)
+                    document_type_pk, document_name, do_not_write, drop_classifier_model)
 
-    def detect_field_values_for_document_type(self, document_type_pk, document_ids: List,
+    def detect_field_values_for_document_type(self, document_type_pk, document_name: str,
                                               do_not_write,
                                               drop_classifier_model):
         self.log_info(
@@ -118,13 +109,28 @@ class DetectFieldValues(BaseTask):
         task_count = 0
 
         detect_field_values_for_document_args = []
-        for doc_id in document_ids or Document.objects.filter(
-                document_type=document_type).values_list('id', flat=True):
+        source_data = []
+
+        if document_name:
+            documents_query = Document.objects.filter(document_type=document_type, name=document_name)
+        else:
+            documents_query = Document.objects.filter(document_type=document_type)
+
+        for doc_id, source, name in documents_query.values_list('id', 'source', 'name'):
             detect_field_values_for_document_args.append((doc_id, do_not_write, None))
+            if source:
+                source_data.append('{0}/{1}'.format(source, name))
+            else:
+                source_data.append(name)
             task_count += 1
+        else:
+            if document_name:
+                self.log_info(
+                    'Document {0} of type {1} not found'.format(document_name, document_type))
+
         self.run_sub_tasks('Detect Field Values For Each Document',
                            DetectFieldValues.detect_field_values_for_document,
-                           detect_field_values_for_document_args)
+                           detect_field_values_for_document_args, source_data)
         if task_count == 0:
             self.log_info('No documents in DB for document type: {0}'.format(
                 document_type))
@@ -136,12 +142,22 @@ class DetectFieldValues(BaseTask):
                  soft_time_limit=6000,
                  default_retry_delay=10,
                  retry_backoff=True,
-                 autoretry_for=(SoftTimeLimitExceeded,),
+                 autoretry_for=(SoftTimeLimitExceeded, InterfaceError, OperationalError,),
                  max_retries=3)
     def detect_field_values_for_document(task: ExtendedTask,
                                          document_id,
                                          do_not_write,
                                          field_uid):
+        DetectFieldValues._detect_field_values_for_document(task,
+                                                            document_id,
+                                                            do_not_write,
+                                                            field_uid)
+
+    @staticmethod
+    def _detect_field_values_for_document(task: ExtendedTask,
+                                          document_id,
+                                          do_not_write,
+                                          field_uid):
         doc = Document.objects.get(pk=document_id)
 
         if doc.status and not doc.status.is_active:
@@ -167,17 +183,24 @@ class DetectFieldValues(BaseTask):
                         modified_by__isnull=True) \
                 .delete()
 
+            classifier_model = None
             try:
                 classifier_model = ClassifierModel.objects \
                     .get(document_type=document_type, document_field=field)
-                detected_counter += DetectFieldValues \
-                    .detect_field_values_with_model(classifier_model,
-                                                    doc, field, sentence_text_units,
-                                                    do_not_write)
+                document_type_field = DocumentTypeField.objects.get(document_type=document_type,
+                                                                    document_field=field)
+                if document_type_field.use_regexp_always:
+                    classifier_model = None
             except:
+                pass
+
+            if classifier_model:
                 detected_counter += DetectFieldValues \
-                    .detect_initial_field_values_for_document_field(
-                    doc, field, sentence_text_units, do_not_write)
+                    .detect_field_values_with_model(classifier_model, doc, field, sentence_text_units, do_not_write)
+            else:
+                detected_counter += DetectFieldValues \
+                        .detect_initial_field_values_for_document_field(doc, field, sentence_text_units, do_not_write)
+
         task.log_info('Detected {0} field values for document #{1} ({2})'.format(
             detected_counter, document_id, doc.name))
 
@@ -333,12 +356,13 @@ class TrainDocumentFieldDetectorModel(BaseTask):
                  soft_time_limit=6000,
                  default_retry_delay=10,
                  retry_backoff=True,
-                 autoretry_for=(SoftTimeLimitExceeded,),
+                 autoretry_for=(SoftTimeLimitExceeded, InterfaceError, OperationalError,),
                  max_retries=3
                  )
     def train_model_for_field(task: ExtendedTask, document_type_uid, field_uid, no_field_sentences,
                               trigger_re_detecting_field_values):
-        return TrainDocumentFieldDetectorModel.run_train_model_for_field(task, document_type_uid, field_uid,
+        return TrainDocumentFieldDetectorModel.run_train_model_for_field(task, document_type_uid,
+                                                                         field_uid,
                                                                          no_field_sentences,
                                                                          trigger_re_detecting_field_values)
 
@@ -349,14 +373,15 @@ class TrainDocumentFieldDetectorModel(BaseTask):
 
         modified_document_ids = DocumentFieldValue.objects \
             .filter(Q(field=field) & Q(document__document_type=document_type) &
-                    (Q(created_by__isnull=False) | Q(removed_by_user=True)))\
+                    (Q(created_by__isnull=False) | Q(removed_by_user=True))) \
             .values('document_id') \
             .order_by('document_id') \
             .distinct()
 
-        document_values = DocumentFieldValue.objects\
-            .filter(field=field, document__document_type=document_type, document_id__in=Subquery(modified_document_ids),
-                    removed_by_user=False)\
+        document_values = DocumentFieldValue.objects \
+            .filter(field=field, document__document_type=document_type,
+                    document_id__in=Subquery(modified_document_ids),
+                    removed_by_user=False) \
             .values('document_id', 'created_by', 'sentence__text', 'value', 'extraction_hint')
 
         for field_value in document_values:
@@ -370,34 +395,18 @@ class TrainDocumentFieldDetectorModel(BaseTask):
             modified_documents.add(field_value['document_id'])
 
         if trained_after_documents_number <= len(modified_documents):
-            while train_data:
-                yield train_data.pop(0)
+            return train_data
         else:
-            for field_value in DocumentFieldValue.objects\
-                    .filter(field=field,
-                            document__document_type=document_type,
-                            removed_by_user=False)\
-                    .values('created_by', 'sentence__text', 'value', 'extraction_hint'):
-                yield field_value
-
-    @staticmethod
-    def run_train_model_for_field(task: ExtendedTask, document_type_uid, field_uid, no_field_sentences,
-                                  trigger_re_detecting_field_values):
-        document_type = DocumentType.objects.get(pk=document_type_uid)
-        field = DocumentField.objects.get(pk=field_uid)
-
-        task.log_info('Training model for field #{0} ({1})...'
-                      .format(field_uid, field.code))
-
-        document_type_field = DocumentTypeField.objects.get(document_type=document_type,
-                                                            document_field=field)
-        if document_type_field.use_regexp_always:
             return None
 
-        trained_after_documents_number = document_type_field.trained_after_documents_number
-        df = pd.DataFrame.from_records(TrainDocumentFieldDetectorModel.get_train_data(document_type,
-                                                                                      field,
-                                                                                      trained_after_documents_number))
+    @staticmethod
+    def get_train_data_generator(train_data):
+        while train_data:
+            yield train_data.pop(0)
+
+    @staticmethod
+    def train_model(train_data, document_type, field, no_field_sentences):
+        df = pd.DataFrame.from_records(train_data)
         # add transferred external data
         external_field_values_data = ExternalFieldValue.objects \
             .filter(field_id=field.pk,
@@ -408,7 +417,7 @@ class TrainDocumentFieldDetectorModel(BaseTask):
         df = df.append(pd.DataFrame.from_records(list(external_field_values_data)))
 
         df['target_name'] = df.apply(lambda row: encode_category(
-            field_uid,
+            field.pk,
             row.value if field.is_choice_field() else None,
             row.extraction_hint), axis=1)
 
@@ -456,30 +465,66 @@ class TrainDocumentFieldDetectorModel(BaseTask):
         model = SkLearnClassifierModel(sklearn_model=sklearn_model, target_names=target_names)
 
         classifier_model, created = ClassifierModel.objects.get_or_create(
-            document_type_id=document_type_uid, document_field_id=field_uid)
+            document_type_id=document_type.pk, document_field_id=field.pk)
 
         classifier_model.set_trained_model_obj(model)
         classifier_model.save()
-        task.log_info(
-            'Finished training model for document_type #{0} and field #{1}. '
-            'Total number of samples: {2}'.format(document_type_uid, field_uid, total_samples))
+
+        return total_samples
+
+    @staticmethod
+    def run_train_model_for_field(task: ExtendedTask, document_type_uid, field_uid,
+                                  no_field_sentences,
+                                  trigger_re_detecting_field_values):
+        document_type = DocumentType.objects.get(pk=document_type_uid)
+        field = DocumentField.objects.get(pk=field_uid)
+
+        task.log_info('Training model for field #{0} ({1})...'
+                      .format(field_uid, field.code))
+
+        document_type_field = DocumentTypeField.objects.get(document_type=document_type,
+                                                            document_field=field)
+
+        if document_type_field.use_regexp_always:
+            task.log_info('Regexp will used for document_type #{0} and field #{1}.'
+                          .format(document_type_uid, field_uid))
+            return None
+
+        train_data = TrainDocumentFieldDetectorModel.get_train_data(document_type, field,
+                                                                    document_type_field.trained_after_documents_number)
+        if train_data:
+            train_data = TrainDirtyDocumentFieldDetectorModel.get_train_data_generator(train_data)
+            total_samples = TrainDirtyDocumentFieldDetectorModel.train_model(train_data, document_type, field,
+                                                                             no_field_sentences)
+            task.log_info(
+                'Finished training model for document_type #{0} and field #{1}. '
+                'Total number of samples: {2}'.format(document_type_uid, field_uid, total_samples))
+        else:
+            task.log_info('Not enough data to train model for document_type #{0} and field #{1}.'
+                          .format(document_type_uid, field_uid))
+            return None
 
         if trigger_re_detecting_field_values:
-
             detect_field_values_for_document_args = []
 
-            document_ids = Document.objects.active().filter(
-                document_type=document_type).values_list(
-                'pk', flat=True)
+            documents = Document.objects.active()\
+                .filter(document_type=document_type)\
+                .values_list('pk', 'name', 'source')
+            source_data = []
 
-            for document_id in document_ids:
+            for document_id, name, source in documents:
+                if source:
+                    source_data.append('{0}/{1}'.format(source, name))
+                else:
+                    source_data.append(name)
+
                 detect_field_values_for_document_args.append((document_id,
                                                               False,
                                                               field_uid))
             task.run_sub_tasks('Detect Values of Field {0} for Each Document'.format(
                 field.code),
                 DetectFieldValues.detect_field_values_for_document,
-                detect_field_values_for_document_args)
+                detect_field_values_for_document_args, source_data)
 
 
 class TrainDirtyDocumentFieldDetectorModel(TrainDocumentFieldDetectorModel):
@@ -509,7 +554,7 @@ class TrainDirtyDocumentFieldDetectorModel(TrainDocumentFieldDetectorModel):
                  soft_time_limit=6000,
                  default_retry_delay=10,
                  retry_backoff=True,
-                 autoretry_for=(SoftTimeLimitExceeded,),
+                 autoretry_for=(SoftTimeLimitExceeded, InterfaceError, OperationalError,),
                  max_retries=3
                  )
     def train_model_for_dirty_field(task: ExtendedTask, dirty_field_id, no_field_sentences,
@@ -518,7 +563,8 @@ class TrainDirtyDocumentFieldDetectorModel(TrainDocumentFieldDetectorModel):
         if dirty_field.can_retrain():
             dirty_field.dirty = False
             dirty_field.save()
-            return TrainDocumentFieldDetectorModel.run_train_model_for_field(task, dirty_field.document_type_id,
+            return TrainDocumentFieldDetectorModel.run_train_model_for_field(task,
+                                                                             dirty_field.document_type_id,
                                                                              dirty_field.document_field_id,
                                                                              no_field_sentences,
                                                                              trigger_re_detecting_field_values)
@@ -529,8 +575,10 @@ def retrain_dirty_fields(self):
     TaskUtils.prepare_task_execution()
     if DocumentTypeField.objects.has_dirty_fields():
         task_name = TrainDirtyDocumentFieldDetectorModel.name
-        execution_delay = now() - datetime.timedelta(seconds=settings.RETRAINING_TASK_EXECUTION_DELAY_IN_SEC)
-        if not Task.objects.filter(name=task_name, own_status='PENDING', date_start__gt=execution_delay).exists():
+        execution_delay = now() - datetime.timedelta(
+            seconds=settings.RETRAINING_TASK_EXECUTION_DELAY_IN_SEC)
+        if not Task.objects.filter(name=task_name, own_status='PENDING',
+                                   date_start__gt=execution_delay).exists():
             call_task(TrainDirtyDocumentFieldDetectorModel.name, module_name='apps.document.tasks')
 
 

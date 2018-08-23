@@ -37,7 +37,7 @@ from django.contrib.postgres.aggregates.general import StringAgg
 from django.core import serializers as core_serializers
 from django.core.management import call_command
 from django.core.urlresolvers import reverse
-from django.db.models import Min, Max,\
+from django.db.models import F, Min, Max,\
     IntegerField, FloatField, DateField, TextField
 from django.http import JsonResponse, HttpResponse
 
@@ -75,8 +75,8 @@ from apps.document.views import show_document
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.2/LICENSE"
-__version__ = "1.1.2"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.3/LICENSE"
+__version__ = "1.1.3"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -102,12 +102,14 @@ class BaseDocumentSerializer(SimpleRelationSerializer):
     available_statuses_data = serializers.SerializerMethodField()
     assignee_data = UserSerializer(source='assignee', many=False)
     available_assignees_data = serializers.SerializerMethodField()
+    status_name = serializers.SerializerMethodField()
+    assignee_name = serializers.SerializerMethodField()
 
     class Meta:
         model = Document
         fields = ['pk', 'name', 'document_type', 'file_size',
-                  'status', 'status_data', 'available_statuses_data',
-                  'assignee', 'assignee_data', 'available_assignees_data',
+                  'status', 'status_data', 'status_name', 'available_statuses_data',
+                  'assignee', 'assignee_data', 'assignee_name', 'available_assignees_data',
                   'project', 'description', 'title']
 
     def get_available_assignees_data(self, obj):
@@ -116,6 +118,12 @@ class BaseDocumentSerializer(SimpleRelationSerializer):
     def get_available_statuses_data(self, obj):
         return common_api_module.ReviewStatusSerializer(
             ReviewStatus.objects.select_related('group'), many=True).data
+
+    def get_status_name(self, obj):
+        return obj.status.name if obj.status else None
+
+    def get_assignee_name(self, obj):
+        return obj.assignee.username if obj.assignee else None
 
 
 class GenericDocumentSerializer(SimpleRelationSerializer):
@@ -177,11 +185,13 @@ class DocumentWithFieldsListSerializer(BaseDocumentSerializer):
         model = Document
         fields = ['pk', 'name', 'document_type',
                   'description', 'title', 'file_size',
-                  'status', 'status_data',
-                  'assignee', 'assignee_data',
+                  'status', 'status_data', 'status_name',
+                  'assignee', 'assignee_data', 'assignee_name',
                   'field_values', 'search_field_values']
 
     def get_search_field_values(self, doc):
+        if not doc.field_values:
+            return {}
         return {k: v for k, v in doc.field_values.items() if hasattr(doc, k.replace('-', '_'))}
 
 
@@ -195,8 +205,8 @@ class ExtendedDocumentWithFieldsListSerializer(GenericDocumentSerializer,
         model = Document
         fields = ['pk', 'name', 'document_type', 'cluster_id',
                   'description', 'title', 'file_size',
-                  'status', 'status_data',
-                  'assignee', 'assignee_data',
+                  'status', 'status_data', 'status_name',
+                  'assignee', 'assignee_data', 'assignee_name',
                   'field_values', 'search_field_values',
                   'cluster_id', 'parties',
                   'min_date', 'max_date',
@@ -286,6 +296,8 @@ class DocumentViewSet(DocumentPermissionViewMixin, JqListAPIMixin, viewsets.Mode
         if is_generic and project_id:
             qs = qs.filter(project_id=project_id).values('id', 'name') \
                 .annotate(cluster_id=Max('documentcluster'),
+                          assignee_name=F('assignee__username'),
+                          status_name=F('status__name'),
                           parties=StringAgg('textunit__partyusage__party__name',
                                             delimiter=', ',
                                             distinct=True),
@@ -405,6 +417,19 @@ def create_field_annotation(field_uid, field_type):
     """
     Create annotation for "metadata__field_values__uid__maybe" json field
     """
+    _field_uid = field_uid.replace('-', '_')
+    output_field = transform_map.get(field_type, TextField)
+    if isinstance(output_field, tuple):
+        output_field = output_field[0]
+    transform = NestedKeyTextTransform([field_uid], 'field_values', output_field=output_field())
+    transform.key_name = field_uid
+    return {_field_uid: transform}
+
+
+def create_full_field_annotation(field_uid, field_type):
+    """
+    Create annotation for "metadata__field_values__uid__maybe" json field
+    """
     nested_fields = []
     _field_uid = field_uid.replace('-', '_')
     output_field = transform_map.get(field_type, TextField)
@@ -454,6 +479,8 @@ class DocumentWithFieldsViewSet(DocumentPermissionViewMixin, JqListAPIMixin, vie
         # add extra annotates based on extracted data
         qs = qs \
             .annotate(cluster_id=Max('documentcluster'),
+                      assignee_name=F('assignee__username'),
+                      status_name=F('status__name'),
                       parties=StringAgg('textunit__partyusage__party__name',
                                         delimiter=', ',
                                         distinct=True),

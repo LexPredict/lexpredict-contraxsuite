@@ -32,11 +32,12 @@ import os
 
 # Celery imports
 import django
+from celery.app import trace
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.2/LICENSE"
-__version__ = "1.1.2"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.3/LICENSE"
+__version__ = "1.1.3"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -51,6 +52,27 @@ app = AdvancedCelery('apps')
 
 app.config_from_object('django.conf:settings', namespace='CELERY')
 app.autodiscover_tasks(force=True)
+
+old_build_tracer = trace.build_tracer
+
+
+def build_tracer_patched(name, task, loader=None, hostname=None, *args, **kwargs):
+    old_trace_task = old_build_tracer(name, task, loader, hostname, *args, **kwargs)
+    worker = hostname
+
+    def trace_task_patched(uuid, *args1, **kwargs1):
+        from apps.task.utils.task_utils import TaskUtils
+        from apps.task.models import Task
+
+        TaskUtils.prepare_task_execution()
+        Task.objects.start_processing(task_id=uuid, worker=worker)
+
+        return old_trace_task(uuid, *args1, **kwargs1)
+
+    return trace_task_patched
+
+
+trace.build_tracer = build_tracer_patched
 
 
 # Bind debug task

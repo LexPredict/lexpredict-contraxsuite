@@ -17,9 +17,9 @@ echo "=== Stopping docker service ==="
 
 sudo service docker stop
 
-# To not block port 80
-sudo update-rc.d apache2 disable
-sudo service apache2 stop
+# Run the following commands if apache2 blocks port 80
+# sudo update-rc.d apache2 disable
+# sudo service apache2 stop
 
 sudo certbot certonly --standalone --preferred-challenges http -d ${FQDN} --config-dir ./.certs
 sudo cp ./.certs/live/${FQDN}/fullchain.pem ${VOLUME_NGINX_CERTS}certificate.pem

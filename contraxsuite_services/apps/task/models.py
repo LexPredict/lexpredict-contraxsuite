@@ -25,8 +25,6 @@
 # -*- coding: utf-8 -*-
 
 # Standard imports
-import datetime
-import itertools
 import logging
 import sys
 from traceback import format_exc
@@ -51,8 +49,8 @@ from apps.users.models import User
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.2/LICENSE"
-__version__ = "1.1.2"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.3/LICENSE"
+__version__ = "1.1.3"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -84,11 +82,15 @@ class Task(models.Model):
 
     name = models.CharField(max_length=100, db_index=True, null=True, blank=True)
     description = models.CharField(max_length=1024, db_index=False, null=True, blank=True)
-    date_start = models.DateTimeField(default=datetime.datetime.now, db_index=True)
+    date_start = models.DateTimeField(default=now, db_index=True)
+    date_work_start = models.DateTimeField(blank=True, null=True, db_index=True)
     user = models.ForeignKey(User, db_index=True, blank=True, null=True)
     celery_metadata = JSONField(blank=True, null=True)
     metadata = JSONField(blank=True, null=True)
+    source_data = models.TextField(blank=True, null=True)
     visible = models.BooleanField(default=True)
+    run_count = models.IntegerField(blank=False, null=False, default=0)
+    worker = models.CharField(max_length=1024, db_index=True, null=True, blank=True)
 
     own_date_done = models.DateTimeField(blank=True, null=True)
     own_status = models.CharField(

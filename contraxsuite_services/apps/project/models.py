@@ -47,8 +47,8 @@ from apps.users.models import User
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.2/LICENSE"
-__version__ = "1.1.2"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.3/LICENSE"
+__version__ = "1.1.3"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -237,6 +237,9 @@ class Project(models.Model):
     status = models.ForeignKey('common.ReviewStatus', default=get_default_status,
                                blank=True, null=True)
 
+    # Whether send or not email notification when upload is started
+    send_email_notification = models.BooleanField(default=False, db_index=True)
+
     # Document types for a Project
     type = models.ForeignKey(
         'document.DocumentType',
@@ -329,7 +332,7 @@ class Project(models.Model):
         # delete ProjectClustering
         project.projectclustering_set.all().delete()
         # delete ClusterProjectDocuments Tasks
-        project.project_tasks.filter(name='ClusterProjectDocuments').delete()
+        project.project_tasks.filter(name='Cluster Project Documents').delete()
 
     def cleanup(self, delete=False):
 
@@ -368,7 +371,7 @@ def super_reviewers_changed(instance, action, **kwargs):
         all_reviewers_pk = set(instance.reviewers.values_list('pk', flat=True))
         super_reviewers_pk = set(instance.super_reviewers.values_list('pk', flat=True))
         extra_pk = super_reviewers_pk - all_reviewers_pk
-        instance.super_reviewers.remove(*extra_pk)
+        instance.reviewers.add(*extra_pk)
 
 
 @receiver(m2m_changed, sender=Project.reviewers.through)
@@ -378,6 +381,15 @@ def reviewers_changed(instance, action, **kwargs):
         super_reviewers_pk = set(instance.super_reviewers.values_list('pk', flat=True))
         extra_pk = super_reviewers_pk - all_reviewers_pk
         instance.super_reviewers.remove(*extra_pk)
+
+
+@receiver(m2m_changed, sender=Project.owners.through)
+def owners_changed(instance, action, **kwargs):
+    if action == 'post_remove':
+        if not instance.owners.exists():
+            removed = kwargs.get('pk_set', {})
+            if removed:
+                instance.owners.add(removed.pop())
 
 
 class UploadSession(models.Model):
@@ -465,7 +477,8 @@ class UploadSession(models.Model):
                 'file_size': file_size,
                 'task_progress_data': task_progress_data,
                 'tasks_overall_status': task_status,
-                'document_progress': document_progress}
+                'document_progress': document_progress if task_status == 'PENDING' else 100.0
+            }
             if details:
                 result[file_name]['task_progress_data'] = task_progress_data
         # store result for further processing in status() and document_tasks_progress_total()

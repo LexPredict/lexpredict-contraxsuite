@@ -78,7 +78,7 @@ su - ${SHARED_USER_NAME} -c "${ACTIVATE_VENV} && \
     python manage.py dump_data --dst-file=fixtures/additional/app-dump.json \
 "
 
-elif [ $1 == "uwsgi" ]; then
+elif [ "$1" == "uwsgi" ]; then
     echo "Preparing theme..."
     THEME_ZIP=/third_party_dependencies/$(basename ${DOCKER_DJANGO_THEME_ARCHIVE})
     THEME_DIR=/static/theme
@@ -135,7 +135,7 @@ usage_stats.apply()
     python manage.py loadnewdata fixtures/additional/*.json \
 "
 
-    if [ $2 == "shell" ]; then
+    if [ "$2" == "shell" ]; then
         /bin/bash
     else
         echo "Starting Django..."
@@ -148,7 +148,7 @@ usage_stats.apply()
                     --protocol uwsgi \
                     --wsgi wsgi:application"
     fi
-elif [ $1 == "jupyter" ]; then
+elif [ "$1" == "jupyter" ]; then
     echo "Sleeping 15 seconds to let Postgres start and Django migrate"
     sleep 15
     echo "Starting Jupyter..."

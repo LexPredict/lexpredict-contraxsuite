@@ -50,8 +50,8 @@ from apps.users.models import User, Role
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.2/LICENSE"
-__version__ = "1.1.2"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.3/LICENSE"
+__version__ = "1.1.3"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -251,7 +251,7 @@ def download_xls(data: [list, pd.DataFrame], file_name='output', sheet_name='doc
     writer = pd.ExcelWriter(buffer, engine='xlsxwriter')
     if not isinstance(data, pd.DataFrame):
         data = pd.DataFrame(data)
-    data[data.select_dtypes(['object']).columns] = data.select_dtypes(['object']).apply(lambda x: x.astype(str))
+    data[data.select_dtypes(['object', 'datetime64[ns, UTC]']).columns] = data.select_dtypes(['object', 'datetime64[ns, UTC]']).apply(lambda x: x.astype(str))
     data.fillna('', inplace=True)
     data.to_excel(writer, index=False, sheet_name=sheet_name, encoding='utf-8')
     writer.save()

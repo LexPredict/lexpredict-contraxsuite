@@ -358,15 +358,17 @@ STATS_URLS = ['https://stats.contraxsuite.com/api/v1/stats/', 'http://52.200.197
 # celery
 # CELERY_BROKER_URL = 'redis://127.0.0.1:6379/0'
 CELERY_BROKER_URL = 'amqp://contrax1:contrax1@localhost:5672/contrax1_vhost'
+CELERY_BROKER_HEARTBEAT = 0
 CELERY_RESULT_BACKEND = 'apps.task.celery_backend.database:DatabaseBackend'
 CELERY_UPDATE_MAIN_TASK_ON_EACH_SUB_TASK = False
 CELERY_RESULT_EXPIRES = 0
 # CELERY_WORKER_HIJACK_ROOT_LOGGER = False
 CELERY_BEAT_SCHEDULE = {
-    'advanced_celery.backend_cleanup': {
-        'task': 'advanced_celery.clean_tasks',
-        'schedule': crontab(hour=7, minute=30, day_of_week='mon')
-    },
+    # Backend cleanup is disabled to not miss debug info after long loading
+    # 'advanced_celery.backend_cleanup': {
+    #     'task': 'advanced_celery.clean_tasks',
+    #     'schedule': crontab(hour=7, minute=30, day_of_week='mon')
+    # },
     'advanced_celery.track_tasks': {
         'task': 'advanced_celery.track_tasks',
         'schedule': 10.0,
@@ -395,7 +397,8 @@ CELERY_BEAT_SCHEDULE = {
 }
 CELERY_TIMEZONE = 'UTC'
 CELERY_ENABLE_UTC = True
-CELERY_CHORD_UNLOCK_MAX_RETRIES = 3
+CELERY_CHORD_UNLOCK_MAX_RETRIES = 5
+CELERY_CHORD_UNLOCK_DELAY_BETWEEN_RETRIES_IN_SEC = 3
 
 CELERY_TASK_ACKS_LATE = True
 CELERY_TASK_REJECT_ON_WORKER_LOST = True
@@ -553,7 +556,7 @@ TEXTRACT_FIRST_FOR_EXTENSIONS = []
 
 # use jqWidgets' export, e.g. send data to jq OR handle it on client side
 # FYI: http://www.jqwidgets.com/community/topic/jqxgrid-export-data/#}
-JQ_EXPORT = True
+JQ_EXPORT = False
 
 # place dictionaries for GeoEntities, Terms, US Courts, etc.
 DATA_ROOT = PROJECT_DIR('data/')
@@ -686,8 +689,8 @@ CORS_ORIGIN_ALLOW_ALL = True
 CORS_ALLOW_CREDENTIALS = False
 CORS_URLS_REGEX = r'^/api/.*$'
 
-VERSION_NUMBER = '1.1.2'
-VERSION_COMMIT = '16b7b15'
+VERSION_NUMBER = '1.1.3'
+VERSION_COMMIT = 'd36dfe7'
 
 try:
     from local_settings import *
@@ -777,7 +780,7 @@ RETRAINING_TASK_EXECUTION_DELAY_IN_SEC = 1 * 60 * 60
 
 TRAINED_AFTER_DOCUMENTS_NUMBER = 100
 
-TEXT_UNITS_TO_PARSE_PACKAGE_SIZE = 100
+TEXT_UNITS_TO_PARSE_PACKAGE_SIZE = 10
 
 # Debugging Docker Deployments:
 # CELERY_BROKER_URL = 'amqp://contrax1:contrax1@127.0.0.1:56720/contrax1_vhost'

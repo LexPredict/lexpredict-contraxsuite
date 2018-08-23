@@ -24,19 +24,21 @@
 """
 # -*- coding: utf-8 -*-
 
+import pickle
+
 # Django imports
 from django.contrib.postgres.fields import JSONField
 from django.db import models
 from django.dispatch import receiver
+from django.utils.timezone import now
 
 # Project imports
 from apps.users.models import User
 
-
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.2/LICENSE"
-__version__ = "1.1.2"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.3/LICENSE"
+__version__ = "1.1.3"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -175,3 +177,24 @@ class ReviewStatus(models.Model):
 
 def get_default_status():
     return ReviewStatus.initial_status_pk()
+
+
+class ObjectStorage(models.Model):
+    key = models.CharField(max_length=100, primary_key=True, db_index=True)
+
+    last_updated = models.DateTimeField(null=False, blank=False, default=now)
+
+    data = models.BinaryField(null=True, blank=True)
+
+    def get_obj(self):
+        if not self.data:
+            return None
+        return pickle.loads(self.data)
+
+    def set_obj(self, obj):
+        self.data = pickle.dumps(obj)
+
+    @staticmethod
+    def update_or_create(key: str, value_obj):
+        ObjectStorage.objects.update_or_create(key=key, defaults={'last_updated': now(),
+                                                                  'data': pickle.dumps(value_obj)})

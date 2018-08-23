@@ -27,12 +27,14 @@ import sys
 
 # Third-party imports
 import numpy as np
-from sklearn.feature_extraction.text import TfidfVectorizer
+import pandas as pd
+from sklearn.feature_extraction.text import TfidfVectorizer, TfidfTransformer
 from sklearn.cluster import Birch, KMeans, MiniBatchKMeans
 from sklearn.decomposition import PCA
 
 # Django imports
 from django.utils.timezone import now
+from django.db.models import Count
 
 # Project imports
 from apps.analyze.models import DocumentCluster
@@ -45,8 +47,8 @@ from urls import custom_apps
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.2/LICENSE"
-__version__ = "1.1.2"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.3/LICENSE"
+__version__ = "1.1.3"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -82,31 +84,57 @@ class ClusterProjectDocuments(BaseTask):
 
         # get documents data
         documents = Document.objects.filter(project_id=project_id)
-        docs = np.array(documents.values_list('pk', 'name', 'full_text'))
-        pks, names, data = docs[:, 0], docs[:, 1], docs[:, 2]
-        docs_count = len(docs)
+        id_name_map = {k: v for k, v in documents.values_list('id', 'name')}
+        docs_count = len(id_name_map)
 
-        # try increase min_df if exception occurs while fit_trasform
-        for max_df in range(50, 101, 5):
-            max_df = float(max_df / 100)
-            try:
-                vectorizer = TfidfVectorizer(max_df=max_df, max_features=100,
-                                             min_df=2, stop_words='english',
-                                             use_idf=True)
-                X = vectorizer.fit_transform(data)
-            except ValueError as e:
-                if 'Try a lower min_df or a higher max_df' in str(e):
-                    continue
-                else:
-                    raise e
-            break
+        # cluster by full text
+        if kwargs.get('cluster_by') == 'full_text':
+            docs = np.array(documents.values_list('pk', 'full_text'))
+            pks, data = docs[:, 0], docs[:, 1]
 
-        # vectorizer = TfidfVectorizer(max_df=0.5, max_features=100,
-        #                              min_df=2, stop_words='english',
-        #                              use_idf=True)
-        # X = vectorizer.fit_transform(data)
+            # try increase min_df if exception occurs while fit_trasform
+            for max_df in range(50, 101, 5):
+                max_df = float(max_df / 100)
+                try:
+                    vectorizer = TfidfVectorizer(max_df=max_df, max_features=100,
+                                                 min_df=2, stop_words='english',
+                                                 use_idf=True)
+                    X = vectorizer.fit_transform(data)
+                except ValueError as e:
+                    if 'Try a lower min_df or a higher max_df' in str(e):
+                        continue
+                    else:
+                        raise e
+                break
 
-        terms = vectorizer.get_feature_names()
+            terms = vectorizer.get_feature_names()
+
+        # Cluster by terms
+        else:
+            id_field = 'id'
+            prop_field = 'textunit__termusage__term__term'
+            # filter non-null, null
+            qs = documents.filter(textunit__termusage__isnull=False)
+            if not qs.exists():
+                raise RuntimeError('No terms in documents detected, try to re-run terms parser.')
+            # get values
+            ann_cond = dict(prop_count=Count(prop_field))
+            qs = qs.values(id_field, prop_field).annotate(**ann_cond).distinct()
+            # get data
+            df = pd.DataFrame(list(qs)).dropna()
+            null_qs = documents.exclude(textunit__termusage__isnull=False)
+            if null_qs.exists():
+                null_df = pd.DataFrame(list(null_qs.values('id'))).set_index('id')
+                df = df.join(null_df, how='outer', on='id')
+            df = df.pivot(index=id_field, columns=prop_field, values='prop_count').fillna(0)
+
+            X = df.as_matrix()
+            # convert CountVec into TFvec
+            tf_transformer = TfidfTransformer(use_idf=False).fit(X)
+            X = tf_transformer.transform(X)
+
+            pks = df.index.tolist()
+            terms = df.columns.tolist()
 
         if method == 'Birch':
             m = Birch(
@@ -114,14 +142,13 @@ class ClusterProjectDocuments(BaseTask):
                 threshold=0.5,
                 branching_factor=50)
         elif method == 'MiniBatchKMeans':
-            m = MiniBatchKMeans(
-                n_clusters=n_clusters,
-                init='k-means++',
-                n_init=1,
-                init_size=100,
-                batch_size=100,
-                verbose=False)
-        # elif method == 'KMeans':
+                m = MiniBatchKMeans(
+                    n_clusters=n_clusters,
+                    init='k-means++',
+                    n_init=1,
+                    init_size=100,
+                    batch_size=100,
+                    verbose=False)
         else:
             method = 'KMeans'
             m = KMeans(
@@ -130,18 +157,13 @@ class ClusterProjectDocuments(BaseTask):
                 max_iter=100,
                 n_init=1,
                 verbose=False)
-        # else:
-        #     m = DBSCAN(
-        #         eps=0.5,
-        #         min_samples=5,
-        #         leaf_size=30)
-        m.fit(X)
 
+        m.fit(X)
         self.push()
 
-        XX = X.toarray()
-        pca = PCA(n_components=2).fit(XX)
-        data2d = pca.transform(XX)
+        X = X.toarray()
+        pca = PCA(n_components=2).fit(X)
+        data2d = pca.transform(X)
 
         if method == 'DBSCAN':
             clusters = m.labels_
@@ -166,7 +188,7 @@ class ClusterProjectDocuments(BaseTask):
             centers2d = pca.transform(cluster_centers)
 
         points_data = [{'document_id': pks[i],
-                        'document_name': names[i],
+                        'document_name': id_name_map[pks[i]],
                         'coord': data2d[i].tolist(),
                         'cluster_id': str(clusters[i])} for i in range(docs_count)]
 
@@ -248,7 +270,16 @@ class ReassignProjectClusterDocuments(BaseTask):
         reassigned_cluster_ids = list(set(
             p_cl.metadata.get('reassigned_cluster_ids', []) + cluster_ids))
         p_cl.metadata['reassigned_cluster_ids'] = reassigned_cluster_ids
+
+        # remove reassigned clusters from metadata
+        p_cl.metadata['clusters_data'] = {i: j for i, j in p_cl.metadata['clusters_data'].items()
+                                          if j['cluster_obj_id'] not in reassigned_cluster_ids}
+        reassigned_document_ids = documents.values_list('pk', flat=True)
+        p_cl.metadata['points_data'] = [i for i in p_cl.metadata['points_data']
+                                        if int(i['document_id']) not in reassigned_document_ids]
+
         p_cl.save()
+        # DocumentCluster.objects.filter(pk__in=cluster_ids).delete()
 
         task_funcs = []
         for app_name in custom_apps:
@@ -265,7 +296,7 @@ class ReassignProjectClusterDocuments(BaseTask):
                     sub_task = task_func.subtask(
                         args=(document.id, False, None))
                     sub_tasks.append(sub_task)
-            self.chord_and_clean(sub_tasks, {})
+            self.chord(sub_tasks)
 
         # TODO: metadata[project_id] in tasks related with reassigned documents
         # TODO: should be updated to new project id value?

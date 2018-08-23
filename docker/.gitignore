@@ -1,5 +1,4 @@
 volumes/
 kubernetes-temp/
 setenv_local.sh
-deploy-private/
 util/temp/

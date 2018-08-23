@@ -17,6 +17,9 @@ server {
     ssl_ciphers "HIGH:!aNULL:!MD5 or HIGH:!aNULL:!MD5:!3DES";
     ssl_prefer_server_ciphers on;
 
+    add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
+    proxy_cookie_path / "/; HTTPOnly; Secure";
+
     charset     utf-8;
     client_max_body_size 1024M;
     sendfile on;
@@ -24,6 +27,10 @@ server {
 
     # this is the internal Docker DNS
     resolver 127.0.0.11;
+
+    if ( ${DOLLAR}request_method = OPTIONS ) {
+        return 405;
+    }
 
 ${NGINX_EXTERNAL_ROUTES}
 

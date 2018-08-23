@@ -66,7 +66,6 @@ def transaction_retry(max_retries=1):
 
 
 class QuerySet(models.QuerySet):
-
     def filter_metadata(self, **kwargs):
         opts = {'metadata__%s' % k: v for k, v in kwargs.items()}
         return self.filter(**opts)
@@ -80,7 +79,7 @@ class QuerySet(models.QuerySet):
         if get_completed:
             if result:
                 progress_values = [i['progress'] for i in result.values()]
-                completed = ((sum(progress_values) / len(progress_values)) == 100)\
+                completed = ((sum(progress_values) / len(progress_values)) == 100) \
                     if progress_values else None
             else:
                 completed = None
@@ -130,14 +129,12 @@ class TaskManager(models.Manager):
 
     EXCLUDE_FROM_TRACKING = {
         'celery.chord_unlock',
-        'celery.chord_unlock_shim',
         'advanced_celery.track_tasks',
         'advanced_celery.track_session_completed',
         'advanced_celery.update_main_task',
         'advanced_celery.clean_sub_tasks',
         'advanced_celery.clean_dead_tasks',
         'advanced_celery.clean_tasks',
-        'advanced_celery.end_chord',
         'deployment.usage_stats',
         'advanced_celery.retrain_dirty_fields'
     }
@@ -166,13 +163,13 @@ class TaskManager(models.Manager):
             return self.model(id=task_id)
 
     @transaction_retry(max_retries=2)
-    def init_task(self, task_id: str, task_name: str, root_id: str, description: str = None):
+    def init_task(self, task_id: str, task_name: str, main_task_id: str, description: str = None, source_data=None):
         try:
-            main_task = self.get(id=root_id) if root_id and root_id != task_id else None
+            main_task = self.get(id=main_task_id) if main_task_id and main_task_id != task_id else None
         except:
-            print('Bad sub-task: task_id={0}, root_id={1}, task_name={2}'.format(task_id,
-                                                                                 root_id,
-                                                                                 task_name))
+            print('Bad sub-task: task_id={0}, main_task_id={1}, task_name={2}'.format(task_id,
+                                                                                      main_task_id,
+                                                                                      task_name))
             raise
 
         if description and len(description) > 1020:
@@ -182,7 +179,8 @@ class TaskManager(models.Manager):
             'name': task_name,
             'description': description,
             'main_task_id': main_task.id if main_task else None,
-            'date_start': now()})
+            'date_start': now(),
+            'source_data': source_data})
         if not created:
             obj.name = task_name
             obj.description = description
@@ -220,6 +218,14 @@ class TaskManager(models.Manager):
     @transaction_retry(max_retries=2)
     def set_push_steps(self, task_id, push_steps: int):
         self.filter(id=task_id).update(push_steps=push_steps)
+
+    @transaction_retry(max_retries=2)
+    def start_processing(self, task_id, worker):
+        self.filter(id=task_id).update(date_work_start=now(), worker=worker)
+
+    @transaction_retry(max_retries=2)
+    def increase_run_count(self, task_id):
+        self.filter(id=task_id).update(run_count=F('run_count') + 1)
 
     @transaction_retry(max_retries=2)
     def set_log_extra(self, task_id, log_extra):
@@ -316,6 +322,20 @@ class TaskManager(models.Manager):
                                             status=total_status,
                                             completed=total_progress == 100,
                                             progress=total_progress)
+        if total_status in READY_STATES:
+            try:
+                main_task = self.get(id=main_task_id)  # type: Task
+                if total_status == SUCCESS:
+                    main_task.write_log(
+                        '{0} #{1}: all sub-tasks have been processed successfully'.format(
+                            main_task.name, main_task_id))
+                else:
+                    main_task.write_log('{0} #{1}: some/all of sub-tasks have been crashed'.format(
+                        main_task.name, main_task_id), level='error')
+            except:
+                import logging
+                logging.error('Was unable to log SUCCESS/FAILURE to task log. Task id: {0}'
+                              .format(main_task_id))
 
         if total_status_propagating_exceptions in PROPAGATE_STATES:
             revoke_task(AsyncResult(main_task_id))

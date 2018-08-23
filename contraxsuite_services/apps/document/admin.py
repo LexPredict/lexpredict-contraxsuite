@@ -38,14 +38,15 @@ from apps.document.models import (
     Document, DocumentField, DocumentType,
     DocumentProperty, DocumentRelation, DocumentNote,
     DocumentFieldDetector, DocumentFieldValue, ExternalFieldValue,
-    ClassifierModel, TextUnit, TextUnitProperty, TextUnitNote, TextUnitTag, DocumentTypeField)
+    ClassifierModel, TextUnit, TextUnitProperty, TextUnitNote, TextUnitTag, DocumentTypeField,
+    DocumentFieldFormulaError)
 from apps.document.field_types import FIELD_TYPES_REGISTRY
 
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.2/LICENSE"
-__version__ = "1.1.2"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.3/LICENSE"
+__version__ = "1.1.3"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -72,7 +73,17 @@ class DocumentFieldForm(forms.ModelForm):
 
         try:
             DocumentField.calc_formula(field_code, type_code, formula, fields_to_values)
-        except Exception as ex:
+        except DocumentFieldFormulaError as ex:
+            base_error_class = type(ex.base_error).__name__
+            base_error_msg = str(ex.base_error)
+            lines = list()
+            lines.append("Error caught while trying to execute formula on example values:")
+            for field_name in ex.field_values:
+                lines.append('{0}={1}'.format(field_name, ex.field_values[field_name]))
+            lines.append("{0}. {1} in formula of field '{2}' at line {3}".format(base_error_class, base_error_msg,
+                                                                                 ex.field_code, ex.line_number))
+            self.add_error('formula', lines)
+        except Exception:
             trace = traceback.format_exc()
             raise forms.ValidationError(
                 'Tried to eval formula on example values:\n{0}\nGot error:\n{1}'.format(
@@ -144,7 +155,33 @@ class ExternalFieldValueAdmin(admin.ModelAdmin):
     search_fields = ('type_id', 'field_id', 'value', 'extraction_hint')
 
 
-class FieldInlineAdmin(admin.TabularInline):
+class DocumentFieldInlineFormset(forms.models.BaseInlineFormSet):
+
+    def clean(self):
+        field_ids = set()
+        dependencies = list()
+        for form in self.forms:
+            document_field = form.cleaned_data.get('document_field')
+            if document_field:
+                field_ids.add(document_field.pk)
+                if document_field.depends_on_fields.count() > 0:
+                    dependencies.append(form)
+        for form in dependencies:
+            document_field = form.cleaned_data['document_field']
+            missed_fields = list()
+            for field in document_field.depends_on_fields.all():
+                if field.pk not in field_ids:
+                    missed_fields.append(field.code)
+            if len(missed_fields) == 1:
+                form.add_error(None, 'Field {0} is required for {1} field'.format(missed_fields[0],
+                                                                                  document_field.code))
+            elif len(missed_fields) > 1:
+                form.add_error(None, 'Fields {0} is required for {1} field'.format(', '.join(missed_fields),
+                                                                                   document_field.code))
+
+
+class DocumentFieldInlineAdmin(admin.TabularInline):
+    formset = DocumentFieldInlineFormset
     model = DocumentType.fields.through
 
 
@@ -152,7 +189,7 @@ class DocumentTypeAdmin(admin.ModelAdmin):
     list_display = ('code', 'title', 'fields_num', 'user', 'fields', 'modified_date')
     search_fields = ['code', 'title', 'created_user__username']
     filter_horizontal = ('fields', 'search_fields')
-    inlines = (FieldInlineAdmin,)
+    inlines = (DocumentFieldInlineAdmin,)
 
     @staticmethod
     def fields_num(obj):

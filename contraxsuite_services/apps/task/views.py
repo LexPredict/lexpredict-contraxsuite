@@ -30,7 +30,7 @@ from __future__ import absolute_import, unicode_literals
 # Django imports
 from django.conf import settings
 from django.core.urlresolvers import reverse
-from django.db.models import F, Q
+from django.db.models import F
 from django.db.models.functions import Now, Coalesce
 from django.http import JsonResponse, HttpResponseForbidden
 from django.shortcuts import redirect
@@ -41,6 +41,7 @@ from apps.analyze.models import TextUnitClassifier
 from apps.common.mixins import (
     AdminRequiredMixin, CustomDetailView, DjangoJSONEncoder,
     JSONResponseView, JqPaginatedListView, TechAdminRequiredMixin)
+from apps.common.utils import get_api_module
 from apps.document.models import DocumentProperty, TextUnitProperty
 from apps.task.forms import (
     LoadDocumentsForm, BatchLoadDocumentsForm, LocateTermsForm, LocateForm,
@@ -49,16 +50,13 @@ from apps.task.forms import (
     UpdateElasticSearchForm, TaskDetailForm, TotalCleanupForm)
 from apps.task.models import Task
 from apps.task.tasks import call_task, clean_tasks, purge_task
-from apps.common.utils import get_api_module
-
 
 project_api_module = get_api_module('project')
 
-
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.2/LICENSE"
-__version__ = "1.1.2"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.3/LICENSE"
+__version__ = "1.1.3"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -202,8 +200,9 @@ class BatchLoadDocumentsView(BaseAjaxTaskView):
         data = form.cleaned_data
         project = data['project']
         upload_session = project.last_session(create=True, created_by=request.user)
-        project_api_module.UploadSessionViewSet(request=request)\
-            .batch_upload(request, pk=str(upload_session.pk))
+        api_class = project_api_module.UploadSessionViewSet(request=request)
+        api_class.kwargs = dict(pk=upload_session.pk)
+        api_class.batch_upload(request, pk=upload_session.pk)
         return self.json_response('The task is started. It can take a while.')
 
 
@@ -433,14 +432,16 @@ class TaskListView(AdminRequiredMixin, JqPaginatedListView):
     model = Task
     ordering = '-date_start'
     json_fields = ['name', 'date_start', 'username', 'metadata',
-                   'date_done', 'status', 'progress', 'time', 'description']
+                   'date_done', 'status', 'progress', 'time', 'date_work_start', 'work_time', 'worker', 'description']
 
     db_time = Coalesce(F('date_done') - F('date_start'), Now() - F('date_start'))
+    db_work_time = Coalesce(F('date_done') - F('date_work_start'), Now() - F('date_work_start'),
+                            F('date_start') - F('date_start'))
     db_user = Coalesce(F('user__username'), F('main_task__user__username'))
 
     def get_queryset(self):
         qs = Task.objects.main_tasks()
-        qs = qs.annotate(time=self.db_time, username=self.db_user)
+        qs = qs.annotate(time=self.db_time, work_time=self.db_work_time, username=self.db_user)
         return qs
 
     def get_json_data(self, **kwargs):
@@ -463,10 +464,10 @@ class TaskListView(AdminRequiredMixin, JqPaginatedListView):
         ctx = super().get_context_data(**kwargs)
         ctx['active_classifiers'] = TextUnitClassifier.objects.filter(is_active=True).exists()
         if DocumentProperty.objects.exists():
-            ctx['ls_document_properties'] = DocumentProperty.objects.order_by('key')\
+            ctx['ls_document_properties'] = DocumentProperty.objects.order_by('key') \
                 .values_list('key', flat=True).distinct()
         if TextUnitProperty.objects.exists():
-            ctx['ls_text_unit_properties'] = TextUnitProperty.objects.order_by('key')\
+            ctx['ls_text_unit_properties'] = TextUnitProperty.objects.order_by('key') \
                 .values_list('key', flat=True).distinct()
         return ctx
 

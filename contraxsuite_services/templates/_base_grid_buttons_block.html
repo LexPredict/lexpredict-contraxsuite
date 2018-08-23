@@ -12,10 +12,7 @@
     <ul class="dropdown-menu" data-export-filename="{{ export_filename }}"
         style="min-width: 80px;">
       <li class="dropdown-item" data-export-to="csv"><a href="#">CSV</a></li>
-      {% if settings.JQ_EXPORT %}
-      <li class="dropdown-item" data-export-to="xls"><a href="#">XLS</a></li>
-      {% endif %}
-      <li class="dropdown-item" data-export-to="pdf"><a href="#">PDF</a></li>
+      <li class="dropdown-item" data-export-to="xlsx"><a href="#">XLSX</a></li>
     </ul>
   </div>
 {% endif %}

@@ -13,3 +13,5 @@ if [ "$DOCKER_DIR" != "/var/lib/docker" ]; then
 
   sudo service docker start
 fi
+
+popd

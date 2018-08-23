@@ -62,10 +62,14 @@ from apps.project.tasks import THIS_MODULE    # noqa
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.2/LICENSE"
-__version__ = "1.1.2"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.3/LICENSE"
+__version__ = "1.1.3"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
+
+
+common_api_module = get_api_module('common')
+users_api_module = get_api_module('users')
 
 
 class PatchedListView(APIView):
@@ -267,10 +271,6 @@ class DocumentTypeSerializer(serializers.ModelSerializer):
         fields = ['uid', 'code', 'title']
 
 
-common_api_module = get_api_module('common')
-users_api_module = get_api_module('users')
-
-
 class ProjectDetailSerializer(serializers.ModelSerializer):
     status = serializers.PrimaryKeyRelatedField(
         queryset=ReviewStatus.objects.all(), many=False, required=False)
@@ -295,7 +295,9 @@ class ProjectDetailSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Project
-        fields = ['pk', 'name', 'description', 'status', 'status_data',
+        fields = ['pk', 'name', 'description',
+                  'send_email_notification',
+                  'status', 'status_data',
                   'owners', 'owners_data',
                   'reviewers', 'reviewers_data',
                   'super_reviewers', 'super_reviewers_data',
@@ -308,13 +310,13 @@ class ProjectDetailSerializer(serializers.ModelSerializer):
 class ProjectCreateSerializer(serializers.ModelSerializer):
     class Meta:
         model = Project
-        fields = ['pk', 'name', 'description', 'type']
+        fields = ['pk', 'name', 'description', 'type', 'send_email_notification']
 
 
 class ProjectUpdateSerializer(ProjectDetailSerializer):
     class Meta(ProjectDetailSerializer.Meta):
         model = Project
-        fields = ['pk', 'name', 'description', 'status',
+        fields = ['pk', 'name', 'description', 'status', 'send_email_notification',
                   'owners', 'reviewers', 'super_reviewers', 'type']
 
 
@@ -384,6 +386,9 @@ class ProjectViewSet(ProjectPermissionViewMixin, JqListAPIMixin, viewsets.ModelV
                               'reviewers', 'reviewers__role',
                               'uploadsession_set')
         return qs
+
+    def get_extra_data(self, queryset):
+        return {'available_statuses': common_api_module.ReviewStatusSerializer(ReviewStatus.objects.select_related('group'), many=True).data}
 
     @detail_route(methods=['get'])
     def progress(self, request, **kwargs):
@@ -537,12 +542,13 @@ class ProjectViewSet(ProjectPermissionViewMixin, JqListAPIMixin, viewsets.ModelV
         # permissions check
         project = self.get_object()
 
-        document_ids = [int(i) for i in request.POST.getlist('document_ids')]
-        assignee_id = request.POST.get('assignee_id')
+        # document_ids = [int(i) for i in request.POST.getlist('document_ids')]
+        document_ids = request.data.get('document_ids')
+        assignee_id = request.data.get('assignee_id')
         ret = Document.objects\
             .filter(project=project, pk__in=document_ids)\
             .update(assignee=assignee_id)
-        return Response(ret)
+        return Response({'success': ret})
 
     @detail_route(methods=['post'])
     def set_status(self, request, **kwargs):
@@ -557,12 +563,13 @@ class ProjectViewSet(ProjectPermissionViewMixin, JqListAPIMixin, viewsets.ModelV
         # permissions check
         project = self.get_object()
 
-        document_ids = [int(i) for i in request.POST.getlist('document_ids')]
-        status_id = request.POST.get('status_id')
+        # document_ids = [int(i) for i in request.POST.getlist('document_ids')]
+        document_ids = request.data.get('document_ids')
+        status_id = request.data.get('status_id')
         ret = Document.objects\
             .filter(project=project, pk__in=document_ids)\
             .update(status=status_id)
-        return Response(ret)
+        return Response({'success': ret})
 
 
 # --------------------------------------------------------
@@ -815,13 +822,14 @@ class UploadSessionViewSet(UploadSessionPermissionViewMixin, JqListAPIMixin, vie
 
                 call_task(
                     task_name='LoadDocuments',
-                    source_path=source_path,
+                    source_data=source_path,
                     user_id=request.user.id,
                     session_id=session_id,
                     metadata={'session_id': session_id, 'file_name': file_.name},
                     linked_tasks=linked_tasks)
 
-                if request.POST.get('send_email_notifications') == 'true' and \
+                if project.send_email_notification and \
+                        request.POST.get('send_email_notifications') == 'true' and \
                         not session.notified_upload_started:
                     session.notify_upload_started()
 
@@ -900,7 +908,9 @@ class TaskSerializer(serializers.ModelSerializer):
                     exc_message = task_result.get('exc_message')
                     exc_type = task_result.get('exc_type')
                     if exc_message and exc_type:
-                        # trace = obj.traceback
+                        if isinstance(exc_message, list):
+                            # TODO: handle cases when len(exc_message)>1
+                            exc_message = exc_message[0]
                         if ('max_df corresponds to < documents than min_df' in exc_message) or\
                            ('Number of samples smaller than number of clusters' in exc_message) or\
                            (re.search(r'n_samples=\d+ should be >= n_clusters=\d+', exc_message)):
@@ -910,6 +920,9 @@ class TaskSerializer(serializers.ModelSerializer):
                                 exc_message):
                             message_body = 'Chosen documents seems are very similar,' \
                                            ' clustering algorithm is not able to form clusters.'
+                        elif 'No terms in documents detected' in exc_message:
+                            message_body = exc_message
+
             reason = message_head + message_body
             return reason
 
@@ -918,6 +931,7 @@ class DocumentClusterSerializer(analyze_api_module.DocumentClusterSerializer):
     class Meta(analyze_api_module.DocumentClusterSerializer.Meta):
         model = DocumentCluster
         fields = ['pk', 'cluster_id', 'self_name', 'using',
+                  'name', 'description',
                   'documents_count', 'document_data']
 
 

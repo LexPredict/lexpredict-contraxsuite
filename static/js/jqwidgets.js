@@ -582,26 +582,8 @@
   // init "csvExport" button
   $(".gridExport li").click(function() {
     var to = $(this).data('export-to');
-    var filename = $(this).parent().data('export-filename');
-    if (!filename){
-      filename = export_filename
-    }
-    filename += now();
-
-    // If it doesn't work without license, store using variable
-    // FYI: http://www.jqwidgets.com/community/topic/jqxgrid-export-data/
-    if (is_jq_export || to == 'pdf') {
-      $(this).closest('.grid-controls').siblings().find('.jqxgrid').jqxGrid('exportdata', to, filename, true, null, true);
-    }
-    else {
-      var data = $(this).closest('.grid-controls').siblings().find('.jqxgrid').jqxGrid('exportdata', 'csv');
-      filename = filename + '.csv';
-      var uri = 'data:application/csv;charset=UTF-8,' + encodeURIComponent(data);
-      var $a = $('<a></a>');
-      $a.attr("href", uri);
-      $a.prop('download', filename);
-      $('body').append($a);
-      $('a[download]').get(0).click();
-      $('a[download]').remove();
-    }
+    var source = $(this).parents('.gridExport').parent().siblings().find('.jqxgrid').jqxGrid('source');
+    var query_data = source._source.data;
+    query_data['export_to'] = to;
+    window.location.href = source._source.url + '?' + $.param(query_data);
   });

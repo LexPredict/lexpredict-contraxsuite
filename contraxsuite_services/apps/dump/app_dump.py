@@ -25,7 +25,6 @@
 # -*- coding: utf-8 -*-
 
 from allauth.account.models import EmailAddress, EmailConfirmation
-
 from django.core import serializers as core_serializers
 from django.db.models import F
 
@@ -35,6 +34,7 @@ from apps.deployment.models import Deployment
 from apps.document.models import (
     DocumentField, DocumentType, DocumentFieldDetector,
     DocumentFieldValue, ExternalFieldValue)
+from apps.extract.models import Court, GeoAlias, GeoEntity, GeoRelation, Party, Term
 from apps.task.models import TaskConfig
 from apps.users.models import User, Role
 
@@ -49,7 +49,13 @@ MODELS_TO_DUMP = (User,
                   DocumentFieldDetector,
                   AppVar,
                   Deployment,
-                  TaskConfig)
+                  TaskConfig,
+                  Court,
+                  GeoAlias,
+                  GeoEntity,
+                  GeoRelation,
+                  Party,
+                  Term)
 
 
 def write_dump(file_name: str, json_data):

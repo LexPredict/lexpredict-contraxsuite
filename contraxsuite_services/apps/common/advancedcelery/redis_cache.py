@@ -31,13 +31,13 @@ import settings
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.2/LICENSE"
-__version__ = "1.1.2"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.3/LICENSE"
+__version__ = "1.1.3"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
 
-class TransferManager:
+class Cache:
     """
     Manages transferring large objects between Python processes and their caching in process local memory.
     Represents two-level cache:
@@ -84,7 +84,7 @@ class TransferManager:
         :param key:
         :return:
         """
-        full_key = TransferManager._full_key(key)
+        full_key = Cache._full_key(key)
         if full_key in self._local_cache:
             # print('using local cache')
             return self._local_cache[full_key]
@@ -111,11 +111,10 @@ class TransferManager:
         :param key:
         :return:
         """
-        full_key = TransferManager._full_key(key)
+        full_key = Cache._full_key(key)
         if full_key in self._local_cache.keys():
             del self._local_cache[full_key]
         try:
             self._redis.delete([full_key])
         except KeyError:
             pass
-

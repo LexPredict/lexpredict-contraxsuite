@@ -37,8 +37,8 @@ from apps.analyze.models import *
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.2/LICENSE"
-__version__ = "1.1.2"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.3/LICENSE"
+__version__ = "1.1.3"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -166,12 +166,20 @@ class DocumentClusterSerializer(SimpleRelationSerializer):
         return obj.documents.count()
 
 
-class DocumentClusterListAPIView(JqListAPIView):
+class DocumentClusterUpdateSerializer(SimpleRelationSerializer):
+
+    class Meta:
+        model = DocumentCluster
+        fields = ['pk', 'name', 'self_name', 'description']
+
+
+class DocumentClusterAPIView(JqListAPIView, viewsets.ModelViewSet):
     """
-    Document Cluster List
+    list: Document Cluster List
+    partial_update: Partial Update Document Cluster
     """
     queryset = DocumentCluster.objects.all()
-    serializer_class = DocumentClusterSerializer
+    http_method_names = ['get', 'patch']
 
     def get_queryset(self):
         qs = super().get_queryset()
@@ -179,6 +187,11 @@ class DocumentClusterListAPIView(JqListAPIView):
         if document_id:
             qs = qs.filter(documents_id=document_id)
         return qs.order_by('cluster_by', 'using', 'cluster_id')
+
+    def get_serializer_class(self):
+        if self.action == 'partial_update':
+            return DocumentClusterUpdateSerializer
+        return DocumentClusterSerializer
 
 
 # --------------------------------------------------------
@@ -335,10 +348,9 @@ router.register(r'text-unit-classifiers', TextUnitClassifierViewSet,
                 'text-unit-classifier')
 router.register(r'text-unit-classifier-suggestions', TextUnitClassifierSuggestionViewSet,
                 'text-unit-classifier-suggestion')
+router.register(r'document-cluster', DocumentClusterAPIView, 'document-cluster')
 
 urlpatterns = [
-    url(r'^document-cluster/list/$', DocumentClusterListAPIView.as_view(),
-        name='document-cluster-list'),
     url(r'^text-unit-cluster/list/$', TextUnitClusterListAPIView.as_view(),
         name='text-unit-cluster-list'),
 

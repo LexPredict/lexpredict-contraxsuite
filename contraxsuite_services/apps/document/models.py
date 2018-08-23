@@ -58,8 +58,8 @@ from apps.users.models import User
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.2/LICENSE"
-__version__ = "1.1.2"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.3/LICENSE"
+__version__ = "1.1.3"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -91,6 +91,23 @@ class TimeStampedModel(models.Model):
             instance.modified_by = instance.request_user
             instance.save()
             models.signals.post_save.connect(func, sender=sender)
+
+
+class DocumentFieldFormulaError(RuntimeError):
+
+    def __init__(self, field_code, formula, field_values):
+        exc_type, exc_obj, exc_tb = sys.exc_info()
+        self.base_error = exc_obj
+        self.line_number = traceback.extract_tb(exc_tb)[-1].lineno
+        self.field_values = field_values
+        self.field_code = field_code
+        msg = '{0} in formula of field \'{1}\'\n' \
+              'Formula:' \
+              '\n{2}\n' \
+              'At line: {3}\n' \
+              'Field values:\n' \
+              '{4}'.format(exc_type.__name__, field_code, formula, self.line_number, field_values)
+        super(RuntimeError, self).__init__(msg)
 
 
 class DocumentField(TimeStampedModel):
@@ -149,15 +166,7 @@ class DocumentField(TimeStampedModel):
         try:
             value = eval(formula, {}, eval_locals)
         except:
-            exc_type, exc_obj, exc_tb = sys.exc_info()
-            tb = traceback.extract_tb(exc_tb)[-1]
-            msg = '{0} in formula of field \'{1}\'\n' \
-                  'Formula:' \
-                  '\n{2}\n' \
-                  'At line: {3}\n' \
-                  'Field values:\n' \
-                  '{4}'.format(exc_type.__name__, field_code, formula, tb[1], depends_on_field_to_value)
-            raise RuntimeError(msg)
+            raise DocumentFieldFormulaError(field_code, formula, depends_on_field_to_value)
         # value = eval(formula, {'__builtins__': {}}, eval_locals)
         return FIELD_TYPES_REGISTRY[field_type_code].python_value_to_json(value)
 
@@ -289,7 +298,7 @@ class DocumentTypeField(models.Model):
     trained_after_documents_number = models.PositiveIntegerField(default=settings.TRAINED_AFTER_DOCUMENTS_NUMBER,
                                                                  null=False, validators=[MinValueValidator(1)])
 
-    use_regexp_always = models.BooleanField(default=False)
+    use_regexp_always = models.BooleanField(default=True)
 
     modified_date = models.DateTimeField(auto_now=True)
 
@@ -356,6 +365,9 @@ class Document(models.Model):
 
     # Document metadata from original file
     metadata = JSONField(blank=True)
+
+    # Synced Document Field Values
+    field_values = JSONField(blank=True, null=True)
 
     # Document title
     title = models.CharField(max_length=1024, db_index=True, null=True)
@@ -435,14 +447,14 @@ class Document(models.Model):
                 field_uids_to_field_values[f.uid] = fields_to_field_values[f]
 
         if save:
-            self.metadata['field_values'] = field_uids_to_field_values
+            self.field_values = field_uids_to_field_values
             self.save()
 
         return field_uids_to_field_values
 
     @property
-    def field_values(self):
-        _field_values = self.metadata.get('field_values')
+    def _field_values(self):
+        _field_values = self.field_values
         if _field_values is None:
             _field_values = self.get_field_values(save=True)
         return _field_values
@@ -881,7 +893,7 @@ class ExternalFieldValue(TimeStampedModel):
 
 
 class DocumentFieldDetector(models.Model):
-    DEF_RE_FLAGS = re.DOTALL | re.IGNORECASE
+    DEF_RE_FLAGS = re.DOTALL
 
     uid = StringUUIDField(primary_key=True, default=uuid.uuid4, editable=False)
 
@@ -980,7 +992,7 @@ class DocumentFieldDetector(models.Model):
 
     def _clean_def_words(self, s: str):
         res = ''.join(filter(lambda ss: ss.isalpha() or ss.isnumeric() or ss.isspace(), s))
-        return ' '.join(res.split())
+        return ' '.join(res.split()).lower()
 
     def _matches_definition_words(self, sentence: str) -> bool:
         if self._definition_words:

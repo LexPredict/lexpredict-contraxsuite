@@ -994,8 +994,11 @@
         { name: 'description', type: 'string' },
         { name: 'username', type: 'string' },
         { name: 'date_start', type: 'date' },
+        { name: 'date_work_start', type: 'date' },
         { name: 'date_done', type: 'date' },
         { name: 'time', type: 'string' },
+        { name: 'work_time', type: 'string' },
+        { name: 'worker', type: 'string' },
         { name: 'progress', type: 'float' },
         { name: 'status', type: 'string' },
         { name: 'url', type: 'string' },
@@ -1036,17 +1039,17 @@
         { text: 'Task Name', datafield: 'name', width: 'auto',
           align: 'center', cellsalign: 'left',
           cellsrenderer: defaultLinkFormatter },
-        { text: 'Description', datafield: 'description', width: 'auto',
+        { text: 'Description', datafield: 'description', width: 80,
           align: 'center', cellsalign: 'left' },
         { text: 'User', datafield: 'username', width: 100,
           align: 'center', cellsalign: 'center' },
-        { text: 'Date Started', datafield: 'date_start', width: 120,
-          filtertype: 'date', cellsformat: 'MM-dd-yyyy HH:mm',
+        { text: 'Scheduled', datafield: 'date_start', width: 90,
+          filtertype: 'date', cellsformat: 'MM/dd HH:mm',
           align: 'center', cellsalign: 'center' },
-        { text: 'Date Done', datafield: 'date_done', width: 120,
-          filtertype: 'date', cellsformat: 'MM-dd-yyyy HH:mm',
+        { text: 'Done', datafield: 'date_done', width: 90,
+          filtertype: 'date', cellsformat: 'MM/dd HH:mm',
           align: 'center', cellsalign: 'center' },
-        { text: 'Time', datafield: 'time', width: 100, filterable: false, sortable: true,
+        { text: 'Total Time', datafield: 'time', width: 90, filterable: false, sortable: true,
           align: 'center', cellsalign: 'center',
           cellsrenderer: function(row_num, row_type, v, defaulthtml, columnproperties, row) {
             var d = moment.duration(v);
@@ -1059,7 +1062,25 @@
             return renderCell(defaulthtml, valueStr)
           }
         },
-        { text: 'Progress', datafield: 'progress', width: 100,
+        { text: 'Worker', datafield: 'worker', width: 100,
+          align: 'center', cellsalign: 'center' },
+        { text: 'Started', datafield: 'date_work_start', width: 90,
+          filtertype: 'date', cellsformat: 'MM/dd HH:mm',
+          align: 'center', cellsalign: 'center' },
+        { text: 'Work Time', datafield: 'work_time', width: 90, filterable: false, sortable: true,
+          align: 'center', cellsalign: 'center',
+          cellsrenderer: function(row_num, row_type, v, defaulthtml, columnproperties, row) {
+            var d = moment.duration(v);
+            if (d._milliseconds < 1000){
+              var valueStr = Math.round(d._milliseconds) + " ms";
+            }
+            else {
+              valueStr = d.format();
+            }
+            return renderCell(defaulthtml, valueStr)
+          }
+        },
+        { text: 'Progress', datafield: 'progress', width: 90,
           cellsrenderer: knob_cellsrenderer,
           align: 'center', cellsalign: 'center' },
         { text: 'Status', datafield: 'status', width: 80,

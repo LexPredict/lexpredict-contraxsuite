@@ -63,8 +63,8 @@ from apps.common.utils import cap_words, export_qs_to_file, download_xls, downlo
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.2/LICENSE"
-__version__ = "1.1.2"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.3/LICENSE"
+__version__ = "1.1.3"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -376,6 +376,13 @@ class AjaxListView(ReviewerQSMixin, AjaxResponseMixin, BaseCustomListView):
         if 'export' in self.request.GET:
             return export_qs_to_file(
                 request, qs=self.get_queryset(), **self.export_params)
+        if request.GET.get('export_to') in ['csv', 'xlsx']:
+            data = self.get_json_data()['data']
+            return self.export(data,
+                               source_name=self.get_export_file_name() or
+                                           self.get_queryset().model.__name__.lower(),
+                               fmt=request.GET.get('export_to'))
+
         if not request.is_ajax():
             self.object_list = []
             context = self.get_context_data()
@@ -404,6 +411,20 @@ class AjaxListView(ReviewerQSMixin, AjaxResponseMixin, BaseCustomListView):
                            for k, v in row.items() if isinstance(v, str))
 
         return data
+
+    def export(self, data, source_name, fmt='xlsx'):
+        data = pd.DataFrame(data).fillna('')
+        data = self.process_export_data(data)
+        if fmt == 'xlsx':
+            return download_xls(data, file_name=source_name)
+        else:
+            return download_csv(data, file_name=source_name)
+
+    def process_export_data(self, data):
+        return data
+
+    def get_export_file_name(self):
+        return
 
 
 class JqPaginatedListView(AjaxListView):
@@ -532,10 +553,11 @@ class JqPaginatedListView(AjaxListView):
         qs = self.get_queryset()    # .distinct()
         total_records = qs.count()
         enable_pagination = json.loads(self.request.GET.get('enable_pagination', 'null'))
-        if not enable_pagination:
+        export_to = self.request.GET.get('export_to')
+        qs = self.filter_and_sort(qs)
+        if export_to or not enable_pagination:
             data = super().get_json_data(qs=qs, **kwargs)
         elif qs.exists():
-            qs = self.filter_and_sort(qs)
             total_records = qs.count()
             qs = self.paginate(qs)
             data = super().get_json_data(qs=qs, **kwargs)
