@@ -51,7 +51,8 @@ import settings
 # Project imports
 from apps.common.fields import StringUUIDField
 from apps.common.models import ReviewStatus, get_default_status
-from apps.document.field_types import FIELD_TYPES_REGISTRY, FIELD_TYPES_CHOICE, ValueExtractionHint
+from apps.document.field_types import FIELD_TYPES_REGISTRY, FIELD_TYPES_CHOICE, ValueExtractionHint, \
+    ORDINAL_EXTRACTION_HINTS
 from apps.document.parsing.extractors import remove_num_separators
 from apps.document.parsing.machine_learning import SkLearnClassifierModel
 from apps.users.models import User
@@ -938,7 +939,7 @@ class DocumentFieldDetector(models.Model):
         field_type = FIELD_TYPES_REGISTRY[self.field.type]
 
         if field_type.ordinal \
-                and self.extraction_hint in ValueExtractionHint.ORDINAL_EXTRACTION_HINTS:
+                and self.extraction_hint in ORDINAL_EXTRACTION_HINTS:
             raise ValidationError(('Cannot take min or max of <Field> because its type is not '
                                    'amount, money, int, float, date, or duration. Please select '
                                    'TAKE_FIRST, TAKE_SECOND, or TAKE_THIRD, or change the field '
