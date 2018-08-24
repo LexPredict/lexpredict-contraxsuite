@@ -59,6 +59,9 @@ from apps.extract import models as extract_models
 _redis = redis.Redis.from_url(url=settings.CELERY_CACHE_REDIS_URL)
 
 
+ORDINAL_EXTRACTION_HINTS = ['TAKE_MIN', 'TAKE_MAX']
+
+
 @unique
 class ValueExtractionHint(Enum):
     TAKE_FIRST = "TAKE_FIRST"
@@ -66,8 +69,6 @@ class ValueExtractionHint(Enum):
     TAKE_LAST = "TAKE_LAST"
     TAKE_MIN = "TAKE_MIN"
     TAKE_MAX = "TAKE_MAX"
-
-    ORDINAL_EXTRACTION_HINTS = ['TAKE_MIN', 'TAKE_MAX']
 
     @staticmethod
     def get_value(l: Union[None, List], hint):
