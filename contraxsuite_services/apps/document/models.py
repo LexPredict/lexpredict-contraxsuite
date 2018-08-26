@@ -980,14 +980,14 @@ class DocumentFieldDetector(models.Model):
     def _matches_exclude_regexp(self, sentence: str) -> bool:
         if self._exclude_matchers:
             for matcher_re in self._exclude_matchers:
-                for m in matcher_re.findall(sentence):
+                for m in matcher_re.finditer(sentence):
                     return True
         return False
 
     def _matches_include_regexp(self, sentence: str) -> bool:
         if self._include_matchers:
             for matcher_re in self._include_matchers:
-                for m in matcher_re.findall(sentence):
+                for m in matcher_re.finditer(sentence):
                     return True
         return False
 

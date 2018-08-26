@@ -984,6 +984,11 @@ class LoadCourts(BaseTask):
         self.push()
 
 
+CACHE_KEY_GEO_CONFIG = 'geo_config'
+CACHE_KEY_COURT_CONFIG = 'court_config'
+CACHE_KEY_TERM_STEMS = 'term_stems'
+
+
 class Locate(BaseTask):
     """
     Locate multiple items
@@ -1012,7 +1017,7 @@ class Locate(BaseTask):
                                                     is_abbreviation=is_abbrev,
                                                     alias_id=alias_id)
         res = list(geo_config.values())
-        DbCache.put_to_db('geo_config', res)
+        DbCache.put_to_db(CACHE_KEY_GEO_CONFIG, res)
 
     @staticmethod
     def cache_court_config(*args, **kwargs):
@@ -1022,7 +1027,7 @@ class Locate(BaseTask):
             priority=0,
             aliases=i.alias.split(';') if i.alias else []
         ) for i in Court.objects.all()]
-        DbCache.put_to_db('court_config', res)
+        DbCache.put_to_db(CACHE_KEY_COURT_CONFIG, res)
 
     @staticmethod
     def cache_term_stems(*args, **kwargs):
@@ -1035,7 +1040,7 @@ class Locate(BaseTask):
         for item in term_stems:
             term_stems[item] = dict(values=term_stems[item],
                                     length=len(term_stems[item]))
-        DbCache.put_to_db('term_stems', term_stems)
+        DbCache.put_to_db(CACHE_KEY_TERM_STEMS, term_stems)
 
     def delete_existing_usages(self, locator_names, document_id):
         # delete ThingUsage and TextUnitTag(tag=thing)
@@ -1218,7 +1223,7 @@ def parse_citation(text, text_unit_id, _text_unit_lang):
 
 
 def parse_court(text, text_unit_id, text_unit_lang, **kwargs):
-    court_config = DbCache.get('court_config')
+    court_config = DbCache.get(CACHE_KEY_COURT_CONFIG)
     found = [dict_entities.get_entity_id(i[0])
              for i in courts.get_courts(text,
                                         court_config_list=court_config,
@@ -1434,7 +1439,7 @@ def parse_url(text, text_unit_id, _text_unit_lang):
 
 
 def parse_geoentity(text, text_unit_id, text_unit_lang, **kwargs):
-    geo_config = DbCache.get('geo_config')
+    geo_config = DbCache.get(CACHE_KEY_GEO_CONFIG)
     priority = kwargs.get('priority', True)
     entity_alias_pairs = list(geoentities.get_geoentities(text,
                                                           geo_config,
@@ -1465,7 +1470,7 @@ def parse_geoentity(text, text_unit_id, text_unit_lang, **kwargs):
 
 
 def parse_term(text, text_unit_id, _text_unit_lang, **kwargs):
-    term_stems = DbCache.get('term_stems')
+    term_stems = DbCache.get(CACHE_KEY_TERM_STEMS)
     text_stems = ' %s ' % ' '.join(get_stems(text, lowercase=True))
     text_tokens = get_token_list(text, lowercase=True)
     term_usages = []

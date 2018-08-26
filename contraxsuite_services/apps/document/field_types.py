@@ -30,7 +30,6 @@ __version__ = "1.1.3"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
-import pickle
 import re
 from datetime import datetime, date
 from enum import Enum, unique
@@ -40,24 +39,18 @@ from typing import List, Union, Tuple
 import dateparser
 import geocoder
 import pyap
-import redis
+from django.db import transaction
 from lexnlp.extract.en.addresses.addresses import get_addresses
 from lexnlp.extract.en.amounts import get_amounts
 from lexnlp.extract.en.dates import get_dates_list
 from lexnlp.extract.en.durations import get_durations
 from lexnlp.extract.en.entities.nltk_maxent import get_companies, get_persons
-from lexnlp.extract.en.money import get_money
 from lexnlp.extract.en.geoentities import get_geoentities
-
-from django.conf import settings
-from django.db import transaction
+from lexnlp.extract.en.money import get_money
 
 from apps.document import models
 from apps.document.parsing.machine_learning import ModelCategory
 from apps.extract import models as extract_models
-
-_redis = redis.Redis.from_url(url=settings.CELERY_CACHE_REDIS_URL)
-
 
 ORDINAL_EXTRACTION_HINTS = ['TAKE_MIN', 'TAKE_MAX']
 
@@ -543,11 +536,20 @@ class AddressField(FieldType):
 
     def _extract_variants_from_text(self, field, text: str, **kwargs):
         addresses = list(pyap.parse(text, country='US'))
+        result = []
 
         if not addresses:
             addresses = list(get_addresses(text))
 
-        return [AddressField._get_from_geocode(address) for address in addresses]
+        resolved_addresses = {}
+        while addresses:
+            address = addresses.pop(0)
+            resolved_address = resolved_addresses.get(address)
+            if resolved_address is None:
+                resolved_address = AddressField._get_from_geocode(address)
+                resolved_addresses[address] = resolved_address
+            result.append(resolved_address)
+        return result
 
     def value_to_string(self, field_value):
         if not field_value:
@@ -730,20 +732,9 @@ class GeographyField(FieldType):
                 text_unit__text__contains=text).values('entity_id', 'entity__name')
 
         if not geo_entities:
-            # try to get geo config from cache
-            geo_config = _redis.get('geo_config')
-            if geo_config:
-                geo_config = pickle.loads(geo_config)
-            else:
-                try:
-                    geo_config_locate_storage_key = _redis.keys('*_locate')[0]
-                    geo_config_locate_storage = pickle.loads(
-                        _redis.get(geo_config_locate_storage_key))
-                    geo_config = geo_config_locate_storage['geoentity']['geo_config']
-                except (KeyError, IndexError):
-                    from apps.task.tasks import Locate
-                    geo_config = Locate.load_geo_config()
-                _redis.set('geo_config', pickle.dumps(geo_config))
+            from apps.task.tasks import CACHE_KEY_GEO_CONFIG
+            from apps.common.advancedcelery.db_cache import DbCache
+            geo_config = DbCache.get(CACHE_KEY_GEO_CONFIG)
 
             text_languages = None
             if document:
