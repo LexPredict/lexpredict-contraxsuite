@@ -938,7 +938,7 @@ class DocumentFieldDetector(models.Model):
                                     'detected_value')):
         field_type = FIELD_TYPES_REGISTRY[self.field.type]
 
-        if field_type.ordinal \
+        if not field_type.ordinal \
                 and self.extraction_hint in ORDINAL_EXTRACTION_HINTS:
             raise ValidationError(('Cannot take min or max of <Field> because its type is not '
                                    'amount, money, int, float, date, or duration. Please select '
