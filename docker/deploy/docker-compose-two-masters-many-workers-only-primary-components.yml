@@ -267,7 +267,7 @@ services:
           - node.labels.role == django
 
   contrax-nginx:
-    image: nginx
+    image: nginx:stable
     networks:
       - contrax_net
     volumes:

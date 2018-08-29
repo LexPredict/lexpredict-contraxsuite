@@ -393,7 +393,7 @@ services:
         constraints: [node.role == manager]
 
   contrax-nginx:
-    image: nginx
+    image: nginx:stable
     networks:
       - contrax_net
     volumes:
