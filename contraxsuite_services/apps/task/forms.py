@@ -80,7 +80,7 @@ class BatchLoadDocumentsForm(forms.Form):
              'Assign Documents to a Project.<br />' \
              'Run standard locators.'
     project = forms.ModelChoiceField(queryset=Project.objects.all(), required=True)
-    source_path = forms.CharField(
+    source_data = forms.CharField(
         max_length=1000,
         required=True,
         help_text='''
