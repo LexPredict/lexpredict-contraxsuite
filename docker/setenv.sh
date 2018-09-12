@@ -23,14 +23,14 @@ export DOCKER_JUPYTER_BASE_URL=/jupyter
 export DOCKER_JUPYTER_HOST_NAME=contrax-jupyter
 export DOCKER_JUPYTER_PORT=8888
 
-export DOCKER_KIBANA_BASE_PATH=
+export DOCKER_KIBANA_BASE_PATH=/kibana
 
 
 export DOCKER_DJANGO_HOST_NAME=localhost
 export DOCKER_DJANGO_EMAIL_BACKEND=django.core.mail.backends.console.EmailBackend
 export DOCKER_DJANGO_EMAIL_HOST=localhost
 # Base path should start and end with slashes
-export DOCKER_DJANGO_BASE_PATH=/
+export DOCKER_DJANGO_BASE_PATH=/advanced/
 export DOCKER_DJANGO_EMAIL_USE_TLS=False
 export DOCKER_DJANGO_EMAIL_PORT=587
 export DOCKER_DJANGO_EMAIL_HOST_USER=
@@ -49,6 +49,7 @@ export DOCKER_DIR=/var/lib/docker
 export DOCKER_NGINX_SERVER_NAME=contrax-nginx
 export DOCKER_NGINX_CERTIFICATE=
 export DOCKER_NGINX_CERTIFICATE_KEY=
+export DOCKER_NGINX_CORS_CONFIG=cors_disable
 
 export DOCKER_FLOWER_BASE_PATH=flower
 export DOCKER_HOST_NAME_FLOWER=contrax-flower
@@ -84,7 +85,8 @@ export DOCKER_BUILD_FLAGS=
 
 export PG_STATISTICS_ENABLED=false
 
-export DOCKER_COMPOSE_FILE=docker-compose-single-master-many-workers.yml
+#export DOCKER_COMPOSE_FILE=docker-compose-single-master-many-workers.yml
+DOCKER_COMPOSE_FILE=docker-compose-single-host.yml
 
 
 if [ -e setenv_local.sh ]

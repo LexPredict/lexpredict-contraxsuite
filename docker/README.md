@@ -1,7 +1,7 @@
 # Contraxsuite: Quick Deployment
 
 This folder contains scripts for fast deploying current 
-latest Contraxsuite release on a clean Ubuntu 16.04 machine.
+latest Contraxsuite release on a clean Ubuntu 16.04 or 18.04 machine.
 
 Contraxsuite application is provided as a Docker image
 freely available at Docker Hub (https://hub.docker.com/r/lexpredict/lexpredict-contraxsuite/)
@@ -10,9 +10,9 @@ required for Contraxsuite (including docker-compose.yml file).
 
 
 ## System Requirements
-* Clean Ubuntu 16.04 (or later - not tested) machine.
-* At least 16GB free space on HDD at /.
-* At least 8GB RAM.
+* Clean Ubuntu 16.04, 18.04 machine.
+* At least 100GB free space on HDD at /.
+* At least 16GB RAM.
 
 ## Installation
 * Unpload/unpack all files of this dir to the machine.
@@ -42,13 +42,15 @@ required for Contraxsuite (including docker-compose.yml file).
   * deploy services configured in ./deploy/docker-compose.yml file.
   
 * Wait few minutes for all components to start (sudo docker service ls).
-  
+Ensure that every service has at least 1 working container.
+Docker Swarm cluster configuration (services, restrictions, e.t.c.) is in the docker-compose file specified
+in setenv.sh (setenv_local.sh) in "DOCKER_COMPOSE_FILE" variable.
 * After the installation is finished:
-  * the Contraxsuite application will be available 
-at **http://localhost:65080**;
+  * the Django-based UI of the Contraxsuite application will be available
+at **http://localhost/advanced/**;
   * Jupyter having access to the Contraxsuite 
-  python code and database will be at **http://localhost:8888**;
-  * Kibana connected to the Contraxsuite ElasticSearch will be at **http://localhost:5601**
+  python code and database will be at **http://localhost/jupyter/**;
+  * Kibana connected to the Contraxsuite ElasticSearch will be at **http://localhost/kibana/**
     * Contraxsuite Django logs are in **logstash*** indexes
     * Documents indexed for search purposes are in **contraxsuite*** indexes. 
 
