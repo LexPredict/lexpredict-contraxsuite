@@ -86,7 +86,7 @@ export DOCKER_BUILD_FLAGS=
 export PG_STATISTICS_ENABLED=false
 
 #export DOCKER_COMPOSE_FILE=docker-compose-single-master-many-workers.yml
-DOCKER_COMPOSE_FILE=docker-compose-single-host.yml
+export DOCKER_COMPOSE_FILE=docker-compose-single-host.yml
 
 
 if [ -e setenv_local.sh ]
