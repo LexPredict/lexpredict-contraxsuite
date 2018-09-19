@@ -1,21 +1,18 @@
 # Contraxsuite Third-party Dependencies Folder
 
-This folder is for licensed third-party dependencies of the Contraxsuite platform.
+This folder is for third-party dependencies of the Contraxsuite platform.
 
 Please put the following files here before running Contraxsuite Docker Image deployment scripts:
-* jqwidgets-example.zip - zipped JQWidgets Library
+* jqwidgets.zip - zipped JQWidgets Library (https://www.jqwidgets.com/download/)
   * jqwidgets
     * globalization
     * styles
     * jqx-all.js
     * ...
-* theme-example.zip - zipped theme
+* theme.zip - zipped theme (https://themeforest.net/item/canvas-the-multipurpose-html5-template/9228123)
   * Package-HTML
     * HTML
       * css
       * images
       * js
       * style.css
-
-
-deploy-contraxsuite-to-swarm-cluster.sh script will first unzip the depedencies to the Docked volume dir and next deploy Contraxsuit Docker images so that they will use the volumes.

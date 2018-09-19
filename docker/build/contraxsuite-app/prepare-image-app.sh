@@ -21,12 +21,17 @@ then
     cat ../../../python-requirements-additional.txt>>./temp/python-requirements-additional.txt
 fi
 
+
+mkdir -p ./temp/contraxsuite_services
+mkdir -p ./temp/static
+mkdir -p ./temp/additionals
+
 mkdir -p ../../../additionals
-cp -r ../../../additionals ./temp/
 
+rsync ../../../additionals/ ./temp/additionals/ -a --copy-links -v
 
-cp -r ../../../contraxsuite_services ./temp/
-cp -r ../../../static ./temp/
+rsync ../../../contraxsuite_services/ ./temp/contraxsuite_services/ -a --copy-links -v
+rsync ../../../static/ ./temp/static/ -a --copy-links -v
 
 # Don't put licensed third-party components into the image
 rm -f -r ./temp/contraxsuite_services/staticfiles

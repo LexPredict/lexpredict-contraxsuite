@@ -37,7 +37,9 @@ echo "=== Creating user shared between Docker containers and host machine..."
 source ./util/install-docker-shared-user.sh
 
 echo "=== Initializing Docker Swarm cluster..."
+set -e
 source ./util/install-docker-swarm.sh
+set +e
 
 echo "=== Pulling contraxsuite image from DockerHub "
 sudo docker pull ${CONTRAXSUITE_IMAGE}

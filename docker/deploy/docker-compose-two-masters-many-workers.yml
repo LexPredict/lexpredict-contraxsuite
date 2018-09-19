@@ -240,6 +240,7 @@ services:
       - contrax_net
     command: ["/start.sh",  "celery"]
     environment:
+      - "DOCKER_CELERY_CONCURRENCY=4"
       - "SHARED_USER_NAME=${SHARED_USER_NAME}"
       - "SHARED_USER_ID=${SHARED_USER_ID}"
       - "DOCKER_HOST_NAME_PG=${DOCKER_HOST_NAME_PG}"
@@ -495,6 +496,7 @@ services:
       - contraxsuite_logs:/data/logs
       - contraxsuite_internal_nginx_logs:/var/log/nginx
       - contraxsuite_notebooks:/contraxsuite_services/notebooks
+      - contraxsuite_jupyter_add_req:/contraxsuite_services/jupyter_add_req
     depends_on:
       - contrax-db
       - contrax-celery
@@ -621,6 +623,7 @@ volumes:
   celery_worker_state:
   contraxsuite_nginx_server_include:
   contraxsuite_additional_fixtures:
+  contraxsuite_jupyter_add_req:
 
 networks:
   contrax_net:
