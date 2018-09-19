@@ -50,17 +50,8 @@ services:
       - contrax-elasticsearch
       - contrax-uwsgi
       - contrax-celery
-
-  contrax-redis:
-    image: redis
-    volumes:
-      - redis_data:/data
-    networks:
-      - contrax_net
     deploy:
-      replicas: 1
-      placement:
-        constraints: [node.role == manager]
+      replicas: 0 # by default we disable mertricbeat for single-host configs to free more resources
 
   contrax-elasticsearch:
     image: docker.elastic.co/elasticsearch/elasticsearch-oss:6.2.4
@@ -112,8 +103,8 @@ services:
       mode: global
       resources:
         limits:
-          cpus: '1'
-          memory: 2GB
+          cpus: '0.5'
+          memory: 1GB
 
   contrax-metricbeat:
     image: docker.elastic.co/beats/metricbeat:6.2.4
@@ -134,7 +125,8 @@ services:
       - contrax-elasticsearch
       - contrax-kibana
     deploy:
-      mode: global
+      # mode: global
+      replicas: 0 # by default we disable mertricbeat for single-host configs to free more resources
       resources:
         limits:
           cpus: '1'
@@ -182,6 +174,9 @@ services:
         limits:
           cpus: '${DOCKER_POSTGRES_CPUS}'
           memory: ${DOCKER_POSTGRES_MEMORY}
+        reservations:
+          cpus: '${DOCKER_POSTGRES_CPU_RESERVATIONS}'
+          memory: ${DOCKER_POSTGRES_MEMORY_RESERVATIONS}
       placement:
         constraints: [node.role == manager]
     #ports: #
@@ -206,6 +201,7 @@ services:
       - contrax_net
     command: ["/start.sh",  "celery"]
     environment:
+      - "DOCKER_CELERY_CONCURRENCY=4"
       - "SHARED_USER_NAME=${SHARED_USER_NAME}"
       - "SHARED_USER_ID=${SHARED_USER_ID}"
       - "DOCKER_HOST_NAME_PG=${DOCKER_HOST_NAME_PG}"
@@ -253,8 +249,8 @@ services:
       mode: global
       resources:
         limits:
-          cpus: '${DOCKER_CELERY_CPUS}'
-          memory: ${DOCKER_CELERY_MEMORY}
+          cpus: '4'
+          memory: 8G
 #      placement:
 #        constraints: [node.role != manager]
 
@@ -377,6 +373,10 @@ services:
       replicas: 1
       placement:
         constraints: [node.role == manager]
+      resources:
+        reservations:
+          cpus: '${DOCKER_UWSGI_CPU_RESERVATIONS}'
+          memory: ${DOCKER_UWSGI_MEMORY_RESERVATIONS}
 
   contrax-nginx:
     image: nginx:stable
@@ -399,6 +399,10 @@ services:
       replicas: 1
       placement:
         constraints: [node.role == manager]
+      resources:
+        reservations:
+          cpus: '${DOCKER_NGINX_CPU_RESERVATIONS}'
+          memory: ${DOCKER_NGINX_MEMORY_RESERVATIONS}
 
   contrax-jupyter:
     image: ${CONTRAXSUITE_IMAGE_FULL_NAME}
@@ -450,6 +454,7 @@ services:
       - contraxsuite_logs:/data/logs
       - contraxsuite_internal_nginx_logs:/var/log/nginx
       - contraxsuite_notebooks:/contraxsuite_services/notebooks
+      - contraxsuite_jupyter_add_req:/contraxsuite_services/jupyter_add_req
     depends_on:
       - contrax-db
       - contrax-celery
@@ -524,7 +529,7 @@ services:
       - contrax-rabbitmq
       - contrax-elasticsearch
     deploy:
-      replicas: 1
+      replicas: 0 # by default we disable flower fo single-host deployments to free resources
       resources:
         limits:
           cpus: '${DOCKER_FLOWER_CPUS}'
@@ -570,6 +575,7 @@ volumes:
   celery_worker_state:
   contraxsuite_nginx_server_include:
   contraxsuite_additional_fixtures:
+  contraxsuite_jupyter_add_req:
 
 networks:
   contrax_net:
