@@ -1,5 +1,12 @@
 #!/bin/bash
 
+export CPU_CORES=$(grep -c ^processor /proc/cpuinfo)
+export CPU_HALF_CORES=$(( ${CPU_CORES} / 2 ))
+export CPU_QUARTER_CORES=$(( ${CPU_CORES} / 4 ))
+export RAM_MB=$(( $(awk '/MemTotal/ {print $2}' /proc/meminfo) / 1024 ))
+export RAM_HALF_MB=$(( ${RAM_MB} / 2 ))
+export RAM_QUARTER_MB=$(( ${RAM_MB} / 4 ))
+
 export CONTRAXSUITE_ROOT=../contraxsuite_services
 
 export DOCKER_HOST_NAME_PG=contrax-db
@@ -44,7 +51,7 @@ export DOCKER_DJANGO_SECRET_KEY=Welcome1
 export DOCKER_DJANGO_ACCOUNT_EMAIL_VERIFICATION=optional
 export DOCKER_DJANGO_THEME_ARCHIVE=./deploy/dependencies/theme.zip
 export DOCKER_DJANGO_JQWIDGETS_ARCHIVE=./deploy/dependencies/jqwidgets.zip
-export DOCKER_DIR=/var/lib/docker
+export DOCKER_DIR=/data/docker
 
 export DOCKER_NGINX_SERVER_NAME=contrax-nginx
 export DOCKER_NGINX_CERTIFICATE=
