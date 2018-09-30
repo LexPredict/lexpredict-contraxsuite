@@ -50,7 +50,6 @@ from django.utils.timezone import now
 from lexnlp.extract.en.definitions import get_definitions_in_sentence
 from simple_history.models import HistoricalRecords
 
-import settings
 # Project imports
 from apps.common.fields import StringUUIDField
 from apps.common.models import get_default_status
