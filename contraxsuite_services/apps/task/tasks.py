@@ -1126,11 +1126,7 @@ def parse_citation(text, text_unit_id, _text_unit_lang):
 
 
 def parse_court(text, text_unit_id, text_unit_lang, **kwargs):
-<<<<<<< HEAD
     court_config = DbCache.get_court_config()
-=======
-    court_config = DbCache.get(CACHE_KEY_COURT_CONFIG)
->>>>>>> 6ef260f3788b25a0df7c5b9a10ce0a74f970ed5b
     found = [dict_entities.get_entity_id(i[0])
              for i in courts.get_courts(text,
                                         court_config_list=court_config,
@@ -1346,11 +1342,7 @@ def parse_url(text, text_unit_id, _text_unit_lang):
 
 
 def parse_geoentity(text, text_unit_id, text_unit_lang, **kwargs):
-<<<<<<< HEAD
     geo_config = DbCache.get_geo_config()
-=======
-    geo_config = DbCache.get(CACHE_KEY_GEO_CONFIG)
->>>>>>> 6ef260f3788b25a0df7c5b9a10ce0a74f970ed5b
     priority = kwargs.get('priority', True)
     entity_alias_pairs = list(geoentities.get_geoentities(text,
                                                           geo_config,
@@ -1381,11 +1373,7 @@ def parse_geoentity(text, text_unit_id, text_unit_lang, **kwargs):
 
 
 def parse_term(text, text_unit_id, _text_unit_lang, **kwargs):
-<<<<<<< HEAD
     term_stems = DbCache.get_term_config()
-=======
-    term_stems = DbCache.get(CACHE_KEY_TERM_STEMS)
->>>>>>> 6ef260f3788b25a0df7c5b9a10ce0a74f970ed5b
     text_stems = ' %s ' % ' '.join(get_stems(text, lowercase=True))
     text_tokens = get_token_list(text, lowercase=True)
     term_usages = []
