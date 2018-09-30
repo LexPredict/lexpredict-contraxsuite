@@ -582,8 +582,26 @@
   // init "csvExport" button
   $(".gridExport li").click(function() {
     var to = $(this).data('export-to');
-    var source = $(this).parents('.gridExport').parent().siblings().find('.jqxgrid').jqxGrid('source');
-    var query_data = source._source.data;
+    var $grid = $(this).parents('.gridExport').parent().siblings().find('.jqxgrid');
+    var source = $grid.jqxGrid('source');
+    var query_data_initial = source._source.data;
+    var query_data = $.extend({}, query_data_initial);
+    var filterinfo = $grid.jqxGrid('getfilterinformation');
+    query_data['filterscount'] = filterinfo.length;
+    for (var i = 0; i < filterinfo.length; i++) {
+        var filter = filterinfo[i];
+        var filterdata = filter.filter.getfilters()[0];
+        query_data['filterdatafield'+i] = filter.filtercolumn;
+        query_data['filteroperator'+i] = filterdata.operator;
+        query_data['filtercondition'+i] = filterdata.condition;
+        query_data['filtervalue'+i] = filterdata.value;
+    }
+    var sortinfo = $grid.jqxGrid('getsortinformation');
+    if (typeof sortinfo.sortcolumn !== 'undefined') {
+      query_data['sortdatafield'] = sortinfo.sortcolumn;
+      query_data['sortorder'] = sortinfo.sortdirection.ascending ? 'asc' : 'desc';
+    }
     query_data['export_to'] = to;
-    window.location.href = source._source.url + '?' + $.param(query_data);
+    window.location.href = source._source.url.replace('#', '') + '?' + $.param(query_data);
+    source._source.data = query_data_initial;
   });

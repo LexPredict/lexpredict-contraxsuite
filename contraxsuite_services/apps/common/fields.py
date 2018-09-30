@@ -24,13 +24,17 @@
 """
 # -*- coding: utf-8 -*-
 
+# Standard imports
+import json
+
 # Django imports
 from django.db.models import UUIDField
+from django.contrib.postgres.fields import JSONField
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.3/LICENSE"
-__version__ = "1.1.3"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.4/LICENSE"
+__version__ = "1.1.4"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -38,3 +42,11 @@ __email__ = "support@contraxsuite.com"
 class StringUUIDField(UUIDField):
     def from_db_value(self, value, *args, **kwargs):
         return str(value) if value else None
+
+
+class CustomJSONField(JSONField):
+    def from_db_value(self, value, *args, **kwargs):
+        try:
+            return json.loads(value)
+        except:
+            return value

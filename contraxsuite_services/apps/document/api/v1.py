@@ -29,7 +29,11 @@ import io
 import json
 import traceback
 from tempfile import NamedTemporaryFile
+from typing import Dict
 
+# Third-party imports
+import numpy as np
+import pandas as pd
 # Django imports
 from django.conf import settings
 from django.conf.urls import url
@@ -37,13 +41,10 @@ from django.contrib.postgres.aggregates.general import StringAgg
 from django.core import serializers as core_serializers
 from django.core.management import call_command
 from django.core.urlresolvers import reverse
-from django.db.models import F, Min, Max,\
-    IntegerField, FloatField, DateField, TextField
+from django.db.models import F, Min, Max, \
+    IntegerField, FloatField, DateField, TextField, Subquery
+from django.db import transaction
 from django.http import JsonResponse, HttpResponse
-
-# Third-party imports
-import numpy as np
-import pandas as pd
 from elasticsearch import Elasticsearch
 from rest_framework import serializers, routers, viewsets, status
 from rest_framework.decorators import detail_route
@@ -58,25 +59,26 @@ from apps.analyze.models import *
 from apps.common.api.permissions import ReviewerReadOnlyPermission
 from apps.common.mixins import (
     SimpleRelationSerializer, JqListAPIMixin, TypeaheadAPIView,
-    NestedKeyTextTransform)
+    NestedKeyTextTransform, APIActionMixin)
 from apps.common.models import ReviewStatus
 from apps.common.utils import get_api_module
-from apps.document.field_types import FIELD_TYPES_REGISTRY
+from apps.document.field_types import FIELD_TYPES_REGISTRY, FieldType
 from apps.document.models import (
     DocumentField, DocumentType, DocumentFieldValue, DocumentFieldDetector,
     DocumentProperty, DocumentNote, DocumentTag, DocumentRelation,
-    TextUnitProperty, TextUnitNote, TextUnitTag, DocumentTypeField)
+    TextUnitProperty, TextUnitNote, TextUnitTag, DocumentTypeField,
+    DocumentTypeFieldCategory)
 from apps.document.tasks import TrainDocumentFieldDetectorModel
+from apps.document.views import show_document
 from apps.extract.models import *
-from apps.task.models import Task
+from apps.project.models import Project
 from apps.task.tasks import call_task_func
 from apps.users.models import User
-from apps.document.views import show_document
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.3/LICENSE"
-__version__ = "1.1.3"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.4/LICENSE"
+__version__ = "1.1.4"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -89,9 +91,19 @@ extract_api_module = get_api_module('extract')
 # Document Views
 # --------------------------------------------------------
 class UserSerializer(serializers.ModelSerializer):
+    full_name = serializers.SerializerMethodField()
+    photo = serializers.SerializerMethodField()
+
     class Meta:
         model = User
-        fields = ['pk', 'first_name', 'last_name', 'username', 'role']
+        fields = ['pk', 'first_name', 'last_name', 'username', 'role',
+                  'photo', 'full_name']
+
+    def get_photo(self, obj):
+        return obj.photo.url if obj.photo else None
+
+    def get_full_name(self, obj):
+        return obj.get_full_name()
 
 
 class BaseDocumentSerializer(SimpleRelationSerializer):
@@ -160,7 +172,7 @@ class DocumentWithFieldsDetailSerializer(BaseDocumentSerializer):
 
     def get_field_value_objects(self, doc):
         field_uids_to_field_value_objects = {}
-        for fv in doc.documentfieldvalue_set.all():
+        for fv in doc.documentfieldvalue_set.filter(removed_by_user=False):
             serialized_fv = DocumentFieldValueSerializer(fv).data
             field = fv.field
             field_uid = field.uid
@@ -174,12 +186,28 @@ class DocumentWithFieldsDetailSerializer(BaseDocumentSerializer):
                 field_uids_to_field_value_objects[field_uid] = serialized_fv
         return field_uids_to_field_value_objects
 
+    def update(self, instance, validated_data):
+        with transaction.atomic():
+            new_status = validated_data.get('status')
+            if new_status is not None and new_status.pk != instance.status_id:
+                is_active = instance.status and instance.status.is_active
+                if new_status.is_active != is_active:
+                    field_ids = DocumentFieldValue.objects \
+                        .filter(document=instance, removed_by_user=False) \
+                        .values('field_id') \
+                        .order_by('field_id') \
+                        .distinct()
+                    DocumentTypeField.objects\
+                        .filter(document_type_id=instance.document_type_id, document_field_id__in=Subquery(field_ids))\
+                        .update(dirty=True)
+            return super().update(instance, validated_data)
+
 
 class DocumentWithFieldsListSerializer(BaseDocumentSerializer):
     """
     Serializer for document list page with document field values
     """
-    search_field_values = serializers.SerializerMethodField()
+    field_values = serializers.SerializerMethodField()
 
     class Meta:
         model = Document
@@ -187,12 +215,21 @@ class DocumentWithFieldsListSerializer(BaseDocumentSerializer):
                   'description', 'title', 'file_size',
                   'status', 'status_data', 'status_name',
                   'assignee', 'assignee_data', 'assignee_name',
-                  'field_values', 'search_field_values']
+                  'field_values']
 
-    def get_search_field_values(self, doc):
-        if not doc.field_values:
+    def get_field_values(self, doc):
+        field_names_to_field_types = self.context.get('field_names_to_field_types')  # type: Dict
+        if not field_names_to_field_types:
             return {}
-        return {k: v for k, v in doc.field_values.items() if hasattr(doc, k.replace('-', '_'))}
+        field_values = {}
+        for field_name, field_type_code in field_names_to_field_types.items():  # type: str, FieldType
+            document_field = field_name.replace('-', '_')
+            if hasattr(doc, document_field):
+                sortable_value = getattr(doc, document_field)
+                field_type = FIELD_TYPES_REGISTRY[field_type_code]
+                representation_value = field_type.decode_from_sortable_to_representation(sortable_value)
+                field_values[field_name] = representation_value
+        return field_values
 
 
 class ExtendedDocumentWithFieldsListSerializer(GenericDocumentSerializer,
@@ -201,41 +238,39 @@ class ExtendedDocumentWithFieldsListSerializer(GenericDocumentSerializer,
     Extended serializer for document list page with document field values
     + values for Generic Contract type document
     """
+
     class Meta:
         model = Document
-        fields = ['pk', 'name', 'document_type', 'cluster_id',
+        fields = ['pk', 'name', 'document_type',
                   'description', 'title', 'file_size',
                   'status', 'status_data', 'status_name',
                   'assignee', 'assignee_data', 'assignee_name',
-                  'field_values', 'search_field_values',
-                  'cluster_id', 'parties',
+                  'field_values', 'cluster_id', 'parties',
                   'min_date', 'max_date',
                   'max_currency_amount', 'max_currency_name']
 
 
-class ExportDocumentWithFieldsListSerializer(ExtendedDocumentWithFieldsListSerializer):
+class ExportDocumentWithFieldsListSerializer(DocumentWithFieldsListSerializer):
+    """
+    Extended serializer for export document list page with document field values
+    """
+    class Meta:
+        model = Document
+        fields = ['pk', 'name', 'description', 'title', 'file_size',
+                  'status_name', 'assignee_name', 'field_values']
+
+
+class ExportExtendedDocumentWithFieldsListSerializer(ExtendedDocumentWithFieldsListSerializer):
     """
     Extended serializer for export document list page with document field values
     + values for Generic Contract type document
     """
-    status_name = serializers.SerializerMethodField()
-    assignee_name = serializers.SerializerMethodField()
-
     class Meta:
         model = Document
-        fields = ['pk', 'name', 'cluster_id',
-                  'description', 'title', 'file_size',
-                  'status_name', 'assignee_name',
-                  'field_values',
-                  'cluster_id', 'parties',
-                  'min_date', 'max_date',
+        fields = ['pk', 'name', 'description', 'title', 'file_size',
+                  'status_name', 'assignee_name', 'field_values',
+                  'cluster_id', 'parties', 'min_date', 'max_date',
                   'max_currency_amount', 'max_currency_name']
-
-    def get_status_name(self, obj):
-        return obj.status.name if obj.status else None
-
-    def get_assignee_name(self, obj):
-        return obj.assignee.get_full_name() if obj.assignee else None
 
 
 class DocumentPermissions(BasePermission):
@@ -261,7 +296,8 @@ class DocumentPermissionViewMixin(object):
         return qs
 
 
-class DocumentViewSet(DocumentPermissionViewMixin, JqListAPIMixin, viewsets.ModelViewSet):
+class DocumentViewSet(DocumentPermissionViewMixin, APIActionMixin,
+                      JqListAPIMixin, viewsets.ModelViewSet):
     """
     list:
         Document List\n
@@ -317,7 +353,7 @@ class DocumentViewSet(DocumentPermissionViewMixin, JqListAPIMixin, viewsets.Mode
     def get_serializer_class(self, *args, **kwargs):
         # if project and project is of Generic Contract type
         if self.request.GET.get('project_id') and \
-                 DocumentType.generic().project_set.filter(pk=self.request.GET['project_id']).exists():
+                DocumentType.generic().project_set.filter(pk=self.request.GET['project_id']).exists():
             return GenericDocumentSerializer
         if self.action == 'list':
             return DocumentWithFieldsListSerializer
@@ -343,8 +379,7 @@ class DocumentViewSet(DocumentPermissionViewMixin, JqListAPIMixin, viewsets.Mode
             date_durations=extract_api_module.TopDateDurationUsageListAPIView,
             definitions=extract_api_module.TopDefinitionUsageListAPIView,
             distances=extract_api_module.TopDistanceUsageListAPIView,
-            geo_entities=extract_api_module.TopGeoEntityUsageListAPIView,
-            geo_aliases=extract_api_module.TopGeoAliasUsageListAPIView,
+            geographies=extract_api_module.TopGeoEntityUsageListAPIView,
             parties=extract_api_module.TopPartyUsageListAPIView,
             percents=extract_api_module.TopPercentUsageListAPIView,
             ratios=extract_api_module.TopRatioUsageListAPIView,
@@ -401,112 +436,105 @@ class DocumentViewSet(DocumentPermissionViewMixin, JqListAPIMixin, viewsets.Mode
         return show_document(request, document.pk)
 
 
-transform_map = {
-    'float': FloatField,
-    'int': IntegerField,
-    'date': DateField,
-    'duration': FloatField,
-    'amount': FloatField,
-    'money': (FloatField, 'amount'),
-    'address': (TextField, 'address'),
-    'geography': (TextField, 'entity__name'),
-}
-
-
-def create_field_annotation(field_uid, field_type):
+def create_field_annotation(field_uid, field_type: FieldType):
     """
     Create annotation for "metadata__field_values__uid__maybe" json field
     """
     _field_uid = field_uid.replace('-', '_')
-    output_field = transform_map.get(field_type, TextField)
+    output_field = FIELD_TYPES_REGISTRY[field_type].get_postgres_transform_map()
+
+    nested_route = [field_uid]
     if isinstance(output_field, tuple):
+        nested_route.extend(output_field[1])
         output_field = output_field[0]
-    transform = NestedKeyTextTransform([field_uid], 'field_values', output_field=output_field())
+
+    transform = NestedKeyTextTransform(nested_route, 'field_values', output_field=output_field())
     transform.key_name = field_uid
     return {_field_uid: transform}
 
 
-def create_full_field_annotation(field_uid, field_type):
+def create_generic_data_annotation(field_code, output_field_class):
     """
     Create annotation for "metadata__field_values__uid__maybe" json field
     """
-    nested_fields = []
-    _field_uid = field_uid.replace('-', '_')
-    output_field = transform_map.get(field_type, TextField)
-    if isinstance(output_field, (tuple, list)):
-        output_field, nested_fields = output_field[:2]
-    if isinstance(nested_fields, str):
-        nested_fields = [nested_fields]
-    nested_fields = ['field_values', field_uid] + nested_fields
-    return {
-        _field_uid: NestedKeyTextTransform(nested_fields, 'metadata', output_field=output_field())}
+    nested_route = [field_code]
+    transform = NestedKeyTextTransform(nested_route, 'generic_data', output_field=output_field_class())
+    transform.key_name = field_code
+    return {field_code: transform}
 
 
-class DocumentWithFieldsViewSet(DocumentPermissionViewMixin, JqListAPIMixin, viewsets.ReadOnlyModelViewSet):
+class ProjectDocumentsWithFieldsViewSet(DocumentPermissionViewMixin, APIActionMixin,
+                                        JqListAPIMixin, viewsets.ReadOnlyModelViewSet):
     """
     list: Document List with Fields
     retrieve: Document Detail with Fields
     """
     queryset = Document.objects.all()
 
+    field_names_to_field_types = None
+
     def get_queryset(self):
 
-        qs = super().get_queryset()
-
-        document_type_pk = self.kwargs.get('document_type_pk')
-        if document_type_pk:
-            qs = qs.filter(document_type__pk=document_type_pk)
-
         project_pk = self.kwargs.get('project_pk')
-        if project_pk:
-            qs = qs.filter(project__pk=project_pk)
-
         cluster_id = self.request.GET.get("cluster_id")
+        field_uids = self.request.GET.get('field_uids')
+        if field_uids:
+            field_uids = field_uids.split(',')
+
+        project = Project.objects.filter(pk=project_pk).select_related('type').get()  # type: Project
+        document_type = project.type  # type: DocumentType
+
+        document_qs = super().get_queryset().filter(project__pk=project_pk)
         if cluster_id:
-            qs = qs.filter(cluster_id=int(cluster_id))
+            document_qs = document_qs.filter(cluster_id=int(cluster_id))
 
-        qs = qs.select_related('document_type', 'status', 'status__group')
+        document_qs = document_qs \
+            .select_related('status', 'status__group') \
+            .defer('language', 'source', 'source_type', 'source_path', 'full_text',
+                   'paragraphs', 'sentences', 'upload_session_id', 'field_values')
 
-        # annotate documents with fields data document.a_field_uid = value
-        # to filter and sort by field values
-        if qs.exists():
-            field_data = DocumentField.objects.filter(
-                search_field_document_type__pk__in=qs.values_list('document_type__pk', flat=True))\
-                .values_list('pk', 'type')
-            for uid, _type in field_data:
-                qs = qs.annotate(**create_field_annotation(uid, _type))
+        if document_type.is_generic():  # if this is a batch project
+            document_qs = document_qs \
+                .annotate(assignee_name=F('assignee__username'),
+                          status_name=F('status__name')) \
+                .annotate(**create_generic_data_annotation('cluster_id', IntegerField)) \
+                .annotate(**create_generic_data_annotation('parties', TextField)) \
+                .annotate(**create_generic_data_annotation('max_currency_amount', FloatField)) \
+                .annotate(**create_generic_data_annotation('max_currency_name', TextField)) \
+                .annotate(**create_generic_data_annotation('min_date', DateField)) \
+                .annotate(**create_generic_data_annotation('max_date', DateField))
+        else:
+            self.field_names_to_field_types = dict()
+            if field_uids:
+                for field_uid, field_type in document_type.fields.filter(pk__in=field_uids).values_list('pk', 'type'):
+                    self.field_names_to_field_types[field_uid] = field_type
+                    document_qs = document_qs.annotate(**create_field_annotation(field_uid, field_type))
+            else:
+                for field_uid, field_type in document_type.search_fields.all().values_list('pk', 'type'):
+                    self.field_names_to_field_types[field_uid] = field_type
+                    document_qs = document_qs.annotate(**create_field_annotation(field_uid, field_type))
 
-        # add extra annotates based on extracted data
-        qs = qs \
-            .annotate(cluster_id=Max('documentcluster'),
-                      assignee_name=F('assignee__username'),
-                      status_name=F('status__name'),
-                      parties=StringAgg('textunit__partyusage__party__name',
-                                        delimiter=', ',
-                                        distinct=True),
-                      max_currency_amount=Max('textunit__currencyusage__amount'),
-                      max_currency_name=Max('textunit__currencyusage__currency'),
-                      min_date=Min('textunit__dateusage__date'),
-                      max_date=Max('textunit__dateusage__date'))
-
-        # !!! this can be ineffective - throws additional queries in Document.get_field_values !!!
-        qs = qs.defer('language', 'source', 'source_type', 'source_path', 'full_text',
-                      'paragraphs', 'sentences', 'upload_session_id')
-
-        return qs
+        return document_qs
 
     def get_extra_data(self, queryset):
         reviewed = queryset.filter(status__is_active=False).count()
         return {'reviewed_total': reviewed}
 
+    def get_serializer_context(self):
+        context = super(ProjectDocumentsWithFieldsViewSet, self).get_serializer_context()
+        context.update({"field_names_to_field_types": self.field_names_to_field_types})
+        return context
+
     def get_serializer_class(self, *args, **kwargs):
         if self.action == 'list':
-            if self.request.GET.get('export_to'):
-                return ExportDocumentWithFieldsListSerializer
             project_pk = self.kwargs.get('project_pk')
             is_generic = DocumentType.generic().project_set.filter(pk=project_pk).exists()
             if is_generic and project_pk:
+                if self.request.GET.get('export_to'):
+                    return ExportExtendedDocumentWithFieldsListSerializer
                 return ExtendedDocumentWithFieldsListSerializer
+            if self.request.GET.get('export_to'):
+                return ExportDocumentWithFieldsListSerializer
             return DocumentWithFieldsListSerializer
         return DocumentWithFieldsDetailSerializer
 
@@ -521,7 +549,7 @@ class DocumentWithFieldsViewSet(DocumentPermissionViewMixin, JqListAPIMixin, vie
         fields = DocumentField.objects.filter(
             field_document_type__project__pk=self.kwargs['project_pk']).values('pk', 'title')
         for field in fields:
-            data[field['title']] = data['field_values'].apply(lambda x: x.get(field['pk']))
+            data[field['title']] = data['field_values'].apply(lambda x: x.get(field['pk']) if x else '')
         return data
 
     @detail_route(methods=['get'])
@@ -608,37 +636,60 @@ class DocumentPropertyViewSet(JqListAPIMixin, viewsets.ModelViewSet):
 # --------------------------------------------------------
 
 class DocumentNoteDetailSerializer(SimpleRelationSerializer):
-    username = serializers.CharField(
-        source='history.last.history_user.username',
-        read_only=True)
-    history = serializers.SerializerMethodField()
-
-    class Meta:
-        model = DocumentNote
-        fields = ['pk', 'note', 'timestamp',
-                  'document__pk', 'document__name',
-                  'document__document_type', 'document__description',
-                  'username', 'history']
-
-    def get_history(self, obj):
-        return obj.history.values(
-            'id', 'document_id', 'history_date',
-            'history_user__username', 'note')
-
-
-class DocumentNoteCreateSerializer(serializers.ModelSerializer):
     document_id = serializers.PrimaryKeyRelatedField(
         source='document', queryset=Document.objects.all())
+    field_value_id = serializers.PrimaryKeyRelatedField(
+        source='field_value', queryset=DocumentFieldValue.objects.all(), required=False)
+    user = UserSerializer(source='history.last.history_user', many=False, read_only=True)
+
+    # history = serializers.SerializerMethodField()
 
     class Meta:
         model = DocumentNote
-        fields = ['pk', 'note', 'document_id']
+        fields = ['pk', 'note', 'timestamp', 'user',
+                  # 'history',
+                  'document_id', 'field_value_id']
+
+        # def get_history(self, obj):
+        #     return obj.history.values(
+        #         'id', 'document_id', 'history_date',
+        #         'history_user__username', 'note')
+
+
+class DocumentNoteCreateSerializer(DocumentNoteDetailSerializer):
+    class Meta:
+        model = DocumentNote
+        fields = ['pk', 'note', 'document_id', 'field_value_id', 'timestamp', 'user']
+        read_only_fields = ('timestamp', 'user')
 
 
 class DocumentNoteUpdateSerializer(serializers.ModelSerializer):
     class Meta:
         model = DocumentNote
         fields = ['note']
+
+
+class DocumentNotePermissions(BasePermission):
+    # def has_permission(self, request, view):
+    #     if request.user.is_reviewer and view.kwargs.get('project_pk'):
+    #         return project_api_module.Project.objects.filter(pk=view.kwargs.get('project_pk'),
+    #                                                          reviewers=request.user).exists()
+    #     return True
+
+    def has_object_permission(self, request, view, obj):
+        if request.user.is_reviewer:
+            return obj.document.project.reviewers.filter(pk=request.user.pk).exists()
+        return True
+
+
+class DocumentNotePermissionViewMixin(object):
+    permission_classes = (IsAuthenticated, DocumentNotePermissions)
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        if self.request.user.is_reviewer:
+            qs = qs.filter(project__reviewers=self.request.user)
+        return qs
 
 
 class DocumentNoteViewSet(JqListAPIMixin, viewsets.ModelViewSet):
@@ -651,6 +702,20 @@ class DocumentNoteViewSet(JqListAPIMixin, viewsets.ModelViewSet):
     delete: Delete Document Note
     """
     queryset = DocumentNote.objects.all()
+
+    def get_queryset(self):
+
+        qs = super().get_queryset()
+
+        project_id = self.request.GET.get('project_id')
+        if project_id:
+            qs = qs.filter(document__project_id=project_id)
+
+        document_id = self.request.GET.get('document_id')
+        if document_id:
+            qs = qs.filter(document_id=document_id)
+
+        return qs
 
     def get_serializer_class(self):
         if self.action == 'create':
@@ -971,20 +1036,35 @@ class TypeaheadDocumentProperty(TypeaheadAPIView):
 
 class DocumentFieldDetailSerializer(SimpleRelationSerializer):
     calculated = serializers.SerializerMethodField()
+    category = serializers.SerializerMethodField()
 
     class Meta:
         model = DocumentField
         fields = ['uid', 'code', 'title', 'description', 'type', 'choices', 'calculated',
-                  'formula', 'modified_by__username', 'modified_date']
+                  'formula', 'modified_by__username', 'modified_date',
+                  'category', 'confidence', 'requires_text_annotations']
 
     def get_calculated(self, obj):
         return bool(obj.is_calculated())
+
+    def get_category(self, obj):
+        try:
+            # import ipdb;ipdb.set_trace()
+            # view_object = self.context['view'].get_object()
+            # if isinstance(view_object, DocumentType):
+            #     # get only one type-field category as many categories for that relation
+            #     # probably means wrong fields distribution
+            #     category = obj.documenttypefield_set.get(document_type=view_object).category.last()
+            #     return DocumentTypeFieldCategorySerializer(category, many=False).data
+            return None
+        except AttributeError:
+            return None
 
 
 class DocumentFieldCreateSerializer(serializers.ModelSerializer):
     class Meta:
         model = DocumentField
-        fields = ['uid', 'code', 'title', 'description', 'type', 'choices']
+        fields = ['uid', 'code', 'title', 'description', 'type', 'choices', 'confidence', 'requires_text_annotations']
 
 
 class DocumentFieldViewSet(JqListAPIMixin, viewsets.ModelViewSet):
@@ -1009,17 +1089,47 @@ class DocumentFieldViewSet(JqListAPIMixin, viewsets.ModelViewSet):
 # Document Type Views
 # --------------------------------------------------------
 
+class DocumentTypeFieldCategorySerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = DocumentTypeFieldCategory
+        fields = ['pk', 'name', 'order']
+
+
+class DocumentTypeFieldSerializer(serializers.ModelSerializer):
+    field_data = DocumentFieldDetailSerializer(
+        source='document_field', many=False, read_only=True)
+    category = DocumentTypeFieldCategorySerializer(many=False, read_only=True)
+
+    class Meta:
+        model = DocumentType
+        fields = ['field_data', 'category']
+
+
 class DocumentTypeDetailSerializer(SimpleRelationSerializer):
-    fields_data = DocumentFieldDetailSerializer(
-        source='fields', many=True, read_only=True)
+    field_type_data = DocumentTypeFieldSerializer(
+        source='documenttypefield_set', many=True, read_only=True)
+    # fields_data = DocumentFieldDetailSerializer(
+    #     source='fields', many=True, read_only=True)
     search_fields_data = DocumentFieldDetailSerializer(
         source='search_fields', many=True, read_only=True)
 
     class Meta:
         model = DocumentType
         fields = ['uid', 'code', 'title',
-                  'fields_data', 'search_fields_data',
+                  'field_type_data', 'search_fields_data',
                   'modified_by__username', 'modified_date']
+
+    def to_representation(self, instance):
+        ret = dict(super().to_representation(instance))
+        fields_data = []
+        field_type_data = ret.pop('field_type_data')
+        for field in field_type_data:
+            field_data = field['field_data']
+            field_data['category'] = field['category']
+            fields_data.append(field_data)
+        ret['fields_data'] = fields_data
+        return ret
 
 
 class DocumentTypeCreateSerializer(serializers.ModelSerializer):
@@ -1037,8 +1147,8 @@ class DocumentTypeViewSet(JqListAPIMixin, viewsets.ModelViewSet):
     partial_update: Partial Update Document Type
     delete: Delete Document Type
     """
-    queryset = DocumentType.objects.select_related('modified_by')\
-        .prefetch_related('fields', 'search_fields')
+    queryset = DocumentType.objects.select_related('modified_by') \
+        .prefetch_related('fields', 'search_fields', 'documenttypefield_set')
     permission_classes = (ReviewerReadOnlyPermission,)
 
     def get_serializer_class(self):
@@ -1496,14 +1606,14 @@ document_type_router = routers.SimpleRouter()
 document_type_router.register(r'document-types', DocumentTypeViewSet, 'document-types')
 document_via_type_router = nested_routers.NestedSimpleRouter(
     document_type_router, r'document-types', lookup='document_type', trailing_slash=True)
-document_via_type_router.register(r'documents', DocumentWithFieldsViewSet, 'documents')
+document_via_type_router.register(r'documents', ProjectDocumentsWithFieldsViewSet, 'documents')
 
 # route documents via project
 project_router = routers.SimpleRouter()
 project_router.register(r'project', project_api_module.ProjectViewSet, 'project')
 document_via_project_router = nested_routers.NestedSimpleRouter(
     project_router, r'project', lookup='project', trailing_slash=True)
-document_via_project_router.register(r'documents', DocumentWithFieldsViewSet, 'documents')
+document_via_project_router.register(r'documents', ProjectDocumentsWithFieldsViewSet, 'documents')
 
 api_routers = [main_router, document_type_router,
                document_via_type_router, document_via_project_router]

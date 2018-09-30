@@ -28,6 +28,11 @@
 import io
 import json
 import traceback
+import coreapi
+import coreschema
+from rest_framework import schemas
+
+
 from tempfile import NamedTemporaryFile
 
 # Django imports
@@ -37,17 +42,20 @@ from django.core.management import call_command
 from django.http import HttpResponse
 
 # Third-party imports
+from rest_framework import serializers, generics
 from rest_framework.views import APIView
 from rest_framework.response import Response
+from rest_framework.parsers import FileUploadParser
 
 # Project imports
-from apps.dump.app_dump import get_full_dump, get_field_values_dump
+from apps.dump.app_dump import get_full_dump, get_field_values_dump,\
+    get_model_fixture_dump, load_fixture_from_dump, download
 
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.3/LICENSE"
-__version__ = "1.1.3"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.4/LICENSE"
+__version__ = "1.1.4"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -121,7 +129,78 @@ class FieldValuesDumpAPIView(APIView):
                                 status=400)
 
 
+class DumpFixtureSerializer(serializers.Serializer):
+    app_name = serializers.CharField(required=True)
+    model_name = serializers.CharField(required=True)
+    file_name = serializers.CharField(required=True)
+    filter_options = serializers.JSONField()
+
+
+class DumpFixtureAPIView(generics.CreateAPIView):
+
+    schema = schemas.ManualSchema(fields=[
+        coreapi.Field(
+            "app_name",
+            required=True,
+            location="form",
+            schema=coreschema.String(max_length=10)
+        ),
+        coreapi.Field(
+            "model_name",
+            required=True,
+            location="form",
+            schema=coreschema.String(max_length=50)
+        ),
+        coreapi.Field(
+            "filter_options",
+            required=False,
+            location="form",
+            schema=coreschema.Object()
+        ),
+        coreapi.Field(
+            "file_name",
+            required=True,
+            location="form",
+            schema=coreschema.String(max_length=50)
+        ),
+    ])
+
+    def post(self, request, *args, **kwargs):
+        """
+        Download model fixture
+        """
+        serializer = DumpFixtureSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response('Data is not valid')
+        form_data = serializer.data
+        file_name = form_data.pop('file_name')
+        json_data = get_model_fixture_dump(**form_data)
+        return download(json_data, file_name)
+
+
+class LoadFixtureSerializer(serializers.Serializer):
+    fixture_file = serializers.FileField(required=True)
+
+
+class LoadFixtureAPIView(generics.CreateAPIView):
+    serializer_class = LoadFixtureSerializer
+    parser_classes = (FileUploadParser,)
+
+    def post(self, request, *args, **kwargs):
+        """
+        Install model fixtures
+        """
+        file_ = request.FILES.dict().get('file')
+        data = file_.read()
+        mode = request.POST.get('mode', 'default')
+        res = load_fixture_from_dump(data, mode)
+        status = 200 if res['status'] == 'success' else 400
+        return Response(res, status=status)
+
+
 urlpatterns = [
     url(r'dump/', DumpConfigView.as_view(), name='dump'),
     url(r'field-values/', FieldValuesDumpAPIView.as_view(), name='field-values'),
+    url(r'dump-fixture/', DumpFixtureAPIView.as_view(), name='dump-fixture'),
+    url(r'load-fixture/', LoadFixtureAPIView.as_view(), name='load-fixture'),
 ]

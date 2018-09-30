@@ -31,10 +31,10 @@ import uuid
 # Django imports
 from django.conf import settings
 from django.contrib.postgres.fields import JSONField
-from django.core.mail import send_mail, get_connection, EmailMultiAlternatives
+from django.core.mail import send_mail
 from django.db import models
 from django.db.models import Count, Max
-from django.db.models.signals import m2m_changed
+from django.db.models.signals import m2m_changed, post_save
 from django.dispatch import receiver
 from django.template.loader import render_to_string
 
@@ -47,8 +47,8 @@ from apps.users.models import User
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.3/LICENSE"
-__version__ = "1.1.3"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.4/LICENSE"
+__version__ = "1.1.4"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -281,7 +281,8 @@ class Project(models.Model):
     def last_session(self, create=True, created_by=None):
         session = self.uploadsession_set.order_by('created_date').last()
         if not session and create:
-            session = UploadSession.objects.create(project=self, created_by=created_by)
+            _ = UploadSession.objects.create(project=self, created_by=created_by)
+            return self.last_session(created_by=created_by)
         return session
 
     @property
@@ -360,36 +361,30 @@ class Project(models.Model):
         # delete UploadSessions
         project.uploadsession_set.all().delete()
 
+        # delete Documents
+        project.document_set.all().delete()
+
         # delete project itself
         if delete:
             project.delete()
 
 
-@receiver(m2m_changed, sender=Project.super_reviewers.through)
-def super_reviewers_changed(instance, action, **kwargs):
-    if action == 'post_add':
-        all_reviewers_pk = set(instance.reviewers.values_list('pk', flat=True))
-        super_reviewers_pk = set(instance.super_reviewers.values_list('pk', flat=True))
-        extra_pk = super_reviewers_pk - all_reviewers_pk
+@receiver(post_save, sender=Project)
+def reviewers_total(sender, instance, **kwargs):
+    all_reviewers_pk = set(instance.reviewers.values_list('pk', flat=True))
+    super_reviewers_pk = set(instance.super_reviewers.values_list('pk', flat=True))
+    extra_pk = super_reviewers_pk - all_reviewers_pk
+    if extra_pk:
         instance.reviewers.add(*extra_pk)
-
-
-@receiver(m2m_changed, sender=Project.reviewers.through)
-def reviewers_changed(instance, action, **kwargs):
-    if action == 'post_remove':
-        all_reviewers_pk = set(instance.reviewers.values_list('pk', flat=True))
-        super_reviewers_pk = set(instance.super_reviewers.values_list('pk', flat=True))
-        extra_pk = super_reviewers_pk - all_reviewers_pk
-        instance.super_reviewers.remove(*extra_pk)
+    if not instance.owners.exists() and getattr(instance, 'latest_removed', []):
+        instance.owners.add(instance.latest_removed.pop())
 
 
 @receiver(m2m_changed, sender=Project.owners.through)
 def owners_changed(instance, action, **kwargs):
     if action == 'post_remove':
         if not instance.owners.exists():
-            removed = kwargs.get('pk_set', {})
-            if removed:
-                instance.owners.add(removed.pop())
+            instance.latest_removed = kwargs.get('pk_set', {})
 
 
 class UploadSession(models.Model):

@@ -3,6 +3,18 @@
 
 {% block extrastyle %}
     <link rel="shortcut icon" href="{% static "images/favicon.ico" %}">
+    <style>
+      .form-horizontal .control-group .controls .selector .selector-available,
+      .form-horizontal .control-group .controls .selector .selector-chosen {
+        width: auto;
+        min-width: 206px;
+        max-width: none;
+      }
+      select option {
+        width: auto;
+        max-width: none;
+      }
+    </style>
 {% endblock %}
 
 {% block branding %}

@@ -47,8 +47,8 @@ from urls import custom_apps
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.3/LICENSE"
-__version__ = "1.1.3"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.4/LICENSE"
+__version__ = "1.1.4"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -80,7 +80,7 @@ class ClusterProjectDocuments(BaseTask):
         self.log_info('Start clustering documents for project id={}'.format(project_id))
         self.log_info('Clustering method: "{}", n_clusters={}'.format(method, n_clusters))
 
-        self.set_push_steps(3)
+        self.set_push_steps(4)
 
         # get documents data
         documents = Document.objects.filter(project_id=project_id)
@@ -142,13 +142,13 @@ class ClusterProjectDocuments(BaseTask):
                 threshold=0.5,
                 branching_factor=50)
         elif method == 'MiniBatchKMeans':
-                m = MiniBatchKMeans(
-                    n_clusters=n_clusters,
-                    init='k-means++',
-                    n_init=1,
-                    init_size=100,
-                    batch_size=100,
-                    verbose=False)
+            m = MiniBatchKMeans(
+                n_clusters=n_clusters,
+                init='k-means++',
+                n_init=1,
+                init_size=100,
+                batch_size=100,
+                verbose=False)
         else:
             method = 'KMeans'
             m = KMeans(
@@ -202,7 +202,7 @@ class ClusterProjectDocuments(BaseTask):
                 cluster_label = '-'.join(cluster_label[:5])
             cluster = DocumentCluster.objects.create(
                 cluster_id=cluster_id,
-                name='Project id={}'.format(project.pk if project else None),
+                name='Default({})'.format(project.pk if project else None),
                 self_name=cluster_label,
                 description='Cluster Project (id={}) with Multiple Contract Types'.format(
                     project_id),
@@ -227,8 +227,13 @@ class ClusterProjectDocuments(BaseTask):
         project_clustering.save()
 
         self.push()
-        self.log_info('Clustering completed')
+        self.log_info('Clustering completed. Updating document cache.')
 
+        for doc in Document.objects.filter(project__pk=project_id):
+            doc.cache_generic_values()
+
+        self.push()
+        self.log_info('Finished.')
         return result
 
 
@@ -298,8 +303,8 @@ class ReassignProjectClusterDocuments(BaseTask):
                     sub_tasks.append(sub_task)
             self.chord(sub_tasks)
 
-        # TODO: metadata[project_id] in tasks related with reassigned documents
-        # TODO: should be updated to new project id value?
+            # TODO: metadata[project_id] in tasks related with reassigned documents
+            # TODO: should be updated to new project id value?
 
 
 class CleanProject(BaseTask):
@@ -310,11 +315,12 @@ class CleanProject(BaseTask):
     name = 'Clean Project'
 
     def process(self, **kwargs):
-        project_id = kwargs.get('project_id')
+        project_id = kwargs.get('_project_id')
+        delete = bool(kwargs.get('delete'))
         project = Project.objects.get(pk=project_id)
 
         # delete project and related objects
-        project.cleanup()
+        project.cleanup(delete=delete)
 
         # store data about cleanup in ProjectCleanup Task
         task_model = self.task

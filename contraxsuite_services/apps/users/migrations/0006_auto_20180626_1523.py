@@ -7,8 +7,11 @@ from django.db import migrations, models
 import django.db.models.deletion
 
 
-class Migration(migrations.Migration):
+def get_default_role_pk():
+    return apps.users.models.Role.objects.first().pk
 
+
+class Migration(migrations.Migration):
     dependencies = [
         ('users', '0005_migrate_users_20180626_1514'),
     ]
@@ -17,6 +20,7 @@ class Migration(migrations.Migration):
         migrations.AlterField(
             model_name='user',
             name='role',
-            field=models.ForeignKey(default=apps.users.models.Role.get_default_role, on_delete=django.db.models.deletion.CASCADE, to='users.Role'),
+            field=models.ForeignKey(default=get_default_role_pk, on_delete=django.db.models.deletion.CASCADE,
+                                    to='users.Role'),
         ),
     ]

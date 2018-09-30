@@ -27,21 +27,24 @@
 import datetime
 # Standard imports
 import os
-import sys, traceback
 import pickle
 import re
+import sys
+import traceback
 import uuid
 from typing import Union, List, Dict, Any
 
 # Django imports
 from ckeditor.fields import RichTextField
 from django.conf import settings
+from django.contrib.postgres.aggregates.general import StringAgg
 from django.contrib.postgres.fields import JSONField
 from django.core.exceptions import ValidationError
 from django.core.serializers.json import DjangoJSONEncoder
 from django.core.validators import MinValueValidator
 from django.db import models
-from django.db.models import Q, Count
+from django.db.models import Count
+from django.db.models import Min, Max
 from django.dispatch import receiver
 from django.utils.timezone import now
 from lexnlp.extract.en.definitions import get_definitions_in_sentence
@@ -50,16 +53,17 @@ from simple_history.models import HistoricalRecords
 import settings
 # Project imports
 from apps.common.fields import StringUUIDField
-from apps.common.models import ReviewStatus, get_default_status
-from apps.document.field_types import FIELD_TYPES_REGISTRY, FIELD_TYPES_CHOICE, ValueExtractionHint
+from apps.common.models import get_default_status
+from apps.document.field_types import FIELD_TYPES_REGISTRY, FIELD_TYPES_CHOICE, ValueExtractionHint, \
+    ORDINAL_EXTRACTION_HINTS
 from apps.document.parsing.extractors import remove_num_separators
 from apps.document.parsing.machine_learning import SkLearnClassifierModel
 from apps.users.models import User
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.3/LICENSE"
-__version__ = "1.1.3"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.4/LICENSE"
+__version__ = "1.1.4"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -94,7 +98,6 @@ class TimeStampedModel(models.Model):
 
 
 class DocumentFieldFormulaError(RuntimeError):
-
     def __init__(self, field_code, formula, field_values):
         exc_type, exc_obj, exc_tb = sys.exc_info()
         self.base_error = exc_obj
@@ -115,7 +118,9 @@ class DocumentField(TimeStampedModel):
 
     DocumentField describes manually created custom field for a document.
     """
-    DOCUMENT_FIELD_TYPES = ((i, i) for i in sorted(FIELD_TYPES_REGISTRY))
+    DOCUMENT_FIELD_TYPES = ((i, FIELD_TYPES_REGISTRY[i].title or i) for i in sorted(FIELD_TYPES_REGISTRY))
+    CONFIDENCE = ('High', 'Medium', 'Low')
+    CONFIDENCE_CHOICES = ((i, i) for i in CONFIDENCE)
 
     KIND_REQUIRED_FOR_CALCULATIONS = 'required_for_calculations'
     KIND_CALCULATED = 'calculated'
@@ -139,11 +144,18 @@ class DocumentField(TimeStampedModel):
     type = models.CharField(max_length=30, choices=DOCUMENT_FIELD_TYPES,
                             default='string', db_index=True)
 
+    python_coded_field = models.CharField(max_length=100, db_index=True, null=True, blank=True)
+
     formula = models.TextField(null=True, blank=True)
 
     value_regexp = models.TextField(null=True, blank=True)
 
     depends_on_fields = models.ManyToManyField('self', blank=True, related_name='affects_fields')
+
+    confidence = models.CharField(max_length=100, choices=CONFIDENCE_CHOICES,
+                                  default='Medium', db_index=True)
+
+    requires_text_annotations = models.BooleanField(default=True, null=False, blank=False)
 
     def is_calculated(self):
         return self.formula and self.formula.strip()
@@ -262,7 +274,6 @@ class DocumentType(TimeStampedModel):
 
 
 class DocumentTypeFieldManager(models.Manager):
-
     def set_dirty_for_value(self, value):
         document_type_field = self.get(document_field_id=value.field_id,
                                        document_type_id=value.document.document_type_id)
@@ -283,6 +294,28 @@ class DocumentTypeFieldManager(models.Manager):
     def get_user_delay():
         return now() - datetime.timedelta(seconds=settings.RETRAINING_DELAY_IN_SEC)
 
+    def get_document_type_field(self, document_type_uid, field_uid):
+        return self.get(document_type__pk=document_type_uid, document_field__pk=field_uid)
+
+
+class DocumentTypeFieldCategory(models.Model):
+
+    name = models.CharField(max_length=100, db_index=True)
+    #
+    # type_fields = models.ManyToManyField(DocumentTypeField, db_index=True, related_name='category')
+
+    order = models.IntegerField(default=0)
+
+    class Meta:
+        verbose_name_plural = 'Document Type Field Categories'
+        ordering = ('order', 'name')
+
+    def __str__(self):
+        return self.name
+
+    def __repr__(self):
+        return "{1} (#{0})".format(self.pk, self.name)
+
 
 class DocumentTypeField(models.Model):
     document_type = models.ForeignKey(DocumentType, on_delete=models.CASCADE,
@@ -290,6 +323,8 @@ class DocumentTypeField(models.Model):
 
     document_field = models.ForeignKey(DocumentField, on_delete=models.CASCADE,
                                        db_column='documentfield_id')
+
+    category = models.ForeignKey(DocumentTypeFieldCategory, blank=True, null=True, db_index=True)
 
     training_finished = models.BooleanField(default=False)
 
@@ -315,14 +350,14 @@ class DocumentTypeField(models.Model):
         ]
 
     def __str__(self):
-        return 'Document type field'
+        return 'DocumentTypeField type:{} field:{}'.format(self.document_type.code, self.document_field.code)
 
     def can_retrain(self):
         return self.dirty and not self.training_finished and \
                self.modified_date < DocumentTypeFieldManager.get_user_delay() and not self.use_regexp_always
 
 
-class DocketManager(models.Manager):
+class DocumentManager(models.Manager):
     def active(self):
         return self.filter(status__is_active=True)
 
@@ -364,10 +399,13 @@ class Document(models.Model):
     sentences = models.PositiveIntegerField(default=0, null=False)
 
     # Document metadata from original file
-    metadata = JSONField(blank=True)
+    metadata = JSONField(blank=True, encoder=DjangoJSONEncoder)
 
-    # Synced Document Field Values
-    field_values = JSONField(blank=True, null=True)
+    # Cache of document field values for document grid/list output purposes
+    field_values = JSONField(blank=True, null=True, encoder=DjangoJSONEncoder)
+
+    # Cache of generic document values like: max_currency_amount, cluster id e.t.c. for showing in batch project grids
+    generic_data = JSONField(blank=True, null=True, encoder=DjangoJSONEncoder)
 
     # Document title
     title = models.CharField(max_length=1024, db_index=True, null=True)
@@ -376,7 +414,7 @@ class Document(models.Model):
     history = HistoricalRecords(excluded_fields=['full_text'])
 
     # apply custom objects manager
-    objects = DocketManager()
+    objects = DocumentManager()
 
     document_type = models.ForeignKey(DocumentType, blank=True, null=True, db_index=True)
 
@@ -392,7 +430,9 @@ class Document(models.Model):
 
     class Meta:
         ordering = ('name',)
-        unique_together = ('name', 'source',)
+        # commented out it as it doesn't allow to upload
+        # the same documents (having the same source) into two different projects
+        # unique_together = ('name', 'source',)
 
     def __str__(self):
         return self.name
@@ -407,9 +447,7 @@ class Document(models.Model):
 
     @property
     def available_assignees(self):
-        return User.objects.filter(
-            Q(project_owners=self.project) |
-            Q(project_reviewers=self.project))
+        return self.project.owners.all().union(self.project.reviewers.all()).distinct()
 
     def set_language_from_text_units(self):
         langs = self.textunit_set \
@@ -422,42 +460,52 @@ class Document(models.Model):
             self.language = lang
             self.save()
 
-    def get_field_values(self, save=False):
+    def cache_field_values(self):
         # TODO: get/save field value for specific field
         all_fields = self.document_type.fields.all()
         fields_to_field_values = {f: None for f in all_fields}
 
         for fv in self.documentfieldvalue_set.filter(removed_by_user=False):
             field = fv.field
-            field_type = FIELD_TYPES_REGISTRY[fv.field.type]
-            if field_type.multi_value:
-                if fields_to_field_values.get(field) is None:
-                    fields_to_field_values[field] = [fv.value]
-                else:
-                    fields_to_field_values[field].append(fv.value)
-            else:
-                fields_to_field_values[field] = fv.value
+            field_type = FIELD_TYPES_REGISTRY[fv.field.type]  # type: FieldType
+            fields_to_field_values[field] = field_type \
+                .merge_multi_values(fields_to_field_values.get(field), fv.value)
 
         field_uids_to_field_values = {}
+        calculated_fields_errors = {}
 
         for f in all_fields:
             if f.is_calculated():
-                field_uids_to_field_values[f.uid] = f.calculate(fields_to_field_values)
+                try:
+                    v = f.calculate(fields_to_field_values)
+                except DocumentFieldFormulaError as e:
+                    field_uids_to_field_values[f.uid] = None
+                    calculated_fields_errors[f.uid] = str(e)
+                    continue
             else:
-                field_uids_to_field_values[f.uid] = fields_to_field_values[f]
+                v = fields_to_field_values[f]
+            field_type = FIELD_TYPES_REGISTRY[f.type]  # type: FieldType
+            field_uids_to_field_values[f.uid] = field_type.encode_to_sortable_document_field_value(v)
 
-        if save:
-            self.field_values = field_uids_to_field_values
-            self.save()
+        self.field_values = field_uids_to_field_values
+        self.save()
 
-        return field_uids_to_field_values
+        return field_uids_to_field_values, calculated_fields_errors or None
 
-    @property
-    def _field_values(self):
-        _field_values = self.field_values
-        if _field_values is None:
-            _field_values = self.get_field_values(save=True)
-        return _field_values
+    def cache_generic_values(self):
+        document_qs = Document.objects.filter(pk=self.pk) \
+            .annotate(cluster_id=Max('documentcluster'),
+                      parties=StringAgg('textunit__partyusage__party__name',
+                                        delimiter=', ',
+                                        distinct=True),
+                      max_currency_amount=Max('textunit__currencyusage__amount'),
+                      max_currency_name=Max('textunit__currencyusage__currency'),
+                      min_date=Min('textunit__dateusage__date'),
+                      max_date=Max('textunit__dateusage__date'))
+        values = document_qs.values('cluster_id', 'parties', 'max_currency_amount', 'max_currency_name', 'min_date',
+                                    'max_date').first()
+        self.generic_data = values
+        self.save(update_fields=['generic_data'])
 
     def is_completed(self):
         return self.status.is_active
@@ -590,6 +638,9 @@ class DocumentNote(models.Model):
 
     # Document
     document = models.ForeignKey(Document, db_index=True)
+
+    # Document Field Value
+    field_value = models.ForeignKey('document.DocumentFieldValue', blank=True, null=True, db_index=True)
 
     # Document timestamp
     timestamp = models.DateTimeField(default=now, db_index=True)
@@ -807,10 +858,10 @@ class DocumentFieldValue(TimeStampedModel):
     value = JSONField(blank=True, null=True, encoder=DjangoJSONEncoder)
 
     # source text start position
-    location_start = models.PositiveIntegerField()
+    location_start = models.PositiveIntegerField(null=True, blank=True)
 
     # source text end position
-    location_end = models.PositiveIntegerField()
+    location_end = models.PositiveIntegerField(null=True, blank=True)
 
     # source text
     location_text = models.TextField(null=True, blank=True)
@@ -842,21 +893,6 @@ class DocumentFieldValue(TimeStampedModel):
     def __repr__(self):
         return "{0}.{1} = {2} (#{3})" \
             .format(self.document.name, self.field.code, str(self.value)[:40], self.id)
-
-
-@receiver(models.signals.post_delete, sender=DocumentFieldValue)
-def delete_dfv(sender, instance, **kwargs):
-    # delete history
-    instance.history.all().delete()
-    document = instance.document
-    document.get_field_values(save=True)
-
-
-@receiver(models.signals.post_save, sender=DocumentFieldValue)
-def save_dfv(sender, instance, **kwargs):
-    # update document.metadata.field_values
-    document = instance.document
-    document.get_field_values(save=True)
 
 
 class ExternalFieldValue(TimeStampedModel):
@@ -937,8 +973,8 @@ class DocumentFieldDetector(models.Model):
                                     'detected_value')):
         field_type = FIELD_TYPES_REGISTRY[self.field.type]
 
-        if field_type.ordinal \
-                and self.extraction_hint in ValueExtractionHint.ORDINAL_EXTRACTION_HINTS:
+        if not field_type.ordinal \
+                and self.extraction_hint in ORDINAL_EXTRACTION_HINTS:
             raise ValidationError(('Cannot take min or max of <Field> because its type is not '
                                    'amount, money, int, float, date, or duration. Please select '
                                    'TAKE_FIRST, TAKE_SECOND, or TAKE_THIRD, or change the field '
@@ -979,14 +1015,14 @@ class DocumentFieldDetector(models.Model):
     def _matches_exclude_regexp(self, sentence: str) -> bool:
         if self._exclude_matchers:
             for matcher_re in self._exclude_matchers:
-                for m in matcher_re.findall(sentence):
+                for m in matcher_re.finditer(sentence):
                     return True
         return False
 
     def _matches_include_regexp(self, sentence: str) -> bool:
         if self._include_matchers:
             for matcher_re in self._include_matchers:
-                for m in matcher_re.findall(sentence):
+                for m in matcher_re.finditer(sentence):
                     return True
         return False
 
@@ -1053,6 +1089,24 @@ class ClassifierModel(models.Model):
     document_field = models.ForeignKey(DocumentField, db_index=True, null=True, blank=True)
 
     trained_model = models.BinaryField(null=True, blank=True)
+
+    total_field_value_samples = models.IntegerField(null=True, blank=True)
+
+    total_samples = models.IntegerField(null=True, blank=True)
+
+    test_valid_fields_metric = models.DecimalField(max_digits=12, decimal_places=9, null=True, blank=True)
+
+    test_wrong_fields_metric = models.DecimalField(max_digits=12, decimal_places=9, null=True, blank=True)
+
+    test_sentences_number = models.IntegerField(null=True, blank=True)
+
+    test_values_number = models.IntegerField(null=True, blank=True)
+
+    predicted_valid_values_number = models.IntegerField(null=True, blank=True)
+
+    predicted_wrong_values_number = models.IntegerField(null=True, blank=True)
+
+    able_to_predict = models.IntegerField(null=True, blank=True)
 
     def get_trained_model_obj(self) -> Union[SkLearnClassifierModel, None]:
         if not self.trained_model:

@@ -117,6 +117,9 @@
     .disabled {
       opacity: 0.3
     }
+    input[type="file"] {
+      height: 100% !important;
+    }
   </style>
 {% endblock %}
 
@@ -225,6 +228,35 @@
           Update Elasticsearch Index</a>
       </li>
       <li class="divider"></li>
+      <li class="dropdown-submenu">
+        <a class="dropdown-item" href="#" tabindex="-1">
+          <i class="fa fa-database"></i> Fixtures</a>
+        <ul class="dropdown-menu">
+
+          <li class="dropdown-item">
+            <a class="task" href="#"
+               data-href="{% url "task:load-fixtures" %}"
+               data-btn-text="Go">
+              <i class="fa fa-upload"></i>
+              Load Fixtures from file</a>
+          </li>
+          <li class="dropdown-item">
+            <a class="task" href="#"
+               data-href="{% url "task:dump-fixtures" %}"
+               data-btn-text="Go">
+              <i class="fa fa-download"></i>
+              Dump Fixtures to file</a>
+          </li>
+        </ul>
+      </li>
+      <li class="divider"></li>
+      <li class="dropdown-item">
+        <a class="task" href="#"
+           data-href="{% url "task:clean-project" %}"
+           data-btn-text="Go">
+          <i class="fa fa-trash"></i>
+          Clean Project</a>
+      </li>
       <li class="dropdown-item">
         <a class="task" href="#"
            data-href="{% url "task:total-cleanup" %}"
@@ -761,7 +793,7 @@
         content: $that.data('content') || function(){
           var self = this;
           $.get($that.data('href')).done(function(data){
-            var content = '<form class="' + data.form_class + '">' +
+            var content = '<form class="' + data.form_class + '" enctype="multipart/form-data">' +
                 '<p class="header">' + data.header + '</p>' +
                 data.form_data + '</form>';
             var $content = $(content);
@@ -808,26 +840,50 @@
               var jc = this;
               var form = jc.$content.find('form');
               form.find('.error').remove();
-              $.post($that.data('href'), form.serialize())
-                  .done(function(data){
-                    jc.close();
-                    $.alert({
-                      icon: 'fa fa-spinner fa-spin text-warning',
-                      title: 'Working!',
-                      type: 'orange',
-                      content: data,
-                      columnClass: 'col-md-4',
-                      onClose: function(){
-                        $('.jqxgrid').jqxGrid('updatebounddata')
-                      }
-                    });
-                  })
-                  .fail(function(data){
-                    $.each(data.responseJSON, function(field, error){
-                      var error_p = '<p class="error">' + error[0] + '</p>';
-                      form.find('[name=' + field + ']').parent().prepend(error_p)
-                    })
+              var formdata = false;
+              if (window.FormData){
+                formdata = new FormData(form[0]);
+              }
+              $.ajax({
+                url: $that.data('href'),
+                type: 'POST',
+                data: formdata ? formdata : form.serialize(),
+                contentType: false,
+                processData: false,
+                success: function(data, status, xhr){
+                  console.log(xhr);
+                  //window.xxhr = xhr;
+                  jc.close();
+
+                  if (xhr.getResponseHeader('content-disposition').startsWith('attachment')){
+                    data = JSON.stringify(data);
+                    var blob = new Blob([data], {type: xhr.getResponseHeader('content-type')});
+                    var url  = URL.createObjectURL(blob);
+                    var a = document.createElement('a');
+                    a.download = xhr.getResponseHeader('filename');
+                    a.href = url;
+                    a.click();
+                    URL.revokeObjectURL(url);
+                    return false
+                  }
+                  $.alert({
+                    icon: 'fa fa-spinner fa-spin text-warning',
+                    title: 'Working!',
+                    type: 'orange',
+                    content: data,
+                    columnClass: 'col-md-4',
+                    onClose: function(){
+                      $('.jqxgrid').jqxGrid('updatebounddata')
+                    }
+
                   });
+                },
+                error: function(data){
+                  $.each(data.responseJSON, function(field, error){
+                    var error_p = '<p class="error">' + error[0] + '</p>';
+                    form.find('[name=' + field + ']').parent().prepend(error_p)
+                  })
+                }})
               return false
             }
           },

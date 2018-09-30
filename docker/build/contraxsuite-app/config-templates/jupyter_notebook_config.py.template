@@ -2,3 +2,4 @@ c.NotebookApp.allow_origin = '*'
 c.NotebookApp.base_url = '${DOCKER_JUPYTER_BASE_URL}'
 c.NotebookApp.port = ${DOCKER_JUPYTER_PORT}
 c.NotebookApp.notebook_dir = '/contraxsuite_services/notebooks'
+c.NotebookApp.disable_check_xsrf = True

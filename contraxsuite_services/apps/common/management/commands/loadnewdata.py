@@ -22,18 +22,38 @@
     provider, processing documents on the fly in a web application,
     or shipping ContraxSuite within a closed source product.
 """
+
+from argparse import RawTextHelpFormatter
 from django.core.management.commands.loaddata import *
 from django.core.exceptions import ValidationError
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.3/LICENSE"
-__version__ = "1.1.3"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.4/LICENSE"
+__version__ = "1.1.4"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
 
 class Command(Command):
+
+    def create_parser(self, *args, **kwargs):
+        parser = super().create_parser(*args, **kwargs)
+        parser.formatter_class = RawTextHelpFormatter
+        return parser
+
+    def add_arguments(self, parser):
+        super().add_arguments(parser)
+        parser.add_argument(
+            '-s', '--skip_if_exists', dest='skip_if_exists', action='store', default='one',
+            help='Action - one of:\n'
+                 'one - skip record if it exists\n'
+                 'any - do not process if any record exists'
+        )
+
+    def handle(self, *fixture_labels, **options):
+        self.skip_if_exists = options['skip_if_exists']
+        super().handle(*fixture_labels, **options)
 
     @lru_cache.lru_cache(maxsize=None)
     def find_fixtures(self, fixture_label):
@@ -71,11 +91,25 @@ class Command(Command):
                     ser_fmt, fixture, using=self.using, ignorenonexistent=self.ignore,
                 )
 
+                _initial = dict()
+
                 for obj in objects:
-                    try:
-                        _ = obj.object.validate_unique()
-                    except ValidationError:
-                        continue
+
+                    _model = obj.object._meta.model
+
+                    if _initial.get(_model) is None:
+                        _initial[_model] = _model.objects.exists()
+
+                    if self.skip_if_exists == 'any':
+                        if _initial.get(_model):
+                            continue
+
+                    elif self.skip_if_exists == 'all':
+                        try:
+                            _ = obj.object.validate_unique()
+                        except ValidationError:
+                            continue
+
                     objects_in_fixture += 1
                     if (obj.object._meta.app_config in self.excluded_apps or
                                 type(obj.object) in self.excluded_models):

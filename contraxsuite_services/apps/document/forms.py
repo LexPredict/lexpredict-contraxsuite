@@ -23,15 +23,17 @@
     or shipping ContraxSuite within a closed source product.
 """
 
+import json
 from django import forms
 
-from apps.document.models import DocumentType
+from apps.document.models import DocumentType, DocumentTypeField
+from apps.project.models import Project
 from apps.document.tasks import MODULE_NAME
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.3/LICENSE"
-__version__ = "1.1.3"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.4/LICENSE"
+__version__ = "1.1.4"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -58,6 +60,62 @@ class TrainDocumentFieldDetectorModelForm(forms.Form):
     header = 'Train Document Field Detector Model'
 
     document_type = forms.ModelChoiceField(queryset=DocumentType.objects.all(), required=False)
+
+    def _post_clean(self):
+        super()._post_clean()
+        self.cleaned_data['module_name'] = MODULE_NAME
+
+
+class CacheDocumentFieldsForm(forms.Form):
+    header = 'Cache Document Fields'
+
+    project = forms.ModelChoiceField(queryset=Project.objects.all(), required=False)
+
+    def _post_clean(self):
+        super()._post_clean()
+        self.cleaned_data['module_name'] = MODULE_NAME
+
+
+class DocumentTypeFieldModelChoiceField(forms.ModelChoiceField):
+    def label_from_instance(self, obj):
+        return "{0}: {1}".format(obj['document_type__code'], obj['document_field__code'])
+
+    def clean(self, value):
+        if not value:
+            return super().clean(value)
+        return json.loads(value.replace('\'', '"'))['pk']
+
+
+class ProjectModelMultipleChoiceField(forms.ModelMultipleChoiceField):
+    def label_from_instance(self, obj):
+        return obj[1]
+
+    def clean(self, values):
+        if not values:
+            return super().clean(values)
+        return [json.loads(value.replace('\'', '"'))[0] for value in values]
+
+
+class TrainDocumentFieldForm(forms.Form):
+    header = 'Train Document Field'
+
+    document_type_field_id = DocumentTypeFieldModelChoiceField(
+        queryset=DocumentTypeField.objects.all().values('pk', 'document_type__code', 'document_field__code')
+        .order_by('document_type__code', 'document_field__code'),
+        label='Document Field',
+        required=True)
+
+    train_data_project_ids = ProjectModelMultipleChoiceField(
+        queryset=Project.objects.all().values_list('pk', 'name'),
+        label='Train Data Projects',
+        widget=forms.SelectMultiple(attrs={'class': 'chosen compact'}),
+        required=True)
+
+    test_data_projects_ids = ProjectModelMultipleChoiceField(
+        queryset=Project.objects.all().values_list('pk', 'name'),
+        label='Test Data Projects',
+        widget=forms.SelectMultiple(attrs={'class': 'chosen compact'}),
+        required=False)
 
     def _post_clean(self):
         super()._post_clean()

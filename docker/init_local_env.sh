@@ -1,7 +1,5 @@
 #!/usr/bin/env bash
 
-pushd ../
-
 export SETENV_LOCAL=setenv_local.sh
 source setenv.sh
 if [ -e setenv_local.sh ]

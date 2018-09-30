@@ -1116,3 +1116,19 @@ li.dropdown-item>a {
   color: #212529;
 }
 
+/* ---------------------------------- */
+/* Train document field form          */
+/* ---------------------------------- */
+.train-document-field-form {
+  padding-bottom: 23px;
+  margin-bottom: 0;
+}
+
+.train-document-field-form .chosen-container .chosen-drop {
+  height: 65px;
+}
+
+.train-document-field-form .chosen-container .chosen-results {
+  height: 100%;
+}
+

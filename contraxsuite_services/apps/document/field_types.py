@@ -25,38 +25,35 @@
 # -*- coding: utf-8 -*-
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.3/LICENSE"
-__version__ = "1.1.3"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.4/LICENSE"
+__version__ = "1.1.4"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
-import pickle
 import re
 from datetime import datetime, date
 from enum import Enum, unique
 from random import randint, random
-from typing import List, Union, Tuple
+from typing import List, Tuple, Optional, Any
 
 import dateparser
 import geocoder
 import pyap
-import redis
+from django.db import models as django_models
+from django.db import transaction
 from lexnlp.extract.en.addresses.addresses import get_addresses
 from lexnlp.extract.en.amounts import get_amounts
 from lexnlp.extract.en.dates import get_dates_list
 from lexnlp.extract.en.durations import get_durations
 from lexnlp.extract.en.entities.nltk_maxent import get_companies, get_persons
-from lexnlp.extract.en.money import get_money
 from lexnlp.extract.en.geoentities import get_geoentities
-
-from django.conf import settings
-from django.db import transaction
+from lexnlp.extract.en.money import get_money
 
 from apps.document import models
 from apps.document.parsing.machine_learning import ModelCategory
 from apps.extract import models as extract_models
 
-_redis = redis.Redis.from_url(url=settings.CELERY_CACHE_REDIS_URL)
+ORDINAL_EXTRACTION_HINTS = ['TAKE_MIN', 'TAKE_MAX']
 
 
 @unique
@@ -67,10 +64,8 @@ class ValueExtractionHint(Enum):
     TAKE_MIN = "TAKE_MIN"
     TAKE_MAX = "TAKE_MAX"
 
-    ORDINAL_EXTRACTION_HINTS = ['TAKE_MIN', 'TAKE_MAX']
-
     @staticmethod
-    def get_value(l: Union[None, List], hint):
+    def get_value(l: Optional[List], hint: str):
         if not l:
             return None
 
@@ -112,6 +107,11 @@ class FieldType:
     code = ''
     title = ''
 
+    # If true: When detecting field values try to extract values in every sentence without their pre-selection
+    #          regex field detectors or machine learning models. If extractor returns no value - then proceed
+    #          to the next sentence.
+    search_in_every_sentence = False
+
     # Does this field support storing multiple DocumentFieldValue objects per document+field
     multi_value = False
 
@@ -127,6 +127,35 @@ class FieldType:
 
     default_hint = ValueExtractionHint.TAKE_FIRST.name
 
+    def merge_multi_values(self, previous_merge_result, value_to_merge_in):
+        if self.multi_value:
+            if not previous_merge_result:
+                return {value_to_merge_in}
+            else:
+                previous_merge_result.add(value_to_merge_in)
+                return previous_merge_result
+        else:
+            return value_to_merge_in
+
+    def encode_to_sortable_document_field_value(self, merged_value):
+        """
+        For using in caching document field values for document list API.
+        :param merged_value:
+        :return:
+        """
+        return str(merged_value) if merged_value else None
+
+    def decode_from_sortable_to_representation(self, sortable_value):
+        """
+        For using in document list API.
+        :param sortable_value:
+        :return:
+        """
+        return sortable_value
+
+    def get_postgres_transform_map(self):
+        return django_models.TextField, None
+
     def json_value_to_python(self, json_value):
         return json_value
 
@@ -139,7 +168,7 @@ class FieldType:
     def _extract_from_possible_value(self, field, possible_value):
         return possible_value
 
-    def _pick_hint_for_text_using_matching_extractors(self, document, field, text: str):
+    def _pick_hint_for_text_using_matching_extractors(self, document, field, text: str) -> Optional[str]:
         if not self.value_extracting:
             return None
 
@@ -167,11 +196,11 @@ class FieldType:
 
         return self.default_hint
 
-    def _pick_hint_by_searching_for_value_among_extracted(self, field, text: str, value, **kwargs):
+    def _pick_hint_by_searching_for_value_among_extracted(self, field, text: str, value, **kwargs) -> Optional[str]:
         if not self.value_extracting:
             return None
 
-        if value is None:
+        if value is None or not text:
             return self.default_hint
 
         extracted = self._extract_variants_from_text(field, text, **kwargs)
@@ -185,7 +214,8 @@ class FieldType:
 
         return self.default_hint
 
-    def get_or_extract_value(self, document, field, possible_value, possible_hint, text) -> Tuple:
+    def get_or_extract_value(self, document, field, possible_value, possible_hint: str, text) \
+            -> Tuple[Any, Optional[str]]:
         if possible_value is None and not text:
             return None, None
 
@@ -197,11 +227,7 @@ class FieldType:
             if value is not None:
                 if self.value_extracting:
                     hint = possible_hint or self \
-                        ._pick_hint_by_searching_for_value_among_extracted(
-                        field,
-                        text,
-                        value,
-                        document=document)
+                        ._pick_hint_by_searching_for_value_among_extracted(field, text, value, document=document)
                 else:
                     hint = None
                 return value, hint
@@ -219,10 +245,7 @@ class FieldType:
         # We need to figure out which one of the extracted values to use.
         # For this we pick hint by finding it via trained model or field value extractors.
         if self.value_extracting:
-            hint = possible_hint or self._pick_hint_for_text_using_matching_extractors(
-                document,
-                field,
-                text)
+            hint = possible_hint or self._pick_hint_for_text_using_matching_extractors(document, field, text)
         else:
             hint = None
 
@@ -355,13 +378,39 @@ class FieldType:
 
 
 class StringField(FieldType):
-    code = 'str'
+    code = 'string'
     title = 'String'
     value_aware = True
     value_extracting = True
 
+    def get_postgres_transform_map(self):
+        return django_models.TextField
+
     def example_json_value(self, field):
         return "example_string"
+
+    def _extract_variants_from_text(self, field, text: str, **kwargs):
+        regexp = field.value_regexp
+        extracted = None
+        if regexp:
+            extracted = re.findall(regexp, text)
+            for index, value in enumerate(extracted):
+                extracted[index] = value.strip()
+
+        return extracted or None
+
+
+class LongTextField(FieldType):
+    code = 'text'
+    title = 'Long Text'
+    value_aware = True
+    value_extracting = True
+
+    def get_postgres_transform_map(self):
+        return django_models.TextField
+
+    def example_json_value(self, field):
+        return "example\nmulti-line\ntext"
 
     def _extract_variants_from_text(self, field, text: str, **kwargs):
         regexp = field.value_regexp
@@ -379,6 +428,15 @@ class ChoiceField(FieldType):
     title = 'Choice'
     value_aware = True
     value_extracting = False
+
+    def encode_to_sortable_document_field_value(self, merged_value):
+        return merged_value
+
+    def decode_from_sortable_to_representation(self, sortable_value):
+        return sortable_value
+
+    def get_postgres_transform_map(self):
+        return django_models.TextField
 
     def _extract_from_possible_value(self, field, possible_value):
         if possible_value in field.get_choice_values():
@@ -401,6 +459,19 @@ class MultiChoiceField(ChoiceField):
     value_aware = True
     value_extracting = False
 
+    def encode_to_sortable_document_field_value(self, merged_value):
+        if merged_value is None or type(merged_value) is not set:
+            return None
+
+        value_set = set(merged_value)
+        return ', '.join(sorted([str(v) for v in value_set]))
+
+    def decode_from_sortable_to_representation(self, sortable_value: str):
+        return sortable_value
+
+    def get_postgres_transform_map(self):
+        return django_models.TextField
+
     def example_json_value(self, field):
         choice_values = field.get_choice_values()
         if not choice_values:
@@ -417,6 +488,15 @@ class DateField(FieldType):
     value_aware = True
     value_extracting = True
     ordinal = True
+
+    def encode_to_sortable_document_field_value(self, merged_value):
+        return merged_value
+
+    def decode_from_sortable_to_representation(self, sortable_value):
+        return sortable_value
+
+    def get_postgres_transform_map(self):
+        return django_models.DateField
 
     def _extract_from_possible_value(self, field, possible_value):
         if isinstance(possible_value, datetime):
@@ -456,6 +536,15 @@ class FloatField(FieldType):
     value_extracting = True
     ordinal = True
 
+    def encode_to_sortable_document_field_value(self, merged_value):
+        return merged_value
+
+    def decode_from_sortable_to_representation(self, sortable_value):
+        return sortable_value
+
+    def get_postgres_transform_map(self):
+        return django_models.FloatField
+
     def _extract_from_possible_value(self, field, possible_value):
         try:
             return float(possible_value)
@@ -476,6 +565,15 @@ class IntField(FieldType):
     value_aware = True
     value_extracting = True
     ordinal = True
+
+    def encode_to_sortable_document_field_value(self, merged_value):
+        return merged_value
+
+    def decode_from_sortable_to_representation(self, sortable_value):
+        return sortable_value
+
+    def get_postgres_transform_map(self):
+        return django_models.IntegerField
 
     def _extract_from_possible_value(self, field, possible_value):
         try:
@@ -500,6 +598,17 @@ class AddressField(FieldType):
     title = 'Address'
     value_aware = True
     value_extracting = True
+
+    def encode_to_sortable_document_field_value(self, merged_value):
+        if merged_value is None:
+            return None
+        return merged_value.get('address')
+
+    def decode_from_sortable_to_representation(self, sortable_value):
+        return sortable_value
+
+    def get_postgres_transform_map(self):
+        return django_models.TextField
 
     @staticmethod
     def _get_from_geocode(address: str):
@@ -542,11 +651,20 @@ class AddressField(FieldType):
 
     def _extract_variants_from_text(self, field, text: str, **kwargs):
         addresses = list(pyap.parse(text, country='US'))
+        result = []
 
         if not addresses:
             addresses = list(get_addresses(text))
 
-        return [AddressField._get_from_geocode(address) for address in addresses]
+        resolved_addresses = {}
+        while addresses:
+            address = addresses.pop(0)
+            resolved_address = resolved_addresses.get(address)
+            if resolved_address is None:
+                resolved_address = AddressField._get_from_geocode(address)
+                resolved_addresses[address] = resolved_address
+            result.append(resolved_address)
+        return result
 
     def value_to_string(self, field_value):
         if not field_value:
@@ -569,6 +687,15 @@ class CompanyField(FieldType):
     title = 'Company'
     value_aware = True
     value_extracting = True
+
+    def encode_to_sortable_document_field_value(self, merged_value):
+        return str(merged_value) if merged_value else None
+
+    def decode_from_sortable_to_representation(self, sortable_value):
+        return sortable_value
+
+    def get_postgres_transform_map(self):
+        return django_models.TextField
 
     def _extract_from_possible_value(self, field, possible_value):
         if possible_value:
@@ -596,6 +723,15 @@ class DurationField(FieldType):
     ordinal = True
     MAX_DURATION = 5000 * 365
 
+    def encode_to_sortable_document_field_value(self, merged_value):
+        return merged_value
+
+    def decode_from_sortable_to_representation(self, sortable_value):
+        return sortable_value
+
+    def get_postgres_transform_map(self):
+        return django_models.FloatField
+
     def _extract_from_possible_value(self, field, possible_value):
         try:
             return float(possible_value)
@@ -619,12 +755,36 @@ class RelatedInfoField(FieldType):
     value_aware = False
     value_extracting = False
 
+    def encode_to_sortable_document_field_value(self, merged_value):
+        return merged_value
+
+    def decode_from_sortable_to_representation(self, sortable_value):
+        return sortable_value
+
+    def get_postgres_transform_map(self):
+        return django_models.IntegerField
+
+    def merge_multi_values(self, previous_merge_result, value_to_merge_in):
+        if previous_merge_result:
+            return previous_merge_result + 1
+        else:
+            return 1
+
 
 class PersonField(FieldType):
     code = 'person'
     title = 'Person'
     value_aware = True
     value_extracting = True
+
+    def encode_to_sortable_document_field_value(self, merged_value):
+        return merged_value
+
+    def decode_from_sortable_to_representation(self, sortable_value):
+        return sortable_value
+
+    def get_postgres_transform_map(self):
+        return django_models.TextField
 
     def _extract_from_possible_value(self, field, possible_value):
         if possible_value:
@@ -647,6 +807,15 @@ class AmountField(FloatField):
     value_extracting = True
     ordinal = True
 
+    def encode_to_sortable_document_field_value(self, merged_value):
+        return merged_value
+
+    def decode_from_sortable_to_representation(self, sortable_value):
+        return sortable_value
+
+    def get_postgres_transform_map(self):
+        return django_models.FloatField
+
     def _extract_variants_from_text(self, field, text: str, **kwargs):
         amounts = get_amounts(text, return_sources=False)
         return list(amounts) if amounts else None
@@ -661,6 +830,24 @@ class MoneyField(FloatField):
     value_aware = True
     value_extracting = True
     ordinal = True
+
+    def encode_to_sortable_document_field_value(self, merged_value):
+        if not merged_value:
+            return None
+        amount = float(merged_value.get('amount')) or 0
+        currency = merged_value.get('currency') or ''
+        return '{}|{:020.4f}'.format(currency, amount)
+
+    def decode_from_sortable_to_representation(self, sortable_value):
+        if sortable_value is None:
+            return None
+        ar = sortable_value.split('|')
+        currency = ar[0]
+        amount_str = ar[1]  # type: str
+        return '{} {}'.format(currency, float(amount_str) if amount_str else '')
+
+    def get_postgres_transform_map(self):
+        return django_models.TextField
 
     def _extract_from_possible_value(self, field, possible_value):
         if not possible_value:
@@ -709,6 +896,20 @@ class GeographyField(FieldType):
     value_aware = True
     value_extracting = True
 
+    def merge_multi_values(self, previous_merge_result, value_to_merge_in):
+        return super().merge_multi_values(previous_merge_result, value_to_merge_in)
+
+    def encode_to_sortable_document_field_value(self, merged_value):
+        if merged_value is None:
+            return None
+        return merged_value.get('entity__name')
+
+    def decode_from_sortable_to_representation(self, sortable_value):
+        return sortable_value
+
+    def get_postgres_transform_map(self):
+        return django_models.TextField
+
     def _extract_from_possible_value(self, field, possible_value):
         if possible_value:
             return str(possible_value)
@@ -729,20 +930,9 @@ class GeographyField(FieldType):
                 text_unit__text__contains=text).values('entity_id', 'entity__name')
 
         if not geo_entities:
-            # try to get geo config from cache
-            geo_config = _redis.get('geo_config')
-            if geo_config:
-                geo_config = pickle.loads(geo_config)
-            else:
-                try:
-                    geo_config_locate_storage_key = _redis.keys('*_locate')[0]
-                    geo_config_locate_storage = pickle.loads(
-                        _redis.get(geo_config_locate_storage_key))
-                    geo_config = geo_config_locate_storage['geoentity']['geo_config']
-                except (KeyError, IndexError):
-                    from apps.task.tasks import Locate
-                    geo_config = Locate.load_geo_config()
-                _redis.set('geo_config', pickle.dumps(geo_config))
+            from apps.task.tasks import CACHE_KEY_GEO_CONFIG
+            from apps.common.advancedcelery.db_cache import DbCache
+            geo_config = DbCache.get(CACHE_KEY_GEO_CONFIG)
 
             text_languages = None
             if document:
@@ -764,24 +954,22 @@ class GeographyField(FieldType):
         return [{'entity_id': 12, 'entity__name': 'New York'}]
 
 
-_FIELD_TYPE_CHOICE = 'choice'
-_FIELD_TYPE_MULTI_CHOICE = 'multi_choice'
+FIELD_TYPES_CHOICE = {ChoiceField.code, MultiChoiceField.code}
 
-FIELD_TYPES_CHOICE = {_FIELD_TYPE_CHOICE, _FIELD_TYPE_MULTI_CHOICE}
+_FIELD_TYPES = (StringField,
+                LongTextField,
+                IntField,
+                FloatField,
+                DateField,
+                CompanyField,
+                DurationField,
+                AddressField,
+                RelatedInfoField,
+                ChoiceField,
+                MultiChoiceField,
+                PersonField,
+                AmountField,
+                MoneyField,
+                GeographyField)
 
-FIELD_TYPES_REGISTRY = {
-    'string': StringField(),
-    'int': IntField(),
-    'float': FloatField(),
-    'date': DateField(),
-    'company': CompanyField(),
-    'duration': DurationField(),
-    'address': AddressField(),
-    'related_info': RelatedInfoField(),
-    _FIELD_TYPE_CHOICE: ChoiceField(),
-    _FIELD_TYPE_MULTI_CHOICE: MultiChoiceField(),
-    'person': PersonField(),
-    'amount': AmountField(),
-    'money': MoneyField(),
-    'geography': GeographyField(),
-}
+FIELD_TYPES_REGISTRY = {field_type.code: field_type() for field_type in _FIELD_TYPES}

@@ -17,6 +17,7 @@ export VOLUME_REGISTRY=${DOCKER_VOLUME_DIR}/contraxsuite_registry_registry_stora
 export VOLUME_RABBIT=${DOCKER_VOLUME_DIR}/contraxsuite_rabbitmq_data/_data
 export VOLUME_CELERY_WORK_STATE=${DOCKER_VOLUME_DIR}/contraxsuite_celery_worker_state/_data
 export VOLUME_DATA_MEDIA=${DOCKER_VOLUME_DIR}/contraxsuite_contraxsuite_data_media/_data
+export VOLUME_DATA_UPDATE=${DOCKER_VOLUME_DIR}/contraxsuite_contraxsuite_data_update/_data
 
 # Initialize volumes
 sudo mkdir -p ${VOLUME_NGINX_CONF}
@@ -26,3 +27,4 @@ sudo mkdir -p ${VOLUME_FRONTEND}
 sudo mkdir -p ${VOLUME_THIRD_PARTY}
 sudo mkdir -p ${VOLUME_DB}
 sudo mkdir -p ${VOLUME_REGISTRY}
+sudo mkdir -p ${VOLUME_DATA_UPDATE}

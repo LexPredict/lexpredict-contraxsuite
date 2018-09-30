@@ -42,6 +42,7 @@ from rest_framework.response import Response
 # Django imports
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin, PermissionRequiredMixin
+from django.contrib.contenttypes.models import ContentType
 from django.contrib.postgres.fields.jsonb import KeyTextTransform
 from django.core.exceptions import FieldError
 from django.core.paginator import Paginator, EmptyPage
@@ -59,12 +60,13 @@ from django.views.generic.edit import CreateView, DeleteView, UpdateView
 from django.views.generic.list import MultipleObjectMixin
 
 # Project imports
-from apps.common.utils import cap_words, export_qs_to_file, download_xls, download_csv
+from apps.common.models import Action
+from apps.common.utils import cap_words, export_qs_to_file, download
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.3/LICENSE"
-__version__ = "1.1.3"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.4/LICENSE"
+__version__ = "1.1.4"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -376,8 +378,10 @@ class AjaxListView(ReviewerQSMixin, AjaxResponseMixin, BaseCustomListView):
         if 'export' in self.request.GET:
             return export_qs_to_file(
                 request, qs=self.get_queryset(), **self.export_params)
-        if request.GET.get('export_to') in ['csv', 'xlsx']:
-            data = self.get_json_data()['data']
+        if request.GET.get('export_to') in ['csv', 'xlsx', 'pdf']:
+            data = self.get_json_data()
+            if isinstance(data, dict) and 'data' in data:
+                data = data['data']
             return self.export(data,
                                source_name=self.get_export_file_name() or
                                            self.get_queryset().model.__name__.lower(),
@@ -412,13 +416,9 @@ class AjaxListView(ReviewerQSMixin, AjaxResponseMixin, BaseCustomListView):
 
         return data
 
-    def export(self, data, source_name, fmt='xlsx'):
-        data = pd.DataFrame(data).fillna('')
+    def export(self, data, source_name, fmt='csv'):
         data = self.process_export_data(data)
-        if fmt == 'xlsx':
-            return download_xls(data, file_name=source_name)
-        else:
-            return download_csv(data, file_name=source_name)
+        return download(data, fmt, file_name=source_name)
 
     def process_export_data(self, data):
         return data
@@ -648,7 +648,7 @@ class JqListAPIMixin(object):
         # 2. filter and sort
         queryset = self.filter_queryset(queryset)
         # 2.1 export in xlsx if needed
-        if request.GET.get('export_to') in ['csv', 'xlsx']:
+        if request.GET.get('export_to') in ['csv', 'xlsx', 'pdf']:
             serializer = self.get_serializer(queryset, many=True)
             data = serializer.data
             return self.export(data,
@@ -682,10 +682,7 @@ class JqListAPIMixin(object):
     def export(self, data, source_name, fmt='xlsx'):
         data = pd.DataFrame(data).fillna('')
         data = self.process_export_data(data)
-        if fmt == 'xlsx':
-            return download_xls(data, file_name=source_name)
-        else:
-            return download_csv(data, file_name=source_name)
+        return download(data, fmt, file_name=source_name)
 
     def get_export_file_name(self):
         pass
@@ -731,6 +728,7 @@ class NestedKeyTextTransform(KeyTextTransform):
     def __init__(self, nested_key_names, *args, **kwargs):
         super().__init__(nested_key_names, *args, **kwargs)
         self.nested_key_names = nested_key_names
+        self.nested_operator = '#>>'
         self._output_field = kwargs.get('output_field') or self._output_field
 
     def as_sql(self, compiler, connection):
@@ -742,6 +740,56 @@ class NestedKeyTextTransform(KeyTextTransform):
         return "(%s %s %%s)::%s" % (lhs, self.nested_operator,
                                     self._output_field.db_type(connection)),\
                [self.nested_key_names] + params
+
+
+class APIActionMixin(object):
+    """
+    Mixin class to track user activity in Action model
+    """
+    user_action_methods = dict(
+        POST='create',
+        PUT='update',
+        PATCH='update',
+        GET='detail'
+    )
+    user_action = None
+
+    def dispatch(self, request, *args, **kwargs):
+        response = super().dispatch(request, *args, **kwargs)
+        user_action_name = self.get_action_name()
+        if not user_action_name:
+            user_action_name = self.user_action_methods.get(request.method)
+        try:
+            user_action_object = self.get_object()
+        except:
+            user_action_object = None
+            if request.method == 'GET':
+                user_action_name = 'list'
+        model = self.queryset.model
+        content_type = ContentType.objects.get_for_model(model)
+        user_action = Action.objects.create(
+            user=request.user,
+            name=user_action_name,
+            content_type=content_type
+        )
+        if user_action_object:
+            user_action.object = user_action_object
+            user_action.save()
+        self.user_action = user_action
+        return response
+
+    def perform_create(self, serializer):
+        obj = serializer.save()
+        if self.user_action is not None:
+            self.user_action.object = obj
+            self.user_action.save()
+        return obj
+
+    def get_action_name(self):
+        """
+        Helper to define custom action name
+        """
+        pass
 
 
 def get_group_by(self, select, order_by):

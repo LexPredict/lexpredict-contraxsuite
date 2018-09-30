@@ -58,8 +58,8 @@ from apps.extract.models import (
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.3/LICENSE"
-__version__ = "1.1.3"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.4/LICENSE"
+__version__ = "1.1.4"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -107,16 +107,16 @@ class BaseTopUsageListView(JqPaginatedListView):
         return [super().get_template_names()[0].replace('extract/', 'extract/top_')]
 
     def get_json_data(self, **kwargs):
-        data = list(self.get_queryset())
+        data = super().get_json_data(**kwargs)
         parent_data = None
         if "document_pk" in self.request.GET:
             parent_list_view = self.parent_list_view(request=self.request)
             parent_data = parent_list_view.get_json_data()['data']
-        for item in data:
+        for item in data['data']:
             self.get_item_data(item, parent_data)
         if self.sort_by:
-            data = sorted(data, key=self.sort_by)
-        return {'data': data, 'total_records': len(data)}
+            data['data'] = sorted(data['data'], key=self.sort_by)
+        return data
 
     def get_queryset(self):
         qs = super().get_queryset()

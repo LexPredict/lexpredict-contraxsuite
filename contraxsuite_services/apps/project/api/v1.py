@@ -39,19 +39,22 @@ from rest_framework.views import APIView
 
 # Django imports
 from django.conf import settings
+from django.contrib.contenttypes.models import ContentType
 from django.core.files import File
 from django.core.files.storage import FileSystemStorage
 from django.http import JsonResponse
-from django.db.models import Count
+from django.db import transaction
+from django.db.models import Count, Subquery
 
 from rest_framework.response import Response
 
 # Project imports
 from apps.analyze.models import DocumentCluster
-from apps.common.mixins import JqListAPIMixin
-from apps.common.models import ReviewStatus
+from apps.common.advancedcelery.fileaccess import prepare_file_access_handler
+from apps.common.mixins import JqListAPIMixin, APIActionMixin
+from apps.common.models import ReviewStatus, Action
 from apps.common.utils import get_api_module
-from apps.document.models import Document, DocumentType
+from apps.document.models import Document, DocumentType, DocumentFieldValue, DocumentTypeField
 from apps.project.models import Project, TaskQueue, UploadSession, ProjectClustering
 from apps.users.models import User
 from apps.task.models import Task
@@ -62,11 +65,13 @@ from apps.project.tasks import THIS_MODULE    # noqa
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.3/LICENSE"
-__version__ = "1.1.3"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.4/LICENSE"
+__version__ = "1.1.4"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
+
+file_access_handler = prepare_file_access_handler()
 
 common_api_module = get_api_module('common')
 users_api_module = get_api_module('users')
@@ -236,6 +241,7 @@ def project_progress(obj):
 
     project_tasks_progress, project_tasks_completed = obj.project_tasks_progress(get_completed=True)
     stats = {'project_current_documents_count': obj.document_set.count(),
+             'project_reviewed_documents_count': obj.document_set.filter(status__group__is_active=False).count(),
              'project_uploaded_documents_count': project_uploaded_documents_count,
              'project_tasks_progress': project_tasks_progress,
              'project_tasks_completed': project_tasks_completed,
@@ -244,6 +250,9 @@ def project_progress(obj):
              'uncompleted_sessions': uncompleted_sessions or None}
 
     if obj.type.is_generic():
+        project_clusters_count = obj.projectclustering_set.last() \
+            .document_clusters.count() \
+            if obj.projectclustering_set.exists() else 0
         project_clusters_documents_count = obj.projectclustering_set.last() \
             .document_clusters.aggregate(c=Count('documents'))['c'] \
             if obj.projectclustering_set.exists() else 0
@@ -255,6 +264,7 @@ def project_progress(obj):
             **reassigning_ots).progress_groups(get_completed=True)
         stats.update({
             'project_clusters_documents_count': project_clusters_documents_count,
+            'project_clusters_count': project_clusters_count,
             'project_unclustered_documents_count': project_unclustered_documents_count,
             'reassigning_progress': reassigning_progress,
             'reassigning_completed': reassigning_completed,
@@ -355,7 +365,8 @@ class ProjectPermissionViewMixin(object):
         return qs
 
 
-class ProjectViewSet(ProjectPermissionViewMixin, JqListAPIMixin, viewsets.ModelViewSet):
+class ProjectViewSet(ProjectPermissionViewMixin, APIActionMixin,
+                     JqListAPIMixin, viewsets.ModelViewSet):
     """
     list: Project List
     retrieve: Retrieve Project
@@ -367,7 +378,7 @@ class ProjectViewSet(ProjectPermissionViewMixin, JqListAPIMixin, viewsets.ModelV
     queryset = Project.objects.all()
 
     def perform_create(self, serializer):
-        project = serializer.save()
+        project = super().perform_create(serializer)
         project.owners.add(self.request.user)
 
     def get_serializer_class(self):
@@ -521,10 +532,13 @@ class ProjectViewSet(ProjectPermissionViewMixin, JqListAPIMixin, viewsets.ModelV
         """
         Clean project (Generic Contract Type project)
         """
+        delete = json.loads(request.data.get('delete', 'true'))
+
         call_task(
             task_name='CleanProject',
             module_name='apps.project.tasks',
-            project_id=int(kwargs['pk']),
+            _project_id=int(kwargs['pk']),
+            delete=delete,
             user_id=request.user.id)
 
         return Response('OK')
@@ -535,19 +549,24 @@ class ProjectViewSet(ProjectPermissionViewMixin, JqListAPIMixin, viewsets.ModelV
         Bulk assign batch of documents to a review team member\n
             Params:
                 document_ids: list[int]
+                all: any value - update all documents if any value
                 assignee_id: int
             Returns:
                 int (number of reassigned documents)
         """
         # permissions check
         project = self.get_object()
-
-        # document_ids = [int(i) for i in request.POST.getlist('document_ids')]
-        document_ids = request.data.get('document_ids')
         assignee_id = request.data.get('assignee_id')
-        ret = Document.objects\
-            .filter(project=project, pk__in=document_ids)\
-            .update(assignee=assignee_id)
+
+        if request.data.get('all'):
+            documents = Document.objects.filter(project=project)
+            if request.data.get('no_document_ids'):
+                documents = documents.exclude(pk__in=request.data.get('no_document_ids'))
+        else:
+            document_ids = request.data.get('document_ids')
+            documents = Document.objects \
+                .filter(project=project, pk__in=document_ids)
+        ret = documents.update(assignee=assignee_id)
         return Response({'success': ret})
 
     @detail_route(methods=['post'])
@@ -556,20 +575,75 @@ class ProjectViewSet(ProjectPermissionViewMixin, JqListAPIMixin, viewsets.ModelV
         Bulk set status for batch of documents\n
             Params:
                 document_ids: list[int]
+                all: any value - update all documents if any value
                 status_id: int
             Returns:
                 int (number of reassigned documents)
         """
         # permissions check
         project = self.get_object()
-
-        # document_ids = [int(i) for i in request.POST.getlist('document_ids')]
-        document_ids = request.data.get('document_ids')
         status_id = request.data.get('status_id')
-        ret = Document.objects\
-            .filter(project=project, pk__in=document_ids)\
-            .update(status=status_id)
+
+        if request.data.get('all'):
+            documents = Document.objects.filter(project=project)
+            if request.data.get('no_document_ids'):
+                documents = documents.exclude(pk__in=request.data.get('no_document_ids'))
+        else:
+            document_ids = request.data.get('document_ids')
+            documents = Document.objects\
+                .filter(project=project, pk__in=document_ids)
+
+        with transaction.atomic():
+            is_active = ReviewStatus.objects.get(pk=status_id).is_active
+            document_type_fields = {}
+            modified_fields = DocumentFieldValue.objects \
+                .filter(document__in=Subquery(documents.values('pk').distinct('pk').order_by('pk')),
+                        document__status__is_active=not is_active,
+                        removed_by_user=False) \
+                .order_by() \
+                .values_list('document__document_type_id', 'field_id') \
+                .distinct('document__document_type_id', 'field_id')
+            for document_type_id, field_id in modified_fields:
+                fields = document_type_fields.get(document_type_id)
+                if not fields:
+                    fields = []
+                    document_type_fields[document_type_id] = fields
+                fields.append(field_id)
+            for document_type_id, field_ids in document_type_fields.items():
+                DocumentTypeField.objects\
+                    .filter(document_type_id=document_type_id, document_field_id__in=field_ids)\
+                    .update(dirty=True)
+            ret = documents.update(status=status_id)
+
         return Response({'success': ret})
+
+    @list_route(methods=['get'])
+    def recent(self, request, **kwargs):
+        """
+        Get recent N projects\n
+            Params:
+                n: int - default is 5
+        """
+        last_n = int(request.GET.get('n', 5))
+        project_action_ids = Action.objects.filter(
+            user=request.user,
+            content_type=ContentType.objects.get_for_model(Project),
+            object_pk__isnull=False).order_by('-date').values_list('object_pk', flat=True)
+        existing_project_ids = Project.objects.values_list('pk', flat=True)
+        recent_project_ids = []
+        for i in project_action_ids:
+            i = int(i)
+            if len(recent_project_ids) == last_n:
+                break
+            if i in existing_project_ids and i not in recent_project_ids:
+                recent_project_ids.append(i)
+        clauses = ' '.join(['WHEN id=%s THEN %s' % (pk, i) for i, pk in enumerate(recent_project_ids)])
+        ordering = 'CASE %s END' % clauses
+
+        qs = self.get_queryset().filter(pk__in=recent_project_ids).extra(
+            select={'ordering': ordering}, order_by=('ordering',))
+
+        return Response(ProjectDetailSerializer(qs, many=True).data)
 
 
 # --------------------------------------------------------
@@ -622,7 +696,8 @@ class UploadSessionPermissionViewMixin(object):
         return qs
 
 
-class UploadSessionViewSet(UploadSessionPermissionViewMixin, JqListAPIMixin, viewsets.ModelViewSet):
+class UploadSessionViewSet(UploadSessionPermissionViewMixin, APIActionMixin,
+                           JqListAPIMixin, viewsets.ModelViewSet):
     """
     list: Session Upload List
     retrieve: Retrieve Session Upload
@@ -684,8 +759,212 @@ class UploadSessionViewSet(UploadSessionPermissionViewMixin, JqListAPIMixin, vie
         result = {i.pk: i.status_check() for i in qs}
         return Response(result)
 
+    @staticmethod
+    def get_source_path(request, **kwargs):
+        # helper to just store a file and get final source path
+        session_id = kwargs.get('pk')
+        project = UploadSession.objects.get(pk=session_id).project
+        file_ = request.FILES.dict().get('file')
+        folder_name = kwargs.get('folder')
+
+        project_storages = {
+            _session_id: FileSystemStorage(
+                location=os.path.join(
+                    settings.MEDIA_ROOT,
+                    settings.FILEBROWSER_DIRECTORY,
+                    _session_id))
+            for _session_id in project.uploadsession_set.values_list('pk', flat=True)}
+
+        # check existing documents with the same name
+        this_file_documents = project.document_set.filter(name=file_.name)
+
+        # check existing files with the same name in sessions' folders
+        # but not stored yet as Document
+        this_file_storages = {
+            _session_id: _storage
+            for _session_id, _storage in project_storages.items()
+            if _storage.exists(file_.name) and not Document.objects.filter(
+                source_path=os.path.join(
+                    _session_id, file_.name)).exists()}
+
+        if this_file_documents.exists() or this_file_storages:
+            if request.POST.get('force') == 'true':
+                for _session_id, _storage in this_file_storages.items():
+                    _storage.delete(file_.name)
+                    file_tasks = Task.objects \
+                        .filter(metadata__session_id=_session_id) \
+                        .filter(metadata__file_name=file_.name)
+                    for file_task in file_tasks:
+                        if file_task.metadata.get('file_name') == file_.name:
+                            purge_task(file_task.id)
+                    # TODO: redundant?
+                    Document.objects \
+                        .filter(upload_session_id=_session_id, name=file_.name) \
+                        .delete()
+                for doc in this_file_documents:
+                    doc.delete()
+            else:
+                raise APIException('Already exists')
+
+        if not folder_name:
+            storage = FileSystemStorage(
+                location=os.path.join(
+                    settings.MEDIA_ROOT,
+                    settings.FILEBROWSER_DIRECTORY,
+                    session_id))
+
+            stored_file_name = storage.save(file_.name, file_.file)
+            return os.path.join(session_id, stored_file_name)
+        else:
+            return os.path.join(folder_name, file_.name)
+
+    @detail_route(methods=['post'])
+    def upload(self, request, **kwargs):
+        """
+        Upload a File\n
+            Params:
+                - file: file object
+                - force: bool (optional) - whether rewrite existing file and Document
+                - send_email_notifications: bool (optional) - sent notification email that batch uploading started
+        """
+        session_id = kwargs.get('pk')
+        session = self.get_object()
+        project = session.project
+        file_ = request.FILES.dict().get('file')
+
+        if not session_id or not file_:
+            raise ValidationError('Provide session_id and file in request data.')
+
+        try:
+            source_path = self.get_source_path(request, **kwargs)
+
+            required_locators = ['date',
+                                 'party',
+                                 'term',
+                                 'geoentity',
+                                 'currency',
+                                 'citation',
+                                 'definition',
+                                 'duration']
+
+            linked_tasks = [
+                {'task_name': 'Locate',
+                 'locate': required_locators,
+                 'parse': 'sentences',
+                 'do_delete': False,
+                 'session_id': session_id,
+                 'metadata': {'session_id': session_id, 'file_name': file_.name},
+                 'user_id': request.user.id}
+            ]
+
+            document_type = UploadSession.objects.get(pk=session_id).project.type
+
+            # if Document type specified
+            if document_type:
+
+                for app_name in custom_apps:
+                    module_str = 'apps.%s.tasks' % app_name
+                    module = sys.modules.get(module_str)
+                    if hasattr(module, 'DetectFieldValues'):
+                        linked_tasks.append(
+                            {'task_name': 'DetectFieldValues',
+                             'module_name': module_str,
+                             'do_not_write': False,
+                             'session_id': session_id,
+                             'metadata': {'session_id': session_id, 'file_name': file_.name},
+                             'user_id': request.user.id})
+
+            call_task(
+                task_name='LoadDocuments',
+                source_data=source_path,
+                user_id=request.user.id,
+                session_id=session_id,
+                metadata={'session_id': session_id, 'file_name': file_.name},
+                linked_tasks=linked_tasks)
+
+            if project.send_email_notification and \
+                    request.POST.get('send_email_notifications') == 'true' and \
+                    not session.notified_upload_started:
+                session.notify_upload_started()
+
+        except Exception as e:
+            raise APIException(str(e))
+
+        return Response('Loaded')
+
     @detail_route(methods=['post'])
     def batch_upload(self, request, **kwargs):
+        """
+        Upload files from given sub-folder in media/data/documents folder\n
+            Params:
+                - source_path: relative path to a folder with documents
+                - send_email_notifications: bool (optional) - sent notification email that batch uploading started
+        """
+        session = self.get_object()
+        session_id = session.pk
+        project = session.project
+        folder_name = request.POST.get('folder') or request.POST.get('source_path')
+
+        if not session_id or not folder_name:
+            raise ValidationError('Provide session id and folder name.')
+
+        file_list = file_access_handler.list(folder_name)
+
+        required_locators = ['date',
+                             'party',
+                             'term',
+                             'geoentity',
+                             'currency',
+                             'citation',
+                             'definition',
+                             'duration']
+
+        for file_path in file_list:
+
+            file_name = os.path.basename(file_path)
+
+            linked_tasks = [
+                {'task_name': 'Locate',
+                 'locate': required_locators,
+                 'parse': 'sentences',
+                 'do_delete': False,
+                 'session_id': session_id,
+                 'metadata': {'session_id': session_id, 'file_name': file_name},
+                 'user_id': request.user.id}
+            ]
+
+            # if Document type specified
+            if project.type:
+
+                for app_name in custom_apps:
+                    module_str = 'apps.%s.tasks' % app_name
+                    module = sys.modules.get(module_str)
+                    if hasattr(module, 'DetectFieldValues'):
+                        linked_tasks.append(
+                            {'task_name': 'DetectFieldValues',
+                             'module_name': module_str,
+                             'do_not_write': False,
+                             'session_id': session_id,
+                             'metadata': {'session_id': session_id, 'file_name': file_name},
+                             'user_id': request.user.id})
+
+            call_task(
+                task_name='LoadDocuments',
+                source_data=file_path,
+                user_id=request.user.id,
+                session_id=session_id,
+                metadata={'session_id': session_id, 'file_name': file_name},
+                linked_tasks=linked_tasks)
+
+        if project.send_email_notification and \
+                request.POST.get('send_email_notifications') == 'true' and \
+                not session.notified_upload_started:
+            session.notify_upload_started()
+
+        return Response('Started')
+
+    @detail_route(methods=['post'])
+    def _batch_upload(self, request, **kwargs):
         """
         Upload batch of files\n
             Params:
@@ -715,129 +994,6 @@ class UploadSessionViewSet(UploadSessionPermissionViewMixin, JqListAPIMixin, vie
             return Response('Uploading of {} files started'.format(len(files)))
 
         return Response('No folder specified', status=400)
-
-    @detail_route(methods=['post'])
-    def upload(self, request, **kwargs):
-        """
-        Upload a File\n
-            Params:
-                - file: file object
-                - force: bool (optional) - whether rewrite existing file and Document
-                - send_email_notifications: bool (optional) - sent notification email that batch uploading started
-        """
-        session_id = kwargs.get('pk')
-        session = self.get_object()
-        project = session.project
-        file_ = request.FILES.dict().get('file')
-        folder_name = kwargs.get('folder')
-
-        if session_id and file_:
-            try:
-                project_storages = {
-                    _session_id: FileSystemStorage(
-                        location=os.path.join(
-                            settings.MEDIA_ROOT,
-                            settings.FILEBROWSER_DIRECTORY,
-                            _session_id))
-                    for _session_id in project.uploadsession_set.values_list('pk', flat=True)}
-
-                # check existing documents with the same name
-                this_file_documents = project.document_set.filter(name=file_.name)
-
-                # check existing files with the same name in sessions' folders
-                # but not stored yet as Document
-                this_file_storages = {
-                    _session_id: _storage
-                    for _session_id, _storage in project_storages.items()
-                    if _storage.exists(file_.name) and not Document.objects.filter(
-                        source_path=os.path.join(
-                            _session_id, file_.name)).exists()}
-
-                if this_file_documents.exists() or this_file_storages:
-                    if request.POST.get('force') == 'true':
-                        for _session_id, _storage in this_file_storages.items():
-                            _storage.delete(file_.name)
-                            file_tasks = Task.objects\
-                                .filter(metadata__session_id=_session_id)\
-                                .filter(metadata__file_name=file_.name)
-                            for file_task in file_tasks:
-                                if file_task.metadata.get('file_name') == file_.name:
-                                    purge_task(file_task.id)
-                            # TODO: redundant?
-                            Document.objects\
-                                .filter(upload_session_id=_session_id, name=file_.name)\
-                                .delete()
-                        for doc in this_file_documents:
-                            doc.delete()
-                    else:
-                        raise APIException('Already exists')
-
-                if not folder_name:
-                    storage = FileSystemStorage(
-                        location=os.path.join(
-                            settings.MEDIA_ROOT,
-                            settings.FILEBROWSER_DIRECTORY,
-                            session_id))
-
-                    stored_file_name = storage.save(file_.name, file_.file)
-                    source_path = os.path.join(session_id, stored_file_name)
-                else:
-                    source_path = os.path.join(folder_name, file_.name)
-
-                required_locators = ['date',
-                                     'party',
-                                     'term',
-                                     'geoentity',
-                                     'currency',
-                                     'citation',
-                                     'definition',
-                                     'duration']
-
-                linked_tasks = [
-                    {'task_name': 'Locate',
-                     'locate': required_locators,
-                     'parse': 'sentences',
-                     'do_delete': False,
-                     'session_id': session_id,
-                     'metadata': {'session_id': session_id, 'file_name': file_.name},
-                     'user_id': request.user.id}
-                ]
-
-                document_type = UploadSession.objects.get(pk=session_id).project.type
-
-                # if Document type specified
-                if document_type:
-
-                    for app_name in custom_apps:
-                        module_str = 'apps.%s.tasks' % app_name
-                        module = sys.modules.get(module_str)
-                        if hasattr(module, 'DetectFieldValues'):
-                            linked_tasks.append(
-                                {'task_name': 'DetectFieldValues',
-                                 'module_name': module_str,
-                                 'do_not_write': False,
-                                 'session_id': session_id,
-                                 'metadata': {'session_id': session_id, 'file_name': file_.name},
-                                 'user_id': request.user.id})
-
-                call_task(
-                    task_name='LoadDocuments',
-                    source_data=source_path,
-                    user_id=request.user.id,
-                    session_id=session_id,
-                    metadata={'session_id': session_id, 'file_name': file_.name},
-                    linked_tasks=linked_tasks)
-
-                if project.send_email_notification and \
-                        request.POST.get('send_email_notifications') == 'true' and \
-                        not session.notified_upload_started:
-                    session.notify_upload_started()
-
-            except Exception as e:
-                raise APIException(str(e))
-        else:
-            raise ValidationError('Provide session_id and file in request data.')
-        return Response('Loaded')
 
     @detail_route(methods=['delete'], url_path='delete-file')
     def delete_file(self, request, **kwargs):

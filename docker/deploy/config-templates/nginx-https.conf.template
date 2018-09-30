@@ -28,9 +28,7 @@ server {
     # this is the internal Docker DNS
     resolver 127.0.0.11;
 
-    if ( ${DOLLAR}request_method = OPTIONS ) {
-        return 405;
-    }
+    include /etc/nginx/${DOCKER_NGINX_CORS_CONFIG};
 
 ${NGINX_EXTERNAL_ROUTES}
 

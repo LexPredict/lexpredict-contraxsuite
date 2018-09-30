@@ -48,8 +48,8 @@ from auth import CookieAuthentication
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.3/LICENSE"
-__version__ = "1.1.3"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.4/LICENSE"
+__version__ = "1.1.4"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -201,4 +201,5 @@ class CookieMiddleware(MiddlewareMixin):
         if request.user and hasattr(request.user, 'get_full_name'):
             response.set_cookie('user_name', request.user.get_full_name())
             response.set_cookie('user_id', request.user.pk)
+        response.set_cookie('release_version', settings.VERSION_NUMBER)
         return response

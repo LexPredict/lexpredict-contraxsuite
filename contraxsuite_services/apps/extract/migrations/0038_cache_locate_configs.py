@@ -4,7 +4,7 @@ from __future__ import unicode_literals
 
 from django.db import migrations
 
-from apps.task.tasks import Locate
+from apps.common.advancedcelery.db_cache import DbCache
 
 
 class Migration(migrations.Migration):
@@ -13,7 +13,7 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        migrations.RunPython(Locate.cache_court_config),
-        migrations.RunPython(Locate.cache_geo_config),
-        migrations.RunPython(Locate.cache_term_stems),
+        migrations.RunPython(DbCache.cache_court_config),
+        migrations.RunPython(DbCache.cache_geo_config),
+        migrations.RunPython(DbCache.cache_term_stems),
     ]

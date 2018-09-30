@@ -45,8 +45,8 @@ from apps.project.forms import (
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.3/LICENSE"
-__version__ = "1.1.3"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.4/LICENSE"
+__version__ = "1.1.4"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -58,6 +58,11 @@ class ProjectListView(JqPaginatedListView):
 
     def get_json_data(self, **kwargs):
         data = super().get_json_data()
+        self.request.GET = self.request.GET.copy()
+        if self.request.GET.get('filterscount'):
+            del self.request.GET['filterscount']
+        if self.request.GET.get('sortdatafield'):
+            del self.request.GET['sortdatafield']
         task_queue_view = TaskQueueListView(request=self.request)
         task_queue_data = task_queue_view.get_json_data(with_documents=False)['data']
         for item in data['data']:

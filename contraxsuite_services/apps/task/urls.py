@@ -35,8 +35,8 @@ from apps.task import views, api
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.3/LICENSE"
-__version__ = "1.1.3"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.4/LICENSE"
+__version__ = "1.1.4"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -128,4 +128,20 @@ urlpatterns = [
         views.PartySimilarityView.as_view(),
         name='party-similarity',
     ),
+    url(
+        r'^clean-project/$',
+        views.CleanProjectView.as_view(),
+        name='clean-project',
+    ),
+    url(
+        r'^load-fixtures/$',
+        views.LoadFixturesView.as_view(),
+        name='load-fixtures',
+    ),
+    url(
+        r'^dump-fixtures/$',
+        views.DumpFixturesView.as_view(),
+        name='dump-fixtures',
+    ),
+
 ]

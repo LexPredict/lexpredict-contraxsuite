@@ -12,7 +12,7 @@ def migrate_roles(apps, schema_editor):
         try:
             role_id = Role.objects.get(code=user.role).pk
         except:
-            role_id = Role.get_default_role()
+            role_id = Role.objects.first().pk
         user.role = str(role_id)
         user.save()
 

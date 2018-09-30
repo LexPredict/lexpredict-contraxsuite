@@ -39,15 +39,15 @@ from lexnlp.nlp.en.tokens import get_stems
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.3/LICENSE"
-__version__ = "1.1.3"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.4/LICENSE"
+__version__ = "1.1.4"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
-
 TRIGGER_LIST_COMPANY = ["corporation", "company", "employer"]
 TRIGGER_LIST_EMPLOYEE = ["employee", "executive"]
-FALSE_PEOPLE=["agreement", "addendum", "article"] #get_persons wrongly returns a bunch of these - exclude for now. TODO as about if can improve get_persons
+FALSE_PEOPLE = ["agreement", "addendum",
+                "article"]  # get_persons wrongly returns a bunch of these - exclude for now. TODO as about if can improve get_persons
 TRIGGER_LIST_TIME_UNIT = [("per annum", 1), ("annual", 1), ("yearly", 1), ("per year", 1), ("year", 1),
                           ("bi-weekly", 26), ("monthly", 12), ("annually", 1), ("per month", 12)]
 
@@ -64,6 +64,7 @@ benefits_negative_words = ["termin"]
 severance_positive_words = ["sever"]
 severance_negative_words = []
 
+
 def clean(text):
     return text.lower().strip(string.punctuation).replace(" ", "").replace(",", "")
 
@@ -73,7 +74,7 @@ def clean(text):
 # Return list of all potential "Employees"
 def get_employee_name(text, return_source=False):
     definitions = list(get_definitions(text))
-    fake_person=False
+    fake_person = False
     found_employee = None
     defined_employee_found = False
     for d in definitions:
@@ -88,7 +89,7 @@ def get_employee_name(text, return_source=False):
             person_is_a_company = False
             for f in FALSE_PEOPLE:
                 if f in str(p).lower():
-                      fake_person=True;
+                    fake_person = True
             if not fake_person:
                 for c in companies:
                     # persons and companies return slightly different values for same text
@@ -130,7 +131,7 @@ def get_employer_name(text, return_source=False):
     companies = []
     defined_employer_found = False
     defined_employee_found = False
-    first_company_string=None
+    first_company_string = None
 
     for d in definitions:
         if d.lower() in TRIGGER_LIST_COMPANY:
@@ -158,26 +159,26 @@ def get_salary(text, return_source=False):
     TRIGGER_LIST_SALARY = ["salary", "rate of pay"]
     # text to be found and multiplier to get yearly
     found_time_unit = None
-    found_time_units=[]
-    found_salary_trigger= False
-    money=None
-    min_annual_salary=20000 #sample is mostly executives- so this is safe.
+    found_time_units = []
+    found_salary_trigger = False
+    money = None
+    min_annual_salary = 20000  # sample is mostly executives- so this is safe.
     for t in TRIGGER_LIST_SALARY:
         if findWholeWordorPhrase(t)(text) is not None:
-            found_salary_trigger=True
+            found_salary_trigger = True
             break
     if found_salary_trigger:
         for t in TRIGGER_LIST_TIME_UNIT:
-            found_time_unit_temp= findWholeWordorPhrase(t[0])(text)
+            found_time_unit_temp = findWholeWordorPhrase(t[0])(text)
             if found_time_unit_temp is not None:
                 found_time_units.append(t[1])
-        if len(found_time_units)>0:
-            found_time_unit=min(found_time_units)
-            found_money= list(get_money(text))
-            if len(found_money)>0:
-                money_temp= max(found_money, key=lambda item:item[0])
-                if money_temp[0]*found_time_unit>min_annual_salary:
-                    money=money_temp
+        if len(found_time_units) > 0:
+            found_time_unit = min(found_time_units)
+            found_money = list(get_money(text))
+            if len(found_money) > 0:
+                money_temp = max(found_money, key=lambda item: item[0])
+                if money_temp[0] * found_time_unit > min_annual_salary:
+                    money = money_temp
     if money is not None:
         if return_source:
             return money, found_time_unit, text
@@ -195,16 +196,16 @@ def get_vacation_duration(text, return_source=False):
     TRIGGER_LIST_VACATION = ["vacation", "paid time off"]
 
     for v in TRIGGER_LIST_VACATION:
-        if(findWholeWordorPhrase(v)(text)) is not None:
+        if (findWholeWordorPhrase(v)(text)) is not None:
             found_vacation_trigger = True
             break
     if found_vacation_trigger:
         for t in TRIGGER_LIST_TIME_UNIT:
-            if(findWholeWordorPhrase(t[0])(text)) is not None:
+            if (findWholeWordorPhrase(t[0])(text)) is not None:
                 found_time_unit = t[1]
                 break
         if found_time_unit is not None:
-            found_duration=list(get_durations(text))
+            found_duration = list(get_durations(text))
             if len(found_duration) > 0:
                 # take first duration
                 duration = found_duration[0]
@@ -221,7 +222,7 @@ def get_governing_geo(text, return_source=False):
     found_governing = False
     geo_entity = None
     for g in TRIGGER_lIST_GOVERNING:
-        if(findWholeWordorPhrase(g)(text)) is not None:
+        if (findWholeWordorPhrase(g)(text)) is not None:
             found_governing = True
             break
     if found_governing:
@@ -291,7 +292,7 @@ def get_similar_to_terms_employee(text, positives, negatives):
             sum_similarity = sum_similarity + trained_similar_words[i]
             num_similars += 1
     if num_similars is not 0:
-        return sum_similarity/num_similars
+        return sum_similarity / num_similars
     else:
         return 0
 
@@ -310,9 +311,11 @@ def get_similar_to_benefits(text, benefits_positives=benefits_positive_words,
                             benefits_negatives=benefits_negative_words):
     return get_similar_to_terms_employee(text, benefits_positives, benefits_negatives)
 
+
 def get_similar_to_severance(text, severance_positives=severance_positive_words,
-                         severance_negatives=severance_negative_words):
+                             severance_negatives=severance_negative_words):
     return get_similar_to_terms_employee(text, severance_positives, severance_negatives)
+
 
 def findWholeWordorPhrase(w):
     w = w.replace(" ", r"\s+")

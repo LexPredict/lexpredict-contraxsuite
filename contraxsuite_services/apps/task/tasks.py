@@ -35,30 +35,29 @@ import pickle
 import string
 import sys
 import traceback
-from copy import deepcopy
 from traceback import format_exc
 from typing import List, Dict, Tuple, Any, Callable
 
 # Additional libraries
 import fuzzywuzzy.fuzz
-import geocoder
 import magic
 import nltk
 import numpy as np
 import pandas as pd
+import re
 import tabula
 from celery import app
 # Celery imports
-from celery import shared_task, chord, chain
+from celery import shared_task
 from celery.exceptions import SoftTimeLimitExceeded, TimeLimitExceeded, Retry
 from celery.result import AsyncResult
 # Django imports
-from celery.states import READY_STATES, SUCCESS
+from celery.states import SUCCESS
 from celery.utils.log import get_task_logger
 from constance import config
 from django.conf import settings
 from django.db import transaction
-from django.db.models import Count, Q, Case, Value, When, IntegerField, Subquery
+from django.db.models import Count, Q, Case, Value, When, IntegerField
 from django.db.utils import IntegrityError, DataError
 from django.utils.timezone import now
 from elasticsearch import Elasticsearch
@@ -72,6 +71,7 @@ from lexnlp.extract.en.entities.nltk_maxent import get_companies
 from lexnlp.nlp.en.segments.sentences import get_sentence_span_list, pre_process_document
 from lexnlp.nlp.en.segments.titles import get_titles
 from lexnlp.nlp.en.tokens import get_stems, get_token_list
+from psycopg2 import InterfaceError, OperationalError
 # Scikit-learn imports
 from sklearn.cluster import Birch, DBSCAN, KMeans, MiniBatchKMeans
 from sklearn.ensemble import ExtraTreesClassifier, RandomForestClassifier
@@ -83,7 +83,6 @@ from sklearn.semi_supervised import LabelSpreading
 from sklearn.svm import SVC
 from textblob import TextBlob
 from tika import parser
-from psycopg2 import InterfaceError, OperationalError
 
 # Project imports
 import settings
@@ -93,9 +92,9 @@ from apps.analyze.models import (
     TextUnitClassification, TextUnitClassifier, TextUnitClassifierSuggestion)
 from apps.celery import app
 from apps.common.advancedcelery.db_cache import DbCache
-from apps.common.advancedcelery.fileaccess.local_file_access import LocalFileAccess
-from apps.common.advancedcelery.fileaccess.nginx_http_file_access import NginxHttpFileAccess
+from apps.common.advancedcelery.fileaccess import prepare_file_access_handler
 from apps.common.utils import fast_uuid
+from apps.deployment.app_data import load_geo_entities, load_terms, load_courts
 from apps.document.models import (
     Document, DocumentProperty, DocumentType, TextUnit, TextUnitProperty, TextUnitTag)
 from apps.extract import models as extract_models
@@ -111,15 +110,17 @@ from apps.task.celery_backend.task_utils import revoke_task
 from apps.task.models import Task, TaskConfig
 from apps.task.utils.nlp.lang import get_language
 from apps.task.utils.ocr.textract import textract2text
-from apps.task.utils.task_utils import TaskUtils
+from apps.task.utils.task_utils import TaskUtils, pre_serialize
 from apps.task.utils.text.segment import segment_paragraphs
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.3/LICENSE"
-__version__ = "1.1.3"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.4/LICENSE"
+__version__ = "1.1.4"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
+
+file_access_handler = prepare_file_access_handler()
 
 # Logger setup
 this_module = sys.modules[__name__]
@@ -139,19 +140,6 @@ remove_punctuation_map = dict((ord(char), None) for char in string.punctuation)
 python_magic = magic.Magic(mime=True)
 
 es = Elasticsearch(hosts=settings.ELASTICSEARCH_CONFIG['hosts'])
-
-
-def prepare_file_access_handler():
-    access_type = settings.CELERY_FILE_ACCESS_TYPE
-    if access_type == 'Local':
-        return LocalFileAccess(settings.CELERY_FILE_ACCESS_LOCAL_ROOT_DIR)
-    elif access_type == 'Nginx':
-        return NginxHttpFileAccess(settings.CELERY_FILE_ACCESS_NGINX_ROOT_URL)
-    else:
-        return None
-
-
-file_access_handler = prepare_file_access_handler()
 
 
 def _get_or_create_task_config(celery_task) -> TaskConfig:
@@ -252,11 +240,35 @@ class ExtendedTask(app.Task):
         for ss in sub_tasks:
             ss.apply_async()
 
+    def run_after_sub_tasks_finished(self,
+                                     tasks_group_title: str,
+                                     sub_task_function,
+                                     args_list: List[Tuple],
+                                     source_data: List[str] = None):
+        task_config = _get_or_create_task_config(sub_task_function)
+        tasks = []
+        for index, args in enumerate(args_list):
+            tasks.append(Task(
+                name=sub_task_function.name,
+                main_task_id=self.request.id,
+                source_data=source_data[index] if source_data is not None else self.task.source_data,
+                run_after_sub_tasks_finished=True,
+                title=tasks_group_title,
+                metadata={
+                    'args': args,
+                    'options': {
+                        'soft_time_limit': task_config.soft_time_limit,
+                        'root_id': self.main_task_id
+                    }
+                }
+            ))
+        Task.objects.bulk_create(tasks)
+
     def run_sub_tasks(self,
                       sub_tasks_group_title: str,
                       sub_task_function,
                       args_list: List[Tuple],
-                      source_data: List[str]=None):
+                      source_data: List[str] = None):
         """
         Asynchronously execute sub_task_method on each tuple of arguments from the provided list.
 
@@ -360,12 +372,16 @@ def call_task(task_name, **options):
 
     project_id = options.get('project_id')
     session_id = options.get('session_id')
+
     task = Task.objects.create(
         id=celery_task_id,
         name=task_name,
         user_id=options.get('user_id'),
-        metadata=options.get('metadata'),
+        metadata=options.get('metadata', {}),
+        kwargs=pre_serialize(options),
         source_data=options.get('source_data'),
+        sequential_tasks=options.get('sequential_tasks'),
+        group_id=options.get('group_id'),
         visible=options.get('visible', True),
         project=Project.objects.get(pk=project_id) if project_id else None,
         upload_session=UploadSession.objects.get(pk=session_id) if session_id else None
@@ -537,6 +553,8 @@ class LoadDocuments(BaseTask):
                                                                             ext, file_name)
         if text is not None:
             text = pre_process_document(text)
+            # TODO: migrate it in lexnlp if it works good
+            text = re.sub(r'<[\s/]*(?:[A-Za-z]+|[Hh]\d)[\s/]*>', '', text)
 
         if not text:
             if new_ui:
@@ -615,6 +633,9 @@ class LoadDocuments(BaseTask):
                 task.log_info(message='Document Upload Session id={}'.format(session.pk))
             except:
                 task.log_warn(message='Document Upload Session Undefined!')
+
+            if not document.project and kwargs.get('project_id'):
+                document.project = Project.objects.get(pk=kwargs['project_id'])
 
             # create Document Properties
             document_properties = [
@@ -755,6 +776,12 @@ class LoadTerms(BaseTask):
     """
     name = 'Load Terms'
 
+    def load_terms_from_path(self, path: str, real_fn: str, terms_df: pd):
+        self.log_info('Parse "%s"' % real_fn or path)
+        data = pd.read_csv(path)
+        self.log_info('Detected %d terms' % len(data))
+        return terms_df.append(data)
+
     def process(self, **kwargs):
         """
         Load Terms
@@ -764,52 +791,29 @@ class LoadTerms(BaseTask):
 
         self.set_push_steps(3)
 
-        paths = kwargs['repo_paths']
-
-        if kwargs['file_path']:
-            file_path = kwargs['file_path'].strip('/')
-            path = os.path.join(settings.DATA_ROOT, file_path)
-            if not os.path.exists(path):
-                path = os.path.join(settings.MEDIA_ROOT,
-                                    settings.FILEBROWSER_DIRECTORY,
-                                    file_path)
-            if not os.path.exists(path) or not os.path.isfile(path):
-                raise RuntimeError('Unable to parse path "%s"' % path)
-            paths.append(path)
-
-        self.push()
+        repo_paths = kwargs['repo_paths']
+        file_path = kwargs.get('file_path')
 
         if kwargs['delete']:
             Term.objects.all().delete()
-        self.push()
 
         terms_df = pd.DataFrame()
-        for path in paths:
-            self.log_info('Parse "%s"' % path)
-            data = pd.read_csv(path)
-            self.log_info('Detected %d terms' % len(data))
-            terms_df = terms_df.append(data)
+        for path in repo_paths:
+            terms_df = self.load_terms_from_path(path, None, terms_df)
 
-        terms_df.drop_duplicates(inplace=True)
-        terms_df.loc[terms_df["CaseSensitive"] == False, "Term"] = terms_df.loc[
-            terms_df["CaseSensitive"] == False, "Term"].str.lower()
-        terms_df = terms_df.drop_duplicates(subset="Term").dropna(subset=["Term"])
-        self.log_info('Total %d unique terms' % len(terms_df))
+        if file_path:
+            with file_access_handler.get_local_fn(file_path) as (fn, file_name):
+                terms_df = self.load_terms_from_path(fn, file_name, terms_df)
 
-        terms = []
-        for row_id, row in terms_df.iterrows():
-            term = row["Term"].strip()
-            if not Term.objects.filter(term=term).exists():
-                lt = Term()
-                lt.term = term
-                lt.source = row["Term Category"]
-                lt.definition_url = row["Term Locale"]
-                terms.append(lt)
+        self.push()
 
-        Term.objects.bulk_create(terms)
+        terms_count = load_terms(terms_df)
+        self.log_info('Total %d unique terms' % terms_count)
+
+        self.push()
 
         self.log_info('Caching term stems for Locate tasks...')
-        Locate.cache_term_stems()
+        DbCache.cache_term_stems()
 
         self.push()
 
@@ -829,23 +833,24 @@ class LoadGeoEntities(BaseTask):
         ('Alias', 'en', 'abbreviation'),
     )
 
+    def load_geo_entities_from_path(self, path: str, real_fn: str, entities_df: pd.DataFrame):
+        self.log_info('Parse "%s"' % real_fn or path)
+        data = pd.read_csv(path)
+        self.log_info('Detected %d entities' % len(data))
+        return entities_df.append(data)
+
+    def set_total_progress(self, progress):
+        self.set_push_steps(progress + 2)
+        self.push()
+
     def process(self, **kwargs):
         """
         Load Geopolitical Entities
         :param kwargs: form data
         :return:
         """
-        paths = kwargs['repo_paths']
-        if kwargs['file_path']:
-            file_path = kwargs['file_path'].strip('/')
-            path = os.path.join(settings.DATA_ROOT, file_path)
-            if not os.path.exists(path):
-                path = os.path.join(settings.MEDIA_ROOT,
-                                    settings.FILEBROWSER_DIRECTORY,
-                                    file_path)
-            if not os.path.exists(path) or not os.path.isfile(path):
-                raise RuntimeError('Unable to parse path "%s"' % path)
-            paths.append(path)
+        repo_paths = kwargs['repo_paths']
+        file_path = kwargs.get('file_path')
 
         if kwargs['delete']:
             GeoEntity.objects.all().delete()
@@ -853,72 +858,25 @@ class LoadGeoEntities(BaseTask):
             GeoAlias.objects.all().delete()
 
         entities_df = pd.DataFrame()
-        for path in paths:
-            self.log_info('Parse "%s"' % path)
-            data = pd.read_csv(path)
-            self.log_info('Detected %d entities' % len(data))
-            entities_df = entities_df.append(data)
+        for path in repo_paths:
+            entities_df = self.load_geo_entities_from_path(path, None, entities_df)
+
+        if file_path:
+            with file_access_handler.get_local_fn(file_path) as (fn, file_name):
+                entities_df = self.load_geo_entities_from_path(fn, file_name, entities_df)
+
         if entities_df.empty:
             raise RuntimeError('Received 0 entities to process, exit.')
-        entities_df = entities_df.drop_duplicates().fillna('')
 
-        self.set_push_steps(len(entities_df) + 2)
-        self.push()
+        geo_aliases_count, geo_entities_count = load_geo_entities(entities_df,
+                                                                  lambda progress: self.set_total_progress(progress),
+                                                                  lambda: self.push())
 
-        # create Geo Entities
-        geo_aliases = []
-        geo_entities_count = 0
-        for _, row in entities_df.iterrows():
-            entity_id = row['Entity ID']
-            entity_name = row['Entity Name'].strip()
-            entity_priority = row.get('Entity Priority')
-            if entity_priority:
-                try:
-                    entity_priority = int(entity_priority)
-                except ValueError:
-                    entity_priority = 0
-            else:
-                entity_priority = 0
-
-            if 'latitude' in row and row['latitude']:
-                latitude = row['latitude']
-                longitude = row['longitude']
-            else:
-                g = geocoder.google(entity_name)
-                if not g.latlng and ',' in entity_name:
-                    g = geocoder.google(entity_name.split(',')[0])
-                latitude, longitude = g.latlng if g.latlng else (None, None)
-
-            the_entity = GeoEntity.objects.filter(entity_id=entity_id)
-            if the_entity.exists:
-                the_entity.delete()
-
-            entity = GeoEntity.objects.create(
-                entity_id=entity_id,
-                name=entity_name,
-                priority=entity_priority,
-                category=row['Entity Category'].strip(),
-                latitude=latitude,
-                longitude=longitude)
-            geo_entities_count += 1
-
-            for column_name, locale, alias_type in self.locales_map:
-                if not row[column_name]:
-                    continue
-                geo_aliases.append(
-                    GeoAlias(
-                        entity=entity,
-                        locale=locale,
-                        alias=row[column_name],
-                        type=alias_type))
-            self.push()
-
-        GeoAlias.objects.bulk_create(geo_aliases)
-        self.log_info('Total created: %d GeoAliases' % len(geo_aliases))
+        self.log_info('Total created: %d GeoAliases' % geo_aliases_count)
         self.log_info('Total created: %d GeoEntities' % geo_entities_count)
 
         self.log_info('Caching geo config for Locate tasks...')
-        Locate.cache_geo_config()
+        DbCache.cache_geo_config()
 
         self.push()
 
@@ -929,58 +887,36 @@ class LoadCourts(BaseTask):
     """
     name = 'Load Courts'
 
+    def load_courts_from_path(self, path: str, real_fn: str):
+        self.log_info('Parse "%s"' % real_fn or path)
+        dictionary_data = pd.read_csv(path).dropna(subset=['Court ID']).fillna('')
+        courts_count = load_courts(dictionary_data)
+        self.log_info('Detected %d courts' % courts_count)
+
     def process(self, **kwargs):
         """
         Load Courts data from a file OR github repo
         :param kwargs: dict, form data
         :return:
         """
+        repo_paths = kwargs['repo_paths']
+        file_path = kwargs.get('file_path')
 
         self.set_push_steps(3)
-
-        paths = kwargs['repo_paths']
-
-        if kwargs['file_path']:
-            file_path = kwargs['file_path'].strip('/')
-            path = os.path.join(settings.DATA_ROOT, file_path)
-            if not os.path.exists(path):
-                path = os.path.join(settings.MEDIA_ROOT,
-                                    settings.FILEBROWSER_DIRECTORY,
-                                    file_path)
-            if not os.path.exists(path) or not os.path.isfile(path):
-                raise RuntimeError('Unable to parse path "%s"' % path)
-            paths.append(path)
-
-        self.push()
 
         if 'delete' in kwargs:
             Court.objects.all().delete()
         self.push()
 
-        for path in paths:
-            self.log_info('Parse "%s"' % path)
-            dictionary_data = pd.read_csv(path).dropna(subset=['Court ID']).fillna('')
-            dictionary_data['Court ID'] = dictionary_data['Court ID'].astype(int)
-            self.log_info('Detected %d courts' % len(dictionary_data))
+        for path in repo_paths:
+            self.load_courts_from_path(path, None)
+        if file_path:
+            with file_access_handler.get_local_fn(file_path) as (fn, file_name):
+                self.load_courts_from_path(fn, file_name)
+        self.push()
 
-            courts = []
-            for _, row in dictionary_data.iterrows():
-                if not Court.objects.filter(
-                        court_id=row['Court ID'],
-                        alias=row['Alias']).exists():
-                    court = Court(
-                        court_id=row['Court ID'],
-                        type=row['Court Type'],
-                        name=row['Court Name'],
-                        level=row['Level'],
-                        jurisdiction=row['Jurisdiction'],
-                        alias=row['Alias']
-                    )
-                    courts.append(court)
-
-            Court.objects.bulk_create(courts)
         self.log_info('Caching courts config for Locate tasks...')
-        Locate.cache_court_config()
+        DbCache.cache_court_config()
         self.push()
 
 
@@ -993,49 +929,6 @@ class Locate(BaseTask):
         duration=['DateDurationUsage'],
         geoentity=['GeoEntityUsage', 'GeoAliasUsage']
     )
-
-    @staticmethod
-    def cache_geo_config(*args, **kwargs):
-
-        geo_config = {}
-        for name, pk, priority in GeoEntity.objects.values_list('name', 'pk', 'priority'):
-            entity = dict_entities.entity_config(pk, name, priority or 0, name_is_alias=True)
-            geo_config[pk] = entity
-        for alias_id, alias_text, alias_type, entity_id, alias_lang \
-                in GeoAlias.objects.values_list('pk', 'alias', 'type', 'entity', 'locale'):
-            entity = geo_config[entity_id]
-            if entity:
-                is_abbrev = alias_type.startswith('iso') or alias_type.startswith('abbrev')
-                dict_entities.add_aliases_to_entity(entity,
-                                                    aliases_csv=alias_text,
-                                                    language=alias_lang,
-                                                    is_abbreviation=is_abbrev,
-                                                    alias_id=alias_id)
-        res = list(geo_config.values())
-        DbCache.put_to_db('geo_config', res)
-
-    @staticmethod
-    def cache_court_config(*args, **kwargs):
-        res = [dict_entities.entity_config(
-            entity_id=i.id,
-            name=i.name,
-            priority=0,
-            aliases=i.alias.split(';') if i.alias else []
-        ) for i in Court.objects.all()]
-        DbCache.put_to_db('court_config', res)
-
-    @staticmethod
-    def cache_term_stems(*args, **kwargs):
-        term_stems = {}
-        for t, pk in Term.objects.values_list('term', 'pk'):
-            stemmed_term = ' %s ' % ' '.join(get_stems(t))
-            stemmed_item = term_stems.get(stemmed_term, [])
-            stemmed_item.append([t, pk])
-            term_stems[stemmed_term] = stemmed_item
-        for item in term_stems:
-            term_stems[item] = dict(values=term_stems[item],
-                                    length=len(term_stems[item]))
-        DbCache.put_to_db('term_stems', term_stems)
 
     def delete_existing_usages(self, locator_names, document_id):
         # delete ThingUsage and TextUnitTag(tag=thing)
@@ -1113,13 +1006,13 @@ class Locate(BaseTask):
         text_unit_package = []
         text_unit_packages = []
 
-        for text_unit_id, text, text_unit_lang in text_units.values_list('pk', 'text', 'language'):
+        for text_unit_id in text_units.values_list('pk', flat=True):
             if not text_unit_id:
                 continue
             if settings.TEXT_UNITS_TO_PARSE_PACKAGE_SIZE <= len(text_unit_package):
                 text_unit_packages.append(text_unit_package)
                 text_unit_package = []
-            text_unit_package.append((text_unit_id, text_unit_lang, text))
+            text_unit_package.append(text_unit_id)
 
         if len(text_unit_package) > 0:
             text_unit_packages.append(text_unit_package)
@@ -1130,10 +1023,9 @@ class Locate(BaseTask):
         self.run_sub_tasks('Locate Data In Each Text Unit', Locate.parse_text_units,
                            locate_args)
 
-        if kwargs.get('notify_task_done'):
-            self.run_sub_tasks('Uploading Completed',
-                               Locate.notify_task_done,
-                               locate_args)
+        self.run_after_sub_tasks_finished('Cache Generic Document Data',
+                                          Locate.cache_generic_document_data,
+                                          [(document_id,)])
 
     @staticmethod
     @shared_task(base=ExtendedTask,
@@ -1144,9 +1036,25 @@ class Locate(BaseTask):
                  autoretry_for=(SoftTimeLimitExceeded, InterfaceError, OperationalError,),
                  max_retries=3
                  )
-    def parse_text_units(self: ExtendedTask, text_units, user_id, locate):
+    def cache_generic_document_data(_self: ExtendedTask, doc_id):
+        doc = Document.objects.get(pk=doc_id)
+        if doc:
+            doc.cache_generic_values()
+
+    @staticmethod
+    @shared_task(base=ExtendedTask,
+                 bind=True,
+                 soft_time_limit=6000,
+                 default_retry_delay=10,
+                 retry_backoff=True,
+                 autoretry_for=(SoftTimeLimitExceeded, InterfaceError, OperationalError,),
+                 max_retries=3
+                 )
+    def parse_text_units(self: ExtendedTask, text_unit_ids, user_id, locate):
         tags = []
         self.set_push_steps(len(locate) + 1)
+        text_units = TextUnit.objects.filter(pk__in=text_unit_ids).values_list('pk', 'text', 'language')
+        text_units = list(text_units)
         for task_name, task_kwargs in locate.items():
             self.push()
             func_name = 'parse_%s' % task_name
@@ -1156,7 +1064,7 @@ class Locate(BaseTask):
                 self.log_error('Warning: "%s" method not found' % func_name)
                 continue
 
-            for text_unit_id, text_unit_lang, text in text_units:
+            for text_unit_id, text, text_unit_lang in text_units:
                 found = None
                 try:
                     found = task_func(text, text_unit_id, text_unit_lang, **task_kwargs)
@@ -1218,7 +1126,7 @@ def parse_citation(text, text_unit_id, _text_unit_lang):
 
 
 def parse_court(text, text_unit_id, text_unit_lang, **kwargs):
-    court_config = DbCache.get('court_config')
+    court_config = DbCache.get_court_config()
     found = [dict_entities.get_entity_id(i[0])
              for i in courts.get_courts(text,
                                         court_config_list=court_config,
@@ -1434,7 +1342,7 @@ def parse_url(text, text_unit_id, _text_unit_lang):
 
 
 def parse_geoentity(text, text_unit_id, text_unit_lang, **kwargs):
-    geo_config = DbCache.get('geo_config')
+    geo_config = DbCache.get_geo_config()
     priority = kwargs.get('priority', True)
     entity_alias_pairs = list(geoentities.get_geoentities(text,
                                                           geo_config,
@@ -1465,7 +1373,7 @@ def parse_geoentity(text, text_unit_id, text_unit_lang, **kwargs):
 
 
 def parse_term(text, text_unit_id, _text_unit_lang, **kwargs):
-    term_stems = DbCache.get('term_stems')
+    term_stems = DbCache.get_term_config()
     text_stems = ' %s ' % ' '.join(get_stems(text, lowercase=True))
     text_tokens = get_token_list(text, lowercase=True)
     term_usages = []
@@ -1604,15 +1512,19 @@ class Classify(BaseTask):
 
         self.set_push_steps(3)
 
-        classifier_id = kwargs.get('classifier')
+        classifier_selection = kwargs.get('classifier')
+        classifier_id = classifier_selection['pk'] if classifier_selection else None
+
+        class_name = kwargs['class_name']
+
         min_confidence = kwargs['min_confidence'] / 100
 
         if classifier_id is None and kwargs.get('delete_classifier'):
-            TextUnitClassifier.objects.filter(class_name=kwargs['class_name']).delete()
+            TextUnitClassifier.objects.filter(class_name=class_name).delete()
 
         if kwargs['delete_suggestions']:
             if classifier_id is None:
-                filter_opts = {'class_name': kwargs['class_name']}
+                filter_opts = {'class_name': class_name}
             else:
                 filter_opts = {'classifier_id': classifier_id}
             TextUnitClassifierSuggestion.objects.filter(**filter_opts).delete()
@@ -2271,6 +2183,25 @@ def track_tasks(self):
 
     for task in Task.objects.unready_main_tasks():
         Task.objects.update_main_task(task.id)
+
+    # search for pending sequential tasks and start them
+    for task in Task.objects \
+            .succeed_main_tasks() \
+            .filter(sequential_tasks__isnull=False,
+                    sequential_tasks_started=False):
+        task.sequential_tasks_started = True
+        task.save()
+        for seq_task_kwargs in task.sequential_tasks:
+            try:
+                for required_parent_kwarg in seq_task_kwargs.get('required_parent_task_kwargs', []):
+                    kw = task.kwargs.get(required_parent_kwarg, 'none')
+                    if kw == 'none':
+                        raise RuntimeError('Missed "%s" required parent task kwarg'
+                                           % required_parent_kwarg)
+                    seq_task_kwargs[required_parent_kwarg] = kw
+            except RuntimeError:
+                continue
+            call_task(**seq_task_kwargs)
 
 
 @app.task(name='advanced_celery.clean_sub_tasks', bind=True)

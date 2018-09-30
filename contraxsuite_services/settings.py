@@ -40,6 +40,7 @@ import platform
 import os
 import re
 import sys
+import warnings
 
 # Third-party imports
 from celery.schedules import crontab
@@ -51,6 +52,10 @@ from django.core.urlresolvers import reverse_lazy
 # App imports
 from contraxsuite_logging import ContraxsuiteJSONFormatter, prepare_log_dirs
 from apps.common.advancedcelery.fileaccess.local_file_access import LocalFileAccess
+
+warnings.filterwarnings('ignore',
+                        message='''Trying to unpickle estimator|The psycopg2 wheel package will be renamed|numpy.core.umath_tests''')
+
 
 ROOT_DIR = environ.Path(__file__) - 2
 PROJECT_DIR = ROOT_DIR.path('contraxsuite_services')
@@ -108,20 +113,24 @@ INSTALLED_APPS = (
     'rest_framework_swagger',
 
     # LOCAL_APPS
-    'apps.common',
-    'apps.analyze',
-    'apps.document',
-    'apps.annotator',
-    'apps.extract',
-    'apps.project',
-    'apps.deployment',
-    'apps.task',
-    'apps.users',
-    'apps.employee',
-    'apps.fields',
-    'apps.lease',
-    'apps.dump'
+    # 'apps.common',
+    # 'apps.analyze',
+    # 'apps.document',
+    # 'apps.annotator',
+    # 'apps.extract',
+    # 'apps.project',
+    # 'apps.deployment',
+    # 'apps.task',
+    # 'apps.users',
+    # 'apps.employee',
+    # 'apps.fields',
+    # 'apps.lease',
+    # 'apps.dump'
 )
+
+apps_dir = PROJECT_DIR('apps')
+INSTALLED_APPS += tuple('apps.%s' % name for name in os.listdir(apps_dir) if os.path.isdir(os.path.join(apps_dir, name)) and '__' not in name)
+
 
 # MIDDLEWARE CONFIGURATION
 # ------------------------------------------------------------------------------
@@ -561,7 +570,7 @@ JQ_EXPORT = False
 # place dictionaries for GeoEntities, Terms, US Courts, etc.
 DATA_ROOT = PROJECT_DIR('data/')
 GIT_DATA_REPO_ROOT = 'https://raw.githubusercontent.com/' \
-                     'LexPredict/lexpredict-legal-dictionary/1.0.5'
+                     'LexPredict/lexpredict-legal-dictionary/1.0.6'
 
 # logging
 CELERY_LOG_FILE_PATH = PROJECT_DIR('logs/celery-{0}.log'.format(platform.node()))
@@ -689,8 +698,8 @@ CORS_ORIGIN_ALLOW_ALL = True
 CORS_ALLOW_CREDENTIALS = False
 CORS_URLS_REGEX = r'^/api/.*$'
 
-VERSION_NUMBER = '1.1.3'
-VERSION_COMMIT = 'd36dfe7'
+VERSION_NUMBER = '1.1.4'
+VERSION_COMMIT = 'cb7018b'
 
 try:
     from local_settings import *
@@ -768,8 +777,6 @@ AUTOLOGIN_TEST_USER_FORBIDDEN_URLS = [
 DATA_UPLOAD_MAX_NUMBER_FIELDS = None
 PIPELINE['PIPELINE_ENABLED'] = PIPELINE_ENABLED
 
-ANNOTATOR_RETRAIN_MODEL_ON_ANNOTATIONS_CHANGE = False
-
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTOCOL', 'https')
 
 CALCULATED_FIELDS_EVAL_LOCALS = {'datetime': datetime, 'len': len}
@@ -781,6 +788,8 @@ RETRAINING_TASK_EXECUTION_DELAY_IN_SEC = 1 * 60 * 60
 TRAINED_AFTER_DOCUMENTS_NUMBER = 100
 
 TEXT_UNITS_TO_PARSE_PACKAGE_SIZE = 10
+
+ML_TRAIN_DATA_SET_GROUP_LEN = 10000
 
 # Debugging Docker Deployments:
 # CELERY_BROKER_URL = 'amqp://contrax1:contrax1@127.0.0.1:56720/contrax1_vhost'

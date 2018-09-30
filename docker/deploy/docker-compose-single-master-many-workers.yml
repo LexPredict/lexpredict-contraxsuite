@@ -217,6 +217,7 @@ services:
       - contrax_net
     command: ["/start.sh",  "celery"]
     environment:
+      - "DOCKER_CELERY_CONCURRENCY=4"
       - "SHARED_USER_NAME=${SHARED_USER_NAME}"
       - "SHARED_USER_ID=${SHARED_USER_ID}"
       - "DOCKER_HOST_NAME_PG=${DOCKER_HOST_NAME_PG}"
@@ -378,6 +379,7 @@ services:
       - contraxsuite_additional_fixtures:/contraxsuite_services/fixtures/additional
       - contraxsuite_third_party_dependencies:/third_party_dependencies
       - contraxsuite_data_media:/data/media
+      - contraxsuite_data_update:/data/data_update
       - contraxsuite_logs:/data/logs
     depends_on:
       - contrax-db
@@ -393,7 +395,7 @@ services:
         constraints: [node.role == manager]
 
   contrax-nginx:
-    image: nginx
+    image: nginx:stable
     networks:
       - contrax_net
     volumes:
@@ -409,6 +411,8 @@ services:
       - 0.0.0.0:443:4443
     depends_on:
       - contrax-uwsgi
+      - contrax-jupyter
+      - contrax-flower
     deploy:
       replicas: 1
       placement:
@@ -464,6 +468,7 @@ services:
       - contraxsuite_logs:/data/logs
       - contraxsuite_internal_nginx_logs:/var/log/nginx
       - contraxsuite_notebooks:/contraxsuite_services/notebooks
+      - contraxsuite_jupyter_add_req:/contraxsuite_services/jupyter_add_req
     depends_on:
       - contrax-db
       - contrax-celery
@@ -576,6 +581,7 @@ volumes:
   contraxsuite_logs:
   contraxsuite_internal_nginx_logs:
   contraxsuite_logrotate:
+  contraxsuite_data_update:
   postgres_data:
   rabbitmq_data:
   elasticsearch_data:
@@ -586,6 +592,7 @@ volumes:
   celery_worker_state:
   contraxsuite_nginx_server_include:
   contraxsuite_additional_fixtures:
+  contraxsuite_jupyter_add_req:
 
 networks:
   contrax_net:

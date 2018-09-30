@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html>
+<head lang="en">
+  <meta charset="UTF-8">
+  <title>{{ title }}</title>
+  <style>
+    @page {
+      size: A4 landscape;
+      margin: 0;
+    }
+    table {
+      overflow-wrap: break-word;
+      display: table;
+      border-spacing: 2px;
+      font-size: 7px;
+      background-color: transparent;
+      border: 1px solid #dee2e6;
+      border-collapse: collapse;
+    }
+    td, th {
+      overflow-wrap: break-word;
+      border: 1px solid #dee2e6;
+    }
+    th {
+      text-align: center;
+      background-color: #eee;
+      text-transform: capitalize;
+    }
+  </style>
+</head>
+<body>
+<h2>{{ title }}</h2>
+{{ table }}
+</body>
+</html>

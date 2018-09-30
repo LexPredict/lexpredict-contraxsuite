@@ -28,6 +28,7 @@
 import datetime
 import importlib
 import io
+import os
 import random
 import re
 import uuid
@@ -35,7 +36,10 @@ import uuid
 # Third-party imports
 import django_excel as excel
 import pandas as pd
+import pdfkit as pdf
 from allauth.account.models import EmailAddress
+from jinja2 import Environment, FileSystemLoader, PackageLoader
+from weasyprint import HTML
 
 # Django imports
 from django.conf import settings
@@ -43,6 +47,7 @@ from django.conf.urls import url
 from django.core.urlresolvers import reverse
 from django.http import HttpResponse
 from django.utils.text import slugify
+from django.utils import numberformat
 
 # App imports
 from apps.users.models import User, Role
@@ -50,8 +55,8 @@ from apps.users.models import User, Role
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.3/LICENSE"
-__version__ = "1.1.3"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.4/LICENSE"
+__version__ = "1.1.4"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -246,13 +251,9 @@ def get_api_module(app_name):
     return importlib.import_module(module_path_str)
 
 
-def download_xls(data: [list, pd.DataFrame], file_name='output', sheet_name='doc'):
+def download_xls(data: pd.DataFrame, file_name='output', sheet_name='doc'):
     buffer = io.BytesIO()
     writer = pd.ExcelWriter(buffer, engine='xlsxwriter')
-    if not isinstance(data, pd.DataFrame):
-        data = pd.DataFrame(data)
-    data[data.select_dtypes(['object', 'datetime64[ns, UTC]']).columns] = data.select_dtypes(['object', 'datetime64[ns, UTC]']).apply(lambda x: x.astype(str))
-    data.fillna('', inplace=True)
     data.to_excel(writer, index=False, sheet_name=sheet_name, encoding='utf-8')
     writer.save()
     response = HttpResponse(
@@ -262,17 +263,42 @@ def download_xls(data: [list, pd.DataFrame], file_name='output', sheet_name='doc
     return response
 
 
-def download_csv(data: [list, pd.DataFrame], file_name='output'):
+def download_csv(data: pd.DataFrame, file_name='output'):
     buffer = io.StringIO()
-    if not isinstance(data, pd.DataFrame):
-        data = pd.DataFrame(data)
-    data[data.select_dtypes(['object']).columns] = data.select_dtypes(['object']).apply(lambda x: x.astype(str))
-    data.fillna('', inplace=True)
     data.to_csv(buffer, index=False, encoding='utf-8')
     response = HttpResponse(content_type='text/csv')
     response['Content-Disposition'] = 'attachment; filename="{}.{}"'.format(file_name, 'csv')
     response.write(buffer.getvalue())
     return response
+
+
+def download_pdf(data: pd.DataFrame, file_name='output'):
+    data_html = data.to_html(index=False)
+    try:
+        data_pdf = pdf.from_string(data_html, False)
+    except OSError:
+        env = Environment(loader=FileSystemLoader(settings.PROJECT_DIR('templates')))
+        template = env.get_template('pdf_export.html')
+        template_vars = {"title": file_name.capitalize(),
+                         "table": data_html}
+        data_pdf = HTML(string=template.render(template_vars)).write_pdf()
+    response = HttpResponse(content_type='application/pdf')
+    response['Content-Disposition'] = 'attachment; filename="{}.{}"'.format(file_name, 'pdf')
+    response.write(data_pdf)
+    return response
+
+
+def download(data: [list, pd.DataFrame], fmt='csv', file_name='output'):
+    if not isinstance(data, pd.DataFrame):
+        data = pd.DataFrame(data)
+    data[data.select_dtypes(['object', 'datetime64[ns, UTC]']).columns] = data.select_dtypes(['object', 'datetime64[ns, UTC]']).apply(lambda x: x.astype(str))
+    data.fillna('', inplace=True)
+    if fmt == 'xlsx':
+        return download_xls(data, file_name=file_name)
+    if fmt == 'pdf':
+        return download_pdf(data, file_name=file_name)
+    else:
+        return download_csv(data, file_name=file_name)
 
 
 def get_test_user():
@@ -295,3 +321,14 @@ def get_test_user():
             primary=True)
 
     return test_user
+
+
+def format_number(num):
+    """
+    Add thousand separator to a number
+    """
+    return numberformat.format(num,
+                               grouping=3,
+                               decimal_sep='.',
+                               thousand_sep=',',
+                               force_grouping=True)

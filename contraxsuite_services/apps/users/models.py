@@ -35,8 +35,8 @@ from django.utils.translation import ugettext_lazy as _
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.3/LICENSE"
-__version__ = "1.1.3"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.4/LICENSE"
+__version__ = "1.1.4"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -61,10 +61,6 @@ class Role(models.Model):
     def is_reviewer(self):
         return not (self.is_manager or self.is_admin)
 
-    @classmethod
-    def get_default_role(cls):
-        return cls.objects.last().pk
-
     @property
     def abbr(self):
         return ''.join([w[0].upper() for w in self.name.split()])
@@ -82,7 +78,7 @@ class User(AbstractUser):
     # First Name and Last Name do not cover name patterns
     # around the globe.
     name = models.CharField(_('Name of User'), blank=True, max_length=255)
-    role = models.ForeignKey(Role, blank=False, null=False, default=Role.get_default_role)
+    role = models.ForeignKey(Role, blank=True, null=True)
     organization = models.CharField(_('Organization'), max_length=100, blank=True, null=True)
     photo = models.ImageField(upload_to='photos/', max_length=100, blank=True, null=True)
 
@@ -103,6 +99,11 @@ class User(AbstractUser):
     @property
     def is_reviewer(self):
         return self.role.is_reviewer
+
+    def save(self, *args, **kwargs):
+        if self.role is None:
+            self.role = Role.objects.first()
+        super().save(*args, **kwargs)
 
     def can_view_document(self, document):
         return self.is_superuser or self.is_manager or self.taskqueue_set. \

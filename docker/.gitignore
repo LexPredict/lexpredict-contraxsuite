@@ -2,3 +2,5 @@ volumes/
 kubernetes-temp/
 setenv_local.sh
 util/temp/
+/util/.tmp_dict/
+/util/dict_data_en.zip

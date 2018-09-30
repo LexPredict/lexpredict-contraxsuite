@@ -24,9 +24,18 @@
 """
 # -*- coding: utf-8 -*-
 
+import sys
+import traceback
+from io import StringIO
+from tempfile import NamedTemporaryFile
+
 from allauth.account.models import EmailAddress, EmailConfirmation
+
 from django.core import serializers as core_serializers
+from django.core.management import call_command
 from django.db.models import F
+from django.http import HttpResponse
+
 
 # Project imports
 from apps.common.models import ReviewStatus, ReviewStatusGroup, AppVar
@@ -90,3 +99,68 @@ def get_field_values_dump():
 
 def write_field_values_dump(file_name: str):
     write_dump(file_name, get_field_values_dump())
+
+
+def get_model_fixture_dump(app_name, model_name, filter_options=None):
+    """
+    Get Model objects dump
+    :param app_name:
+    :param model_name:
+    :param filter_options:
+    :return:
+    """
+    module = sys.modules['apps.{}.models'.format(app_name)]
+    model = getattr(module, model_name)
+    queryset = model.objects.all()
+    if filter_options:
+        queryset = queryset.filter(**filter_options)
+    return core_serializers.serialize('json', queryset)
+
+
+def download(data, file_name='dump', file_ext='json', content_type='application/json'):
+    """
+    :param data: data to store in file
+    :param file_name: str
+    :param file_ext: str - file extension
+    :param content_type: str - content type
+    :return:
+    """
+    response = HttpResponse(data, content_type=content_type)
+    filename = '{}.{}'.format(file_name, file_ext)
+    response['Content-Disposition'] = 'attachment; filename="{}"'.format(filename)
+    response['filename'] = filename
+    return response
+
+
+def load_fixture_from_dump(data, mode='default'):
+    """
+    Load any fixtures from json data
+    :param data: json file content
+    :param mode: default - Install all, replace existing objects by id'),
+                 soft - do not install if any objects already exists'),
+                 partial - Install only new objects by id')],
+    :return:
+    """
+    try:
+        with NamedTemporaryFile(mode='w+b', suffix='.json') as f:
+            f.write(data)
+            f.flush()
+            old_stdout = sys.stdout
+            result = StringIO()
+            sys.stdout = result
+            if mode == 'soft':
+                call_command('loadnewdata', f.name, skip_if_exists='any', interactive=False)
+            elif mode == 'partial':
+                call_command('loadnewdata', f.name, skip_if_exists='one', interactive=False)
+            else:
+                call_command('loaddata', f.name, interactive=False)
+            sys.stdout = old_stdout
+            result_string = result.getvalue()
+        ret = {'status': 'success',
+               'result': result_string}
+    except Exception as e:
+        tb = traceback.format_exc()
+        ret = {'status': 'error',
+               'log': str(e),
+               'exception': tb}
+    return ret

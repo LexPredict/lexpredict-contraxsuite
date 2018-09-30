@@ -71,7 +71,7 @@ echo =================
 pushd /contraxsuite_services
 
 
-if [ $1 == "save-dump" ]; then
+if [ "$1" == "save-dump" ]; then
 
 su - ${SHARED_USER_NAME} -c "${ACTIVATE_VENV} && \
     python manage.py force_migrate && \
@@ -130,6 +130,7 @@ usage_stats.apply()
     python manage.py collectstatic --noinput && \
     python manage.py set_site && \
     python manage.py create_superuser --username=${DOCKER_DJANGO_ADMIN_NAME} --email=${DOCKER_DJANGO_ADMIN_EMAIL} --password=${DOCKER_DJANGO_ADMIN_PASSWORD} && \
+    python manage.py init_app_data --data-dir=/data/data_update && \
     python manage.py loadnewdata fixtures/common/*.json && \
     python manage.py loadnewdata fixtures/private/*.json && \
     python manage.py loadnewdata fixtures/additional/*.json \
@@ -152,6 +153,19 @@ elif [ "$1" == "jupyter" ]; then
     echo "Sleeping 15 seconds to let Postgres start and Django migrate"
     sleep 15
     echo "Starting Jupyter..."
+
+    VENV_PATH=/contraxsuite_services/venv
+    JUPYTER_ADD_REQ_PATH=/contraxsuite_services/jupyter_add_req
+    JUPYTER_ADD_REQ=${JUPYTER_ADD_REQ_PATH}/requirements.txt
+    JUPYTER_ADD_DEBIAN_REQ=${JUPYTER_ADD_REQ_PATH}/debian-requirements.txt
+
+    mkdir -p ${JUPYTER_ADD_REQ_PATH}
+
+    set +e
+    chown -R -v ${SHARED_USER_NAME}:${SHARED_USER_NAME} ${VENV_PATH}
+    cat ${JUPYTER_ADD_DEBIAN_REQ} | xargs -r apt-get -y -q install
+    su - ${SHARED_USER_NAME} -c "${ACTIVATE_VENV} && pip install -r ${JUPYTER_ADD_REQ}"
+    set -e
 
     mkdir -p /contraxsuite_services/notebooks
     chown -R -v ${SHARED_USER_NAME}:${SHARED_USER_NAME} /contraxsuite_services/notebooks
@@ -209,6 +223,6 @@ else
     su - ${SHARED_USER_NAME} -c "${ACTIVATE_VENV} && \
         ulimit -n 1000000 && \
         python manage.py check && \
-        celery -A apps worker -Q default,high_priority --concurrency=4 -Ofair -n default_priority@%h --statedb=/data/celery_worker_state/worker.state"
+        celery -A apps worker -Q default,high_priority --concurrency=${DOCKER_CELERY_CONCURRENCY} -Ofair -n default_priority@%h --statedb=/data/celery_worker_state/worker.state"
     sleep 20
 fi

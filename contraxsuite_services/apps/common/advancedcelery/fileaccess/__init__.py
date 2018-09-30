@@ -22,3 +22,19 @@
     provider, processing documents on the fly in a web application,
     or shipping ContraxSuite within a closed source product.
 """
+
+from django.conf import settings
+from typing import Union
+
+from apps.common.advancedcelery.fileaccess.local_file_access import LocalFileAccess
+from apps.common.advancedcelery.fileaccess.nginx_http_file_access import NginxHttpFileAccess
+
+
+def prepare_file_access_handler() -> Union[LocalFileAccess, NginxHttpFileAccess]:
+    access_type = settings.CELERY_FILE_ACCESS_TYPE
+    if access_type == 'Local':
+        return LocalFileAccess(settings.CELERY_FILE_ACCESS_LOCAL_ROOT_DIR)
+    elif access_type == 'Nginx':
+        return NginxHttpFileAccess(settings.CELERY_FILE_ACCESS_NGINX_ROOT_URL)
+    else:
+        return None

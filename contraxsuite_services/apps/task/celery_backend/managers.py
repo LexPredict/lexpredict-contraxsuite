@@ -2,11 +2,14 @@
 from __future__ import absolute_import, unicode_literals
 
 import warnings
+import copy
 from functools import wraps
 from itertools import count, groupby
+from traceback import format_exception
 
 from celery.result import AsyncResult
 from celery.states import READY_STATES, PROPAGATE_STATES, SUCCESS, UNREADY_STATES
+from celery import signature
 from django.conf import settings
 from django.db import connections, router, transaction
 from django.db import models
@@ -163,7 +166,13 @@ class TaskManager(models.Manager):
             return self.model(id=task_id)
 
     @transaction_retry(max_retries=2)
-    def init_task(self, task_id: str, task_name: str, main_task_id: str, description: str = None, source_data=None):
+    def init_task(self,
+                  task_id: str,
+                  task_name: str,
+                  main_task_id: str,
+                  description: str = None,
+                  source_data=None,
+                  run_after_sub_tasks_finished=False):
         try:
             main_task = self.get(id=main_task_id) if main_task_id and main_task_id != task_id else None
         except:
@@ -180,12 +189,14 @@ class TaskManager(models.Manager):
             'description': description,
             'main_task_id': main_task.id if main_task else None,
             'date_start': now(),
-            'source_data': source_data})
+            'source_data': source_data,
+            'run_after_sub_tasks_finished': run_after_sub_tasks_finished})
         if not created:
             obj.name = task_name
             obj.description = description
             obj.main_task_id = main_task.id if main_task else None
             obj.date_done = None
+            obj.run_after_sub_tasks_finished = run_after_sub_tasks_finished
             obj.save()
 
         return obj
@@ -254,11 +265,25 @@ class TaskManager(models.Manager):
     def unready_main_tasks(self):
         return self.main_tasks().filter(status__in=UNREADY_STATES)
 
+    def succeed_main_tasks(self):
+        return self.main_tasks().filter(status=SUCCESS)
+
+    def run_after_sub_tasks(self, main_task_id: str):
+        for task in self.filter(main_task_id=main_task_id, run_after_sub_tasks_finished=True):
+            options = task.metadata['options']
+            options['task_id'] = task.id
+            options['parent_id'] = task.main_task_id
+            options['title'] = task.title
+            options['run_after_sub_tasks_finished'] = False
+            task = signature(task.name, args=task.metadata['args'], **options)
+            task.apply_async()
+
     def update_main_task(self, main_task_id: str):
         all_task_info_rows = self.filter(
             Q(id=main_task_id) | Q(main_task_id=main_task_id)) \
             .exclude(name__in=self.EXCLUDE_FROM_TRACKING) \
-            .values_list('propagate_exceptions', 'own_status', 'own_progress', 'own_date_done')
+            .values_list('propagate_exceptions', 'own_status', 'own_progress', 'own_date_done',
+                         'run_after_sub_tasks_finished')
 
         total_status_non_propagating_exceptions = None
         total_status_propagating_exceptions = None
@@ -266,7 +291,9 @@ class TaskManager(models.Manager):
         total_progress = 0
         total_done = True
         total_date_done = None
-        for propagate_exceptions, status, progress, date_done in all_task_info_rows:
+        sub_tasks_finished = True
+        has_deferred_tasks = False
+        for propagate_exceptions, status, progress, date_done, run_after_sub_tasks_finished in all_task_info_rows:
             if propagate_exceptions:
                 found_propagating_exceptions = True
                 total_status_propagating_exceptions = status \
@@ -280,6 +307,11 @@ class TaskManager(models.Manager):
                     else max(total_status_non_propagating_exceptions,
                              status,
                              key=precedence_non_propagating_exceptions)
+
+            if not run_after_sub_tasks_finished:
+                sub_tasks_finished = sub_tasks_finished and status in READY_STATES
+            else:
+                has_deferred_tasks = True
 
             if progress is None:
                 progress = 0
@@ -318,6 +350,14 @@ class TaskManager(models.Manager):
             # None in total_status_propagating_exceptions
             total_status = total_status_non_propagating_exceptions
 
+        if has_deferred_tasks and sub_tasks_finished:
+            if total_status not in PROPAGATE_STATES:
+                self.run_after_sub_tasks(main_task_id)
+            else:
+                self\
+                    .filter(main_task_id=main_task_id, run_after_sub_tasks_finished=True)\
+                    .update(status=total_status, date_done=total_date_done)
+
         self.filter(id=main_task_id).update(date_done=total_date_done,
                                             status=total_status,
                                             completed=total_progress == 100,
@@ -340,6 +380,18 @@ class TaskManager(models.Manager):
         if total_status_propagating_exceptions in PROPAGATE_STATES:
             revoke_task(AsyncResult(main_task_id))
 
+    @classmethod
+    def _prepare_task_result(cls, result):
+        if result and isinstance(result, dict) and result.get('exc_message') \
+                and isinstance(result['exc_message'], tuple):
+            values = list()
+            for value in result['exc_message']:
+                value = ''.join(format_exception(None, value, None)) if isinstance(value, BaseException) else value
+                values.append(value)
+            result = copy.copy(result)
+            result['exc_message'] = tuple(values)
+        return result
+
     @transaction_retry(max_retries=2)
     def store_result(self,
                      task_id: str,
@@ -349,6 +401,7 @@ class TaskManager(models.Manager):
                      status: str,
                      traceback=None, metadata=None):
         date_now = now()
+        result = TaskManager._prepare_task_result(result)
 
         initial_values = {
             'name': task_name,

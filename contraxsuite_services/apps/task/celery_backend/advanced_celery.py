@@ -11,15 +11,15 @@ class AdvancedCelery(Celery):
                   producer=None, connection=None, router=None, result_cls=None, expires=None,
                   publisher=None, link=None, link_error=None, add_to_parent=True, group_id=None,
                   retries=0, chord=None, reply_to=None, time_limit=None, soft_time_limit=None,
-                  root_id=None, parent_id=None, source_data=None, route_name=None, shadow=None, chain=None,
-                  task_type=None, **options):
+                  root_id=None, parent_id=None, source_data=None, run_after_sub_tasks_finished=False,
+                  route_name=None, shadow=None, chain=None, task_type=None, **options):
         task_id = task_id or str(fast_uuid())
 
         TaskUtils.prepare_task_execution()
 
         main_task_id = parent_id if parent_id else root_id
         Task.objects.init_task(task_id, name, main_task_id, 'Args: {0}\nKwargs: {1}'.format(str(args), str(kwargs)),
-                               source_data)  # type: Task
+                               source_data, run_after_sub_tasks_finished)  # type: Task
 
         return super().send_task(name, args, kwargs, countdown, eta, task_id, producer, connection,
                                  router, result_cls, expires, publisher, link, link_error,

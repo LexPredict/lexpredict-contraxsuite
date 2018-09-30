@@ -15,9 +15,7 @@ server {
     add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
     proxy_cookie_path / "/; HTTPOnly; Secure";
 
-    if ( ${DOLLAR}request_method = OPTIONS ) {
-        return 405;
-    }
+    include /etc/nginx/${DOCKER_NGINX_CORS_CONFIG};
 
 ${NGINX_EXTERNAL_ROUTES}
 

@@ -28,8 +28,9 @@
 import traceback
 
 # Django imports
-from django.contrib import admin
 from django import forms
+from django.contrib import admin
+from django.contrib.admin.widgets import FilteredSelectMultiple
 from django.utils.html import format_html_join
 from simple_history.admin import SimpleHistoryAdmin
 
@@ -39,14 +40,15 @@ from apps.document.models import (
     DocumentProperty, DocumentRelation, DocumentNote,
     DocumentFieldDetector, DocumentFieldValue, ExternalFieldValue,
     ClassifierModel, TextUnit, TextUnitProperty, TextUnitNote, TextUnitTag, DocumentTypeField,
-    DocumentFieldFormulaError)
+    DocumentFieldFormulaError, DocumentTypeFieldCategory)
 from apps.document.field_types import FIELD_TYPES_REGISTRY
+from apps.document.python_coded_fields import PythonCodedField, PYTHON_CODED_FIELDS_REGISTRY
 
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.3/LICENSE"
-__version__ = "1.1.3"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.4/LICENSE"
+__version__ = "1.1.4"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -65,11 +67,24 @@ class DocumentFieldForm(forms.ModelForm):
         field_code = self.cleaned_data.get('code')
         formula = self.cleaned_data.get('formula')
         type_code = self.cleaned_data.get('type')
-        if not formula or not formula.strip() or not type_code:
-            return
         depends_on_fields = self.cleaned_data.get('depends_on_fields') or []
         fields_to_values = {field: FIELD_TYPES_REGISTRY[field.type].example_json_value(field)
                             for field in depends_on_fields}
+
+        python_coded_field_code = self.cleaned_data.get('python_coded_field')
+        if python_coded_field_code:
+            python_coded_field = PYTHON_CODED_FIELDS_REGISTRY.get(python_coded_field_code)
+            if not python_coded_field:
+                self.add_error('python_coded_field', 'Unknown Python-coded field: {0}'.format(python_coded_field_code))
+            else:
+                if type_code != python_coded_field.type:
+                    self.add_error('type', 'Python-coded field {0} is of type {1} but {2} is specified'
+                                           ' as the field type'.format(python_coded_field.title,
+                                                                       python_coded_field.type,
+                                                                       type_code))
+
+        if not formula or not formula.strip() or not type_code:
+            return
 
         try:
             DocumentField.calc_formula(field_code, type_code, formula, fields_to_values)
@@ -94,8 +109,8 @@ class DocumentFieldForm(forms.ModelForm):
 
 class DocumentFieldAdmin(admin.ModelAdmin):
     form = DocumentFieldForm
-    list_display = ('code', 'title', 'description', 'type', 'formula', 'value_regexp', 'user', 'modified_date')
-    search_fields = ['code', 'title', 'description', 'created_user__username']
+    list_display = ('code', 'title', 'description', 'type', 'formula', 'value_regexp', 'user', 'modified_date', 'confidence')
+    search_fields = ['code', 'title', 'description', 'created_by__username', 'confidence']
     filter_horizontal = ('depends_on_fields',)
 
     @staticmethod
@@ -131,11 +146,11 @@ class DocumentFieldDetectorAdmin(admin.ModelAdmin):
 
 
 class DocumentFieldValueAdmin(admin.ModelAdmin):
+    raw_id_fields = ('document', 'sentence',)
     list_display = ('document_type', 'document', 'field', 'value', 'location_start',
                     'location_end', 'location_text', 'extraction_hint', 'user')
     search_fields = ['document__document_type', 'document', 'field', 'value', 'location_text',
-                     'extraction_hont',
-                     'user']
+                     'extraction_hint', 'user']
 
     @staticmethod
     def document_type(obj):
@@ -187,7 +202,7 @@ class DocumentFieldInlineAdmin(admin.TabularInline):
 
 class DocumentTypeAdmin(admin.ModelAdmin):
     list_display = ('code', 'title', 'fields_num', 'user', 'fields', 'modified_date')
-    search_fields = ['code', 'title', 'created_user__username']
+    search_fields = ['code', 'title', 'created_by__username']
     filter_horizontal = ('fields', 'search_fields')
     inlines = (DocumentFieldInlineAdmin,)
 
@@ -236,13 +251,45 @@ class DocumentNoteAdmin(SimpleHistoryAdmin):
 
 
 class ClassifierModelAdmin(SimpleHistoryAdmin):
-    list_display = ('document_type',)
-    search_fields = ('document_type',)
+    list_display = ('document_type', 'document_field',)
+    search_fields = ('document_type', 'document_field',)
 
 
 class DocumentTypeFieldAdmin(admin.ModelAdmin):
     list_display = ('document_type', 'document_field', 'training_finished')
     search_fields = ['document_type', 'document_field']
+
+
+class DocumentTypeFieldCategoryForm(forms.ModelForm):
+    class Meta:
+        model = DocumentTypeFieldCategory
+        fields = ['name', 'order']
+
+    type_fields = forms.ModelMultipleChoiceField(
+        queryset=DocumentTypeField.objects.all(),
+        label='Select Type Fields',
+        required=False,
+        widget=FilteredSelectMultiple('fields', False))
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if self.instance:
+            self.fields['type_fields'].initial = self.instance.documenttypefield_set.all()
+
+    def save(self, *args, **kwargs):
+        # FIXME: 'commit' argument is not handled
+        # TODO: Wrap reassignments into transaction
+        # NOTE: Previously assigned DocumentTypeFieldCategory are silently reset
+        instance = super().save(commit=False)
+        self.fields['type_fields'].initial.update(category=None)
+        self.cleaned_data['type_fields'].update(category=instance)
+        return instance
+
+
+class DocumentTypeFieldCategoryAdmin(admin.ModelAdmin):
+    list_display = ('name', 'order')
+    search_fields = ['name']
+    form = DocumentTypeFieldCategoryForm
 
 
 admin.site.register(Document, DocumentAdmin)
@@ -260,3 +307,4 @@ admin.site.register(TextUnitTag, TextUnitTagAdmin)
 admin.site.register(TextUnitNote, TextUnitNoteAdmin)
 admin.site.register(DocumentNote, DocumentNoteAdmin)
 admin.site.register(DocumentTypeField, DocumentTypeFieldAdmin)
+admin.site.register(DocumentTypeFieldCategory, DocumentTypeFieldCategoryAdmin)

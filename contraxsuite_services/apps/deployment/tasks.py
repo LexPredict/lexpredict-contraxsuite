@@ -35,8 +35,8 @@ from apps.task.utils.task_utils import TaskUtils
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.3/LICENSE"
-__version__ = "1.1.3"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.4/LICENSE"
+__version__ = "1.1.4"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -52,7 +52,9 @@ def usage_stats(self):
 
     resp = None
     data = {'installation_id': str(d.installation_id) if d.installation_id else None,
-            'deployment_date': d.deployment_date.isoformat() if d.deployment_date else None}
+            'deployment_date': d.deployment_date.isoformat() if d.deployment_date else None,
+            'version_number': settings.VERSION_NUMBER,
+            'version_commit': settings.VERSION_COMMIT}
     for url in settings.STATS_URLS:
         try:
             resp = requests.post(url, json=data)

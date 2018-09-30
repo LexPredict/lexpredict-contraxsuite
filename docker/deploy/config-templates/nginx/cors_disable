@@ -1,0 +1,3 @@
+if ($request_method = OPTIONS ) {
+        return 405;
+}

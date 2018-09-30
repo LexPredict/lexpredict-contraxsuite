@@ -40,8 +40,8 @@ from apps.common.utils import get_api_module, get_test_user
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.3/LICENSE"
-__version__ = "1.1.3"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.4/LICENSE"
+__version__ = "1.1.4"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -97,6 +97,11 @@ class TokenSerializer(serializers.ModelSerializer):
         serializer = user_api_module.UserSerializer(user)
         serializer.context['request'] = self.context['request']
         return serializer.data
+
+    def to_representation(self, obj):
+        data = super().to_representation(obj)
+        data['release_version'] = settings.VERSION_NUMBER
+        return data
 
 
 class CustomSetPasswordForm(forms.Form):

@@ -37,8 +37,8 @@ from apps.analyze.models import *
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.3/LICENSE"
-__version__ = "1.1.3"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.4/LICENSE"
+__version__ = "1.1.4"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -170,16 +170,18 @@ class DocumentClusterUpdateSerializer(SimpleRelationSerializer):
 
     class Meta:
         model = DocumentCluster
-        fields = ['pk', 'name', 'self_name', 'description']
+        fields = ['pk', 'name']
 
 
 class DocumentClusterAPIView(JqListAPIView, viewsets.ModelViewSet):
     """
     list: Document Cluster List
-    partial_update: Partial Update Document Cluster
+    retrieve: Retrieve Document Cluster
+    update: Update Document Cluster (name)
+    partial_update: Partial Update Document Cluster (name)
     """
     queryset = DocumentCluster.objects.all()
-    http_method_names = ['get', 'patch']
+    http_method_names = ['get', 'patch', 'put']
 
     def get_queryset(self):
         qs = super().get_queryset()
@@ -189,7 +191,7 @@ class DocumentClusterAPIView(JqListAPIView, viewsets.ModelViewSet):
         return qs.order_by('cluster_by', 'using', 'cluster_id')
 
     def get_serializer_class(self):
-        if self.action == 'partial_update':
+        if self.action in ('update', 'partial_update'):
             return DocumentClusterUpdateSerializer
         return DocumentClusterSerializer
 

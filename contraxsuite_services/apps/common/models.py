@@ -27,6 +27,8 @@
 import pickle
 
 # Django imports
+from django.contrib.contenttypes.fields import GenericForeignKey
+from django.contrib.contenttypes.models import ContentType
 from django.contrib.postgres.fields import JSONField
 from django.db import models
 from django.dispatch import receiver
@@ -37,8 +39,8 @@ from apps.users.models import User
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.3/LICENSE"
-__version__ = "1.1.3"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.4/LICENSE"
+__version__ = "1.1.4"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -198,3 +200,20 @@ class ObjectStorage(models.Model):
     def update_or_create(key: str, value_obj):
         ObjectStorage.objects.update_or_create(key=key, defaults={'last_updated': now(),
                                                                   'data': pickle.dumps(value_obj)})
+
+
+class Action(models.Model):
+    user = models.ForeignKey(User, blank=True, null=True)
+    name = models.CharField(max_length=50, default='list')
+    content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE)
+    object_pk = models.CharField(max_length=36, blank=True, null=True)
+    object = GenericForeignKey('content_type', 'object_pk')
+    date = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return '{} - {} - {} - {}'.format(
+            self.user.username,
+            self.name,
+            self.object or self.content_type.model.capitalize(),
+            self.date
+        )

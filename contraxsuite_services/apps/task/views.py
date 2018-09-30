@@ -26,6 +26,7 @@
 
 # Future imports
 from __future__ import absolute_import, unicode_literals
+import traceback
 
 # Django imports
 from django.conf import settings
@@ -46,17 +47,19 @@ from apps.document.models import DocumentProperty, TextUnitProperty
 from apps.task.forms import (
     LoadDocumentsForm, BatchLoadDocumentsForm, LocateTermsForm, LocateForm,
     ExistedClassifierClassifyForm, CreateClassifierClassifyForm,
-    ClusterForm, SimilarityForm, PartySimilarityForm,
-    UpdateElasticSearchForm, TaskDetailForm, TotalCleanupForm)
+    ClusterForm, SimilarityForm, PartySimilarityForm, CleanProjectForm,
+    UpdateElasticSearchForm, TaskDetailForm, TotalCleanupForm,
+    LoadFixtureForm, DumpFixtureForm)
 from apps.task.models import Task
 from apps.task.tasks import call_task, clean_tasks, purge_task
+from apps.dump.app_dump import get_model_fixture_dump, load_fixture_from_dump, download
 
 project_api_module = get_api_module('project')
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.3/LICENSE"
-__version__ = "1.1.3"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.4/LICENSE"
+__version__ = "1.1.4"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -112,7 +115,7 @@ class BaseAjaxTaskView(AdminRequiredMixin, JSONResponseView):
             data = form.cleaned_data
         data['user_id'] = request.user.pk
         data['metadata'] = self.get_metadata()
-        data['module_name'] = self.__module__.replace('views', 'tasks')
+        data['module_name'] = getattr(self, 'module_name', None) or self.__module__.replace('views', 'tasks')
         call_task(self.task_name, **data)
         return self.json_response('The task is started. It can take a while.')
 
@@ -475,3 +478,50 @@ class TaskListView(AdminRequiredMixin, JqPaginatedListView):
 class TotalCleanupView(BaseAjaxTaskView):
     task_name = 'Total Cleanup'
     form_class = TotalCleanupForm
+
+
+class CleanProjectView(BaseAjaxTaskView):
+    task_name = 'Clean Project'
+    module_name = 'apps.project.tasks'
+    form_class = CleanProjectForm
+
+
+class LoadFixturesView(BaseAjaxTaskView):
+    form_class = LoadFixtureForm
+
+    def get(self, request, *args, **kwargs):
+        form = self.form_class()
+        data = dict(header=form.header,
+                    form_class=self.html_form_class,
+                    form_data=form.as_p())
+        return self.json_response(data)
+
+    def post(self, request, *args, **kwargs):
+        file_ = request.FILES.dict().get('fixture_file')
+        if not file_:
+            return JsonResponse({'fixture_file': ['This field is required']}, status=400)
+        data = file_.read()
+        mode = request.POST.get('mode', 'default')
+        res = load_fixture_from_dump(data, mode)
+        status = 200 if res['status'] == 'success' else 400
+        return JsonResponse(res, status=status)
+
+
+class DumpFixturesView(LoadFixturesView):
+    form_class = DumpFixtureForm
+
+    def post(self, request, *args, **kwargs):
+        form = self.form_class(request.POST)
+        if not form.is_valid():
+            return self.json_response(form.errors, status=400)
+        form_data = form.cleaned_data
+        file_name = form_data.pop('file_name')
+        try:
+            json_data = get_model_fixture_dump(**form_data)
+        except Exception as e:
+            tb = traceback.format_exc()
+            error = 'Wrong app name/model name or filter options, see details:' \
+                    '<br/>{}<br/>{}'.format(str(e), tb)
+            return self.json_response({'app_name': [error]}, status=400)
+        return download(json_data, file_name)
+

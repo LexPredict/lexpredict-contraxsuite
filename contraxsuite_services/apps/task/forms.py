@@ -25,28 +25,28 @@
 # -*- coding: utf-8 -*-
 
 # Standard imports
+import json
 import os
 
 # Third-party imports
 from constance import config
-
 # Django imports
 from django import forms
 from django.conf import settings
 from django.utils.translation import ugettext_lazy as _
 
+from apps.analyze.models import TextUnitClassification, TextUnitClassifier
+from apps.common.forms import checkbox_field
 # Project imports
 from apps.common.widgets import LTRRadioField
-from apps.common.forms import checkbox_field
-from apps.analyze.models import TextUnitClassification, TextUnitClassifier
 from apps.document.models import DocumentProperty, TextUnitProperty, DocumentType
 from apps.project.models import Project
 from apps.task.models import Task
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.3/LICENSE"
-__version__ = "1.1.3"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.4/LICENSE"
+__version__ = "1.1.4"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -58,7 +58,7 @@ Relative path to a file with {}. A file should be in "&lt;ROOT_DIR&gt;/data/"
 class LoadDocumentsForm(forms.Form):
     header = 'Parse documents to create Documents and Text Units.'
     project = forms.ModelChoiceField(queryset=Project.objects.all(), required=False)
-    source_path = forms.CharField(
+    source_data = forms.CharField(
         max_length=1000,
         required=True,
         help_text='''
@@ -193,8 +193,8 @@ class LocateForm(forms.Form):
 
 class ExistedClassifierClassifyForm(forms.Form):
     header = 'Classify Text Units using an existing Classifier.'
-    classifier = forms.ChoiceField(
-        choices=[(c.pk, c.name) for c in TextUnitClassifier.objects.filter(is_active=True)],
+    classifier = forms.ModelChoiceField(
+        queryset=TextUnitClassifier.objects.filter(is_active=True),
         widget=forms.widgets.Select(attrs={'class': 'chosen'}),
         required=True)
     sample_size = forms.IntegerField(
@@ -245,8 +245,7 @@ class CreateClassifierClassifyForm(forms.Form):
         initial='LogisticRegressionCV',
         help_text='Text Unit Classifier name')
     class_name = forms.ChoiceField(
-        choices=[(class_name, class_name) for class_name in
-                 set(TextUnitClassification.objects.values_list('class_name', flat=True))],
+        choices=[],
         required=True,
         help_text='Text Unit class name')
     sample_size = forms.IntegerField(
@@ -578,3 +577,57 @@ class TaskDetailForm(forms.Form):
         super().__init__()
         self.fields['name'].initial = instance.name
         self.fields['log'].initial = instance.get_task_log_from_elasticsearch()
+
+
+class CleanProjectForm(forms.Form):
+    header = 'Clean Project (delete project content or project itself as well.'
+    _project = forms.ModelChoiceField(queryset=Project.objects.all(), required=True)
+    delete = checkbox_field("Delete Project itself as well.", initial=True)
+
+    def clean(self):
+        cleaned_data = super().clean()
+        cleaned_data['_project_id'] = cleaned_data['_project'].pk
+        del cleaned_data['_project']
+
+
+class LoadFixtureForm(forms.Form):
+    header = 'Load Model objects from fixture file'
+    fixture_file = forms.FileField(required=True, allow_empty_file=False)
+    mode = forms.ChoiceField(
+        label='Algorithm',
+        choices=[('default', 'Default - Install all, replace existing objects by id'),
+                 ('partial', 'Partial - Install only new objects by id'),
+                 ('soft', 'Soft - do not install if any objects already exists')],
+        required=True,
+        initial='default',
+        help_text='Method for fixtures installation')
+
+
+class DumpFixtureForm(forms.Form):
+    header = 'Dump Model objects to fixture file'
+    app_name = forms.CharField(
+        label='Application Name',
+        max_length=10,
+        required=True)
+    model_name = forms.CharField(
+        label='Model Name',
+        max_length=20,
+        required=True)
+    file_name = forms.CharField(
+        label='File Name',
+        max_length=20,
+        required=True)
+    filter_options = forms.CharField(
+        max_length=100,
+        required=False,
+        help_text='E.g. django queryset filter options for a given model: '
+                  '{"name__contains": "Agreement", "pk__gte": 123}')
+
+    def clean_filter_options(self):
+        filter_options = self.cleaned_data['filter_options']
+        if filter_options:
+            try:
+                filter_options = json.loads(jdata)
+            except:
+                raise forms.ValidationError("Invalid data in filter_options")
+        return filter_options
