@@ -627,7 +627,7 @@ class DumpFixtureForm(forms.Form):
         filter_options = self.cleaned_data['filter_options']
         if filter_options:
             try:
-                filter_options = json.loads(jdata)
+                filter_options = json.loads(filter_options)
             except:
                 raise forms.ValidationError("Invalid data in filter_options")
         return filter_options
