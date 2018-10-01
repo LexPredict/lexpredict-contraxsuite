@@ -74,6 +74,7 @@ pushd /contraxsuite_services
 if [ "$1" == "save-dump" ]; then
 
 su - ${SHARED_USER_NAME} -c "${ACTIVATE_VENV} && \
+    python manage.py force_migrate common && \
     python manage.py force_migrate && \
     python manage.py dump_data --dst-file=fixtures/additional/app-dump.json \
 "
@@ -120,6 +121,7 @@ elif [ "$1" == "uwsgi" ]; then
 
 # Indentation makes sense here
 su - ${SHARED_USER_NAME} -c "${ACTIVATE_VENV} && \
+    python manage.py force_migrate common && \
     python manage.py force_migrate && \
     python manage.py shell -c \"
 from apps.deployment.models import Deployment

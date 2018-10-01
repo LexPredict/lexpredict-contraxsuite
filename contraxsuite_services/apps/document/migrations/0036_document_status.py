@@ -16,6 +16,6 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='document',
             name='status',
-            field=models.ManyToManyField(blank=True, to='project.ProjectStatus'),
+            field=models.ManyToManyField(blank=True, to='common.ReviewStatus'),
         ),
     ]
