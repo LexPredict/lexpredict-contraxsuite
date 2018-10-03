@@ -9,7 +9,6 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
     dependencies = [
         ('document', '0037_auto_20180405_1710'),
-        ('common', '0011_auto_20180828_0418')
     ]
 
     operations = [
