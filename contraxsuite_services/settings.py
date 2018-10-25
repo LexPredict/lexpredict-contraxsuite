@@ -347,11 +347,14 @@ ACCOUNT_LOGOUT_REDIRECT_URL = 'account_login'
 ACCOUNT_AUTHENTICATION_METHOD = 'username_email'
 ACCOUNT_EMAIL_REQUIRED = True
 ACCOUNT_EMAIL_VERIFICATION = 'mandatory'
-ACCOUNT_ALLOW_REGISTRATION = True
+ACCOUNT_ALLOW_REGISTRATION = False
+ACCOUNT_LOGIN_ATTEMPTS_TIMEOUT = 5
 # ACCOUNT_ADAPTER = 'apps.users.adapters.AccountAdapter'
 # Set the allauth adapter to be the 2FA adapter
-ACCOUNT_ADAPTER = 'allauth_2fa.adapter.OTPAdapter'
+# ACCOUNT_ADAPTER = 'allauth_2fa.adapter.OTPAdapter'
+ACCOUNT_ADAPTER = 'apps.users.adapters.AccountAdapter'
 SOCIALACCOUNT_ADAPTER = 'apps.users.adapters.SocialAccountAdapter'
+
 
 # Custom user app defaults
 # Select the correct user model
