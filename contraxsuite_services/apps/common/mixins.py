@@ -65,8 +65,8 @@ from apps.common.utils import cap_words, export_qs_to_file, download
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.4/LICENSE"
-__version__ = "1.1.4"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.5/LICENSE"
+__version__ = "1.1.5"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -539,7 +539,8 @@ class JqPaginatedListView(AjaxListView):
             pg = paginator.page(1)
         except EmptyPage:
             # If page is out of range (e.g. 9999), deliver last page of results.
-            pg = paginator.page(paginator.num_pages)
+            return []
+            # pg = paginator.page(paginator.num_pages)
 
         # TODO: figure out why those 3 lines below were used before
         # qs = qs.filter(
@@ -759,9 +760,9 @@ class APIActionMixin(object):
         user_action_name = self.get_action_name()
         if not user_action_name:
             user_action_name = self.user_action_methods.get(request.method)
-        try:
+        if (self.lookup_url_kwarg or self.lookup_field) in self.kwargs:
             user_action_object = self.get_object()
-        except:
+        else:
             user_action_object = None
             if request.method == 'GET':
                 user_action_name = 'list'

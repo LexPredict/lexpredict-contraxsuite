@@ -39,8 +39,8 @@ from apps.users.models import User
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.4/LICENSE"
-__version__ = "1.1.4"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.5/LICENSE"
+__version__ = "1.1.5"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -209,11 +209,20 @@ class Action(models.Model):
     object_pk = models.CharField(max_length=36, blank=True, null=True)
     object = GenericForeignKey('content_type', 'object_pk')
     date = models.DateTimeField(auto_now=True)
+    model_name = models.CharField(max_length=50, blank=True, null=True)
+    app_label = models.CharField(max_length=20, blank=True, null=True)
+    object_str = models.CharField(max_length=200, blank=True, null=True)
 
     def __str__(self):
         return '{} - {} - {} - {}'.format(
             self.user.username,
             self.name,
             self.object or self.content_type.model.capitalize(),
-            self.date
-        )
+            self.date)
+
+    def save(self, **kwargs):
+        self.model_name = self.content_type.model_class().__name__
+        self.app_label = self.content_type.app_label
+        obj = self.object
+        self.object_str = str(obj) if obj else None
+        return super().save(**kwargs)

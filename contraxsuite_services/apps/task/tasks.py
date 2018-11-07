@@ -32,6 +32,7 @@ import math
 import mimetypes
 import os
 import pickle
+import re
 import string
 import sys
 import traceback
@@ -44,7 +45,6 @@ import magic
 import nltk
 import numpy as np
 import pandas as pd
-import re
 import tabula
 from celery import app
 # Celery imports
@@ -91,12 +91,16 @@ from apps.analyze.models import (
     DocumentSimilarity, TextUnitSimilarity, PartySimilarity as PartySimilarityModel,
     TextUnitClassification, TextUnitClassifier, TextUnitClassifierSuggestion)
 from apps.celery import app
-from apps.common.advancedcelery.db_cache import DbCache
 from apps.common.advancedcelery.fileaccess import prepare_file_access_handler
+from apps.common.log_utils import ProcessLogger
 from apps.common.utils import fast_uuid
 from apps.deployment.app_data import load_geo_entities, load_terms, load_courts
+from apps.document.constants import DOCUMENT_TYPE_PK_GENERIC_DOCUMENT
+from apps.document.fields_detection.field_detection_celery_api import run_detect_field_values_as_sub_tasks
+from apps.document.fields_processing import field_value_cache
 from apps.document.models import (
     Document, DocumentProperty, DocumentType, TextUnit, TextUnitProperty, TextUnitTag)
+from apps.extract import dict_data_cache
 from apps.extract import models as extract_models
 from apps.extract.models import (
     AmountUsage, CitationUsage, CopyrightUsage,
@@ -115,8 +119,8 @@ from apps.task.utils.text.segment import segment_paragraphs
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.4/LICENSE"
-__version__ = "1.1.4"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.5/LICENSE"
+__version__ = "1.1.5"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -161,9 +165,6 @@ class ExtendedTask(app.Task):
     WARNING:    Beware storing anything in the self fields of instances of this class.
                 Looks like they are reused and it is safer to store anything in self.request
     """
-
-    # We can't cache task field, because it should be always actual but we can cache some static values
-    _cached_data = None
 
     @property
     def task(self) -> Task:
@@ -250,7 +251,7 @@ class ExtendedTask(app.Task):
         for index, args in enumerate(args_list):
             tasks.append(Task(
                 name=sub_task_function.name,
-                main_task_id=self.request.id,
+                main_task_id=self.main_task_id or self.request.id,
                 source_data=source_data[index] if source_data is not None else self.task.source_data,
                 run_after_sub_tasks_finished=True,
                 title=tasks_group_title,
@@ -286,14 +287,52 @@ class ExtendedTask(app.Task):
                 source_data=source_data[index] if source_data is not None else self.task.source_data,
                 soft_time_limit=task_config.soft_time_limit,
                 root_id=self.main_task_id,
+                main_task_id=self.main_task_id,
                 parent_id=self.request.id,
                 title=sub_tasks_group_title)
             sub_tasks.append(sub_task_signature)
 
         self.chord(sub_tasks)
 
-    def __call__(self, *args: Any, **kwargs: Any) -> Any:
+    def run_sub_tasks_class_based(self,
+                                  sub_tasks_group_title: str,
+                                  sub_task_class,
+                                  kwargs_list: List[Dict],
+                                  source_data: List[str] = None):
+        """
+        Asynchronously execute sub_task_method on each tuple of arguments from the provided list.
+
+        :param sub_tasks_group_title:
+        :param sub_task_function:
+        :param args_list:
+        :param source_data:
+        :return:
+        """
+        sub_tasks = []
+        task_config = _get_or_create_task_config(sub_task_class)
+        for index, args in enumerate(kwargs_list):
+            sub_task_signature = sub_task_class().subtask(
+                kwargs=args,
+                source_data=source_data[index] if source_data is not None else self.task.source_data,
+                soft_time_limit=task_config.soft_time_limit,
+                root_id=self.main_task_id,
+                main_task_id=self.main_task_id,
+                parent_id=self.request.id,
+                title=sub_tasks_group_title)
+            sub_tasks.append(sub_task_signature)
+
+        self.chord(sub_tasks)
+
+    def prepare_task_execution(self):
         TaskUtils.prepare_task_execution()
+        self._cached_data = None
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._cached_data = None
+
+    def __call__(self, *args: Any, **kwargs: Any) -> Any:
+        self.prepare_task_execution()
         Task.objects.increase_run_count(self.request.id)
         try:
             return super().__call__(*args, **kwargs)
@@ -311,6 +350,24 @@ class ExtendedTask(app.Task):
     def on_failure(self, exc, task_id, args, kwargs, exc_traceback):
         if not self.task.failure_processed:
             self.log_error(self._render_task_failed(args, kwargs, exc, exc_traceback))
+
+
+class CeleryTaskLogger(ProcessLogger):
+    def __init__(self, celery_task: ExtendedTask) -> None:
+        super().__init__()
+        self._celery_task = celery_task
+
+    def set_progress_steps_number(self, steps):
+        self._celery_task.set_push_steps(steps)
+
+    def step_progress(self):
+        self._celery_task.push()
+
+    def info(self, message: str):
+        return self._celery_task.log_info(message)
+
+    def error(self, message: str, field_code: str = None):
+        return self._celery_task.log_error('{0}: {1}'.format(field_code, message), log_field_code=field_code)
 
 
 @shared_task(base=ExtendedTask, bind=True, name='advanced_celery.end_chord')
@@ -378,7 +435,7 @@ def call_task(task_name, **options):
         name=task_name,
         user_id=options.get('user_id'),
         metadata=options.get('metadata', {}),
-        kwargs=pre_serialize(options),
+        kwargs=pre_serialize(celery_task_id, None, options),
         source_data=options.get('source_data'),
         sequential_tasks=options.get('sequential_tasks'),
         group_id=options.get('group_id'),
@@ -434,6 +491,15 @@ class LoadDocuments(BaseTask):
     """
     name = 'Load Documents'
 
+    standard_locators = ['date',
+                         'party',
+                         'term',
+                         'geoentity',
+                         'currency',
+                         'citation',
+                         'definition',
+                         'duration']
+
     def process(self, **kwargs):
 
         path = kwargs['source_data']
@@ -450,10 +516,16 @@ class LoadDocuments(BaseTask):
             Document.objects.all().delete()
 
         # prevent transferring document type objects to sub-tasks
-        document_type = kwargs.get('document_type')
-        if document_type:
-            kwargs['document_type_pk'] = document_type.pk
+        document_type_dict = kwargs.get('document_type')  # type: Dict[str, Any]
+        if document_type_dict:
+            kwargs['document_type_id'] = document_type_dict['pk']
             del kwargs['document_type']
+
+        project_dict = kwargs.get('project')  # type: Dict[str, Any]
+        if project_dict:
+            kwargs['project_id'] = project_dict['pk']
+            del kwargs['project']
+
         load_docs_args = [(file_path, kwargs) for file_path in file_list]
         self.run_sub_tasks('Load Each Document',
                            LoadDocuments.create_document,
@@ -466,17 +538,17 @@ class LoadDocuments(BaseTask):
                  soft_time_limit=3600,
                  default_retry_delay=10,
                  retry_backoff=True,
-                 autoretry_for=(SoftTimeLimitExceeded, InterfaceError, OperationalError,),
-                 max_retries=3
-                 )
+                 autoretry_for=(SoftTimeLimitExceeded, InterfaceError, OperationalError),
+                 max_retries=3)
     def create_document(task: ExtendedTask, uri: str, kwargs):
         with file_access_handler.get_local_fn(uri) as (fn, file_name):
             task.task.title = 'Load Document: {0}'.format(uri)
             task.log_extra = {'log_document_name': uri}
             return LoadDocuments.create_document_local(task, fn, uri, kwargs)
 
+    # FIXME: this becomes unuseful as we CANNOT subclass from LoadDocument now - it hasn't self in methods!!!
     @staticmethod
-    def save_extra_document_data(*args, **kwargs):
+    def save_extra_document_data(**kwargs):
         pass
 
     @staticmethod
@@ -484,20 +556,21 @@ class LoadDocuments(BaseTask):
         task.log_info('Trying TIKA for file: ' + original_file_name)
         if settings.TIKA_DISABLE:
             task.log_info('TIKA is disabled in config')
-            return None, None
+            return None, None, None
         try:
             data = parser.from_file(file_path, settings.TIKA_SERVER_ENDPOINT) \
                 if settings.TIKA_SERVER_ENDPOINT else parser.from_file(file_path)
             parsed = data['content']
+            metadata = data['metadata']
             if parsed and len(parsed) >= 100:
-                return parsed, 'tika'
+                return parsed, 'tika', metadata
             else:
                 task.log_error('TIKA returned too small test for file: ' + original_file_name)
-                return None, None
+                return None, None, None
         except:
             task.log_error('Caught exception while trying to parse file with Tika:{0}\n{1}'
                            .format(original_file_name, format_exc()))
-            return None, None
+            return None, None, None
 
     @staticmethod
     def try_parsing_with_textract(task: ExtendedTask, file_path, ext, original_file_name):
@@ -521,9 +594,14 @@ class LoadDocuments(BaseTask):
         document_name = os.path.basename(file_name)
         document_source = os.path.dirname(file_name)
         file_size = os.path.getsize(file_path)
+        upload_session_id = kwargs['metadata'].get('session_id')
+        should_run_standard_locators = bool(kwargs.get('run_standard_locators'))
+        user_id = kwargs.get('user_id')
+        project_id = kwargs.get('project_id')
+        document_type_id = kwargs.get('document_type_id')
 
         # OLD API: Check for existing record
-        if kwargs['metadata'].get('session_id') is None and \
+        if upload_session_id is None and \
                 Document.objects.filter(name=document_name, source=document_source).exists():
             task.log_info('SKIP (EXISTS): ' + file_name)
             return
@@ -543,11 +621,11 @@ class LoadDocuments(BaseTask):
             text, parser_name = LoadDocuments.try_parsing_with_textract(task, file_path, ext,
                                                                         file_name)
             if not text:
-                text, parser_name = LoadDocuments.try_parsing_with_tika(task, file_path, ext,
-                                                                        file_name)
+                text, parser_name, metadata = LoadDocuments.try_parsing_with_tika(
+                    task, file_path, ext, file_name)
         else:
-            text, parser_name = LoadDocuments.try_parsing_with_tika(task, file_path, ext,
-                                                                    file_name)
+            text, parser_name, metadata = LoadDocuments.try_parsing_with_tika(
+                task, file_path, ext, file_name)
             if not text:
                 text, parser_name = LoadDocuments.try_parsing_with_textract(task, file_path,
                                                                             ext, file_name)
@@ -595,21 +673,31 @@ class LoadDocuments(BaseTask):
         # detect title
         title = metadata.get('title', None) or LoadDocuments.get_title(text)
 
-        document_type = None
-
-        document_type_pk = kwargs.get('document_type_pk')
-        try:
-            if document_type_pk:
-                document_type = DocumentType.objects.get(pk=document_type_pk)
-            else:
-                document_type = DocumentType.generic()
-        except:
-            pass
-
         with transaction.atomic():
-            # Create document object
+            upload_session = None
+            project = None
+
+            if upload_session_id:
+                upload_session = UploadSession.objects.get(pk=upload_session_id)
+                task.log_extra['log_upload_session'] = upload_session.pk
+                project = upload_session.project
+                if project:
+                    document_type = project.type
+                else:  # let it crash if document_type_id is not specified too
+                    document_type = DocumentType.objects.get(pk=document_type_id)
+                task.log_info(message='Document Upload Session id={}'.format(upload_session.pk))
+            elif project_id:
+                project = Project.objects.get(pk=project_id)
+                document_type = project.type
+            elif document_type_id:
+                document_type = DocumentType.objects.get(pk=document_type_id)
+            else:
+                document_type = DocumentType.objects.get(pk=DOCUMENT_TYPE_PK_GENERIC_DOCUMENT)
+
             document = Document.objects.create(
                 document_type=document_type,
+                project=project,
+                upload_session=upload_session,
                 name=document_name,
                 description=file_name,
                 source=document_source,
@@ -623,25 +711,11 @@ class LoadDocuments(BaseTask):
 
             task.log_extra['log_document_id'] = document.pk
 
-            try:
-                session = UploadSession.objects.get(pk=kwargs['metadata']['session_id'])
-                task.log_extra['log_upload_session'] = session.pk
-                document.upload_session = session
-                document.project = session.project
-                document.document_type = session.project.type
-                document.save()
-                task.log_info(message='Document Upload Session id={}'.format(session.pk))
-            except:
-                task.log_warn(message='Document Upload Session Undefined!')
-
-            if not document.project and kwargs.get('project_id'):
-                document.project = Project.objects.get(pk=kwargs['project_id'])
-
             # create Document Properties
             document_properties = [
                 DocumentProperty(
-                    created_by_id=kwargs['user_id'],
-                    modified_by_id=kwargs['user_id'],
+                    created_by_id=user_id,
+                    modified_by_id=user_id,
                     document_id=document.pk,
                     key=k,
                     value=v) for k, v in metadata.items() if v]
@@ -649,14 +723,14 @@ class LoadDocuments(BaseTask):
             polarity, subjectivity = TextBlob(text).sentiment
             document_properties += [
                 DocumentProperty(
-                    created_by_id=kwargs['user_id'],
-                    modified_by_id=kwargs['user_id'],
+                    created_by_id=user_id,
+                    modified_by_id=user_id,
                     document_id=document.pk,
                     key='polarity',
                     value=str(round(polarity, 3))),
                 DocumentProperty(
-                    created_by_id=kwargs['user_id'],
-                    modified_by_id=kwargs['user_id'],
+                    created_by_id=user_id,
+                    modified_by_id=user_id,
                     document_id=document.pk,
                     key='subjectivity',
                     value=str(round(subjectivity, 3)))]
@@ -710,13 +784,28 @@ class LoadDocuments(BaseTask):
 
             # save extra document info
             kwargs['document'] = document
-            LoadDocuments.save_extra_document_data(**kwargs)
+        LoadDocuments.save_extra_document_data(**kwargs)
 
         task.log_info(message='LOADED (%s): %s' % (parser_name.upper(), file_name))
         task.log_info(message='Document pk: %d' % document.pk)
 
         # call post processing task
-        linked_tasks = kwargs.get('linked_tasks', [])
+        linked_tasks = kwargs.get('linked_tasks') or list()  # type: List[Dict[str, Any]]
+
+        if should_run_standard_locators:
+            task.run_sub_tasks_class_based('Locate', Locate, [{
+                'locate': LoadDocuments.standard_locators,
+                'parse': 'sentences',
+                'do_delete': False,
+                'session_id': upload_session_id,
+                'metadata': {'session_id': upload_session_id, 'file_name': file_name},
+                'user_id': user_id,
+                'document_id': document.pk
+            }])
+
+            if document_type:
+                run_detect_field_values_as_sub_tasks(task, [document.id])
+
         for linked_task_kwargs in linked_tasks:
             linked_task_kwargs['document_id'] = document.pk
             linked_task_kwargs['source_data'] = task.task.source_data
@@ -813,7 +902,7 @@ class LoadTerms(BaseTask):
         self.push()
 
         self.log_info('Caching term stems for Locate tasks...')
-        DbCache.cache_term_stems()
+        dict_data_cache.cache_term_stems()
 
         self.push()
 
@@ -876,7 +965,7 @@ class LoadGeoEntities(BaseTask):
         self.log_info('Total created: %d GeoEntities' % geo_entities_count)
 
         self.log_info('Caching geo config for Locate tasks...')
-        DbCache.cache_geo_config()
+        dict_data_cache.cache_geo_config()
 
         self.push()
 
@@ -916,7 +1005,7 @@ class LoadCourts(BaseTask):
         self.push()
 
         self.log_info('Caching courts config for Locate tasks...')
-        DbCache.cache_court_config()
+        dict_data_cache.cache_court_config()
         self.push()
 
 
@@ -929,6 +1018,10 @@ class Locate(BaseTask):
         duration=['DateDurationUsage'],
         geoentity=['GeoEntityUsage', 'GeoAliasUsage']
     )
+
+    CACHE_KEY_GEO_CONFIG = 'geo_config'
+    CACHE_KEY_COURT_CONFIG = 'court_config'
+    CACHE_KEY_TERM_STEMS = 'term_stems'
 
     def delete_existing_usages(self, locator_names, document_id):
         # delete ThingUsage and TextUnitTag(tag=thing)
@@ -1039,7 +1132,7 @@ class Locate(BaseTask):
     def cache_generic_document_data(_self: ExtendedTask, doc_id):
         doc = Document.objects.get(pk=doc_id)
         if doc:
-            doc.cache_generic_values()
+            field_value_cache.cache_generic_values(doc)
 
     @staticmethod
     @shared_task(base=ExtendedTask,
@@ -1126,7 +1219,7 @@ def parse_citation(text, text_unit_id, _text_unit_lang):
 
 
 def parse_court(text, text_unit_id, text_unit_lang, **kwargs):
-    court_config = DbCache.get_court_config()
+    court_config = dict_data_cache.get_court_config()
     found = [dict_entities.get_entity_id(i[0])
              for i in courts.get_courts(text,
                                         court_config_list=court_config,
@@ -1342,7 +1435,7 @@ def parse_url(text, text_unit_id, _text_unit_lang):
 
 
 def parse_geoentity(text, text_unit_id, text_unit_lang, **kwargs):
-    geo_config = DbCache.get_geo_config()
+    geo_config = dict_data_cache.get_geo_config()
     priority = kwargs.get('priority', True)
     entity_alias_pairs = list(geoentities.get_geoentities(text,
                                                           geo_config,
@@ -1373,7 +1466,7 @@ def parse_geoentity(text, text_unit_id, text_unit_lang, **kwargs):
 
 
 def parse_term(text, text_unit_id, _text_unit_lang, **kwargs):
-    term_stems = DbCache.get_term_config()
+    term_stems = dict_data_cache.get_term_config()
     text_stems = ' %s ' % ' '.join(get_stems(text, lowercase=True))
     text_tokens = get_token_list(text, lowercase=True)
     term_usages = []
@@ -2217,7 +2310,7 @@ def clean_sub_tasks(self):
         .delete()
 
     # Delete all completed system/periodic tasks from DB
-    Task.objects.filter(name__in=Task.objects.EXCLUDE_FROM_TRACKING,
+    Task.objects.filter(name__in=Task.objects.REMOVE_WHEN_READY,
                         own_date_done__lt=del_sub_tasks_date).delete()
 
 

@@ -29,8 +29,8 @@ from django.core.exceptions import ValidationError
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.4/LICENSE"
-__version__ = "1.1.4"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.5/LICENSE"
+__version__ = "1.1.5"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -104,7 +104,7 @@ class Command(Command):
                         if _initial.get(_model):
                             continue
 
-                    elif self.skip_if_exists == 'all':
+                    elif self.skip_if_exists == 'one':
                         try:
                             _ = obj.object.validate_unique()
                         except ValidationError:

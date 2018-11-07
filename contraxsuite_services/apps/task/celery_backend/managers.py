@@ -1,6 +1,7 @@
 """Model managers."""
 from __future__ import absolute_import, unicode_literals
 
+import datetime
 import warnings
 import copy
 from functools import wraps
@@ -130,17 +131,8 @@ class QuerySet(models.QuerySet):
 class TaskManager(models.Manager):
     _last_id = None
 
-    EXCLUDE_FROM_TRACKING = {
-        'celery.chord_unlock',
-        'advanced_celery.track_tasks',
-        'advanced_celery.track_session_completed',
-        'advanced_celery.update_main_task',
-        'advanced_celery.clean_sub_tasks',
-        'advanced_celery.clean_dead_tasks',
-        'advanced_celery.clean_tasks',
-        'deployment.usage_stats',
-        'advanced_celery.retrain_dirty_fields'
-    }
+    EXCLUDE_FROM_TRACKING = settings.EXCLUDE_FROM_TRACKING
+    REMOVE_WHEN_READY = settings.REMOVE_WHEN_READY
 
     def get_queryset(self):
         return QuerySet(self.model, using=self._db)
@@ -495,3 +487,16 @@ class TaskManager(models.Manager):
     def filter_metadata(self, **kwargs):
         opts = {'metadata__%s' % k: v for k, v in kwargs.items()}
         return self.main_tasks().filter(**opts)
+
+    def active_tasks_exist(self, task_name: str, execution_delay: datetime.datetime,
+                           activity_filter: QuerySet = None) -> bool:
+        has_activity = None
+        work_dates = self.filter(name=task_name, status__in=UNREADY_STATES).values_list('date_work_start', flat=True)
+        for date_work_start in work_dates:
+            if date_work_start is None or date_work_start > execution_delay:
+                return True
+            if activity_filter and has_activity is None:
+                has_activity = activity_filter.exists()
+                if has_activity:
+                    return True
+        return False

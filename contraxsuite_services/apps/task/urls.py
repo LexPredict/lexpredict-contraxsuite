@@ -35,8 +35,8 @@ from apps.task import views, api
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.4/LICENSE"
-__version__ = "1.1.4"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.5/LICENSE"
+__version__ = "1.1.5"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -65,12 +65,6 @@ urlpatterns = [
         name='load-documents',
     ),
     url(
-        r'^batch-load-documents/$',
-        views.BatchLoadDocumentsView.as_view(),
-        name='batch-load-documents',
-    ),
-
-    url(
         r'^locate/$',
         views.LocateTaskView.as_view(),
         name='locate',
@@ -80,7 +74,6 @@ urlpatterns = [
         views.LocateTermsView.as_view(),
         name='locate-terms',
     ),
-
     url(
         r'^existed-classifier-classify/$',
         views.ExistedClassifierClassifyView.as_view(),

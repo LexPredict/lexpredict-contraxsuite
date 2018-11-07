@@ -45,7 +45,7 @@ from apps.common.mixins import (
 from apps.common.utils import get_api_module
 from apps.document.models import DocumentProperty, TextUnitProperty
 from apps.task.forms import (
-    LoadDocumentsForm, BatchLoadDocumentsForm, LocateTermsForm, LocateForm,
+    LoadDocumentsForm, LocateTermsForm, LocateForm,
     ExistedClassifierClassifyForm, CreateClassifierClassifyForm,
     ClusterForm, SimilarityForm, PartySimilarityForm, CleanProjectForm,
     UpdateElasticSearchForm, TaskDetailForm, TotalCleanupForm,
@@ -58,8 +58,8 @@ project_api_module = get_api_module('project')
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.4/LICENSE"
-__version__ = "1.1.4"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.5/LICENSE"
+__version__ = "1.1.5"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -109,7 +109,7 @@ class BaseAjaxTaskView(AdminRequiredMixin, JSONResponseView):
         if self.form_class is None:
             data = request.POST.dict()
         else:
-            form = self.form_class(request.POST)
+            form = self.form_class(data=request.POST, files=request.FILES)
             if not form.is_valid():
                 return self.json_response(form.errors, status=400)
             data = form.cleaned_data
@@ -188,25 +188,6 @@ class LoadDocumentsView(BaseAjaxTaskView):
     metadata = dict(
         result_links=[{'name': 'View Document List', 'link': 'document:document-list'},
                       {'name': 'View Text Unit List', 'link': 'document:text-unit-list'}])
-
-
-class BatchLoadDocumentsView(BaseAjaxTaskView):
-    form_class = BatchLoadDocumentsForm
-    metadata = dict(
-        result_links=[{'name': 'View Document List', 'link': 'document:document-list'},
-                      {'name': 'View Text Unit List', 'link': 'document:text-unit-list'}])
-
-    def post(self, request, *args, **kwargs):
-        form = self.form_class(request.POST)
-        if not form.is_valid():
-            return self.json_response(form.errors, status=400)
-        data = form.cleaned_data
-        project = data['project']
-        upload_session = project.last_session(create=True, created_by=request.user)
-        api_class = project_api_module.UploadSessionViewSet(request=request)
-        api_class.kwargs = dict(pk=upload_session.pk)
-        api_class.batch_upload(request, pk=upload_session.pk)
-        return self.json_response('The task is started. It can take a while.')
 
 
 class LocateTaskView(BaseAjaxTaskView):
@@ -443,7 +424,7 @@ class TaskListView(AdminRequiredMixin, JqPaginatedListView):
     db_user = Coalesce(F('user__username'), F('main_task__user__username'))
 
     def get_queryset(self):
-        qs = Task.objects.main_tasks()
+        qs = Task.objects.main_tasks().order_by('-date_start')
         qs = qs.annotate(time=self.db_time, work_time=self.db_work_time, username=self.db_user)
         return qs
 

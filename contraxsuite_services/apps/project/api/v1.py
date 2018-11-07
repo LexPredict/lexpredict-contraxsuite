@@ -44,7 +44,7 @@ from django.core.files import File
 from django.core.files.storage import FileSystemStorage
 from django.http import JsonResponse
 from django.db import transaction
-from django.db.models import Count, Subquery
+from django.db.models import Count, Subquery, Q
 
 from rest_framework.response import Response
 
@@ -55,7 +55,9 @@ from apps.common.mixins import JqListAPIMixin, APIActionMixin
 from apps.common.models import ReviewStatus, Action
 from apps.common.utils import get_api_module
 from apps.document.models import Document, DocumentType, DocumentFieldValue, DocumentTypeField
-from apps.project.models import Project, TaskQueue, UploadSession, ProjectClustering
+from apps.project.models import Project, TaskQueue, UploadSession, ProjectClustering,\
+    DocumentFilter, ProjectDocumentsFilter
+from apps.task.utils.logger import get_django_logger
 from apps.users.models import User
 from apps.task.models import Task
 from apps.task.tasks import call_task, purge_task
@@ -65,8 +67,8 @@ from apps.project.tasks import THIS_MODULE    # noqa
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.4/LICENSE"
-__version__ = "1.1.4"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.5/LICENSE"
+__version__ = "1.1.5"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -281,6 +283,15 @@ class DocumentTypeSerializer(serializers.ModelSerializer):
         fields = ['uid', 'code', 'title']
 
 
+def _get_filters_by_project(project):
+    return DocumentFilter.objects \
+        .filter(Q(project_id=project.pk) |
+                Q(document_type_id=project.type) |
+                Q(project_id=None, document_type_id=None)) \
+        .order_by('order', 'title') \
+        .values('id', 'order', 'title')
+
+
 class ProjectDetailSerializer(serializers.ModelSerializer):
     status = serializers.PrimaryKeyRelatedField(
         queryset=ReviewStatus.objects.all(), many=False, required=False)
@@ -302,6 +313,7 @@ class ProjectDetailSerializer(serializers.ModelSerializer):
         queryset=DocumentType.objects.all(), many=False, required=False)
     type_data = DocumentTypeSerializer(source='type', many=False)
     progress = serializers.SerializerMethodField()
+    filters = serializers.SerializerMethodField()
 
     class Meta:
         model = Project
@@ -311,23 +323,91 @@ class ProjectDetailSerializer(serializers.ModelSerializer):
                   'owners', 'owners_data',
                   'reviewers', 'reviewers_data',
                   'super_reviewers', 'super_reviewers_data',
-                  'type', 'type_data', 'progress']
+                  'type', 'type_data', 'progress', 'filters']
 
     def get_progress(self, obj):
         return project_progress(obj)
 
+    def get_filters(self, obj):
+        return _get_filters_by_project(obj)
+
 
 class ProjectCreateSerializer(serializers.ModelSerializer):
+    filters = serializers.SerializerMethodField()
+
     class Meta:
         model = Project
-        fields = ['pk', 'name', 'description', 'type', 'send_email_notification']
+        fields = ['pk', 'name', 'description', 'type', 'send_email_notification', 'filters']
+
+    def get_filters(self, obj):
+        return _get_filters_by_project(obj)
 
 
 class ProjectUpdateSerializer(ProjectDetailSerializer):
+    filters = serializers.SerializerMethodField()
+
     class Meta(ProjectDetailSerializer.Meta):
         model = Project
         fields = ['pk', 'name', 'description', 'status', 'send_email_notification',
-                  'owners', 'reviewers', 'super_reviewers', 'type']
+                  'owners', 'reviewers', 'super_reviewers', 'type', 'filters']
+
+        def get_filters(self, obj):
+            return _get_filters_by_project(obj)
+
+
+class ProjectListSerializer(ProjectDetailSerializer):
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._filters_by_project_id = None
+        self._filters_by_document_type_id = None
+        self._default_filters = None
+
+    def _load_filters(self):
+        if self._filters_by_project_id:
+            return
+
+        self._filters_by_project_id = dict()
+        self._filters_by_document_type_id = dict()
+        self._default_filters = list()
+        for document_filter in DocumentFilter.objects.all().values('pk', 'project__pk', 'document_type__pk', 'order',
+                                                                   'title'):
+            project_id = document_filter.get('project__pk')
+            document_type_id = document_filter.get('document_type__pk')
+            document_filter = {
+                'id': document_filter.get('pk'),
+                'order': document_filter.get('order'),
+                'title': document_filter.get('title'),
+            }
+            if project_id is not None:
+                filters = self._filters_by_project_id.get(project_id)
+                if not filters:
+                    filters = list()
+                    self._filters_by_project_id[project_id] = filters
+                filters.append(document_filter)
+            if document_type_id is not None:
+                filters = self._filters_by_document_type_id.get(document_type_id)
+                if not filters:
+                    filters = list()
+                    self._filters_by_document_type_id[document_type_id] = filters
+                filters.append(document_filter)
+            if project_id is None and document_type_id is None:
+                self._default_filters.append(document_filter)
+
+    def get_filters(self, obj):
+        self._load_filters()
+        target_filters = list()
+        used_filters = set()
+        loaded_filters = [self._filters_by_project_id.get(obj.pk), self._filters_by_document_type_id.get(obj.type_id),
+                          self._default_filters]
+        for filters in loaded_filters:
+            if not filters:
+                continue
+            for target_filter in filters:
+                if target_filter.get('id') not in used_filters:
+                    used_filters.add(target_filter.get('id'))
+                    target_filters.append(target_filter)
+        return target_filters
 
 
 def require_generic_contract_type(func):
@@ -386,6 +466,8 @@ class ProjectViewSet(ProjectPermissionViewMixin, APIActionMixin,
             return ProjectCreateSerializer
         elif self.action in ['update', 'partial_update']:
             return ProjectUpdateSerializer
+        elif self.action == 'list':
+            return ProjectListSerializer
         return ProjectDetailSerializer
 
     def get_queryset(self):
@@ -652,7 +734,7 @@ class ProjectViewSet(ProjectPermissionViewMixin, APIActionMixin,
 
 class UploadSessionSerializer(serializers.ModelSerializer):
     project = serializers.PrimaryKeyRelatedField(
-        queryset=Project.objects.all(), many=False, required=True)
+        queryset=Project.objects.all(), many=False, required=False)
     created_by = serializers.PrimaryKeyRelatedField(
         queryset=User.objects.all(), many=False, required=False)
 
@@ -663,8 +745,8 @@ class UploadSessionSerializer(serializers.ModelSerializer):
 
 class UploadSessionDetailSerializer(serializers.ModelSerializer):
     created_by = UserSerializer(many=False)
-    project = ProjectDetailSerializer(many=False)
-    document_type = DocumentTypeSerializer(source='project.type', many=False)
+    project = ProjectDetailSerializer(many=False, required=False)
+    document_type = serializers.SerializerMethodField()
     progress = serializers.SerializerMethodField()
 
     class Meta:
@@ -674,6 +756,9 @@ class UploadSessionDetailSerializer(serializers.ModelSerializer):
 
     def get_progress(self, obj):
         return obj.document_tasks_progress(details=True)
+
+    def get_document_type(self, obj):
+        return DocumentTypeSerializer(obj.project.type, many=False).data if obj.project else None
 
 
 class UploadSessionPermissions(BasePermission):
@@ -738,7 +823,7 @@ class UploadSessionViewSet(UploadSessionPermissionViewMixin, APIActionMixin,
         session = self.get_object()
         session.is_completed()
         document_tasks_progress = session.document_tasks_progress()
-        result = {'project_id': session.project.pk,
+        result = {'project_id': session.project.pk if session.project else None,
                   'document_tasks_progress': document_tasks_progress or None,
                   'document_tasks_progress_total': session.document_tasks_progress_total,
                   'documents_total_size': session.documents_total_size,
@@ -761,31 +846,47 @@ class UploadSessionViewSet(UploadSessionPermissionViewMixin, APIActionMixin,
 
     @staticmethod
     def get_source_path(request, **kwargs):
-        # helper to just store a file and get final source path
+        """
+        Store a file and get final source path
+        """
         session_id = kwargs.get('pk')
         project = UploadSession.objects.get(pk=session_id).project
         file_ = request.FILES.dict().get('file')
         folder_name = kwargs.get('folder')
 
-        project_storages = {
-            _session_id: FileSystemStorage(
-                location=os.path.join(
-                    settings.MEDIA_ROOT,
-                    settings.FILEBROWSER_DIRECTORY,
-                    _session_id))
-            for _session_id in project.uploadsession_set.values_list('pk', flat=True)}
+        if project:
+            project_storages = {
+                _session_id: FileSystemStorage(
+                    location=os.path.join(
+                        settings.MEDIA_ROOT,
+                        settings.FILEBROWSER_DIRECTORY,
+                        _session_id))
+                for _session_id in project.uploadsession_set.values_list('pk', flat=True)}
 
-        # check existing documents with the same name
-        this_file_documents = project.document_set.filter(name=file_.name)
+            # check existing documents with the same name
+            this_file_documents = project.document_set.filter(name=file_.name)
 
-        # check existing files with the same name in sessions' folders
-        # but not stored yet as Document
-        this_file_storages = {
-            _session_id: _storage
-            for _session_id, _storage in project_storages.items()
-            if _storage.exists(file_.name) and not Document.objects.filter(
-                source_path=os.path.join(
-                    _session_id, file_.name)).exists()}
+            # check existing files with the same name in sessions' folders
+            # but not stored yet as Document
+            this_file_storages = {
+                _session_id: _storage
+                for _session_id, _storage in project_storages.items()
+                if _storage.exists(file_.name) and not Document.objects.filter(
+                    source_path=os.path.join(
+                        _session_id, file_.name)).exists()}
+        else:
+            _storage = FileSystemStorage(
+                    location=os.path.join(
+                        settings.MEDIA_ROOT,
+                        settings.FILEBROWSER_DIRECTORY,
+                        session_id))
+            if _storage.exists(file_.name) or Document.objects.filter(
+                    source_path=os.path.join(
+                        session_id, file_.name)).exists():
+                this_file_storages = {session_id: _storage}
+            else:
+                this_file_storages = None
+            this_file_documents = Document.objects.filter(upload_session_id=session_id).all()
 
         if this_file_documents.exists() or this_file_storages:
             if request.POST.get('force') == 'true':
@@ -818,6 +919,13 @@ class UploadSessionViewSet(UploadSessionPermissionViewMixin, APIActionMixin,
         else:
             return os.path.join(folder_name, file_.name)
 
+    @classmethod
+    def _notify_upload_started(cls, session: UploadSession) -> None:
+        try:
+            session.notify_upload_started()
+        except Exception as exc:
+            get_django_logger().exception(exc)
+
     @detail_route(methods=['post'])
     def upload(self, request, **kwargs):
         """
@@ -838,54 +946,22 @@ class UploadSessionViewSet(UploadSessionPermissionViewMixin, APIActionMixin,
         try:
             source_path = self.get_source_path(request, **kwargs)
 
-            required_locators = ['date',
-                                 'party',
-                                 'term',
-                                 'geoentity',
-                                 'currency',
-                                 'citation',
-                                 'definition',
-                                 'duration']
-
-            linked_tasks = [
-                {'task_name': 'Locate',
-                 'locate': required_locators,
-                 'parse': 'sentences',
-                 'do_delete': False,
-                 'session_id': session_id,
-                 'metadata': {'session_id': session_id, 'file_name': file_.name},
-                 'user_id': request.user.id}
-            ]
-
-            document_type = UploadSession.objects.get(pk=session_id).project.type
-
-            # if Document type specified
-            if document_type:
-
-                for app_name in custom_apps:
-                    module_str = 'apps.%s.tasks' % app_name
-                    module = sys.modules.get(module_str)
-                    if hasattr(module, 'DetectFieldValues'):
-                        linked_tasks.append(
-                            {'task_name': 'DetectFieldValues',
-                             'module_name': module_str,
-                             'do_not_write': False,
-                             'session_id': session_id,
-                             'metadata': {'session_id': session_id, 'file_name': file_.name},
-                             'user_id': request.user.id})
+            # Code for running locators and detecting field values has been moved to LoadDocuments task
+            # for the unification purposes between old and new ui.
 
             call_task(
                 task_name='LoadDocuments',
                 source_data=source_path,
                 user_id=request.user.id,
                 session_id=session_id,
+                run_standard_locators=True,
                 metadata={'session_id': session_id, 'file_name': file_.name},
-                linked_tasks=linked_tasks)
+                linked_tasks=None)
 
             if project.send_email_notification and \
                     request.POST.get('send_email_notifications') == 'true' and \
                     not session.notified_upload_started:
-                session.notify_upload_started()
+                self._notify_upload_started(session)
 
         except Exception as e:
             raise APIException(str(e))
@@ -910,43 +986,12 @@ class UploadSessionViewSet(UploadSessionPermissionViewMixin, APIActionMixin,
 
         file_list = file_access_handler.list(folder_name)
 
-        required_locators = ['date',
-                             'party',
-                             'term',
-                             'geoentity',
-                             'currency',
-                             'citation',
-                             'definition',
-                             'duration']
-
         for file_path in file_list:
 
             file_name = os.path.basename(file_path)
 
-            linked_tasks = [
-                {'task_name': 'Locate',
-                 'locate': required_locators,
-                 'parse': 'sentences',
-                 'do_delete': False,
-                 'session_id': session_id,
-                 'metadata': {'session_id': session_id, 'file_name': file_name},
-                 'user_id': request.user.id}
-            ]
-
-            # if Document type specified
-            if project.type:
-
-                for app_name in custom_apps:
-                    module_str = 'apps.%s.tasks' % app_name
-                    module = sys.modules.get(module_str)
-                    if hasattr(module, 'DetectFieldValues'):
-                        linked_tasks.append(
-                            {'task_name': 'DetectFieldValues',
-                             'module_name': module_str,
-                             'do_not_write': False,
-                             'session_id': session_id,
-                             'metadata': {'session_id': session_id, 'file_name': file_name},
-                             'user_id': request.user.id})
+            # Code for running locators and detecting field values has been moved to LoadDocuments task
+            # for the unification purposes between old and new ui.
 
             call_task(
                 task_name='LoadDocuments',
@@ -954,12 +999,13 @@ class UploadSessionViewSet(UploadSessionPermissionViewMixin, APIActionMixin,
                 user_id=request.user.id,
                 session_id=session_id,
                 metadata={'session_id': session_id, 'file_name': file_name},
-                linked_tasks=linked_tasks)
+                run_standard_locators=True,
+                linked_tasks=None)
 
         if project.send_email_notification and \
                 request.POST.get('send_email_notifications') == 'true' and \
                 not session.notified_upload_started:
-            session.notify_upload_started()
+            self._notify_upload_started(session)
 
         return Response('Started')
 
@@ -1137,8 +1183,77 @@ class ProjectClusteringViewSet(JqListAPIMixin, viewsets.ReadOnlyModelViewSet):
         return qs
 
 
+# --------------------------------------------------------
+# Document Filter Views
+# --------------------------------------------------------
+
+class DocumentFilterProjectSerializer(ProjectDetailSerializer):
+    class Meta(ProjectDetailSerializer.Meta):
+        model = Project
+        fields = ['pk', 'name']
+
+
+class DocumentFilterSerializer(serializers.ModelSerializer):
+    project_data = DocumentFilterProjectSerializer(source='project', many=False, read_only=True)
+    document_type_data = DocumentTypeSerializer(source='document_type', many=False, read_only=True)
+    created_by_data = UserSerializer(source='created_by', many=False, read_only=True)
+
+    class Meta:
+        model = DocumentFilter
+        fields = ['pk', 'title', 'order', 'project', 'document_type',
+                  'filter_query', 'document_sort_order', 'created_by',
+                  'project_data', 'created_by_data', 'document_type_data']
+
+
+class SimpleDocumentFilterSerializer(DocumentFilterSerializer):
+    class Meta:
+        model = DocumentFilter
+        fields = ['pk', 'title', 'order', 'project', 'document_type', 'created_by']
+
+
+class DocumentFilterViewSet(APIActionMixin, JqListAPIMixin, viewsets.ModelViewSet):
+    """
+    list: Document Filter List
+    retrieve: Retrieve Document Filter
+    """
+    queryset = DocumentFilter.objects.all().select_related('project', 'document_type', 'created_by')
+    serializer_class = DocumentFilterSerializer
+
+    @list_route(methods=['get'], url_path='for-user')
+    def user_filters(self, request, *args, **kwargs):
+        # TODO: check for Anonymous user
+        qs = self.queryset.filter(created_by=request.user)
+        data = SimpleDocumentFilterSerializer(qs, many=True).data
+        return Response(data)
+
+
+# --------------------------------------------------------
+# Project Documents Filter Views
+# --------------------------------------------------------
+
+class ProjectDocumentsFilterProjectSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ProjectDocumentsFilter
+        fields = ['pk', 'project', 'filter_query', 'created_by']
+
+
+class ProjectDocumentsFilterViewSet(APIActionMixin, JqListAPIMixin, viewsets.ModelViewSet):
+    """
+    list: Project Documents Filter List
+    retrieve: Retrieve Project Documents Filter
+    create: Create Project Documents Filter
+    update: Update Project Documents Filter
+    """
+    queryset = ProjectDocumentsFilter.objects.all().select_related('project', 'created_by')
+    serializer_class = ProjectDocumentsFilterProjectSerializer
+    http_method_names = ['get', 'post', 'delete']
+
+
 router = routers.DefaultRouter()
 router.register(r'task-queues', TaskQueueViewSet, 'task-queue')
 router.register(r'projects', ProjectViewSet, 'project')
 router.register(r'project-clustering', ProjectClusteringViewSet, 'project-clustering')
 router.register(r'upload-session', UploadSessionViewSet, 'upload-session')
+router.register(r'document-filters', DocumentFilterViewSet, 'document-filter')
+router.register(r'project-documents-filters', ProjectDocumentsFilterViewSet,
+                'project-documents-filter')

@@ -68,5 +68,3 @@ for VARIABLE_NAME in ${SAVED_VARIABLES[@]}; do
 done
 
 echo ""
-
-popd

@@ -140,6 +140,7 @@ services:
     volumes:
       - contraxsuite_logs:/data/logs
       - celery_worker_state:/data/celery_worker_state
+      - contraxsuite_ssl_certs:/ssl_certs
     deploy:
       mode: global # Exactly one instance per node. Primitive AWS autoscaling solution.
       placement:
@@ -199,6 +200,7 @@ services:
     volumes:
       - contraxsuite_logs:/data/logs
       - celery_worker_state:/data/celery_worker_state
+      - contraxsuite_ssl_certs:/ssl_certs
     deploy:
       replicas: 1
       placement:
@@ -256,6 +258,7 @@ services:
       - contraxsuite_data_media:/data/media
       - contraxsuite_data_update:/data/data_update
       - contraxsuite_logs:/data/logs
+      - contraxsuite_ssl_certs:/ssl_certs
     depends_on:
       - contrax-db
       - contrax-redis
@@ -315,6 +318,7 @@ volumes:
   celery_worker_state:
   contraxsuite_nginx_server_include:
   contraxsuite_additional_fixtures:
+  contraxsuite_ssl_certs:
 
 networks:
   contrax_net:

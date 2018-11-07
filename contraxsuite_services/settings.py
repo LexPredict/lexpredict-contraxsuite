@@ -104,6 +104,7 @@ INSTALLED_APPS = (
     'constance',  # django-constance
     'constance.backends.database',  # django-constance backend
     'corsheaders',  # inject CORS headers into response
+    'django_json_widget',   # widget for json field for admin site
 
     # django-rest
     'rest_framework',
@@ -355,7 +356,6 @@ ACCOUNT_LOGIN_ATTEMPTS_TIMEOUT = 5
 ACCOUNT_ADAPTER = 'apps.users.adapters.AccountAdapter'
 SOCIALACCOUNT_ADAPTER = 'apps.users.adapters.SocialAccountAdapter'
 
-
 # Custom user app defaults
 # Select the correct user model
 AUTH_USER_MODEL = 'users.User'
@@ -407,6 +407,21 @@ CELERY_BEAT_SCHEDULE = {
         'options': {'queue': 'default', 'expires': 60*60*12},
     },
 }
+
+EXCLUDE_FROM_TRACKING = {
+    'celery.chord_unlock',
+    'advanced_celery.track_tasks',
+    'advanced_celery.track_session_completed',
+    'advanced_celery.update_main_task',
+    'advanced_celery.clean_sub_tasks',
+    'advanced_celery.clean_dead_tasks',
+    'advanced_celery.clean_tasks',
+    'deployment.usage_stats',
+    'advanced_celery.retrain_dirty_fields'
+}
+
+REMOVE_WHEN_READY = set()
+
 CELERY_TIMEZONE = 'UTC'
 CELERY_ENABLE_UTC = True
 CELERY_CHORD_UNLOCK_MAX_RETRIES = 5
@@ -463,7 +478,7 @@ STRICT_PIL = True
 # Allowed extensions for file upload
 FILEBROWSER_EXTENSIONS = {
     'Image': ['.jpg', '.jpeg', '.png', '.tif', '.tiff'],
-    'Document': ['.pdf', '.doc', '.docx', '.rtf', '.txt', '.xls', '.xlsx', '.csv', '.html'],
+    'Document': ['.pdf', '.doc', '.docx', '.rtf', '.txt', '.xls', '.xlsx', '.csv', '.html', '.json'],
     'Archive': ['.zip']
 }
 # Max. Upload Size in Bytes
@@ -701,8 +716,8 @@ CORS_ORIGIN_ALLOW_ALL = True
 CORS_ALLOW_CREDENTIALS = False
 CORS_URLS_REGEX = r'^/api/.*$'
 
-VERSION_NUMBER = '1.1.4'
-VERSION_COMMIT = 'cb7018b'
+VERSION_NUMBER = '1.1.5'
+VERSION_COMMIT = '7a1efce6'
 
 try:
     from local_settings import *
@@ -711,6 +726,24 @@ try:
     MIDDLEWARE += LOCAL_MIDDLEWARE
 except (ImportError, NameError):
     pass
+
+try:
+    from customer_settings import *
+
+    if CUSTOMER_CELERY_BEAT_SCHEDULE:
+        for task_name, schedule in CUSTOMER_CELERY_BEAT_SCHEDULE.items():
+            CELERY_BEAT_SCHEDULE[task_name] = schedule
+    if CUSTOMER_EXCLUDE_FROM_TRACKING:
+        for task_name in CUSTOMER_EXCLUDE_FROM_TRACKING:
+            EXCLUDE_FROM_TRACKING.add(task_name)
+    if CUSTOMER_REMOVE_WHEN_READY:
+        for task_name in CUSTOMER_REMOVE_WHEN_READY:
+            REMOVE_WHEN_READY.add(task_name)
+except (ImportError, NameError):
+    pass
+
+for task_name in EXCLUDE_FROM_TRACKING:
+    REMOVE_WHEN_READY.add(task_name)
 
 BASE_URL = re.sub('^/+', '', BASE_URL)
 BASE_URL = re.sub('/+$', '', BASE_URL)

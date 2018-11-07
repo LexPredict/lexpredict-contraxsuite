@@ -1,0 +1,270 @@
+from typing import Optional, List, Dict, Tuple, Any
+
+import pandas as pd
+from django.conf import settings
+from django.db.models import F, Value, IntegerField, Q, Subquery
+from sklearn.feature_extraction.text import CountVectorizer
+from sklearn.feature_extraction.text import TfidfTransformer
+from sklearn.linear_model import SGDClassifier
+from sklearn.metrics import classification_report
+from sklearn.model_selection import train_test_split
+from sklearn.pipeline import Pipeline
+from sklearn.utils import shuffle
+
+from apps.document.field_types import FIELD_TYPES_REGISTRY, ValueExtractionHint, FieldType
+from apps.document.fields_detection import field_detection_utils
+from apps.document.fields_detection.fields_detection_abstractions import FieldDetectionStrategy, DetectedFieldValue, \
+    ProcessLogger
+from apps.document.fields_detection.regexps_field_detection import RegexpsOnlyFieldDetectionStrategy
+from apps.document.fields_detection.text_based_ml import SkLearnClassifierModel, encode_category, \
+    parse_category, word_position_tokenizer
+from apps.document.models import ClassifierModel, DocumentFieldValue, ExternalFieldValue, TextUnit, \
+    DocumentField, DocumentType
+from apps.document.models import Document
+
+
+def get_user_data(document_type: DocumentType,
+                  field: DocumentField,
+                  project_ids: Optional[List[str]]) -> List[dict]:
+    qs_modified_document_ids = field_detection_utils.get_qs_active_modified_document_ids(document_type,
+                                                                                         field,
+                                                                                         project_ids)
+
+    qs_finished_document_ids = field_detection_utils.get_qs_finished_document_ids(document_type, project_ids)
+
+    document_values = DocumentFieldValue.objects.filter(Q(field=field),
+                                                        Q(document__document_type=document_type),
+                                                        Q(text_unit__isnull=False),
+                                                        Q(document__in=Subquery(qs_modified_document_ids))
+                                                        | Q(document__in=Subquery(qs_finished_document_ids)),
+                                                        Q(removed_by_user=False)) \
+                          .values('created_by', 'text_unit__text', 'value', 'extraction_hint') \
+                          .order_by('created_by')[:settings.ML_TRAIN_DATA_SET_GROUP_LEN]
+
+    return list(document_values)
+
+
+def get_external_field_values(document_type, field) -> List[dict]:
+    return list(ExternalFieldValue.objects
+                .filter(field_id=field.pk,
+                        type_id=document_type.pk)
+                .annotate(text_unit__text=F('text_unit_text'))
+                .values('text_unit__text', 'value', 'extraction_hint')
+                .annotate(created_by=Value(1, output_field=IntegerField()))[:settings.ML_TRAIN_DATA_SET_GROUP_LEN])
+
+
+def get_train_data_sets(document_type: DocumentType, field: DocumentField, project_ids: Optional[List[str]]) \
+        -> List[Dict]:
+    train_data_sets = []
+    user_data = get_user_data(document_type, field, project_ids)
+    if user_data:
+        train_data_sets.append(user_data)
+    external_field_values = get_external_field_values(document_type, field)
+    if external_field_values:
+        train_data_sets.append(external_field_values)
+    return train_data_sets
+
+
+def get_no_field_text_units(document_type: DocumentType, field: DocumentField) -> List[str]:
+    return list(
+        TextUnit.objects.filter(document__document_type_id=document_type.pk, unit_type=field.text_unit_type,
+                                related_field_values=None)
+            .values_list('text', flat=True)[:settings.ML_TRAIN_DATA_SET_GROUP_LEN])
+
+
+def train_model(document_type: DocumentType, field: DocumentField, train_data_sets: List[dict]) -> ClassifierModel:
+    df = pd.DataFrame.from_records(train_data_sets.pop(0))
+    # add transferred external data
+    for train_data in train_data_sets:
+        df = df.append(pd.DataFrame.from_records(train_data))
+
+    df['target_name'] = df.apply(lambda row: encode_category(
+        field.pk,
+        row.value if field.is_choice_field() else None,
+        row.extraction_hint), axis=1)
+
+    df['target_index'] = df.target_name.factorize(sort=True)[0] + 1
+
+    df = df.append([{'text_unit__text': i} for i in get_no_field_text_units(document_type, field)])
+
+    df['target_index'] = df['target_index'].fillna(0).astype('int')
+    df['target_name'] = df['target_name'].fillna(SkLearnClassifierModel.EMPTY_CAT_NAME).astype(
+        'str')
+    df['user_input'] = df['created_by'].fillna(0).astype('bool')
+
+    res_df = pd.DataFrame()
+
+    for group_index, group_df in df.groupby('target_index'):
+        if group_df.shape[0] > settings.ML_TRAIN_DATA_SET_GROUP_LEN:
+            group_df = shuffle(
+                group_df.sort_values('user_input', ascending=False)[:settings.ML_TRAIN_DATA_SET_GROUP_LEN])
+        res_df = res_df.append(group_df)
+    res_df = shuffle(res_df)
+
+    target_names = sorted(res_df['target_name'].unique())
+
+    text_clf = Pipeline([('vect', CountVectorizer(strip_accents='unicode', analyzer='word',
+                                                  stop_words='english',
+                                                  tokenizer=word_position_tokenizer)),
+                         ('tfidf', TfidfTransformer()),
+                         ('clf', SGDClassifier(loss='hinge', penalty='l2',
+                                               alpha=1e-3, random_state=42,
+                                               max_iter=5, tol=None, n_jobs=-1,
+                                               class_weight='balanced')),
+                         ])
+    x = res_df['text_unit__text']
+    y = res_df['target_index']
+
+    x_train, x_test_os, y_train, y_test_os = train_test_split(x, y, test_size=0.2, random_state=42)
+    _x_train, x_test_is, _y_train, y_test_is = train_test_split(x_train, y_train, test_size=0.2, random_state=42)
+
+    sklearn_model = text_clf.fit(x_train, y_train)
+
+    model = SkLearnClassifierModel(sklearn_model=sklearn_model, target_names=target_names)
+
+    classifier_model = ClassifierModel()
+
+    classifier_model.set_trained_model_obj(model)
+    classifier_model.document_field = field
+    classifier_model.document_type = document_type
+
+    predicted_os = text_clf.predict(x_test_os)
+    predicted_is = text_clf.predict(x_test_is)
+
+    classifier_model.classifier_accuracy_report_out_of_sample = classification_report(y_test_os,
+                                                                                      predicted_os,
+                                                                                      target_names=target_names)
+    classifier_model.classifier_accuracy_report_in_sample = classification_report(y_test_is,
+                                                                                  predicted_is,
+                                                                                  target_names=target_names)
+
+    return classifier_model
+
+
+class TextBasedMLFieldDetectionStrategy(FieldDetectionStrategy):
+    code = DocumentField.VD_TEXT_BASED_ML_ONLY
+
+    @classmethod
+    def train_document_field_detector_model(cls,
+                                            log: ProcessLogger,
+                                            document_type: DocumentType,
+                                            field: DocumentField,
+                                            train_data_project_ids: Optional[List],
+                                            use_only_confirmed_field_values: bool = False) -> Optional[ClassifierModel]:
+        log.info('Training model for field #{0} ({1})...'
+                 .format(field.pk, field.code))
+
+        if train_data_project_ids and not use_only_confirmed_field_values:
+            train_data = DocumentFieldValue.objects \
+                .filter(field_id=field.pk,
+                        document__project_id__in=train_data_project_ids,
+                        document__document_type_id=document_type.pk,
+                        removed_by_user=False) \
+                .values('created_by', 'text_unit__text', 'value', 'extraction_hint')
+            train_data_sets = [list(train_data)]
+        else:
+            train_data_sets = get_train_data_sets(document_type, field, train_data_project_ids)
+
+        if not train_data_sets:
+            log.info('Not enough data to train model for document_type #{0} and field #{1}.'
+                     .format(document_type.pk, field.pk))
+            return None
+
+        classifier_model = train_model(document_type, field, train_data_sets)
+        log.info(
+            'Finished training model for document_type #{0} and field #{1}.'.format(document_type.pk, field.pk))
+
+        return classifier_model
+
+    @classmethod
+    def predict_value(cls, sklearn_model: SkLearnClassifierModel, text_unit: TextUnit) \
+            -> Tuple[Optional[str], Optional[str], Optional[str]]:
+        predicted = sklearn_model.sklearn_model.predict([text_unit.text])
+        target_index = predicted[0]
+        target_name = sklearn_model.target_names[target_index]
+        return parse_category(target_name)
+
+    @classmethod
+    def extract_value(cls, field_type_adapter: FieldType, document: Document, field: DocumentField, hint_name: str,
+                      text_unit: TextUnit) -> Tuple[Any, Optional[str]]:
+        if field_type_adapter.value_aware:
+            hint_name = hint_name or ValueExtractionHint.TAKE_FIRST.name
+            return field_type_adapter.get_or_extract_value(document, field, None, hint_name, text_unit.text)
+        return None, None
+
+    @classmethod
+    def predict_and_extract_value(cls, sklearn_model: SkLearnClassifierModel,
+                                  field_type_adapter: FieldType,
+                                  document: Document,
+                                  field: DocumentField,
+                                  text_unit: TextUnit) -> Tuple[Any, Any]:
+        field_uid, value, hint_name = cls.predict_value(sklearn_model, text_unit)
+        if field_uid is not None:
+            return cls.extract_value(field_type_adapter, document, field, hint_name, text_unit)
+        return None, None
+
+    @classmethod
+    def detect_field_values(cls,
+                            log: ProcessLogger,
+                            doc: Document,
+                            field: DocumentField) -> List[DetectedFieldValue]:
+        document_type = doc.document_type  # type: DocumentType
+        try:
+            classifier_model = ClassifierModel.objects \
+                .get(document_type=document_type, document_field=field)
+            sklearn_model = classifier_model.get_trained_model_obj()
+            field_type_adapter = FIELD_TYPES_REGISTRY[field.type]
+
+            detected_values = list()  # type: List[DetectedFieldValue]
+
+            qs_text_units = TextUnit.objects \
+                .filter(document=doc) \
+                .filter(unit_type=field.text_unit_type) \
+                .order_by('location_start', 'pk')
+
+            for text_unit in qs_text_units.iterator():
+                value, hint_name = cls.predict_and_extract_value(sklearn_model=sklearn_model,
+                                                                 field_type_adapter=field_type_adapter,
+                                                                 document=doc,
+                                                                 field=field,
+                                                                 text_unit=text_unit)
+                if value is None:
+                    continue
+                detected_values.append(DetectedFieldValue(field, value, text_unit, hint_name))
+                if not (field_type_adapter.multi_value or field.is_choice_field()):
+                    break
+            return detected_values
+
+        except ClassifierModel.DoesNotExist as e:
+            raise e
+
+
+class RegexpsAndTextBasedMLFieldDetectionStrategy(TextBasedMLFieldDetectionStrategy):
+    code = DocumentField.VD_REGEXPS_AND_TEXT_BASED_ML
+
+    @classmethod
+    def uses_cached_document_field_values(cls, field):
+        return True
+
+    @classmethod
+    def train_document_field_detector_model(cls, log: ProcessLogger, document_type: DocumentType, field: DocumentField,
+                                            train_data_project_ids: Optional[List],
+                                            use_only_confirmed_field_values: bool = False) -> Optional[ClassifierModel]:
+        try:
+            return super().train_document_field_detector_model(log,
+                                                               document_type,
+                                                               field,
+                                                               train_data_project_ids,
+                                                               use_only_confirmed_field_values)
+        except RuntimeError as e:
+            return None
+
+    @classmethod
+    def detect_field_values(cls,
+                            log: ProcessLogger,
+                            doc: Document,
+                            field: DocumentField) -> List[DetectedFieldValue]:
+        try:
+            return super().detect_field_values(log, doc, field)
+        except ClassifierModel.DoesNotExist:
+            return RegexpsOnlyFieldDetectionStrategy.detect_field_values(log, doc, field)

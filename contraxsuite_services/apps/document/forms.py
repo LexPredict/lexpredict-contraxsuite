@@ -24,16 +24,18 @@
 """
 
 import json
-from django import forms
 
-from apps.document.models import DocumentType, DocumentTypeField
-from apps.project.models import Project
+from django import forms
+from django.conf import settings
+
+from apps.document.models import DocumentType, DocumentTypeField, DocumentField
 from apps.document.tasks import MODULE_NAME
+from apps.project.models import Project
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.4/LICENSE"
-__version__ = "1.1.4"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.5/LICENSE"
+__version__ = "1.1.5"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -96,26 +98,76 @@ class ProjectModelMultipleChoiceField(forms.ModelMultipleChoiceField):
         return [json.loads(value.replace('\'', '"'))[0] for value in values]
 
 
-class TrainDocumentFieldForm(forms.Form):
-    header = 'Train Document Field'
+class TrainAndTestForm(forms.Form):
+    header = 'Train And Test'
 
     document_type_field_id = DocumentTypeFieldModelChoiceField(
-        queryset=DocumentTypeField.objects.all().values('pk', 'document_type__code', 'document_field__code')
-        .order_by('document_type__code', 'document_field__code'),
+        queryset=DocumentTypeField.objects
+            .exclude(document_field__value_detection_strategy__isnull=True)
+            .exclude(document_field__value_detection_strategy=DocumentField.VD_DISABLED)
+            .values('pk', 'document_type__code', 'document_field__code')
+            .order_by('document_type__code', 'document_field__code'),
         label='Document Field',
         required=True)
+    skip_training = forms.BooleanField(required=False)
+
+    use_only_confirmed_field_values_for_training = forms.BooleanField(required=False)
 
     train_data_project_ids = ProjectModelMultipleChoiceField(
         queryset=Project.objects.all().values_list('pk', 'name'),
         label='Train Data Projects',
         widget=forms.SelectMultiple(attrs={'class': 'chosen compact'}),
-        required=True)
+        required=False)
+
+    skip_testing = forms.BooleanField(required=False)
+
+    use_only_confirmed_field_values_for_testing = forms.BooleanField(required=False)
 
     test_data_projects_ids = ProjectModelMultipleChoiceField(
         queryset=Project.objects.all().values_list('pk', 'name'),
         label='Test Data Projects',
         widget=forms.SelectMultiple(attrs={'class': 'chosen compact'}),
         required=False)
+
+    def _post_clean(self):
+        super()._post_clean()
+        self.cleaned_data['module_name'] = MODULE_NAME
+
+
+class LoadDocumentWithFieldsForm(forms.Form):
+    header = 'Parse document fields in JSON format to create Document with Field Values.'
+    project = forms.ModelChoiceField(queryset=Project.objects.all(), required=True)
+    source_data = forms.CharField(
+        max_length=1000,
+        required=False,
+        help_text='''
+            Relative path to a folder with uploaded files. For example, "new" or "/".<br />
+            You can choose any folder or file in "/media/%s" folder.<br />
+            Create new folders and upload new documents if needed.
+            ''' % settings.FILEBROWSER_DIRECTORY)
+    document_name = forms.CharField(max_length=1024, required=False)
+    document_fields = forms.CharField(
+        widget=forms.Textarea,
+        required=False,
+        help_text='Document fields in JSON format (field name - value pairs)'
+    )
+    run_detect_field_values = forms.BooleanField(required=False)
+
+
+class ImportSimpleFieldDetectionConfigForm(forms.Form):
+    header = 'Import Simple Field Detection Config'
+
+    enctype = 'multipart/form-data'
+
+    document_type = forms.ModelChoiceField(queryset=DocumentType.objects.all(), required=True)
+
+    document_field = forms.ModelChoiceField(queryset=DocumentField.objects.all(), required=True)
+
+    config_csv_file = forms.FileField(required=True)
+
+    drop_previous_field_detectors = forms.BooleanField(required=False)
+
+    update_field_choice_values = forms.BooleanField(required=False)
 
     def _post_clean(self):
         super()._post_clean()

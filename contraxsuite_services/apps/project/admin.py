@@ -28,12 +28,14 @@
 from django.contrib import admin
 
 # Project imports
-from .models import Project, TaskQueue, TaskQueueHistory, ProjectClustering, UploadSession
+from apps.project.forms import DocumentFilterForm
+from .models import Project, TaskQueue, TaskQueueHistory, ProjectClustering, UploadSession,\
+    DocumentFilter, ProjectDocumentsFilter
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.4/LICENSE"
-__version__ = "1.1.4"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.5/LICENSE"
+__version__ = "1.1.5"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -90,8 +92,25 @@ class UploadSessionAdmin(admin.ModelAdmin):
         return obj.project.name
 
 
+class DocumentFilterAdmin(admin.ModelAdmin):
+    list_display = ('title', 'project_name', 'filter_query')
+    search_fields = ('title', 'project__name')
+    form = DocumentFilterForm
+
+    @staticmethod
+    def project_name(obj):
+        return obj.project.name if obj.project else ''
+
+
+class ProjectDocumentsFilterAdmin(admin.ModelAdmin):
+    list_display = ('project', 'created_by', 'filter_query')
+    search_fields = ('project__name', 'created_by__username')
+
+
 admin.site.register(TaskQueue, TaskQueueAdmin)
 admin.site.register(TaskQueueHistory, TaskQueueHistoryAdmin)
 admin.site.register(Project, ProjectAdmin)
 admin.site.register(ProjectClustering, ProjectClusteringAdmin)
 admin.site.register(UploadSession, UploadSessionAdmin)
+admin.site.register(DocumentFilter, DocumentFilterAdmin)
+admin.site.register(ProjectDocumentsFilter, ProjectDocumentsFilterAdmin)

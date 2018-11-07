@@ -469,6 +469,9 @@ section h3 {
   height: 70px;
   margin: 14px 0;
 }
+#header #logo a.standard-logo {
+  display: block !important;
+}
 #header:not(.sticky-header) #account_menu a {
   padding: 39px 10px 30px 10px;
 }

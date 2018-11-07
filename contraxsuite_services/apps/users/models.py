@@ -35,8 +35,8 @@ from django.utils.translation import ugettext_lazy as _
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.4/LICENSE"
-__version__ = "1.1.4"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.5/LICENSE"
+__version__ = "1.1.5"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -102,7 +102,8 @@ class User(AbstractUser):
 
     def save(self, *args, **kwargs):
         if self.role is None:
-            self.role = Role.objects.first()
+            self.role = Role.objects.filter(is_admin=False, is_manager=False).last()\
+                        or Role.objects.first()
         super().save(*args, **kwargs)
 
     def can_view_document(self, document):

@@ -144,10 +144,10 @@
           </li>
           <li class="dropdown-item">
             <a class="task" href="#" tabindex="-1"
-               data-href="{% url "task:batch-load-documents" %}"
-               data-btn-text="Start">
+               data-href="{% url "document:load-document-with-fields" %}"
+               data-btn-text="Load">
               <i class="fa fa-file-text-o"></i>
-              Load Documents to Project, Run Locators</a>
+              Load Document With Fields</a>
           </li>
           <li class="dropdown-item">
             <a class="task-load" href="#"
@@ -855,7 +855,7 @@
                   //window.xxhr = xhr;
                   jc.close();
 
-                  if (xhr.getResponseHeader('content-disposition').startsWith('attachment')){
+                  if (xhr.getResponseHeader('content-disposition') && xhr.getResponseHeader('content-disposition').startsWith('attachment')){
                     data = JSON.stringify(data);
                     var blob = new Blob([data], {type: xhr.getResponseHeader('content-type')});
                     var url  = URL.createObjectURL(blob);
@@ -864,8 +864,12 @@
                     a.href = url;
                     a.click();
                     URL.revokeObjectURL(url);
-                    return false
+                    data = 'Downloaded ' + xhr.getResponseHeader('filename') + ' file'
                   }
+                  if ($.isPlainObject(data)){
+                    data = data.result
+                  }
+
                   $.alert({
                     icon: 'fa fa-spinner fa-spin text-warning',
                     title: 'Working!',
@@ -879,6 +883,19 @@
                   });
                 },
                 error: function(data){
+                  if ('status' in data.responseJSON){
+                    $.alert({
+                      icon: 'fa fa-warning text-danger',
+                      title: 'Something went wrong',
+                      type: 'red',
+                      content: data.statusText,
+                      columnClass: 'col-md-4',
+                      onClose: function(){
+                        $('.jqxgrid').jqxGrid('updatebounddata')
+                      }
+                    });
+                    return false
+                  }
                   $.each(data.responseJSON, function(field, error){
                     var error_p = '<p class="error">' + error[0] + '</p>';
                     form.find('[name=' + field + ']').parent().prepend(error_p)

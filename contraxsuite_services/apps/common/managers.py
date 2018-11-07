@@ -23,9 +23,39 @@
     or shipping ContraxSuite within a closed source product.
 """
 
+
+from django.db import models
+from apps.common.utils import Map
+
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.4/LICENSE"
-__version__ = "1.1.4"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.5/LICENSE"
+__version__ = "1.1.5"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
+
+
+class DotValuesIterable(models.query.ValuesIterable):
+    """
+    Iterable returned by QuerySet.values() that yields a Map object with .dot access
+    for each row.
+    """
+    def __iter__(self):
+        for i in super().__iter__():
+            yield Map(i)
+
+
+class AdvancedQuerySet(models.query.QuerySet):
+    """
+    Substitution the QuerySet, and adding additional methods to QuerySet
+    Patched .values() behaves like a class and allows access via dot
+    """
+    def dot_values(self, *fields, **expressions):
+        fields += tuple(expressions)
+        clone = self._values(*fields, **expressions)
+        clone._iterable_class = DotValuesIterable
+        return clone
+
+
+class AdvancedManager(models.manager.BaseManager.from_queryset(AdvancedQuerySet)):
+    pass

@@ -35,14 +35,15 @@ from rest_framework.views import APIView
 
 # Django imports
 from django.conf.urls import url
-from apps.common.models import AppVar, ReviewStatusGroup, ReviewStatus
+from apps.common.models import Action, AppVar, ReviewStatusGroup, ReviewStatus
 from apps.common.mixins import JqListAPIMixin
 from apps.common.api.permissions import ReviewerReadOnlyPermission
+from apps.users.api.v1 import UserSerializer
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.4/LICENSE"
-__version__ = "1.1.4"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.5/LICENSE"
+__version__ = "1.1.5"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -236,7 +237,32 @@ class ReviewStatusViewSet(JqListAPIMixin, viewsets.ModelViewSet):
     permission_classes = (ReviewerReadOnlyPermission,)
 
 
+# --------------------------------------------------------
+# Action Views
+# --------------------------------------------------------
+
+class ActionSerializer(serializers.ModelSerializer):
+    user = UserSerializer(many=False)
+
+    class Meta:
+        model = Action
+        fields = ['pk', 'name', 'user', 'content_type', 'object_pk', 'date',
+                  'app_label', 'model_name', 'object_str']
+
+
+class ActionViewSet(JqListAPIMixin, viewsets.ModelViewSet):
+    """
+    list: Action List
+    retrieve: Retrieve Action
+    """
+    http_method_names = ['get']
+    queryset = Action.objects.all().select_related('user', 'user__role', 'content_type')
+    serializer_class = ActionSerializer
+    permission_classes = (ReviewerReadOnlyPermission,)
+
+
 router = routers.DefaultRouter()
+router.register(r'actions', ActionViewSet, 'actions')
 router.register(r'review-status-groups', ReviewStatusGroupViewSet, 'review-status-group')
 router.register(r'review-statuses', ReviewStatusViewSet, 'review-status')
 

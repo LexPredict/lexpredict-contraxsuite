@@ -26,34 +26,57 @@
 
 # Standard imports
 import traceback
+from typing import List
 
 # Django imports
 from django import forms
 from django.contrib import admin
 from django.contrib.admin.widgets import FilteredSelectMultiple
+from django.contrib.postgres import fields
 from django.utils.html import format_html_join
+from django_json_widget.widgets import JSONEditorWidget
 from simple_history.admin import SimpleHistoryAdmin
 
 # Project imports
+from apps.document.field_types import FIELD_TYPES_REGISTRY
+from apps.document.fields_detection.formula_based_field_detection import FormulaBasedFieldDetectionStrategy, \
+    DocumentFieldFormulaError
+from apps.document.fields_processing.field_processing_utils import order_field_detection
 from apps.document.models import (
     Document, DocumentField, DocumentType,
     DocumentProperty, DocumentRelation, DocumentNote,
     DocumentFieldDetector, DocumentFieldValue, ExternalFieldValue,
     ClassifierModel, TextUnit, TextUnitProperty, TextUnitNote, TextUnitTag, DocumentTypeField,
-    DocumentFieldFormulaError, DocumentTypeFieldCategory)
-from apps.document.field_types import FIELD_TYPES_REGISTRY
-from apps.document.python_coded_fields import PythonCodedField, PYTHON_CODED_FIELDS_REGISTRY
-
+    DocumentTypeFieldCategory)
+from apps.document.python_coded_fields import PYTHON_CODED_FIELDS_REGISTRY
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.4/LICENSE"
-__version__ = "1.1.4"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.5/LICENSE"
+__version__ = "1.1.5"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
 
-class DocumentAdmin(SimpleHistoryAdmin):
+class ModelAdminWithPrettyJsonField(admin.ModelAdmin):
+    """
+    Mixin that prettifies JSON field representation
+    """
+    formfield_overrides = {
+        fields.JSONField: {'widget': JSONEditorWidget},
+    }
+
+
+class PrettyJsonFieldMixin(object):
+    """
+    Mixin that prettifies JSON field representation
+    """
+    formfield_overrides = {
+        fields.JSONField: {'widget': JSONEditorWidget},
+    }
+
+
+class DocumentAdmin(ModelAdminWithPrettyJsonField, SimpleHistoryAdmin):
     list_display = ('name', 'document_type', 'source_type', 'paragraphs', 'sentences')
     search_fields = ['document_type__code', 'name']
 
@@ -63,12 +86,30 @@ class DocumentFieldForm(forms.ModelForm):
         model = DocumentField
         fields = '__all__'
 
+    @classmethod
+    def _extract_field_and_deps(cls, base_fields: List[DocumentField], fields_buffer: dict) -> dict:
+        for field in base_fields:
+            if field.code not in fields_buffer:
+                fields_buffer[field.code] = field.get_depends_on_codes() or set()
+                cls._extract_field_and_deps(field.depends_on_fields.all(), fields_buffer)
+        return fields_buffer
+
     def clean(self):
         field_code = self.cleaned_data.get('code')
         formula = self.cleaned_data.get('formula')
         type_code = self.cleaned_data.get('type')
         depends_on_fields = self.cleaned_data.get('depends_on_fields') or []
-        fields_to_values = {field: FIELD_TYPES_REGISTRY[field.type].example_json_value(field)
+        depends_on_fields = list(depends_on_fields)
+
+        fields_and_deps = {self.cleaned_data.get('code') or 'xxx': {f.code for f in depends_on_fields}}
+        fields_and_deps = self._extract_field_and_deps(depends_on_fields, fields_and_deps)
+        fields_and_deps = [(code, deps) for code, deps in fields_and_deps.items()]
+        try:
+            order_field_detection(fields_and_deps)
+        except ValueError as ve:
+            self.add_error(None, str(ve))
+
+        fields_to_values = {field.code: FIELD_TYPES_REGISTRY[field.type].example_python_value(field)
                             for field in depends_on_fields}
 
         python_coded_field_code = self.cleaned_data.get('python_coded_field')
@@ -84,10 +125,10 @@ class DocumentFieldForm(forms.ModelForm):
                                                                        type_code))
 
         if not formula or not formula.strip() or not type_code:
-            return
+            return self.cleaned_data
 
         try:
-            DocumentField.calc_formula(field_code, type_code, formula, fields_to_values)
+            FormulaBasedFieldDetectionStrategy.calc_formula(field_code, type_code, formula, fields_to_values)
         except DocumentFieldFormulaError as ex:
             base_error_class = type(ex.base_error).__name__
             base_error_msg = str(ex.base_error)
@@ -109,7 +150,8 @@ class DocumentFieldForm(forms.ModelForm):
 
 class DocumentFieldAdmin(admin.ModelAdmin):
     form = DocumentFieldForm
-    list_display = ('code', 'title', 'description', 'type', 'formula', 'value_regexp', 'user', 'modified_date', 'confidence')
+    list_display = (
+        'code', 'title', 'description', 'type', 'formula', 'value_regexp', 'user', 'modified_date', 'confidence')
     search_fields = ['code', 'title', 'description', 'created_by__username', 'confidence']
     filter_horizontal = ('depends_on_fields',)
 
@@ -123,8 +165,8 @@ class DocumentFieldDetectorAdmin(admin.ModelAdmin):
         'document_type', 'field', 'detected_value', 'extraction_hint',
         'include', 'regexps_pre_process_lower',
         'regexps_pre_process_remove_numeric_separators')
-    search_fields = ['document_type', 'field', 'detected_value', 'extraction_hint',
-                     'include_regexps']
+    search_fields = ['document_type__code', 'document_type__title', 'field__code', 'field__title',
+                     'detected_value', 'extraction_hint', 'include_regexps']
 
     @staticmethod
     def document_type_code(obj):
@@ -146,11 +188,13 @@ class DocumentFieldDetectorAdmin(admin.ModelAdmin):
 
 
 class DocumentFieldValueAdmin(admin.ModelAdmin):
-    raw_id_fields = ('document', 'sentence',)
+    raw_id_fields = ('document', 'text_unit',)
     list_display = ('document_type', 'document', 'field', 'value', 'location_start',
                     'location_end', 'location_text', 'extraction_hint', 'user')
-    search_fields = ['document__document_type', 'document', 'field', 'value', 'location_text',
-                     'extraction_hint', 'user']
+    search_fields = ['document__document_type__code', 'document__document_type__title',
+                     'document__name', 'field__code', 'field__title', 'value', 'location_text',
+                     'extraction_hint', 'modified_by__username', 'modified_by__first_name',
+                     'modified_by__last_name']
 
     @staticmethod
     def document_type(obj):
@@ -171,20 +215,26 @@ class ExternalFieldValueAdmin(admin.ModelAdmin):
 
 
 class DocumentFieldInlineFormset(forms.models.BaseInlineFormSet):
-
     def clean(self):
         field_ids = set()
         dependencies = list()
+        order_values = list()
         for form in self.forms:
             document_field = form.cleaned_data.get('document_field')
             if document_field:
                 field_ids.add(document_field.pk)
                 if document_field.depends_on_fields.count() > 0:
                     dependencies.append(form)
+                order = form.cleaned_data.get('order')
+                if order in order_values:
+                    form.add_error(None, '"Order" value should be unique')
+                else:
+                    order_values.append(order)
         for form in dependencies:
             document_field = form.cleaned_data['document_field']
             missed_fields = list()
-            for field in document_field.depends_on_fields.all():
+            depends_on_fields = list(document_field.depends_on_fields.all())
+            for field in depends_on_fields:
                 if field.pk not in field_ids:
                     missed_fields.append(field.code)
             if len(missed_fields) == 1:
@@ -200,7 +250,7 @@ class DocumentFieldInlineAdmin(admin.TabularInline):
     model = DocumentType.fields.through
 
 
-class DocumentTypeAdmin(admin.ModelAdmin):
+class DocumentTypeAdmin(ModelAdminWithPrettyJsonField):
     list_display = ('code', 'title', 'fields_num', 'user', 'fields', 'modified_date')
     search_fields = ['code', 'title', 'created_by__username']
     filter_horizontal = ('fields', 'search_fields')
@@ -252,12 +302,14 @@ class DocumentNoteAdmin(SimpleHistoryAdmin):
 
 class ClassifierModelAdmin(SimpleHistoryAdmin):
     list_display = ('document_type', 'document_field',)
-    search_fields = ('document_type', 'document_field',)
+    search_fields = ('document_type__code', 'document_type__title',
+                     'document_field__code', 'document_field__title')
 
 
 class DocumentTypeFieldAdmin(admin.ModelAdmin):
     list_display = ('document_type', 'document_field', 'training_finished')
-    search_fields = ['document_type', 'document_field']
+    search_fields = ('document_type__code', 'document_type__title',
+                     'document_field__code', 'document_field__title')
 
 
 class DocumentTypeFieldCategoryForm(forms.ModelForm):
@@ -277,18 +329,20 @@ class DocumentTypeFieldCategoryForm(forms.ModelForm):
             self.fields['type_fields'].initial = self.instance.documenttypefield_set.all()
 
     def save(self, *args, **kwargs):
-        # FIXME: 'commit' argument is not handled
         # TODO: Wrap reassignments into transaction
         # NOTE: Previously assigned DocumentTypeFieldCategory are silently reset
-        instance = super().save(commit=False)
+        instance = super().save(commit=True)
         self.fields['type_fields'].initial.update(category=None)
         self.cleaned_data['type_fields'].update(category=instance)
         return instance
 
+    def save_m2m(self, *args, **kwargs):
+        pass
+
 
 class DocumentTypeFieldCategoryAdmin(admin.ModelAdmin):
     list_display = ('name', 'order')
-    search_fields = ['name']
+    search_fields = ('name',)
     form = DocumentTypeFieldCategoryForm
 
 

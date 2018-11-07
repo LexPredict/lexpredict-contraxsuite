@@ -28,12 +28,13 @@
 from django import forms
 
 # Project imports
-from apps.project.models import Project, TaskQueue
+from apps.document.models import Document
+from apps.project.models import Project, TaskQueue, DocumentFilter
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.4/LICENSE"
-__version__ = "1.1.4"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.5/LICENSE"
+__version__ = "1.1.5"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -68,3 +69,33 @@ class ProjectChoiceForm(forms.Form):
         self.fields['project'] = forms.MultipleChoiceField(
             choices=[(p.pk, p.__str__()) for p in Project.objects.all()],
             required=True)
+
+
+class DocumentFilterForm(forms.ModelForm):
+    filter_query = forms.CharField(
+        widget=forms.Textarea,
+        required=True,
+        help_text='Query in Lucene format based on filed codes'
+    )
+
+    document_sort_order = forms.CharField(
+        required=False,
+        help_text='Format: field_code[:ASC|DESC]'
+    )
+
+    def clean(self):
+        try:
+            filter_query = self.data['filter_query']
+            if filter_query and filter_query.strip():
+                filter_tree = DocumentFilter.parse_filter(filter_query)
+                DocumentFilter.build_filter(filter_tree, DocumentFilter.default_field_resolver)
+        except Exception as exc:
+            self.add_error('filter_query', exc)
+
+        try:
+            document_sort_order = self.data['document_sort_order']
+            DocumentFilter(document_sort_order=document_sort_order).order_by(Document.objects)
+        except Exception as exc:
+            self.add_error('document_sort_order', exc)
+
+        return super().clean()

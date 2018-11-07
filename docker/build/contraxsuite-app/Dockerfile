@@ -72,12 +72,22 @@ RUN . /contraxsuite_services/venv/bin/activate && python --version
 RUN . /contraxsuite_services/venv/bin/activate && \
     pip install -r /contraxsuite_services/deploy/base/python-requirements-all.txt
 
+# UnInstall unwanted python requirements (f.e. with "bad" licenses)
+RUN . /contraxsuite_services/venv/bin/activate && \
+    pip uninstall -y -r /contraxsuite_services/deploy/base/python-unwanted-requirements.txt
+
 
 COPY ./temp/python-requirements-additional.txt /contraxsuite_services/python-requirements-additional.txt
 COPY ./temp/additionals /
 
 RUN . /contraxsuite_services/venv/bin/activate && \
     pip install -r /contraxsuite_services/python-requirements-additional.txt
+
+
+RUN if [ -f  /contraxsuite_services/deploy/base/customer-requirements.txt ]; then \
+    . /contraxsuite_services/venv/bin/activate && \
+    pip install -r /contraxsuite_services/deploy/base/customer-requirements.txt; fi
+
 
 RUN . /contraxsuite_services/venv/bin/activate && \
     python -m nltk.downloader averaged_perceptron_tagger punkt stopwords words maxent_ne_chunker wordnet

@@ -23,32 +23,30 @@
     or shipping ContraxSuite within a closed source product.
 """
 
-import sys
-
 # Third-party imports
 import numpy as np
 import pandas as pd
-from sklearn.feature_extraction.text import TfidfVectorizer, TfidfTransformer
-from sklearn.cluster import Birch, KMeans, MiniBatchKMeans
-from sklearn.decomposition import PCA
-
+from django.db.models import Count
 # Django imports
 from django.utils.timezone import now
-from django.db.models import Count
+from sklearn.cluster import Birch, KMeans, MiniBatchKMeans
+from sklearn.decomposition import PCA
+from sklearn.feature_extraction.text import TfidfVectorizer, TfidfTransformer
 
 # Project imports
 from apps.analyze.models import DocumentCluster
 from apps.celery import app
+from apps.document.fields_detection.field_detection_celery_api import run_detect_field_values_as_sub_tasks
+from apps.document.fields_processing import field_value_cache
 from apps.document.models import Document
 from apps.project.models import Project, ProjectClustering, UploadSession
 from apps.task.tasks import BaseTask
 from apps.task.utils.task_utils import TaskUtils
-from urls import custom_apps
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.4/LICENSE"
-__version__ = "1.1.4"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.5/LICENSE"
+__version__ = "1.1.5"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -230,7 +228,7 @@ class ClusterProjectDocuments(BaseTask):
         self.log_info('Clustering completed. Updating document cache.')
 
         for doc in Document.objects.filter(project__pk=project_id):
-            doc.cache_generic_values()
+            field_value_cache.cache_generic_values(doc)
 
         self.push()
         self.log_info('Finished.')
@@ -244,7 +242,6 @@ class ReassignProjectClusterDocuments(BaseTask):
     name = 'Reassign Project Cluster Documents'
 
     def process(self, **kwargs):
-
         project_id = kwargs.get('project_id')
         cluster_ids = kwargs.get('cluster_ids')
         new_project_id = kwargs.get('new_project_id')
@@ -286,25 +283,10 @@ class ReassignProjectClusterDocuments(BaseTask):
         p_cl.save()
         # DocumentCluster.objects.filter(pk__in=cluster_ids).delete()
 
-        task_funcs = []
-        for app_name in custom_apps:
-            module_str = 'apps.%s.tasks' % app_name
-            module = sys.modules.get(module_str)
-            detector_task = getattr(module, 'DetectFieldValues', None)
-            if detector_task and hasattr(detector_task, 'detect_field_values_for_document'):
-                task_funcs.append(getattr(detector_task, 'detect_field_values_for_document'))
+        run_detect_field_values_as_sub_tasks(self, [doc.id for doc in documents])
 
-        if task_funcs:
-            sub_tasks = []
-            for document in documents:
-                for task_func in task_funcs:
-                    sub_task = task_func.subtask(
-                        args=(document.id, False, None))
-                    sub_tasks.append(sub_task)
-            self.chord(sub_tasks)
-
-            # TODO: metadata[project_id] in tasks related with reassigned documents
-            # TODO: should be updated to new project id value?
+        # TODO: metadata[project_id] in tasks related with reassigned documents
+        # TODO: should be updated to new project id value?
 
 
 class CleanProject(BaseTask):

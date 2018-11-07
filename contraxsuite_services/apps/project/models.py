@@ -26,14 +26,18 @@
 
 # Standard imports
 import itertools
+import operator
 import uuid
+from typing import Callable, Set, Any
+from luqum.parser import parser, BaseOperation, Group, SearchField, Not, Word
+from functools import reduce
 
 # Django imports
 from django.conf import settings
 from django.contrib.postgres.fields import JSONField
 from django.core.mail import send_mail
 from django.db import models
-from django.db.models import Count, Max
+from django.db.models import Count, Max, QuerySet, Q
 from django.db.models.signals import m2m_changed, post_save
 from django.dispatch import receiver
 from django.template.loader import render_to_string
@@ -47,8 +51,8 @@ from apps.users.models import User
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.4/LICENSE"
-__version__ = "1.1.4"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.5/LICENSE"
+__version__ = "1.1.5"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -398,7 +402,7 @@ class UploadSession(models.Model):
     uid = StringUUIDField(primary_key=True, default=uuid.uuid4, editable=False)
 
     # Project
-    project = models.ForeignKey(Project, db_index=True)
+    project = models.ForeignKey(Project, null=True, blank=True, db_index=True)
 
     created_date = models.DateTimeField(auto_now_add=True, db_index=True)
 
@@ -418,7 +422,7 @@ class UploadSession(models.Model):
         String representation
         """
         return "Upload Session (pk={0}, project_id={1})" \
-            .format(self.pk, self.project.pk)
+            .format(self.pk, self.project.pk if self.project else None)
 
     @property
     def session_tasks(self):
@@ -584,3 +588,124 @@ class ProjectClustering(models.Model):
         if self.task:
             return self.task.progress == 100
         return None
+
+
+class ProjectDocumentsFilter(models.Model):
+    project = models.ForeignKey('project.Project', null=True, blank=True, db_index=True)
+
+    filter_query = models.TextField(blank=False, null=False)
+
+    created_by = models.ForeignKey('users.User', blank=True, null=True, db_index=True)
+
+    class Meta:
+        unique_together = ('project', 'created_by')
+
+    def __str__(self):
+        return 'ProjectDocumentsFilter (pk={}, project_pk={}, user_pk={})'.format(
+            self.pk, self.project_id, self.created_by_id)
+
+
+class DocumentFilter(models.Model):
+    title = models.CharField(max_length=1024, blank=False, null=False)
+
+    order = models.PositiveSmallIntegerField(default=0)
+
+    project = models.ForeignKey('project.Project', null=True, blank=True, db_index=True)
+
+    document_type = models.ForeignKey('document.DocumentType', null=True, blank=True, db_index=True)
+
+    filter_query = models.TextField(blank=False, null=False)
+
+    document_sort_order = models.CharField(max_length=1024, blank=False, null=False)
+
+    created_by = models.ForeignKey('users.User', blank=True, null=True, db_index=True)
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._filter_tree = None
+
+    def __str__(self):
+        """"
+        String representation
+        """
+        return "DocumentFilter (pk={0}, title={1})" \
+            .format(self.pk, self.title)
+
+    @classmethod
+    def parse_filter(cls, filter_query: str) -> Any:
+        return parser.parse(filter_query)
+
+    def _get_filter_tree(self):
+        if not self._filter_tree:
+            self._filter_tree = self.parse_filter(self.filter_query)
+        return self._filter_tree
+
+    @classmethod
+    def _get_operator(cls, filter_tree):
+        return filter_tree.op
+
+    @classmethod
+    def _get_field_name(cls, field_node):
+        return field_node.name
+
+    @classmethod
+    def _extract_filter_fields(cls, filter_tree, result):
+        if not isinstance(filter_tree, SearchField):
+            for node in filter_tree.children:
+                cls._extract_filter_fields(node, result)
+        else:
+            result.append(filter_tree.name)
+        return result
+
+    def get_filter_fields(self) -> Set[str]:
+        filter_fields = self._extract_filter_fields(self._get_filter_tree(), list())
+        return set(filter_fields)
+
+    @classmethod
+    def build_filter(cls, filter_node, field_resolver: Callable[[str], str]):
+        if isinstance(filter_node, Group):
+            return cls.build_filter(filter_node.children[0], field_resolver)
+        if isinstance(filter_node, SearchField):
+            expr = '{0}__icontains'.format(field_resolver(filter_node.name))
+            value = filter_node.expr.value
+            clear_double_quotes = value.startswith('"') and value.endswith('"') and not value.endswith('\\"')
+            value = filter_node.expr.unescaped_value
+            value = value[1:len(value) - 2] if clear_double_quotes else value
+            return Q(**{expr: value})
+        elif isinstance(filter_node, Not):
+            return ~Q(cls.build_filter(filter_node.children[0], field_resolver))
+        elif isinstance(filter_node, BaseOperation):
+            child_expressions = []
+            for child_tree in filter_node.children:
+                child_expressions.append(cls.build_filter(child_tree, field_resolver))
+            operation = {"AND": operator.and_, "OR": operator.or_}.get(filter_node.op)
+            if not operation:
+                raise SyntaxError('Unknown operator "{0}"'.format(filter_node.op))
+            return reduce(operation, child_expressions)
+        else:
+            node_type = 'operator' if isinstance(filter_node, Word) else 'expression'
+            raise SyntaxError('Unknown {0} "{1}"'.format(node_type, filter_node))
+
+    @staticmethod
+    def default_field_resolver(field_code: str) -> str:
+        return field_code
+
+    def filter(self, qs: QuerySet, field_resolver: Callable[[str], str] = None) -> QuerySet:
+        field_resolver = field_resolver if field_resolver else DocumentFilter.default_field_resolver
+        return qs.filter(self.build_filter(self._get_filter_tree(), field_resolver))
+
+    def order_by(self, qs: QuerySet, field_resolver: Callable[[str], str] = None) -> QuerySet:
+        if self.document_sort_order:
+            field_resolver = field_resolver if field_resolver else DocumentFilter.default_field_resolver
+            expressions = self.document_sort_order.strip().split(':')
+            reverse_order =  {'DESC': False, 'ASC': True}.get(expressions[1]) if len(expressions) > 1 else True
+            if reverse_order is None:
+                raise SyntaxError('Unknown operator "{0}"'.format(expressions[1]))
+            sort_order_field = field_resolver(expressions[0])
+            sort_order_field = sort_order_field if not reverse_order else "-{0}".format(sort_order_field)
+            qs = qs.order_by(sort_order_field)
+        return qs
+
+    @property
+    def document_sort_field(self):
+        return self.document_sort_order.strip().split(':')[0] if self.document_sort_order else None

@@ -27,15 +27,17 @@
 import json
 import sys
 
+from django.core.files.uploadedfile import UploadedFile
+from django.core.serializers.python import Serializer
 from django.db import close_old_connections, connections, models
 from django.db.models.query import QuerySet
-from django.core.serializers.python import Serializer
 
+from apps.common.advancedcelery.db_cache import DbCache
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.4/LICENSE"
-__version__ = "1.1.4"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.5/LICENSE"
+__version__ = "1.1.5"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -77,13 +79,12 @@ class TaskUtils:
 
 
 class SimpleObjectSerializer(Serializer):
-
     def get_dump_object(self, obj):
         res = super().get_dump_object(obj)
         return {'model': res['model'], 'pk': res['pk']}
 
 
-def normalize(value):
+def normalize(task_id, key, value):
     try:
         json.dumps(value)
         return value
@@ -93,20 +94,31 @@ def normalize(value):
         elif isinstance(value, QuerySet):
             return SimpleObjectSerializer().serialize(value)
         elif isinstance(value, (dict, list, tuple, set)):
-            return pre_serialize(value)
+            return pre_serialize(task_id, key, value)
+        elif isinstance(value, UploadedFile):
+            uploaded_file = value  # type: UploadedFile
+            cache_key = str(task_id) + '__' + str(key) if key else str(task_id)
+            DbCache.put_to_db(cache_key, uploaded_file.read())
+            return {
+                'file_name': uploaded_file.name,
+                'cache_key': cache_key
+            }
         return str(value)
 
 
-def pre_serialize(obj):
+def pre_serialize(task_id, key, obj):
     try:
         json.dumps(obj)
         return obj
     except TypeError:
         if isinstance(obj, dict):
-            for key, value in obj.items():
-                obj[key] = normalize(value)
+            for sub_key, value in obj.items():
+                sub_key_full = str(key) + '__' + str(sub_key) if key else str(sub_key)
+                obj[sub_key] = normalize(task_id, sub_key_full, value)
         elif isinstance(obj, (tuple, list, set)):
-            obj = [normalize(i) for i in obj]
+
+            obj = [normalize(task_id, str(key) + '__' + str(index) if key else str(index), value)
+                   for index, value in enumerate(obj)]
         else:
-            normalize(obj)
+            normalize(task_id, key, obj)
         return obj

@@ -1,8 +1,10 @@
 import importlib
 import logging
-from typing import List, Any, Tuple, Dict
+from typing import List, Any, Tuple, Dict, Optional
 
 from django.conf import settings
+
+from apps.document.models import DocumentType, DocumentField, ClassifierModel
 
 
 class PythonCodedField:
@@ -10,11 +12,20 @@ class PythonCodedField:
     title = ''
     type = ''
 
+    uses_cached_document_field_values = False
+
     # If true - detect field values separately in each sentence.
     # If false - run get_values() against the whole document and next try to find matching text unit (sentence)
     #            for each detected value.
     # see apps.document.tasks.detect_field_values_for_python_coded_field()
     by_sentence = True
+
+    def train_document_field_detector_model(self,
+                                            document_type: DocumentType,
+                                            document_field: DocumentField,
+                                            train_data_project_ids: List,
+                                            use_only_confirmed_field_values: bool = False) -> Optional[ClassifierModel]:
+        return None
 
     def get_values(self, text: str) -> List[Tuple[Any, int, int]]:
         """

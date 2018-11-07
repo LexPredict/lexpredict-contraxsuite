@@ -29,13 +29,13 @@ from __future__ import absolute_import, unicode_literals
 
 # Standard imports
 import datetime
+import json
 import os
 import urllib
 
 # Third-party imports
 import magic
 import pandas as pd
-
 # Django imports
 from django.conf import settings
 from django.contrib.postgres.fields.jsonb import KeyTextTransform
@@ -57,11 +57,13 @@ from apps.common.mixins import (
     AjaxListView, CustomUpdateView, CustomCreateView, CustomDeleteView,
     JqPaginatedListView, PermissionRequiredMixin, SubmitView, TypeaheadView)
 from apps.common.utils import cap_words
-from apps.document.forms import DetectFieldValuesForm, TrainDocumentFieldDetectorModelForm, TrainDocumentFieldForm, \
-    CacheDocumentFieldsForm
+from apps.document.forms import DetectFieldValuesForm, TrainDocumentFieldDetectorModelForm, TrainAndTestForm, \
+    CacheDocumentFieldsForm, LoadDocumentWithFieldsForm
+from apps.document.forms import ImportSimpleFieldDetectionConfigForm
 from apps.document.models import (
     Document, DocumentProperty, DocumentRelation, DocumentNote, DocumentTag,
     TextUnit, TextUnitProperty, TextUnitNote, TextUnitTag)
+from apps.document.tasks import ImportSimpleFieldDetectionConfig
 from apps.extract.models import (
     AmountUsage, CitationUsage, CopyrightUsage, Court, CourtUsage, CurrencyUsage,
     DateDurationUsage, DateUsage, DefinitionUsage, DistanceUsage,
@@ -70,16 +72,16 @@ from apps.extract.models import (
     RatioUsage, RegulationUsage, Term, TermUsage, TrademarkUsage, UrlUsage)
 from apps.project.models import TaskQueue
 from apps.project.views import ProjectListView, TaskQueueListView
+from apps.task.tasks import call_task
 from apps.task.views import BaseAjaxTaskView, TaskListView
 from apps.users.models import User
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.4/LICENSE"
-__version__ = "1.1.4"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.5/LICENSE"
+__version__ = "1.1.5"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
-
 
 python_magic = magic.Magic(mime=True)
 
@@ -308,7 +310,7 @@ class DocumentDetailView(PermissionRequiredMixin, DetailView):
                                settings.FILEBROWSER_DIRECTORY.lstrip('/'),
                                self.object.description.lstrip('/'))
         ctx['document_path'] = 'https://{host}{rel_url}'.format(
-                host=Site.objects.get_current().domain, rel_url=rel_url)
+            host=Site.objects.get_current().domain, rel_url=rel_url)
 
         return ctx
 
@@ -1198,7 +1200,56 @@ class CacheDocumentFieldsTaskView(BaseAjaxTaskView):
     html_form_class = 'popup-form cache-document-fields-form'
 
 
-class TrainDocumentFieldTaskView(BaseAjaxTaskView):
-    task_name = 'Train Document Field'
-    form_class = TrainDocumentFieldForm
-    html_form_class = 'popup-form train-document-field-form'
+class TrainAndTestTaskView(BaseAjaxTaskView):
+    task_name = 'Train And Test'
+    form_class = TrainAndTestForm
+    html_form_class = 'popup-form train-and-test-form'
+
+
+class LoadDocumentWithFieldsView(BaseAjaxTaskView):
+    task_name = 'Load Document With Fields'
+    form_class = LoadDocumentWithFieldsForm
+
+    def post(self, request, *args, **kwargs):
+        form = self.form_class(request.POST)
+        data = None
+        document_fields = None
+
+        if form.is_valid():
+            data = form.data
+            document_fields = data.get('document_fields')
+            source_data = data.get('source_data')
+            document_name = data.get('document_name')
+            if document_fields:
+                if not document_name:
+                    form.add_error('document_name', 'Document name should be specified if you specified the fields.')
+                try:
+                    document_fields = json.loads(document_fields)
+                except:
+                    form.add_error('document_fields', 'Incorrect JSON format')
+            else:
+                if not source_data:
+                    form.add_error('source_data', 'Either document document fields or source path should be specified.')
+
+        if not form.is_valid():
+            return self.json_response(form.errors, status=400)
+
+        document_name = data.get('document_name')
+
+        call_task(
+            task_name='LoadDocumentWithFields',
+            module_name='apps.document.tasks',
+            source_data=data.get('source_data'),
+            project_id=data.get('project'),
+            document_type_id=data.get('document_type'),
+            document_name=document_name,
+            document_fields=document_fields,
+            run_detect_field_values=data.get('run_detect_field_values')
+        )
+        return self.json_response('The task is started. It can take a while.')
+
+
+class ImportSimpleFieldDetectionConfigView(BaseAjaxTaskView):
+    task_name = ImportSimpleFieldDetectionConfig.name
+    form_class = ImportSimpleFieldDetectionConfigForm
+    html_form_class = 'popup-form import-simple-field-detection-config-form'

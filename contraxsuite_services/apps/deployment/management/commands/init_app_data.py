@@ -27,10 +27,10 @@
 import io
 import pathlib
 import shutil
-from tempfile import NamedTemporaryFile
-from zipfile import ZipFile
 from os import listdir, mkdir, path
+from tempfile import NamedTemporaryFile
 from typing import Dict, Tuple, Any, Callable, Optional
+from zipfile import ZipFile
 
 import pandas as pd
 from django.core.management import call_command
@@ -38,9 +38,9 @@ from django.core.management.base import BaseCommand
 from django.db import transaction
 from django.utils.timezone import now
 
-from apps.common.advancedcelery.db_cache import DbCache
 from apps.deployment.app_data import load_courts, load_terms, load_geo_entities
 from apps.document.models import DocumentType, DocumentField, DocumentTypeField
+from apps.extract import dict_data_cache
 from apps.extract.models import Court, Term, GeoEntity
 
 
@@ -65,7 +65,7 @@ def terms_loader(zip_file: ZipFile, files: list) -> None:
     print('Detected %d terms' % terms_count)
     print('Caching terms config for Locate tasks...')
 
-    DbCache.cache_term_stems()
+    dict_data_cache.cache_term_stems()
 
 
 def courts_loader(zip_file: ZipFile, files: list) -> None:
@@ -81,7 +81,7 @@ def courts_loader(zip_file: ZipFile, files: list) -> None:
     print('Detected %d courts' % courts_count)
     print('Caching courts config for Locate tasks...')
 
-    DbCache.cache_court_config()
+    dict_data_cache.cache_court_config()
 
 
 def geoentities_loader(zip_file: ZipFile, files: list) -> None:
@@ -98,7 +98,7 @@ def geoentities_loader(zip_file: ZipFile, files: list) -> None:
     print('Total created: %d GeoEntities' % geo_entities_count)
     print('Caching geo config for Locate tasks...')
 
-    DbCache.cache_geo_config()
+    dict_data_cache.cache_geo_config()
 
 
 DICTIONARY_LOADER_BY_FILE_PREFIX = dict(

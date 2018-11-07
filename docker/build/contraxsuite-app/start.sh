@@ -60,6 +60,19 @@ chmod ug+x /contraxsuite_services/run-uwsgi.sh
 
 popd
 
+if [ -d "/ssl_certs" ] && [ ! -f "/contraxsuite_services/.custom_certificate_lock" ]; then
+    echo "Initialization of user certificates..."
+    echo "Initialized" >> /contraxsuite_services/.custom_certificate_lock
+    for filename in /ssl_certs/*; do
+        if [ ! -f "${filename}" ]; then
+            continue
+        fi
+        echo "" >> /contraxsuite_services/venv/lib/python3.5/site-packages/certifi/cacert.pem
+        cat ${filename} >> /contraxsuite_services/venv/lib/python3.5/site-packages/certifi/cacert.pem
+        filename=$(basename "$filename")
+        echo "Added certificate ${filename} into certifi/cacert.pem"
+    done
+fi
 
 echo "Preparing NLTK data..."
 chown -R ${SHARED_USER_NAME}:${SHARED_USER_NAME} /root/nltk_data
@@ -135,7 +148,8 @@ usage_stats.apply()
     python manage.py init_app_data --data-dir=/data/data_update && \
     python manage.py loadnewdata fixtures/common/*.json && \
     python manage.py loadnewdata fixtures/private/*.json && \
-    python manage.py loadnewdata fixtures/additional/*.json \
+    python manage.py loadnewdata fixtures/additional/*.json && \
+    if [ -d fixtures/customer_project ]; then python manage.py loadnewdata fixtures/customer_project/*.json; fi \
 "
 
     if [ "$2" == "shell" ]; then
