@@ -402,21 +402,23 @@ class TrainAndTest(BaseTask):
             matches = bool(expected_field_value == actual_field_value)
         else:
             # related-info e.t.c.
-            expected_set = {'text_unit_' + str(dfv.text_unit.id) for dfv in expected_dfvs}
+            expected_set = {'text_unit_' + str(dfv.text_unit.id) for dfv in expected_dfvs if dfv.text_unit}
             expected_field_value = '; '.join(sorted(expected_set))
 
-            actual_set = {'text_unit_' + str(dfv.text_unit.id) for dfv in actual_dfvs}
+            actual_set = {'text_unit_' + str(dfv.text_unit.id) for dfv in actual_dfvs if dfv.text_unit}
             actual_field_value = '; '.join(sorted(actual_set))
             matches = bool(expected_set == actual_set)
 
         if not matches:
-            task.log_info('{3} Test doc: {0}. Detected: {1}. Real: {2}.\nDetected in text:-----\n{4}\n-----'
+            task.log_info('{3} Test doc: {0} (Project: {5}). '
+                          'Detected: {1}. Real: {2}.\nDetected in text:-----\n{4}\n-----'
                           .format(document.name,
                                   expected_field_value,
                                   actual_field_value,
                                   '[  OK  ]' if matches else '[ ERR  ]',
                                   '\n---\n'.join([dfv.text_unit.text
-                                                  for dfv in expected_dfvs]) if expected_dfvs else ''))
+                                                  for dfv in expected_dfvs]) if expected_dfvs else '',
+                                  document.project.name if document.project else ''))
 
         text_units_number = TextUnit.objects.filter(document=document, unit_type=field.text_unit_type).count()
 
@@ -449,7 +451,7 @@ class TrainAndTest(BaseTask):
         for res in results:
             test_doc_number += 1
             test_text_units_number += (res.get('text_units_number') or 0)
-            if res['value_matches_expected']:
+            if res.get('value_matches_expected'):
                 match_number += 1
 
         accuracy = match_number / test_doc_number
