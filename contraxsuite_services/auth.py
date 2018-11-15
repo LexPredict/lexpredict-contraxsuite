@@ -37,11 +37,12 @@ from django.conf import settings
 from django.utils.translation import ugettext as _
 
 from apps.common.utils import get_api_module, get_test_user
+from apps.common.models import AppVar
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.5/LICENSE"
-__version__ = "1.1.5"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.5a/LICENSE"
+__version__ = "1.1.5a"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -101,6 +102,7 @@ class TokenSerializer(serializers.ModelSerializer):
     def to_representation(self, obj):
         data = super().to_representation(obj)
         data['release_version'] = settings.VERSION_NUMBER
+        data['menu_analisys_project_item_name'] = AppVar.get('menu_analisys_project_item_name')
         return data
 
 

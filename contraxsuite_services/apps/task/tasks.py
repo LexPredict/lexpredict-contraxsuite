@@ -119,8 +119,8 @@ from apps.task.utils.text.segment import segment_paragraphs
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.5/LICENSE"
-__version__ = "1.1.5"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.5a/LICENSE"
+__version__ = "1.1.5a"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -639,6 +639,9 @@ class LoadDocuments(BaseTask):
                 raise RuntimeError('No text extracted.')
             task.log_info('SKIP (ERROR): ' + file_name)
             return
+
+        if metadata is None:
+            metadata = {}
 
         metadata['parsed_by'] = parser_name
 

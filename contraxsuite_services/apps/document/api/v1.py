@@ -30,7 +30,7 @@ import json
 import traceback
 from tempfile import NamedTemporaryFile
 from typing import Dict, Tuple
-from urllib.parse import parse_qsl
+from urllib import parse
 
 # Third-party imports
 import numpy as np
@@ -79,8 +79,8 @@ from apps.users.models import User
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.5/LICENSE"
-__version__ = "1.1.5"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.5a/LICENSE"
+__version__ = "1.1.5a"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -306,9 +306,14 @@ class ExportExtendedDocumentWithFieldsListSerializer(ExtendedDocumentWithFieldsL
 
 class DocumentPermissions(BasePermission):
     def has_permission(self, request, view):
-        if request.user.is_reviewer and view.kwargs.get('project_pk'):
-            return project_api_module.Project.objects.filter(pk=view.kwargs.get('project_pk'),
-                                                             reviewers=request.user).exists()
+        if request.user.is_reviewer:
+            if request.method in ['POST', 'PUT', 'DELETE']:
+                return False
+            elif request.method == 'PATCH' and list(request.data.keys()) != ['status']:
+                return False
+            if view.kwargs.get('project_pk'):
+                return project_api_module.Project.objects.filter(pk=view.kwargs.get('project_pk'),
+                                                                 reviewers=request.user).exists()
         return True
 
     def has_object_permission(self, request, view, obj):
@@ -520,18 +525,20 @@ class ProjectDocumentsWithFieldsViewSet(DocumentPermissionViewMixin, APIActionMi
 
     def list(self, request, *args, **kwargs):
         project_pk = self.kwargs.get('project_pk')
-
         if self.request.GET.get('save_query') == 'true':
             query_string = request.META.get('QUERY_STRING')
+            query_data = parse.parse_qsl(query_string)
+            query_data = [(i, 0 if i == 'pagenum' else j) for i, j in query_data if i != 'filter_id']
+            new_query_string = parse.urlencode(query_data)
             ProjectDocumentsFilter.objects.update_or_create(
                 project_id=project_pk, created_by=request.user,
-                defaults={'filter_query': query_string})
+                defaults={'filter_query': new_query_string})
         else:
             pdf = ProjectDocumentsFilter.objects.filter(
                 project_id=project_pk, created_by=request.user)
             if pdf.exists():
                 query_string = pdf.last().filter_query
-                new_query_data = parse_qsl(query_string)
+                new_query_data = parse.parse_qsl(query_string)
 
                 # substitute request params
                 request.GET = request.GET.copy()
@@ -1878,49 +1885,6 @@ class StatsAPIView(APIView):
         return Response(data)
 
 
-class DumpDocumentTypeConfigView(APIView):
-    def get_full_dump(self):
-        return list(DocumentField.objects.all()) \
-               + list(DocumentType.objects.all()) \
-               + list(DocumentFieldDetector.objects.all()) \
-               + list(DocumentTypeField.objects.all())
-
-    def get(self, request, *args, **kwargs):
-        """
-        Dump all document types, fields and field detectors to json.
-
-        """
-        data = self.get_full_dump()
-        return HttpResponse(core_serializers.serialize("json", data),
-                            content_type='Application/json')
-
-    def put(self, request, *args, **kwargs):
-        data = request.data
-        buf = io.StringIO()
-
-        try:
-
-            with NamedTemporaryFile(mode='w+', suffix='.json') as f:
-                json.dump(data, f)
-                f.seek(0)
-                call_command('loaddata', f.name, app_label='document', stdout=buf,
-                             interactive=False)
-                buf.seek(0)
-            return HttpResponse(content=core_serializers.serialize("json", self.get_full_dump()),
-                                content_type='Application/json',
-                                status=200)
-        except:
-            log = buf.read()
-            tb = traceback.format_exc()
-            data = {
-                'log': log,
-                'exception': tb
-            }
-            return HttpResponse(content=json.dumps(data),
-                                content_type='Application/json',
-                                status=400)
-
-
 main_router = routers.DefaultRouter()
 main_router.register(r'documents', DocumentViewSet, 'document')
 main_router.register(r'document-fields', DocumentFieldViewSet, 'document-field')
@@ -1969,5 +1933,4 @@ urlpatterns = [
 
     url(r'stats/$', StatsAPIView.as_view(),
         name='stats'),
-    url(r'config-dump', DumpDocumentTypeConfigView.as_view(), name='dump-config'),
 ]

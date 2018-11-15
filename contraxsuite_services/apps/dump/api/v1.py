@@ -25,13 +25,12 @@
 # -*- coding: utf-8 -*-
 
 # Standard imports
+import abc
 import io
 import json
 import traceback
 import coreapi
 import coreschema
-from rest_framework import schemas
-
 
 from tempfile import NamedTemporaryFile
 
@@ -42,44 +41,55 @@ from django.core.management import call_command
 from django.http import HttpResponse
 
 # Third-party imports
-from rest_framework import serializers, generics
+from rest_framework import serializers, generics, schemas
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.parsers import FileUploadParser
 
 # Project imports
+from apps.common.api.permissions import SuperuserRequiredPermission
 from apps.dump.app_dump import get_full_dump, get_field_values_dump,\
-    get_model_fixture_dump, load_fixture_from_dump, download
+    get_model_fixture_dump, load_fixture_from_dump, download, get_app_config_dump
 
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.5/LICENSE"
-__version__ = "1.1.5"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.5a/LICENSE"
+__version__ = "1.1.5a"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
 
-class DumpConfigView(APIView):
-    def get(self, request, *args, **kwargs):
-        """
-        Dump all users, roles, email addresses, review statuses, review status groups, app vars,
-        document types, fields and field detectors to json.
+class BaseDumpView(APIView):
+    permission_classes = (SuperuserRequiredPermission,)
 
-        """
-        return HttpResponse(get_full_dump(), content_type='Application/json')
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._command = kwargs.get('command') or 'loaddata'
+
+    def get_request_data(self, request):
+        return request.data
+
+    @abc.abstractmethod
+    def get_json_dump(self) -> str:
+        raise Exception('Not implemented')
+
+    def get(self, request, *args, **kwargs):
+        return HttpResponse(self.get_json_dump(), content_type='Application/json')
 
     def put(self, request, *args, **kwargs):
-        data = request.data  # type: dict
+        """
+        Upload field values
+        """
+        data = self.get_request_data(request)
         buf = io.StringIO()
-
         try:
             with NamedTemporaryFile(mode='w+', suffix='.json') as f:
                 json.dump(data, f)
                 f.seek(0)
-                call_command('loadnewdata', f.name, stdout=buf, interactive=False)
+                call_command(self._command, f.name, stdout=buf, interactive=False)
                 buf.seek(0)
-            return HttpResponse(content=get_full_dump(),
+            return HttpResponse(content=self.get_json_dump(),
                                 content_type='Application/json',
                                 status=200)
         except:
@@ -94,7 +104,32 @@ class DumpConfigView(APIView):
                                 status=400)
 
 
+class DumpConfigView(BaseDumpView):
+    """
+        This class is made to dump all users, roles, email addresses, review statuses, review status groups,
+        app vars, document types, fields, field detectors and document filters to json.
+    """
+
+    def __init__(self, *args, **kwargs):
+        kwargs['command'] = 'loadnewdata'
+        super().__init__(*args, **kwargs)
+
+    def get_json_dump(self) -> str:
+        return get_full_dump()
+
+
+class DumpDocumentConfigView(BaseDumpView):
+    """
+        This class is made to dump document types, fields, field detectors and  document filters to json.
+    """
+
+    def get_json_dump(self) -> str:
+        return get_app_config_dump()
+
+
 class FieldValuesDumpAPIView(APIView):
+    permission_classes = (SuperuserRequiredPermission,)
+
     def get(self, request, *args, **kwargs):
         """
         Download field values
@@ -137,7 +172,7 @@ class DumpFixtureSerializer(serializers.Serializer):
 
 
 class DumpFixtureAPIView(generics.CreateAPIView):
-
+    permission_classes = (SuperuserRequiredPermission,)
     schema = schemas.ManualSchema(fields=[
         coreapi.Field(
             "app_name",
@@ -186,12 +221,13 @@ class LoadFixtureSerializer(serializers.Serializer):
 class LoadFixtureAPIView(generics.CreateAPIView):
     serializer_class = LoadFixtureSerializer
     parser_classes = (FileUploadParser,)
+    permission_classes = (SuperuserRequiredPermission,)
 
     def post(self, request, *args, **kwargs):
         """
         Install model fixtures
         """
-        file_ = request.FILES.dict().get('file')
+        file_ = request.FILES.dict().get('fixture_file')
         data = file_.read()
         mode = request.POST.get('mode', 'default')
         res = load_fixture_from_dump(data, mode)
@@ -204,4 +240,5 @@ urlpatterns = [
     url(r'field-values/', FieldValuesDumpAPIView.as_view(), name='field-values'),
     url(r'dump-fixture/', DumpFixtureAPIView.as_view(), name='dump-fixture'),
     url(r'load-fixture/', LoadFixtureAPIView.as_view(), name='load-fixture'),
+    url(r'document-config/', DumpDocumentConfigView.as_view(), name='document-config'),
 ]

@@ -25,8 +25,8 @@
 # -*- coding: utf-8 -*-
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.5/LICENSE"
-__version__ = "1.1.5"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.5a/LICENSE"
+__version__ = "1.1.5a"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -435,7 +435,8 @@ class FieldType:
                 and field_value.location_start == location_start \
                 and field_value.location_end == location_end \
                 and field_value.python_value == value \
-                and field_value.extraction_hint == hint:
+                and field_value.extraction_hint == hint \
+                and not field_value.removed_by_user:
             return field_value
 
         field_value.document = document

@@ -65,8 +65,8 @@ from apps.common.utils import cap_words, export_qs_to_file, download
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.5/LICENSE"
-__version__ = "1.1.5"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.5a/LICENSE"
+__version__ = "1.1.5a"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -751,15 +751,18 @@ class APIActionMixin(object):
         POST='create',
         PUT='update',
         PATCH='update',
-        GET='detail'
+        GET='detail',
+        DELETE='delete',
     )
     user_action = None
 
     def dispatch(self, request, *args, **kwargs):
         response = super().dispatch(request, *args, **kwargs)
-        user_action_name = self.get_action_name()
-        if not user_action_name:
-            user_action_name = self.user_action_methods.get(request.method)
+        if not request.user or not request.user.is_authenticated:
+            return response
+
+        user_action_name = self.get_action_name() or self.user_action_methods.get(request.method)\
+                           or 'unknown'
         if (self.lookup_url_kwarg or self.lookup_field) in self.kwargs:
             user_action_object = self.get_object()
         else:

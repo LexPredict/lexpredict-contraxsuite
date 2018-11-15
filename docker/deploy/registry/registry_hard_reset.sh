@@ -9,7 +9,7 @@ popd
 
 sudo -E docker stack rm contraxsuite_registry
 
-sleep 10
+sleep 20
 
 sudo -E ls -l ${VOLUME_REGISTRY}/docker | echo "Volume dir does not exist"
 

@@ -38,33 +38,57 @@ from django.http import HttpResponse
 
 
 # Project imports
+from typing import Any
+
 from apps.common.models import ReviewStatus, ReviewStatusGroup, AppVar
 from apps.deployment.models import Deployment
 from apps.document.models import (
-    DocumentField, DocumentType, DocumentFieldDetector,
-    DocumentFieldValue, ExternalFieldValue)
+    DocumentField, DocumentType, DocumentFieldDetector, DocumentFieldValue, ExternalFieldValue, DocumentTypeField,
+    DocumentTypeFieldCategory)
 from apps.extract.models import Court, GeoAlias, GeoEntity, GeoRelation, Party, Term
+from apps.project.models import DocumentFilter
 from apps.task.models import TaskConfig
 from apps.users.models import User, Role
 
-MODELS_TO_DUMP = (User,
-                  Role,
-                  EmailAddress,
-                  EmailConfirmation,
-                  ReviewStatus,
-                  ReviewStatusGroup,
-                  DocumentField,
-                  DocumentType,
-                  DocumentFieldDetector,
-                  AppVar,
-                  Deployment,
-                  TaskConfig,
-                  Court,
-                  GeoAlias,
-                  GeoEntity,
-                  GeoRelation,
-                  Party,
-                  Term)
+APP_CONFIG_MODELS = [
+    DocumentType,
+    DocumentField,
+    DocumentFieldDetector,
+    DocumentTypeFieldCategory,
+    DocumentTypeField,
+    DocumentFilter,
+]
+
+FULL_DUMP_MODELS = [User,
+                    Role,
+                    EmailAddress,
+                    EmailConfirmation,
+                    ReviewStatus,
+                    ReviewStatusGroup,
+                    AppVar,
+                    Deployment,
+                    TaskConfig,
+                    Court,
+                    GeoAlias,
+                    GeoEntity,
+                    GeoRelation,
+                    Party,
+                    Term]
+
+FULL_DUMP_MODELS += APP_CONFIG_MODELS
+
+
+def default_object_handler(obj: Any) -> Any:
+    return obj
+
+
+def get_dump(models: list, object_handler_by_model: dict = None) -> str:
+    object_handler_by_model = object_handler_by_model or {}
+    app_models = []
+    for model in models:
+        handler = object_handler_by_model.get(model) or default_object_handler
+        app_models += map(lambda obj: handler(obj), model.objects.all())
+    return core_serializers.serialize('json', app_models)
 
 
 def write_dump(file_name: str, json_data):
@@ -72,26 +96,36 @@ def write_dump(file_name: str, json_data):
         f.write(json_data)
 
 
-def get_full_dump():
-    app_models = []
-    for model in MODELS_TO_DUMP:
-        app_models += list(model.objects.all())
-    return core_serializers.serialize('json', app_models)
+def get_full_dump() -> str:
+    return get_dump(FULL_DUMP_MODELS)
 
 
 def write_full_dump(file_name: str):
     write_dump(file_name, get_full_dump())
 
 
-def get_field_values_dump():
+def clear_owner(obj: Any) -> Any:
+    if hasattr(obj, 'created_by'):
+        obj.created_by = None
+    if hasattr(obj, 'modified_by'):
+        obj.modified_by = None
+    return obj
+
+
+def get_app_config_dump() -> str:
+    object_handler_by_model = {DocumentField: clear_owner, DocumentFilter: clear_owner}
+    return get_dump(APP_CONFIG_MODELS, object_handler_by_model)
+
+
+def get_field_values_dump() -> str:
     data = DocumentFieldValue.objects \
         .filter(removed_by_user=False,
                 created_by__isnull=False,
-                sentence__text__isnull=False) \
+                text_unit__text__isnull=False) \
         .annotate(type_id=F('document__document_type__pk'),
-                  sentence_text=F('sentence__text')) \
+                  text_unit_text=F('text_unit__text')) \
         .values('type_id', 'field_id', 'value', 'extraction_hint',
-                'sentence_text', 'created_date', 'modified_date')
+                'text_unit_text', 'created_date', 'modified_date')
 
     transfer_objects = [ExternalFieldValue(**i) for i in data]
     return core_serializers.serialize('json', transfer_objects)

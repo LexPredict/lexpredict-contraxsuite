@@ -51,8 +51,8 @@ from apps.task.utils.task_utils import TaskUtils
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.5/LICENSE"
-__version__ = "1.1.5"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.5a/LICENSE"
+__version__ = "1.1.5a"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -387,22 +387,36 @@ class TrainAndTest(BaseTask):
 
         expected_dfvs = field_detection.detect_and_cache_field_values(CeleryTaskLogger(task), document, field,
                                                                       save=False)  # type: List[DetectedFieldValue]
-        expected_field_values = field_detection.merge_detected_field_values_to_python_value(expected_dfvs)
-        expected_field_value = expected_field_values.get(field.code)
-
         actual_dfvs = list(DocumentFieldValue.objects
                            .filter(document=document, field=field, removed_by_user=False)
                            .all())  # type: List[DocumentFieldValue]
-        actual_field_values = merge_document_field_values_to_python_value(actual_dfvs)
-        actual_field_value = actual_field_values.get(field.code)
 
-        matches = bool(expected_field_value == actual_field_value)
+        if field.is_value_aware():
+            # dates, numbers, e.t.c.
+            expected_field_values = field_detection.merge_detected_field_values_to_python_value(expected_dfvs)
+            expected_field_value = expected_field_values.get(field.code)
 
-        task.log_info('{3} Test doc: {0}. Expected: {1}. Actual: {2}.'
-                      .format(document.name,
-                              expected_field_value,
-                              actual_field_value,
-                              '[  OK  ]' if matches else '[ ERR  ]'))
+            actual_field_values = merge_document_field_values_to_python_value(actual_dfvs)
+            actual_field_value = actual_field_values.get(field.code)
+
+            matches = bool(expected_field_value == actual_field_value)
+        else:
+            # related-info e.t.c.
+            expected_set = {'text_unit_' + str(dfv.text_unit.id) for dfv in expected_dfvs}
+            expected_field_value = '; '.join(sorted(expected_set))
+
+            actual_set = {'text_unit_' + str(dfv.text_unit.id) for dfv in actual_dfvs}
+            actual_field_value = '; '.join(sorted(actual_set))
+            matches = bool(expected_set == actual_set)
+
+        if not matches:
+            task.log_info('{3} Test doc: {0}. Detected: {1}. Real: {2}.\nDetected in text:-----\n{4}\n-----'
+                          .format(document.name,
+                                  expected_field_value,
+                                  actual_field_value,
+                                  '[  OK  ]' if matches else '[ ERR  ]',
+                                  '\n---\n'.join([dfv.text_unit.text
+                                                  for dfv in expected_dfvs]) if expected_dfvs else ''))
 
         text_units_number = TextUnit.objects.filter(document=document, unit_type=field.text_unit_type).count()
 
@@ -448,13 +462,13 @@ class TrainAndTest(BaseTask):
         field = DocumentField.objects.get(pk=field_uid)
         document_type = DocumentType.objects.get(pk=document_type_uid)
 
-        task.log_info('Testing of field detector model is finished.\n'
+        task.log_info('Testing finished.\n'
                       'Document type: {0}.\n'
                       'Field: {1}.\n'
                       'Text unit type: {2}.\n'
-                      'Test documents number in-sample: {3}.\n'
-                      'Test text units number in-sample: {4}.\n'
-                      'Accuracy out-of-sample: {5}.\n'
+                      'Test documents number: {3}.\n'
+                      'Test text units number: {4}.\n'
+                      'Accuracy: {5}.\n'
                       .format(document_type.code,
                               field.code,
                               field.text_unit_type,

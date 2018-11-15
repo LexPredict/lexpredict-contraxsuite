@@ -7,6 +7,7 @@ from django.db.models import Q, Subquery
 from sklearn.linear_model import SGDClassifier
 from sklearn.metrics import classification_report
 from sklearn.pipeline import Pipeline, FeatureUnion
+from sklearn import tree
 
 from apps.document.field_types import FIELD_TYPES_REGISTRY, FieldType, ChoiceField
 from apps.document.fields_detection import field_detection_utils
@@ -63,8 +64,9 @@ class FieldBasedMLOnlyFieldDetectionStrategy(FieldDetectionStrategy):
             field_vect_steps.extend(field_type.build_vectorization_pipeline())
             transformer_list.append((field_code, Pipeline(field_vect_steps)))
 
-        classifier = SGDClassifier(loss='hinge', penalty='l2', alpha=1e-3, random_state=42, max_iter=5, tol=None,
-                                   n_jobs=-1, class_weight='balanced')
+        # classifier = SGDClassifier(loss='hinge', penalty='l2', alpha=1e-3, max_iter=5, tol=None,
+        #                            n_jobs=-1, class_weight='balanced')
+        classifier = tree.DecisionTreeClassifier()
 
         return Pipeline([('vect', FeatureUnion(transformer_list)),
                          ('clf', classifier)])

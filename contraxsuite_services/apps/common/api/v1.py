@@ -42,13 +42,16 @@ from apps.users.api.v1 import UserSerializer
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.5/LICENSE"
-__version__ = "1.1.5"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.5a/LICENSE"
+__version__ = "1.1.5a"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
 
 class AppConfigAPIView(APIView):
+    """
+    API for Settings Based on "constance" third-party application
+    """
     permission_classes = (ReviewerReadOnlyPermission,)
 
     def get(self, request, *args, **kwargs):
@@ -82,6 +85,10 @@ class AppConfigAPIView(APIView):
 
 
 class AppConfigDataAPIView(APIView):
+    """
+    API for Settings Based on "constance" third-party application
+    for specific key-value actions
+    """
     permission_classes = (ReviewerReadOnlyPermission,)
 
     def get(self, request, *args, **kwargs):
@@ -141,8 +148,45 @@ class AppConfigDataAPIView(APIView):
             return Response(form.errors, status=500)
 
 
+# --------------------------------------------------------
+# AppVar Views
+# --------------------------------------------------------
+import coreapi
+import coreschema
+from rest_framework import schemas
+
+
+class AppVarSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = AppVar
+        fields = ('name',)
+
+
 class AppVarAPIView(APIView):
+    """
+    Based on custom AppVar model storage
+    """
     permission_classes = (ReviewerReadOnlyPermission,)
+
+    @property
+    def schema(self):
+        field_name = "params"
+        location = "body"
+        required = True
+        schema = coreschema.String(max_length=30)
+        if self.request.method == 'GET':
+            field_name = "name"
+            location = "query"
+            required = False
+        elif self.request.method == 'POST':
+            schema = coreschema.Object()
+        return schemas.ManualSchema(fields=[
+        coreapi.Field(
+            field_name,
+            required=required,
+            location=location,
+            schema=schema
+        )])
 
     def get(self, request, *args, **kwargs):
         """
@@ -151,13 +195,12 @@ class AppVarAPIView(APIView):
                 - name: str - retrieve specific variable
         """
         var_name = request.GET.get('name')
+        result = AppVar.objects.all()
         if var_name:
-            result = AppVar.get(var_name)
-            if not result:
+            result = result.filter(name=var_name)
+            if not result.exists():
                 return Response(status=404)
-        else:
-            result = list(AppVar.objects.values('name', 'value'))
-            result = {i['name']: i['value'] for i in result}
+        result = {i['name']: i['value'] for i in result.values('name', 'value')}
         return Response(result)
 
     def post(self, request, *args, **kwargs):

@@ -25,17 +25,28 @@
 # -*- coding: utf-8 -*-
 
 # Third-party imports
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import BasePermission, IsAuthenticated
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.5/LICENSE"
-__version__ = "1.1.5"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.5a/LICENSE"
+__version__ = "1.1.5a"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
 
+class SuperuserRequiredPermission(BasePermission):
+    """
+    Allows access only to superusers.
+    """
+    def has_permission(self, request, view):
+        return request.user and request.user.is_superuser
+
+
 class ReviewerReadOnlyPermission(IsAuthenticated):
+    """
+    Gives read only access for reviewers - i.e. only GET request methods are allowed
+    """
     def has_permission(self, request, view):
         res = super().has_permission(request, view)
         if not res:
@@ -43,3 +54,14 @@ class ReviewerReadOnlyPermission(IsAuthenticated):
         if request.user.is_reviewer and request.method != 'GET':
             return False
         return True
+
+
+class ReviewerForbiddenPermission(IsAuthenticated):
+    """
+    Allows access only to superusers.
+    """
+    def has_permission(self, request, view):
+        res = super().has_permission(request, view)
+        if not res:
+            return res
+        return not request.user.is_reviewer

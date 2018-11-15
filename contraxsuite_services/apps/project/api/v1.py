@@ -67,8 +67,8 @@ from apps.project.tasks import THIS_MODULE    # noqa
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.5/LICENSE"
-__version__ = "1.1.5"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.5a/LICENSE"
+__version__ = "1.1.5a"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -423,7 +423,7 @@ def require_generic_contract_type(func):
 class ProjectPermissions(BasePermission):
     def has_permission(self, request, view):
         if request.user.is_reviewer:
-            if request.method == 'GET' or view.action in ['cluster', 'send_clusters_to_project']:
+            if request.method == 'GET' or view.action in ['cluster', 'set_status']:
                 return True
             return False
         return True

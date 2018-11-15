@@ -7,13 +7,25 @@ from django.db import migrations
 from apps.extract import dict_data_cache
 
 
+def cache_court_config(apps, schema_editor):
+    dict_data_cache.cache_court_config()
+
+
+def cache_geo_config(apps, schema_editor):
+    dict_data_cache.cache_geo_config()
+
+
+def cache_term_stems(apps, schema_editor):
+    dict_data_cache.cache_term_stems()
+
+
 class Migration(migrations.Migration):
     dependencies = [
         ('extract', '0037_geoentity_priority'),
     ]
 
     operations = [
-        migrations.RunPython(dict_data_cache.cache_court_config),
-        migrations.RunPython(dict_data_cache.cache_geo_config),
-        migrations.RunPython(dict_data_cache.cache_term_stems),
+        migrations.RunPython(cache_court_config),
+        migrations.RunPython(cache_geo_config),
+        migrations.RunPython(cache_term_stems),
     ]

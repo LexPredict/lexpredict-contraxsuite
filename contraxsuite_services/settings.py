@@ -716,8 +716,8 @@ CORS_ORIGIN_ALLOW_ALL = True
 CORS_ALLOW_CREDENTIALS = False
 CORS_URLS_REGEX = r'^/api/.*$'
 
-VERSION_NUMBER = '1.1.5'
-VERSION_COMMIT = '7a1efce6'
+VERSION_NUMBER = '1.1.5a'
+VERSION_COMMIT = '87f3691'
 
 try:
     from local_settings import *

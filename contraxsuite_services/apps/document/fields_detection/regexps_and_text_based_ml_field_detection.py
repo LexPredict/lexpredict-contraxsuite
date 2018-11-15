@@ -83,7 +83,7 @@ def train_model(document_type: DocumentType, field: DocumentField, train_data_se
         row.value if field.is_choice_field() else None,
         row.extraction_hint), axis=1)
 
-    df['target_index'] = df.target_name.factorize(sort=True)[0] + 1
+    df['target_index'] = df['target_name'].factorize(sort=True)[0] + 1
 
     df = df.append([{'text_unit__text': i} for i in get_no_field_text_units(document_type, field)])
 
@@ -185,23 +185,22 @@ class TextBasedMLFieldDetectionStrategy(FieldDetectionStrategy):
         return parse_category(target_name)
 
     @classmethod
-    def extract_value(cls, field_type_adapter: FieldType, document: Document, field: DocumentField, hint_name: str,
-                      text_unit: TextUnit) -> Tuple[Any, Optional[str]]:
-        if field_type_adapter.value_aware:
-            hint_name = hint_name or ValueExtractionHint.TAKE_FIRST.name
-            return field_type_adapter.get_or_extract_value(document, field, None, hint_name, text_unit.text)
-        return None, None
-
-    @classmethod
     def predict_and_extract_value(cls, sklearn_model: SkLearnClassifierModel,
                                   field_type_adapter: FieldType,
                                   document: Document,
                                   field: DocumentField,
-                                  text_unit: TextUnit) -> Tuple[Any, Any]:
+                                  text_unit: TextUnit) -> Optional[DetectedFieldValue]:
         field_uid, value, hint_name = cls.predict_value(sklearn_model, text_unit)
-        if field_uid is not None:
-            return cls.extract_value(field_type_adapter, document, field, hint_name, text_unit)
-        return None, None
+        if field_uid == field.uid:
+            if field_type_adapter.value_aware:
+                hint_name = hint_name or ValueExtractionHint.TAKE_FIRST.name
+                value, hint_name = field_type_adapter \
+                    .get_or_extract_value(document, field, value, hint_name, text_unit.text)
+                return DetectedFieldValue(field, value, text_unit, hint_name)
+            else:
+                return DetectedFieldValue(field, None, text_unit)
+
+        return None
 
     @classmethod
     def detect_field_values(cls,
@@ -223,19 +222,20 @@ class TextBasedMLFieldDetectionStrategy(FieldDetectionStrategy):
                 .order_by('location_start', 'pk')
 
             for text_unit in qs_text_units.iterator():
-                value, hint_name = cls.predict_and_extract_value(sklearn_model=sklearn_model,
-                                                                 field_type_adapter=field_type_adapter,
-                                                                 document=doc,
-                                                                 field=field,
-                                                                 text_unit=text_unit)
-                if value is None:
+                detected_value = cls.predict_and_extract_value(sklearn_model=sklearn_model,
+                                                               field_type_adapter=field_type_adapter,
+                                                               document=doc,
+                                                               field=field,
+                                                               text_unit=text_unit)
+                if detected_value is None:
                     continue
-                detected_values.append(DetectedFieldValue(field, value, text_unit, hint_name))
+                detected_values.append(detected_value)
                 if not (field_type_adapter.multi_value or field.is_choice_field()):
                     break
             return detected_values
 
         except ClassifierModel.DoesNotExist as e:
+            log.info('Classifier model does not exist for field: {0}'.format(field.code))
             raise e
 
 

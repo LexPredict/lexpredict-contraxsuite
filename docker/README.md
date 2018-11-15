@@ -335,7 +335,7 @@ sudo docker service logs -f contraxsuite_contrax-nginx
 ```
 If there are visible problems in the service logs - fix them and either wait or restart Docker (sudo service docker restart).
 
-If the logs are totally empty then this usualy means that Docker was unable to find the required image or have some other
+If the logs are totally empty then this usually means that Docker was unable to find the required image or have some other
 system-wide problems.
 
 Check Docker errors in syslog:
