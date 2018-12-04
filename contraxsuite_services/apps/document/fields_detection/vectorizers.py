@@ -14,6 +14,9 @@ class VectorizerStep:
     def transform(self, field_values_or_anything: List, *args, **kwargs):
         pass
 
+    def get_feature_names(self) -> List[str]:
+        pass
+
 
 def whole_value_as_token(value: str) -> List[str]:
     return [str(value)]
@@ -31,6 +34,9 @@ class ReplaceNoneTransformer(VectorizerStep):
     def transform(self, field_values_or_anything: List, *args, **kwargs):
         return [v or self.default_value for v in field_values_or_anything]
 
+    def get_feature_names(self) -> List[str]:
+        return ['']
+
 
 class DictItemSelector(VectorizerStep):
     def __init__(self, item: str, processor: Callable = None) -> None:
@@ -41,10 +47,17 @@ class DictItemSelector(VectorizerStep):
     def transform(self, field_values_or_anything: List[Dict], *args, **kwargs):
         return [self.processor(d.get(self.item) if d else None) for d in field_values_or_anything]
 
+    def get_feature_names(self) -> List[str]:
+        return [self.item]
+
 
 class RecurringDateVectorizer(VectorizerStep):
     MAX_YEAR = 2050
     MIN_YEAR = 1970
+    FEATURE_NAMES = ['year_' + str(year) for year in range(MAX_YEAR - MIN_YEAR)] \
+                    + ['month_' + str(month + 1) for month in range(11)] \
+                    + ['day_' + str(i + 1) for i in range(30)] \
+                    + ['dow_' + str(i) for i in range(6)]
 
     def transform(self, field_values: List[Union[datetime, date]], *args, **kwargs):
         # TODO Optimize list manipulations
@@ -74,10 +87,20 @@ class RecurringDateVectorizer(VectorizerStep):
             res.append(vect)
         return res
 
+    def get_feature_names(self) -> List[str]:
+        return self.FEATURE_NAMES
+
 
 class SerialDateVectorizer(VectorizerStep):
     MAX_YEAR = 2050
     MIN_YEAR = 1970
+    FEATURE_NAMES = ['year_norm_' + str(MIN_YEAR) + '_' + str(MAX_YEAR),
+                     'month_norm_1_12',
+                     'day_norm_1_31',
+                     'dow_norm_1_7']
+
+    def get_feature_names(self) -> List[str]:
+        return self.FEATURE_NAMES
 
     def transform(self, field_values: List[Union[datetime, date]], *args, **kwargs):
         # TODO Optimize list manipulations
@@ -138,3 +161,6 @@ class NumberVectorizer(VectorizerStep):
             n = (n - self.min_value) / (self.max_value - self.min_value)
             res.append([n])
         return res
+
+    def get_feature_names(self) -> List[str]:
+        return ['num_norm_' + str(self.min_value) + '_' + str(self.max_value)]

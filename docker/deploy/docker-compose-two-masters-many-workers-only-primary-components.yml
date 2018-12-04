@@ -331,12 +331,12 @@ configs:
   elasticsearch_config_1:
     file: ./temp/elasticsearch.yml
   logrotate_9:
-    file: ./logrotate.conf
+    file: ./temp/logrotate.conf
   logs_cron_config_9:
-    file: ./logs-cron.conf
+    file: ./temp/logs-cron.conf
   pg_config_3:
     file: ./temp/postgresql.conf
   pg_backup_script_1:
     file: ./temp/db-backup.sh
   pg_backup_cron_1:
-    file: ./backup-cron.conf
+    file: ./temp/backup-cron.conf

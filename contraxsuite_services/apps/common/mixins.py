@@ -65,8 +65,8 @@ from apps.common.utils import cap_words, export_qs_to_file, download
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.5a/LICENSE"
-__version__ = "1.1.5a"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.6/LICENSE"
+__version__ = "1.1.6"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -542,12 +542,9 @@ class JqPaginatedListView(AjaxListView):
             return []
             # pg = paginator.page(paginator.num_pages)
 
-        # TODO: figure out why those 3 lines below were used before
-        # qs = qs.filter(
-        #     **{'%s__in' % self.unique_field: [getattr(obj, self.unique_field) if hasattr(obj, self.unique_field) else obj[self.unique_field]
-        #                                       for obj in pg.object_list]})
-        # return qs
-        return pg.object_list
+        qs = pg.object_list
+        qs.total_records = pg.paginator.count
+        return qs
 
     def get_json_data(self, **kwargs):
         data = []
@@ -637,9 +634,9 @@ class JqListAPIMixin(object):
         return queryset
 
     def paginate_queryset(self, queryset):
-        jq_view = JqPaginatedListView(request=self.request)
         enable_pagination = json.loads(self.request.GET.get('enable_pagination', 'null'))
         if enable_pagination and 'pagenum' in self.request.GET:
+            jq_view = JqPaginatedListView(request=self.request)
             queryset = jq_view.paginate(queryset)
         return queryset
 
@@ -656,26 +653,31 @@ class JqListAPIMixin(object):
                                source_name=self.get_export_file_name() or
                                            queryset.model.__name__.lower(),
                                fmt=request.GET.get('export_to'))
-        # 3. count total records !before queryset paginated
-        try:
-            total_records = queryset.count()
-        except:
-            total_records = len(queryset)
+        # # 3. count total records !before queryset paginated
+        # try:
+        #     total_records = queryset.count()
+        # except:
+        #     total_records = len(queryset)
         # 4. get extra data !before queryset paginated
         extra_data = self.get_extra_data(queryset)
         # 5. paginate
         queryset = self.paginate_queryset(queryset)
         # 6. serialize
         serializer = self.get_serializer(queryset, many=True)
+        data = serializer.data
         # 7. compose returned data
         show_total_records = json.loads(self.request.GET.get('total_records', 'false'))
         if show_total_records:
-            ret = {'data': serializer.data,
+            # first try to use paginator to get total records
+            total_records = getattr(queryset, 'total_records', None)
+            if total_records is None:
+                total_records = len(data)
+            ret = {'data': data,
                    'total_records': total_records}
             if extra_data:
                 ret.update(extra_data)
             return Response(ret)
-        return Response(serializer.data)
+        return Response(data)
 
     def get_extra_data(self, queryset):
         return self.extra_data or {}

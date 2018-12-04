@@ -21,7 +21,7 @@ services:
       - contrax_net
     environment:
       - "PERIOD=15min"
-      - "KEEP_DAYS=7"
+      - "KEEP_DAYS=30"
       - "INDEX_PREFIX=filebeat-"
     command: "--host contrax-elasticsearch --port 9200"
     depends_on:
@@ -158,7 +158,8 @@ services:
       - contrax-elasticsearch
       - contrax-kibana
     deploy:
-      mode: global
+      # mode: global
+      replicas: 0 # by default we disable mertricbeat to free more resources
       resources:
         limits:
           cpus: '1'
@@ -501,7 +502,7 @@ services:
       - contraxsuite_data_media:/data/media
       - contraxsuite_logs:/data/logs
       - contraxsuite_internal_nginx_logs:/var/log/nginx
-      - contraxsuite_notebooks:/contraxsuite_services/notebooks
+      - contraxsuite_notebooks:/contraxsuite_services/notebooks/persistent_volume
       - contraxsuite_jupyter_add_req:/contraxsuite_services/jupyter_add_req
       - contraxsuite_ssl_certs:/ssl_certs
     depends_on:
@@ -645,12 +646,12 @@ configs:
   elasticsearch_config_1:
     file: ./temp/elasticsearch.yml
   logrotate_9:
-    file: ./logrotate.conf
+    file: ./temp/logrotate.conf
   logs_cron_config_9:
-    file: ./logs-cron.conf
+    file: ./temp/logs-cron.conf
   pg_config_3:
     file: ./temp/postgresql.conf
   pg_backup_script_1:
     file: ./temp/db-backup.sh
   pg_backup_cron_1:
-    file: ./backup-cron.conf
+    file: ./temp/backup-cron.conf

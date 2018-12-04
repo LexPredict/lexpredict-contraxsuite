@@ -62,10 +62,12 @@ sudo cp ./temp/nginx.conf ${VOLUME_NGINX_CONF}/nginx.conf
 sudo cp ./temp/internal.conf ${VOLUME_NGINX_CONF}/conf.d/internal.conf
 sudo cp ./temp/default.conf ${VOLUME_NGINX_CONF}/conf.d/default.conf
 
-envsubst < ./metricbeat.yml.template > ./temp/metricbeat.yml
-envsubst < ./filebeat.yml.template > ./temp/filebeat.yml
-envsubst < ./elasticsearch.yml.template > ./temp/elasticsearch.yml
+envsubst < ./config-templates/metricbeat.yml.template > ./temp/metricbeat.yml
+envsubst < ./config-templates/filebeat.yml.template > ./temp/filebeat.yml
+envsubst < ./config-templates/elasticsearch.yml.template > ./temp/elasticsearch.yml
 envsubst < ./config-templates/db-backup.sh.template > ./temp/db-backup.sh
+cp ./config-templates/*.conf ./temp/
+
 
 echo "Starting with image: ${CONTRAXSUITE_IMAGE_FULL_NAME}"
 

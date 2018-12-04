@@ -67,7 +67,6 @@ export SHARED_USER_ID=65432
 export SHARED_USER_NAME=contraxsuite_docker_user
 
 export DOCKER_REGISTRY=
-export DOCKER_USERNAME=
 export CONTRAXSUITE_IMAGE=lexpredict/lexpredict-contraxsuite
 
 export DOCKER_CELERY_CPUS=4
@@ -93,6 +92,12 @@ export DOCKER_ELASTICSEARCH_MEMORY=4G
 export DOCKER_TIKA_CPU=2
 export DOCKER_TIKA_MEMORY=4G
 
+export DISTR_DOCKER_IMAGE_URL=
+export DISTR_DOCKER_IMAGE_NAME=
+export DISTR_DEPLOY_SCRIPTS_URL=
+export DISTR_USER=
+export DISTR_PASSWORD=
+
 
 export DOCKER_BUILD_FLAGS=
 
@@ -104,18 +109,20 @@ export DOCKER_COMPOSE_FILE=docker-compose-single-host.yml
 export DOCKER_SWARM_ADVERTISE_ADDR=
 
 
-if [ -e setenv_local.sh ]
+if [ -f setenv_distr.sh ]
+then
+    echo "Loading setenv_distr.sh"
+    source setenv_distr.sh
+fi
+
+if [ -f setenv_local.sh ]
 then
     echo "Loading setenv_local.sh"
     source setenv_local.sh
 fi
 
 if [ -z "${DOCKER_REGISTRY}" ]; then
-    if [ ! -z "${DOCKER_USERNAME}" ]; then
-        export CONTRAXSUITE_IMAGE_FULL_NAME=${DOCKER_USERNAME}/${CONTRAXSUITE_IMAGE}
-    else
-        export CONTRAXSUITE_IMAGE_FULL_NAME=${CONTRAXSUITE_IMAGE}
-    fi
+    export CONTRAXSUITE_IMAGE_FULL_NAME=${CONTRAXSUITE_IMAGE}
 else
     export CONTRAXSUITE_IMAGE_FULL_NAME=${DOCKER_REGISTRY}/${CONTRAXSUITE_IMAGE}
 fi

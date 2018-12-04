@@ -28,7 +28,6 @@ from constance import config
 from rest_auth.models import TokenModel
 from rest_framework import serializers
 from rest_framework.authentication import TokenAuthentication, exceptions
-from rest_framework.authtoken.models import Token
 
 from django.core.urlresolvers import reverse
 from django.contrib.auth.forms import password_validation
@@ -41,32 +40,57 @@ from apps.common.models import AppVar
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.5a/LICENSE"
-__version__ = "1.1.5a"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.6/LICENSE"
+__version__ = "1.1.6"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
 
 class CookieAuthentication(TokenAuthentication):
+    """
+    Authentication system for rest API requests
+    1. check for auth token in request in `AUTHORIZATION` header
+    2. if it doesn't exist and if request path is not in excepted urls:
+    3. try to get auth token from query string (GET params)
+    4. try to get auth token from cookies
+    5. set AUTHORIZATION header to be equal to found token
+    6. authenticate
+
+    See response middleware in common.middleware.CookieMiddleware -
+    it sets cookie from existing AUTHORIZATION header into response
+    """
 
     def authenticate(self, request):
+
+        # Add urls that don't require authorization
         token_exempt_urls = [reverse('rest_login')]
 
+        # authenticate only if request path is not in excepted urls
+        # first check for existing AUTHORIZATION header
         if not request.META.get('HTTP_AUTHORIZATION') and request.META['PATH_INFO'] not in token_exempt_urls:
+            # second check to fetch auth_token from query string (GET params)
+            # tolen should be just key without "Token "
             auth_token = request.GET.get('auth_token')
+            # either get auth token from cookies
             if auth_token:
                 auth_token = 'Token ' + request.GET.get('auth_token')
             else:
                 auth_token = request.COOKIES.get('auth_token', '')
+            # inject auth token into AUTHORIZATION header to authenticate via standard rest auth
             request.META['HTTP_AUTHORIZATION'] = auth_token
+
         try:
             res = super().authenticate(request)
         except exceptions.AuthenticationFailed:
             res = None
+
+        # force authentication if auto_login feature is enabled
         if not res and config.auto_login:
             user = get_test_user()
-            token, _ = Token.objects.get_or_create(user=user)
+            token, _ = TokenModel.objects.get_or_create(user=user)
             res = (user, token)
+
+        # res = (user, token) for authenticated user otherwise None
         return res
 
 
@@ -83,9 +107,7 @@ class TokenSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = TokenModel
-        fields = ('key',
-                  'user_name',
-                  'user')
+        fields = ('key', 'user_name', 'user')
 
     def get_user_name(self, obj):
         try:
@@ -100,9 +122,14 @@ class TokenSerializer(serializers.ModelSerializer):
         return serializer.data
 
     def to_representation(self, obj):
+        """
+        Inject additional data into login response
+        """
         data = super().to_representation(obj)
         data['release_version'] = settings.VERSION_NUMBER
-        data['menu_analisys_project_item_name'] = AppVar.get('menu_analisys_project_item_name')
+        frontend_vars = {i: j for i, j in AppVar.objects.filter(name__startswith='frontend_')
+            .values_list('name', 'value')}
+        data.update(frontend_vars)
         return data
 
 

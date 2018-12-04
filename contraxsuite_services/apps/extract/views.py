@@ -36,7 +36,6 @@ from urllib.parse import quote as url_quote
 
 # Third-party import
 import icalendar
-import geocoder
 
 # Django imports
 from django.core.urlresolvers import reverse
@@ -58,8 +57,8 @@ from apps.extract.models import (
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.5a/LICENSE"
-__version__ = "1.1.5a"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.6/LICENSE"
+__version__ = "1.1.6"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -311,72 +310,6 @@ class GeoAliasUsageListView(BaseUsageListView):
                 text_unit__document__textunit__partyusage__party__pk=self.request.GET['party_pk']) \
                 .distinct()
         return qs
-
-
-class GeoEntityUsageGoogleMapView(AjaxResponseMixin, TemplateView):
-    sub_app = 'geoentity'
-    template_name = "extract/geo_entity_usage_map.html"
-
-    def get_entities(self):
-        if self.request.GET.get('usa_only') == 'true':
-            entities = list(GeoEntityUsage.objects.
-                            filter(Q(entity__category='Countries',
-                                     entity__name='United States') |
-                                   Q(entity__category='US States')).
-                            values('entity__name',
-                                   latitude=F('entity__latitude'),
-                                   longitude=F('entity__longitude')).
-                            annotate(count=Sum('count')).
-                            order_by())
-        else:
-            country_entities = list(GeoEntityUsage.objects.
-                                    filter(entity__category='Countries').
-                                    values('entity__name',
-                                           latitude=F('entity__latitude'),
-                                           longitude=F('entity__longitude')).
-                                    annotate(count=Sum('count')).
-                                    order_by())
-            country_entities = {i['entity__name']: i for i in country_entities}
-            other_entities = GeoEntityUsage.objects. \
-                filter(entity__entity_a_set__relation_type="subdivision",
-                       entity__entity_a_set__entity_b__category="Countries"). \
-                values(entity__name=F('entity__entity_a_set__entity_b__name'),
-                       latitude=F('entity__entity_a_set__entity_b__latitude'),
-                       longitude=F('entity__entity_a_set__entity_b__longitude')). \
-                annotate(count=Sum('count')). \
-                order_by()
-            other_entities = {i['entity__name']: i
-                              for i in other_entities}
-            for entity_name, info in other_entities.items():
-                if entity_name in country_entities:
-                    country_entities[entity_name]['count'] += info['count']
-                else:
-                    country_entities[entity_name] = info
-            entities = list(country_entities.values())
-        return entities
-
-    def get_json_data(self):
-        entities = self.get_entities()
-        for entity in entities:
-            if not entity['latitude']:
-                g = geocoder.google(entity['entity__name'])
-                if not g.latlng and ',' in entity['entity__name']:
-                    g = geocoder.google(entity['entity__name'].split(',')[0])
-                try:
-                    entity['latitude'], entity['longitude'] = g.latlng
-                except ValueError:
-                    pass
-        return entities
-
-
-class GeoEntityUsageGoogleChartView(GeoEntityUsageGoogleMapView):
-    sub_app = 'geoentity'
-    template_name = "extract/geo_entity_usage_chart.html"
-
-    def get_json_data(self):
-        entities = self.get_entities()
-        data = [['country', 'count']] + [[e['entity__name'], e['count']] for e in entities]
-        return data
 
 
 class TypeaheadTermTerm(TypeaheadView):
@@ -1183,3 +1116,69 @@ class TermSearchView(JSONResponseView):
                     item['text_unit__pk']) for item in data['data']]
             ret = [('Document ID', 'Term', 'Count', 'Text Unit ID')] + ret
         return ret
+
+
+class GeoEntityUsageGoogleMapView(AjaxResponseMixin, TemplateView):
+    sub_app = 'geoentity'
+    template_name = "extract/geo_entity_usage_map.html"
+
+    def get_entities(self):
+        if self.request.GET.get('usa_only') == 'true':
+            entities = list(GeoEntityUsage.objects.
+                            filter(Q(entity__category='Countries',
+                                     entity__name='United States') |
+                                   Q(entity__category='US States')).
+                            values('entity__name',
+                                   latitude=F('entity__latitude'),
+                                   longitude=F('entity__longitude')).
+                            annotate(count=Sum('count')).
+                            order_by())
+        else:
+            country_entities = list(GeoEntityUsage.objects.
+                                    filter(entity__category='Countries').
+                                    values('entity__name',
+                                           latitude=F('entity__latitude'),
+                                           longitude=F('entity__longitude')).
+                                    annotate(count=Sum('count')).
+                                    order_by())
+            country_entities = {i['entity__name']: i for i in country_entities}
+            other_entities = GeoEntityUsage.objects. \
+                filter(entity__entity_a_set__relation_type="subdivision",
+                       entity__entity_a_set__entity_b__category="Countries"). \
+                values(entity__name=F('entity__entity_a_set__entity_b__name'),
+                       latitude=F('entity__entity_a_set__entity_b__latitude'),
+                       longitude=F('entity__entity_a_set__entity_b__longitude')). \
+                annotate(count=Sum('count')). \
+                order_by()
+            other_entities = {i['entity__name']: i
+                              for i in other_entities}
+            for entity_name, info in other_entities.items():
+                if entity_name in country_entities:
+                    country_entities[entity_name]['count'] += info['count']
+                else:
+                    country_entities[entity_name] = info
+            entities = list(country_entities.values())
+        return entities
+
+    def get_json_data(self):
+        entities = self.get_entities()
+        # for entity in entities:
+        #     if not entity['latitude']:
+        #         g = geocoder.google(entity['entity__name'])
+        #         if not g.latlng and ',' in entity['entity__name']:
+        #             g = geocoder.google(entity['entity__name'].split(',')[0])
+        #         try:
+        #             entity['latitude'], entity['longitude'] = g.latlng
+        #         except ValueError:
+        #             pass
+        return entities
+
+
+class GeoEntityUsageGoogleChartView(GeoEntityUsageGoogleMapView):
+    sub_app = 'geoentity'
+    template_name = "extract/geo_entity_usage_chart.html"
+
+    def get_json_data(self):
+        entities = self.get_entities()
+        data = [['country', 'count']] + [[e['entity__name'], e['count']] for e in entities]
+        return data

@@ -25,10 +25,7 @@
 # -*- coding: utf-8 -*-
 
 # Standard imports
-import io
-import json
 import traceback
-from tempfile import NamedTemporaryFile
 from typing import Dict, Tuple
 from urllib import parse
 
@@ -39,13 +36,11 @@ import pandas as pd
 from django.conf import settings
 from django.conf.urls import url
 from django.contrib.postgres.aggregates.general import StringAgg
-from django.core import serializers as core_serializers
-from django.core.management import call_command
 from django.core.urlresolvers import reverse
 from django.db import transaction
 from django.db.models import F, Min, Max, \
     IntegerField, FloatField, DateField, TextField, Subquery
-from django.http import JsonResponse, HttpResponse
+from django.http import JsonResponse
 from elasticsearch import Elasticsearch
 from rest_framework import serializers, routers, viewsets, status
 from rest_framework.decorators import detail_route, list_route
@@ -68,8 +63,7 @@ from apps.document.fields_detection import field_detection
 from apps.document.fields_detection.field_detection_celery_api import run_detect_field_values_for_document
 from apps.document.fields_processing.field_value_cache import cache_field_values
 from apps.document.models import (
-    DocumentField, DocumentType, DocumentFieldValue, DocumentFieldDetector,
-    DocumentProperty, DocumentNote, DocumentTag, DocumentRelation,
+    DocumentField, DocumentType, DocumentFieldValue, DocumentProperty, DocumentNote, DocumentTag, DocumentRelation,
     TextUnitProperty, TextUnitNote, TextUnitTag, DocumentTypeField,
     DocumentTypeFieldCategory)
 from apps.document.views import show_document
@@ -79,8 +73,8 @@ from apps.users.models import User
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.5a/LICENSE"
-__version__ = "1.1.5a"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.6/LICENSE"
+__version__ = "1.1.6"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -366,10 +360,8 @@ class DocumentViewSet(DocumentPermissionViewMixin, APIActionMixin,
 
         project_id = self.request.GET.get("project_id")
 
-        is_generic = DocumentType.generic().project_set.filter(pk=project_id).exists()
-
         # only for projects with GenericContract type and project detail view
-        if is_generic and project_id:
+        if project_id and DocumentType.generic().project_set.filter(pk=project_id).exists():
             qs = qs.filter(project_id=project_id).values('id', 'name') \
                 .annotate(cluster_id=Max('documentcluster'),
                           assignee_name=F('assignee__username'),
@@ -524,12 +516,19 @@ class ProjectDocumentsWithFieldsViewSet(DocumentPermissionViewMixin, APIActionMi
     _field_codes_to_field_names = None
 
     def list(self, request, *args, **kwargs):
+        """
+        Mostly need this to store filter query in db
+        """
         project_pk = self.kwargs.get('project_pk')
         if self.request.GET.get('save_query') == 'true':
             query_string = request.META.get('QUERY_STRING')
-            query_data = parse.parse_qsl(query_string)
-            query_data = [(i, 0 if i == 'pagenum' else j) for i, j in query_data if i != 'filter_id']
-            new_query_string = parse.urlencode(query_data)
+            query_dict = dict(parse.parse_qsl(query_string))
+            query_dict.pop('filter_id', None)
+            query_dict['pagenum'] = 0
+            field_uids_initial = query_dict.pop('field_uids_initial', None)
+            if field_uids_initial:
+                query_dict['field_uids'] = field_uids_initial
+            new_query_string = parse.urlencode(list(query_dict.items()))
             ProjectDocumentsFilter.objects.update_or_create(
                 project_id=project_pk, created_by=request.user,
                 defaults={'filter_query': new_query_string})
@@ -541,6 +540,9 @@ class ProjectDocumentsWithFieldsViewSet(DocumentPermissionViewMixin, APIActionMi
                 new_query_data = parse.parse_qsl(query_string)
 
                 # substitute request params
+                filter_id = request.GET.get('filter_id')
+                if filter_id is not None:
+                    new_query_data.append(('filter_id', int(filter_id)))
                 request.GET = request.GET.copy()
                 request.GET.clear()
                 for k, v in new_query_data:
@@ -592,7 +594,7 @@ class ProjectDocumentsWithFieldsViewSet(DocumentPermissionViewMixin, APIActionMi
                                              status__group__is_active=True)
 
         document_qs = document_qs \
-            .select_related('status', 'status__group') \
+            .select_related('status', 'status__group', 'document_type', 'assignee') \
             .defer('language', 'source', 'source_type', 'source_path', 'full_text',
                    'paragraphs', 'sentences', 'upload_session_id', 'field_values')
 
@@ -1278,7 +1280,9 @@ class DocumentTypeViewSet(JqListAPIMixin, viewsets.ModelViewSet):
     delete: Delete Document Type
     """
     queryset = DocumentType.objects.select_related('modified_by') \
-        .prefetch_related('search_fields', 'documenttypefield_set', 'documenttypefield_set__document_field')
+        .prefetch_related('search_fields', 'documenttypefield_set',
+                          'documenttypefield_set__category',
+                          'documenttypefield_set__document_field')
     permission_classes = (ReviewerReadOnlyPermission,)
 
     def get_serializer_class(self):

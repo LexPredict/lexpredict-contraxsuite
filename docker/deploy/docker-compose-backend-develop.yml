@@ -216,6 +216,11 @@ volumes:
   filebeat_data:
   metricbeat_data:
   celery_worker_state:
+  backup:
+  contraxsuite_nginx_server_include:
+  contraxsuite_additional_fixtures:
+  contraxsuite_jupyter_add_req:
+  contraxsuite_ssl_certs:
 
 networks:
   contrax_net:

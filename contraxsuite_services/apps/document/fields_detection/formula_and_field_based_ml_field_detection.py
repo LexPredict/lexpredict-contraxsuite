@@ -1,19 +1,19 @@
 import math
 import random
-from typing import Optional, List, Tuple, Dict, Any
+from typing import Optional, List, Tuple, Dict, Any, Callable
 
 from django.conf import settings
 from django.db.models import Q, Subquery
-from sklearn.linear_model import SGDClassifier
 from sklearn.metrics import classification_report
 from sklearn.pipeline import Pipeline, FeatureUnion
-from sklearn import tree
 
+from apps.common.script_utils import eval_script
 from apps.document.field_types import FIELD_TYPES_REGISTRY, FieldType, ChoiceField
 from apps.document.fields_detection import field_detection_utils
 from apps.document.fields_detection.fields_detection_abstractions import FieldDetectionStrategy, DetectedFieldValue, \
     ProcessLogger
 from apps.document.fields_detection.formula_based_field_detection import FormulaBasedFieldDetectionStrategy
+from apps.document.fields_detection.stop_words import detect_with_stop_words_by_field_and_full_text
 from apps.document.fields_detection.vectorizers import VectorizerStep
 from apps.document.models import ClassifierModel
 from apps.document.models import DocumentField, Document, DocumentType
@@ -28,6 +28,9 @@ class FieldValueExtractor(VectorizerStep):
     def transform(self, field_values_dicts: List, *args, **kwargs):
         return [self.field_type.merged_db_value_to_python(fv.get(self.field_uid) if fv else None) for fv in
                 field_values_dicts]
+
+    def get_feature_names(self) -> List[str]:
+        return ['']
 
 
 class FieldBasedMLOnlyFieldDetectionStrategy(FieldDetectionStrategy):
@@ -52,24 +55,73 @@ class FieldBasedMLOnlyFieldDetectionStrategy(FieldDetectionStrategy):
                                    | Q(Subquery(qs_finished_document_ids)))
                     .values_list('field_values', flat=True)[:settings.ML_TRAIN_DATA_SET_GROUP_LEN])
 
+    @staticmethod
+    def init_classifier_impl(field_code: str, init_script: str):
+        if init_script is not None:
+            init_script = init_script.strip()
+
+        if not init_script:
+            from sklearn import tree as sklearn_tree
+            return sklearn_tree.DecisionTreeClassifier()
+
+        from sklearn import tree as sklearn_tree
+        from sklearn import neural_network as sklearn_neural_network
+        from sklearn import neighbors as sklearn_neighbors
+        from sklearn import svm as sklearn_svm
+        from sklearn import gaussian_process as sklearn_gaussian_process
+        from sklearn.gaussian_process import kernels as sklearn_gaussian_process_kernels
+        from sklearn import ensemble as sklearn_ensemble
+        from sklearn import naive_bayes as sklearn_naive_bayes
+        from sklearn import discriminant_analysis as sklearn_discriminant_analysis
+        from sklearn import linear_model as sklearn_linear_model
+
+        eval_locals = {
+            'sklearn_linear_model': sklearn_linear_model,
+            'sklearn_tree': sklearn_tree,
+            'sklearn_neural_network': sklearn_neural_network,
+            'sklearn_neighbors': sklearn_neighbors,
+            'sklearn_svm': sklearn_svm,
+            'sklearn_gaussian_process': sklearn_gaussian_process,
+            'sklearn_gaussian_process_kernels': sklearn_gaussian_process_kernels,
+            'sklearn_ensemble': sklearn_ensemble,
+            'sklearn_naive_bayes': sklearn_naive_bayes,
+            'sklearn_discriminant_analysis': sklearn_discriminant_analysis
+        }
+        return eval_script('classifier init script of field {0}'.format(field_code), init_script, eval_locals)
+
     @classmethod
-    def build_pipeline(cls, depends_on_fields: List[Tuple[str, str, str]]):
+    def init_classifier(cls, field: DocumentField):
+        init_script = field.classifier_init_script  # type: str
+
+        return cls.init_classifier_impl(field.code, init_script)
+
+    @staticmethod
+    def wrap_feature_names_with_field_code(feature_names_func: Callable, field_code: str) -> Callable:
+        return lambda: ['{0}__{1}'.format(field_code, feature_name) for feature_name in feature_names_func()]
+
+    @classmethod
+    def build_pipeline(cls, field: DocumentField, depends_on_fields: List[Tuple[str, str, str]]) -> Tuple[
+        Pipeline, List[str]]:
 
         transformer_list = []
-
+        feature_names_funcs = []
         for field_uid, field_code, field_type in sorted(depends_on_fields, key=lambda t: t[1]):
             field_type = FIELD_TYPES_REGISTRY[field_type]  # type: FieldType
 
             field_vect_steps = [('sel', FieldValueExtractor(field_uid, field_type))]
-            field_vect_steps.extend(field_type.build_vectorization_pipeline())
+
+            field_vect_pipeline, field_feature_names_func = field_type.build_vectorization_pipeline()
+
+            field_vect_steps.extend(field_vect_pipeline)
+
             transformer_list.append((field_code, Pipeline(field_vect_steps)))
 
-        # classifier = SGDClassifier(loss='hinge', penalty='l2', alpha=1e-3, max_iter=5, tol=None,
-        #                            n_jobs=-1, class_weight='balanced')
-        classifier = tree.DecisionTreeClassifier()
+            feature_names_funcs.append(cls.wrap_feature_names_with_field_code(field_feature_names_func, field_code))
+
+        classifier = cls.init_classifier(field)
 
         return Pipeline([('vect', FeatureUnion(transformer_list)),
-                         ('clf', classifier)])
+                         ('clf', classifier)]), feature_names_funcs
 
     @classmethod
     def get_depends_on_uid_code_type(cls, field: DocumentField) -> List[Tuple[str, str, str]]:
@@ -125,7 +177,8 @@ class FieldBasedMLOnlyFieldDetectionStrategy(FieldDetectionStrategy):
         depends_on_fields_types = cls.get_depends_on_uid_code_type(field)
         depends_on_fields_types = cls.remove_empty_fields(depends_on_fields_types, train_data)
 
-        pipeline = cls.build_pipeline(depends_on_fields_types)  # type: Pipeline
+        pipeline, feature_names_funcs = cls.build_pipeline(field,
+                                                           depends_on_fields_types)  # type: Pipeline, List[Callable]
 
         categories = sorted([c.strip() for c in field.choices.split('\n')])
         category_names_to_indexes = {c: i for i, c in enumerate(categories)}
@@ -168,6 +221,7 @@ class FieldBasedMLOnlyFieldDetectionStrategy(FieldDetectionStrategy):
         log.step_progress()
         log.info('Training the model...')
         model = pipeline.fit(train_feature_data, train_target_data)
+
         log.step_progress()
 
         log.info('Testing the model...')
@@ -188,7 +242,11 @@ class FieldBasedMLOnlyFieldDetectionStrategy(FieldDetectionStrategy):
         log.step_progress()
         log.info('Saving ClassifierModel instance...')
 
-        cm.set_trained_model_obj({'model': model, 'categories': categories})
+        feature_names = []
+        for f in feature_names_funcs:
+            feature_names.extend(f())
+
+        cm.set_trained_model_obj({'model': model, 'categories': categories, 'feature_names': feature_names})
         log.step_progress()
         log.info('Finished.')
         return cm
@@ -198,8 +256,20 @@ class FieldBasedMLOnlyFieldDetectionStrategy(FieldDetectionStrategy):
                             log: ProcessLogger,
                             doc: Document,
                             field: DocumentField) -> List[DetectedFieldValue]:
-        # This method assumes that field detection already goes in the required order and dependencies of this
-        # field are already calculated / detected.
+        if field.stop_words:
+            depends_on_fields = list(field.depends_on_fields.all())
+            depends_on_full_text = []
+
+            for df in depends_on_fields:  # type: DocumentField
+                field_type_adapter = FIELD_TYPES_REGISTRY[df.type]  # type: FieldType
+                v = field_type_adapter.merged_db_value_to_python(doc.field_values.get(df.uid))
+                if v:
+                    depends_on_full_text.append(str(v))
+
+            detected_with_stop_words, detected_values = \
+                detect_with_stop_words_by_field_and_full_text(field, '\n'.join(depends_on_full_text))
+            if detected_with_stop_words:
+                return detected_values or list()
 
         document_type = doc.document_type  # type: DocumentType
         try:

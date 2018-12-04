@@ -25,8 +25,8 @@
 # -*- coding: utf-8 -*-
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.5a/LICENSE"
-__version__ = "1.1.5a"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.6/LICENSE"
+__version__ = "1.1.6"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -138,6 +138,16 @@ def settings_value(name):
     if isinstance(value, (list, tuple)):
         value = mark_safe(list(value))
     return value
+
+
+@register.assignment_tag
+def get_settings_value(name):
+    """
+    Get django settings variable by name
+    :param name: variable name
+    :return: setting value
+    """
+    return settings_value(name)
 
 
 @register.filter(name='simple_replace')

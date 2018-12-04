@@ -25,10 +25,16 @@
 # -*- coding: utf-8 -*-
 
 # Django imports
-import geocoder
 from pandas import DataFrame
 from typing import Callable, Tuple
 from apps.extract.models import GeoEntity, GeoAlias, Term, Court
+
+__author__ = "ContraxSuite, LLC; LexPredict, LLC"
+__copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.4/LICENSE"
+__version__ = "1.1.4"
+__maintainer__ = "LexPredict, LLC"
+__email__ = "support@contraxsuite.com"
 
 LOCALES_MAP = (
         ('German Name', 'de', 'German Name'),
@@ -58,6 +64,7 @@ def load_geo_entities(df: DataFrame, total_progress: Callable[[int], None] = Non
 
     df = df.drop_duplicates().fillna('')
     for _, row in df.iterrows():
+        latitude, longitude = None, None
         entity_id = row['Entity ID']
         entity_name = row['Entity Name'].strip()
         entity_priority = row.get('Entity Priority')
@@ -69,14 +76,9 @@ def load_geo_entities(df: DataFrame, total_progress: Callable[[int], None] = Non
         else:
             entity_priority = 0
 
-        if 'latitude' in row and row['latitude']:
-            latitude = row['latitude']
-            longitude = row['longitude']
-        else:
-            g = geocoder.google(entity_name)
-            if not g.latlng and ',' in entity_name:
-                g = geocoder.google(entity_name.split(',')[0])
-            latitude, longitude = g.latlng if g.latlng else (None, None)
+        if 'Latitude' in row and row['Latitude']:
+            latitude = row['Latitude']
+            longitude = row['Longitude']
 
         the_entity = GeoEntity.objects.filter(entity_id=entity_id)
         if the_entity.exists:

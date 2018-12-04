@@ -57,8 +57,11 @@ store_variable "DOCKER_COMPOSE_FILE" ${DOCKER_COMPOSE_FILE}
 store_variable "DOLLAR" "$"
 store_variable "DOCKER_DJANGO_BASE_PATH" "/advanced/"
 store_variable "DOCKER_KIBANA_BASE_PATH" "/kibana"
+store_variable "DISTR_DEPLOY_SCRIPTS_URL" "${_DISTR_DEPLOY_SCRIPTS_URL}"
+store_variable "DISTR_USER" "${_DISTR_USER}"
+store_variable "DISTR_PASSWORD" "${_DISTR_PASSWORD}"
 
-echo""
+echo ""
 echo "Local environment:"
 echo ""
 

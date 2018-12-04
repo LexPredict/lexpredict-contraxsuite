@@ -33,6 +33,7 @@ liblcms2-dev
 libwebp-dev
 
 # django-extensions
+graphviz
 graphviz-dev
 
 # redis

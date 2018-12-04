@@ -1,6 +1,6 @@
 {% extends "account/base.html" %}
 
-{% load i18n account socialaccount crispy_forms_tags %}
+{% load i18n account socialaccount crispy_forms_tags project_tags %}
 
 {% block title %}{% trans "Sign In" %}{% endblock %}
 
@@ -9,6 +9,8 @@
 {% block inner %}
 
   {% get_providers as socialaccount_providers %}
+
+  {% get_settings_value "ACCOUNT_ALLOW_REGISTRATION" as signup_is_open %}
 
   {% if socialaccount_providers %}
     <p>{% blocktrans with site.name as site_name %}Please sign in with one
@@ -27,7 +29,7 @@
 
     {% include "socialaccount/snippets/login_extra.html" %}
 
-  {% else %}
+  {% elif signup_is_open %}
     <p>{% blocktrans %}If you have not created an account yet, then please
       <a href="{{ signup_url }}">sign up</a> first.{% endblocktrans %}</p>
   {% endif %}

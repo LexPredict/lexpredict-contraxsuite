@@ -20,10 +20,7 @@
       <li><a href="#tab-1">Lease Documents<span
               class="badge badge-s pull-right lease-documents-badge"></span></a>
       </li>
-      <li><a href="#tab-2">Leases Map<span
-              class="badge badge-s pull-right leases-by-state-badge"></span></a>
-      </li>
-      <li><a href="#tab-3">Lessor List<span
+      <li><a href="#tab-2">Lessor List<span
               class="badge badge-s pull-right lessor-list-badge"></span></a>
       </li>
     </ul>
@@ -40,19 +37,6 @@
       </div>
 
       <div class="tab-content clearfix" id="tab-2">
-        <select name="country" id="select_country">
-        </select>
-        <select name="province" id="select_province">
-        </select>
-        <div class="clearfix"></div>
-        <div id="map-canvas">
-          <div class="loader-container">
-            <div class="loader"></div>
-            <span>Loading...</span>
-          </div>
-        </div>
-      </div>
-      <div class="tab-content clearfix" id="tab-3">
         <div class="pull-right grid-controls">
           {% include '_base_grid_buttons_block.html' %}
         </div>
@@ -92,67 +76,6 @@
         'lease-documents-badge',
         true);
     });
-  </script>
-
-  <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDLXtrXYACv_e2c5yzZM3T1V8FtZNqMsOk"></script>
-  <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
-
-  <script src="{% static 'lease/../../static/lease/lease_map.js' %}"></script>
-
-  <script type="text/javascript">
-    $(document).ready(function () {
-      var tabs = $("#tabs");
-
-      function mapDataUrlProvider(country, province, lessor) {
-        var urlCountries = '{% url "lease:lease-map-data" 'selected_country' %}';
-        var urlProvincesAddresses = '{% url "lease:lease-map-data" 'selected_country' 'selected_province' %}';
-
-        if (province) {
-          return urlProvincesAddresses
-            .replace('selected_country', country)
-            .replace('selected_province', province);
-        } else {
-          return urlCountries
-            .replace('selected_country', country);
-        }
-
-      }
-
-      function leaseDocumentDetailUrlProvider(pk) {
-        return '{% url "lease:lease-document-detail" "99999999" %}'
-          .replace("99999999", pk);
-      }
-
-      var tabActivateListeners = [];
-
-      function bindListenerToMapActivate(func) {
-        tabActivateListeners.push(func);
-      }
-
-      buildLeaseDocumentsMap(
-        mapDataUrlProvider,
-        leaseDocumentDetailUrlProvider,
-        $('select#select_country'),
-        $('select#select_province'),
-        $('#map-canvas'),
-        bindListenerToMapActivate,
-        null,
-        'lease_dashboard'
-      );
-
-
-      tabs.tabs("option", "active", (window.localStorage['lease_dashboard_active_tab'] || 0));
-      tabs.tabs({
-        activate: function (event, ui) {
-          window.localStorage['lease_dashboard_active_tab'] =
-            tabs.tabs("option", "active");
-          for (var i in tabActivateListeners) {
-            tabActivateListeners[i]();
-          }
-        }
-      });
-    });
-
   </script>
 
 {% endblock %}

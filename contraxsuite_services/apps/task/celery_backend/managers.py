@@ -132,7 +132,6 @@ class TaskManager(models.Manager):
     _last_id = None
 
     EXCLUDE_FROM_TRACKING = settings.EXCLUDE_FROM_TRACKING
-    REMOVE_WHEN_READY = settings.REMOVE_WHEN_READY
 
     def get_queryset(self):
         return QuerySet(self.model, using=self._db)

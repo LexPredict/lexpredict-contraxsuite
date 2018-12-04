@@ -2,7 +2,7 @@
 
 set -e
 
-GIT_DICT_DATA_REPO_ROOT='https://raw.githubusercontent.com/LexPredict/lexpredict-legal-dictionary/1.0.6'
+GIT_DICT_DATA_REPO_ROOT='https://raw.githubusercontent.com/LexPredict/lexpredict-legal-dictionary/1.0.7'
 TERM_URLS=('accounting/ifrs_iasb.csv' 'accounting/uk_gaap.csv' 'accounting/us_fasb.csv'
                   'accounting/us_gaap.csv' 'accounting/us_gasb.csv' 'financial/financial.csv'
                   'legal/common_law.csv' 'legal/us_cfr.csv' 'legal/us_usc.csv' 'legal/common_US_terms_top1000.csv'

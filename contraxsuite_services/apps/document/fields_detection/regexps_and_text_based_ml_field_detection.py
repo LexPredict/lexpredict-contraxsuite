@@ -21,6 +21,7 @@ from apps.document.fields_detection.text_based_ml import SkLearnClassifierModel,
 from apps.document.models import ClassifierModel, DocumentFieldValue, ExternalFieldValue, TextUnit, \
     DocumentField, DocumentType
 from apps.document.models import Document
+from apps.document.fields_detection.stop_words import detect_with_stop_words_by_field_and_full_text
 
 
 def get_user_data(document_type: DocumentType,
@@ -108,8 +109,7 @@ def train_model(document_type: DocumentType, field: DocumentField, train_data_se
                                                   tokenizer=word_position_tokenizer)),
                          ('tfidf', TfidfTransformer()),
                          ('clf', SGDClassifier(loss='hinge', penalty='l2',
-                                               alpha=1e-3, random_state=42,
-                                               max_iter=5, tol=None, n_jobs=-1,
+                                               alpha=1e-3, max_iter=5, tol=None, n_jobs=-1,
                                                class_weight='balanced')),
                          ])
     x = res_df['text_unit__text']
@@ -207,6 +207,13 @@ class TextBasedMLFieldDetectionStrategy(FieldDetectionStrategy):
                             log: ProcessLogger,
                             doc: Document,
                             field: DocumentField) -> List[DetectedFieldValue]:
+
+        depends_on_full_text = doc.full_text
+        detected_with_stop_words, detected_values = detect_with_stop_words_by_field_and_full_text(field,
+                                                                                                  depends_on_full_text)
+        if detected_with_stop_words:
+            return detected_values or list()
+
         document_type = doc.document_type  # type: DocumentType
         try:
             classifier_model = ClassifierModel.objects \

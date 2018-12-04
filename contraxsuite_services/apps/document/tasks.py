@@ -51,8 +51,8 @@ from apps.task.utils.task_utils import TaskUtils
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.5a/LICENSE"
-__version__ = "1.1.5a"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.6/LICENSE"
+__version__ = "1.1.6"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -410,21 +410,28 @@ class TrainAndTest(BaseTask):
             matches = bool(expected_set == actual_set)
 
         if not matches:
-            task.log_info('{3} Test doc: {0} (Project: {5}). '
-                          'Detected: {1}. Real: {2}.\nDetected in text:-----\n{4}\n-----'
+            found_in_text = [dfv.text_unit.text
+                             for dfv in expected_dfvs
+                             if dfv.text_unit and dfv.text_unit.text] if expected_dfvs else []
+            found_in_text_msg = ''
+            if found_in_text:
+                found_in_text_msg = '\nDetected in text:\n-----\n{0}\n-----'.format('\n---\n'.join(found_in_text))
+            task.log_info('{3} Test doc: {0} (Doc id: {6}, Project: {5}). '
+                          'Detected: {1}. Real: {2}.{4}'
                           .format(document.name,
                                   expected_field_value,
                                   actual_field_value,
                                   '[  OK  ]' if matches else '[ ERR  ]',
-                                  '\n---\n'.join([dfv.text_unit.text
-                                                  for dfv in expected_dfvs]) if expected_dfvs else '',
-                                  document.project.name if document.project else ''))
+                                  found_in_text_msg,
+                                  document.project.name if document.project else '',
+                                  document.id))
 
         text_units_number = TextUnit.objects.filter(document=document, unit_type=field.text_unit_type).count()
 
         return {
             'text_units_number': text_units_number,
-            'value_matches_expected': matches
+            'value_matches_expected': matches,
+            'actual_field_value': actual_field_value if field.is_choice_field() else None
         }
 
     @staticmethod
@@ -448,11 +455,25 @@ class TrainAndTest(BaseTask):
         match_number = 0
         test_doc_number = 0
 
+        matches_per_value = dict()
+        total_per_value = dict()
+
         for res in results:
+            actual_field_value = res.get('actual_field_value')
+
+            if actual_field_value:
+                if actual_field_value not in total_per_value:
+                    total_per_value[actual_field_value] = 0
+                total_per_value[actual_field_value] += 1
+
             test_doc_number += 1
             test_text_units_number += (res.get('text_units_number') or 0)
             if res.get('value_matches_expected'):
                 match_number += 1
+                if actual_field_value:
+                    if actual_field_value not in matches_per_value:
+                        matches_per_value[actual_field_value] = 0
+                    matches_per_value[actual_field_value] += 1
 
         accuracy = match_number / test_doc_number
 
@@ -477,6 +498,11 @@ class TrainAndTest(BaseTask):
                               test_doc_number,
                               test_text_units_number,
                               accuracy))
+
+        if field.is_choice_field():
+            accuracy_per_value = {actual_field_value: (matches_per_value.get(actual_field_value) or 0) / total
+                                  for actual_field_value, total in total_per_value.items()}
+            task.log_info('Accuracy per value:\n{0}'.format(json.dumps(accuracy_per_value, sort_keys=True, indent=2)))
 
 
 class CacheDocumentFields(BaseTask):

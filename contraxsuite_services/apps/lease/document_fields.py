@@ -25,7 +25,6 @@ import re
     or shipping ContraxSuite within a closed source product.
 """
 
-import geocoder
 from lexnlp.extract.en.dates import get_dates
 from lexnlp.extract.en.durations import get_durations
 
@@ -37,8 +36,8 @@ from apps.lease.models import LeaseDocument
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.5a/LICENSE"
-__version__ = "1.1.5a"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.6/LICENSE"
+__version__ = "1.1.6"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -63,20 +62,6 @@ class AddressFieldConfig(FieldConfig):
 
     def set_value_from_selection(self, doc: Document, value: str):
         doc.address = value
-        g = geocoder.google(doc.address)
-        if g.ok:
-            doc.address_latitude = g.lat
-            doc.address_longitude = g.lng
-            doc.address_country = g.country_long
-            doc.address_state_province = g.province_long
-        elif g.status and 'ZERO' in g.status:
-            # Google does not know such address - probably we detected it wrong.
-            doc.address_state_province = None
-            doc.address_country = None
-            doc.address_longitude = None
-            doc.address_latitude = None
-        else:
-            print('Unable to detect address via Google geocoder: {0}'.format(g.status))
         return doc.address
 
 

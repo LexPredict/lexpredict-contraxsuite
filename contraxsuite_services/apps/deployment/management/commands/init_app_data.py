@@ -24,6 +24,7 @@
 """
 # -*- coding: utf-8 -*-
 
+# Standard imports
 import io
 import pathlib
 import shutil
@@ -31,17 +32,26 @@ from os import listdir, mkdir, path
 from tempfile import NamedTemporaryFile
 from typing import Dict, Tuple, Any, Callable, Optional
 from zipfile import ZipFile
-
 import pandas as pd
+
+# Django imports
 from django.core.management import call_command
 from django.core.management.base import BaseCommand
 from django.db import transaction
 from django.utils.timezone import now
 
+# Project imports
 from apps.deployment.app_data import load_courts, load_terms, load_geo_entities
 from apps.document.models import DocumentType, DocumentField, DocumentTypeField
 from apps.extract import dict_data_cache
 from apps.extract.models import Court, Term, GeoEntity
+
+__author__ = "ContraxSuite, LLC; LexPredict, LLC"
+__copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.4/LICENSE"
+__version__ = "1.1.4"
+__maintainer__ = "LexPredict, LLC"
+__email__ = "support@contraxsuite.com"
 
 
 def load_csv_files(zip_file: ZipFile, files: list) -> pd.DataFrame:

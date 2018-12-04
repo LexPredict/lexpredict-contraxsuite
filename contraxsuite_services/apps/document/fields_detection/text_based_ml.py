@@ -1,6 +1,6 @@
 import re
 from typing import Optional, List, Dict, Tuple
-
+from apps.document.field_types import ValueExtractionHint
 from lexnlp.nlp.en.segments.sentences import get_sentence_span_list
 
 _TOKEN_PATTERN = re.compile(r'(?u)\b\w\w+\b')
@@ -35,7 +35,7 @@ def encode_category(field_uid, choice_value, extraction_hint) -> str:
         return SkLearnClassifierModel.EMPTY_CAT_NAME
     return ':::'.join([str(field_uid) if field_uid else '',
                        str(choice_value) if choice_value else '',
-                       str(extraction_hint) if extraction_hint else ''])
+                       str(extraction_hint) if extraction_hint else ValueExtractionHint.TAKE_FIRST.name])
 
 
 def parse_category(category: str) -> Tuple[Optional[str], Optional[str], Optional[str]]:

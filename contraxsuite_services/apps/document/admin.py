@@ -38,9 +38,12 @@ from django_json_widget.widgets import JSONEditorWidget
 from simple_history.admin import SimpleHistoryAdmin
 
 # Project imports
+from apps.common.script_utils import ScriptError
 from apps.document.field_types import FIELD_TYPES_REGISTRY
 from apps.document.fields_detection.formula_based_field_detection import FormulaBasedFieldDetectionStrategy, \
     DocumentFieldFormulaError
+from apps.document.fields_detection.formula_and_field_based_ml_field_detection import \
+    FieldBasedMLOnlyFieldDetectionStrategy
 from apps.document.fields_processing.field_processing_utils import order_field_detection
 from apps.document.models import (
     Document, DocumentField, DocumentType,
@@ -49,11 +52,12 @@ from apps.document.models import (
     ClassifierModel, TextUnit, TextUnitProperty, TextUnitNote, TextUnitTag, DocumentTypeField,
     DocumentTypeFieldCategory)
 from apps.document.python_coded_fields import PYTHON_CODED_FIELDS_REGISTRY
+from apps.document.fields_detection.stop_words import compile_stop_words, detect_value_with_stop_words
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.5a/LICENSE"
-__version__ = "1.1.5a"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.6/LICENSE"
+__version__ = "1.1.6"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -100,6 +104,19 @@ class DocumentFieldForm(forms.ModelForm):
         type_code = self.cleaned_data.get('type')
         depends_on_fields = self.cleaned_data.get('depends_on_fields') or []
         depends_on_fields = list(depends_on_fields)
+        classifier_init_script = self.cleaned_data['classifier_init_script']
+        stop_words = self.cleaned_data['stop_words']
+
+        try:
+            stop_words = compile_stop_words(stop_words)
+            _v = detect_value_with_stop_words(stop_words, 'dummy text')
+        except Exception as err:
+            self.add_error('stop_words', str(err))
+
+        try:
+            FieldBasedMLOnlyFieldDetectionStrategy.init_classifier_impl(field_code, classifier_init_script)
+        except ScriptError as err:
+            self.add_error('classifier_init_script', str(err).split('\n'))
 
         fields_and_deps = {self.cleaned_data.get('code') or 'xxx': {f.code for f in depends_on_fields}}
         fields_and_deps = self._extract_field_and_deps(depends_on_fields, fields_and_deps)

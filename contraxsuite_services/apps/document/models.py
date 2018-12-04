@@ -58,8 +58,8 @@ from apps.users.models import User
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.5a/LICENSE"
-__version__ = "1.1.5a"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.6/LICENSE"
+__version__ = "1.1.6"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -166,6 +166,8 @@ class DocumentField(TimeStampedModel):
 
     python_coded_field = models.CharField(max_length=100, db_index=True, null=True, blank=True)
 
+    classifier_init_script = models.TextField(null=True, blank=True)
+
     formula = models.TextField(null=True, blank=True)
 
     value_regexp = models.TextField(null=True, blank=True)
@@ -202,6 +204,13 @@ class DocumentField(TimeStampedModel):
     # they should be stored \n-separated in the "choices" property
     choices = models.TextField(blank=True, null=True)
 
+    # Used for quickly detecting a value if one of these regexps is matched.
+    # Format:
+    # { "regexp": "choice_value", "regexp": "choice_value", ..... }
+    # For field-based field detecting (formulas/ML/field detectors):
+    #   - strategies try to find any of these regexps
+    stop_words = JSONField(blank=True, null=True, encoder=DjangoJSONEncoder)
+
     class Meta:
         unique_together = (('code', 'modified_by', 'modified_date'),)
         ordering = ('code',)
@@ -231,12 +240,13 @@ class DocumentType(TimeStampedModel):
 
     DOCUMENT_EDITOR_CHOICES = ['save_by_field', 'save_all_fields_at_once', 'no_text']
     DOCUMENT_EDITOR_CHOICES = [(i, i) for i in DOCUMENT_EDITOR_CHOICES]
+    GENERIC_TYPE_CODE = 'document.GenericDocument'
 
     # Make pk field unique
     uid = StringUUIDField(primary_key=True, default=uuid.uuid4, editable=False)
 
     # Short name for field.
-    code = models.CharField(max_length=50, db_index=True)
+    code = models.CharField(max_length=50, db_index=True, unique=True)
 
     # Verbose name for field.
     title = models.CharField(max_length=100, db_index=True)
@@ -257,14 +267,6 @@ class DocumentType(TimeStampedModel):
 
     metadata = CustomJSONField(blank=True, null=True, encoder=DjangoJSONEncoder)
 
-    def get_classifier(self):
-        classifiers = self.classifiers.iterator()
-        if classifiers:
-            classifier = next(classifiers, None)
-            if classifier:
-                return classifier.get_trained_model_obj()
-        return None
-
     class Meta:
         unique_together = (('code', 'modified_by', 'modified_date'),)
         ordering = ('code', 'modified_by', 'modified_date')
@@ -279,8 +281,10 @@ class DocumentType(TimeStampedModel):
     def generic(cls):
         obj, _ = cls.objects.get_or_create(
             uid=constants.DOCUMENT_TYPE_PK_GENERIC_DOCUMENT,
-            code='document.GenericDocument',
-            title='Generic Document')
+            defaults={
+                'uid': constants.DOCUMENT_TYPE_PK_GENERIC_DOCUMENT,
+                'code': DocumentType.GENERIC_TYPE_CODE,
+                'title': 'Generic Document'})
         # UID for generic doc type is hardcoded here to prevent problems if
         # uploading full config dump from one host where it has one uid to another host
         # where generic doc type possibly has another uid.
@@ -291,7 +295,7 @@ class DocumentType(TimeStampedModel):
         return cls.generic().pk
 
     def is_generic(self):
-        return self == DocumentType.generic()
+        return self.code == DocumentType.GENERIC_TYPE_CODE
 
 
 class DocumentTypeFieldManager(models.Manager):
@@ -934,14 +938,21 @@ class DocumentFieldDetector(models.Model):
     field = models.ForeignKey(DocumentField, blank=False, null=False,
                               related_name='field_detectors')
 
+    CAT_SIMPLE_CONFIG = 'simple_config'
+    CAT_TRY_ALWAYS_BEFORE_ML = 'try_always_before_ml'
+
+    # Field detector category which can be used for finding some special field detectors
+    # from the set of all available.
+    category = models.CharField(max_length=64, db_index=True, blank=True, null=True)
+
+    # Field Detectors with no document type specified work for any document type
+    document_type = models.ForeignKey(DocumentType, blank=True, null=True)
+
     # \n-separated list of words to search in the list of terms returned by get_definitions()
     # If set - this detector checks if the sentence if a definition of any term in this list.
     #          Include/exclude regexps are additionally checked next only if the definition matches.
     # If not set - apply include/exclude regexps to all sentences.
     definition_words = models.TextField(blank=True, null=True)
-
-    # Field Detectors with no document type specified work for any document type
-    document_type = models.ForeignKey(DocumentType, blank=True, null=True)
 
     # \n-separated regexps excluding sentences from possible match
     exclude_regexps = models.TextField(blank=True, null=True)

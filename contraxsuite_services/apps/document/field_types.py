@@ -25,8 +25,8 @@
 # -*- coding: utf-8 -*-
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.5a/LICENSE"
-__version__ = "1.1.5a"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.6/LICENSE"
+__version__ = "1.1.6"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -34,10 +34,9 @@ import re
 from datetime import datetime, date
 from enum import Enum, unique
 from random import randint, random
-from typing import List, Tuple, Optional, Any
+from typing import List, Tuple, Optional, Any, Callable
 
 import dateparser
-import geocoder
 import pyap
 from django.db import models as django_models
 from django.db import transaction
@@ -52,9 +51,9 @@ from sklearn.feature_extraction.text import CountVectorizer, TfidfTransformer
 from sklearn.pipeline import FeatureUnion
 from sklearn.pipeline import Pipeline
 
+from apps.common.fields import RoundedFloatField
 from apps.document import models
 from apps.document.fields_detection import vectorizers
-from apps.document.fields_detection.text_based_ml import ModelCategory
 from apps.extract import models as extract_models
 
 ORDINAL_EXTRACTION_HINTS = ['TAKE_MIN', 'TAKE_MAX']
@@ -269,34 +268,6 @@ class FieldType:
             return variants[0]
         return None
 
-    def _pick_hint_for_text_using_matching_extractors(self, document, field, text: str) -> Optional[str]:
-        if not self.value_extracting:
-            return None
-
-        classifier = document.document_type.get_classifier()
-
-        # Try detecting hint with trained model.
-        # Detect all category names of this sentence,
-        # find the first category related to this field and use its hint.
-        if classifier:
-            category_names = classifier.detect_category_names_for_sentence(text)
-            for category_name in category_names:
-                category = ModelCategory.from_name(category_name)
-                if str(field.uid) == category.document_field_uid:
-                    return category.choice_or_hint
-
-        # If there is no classifier or classifier didn't detect this field for this sentence
-        # then try detecting with regexp field detectors (if any).
-        detectors = field.field_detectors.all()
-        if not detectors:
-            return self.default_hint
-
-        for detector in detectors:
-            if detector.matches(text):
-                return detector.extraction_hint
-
-        return self.default_hint
-
     def _pick_hint_by_searching_for_value_among_extracted(self, field, text: str, value, **kwargs) -> Optional[str]:
         if not self.value_extracting:
             return None
@@ -336,6 +307,9 @@ class FieldType:
         # If we were unsuccessful in using the provided possible value, then try to extract it from
         # string representation of the provided possible value or from the full provided text
 
+        if not self.value_extracting:
+            return None, None
+
         text = str(possible_value) if possible_value else text
 
         extracted = self._extract_variants_from_text(field, text, document=document)
@@ -343,14 +317,12 @@ class FieldType:
         if not extracted:
             return None, None
 
-        # We need to figure out which one of the extracted values to use.
-        # For this we pick hint by finding it via trained model or field value extractors.
-        if self.value_extracting:
-            hint = possible_hint or self._pick_hint_for_text_using_matching_extractors(document, field, text)
+        value = ValueExtractionHint.get_value(extracted, possible_hint)
+        if value is not None:
+            return value, possible_hint
         else:
-            hint = None
-
-        return ValueExtractionHint.get_value(extracted, hint), hint
+            return ValueExtractionHint.get_value(extracted, ValueExtractionHint.TAKE_FIRST.name), \
+                   ValueExtractionHint.TAKE_FIRST.name
 
     def suggest_value(self,
                       document,
@@ -466,7 +438,20 @@ class FieldType:
     def example_python_value(self, field):
         return None
 
-    def build_vectorization_pipeline(self) -> List[Tuple[str, Any]]:
+    @staticmethod
+    def _wrap_get_feature_names(vectorizer_step):
+        """
+        Return the function which retrieves the feature names from the vectorizer stored in its scope.
+        For some vectorizers the feature names depend on the train data passed to them into the fit() function.
+        Some field types return composite vectorizers in which only one / some of elements produce the features.
+        This wrapper may be used by field type implementations to store the link to the vectorizer which does produce
+        the features and use it to get the feature names in future after it is trained.
+        :param vectorizer_step:
+        :return:
+        """
+        return lambda: vectorizer_step.get_feature_names()
+
+    def build_vectorization_pipeline(self) -> Tuple[List[Tuple[str, Any]], Callable[[], List[str]]]:
         """
         Build SKLearn vectorization pipeline for this field.
         This is used in field-based machine learning when we calculate value of one field based on the
@@ -479,17 +464,19 @@ class FieldType:
 
         See how the whole pipeline is built in FieldBasedMLOnlyFieldDetectionStrategy.build_pipeline(..)
 
-        :return:
+        :return: Tuple of: 1. List of vectorization steps - to be added to a Pipeline()
+                           2. List of str feature names or a function returning list of str feature names.
         """
+        vect = CountVectorizer(strip_accents='unicode', analyzer='word',
+                               stop_words='english')
         return [('clean', vectorizers.ReplaceNoneTransformer('')),
-                ('vect', CountVectorizer(strip_accents='unicode', analyzer='word',
-                                         stop_words='english')),
-                ('tfidf', TfidfTransformer())]
+                ('vect', vect),
+                ('tfidf', TfidfTransformer())], self._wrap_get_feature_names(vect)
 
 
 class StringField(FieldType):
     code = 'string'
-    title = 'String'
+    title = 'String (vectorizer uses words as tokens)'
     value_aware = True
     value_extracting = True
 
@@ -508,6 +495,19 @@ class StringField(FieldType):
                 extracted[index] = value.strip()
 
         return extracted or None
+
+
+class StringFieldWholeValueAsAToken(FieldType):
+    code = 'string_no_word_wrap'
+    title = 'String (vectorizer uses whole value as a token)'
+
+    def build_vectorization_pipeline(self) -> Tuple[List[Tuple[str, Any]], Callable[[], List[str]]]:
+        vect = CountVectorizer(strip_accents='unicode', analyzer='word',
+                               stop_words='english',
+                               tokenizer=vectorizers.whole_value_as_token)
+        return [('clean', vectorizers.ReplaceNoneTransformer('')),
+                ('vect', vect),
+                ('tfidf', TfidfTransformer())], self._wrap_get_feature_names(vect)
 
 
 class LongTextField(FieldType):
@@ -561,12 +561,13 @@ class ChoiceField(FieldType):
         choice_values = field.get_choice_values()
         return choice_values[randint(0, len(choice_values) - 1)] if choice_values else None
 
-    def build_vectorization_pipeline(self) -> List[Tuple[str, Any]]:
+    def build_vectorization_pipeline(self) -> Tuple[List[Tuple[str, Any]], Callable[[], List[str]]]:
+        vect = CountVectorizer(strip_accents='unicode', analyzer='word',
+                               stop_words='english',
+                               tokenizer=vectorizers.whole_value_as_token)
         return [('clean', vectorizers.ReplaceNoneTransformer('')),
-                ('vect', CountVectorizer(strip_accents='unicode', analyzer='word',
-                                         stop_words='english',
-                                         tokenizer=vectorizers.whole_value_as_token)),
-                ('tfidf', TfidfTransformer())]
+                ('vect', vect),
+                ('tfidf', TfidfTransformer())], self._wrap_get_feature_names(vect)
 
 
 class MultiChoiceField(ChoiceField):
@@ -606,12 +607,13 @@ class MultiChoiceField(ChoiceField):
             res.add(choice_values[randint(0, len(choice_values) - 1)])
         return res
 
-    def build_vectorization_pipeline(self) -> List[Tuple[str, Any]]:
+    def build_vectorization_pipeline(self) -> Tuple[List[Tuple[str, Any]], Callable[[], List[str]]]:
+        count_vectorizer = CountVectorizer(strip_accents='unicode', analyzer='word',
+                                           stop_words='english',
+                                           tokenizer=vectorizers.list_items_as_tokens)
         return [('clean', vectorizers.ReplaceNoneTransformer('')),
-                ('vect', CountVectorizer(strip_accents='unicode', analyzer='word',
-                                         stop_words='english',
-                                         tokenizer=vectorizers.list_items_as_tokens)),
-                ('tfidf', TfidfTransformer())]
+                ('vect', count_vectorizer),
+                ('tfidf', TfidfTransformer())], self._wrap_get_feature_names(count_vectorizer)
 
 
 class DateField(FieldType):
@@ -665,16 +667,18 @@ class DateField(FieldType):
     def example_python_value(self, field):
         return datetime.now()
 
-    def build_vectorization_pipeline(self) -> List[Tuple[str, Any]]:
-        return [('vect', vectorizers.SerialDateVectorizer())]
+    def build_vectorization_pipeline(self) -> Tuple[List[Tuple[str, Any]], Callable[[], List[str]]]:
+        vect = vectorizers.SerialDateVectorizer()
+        return [('vect', vect)], lambda: vect.get_feature_names()
 
 
 class RecurringDateField(DateField):
     code = 'date_recurring'
     title = 'Date: Recurring Events'
 
-    def build_vectorization_pipeline(self) -> List[Tuple[str, Any]]:
-        return [('vect', vectorizers.RecurringDateVectorizer())]
+    def build_vectorization_pipeline(self) -> Tuple[List[Tuple[str, Any]], Callable[[], List[str]]]:
+        vect = vectorizers.RecurringDateVectorizer()
+        return [('vect', vect)], lambda: vect.get_feature_names()
 
 
 class FloatField(FieldType):
@@ -691,7 +695,7 @@ class FloatField(FieldType):
         return db_value
 
     def get_postgres_transform_map(self):
-        return django_models.FloatField
+        return RoundedFloatField
 
     def _extract_from_possible_value(self, field, possible_value):
         try:
@@ -706,8 +710,9 @@ class FloatField(FieldType):
     def example_python_value(self, field):
         return random() * 1000
 
-    def build_vectorization_pipeline(self) -> List[Tuple[str, Any]]:
-        return [('vect', vectorizers.NumberVectorizer())]
+    def build_vectorization_pipeline(self) -> Tuple[List[Tuple[str, Any]], Callable[[], List[str]]]:
+        vect = vectorizers.NumberVectorizer()
+        return [('vect', vect)], self._wrap_get_feature_names(vect)
 
 
 class IntField(FieldType):
@@ -743,8 +748,9 @@ class IntField(FieldType):
     def example_python_value(self, field):
         return randint(0, 1000)
 
-    def build_vectorization_pipeline(self) -> List[Tuple[str, Any]]:
-        return [('vect', vectorizers.NumberVectorizer())]
+    def build_vectorization_pipeline(self) -> Tuple[List[Tuple[str, Any]], Callable[[], List[str]]]:
+        vect = vectorizers.NumberVectorizer()
+        return [('vect', vect)], self._wrap_get_feature_names(vect)
 
 
 class AddressField(FieldType):
@@ -766,26 +772,15 @@ class AddressField(FieldType):
 
     @staticmethod
     def _get_from_geocode(address: str):
-        g = geocoder.google(address)
-        if g.ok:
-            return {
-                'address': str(g.address),
-                'latitude': g.lat,
-                'longitude': g.lng,
-                'country': g.country_long,
-                'province': g.province_long,
-                'city': g.city_long
-            }
-        else:
-            # Google does not know such address - probably we detected it wrong.
-            return {
-                'address': str(address),
-                'latitude': None,
-                'longitude': None,
-                'country': None,
-                'province': None,
-                'city': None
-            }
+        # geocoding is removed as google api is not free now !!
+        return {
+            'address': str(address),
+            'latitude': None,
+            'longitude': None,
+            'country': None,
+            'province': None,
+            'city': None
+        }
 
     def _extract_from_possible_value(self, field, possible_value):
         if possible_value is None:
@@ -823,12 +818,13 @@ class AddressField(FieldType):
             'city': None
         }
 
-    def build_vectorization_pipeline(self) -> List[Tuple[str, Any]]:
+    def build_vectorization_pipeline(self) -> Tuple[List[Tuple[str, Any]], Callable[[], List[str]]]:
+        vect = CountVectorizer(strip_accents='unicode', analyzer='word',
+                               stop_words='english')
         return [('item_select', vectorizers.DictItemSelector('address')),
                 ('clean', vectorizers.ReplaceNoneTransformer('')),
-                ('vect', CountVectorizer(strip_accents='unicode', analyzer='word',
-                                         stop_words='english')),
-                ('tfidf', TfidfTransformer())]
+                ('vect', vect),
+                ('tfidf', TfidfTransformer())], self._wrap_get_feature_names(vect)
 
 
 class CompanyField(FieldType):
@@ -863,11 +859,12 @@ class CompanyField(FieldType):
     def example_python_value(self, field):
         return 'SOME COMPANY LLC'
 
-    def build_vectorization_pipeline(self) -> List[Tuple[str, Any]]:
+    def build_vectorization_pipeline(self) -> Tuple[List[Tuple[str, Any]], Callable[[], List[str]]]:
+        vect = CountVectorizer(strip_accents='unicode', analyzer='word',
+                               stop_words='english', tokenizer=vectorizers.whole_value_as_token)
         return [('clean', vectorizers.ReplaceNoneTransformer('')),
-                ('vect', CountVectorizer(strip_accents='unicode', analyzer='word',
-                                         stop_words='english', tokenizer=vectorizers.whole_value_as_token)),
-                ('tfidf', TfidfTransformer())]
+                ('vect', vect),
+                ('tfidf', TfidfTransformer())], self._wrap_get_feature_names(vect)
 
 
 class DurationField(FieldType):
@@ -885,7 +882,7 @@ class DurationField(FieldType):
         return db_value
 
     def get_postgres_transform_map(self):
-        return django_models.FloatField
+        return RoundedFloatField
 
     def _extract_from_possible_value(self, field, possible_value):
         try:
@@ -902,9 +899,9 @@ class DurationField(FieldType):
     def example_python_value(self, field):
         return random() * 365 * 5
 
-    def build_vectorization_pipeline(self) -> List[Tuple[str, Any]]:
-        return [('vect',
-                 vectorizers.NumberVectorizer(to_float_converter=lambda d: d.total_seconds() if d else 0 if d else 0))]
+    def build_vectorization_pipeline(self) -> Tuple[List[Tuple[str, Any]], Callable[[], List[str]]]:
+        vect = vectorizers.NumberVectorizer(to_float_converter=lambda d: d.total_seconds() if d else 0 if d else 0)
+        return [('vect', vect)], self._wrap_get_feature_names(vect)
 
 
 class RelatedInfoField(FieldType):
@@ -935,8 +932,9 @@ class RelatedInfoField(FieldType):
         else:
             return 1
 
-    def build_vectorization_pipeline(self) -> List[Tuple[str, Any]]:
-        return [('vect', vectorizers.NumberVectorizer())]
+    def build_vectorization_pipeline(self) -> Tuple[List[Tuple[str, Any]], Callable[[], List[str]]]:
+        vect = vectorizers.NumberVectorizer()
+        return [('vect', vect)], self._wrap_get_feature_names(vect)
 
 
 class PersonField(FieldType):
@@ -967,11 +965,12 @@ class PersonField(FieldType):
     def example_python_value(self, field):
         return 'John Doe'
 
-    def build_vectorization_pipeline(self) -> List[Tuple[str, Any]]:
+    def build_vectorization_pipeline(self) -> Tuple[List[Tuple[str, Any]], Callable[[], List[str]]]:
+        vect = CountVectorizer(strip_accents='unicode', analyzer='word',
+                               stop_words='english', tokenizer=vectorizers.whole_value_as_token)
         return [('clean', vectorizers.ReplaceNoneTransformer('')),
-                ('vect', CountVectorizer(strip_accents='unicode', analyzer='word',
-                                         stop_words='english', tokenizer=vectorizers.whole_value_as_token)),
-                ('tfidf', TfidfTransformer())]
+                ('vect', vect),
+                ('tfidf', TfidfTransformer())], self._wrap_get_feature_names(vect)
 
 
 class AmountField(FloatField):
@@ -988,7 +987,7 @@ class AmountField(FloatField):
         return db_value
 
     def get_postgres_transform_map(self):
-        return django_models.FloatField
+        return RoundedFloatField
 
     def _extract_variants_from_text(self, field, text: str, **kwargs):
         amounts = get_amounts(text, return_sources=False)
@@ -997,8 +996,9 @@ class AmountField(FloatField):
     def example_python_value(self, field):
         return 25000.50
 
-    def build_vectorization_pipeline(self) -> List[Tuple[str, Any]]:
-        return [('vect', vectorizers.NumberVectorizer())]
+    def build_vectorization_pipeline(self) -> Tuple[List[Tuple[str, Any]], Callable[[], List[str]]]:
+        vect = vectorizers.NumberVectorizer()
+        return [('vect', vect)], self._wrap_get_feature_names(vect)
 
 
 class MoneyField(FloatField):
@@ -1011,6 +1011,8 @@ class MoneyField(FloatField):
     def merged_python_value_to_db(self, merged_python_value):
         if not merged_python_value:
             return None
+        if isinstance(merged_python_value, list):
+            merged_python_value = merged_python_value[0]
         amount = float(merged_python_value.get('amount')) or 0
         currency = merged_python_value.get('currency') or ''
         return '{}|{:020.4f}'.format(currency, amount)
@@ -1063,22 +1065,32 @@ class MoneyField(FloatField):
             'amount': random() * 10000000,
         }
 
-    def build_vectorization_pipeline(self) -> List[Tuple[str, Any]]:
+    def build_vectorization_pipeline(self) -> Tuple[List[Tuple[str, Any]], Callable[[], List[str]]]:
+        vect_cur = CountVectorizer(strip_accents='unicode', analyzer='word',
+                                   stop_words='english', tokenizer=vectorizers.whole_value_as_token)
+        vect_amount = vectorizers.NumberVectorizer()
+
+        def get_feature_names_(vect_cur_, vect_amount_):
+            def res():
+                return ['currency_' + str(c) for c in vect_cur_.get_feature_names()] \
+                       + ['amount_' + str(fn) for fn in vect_amount_.get_feature_names()]
+
+            return res
+
         return [
-            ('vect', FeatureUnion(transformer_list=[
-                ('currency', Pipeline([
-                    ('selector', vectorizers.DictItemSelector(item='currency')),
-                    ('clean', vectorizers.ReplaceNoneTransformer('')),
-                    ('vect', CountVectorizer(strip_accents='unicode', analyzer='word',
-                                             stop_words='english', tokenizer=vectorizers.whole_value_as_token)),
-                    ('tfidf', TfidfTransformer()),
-                ])),
-                ('amount', Pipeline([
-                    ('selector', vectorizers.DictItemSelector(item='amount')),
-                    ('vect', vectorizers.NumberVectorizer()),
-                ]))
-            ]))
-        ]
+                   ('vect', FeatureUnion(transformer_list=[
+                       ('currency', Pipeline([
+                           ('selector', vectorizers.DictItemSelector(item='currency')),
+                           ('clean', vectorizers.ReplaceNoneTransformer('')),
+                           ('vect', vect_cur),
+                           ('tfidf', TfidfTransformer()),
+                       ])),
+                       ('amount', Pipeline([
+                           ('selector', vectorizers.DictItemSelector(item='amount')),
+                           ('vect', vect_amount),
+                       ]))
+                   ]))
+               ], get_feature_names_(vect_cur, vect_amount)
 
 
 class GeographyField(FieldType):
@@ -1124,16 +1136,18 @@ class GeographyField(FieldType):
     def example_python_value(self, field):
         return 'New York'
 
-    def build_vectorization_pipeline(self) -> List[Tuple[str, Any]]:
+    def build_vectorization_pipeline(self) -> Tuple[List[Tuple[str, Any]], Callable[[], List[str]]]:
+        vect = CountVectorizer(strip_accents='unicode', analyzer='word',
+                               stop_words='english', tokenizer=vectorizers.whole_value_as_token)
         return [('clean', vectorizers.ReplaceNoneTransformer('')),
-                ('vect', CountVectorizer(strip_accents='unicode', analyzer='word',
-                                         stop_words='english', tokenizer=vectorizers.whole_value_as_token)),
-                ('tfidf', TfidfTransformer())]
+                ('vect', vect),
+                ('tfidf', TfidfTransformer())], self._wrap_get_feature_names(vect)
 
 
 FIELD_TYPES_CHOICE = {ChoiceField.code, MultiChoiceField.code}
 
 _FIELD_TYPES = (StringField,
+                StringFieldWholeValueAsAToken,
                 LongTextField,
                 IntField,
                 FloatField,

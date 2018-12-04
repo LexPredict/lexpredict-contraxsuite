@@ -6,6 +6,7 @@ import pandas as pd
 from apps.document.field_types import FIELD_TYPES_REGISTRY, ValueExtractionHint, FieldType
 from apps.document.fields_detection.fields_detection_abstractions import FieldDetectionStrategy, DetectedFieldValue, \
     ProcessLogger
+from apps.document.fields_detection.stop_words import detect_with_stop_words_by_field_and_full_text
 from apps.document.fields_processing.field_processing_utils import merge_document_field_values_to_python_value
 from apps.document.models import ClassifierModel, TextUnit, DocumentFieldDetector
 from apps.document.models import DocumentType, DocumentField, Document
@@ -30,6 +31,12 @@ class RegexpsOnlyFieldDetectionStrategy(FieldDetectionStrategy):
                             doc: Document,
                             field: DocumentField) -> List[DetectedFieldValue]:
 
+        depends_on_full_text = doc.full_text
+        detected_with_stop_words, detected_values = detect_with_stop_words_by_field_and_full_text(field,
+                                                                                                  depends_on_full_text)
+        if detected_with_stop_words:
+            return detected_values or list()
+
         qs_text_units = TextUnit.objects \
             .filter(document=doc) \
             .filter(unit_type=field.text_unit_type) \
@@ -38,6 +45,7 @@ class RegexpsOnlyFieldDetectionStrategy(FieldDetectionStrategy):
 
         field_detectors = DocumentFieldDetector.objects.filter(document_type=document_type,
                                                                field=field)
+
         field_type_adapter = FIELD_TYPES_REGISTRY.get(field.type)  # type: FieldType
 
         detected_values = list()  # type: List[DetectedFieldValue]
@@ -102,6 +110,13 @@ class FieldBasedRegexpsDetectionStrategy(FieldDetectionStrategy):
 
         field_code_to_value = {f.code: field_code_to_value.get(f.code) for f in depends_on_fields}
 
+        if field.stop_words:
+            depends_on_full_text = '\n'.join([str(v) for v in field_code_to_value.values()])
+            detected_with_stop_words, detected_values \
+                = detect_with_stop_words_by_field_and_full_text(field, depends_on_full_text)
+            if detected_with_stop_words:
+                return detected_values or list()
+
         document_type = doc.document_type
 
         field_detectors = DocumentFieldDetector.objects.filter(document_type=document_type,
@@ -139,6 +154,9 @@ class FieldBasedRegexpsDetectionStrategy(FieldDetectionStrategy):
         return detected_values
 
 
+FD_CATEGORY_IMPORTED_SIMPLE_CONFIG = 'imported_simple_config'
+
+
 def apply_simple_config(log: ProcessLogger,
                         document_field: DocumentField,
                         document_type: DocumentType,
@@ -159,9 +177,12 @@ def apply_simple_config(log: ProcessLogger,
              .format(document_field, document_type, df.shape[0]))
     log.set_progress_steps_number(int(row_num / 10) + 1)
     if drop_previous_field_detectors:
-        DocumentFieldDetector.objects.filter(field=document_field, document_type=document_type).delete()
+        DocumentFieldDetector.objects.filter(field=document_field,
+                                             document_type=document_type,
+                                             category=FD_CATEGORY_IMPORTED_SIMPLE_CONFIG).delete()
     for index, row in df.iterrows():
         detector = DocumentFieldDetector()
+        detector.category = FD_CATEGORY_IMPORTED_SIMPLE_CONFIG
         detector.document_type = document_type
         detector.field = document_field
         detector.regexps_pre_process_lower = True

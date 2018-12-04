@@ -36,7 +36,6 @@ from urllib.parse import quote as url_quote
 
 # Third-party imports
 import icalendar
-import geocoder
 from rest_framework import serializers, routers, viewsets
 from rest_framework.generics import ListAPIView
 
@@ -56,8 +55,8 @@ from apps.common.mixins import (
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.5a/LICENSE"
-__version__ = "1.1.5a"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.6/LICENSE"
+__version__ = "1.1.6"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -365,68 +364,6 @@ class TopGeoAliasUsageListAPIView(BaseTopUsageListAPIView):
     qs_values = ['alias__alias']
     qs_order_by = ['-count', 'alias__alias']
     url_args = ('v1:geo-alias-usage', 'alias_search', 'alias__alias')
-
-
-class GeoEntityUsageGoogleMapAPIView(ListAPIView):
-    """
-    Geo Entity Usage Map\n
-    GET params:
-      - map: bool
-      - usa_only: bool
-    """
-    def list(self, request, *args, **kwargs):
-        entities = self.get_entities()
-        if request.GET.get('map'):
-            for entity in entities:
-                if not entity['latitude']:
-                    g = geocoder.google(entity['entity__name'])
-                    if not g.latlng and ',' in entity['entity__name']:
-                        g = geocoder.google(entity['entity__name'].split(',')[0])
-                    try:
-                        entity['latitude'], entity['longitude'] = g.latlng
-                    except ValueError:
-                        pass
-        else:
-            entities = [['country', 'count']] + [[e['entity__name'], e['count']] for e in entities]
-        return JsonResponse(entities, safe=False)
-
-    def get_entities(self):
-        if self.request.GET.get('usa_only') == 'true':
-            entities = list(GeoEntityUsage.objects.
-                            filter(Q(entity__category='Countries',
-                                     entity__name='United States') |
-                                   Q(entity__category='US States')).
-                            values('entity__name',
-                                   latitude=F('entity__latitude'),
-                                   longitude=F('entity__longitude')).
-                            annotate(count=Sum('count')).
-                            order_by())
-        else:
-            country_entities = list(GeoEntityUsage.objects.
-                                    filter(entity__category='Countries').
-                                    values('entity__name',
-                                           latitude=F('entity__latitude'),
-                                           longitude=F('entity__longitude')).
-                                    annotate(count=Sum('count')).
-                                    order_by())
-            country_entities = {i['entity__name']: i for i in country_entities}
-            other_entities = GeoEntityUsage.objects. \
-                filter(entity__entity_a_set__relation_type="subdivision",
-                       entity__entity_a_set__entity_b__category="Countries"). \
-                values(entity__name=F('entity__entity_a_set__entity_b__name'),
-                       latitude=F('entity__entity_a_set__entity_b__latitude'),
-                       longitude=F('entity__entity_a_set__entity_b__longitude')). \
-                annotate(count=Sum('count')). \
-                order_by()
-            other_entities = {i['entity__name']: i
-                              for i in other_entities}
-            for entity_name, info in other_entities.items():
-                if entity_name in country_entities:
-                    country_entities[entity_name]['count'] += info['count']
-                else:
-                    country_entities[entity_name] = info
-            entities = list(country_entities.values())
-        return entities
 
 
 # --------------------------------------------------------
@@ -1401,8 +1338,6 @@ urlpatterns = [
         name='geo-alias-usage'),
     url(r'^geo-alias-usage/top/$', TopGeoAliasUsageListAPIView.as_view(),
         name='top-geo-alias-usage'),
-    url(r'^geo-entity-usage/map/$', GeoEntityUsageGoogleMapAPIView.as_view(),
-        name='geo-entity-usage-map'),
 
     url(r'^typeahead/term-usage/(?P<field_name>[a-z_]+)/$', TypeaheadTermUsage.as_view(),
         name='typeahead-term-usage'),

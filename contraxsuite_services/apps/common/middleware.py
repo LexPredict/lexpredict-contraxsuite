@@ -36,7 +36,7 @@ from django.contrib import messages
 from django.contrib.auth import authenticate, login
 from django.core.urlresolvers import reverse
 from django.db.models import signals
-from django.http import HttpResponseNotAllowed, HttpResponseForbidden
+from django.http import HttpResponseNotAllowed, HttpResponseForbidden, JsonResponse
 from django.shortcuts import render, redirect
 from django.urls import reverse_lazy
 from django.utils.deprecation import MiddlewareMixin
@@ -48,8 +48,8 @@ from auth import CookieAuthentication
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.5a/LICENSE"
-__version__ = "1.1.5a"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.6/LICENSE"
+__version__ = "1.1.6"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -128,6 +128,17 @@ class Response5xxErrorMiddleware(MiddlewareMixin):
         return response
 
 
+class Response404ErrorMiddleware(MiddlewareMixin):
+    """
+    Custom page for 404 errors (404 Not Found).
+    """
+    def process_response(self, request, response):
+        if response.status_code == 404:
+            response = JsonResponse({'message': 'Not Found'})
+            response.status_code = 404
+        return response
+
+
 class RequestUserMiddleware(MiddlewareMixin):
     """
     Provide access to request user in models
@@ -188,18 +199,26 @@ class AppEnabledRequiredMiddleware(MiddlewareMixin):
 
 class CookieMiddleware(MiddlewareMixin):
     """
-    Set cookie.
+    Set cookie in response -
+    1. set auth_token from AUTHORIZATION request header (see auth.CookieAuthentication)
+    2. set extra cookie variables
     """
     def process_response(self, request, response):
         auth_token = request.COOKIES.get('auth_token', request.META.get('HTTP_AUTHORIZATION'))
+
+        # if login set response cookie auth_token from login response - "key"
         if request.META['PATH_INFO'] == reverse('rest_login') \
                 and hasattr(response, 'data') \
                 and response.data and response.data.get('key'):
             response.set_cookie('auth_token', 'Token %s' % response.data['key'])
+        # otherwise set auth_token from incoming headers or cookie
         elif auth_token:
             response.set_cookie('auth_token', auth_token)
+
+        # set extra cookie variables
         if request.user and hasattr(request.user, 'get_full_name'):
             response.set_cookie('user_name', request.user.get_full_name())
             response.set_cookie('user_id', request.user.pk)
         response.set_cookie('release_version', settings.VERSION_NUMBER)
+
         return response

@@ -119,8 +119,8 @@ from apps.task.utils.text.segment import segment_paragraphs
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.5a/LICENSE"
-__version__ = "1.1.5a"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.6/LICENSE"
+__version__ = "1.1.6"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -2304,17 +2304,23 @@ def track_tasks(self):
 def clean_sub_tasks(self):
     TaskUtils.prepare_task_execution()
 
-    del_sub_tasks_date = now() - datetime.timedelta(seconds=60)
+    del_sub_tasks_date = now() - datetime.timedelta(seconds=settings.REMOVE_SUB_TASKS_DELAY_IN_SEC)
 
     # Delete sub-tasks of all main tasks finished more than a minute ago
     Task.objects \
-        .filter(main_task__date_done__lt=del_sub_tasks_date,
-                own_status__in=[SUCCESS]) \
+        .filter(main_task__date_done__lt=del_sub_tasks_date, own_status__in=[SUCCESS]) \
         .delete()
 
     # Delete all completed system/periodic tasks from DB
-    Task.objects.filter(name__in=Task.objects.REMOVE_WHEN_READY,
-                        own_date_done__lt=del_sub_tasks_date).delete()
+    Task.objects\
+        .filter(name__in=Task.objects.EXCLUDE_FROM_TRACKING, own_date_done__lt=del_sub_tasks_date)\
+        .delete()
+
+    # Delete excess tasks from task list
+    del_ready_tasks_date = now() - datetime.timedelta(seconds=settings.REMOVE_READY_TASKS_DELAY_IN_SEC)
+    Task.objects\
+        .filter(name__in=settings.REMOVE_WHEN_READY, date_done__lt=del_ready_tasks_date)\
+        .delete()
 
 
 def purge_task(task_pk):

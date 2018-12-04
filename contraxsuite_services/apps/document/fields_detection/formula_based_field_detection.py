@@ -6,6 +6,7 @@ from django.conf import settings
 
 from apps.document.fields_detection.fields_detection_abstractions import FieldDetectionStrategy, DetectedFieldValue, \
     ProcessLogger
+from apps.document.fields_detection.stop_words import detect_with_stop_words_by_field_and_full_text
 from apps.document.fields_processing.field_processing_utils import merge_document_field_values_to_python_value
 from apps.document.models import ClassifierModel
 from apps.document.models import DocumentType, DocumentField, Document
@@ -86,6 +87,14 @@ class FormulaBasedFieldDetectionStrategy(FieldDetectionStrategy):
         field_code_to_value = merge_document_field_values_to_python_value(list(qs_document_field_values))
 
         field_code_to_value = {f.code: field_code_to_value.get(f.code) for f in depends_on_fields}
+
+        if field.stop_words:
+            depends_on_full_text = '\n'.join([str(v) for v in field_code_to_value.values()])
+            detected_with_stop_words, detected_values \
+                = detect_with_stop_words_by_field_and_full_text(field,
+                                                                depends_on_full_text)
+            if detected_with_stop_words:
+                return detected_values or list()
 
         v = cls.calc_formula(field.code, field.type, formula, field_code_to_value)
         return [DetectedFieldValue(field, v)]

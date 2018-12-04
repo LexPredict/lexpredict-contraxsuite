@@ -28,13 +28,13 @@
 import json
 
 # Django imports
-from django.db.models import UUIDField
+from django.db.models import UUIDField, DecimalField
 from django.contrib.postgres.fields import JSONField
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.5a/LICENSE"
-__version__ = "1.1.5a"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.6/LICENSE"
+__version__ = "1.1.6"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -50,3 +50,11 @@ class CustomJSONField(JSONField):
             return json.loads(value)
         except:
             return value
+
+
+class RoundedFloatField(DecimalField):
+    def __init__(self, verbose_name=None, name=None, max_digits=15, decimal_places=3, **kwargs):
+        super().__init__(verbose_name, name, max_digits, decimal_places, **kwargs)
+
+    def from_db_value(self, value, *args, **kwargs):
+        return None if value is None else float(value)

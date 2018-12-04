@@ -39,13 +39,16 @@ from apps.users.models import User
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.5a/LICENSE"
-__version__ = "1.1.5a"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.6/LICENSE"
+__version__ = "1.1.6"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
 
 def common(request):
+    if request.is_ajax() or hasattr(request, 'versioning_scheme'):
+        return {}
+
     available_locators = list(settings.REQUIRED_LOCATORS) + list(config.standard_optional_locators)
     available_locator_groups = [
         group_name for group_name, group_items in settings.LOCATOR_GROUPS.items()

@@ -147,8 +147,9 @@ MIDDLEWARE = (
     # simple history middleware
     'simple_history.middleware.HistoryRequestMiddleware',
     # custom middleware
-    'apps.common.middleware.AutoLoginMiddleware',
+    # 'apps.common.middleware.AutoLoginMiddleware',
     'apps.common.middleware.LoginRequiredMiddleware',
+    'apps.common.middleware.Response404ErrorMiddleware',
     'apps.common.middleware.HttpResponseNotAllowedMiddleware',
     'apps.common.middleware.RequestUserMiddleware',
     'apps.common.middleware.AppEnabledRequiredMiddleware',
@@ -422,6 +423,9 @@ EXCLUDE_FROM_TRACKING = {
 
 REMOVE_WHEN_READY = set()
 
+REMOVE_SUB_TASKS_DELAY_IN_SEC = 60
+REMOVE_READY_TASKS_DELAY_IN_SEC = 24 * 60 * 60
+
 CELERY_TIMEZONE = 'UTC'
 CELERY_ENABLE_UTC = True
 CELERY_CHORD_UNLOCK_MAX_RETRIES = 5
@@ -588,7 +592,7 @@ JQ_EXPORT = False
 # place dictionaries for GeoEntities, Terms, US Courts, etc.
 DATA_ROOT = PROJECT_DIR('data/')
 GIT_DATA_REPO_ROOT = 'https://raw.githubusercontent.com/' \
-                     'LexPredict/lexpredict-legal-dictionary/1.0.6'
+                     'LexPredict/lexpredict-legal-dictionary/1.0.7'
 
 # logging
 CELERY_LOG_FILE_PATH = PROJECT_DIR('logs/celery-{0}.log'.format(platform.node()))
@@ -716,8 +720,8 @@ CORS_ORIGIN_ALLOW_ALL = True
 CORS_ALLOW_CREDENTIALS = False
 CORS_URLS_REGEX = r'^/api/.*$'
 
-VERSION_NUMBER = '1.1.5a'
-VERSION_COMMIT = '87f3691'
+VERSION_NUMBER = '1.1.6'
+VERSION_COMMIT = '7a1efce6'
 
 try:
     from local_settings import *
@@ -741,9 +745,6 @@ try:
             REMOVE_WHEN_READY.add(task_name)
 except (ImportError, NameError):
     pass
-
-for task_name in EXCLUDE_FROM_TRACKING:
-    REMOVE_WHEN_READY.add(task_name)
 
 BASE_URL = re.sub('^/+', '', BASE_URL)
 BASE_URL = re.sub('/+$', '', BASE_URL)
@@ -816,6 +817,8 @@ PIPELINE['PIPELINE_ENABLED'] = PIPELINE_ENABLED
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTOCOL', 'https')
 
 CALCULATED_FIELDS_EVAL_LOCALS = {'datetime': datetime, 'len': len}
+
+SCRIPTS_BASE_EVAL_LOCALS = {'datetime': datetime, 'len': len}
 
 RETRAINING_DELAY_IN_SEC = 1 * 60 * 60
 
