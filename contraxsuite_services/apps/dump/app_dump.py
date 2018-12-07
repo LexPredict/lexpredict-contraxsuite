@@ -33,7 +33,7 @@ from allauth.account.models import EmailAddress, EmailConfirmation
 
 from django.core import serializers as core_serializers
 from django.core.management import call_command
-from django.db.models import F
+from django.db.models import F, Subquery, Q
 from django.http import HttpResponse
 
 
@@ -82,12 +82,14 @@ def default_object_handler(obj: Any) -> Any:
     return obj
 
 
-def get_dump(models: list, object_handler_by_model: dict = None) -> str:
+def get_dump(models: list, filter_by_model: dict = None, object_handler_by_model: dict = None) -> str:
     object_handler_by_model = object_handler_by_model or {}
     app_models = []
     for model in models:
         handler = object_handler_by_model.get(model) or default_object_handler
-        app_models += map(lambda obj: handler(obj), model.objects.all())
+        qs_filter = filter_by_model.get(model)
+        query_set = qs_filter(model.objects.get_queryset()) if qs_filter else model.objects.all()
+        app_models += map(lambda obj: handler(obj), query_set)
     return core_serializers.serialize('json', app_models)
 
 
@@ -112,9 +114,37 @@ def clear_owner(obj: Any) -> Any:
     return obj
 
 
-def get_app_config_dump() -> str:
+def get_app_config_dump(document_type_codes=None) -> str:
     object_handler_by_model = {DocumentField: clear_owner, DocumentFilter: clear_owner}
-    return get_dump(APP_CONFIG_MODELS, object_handler_by_model)
+    filter_by_model = {}
+    if document_type_codes:
+        document_type_field_filter = lambda qs: qs.filter(document_type__code__in=document_type_codes)
+        document_field_detector_filter = lambda qs: qs.filter(document_type__code__in=document_type_codes)
+
+        field_document_type_field = document_type_field_filter(DocumentTypeField.objects.get_queryset()) \
+            .values_list('document_field__pk')\
+            .distinct('document_field__pk')\
+            .order_by('document_field__pk')
+        field_document_field_detector = document_field_detector_filter(DocumentFieldDetector.objects) \
+            .values_list('field__pk')\
+            .distinct('field__pk')\
+            .order_by('field__pk')
+        category_document_type_field = document_type_field_filter(DocumentTypeField.objects.get_queryset()) \
+            .values_list('category__pk') \
+            .distinct('category__pk') \
+            .order_by('category__pk')
+
+        filter_by_model = {
+            DocumentType: lambda qs: qs.filter(code__in=document_type_codes),
+            DocumentField: lambda qs: qs.filter(
+                Q(pk__in=Subquery(field_document_type_field)) | Q(pk__in=Subquery(field_document_field_detector))
+            ),
+            DocumentFieldDetector: document_field_detector_filter,
+            DocumentTypeFieldCategory: lambda qs: qs.filter(pk__in=Subquery(category_document_type_field)),
+            DocumentTypeField: document_type_field_filter,
+            DocumentFilter: lambda qs: qs.filter(document_type__code__in=document_type_codes)
+        }
+    return get_dump(APP_CONFIG_MODELS, filter_by_model, object_handler_by_model)
 
 
 def get_field_values_dump() -> str:

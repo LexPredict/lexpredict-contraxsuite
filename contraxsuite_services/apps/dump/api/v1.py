@@ -124,7 +124,10 @@ class DumpDocumentConfigView(BaseDumpView):
     """
 
     def get_json_dump(self) -> str:
-        return get_app_config_dump()
+        document_type_codes = self.request.GET.get('document_type_codes') or None
+        if document_type_codes:
+            document_type_codes = document_type_codes.split(',')
+        return get_app_config_dump(document_type_codes)
 
 
 class FieldValuesDumpAPIView(APIView):
