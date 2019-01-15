@@ -5,13 +5,11 @@ from django.db.models import Q
 from apps.document.models import DocumentField, Document, DocumentFieldValue, DocumentType
 
 
-def get_qs_active_modified_document_ids(document_type: DocumentType,
-                                        field: DocumentField,
+def get_qs_active_modified_document_ids(field: DocumentField,
                                         project_ids: Optional[List[str]]):
     q = DocumentFieldValue.objects \
         .filter(Q(field=field)
                 & Q(text_unit__isnull=False)
-                & Q(document__document_type=document_type)
                 & Q(document__status__is_active=True)
                 & (Q(created_by__isnull=False) | Q(removed_by_user=True)))
     if project_ids:
@@ -30,6 +28,6 @@ def get_qs_finished_document_ids(document_type: DocumentType, project_ids: Optio
     return q.values_list('pk', flat=True)
 
 
-def get_approved_documents_number(document_type: DocumentType, field: DocumentField, project_ids: Optional[List[str]]):
-    return get_qs_active_modified_document_ids(document_type, field, project_ids).count() \
-           + get_qs_finished_document_ids(document_type, project_ids).count()
+def get_approved_documents_number(field: DocumentField, project_ids: Optional[List[str]]):
+    return get_qs_active_modified_document_ids(field, project_ids).count() \
+           + get_qs_finished_document_ids(field.document_type, project_ids).count()

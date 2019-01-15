@@ -58,8 +58,8 @@ project_api_module = get_api_module('project')
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.6/LICENSE"
-__version__ = "1.1.6"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.7/LICENSE"
+__version__ = "1.1.7"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -90,7 +90,7 @@ class BaseAjaxTaskView(AdminRequiredMixin, JSONResponseView):
         return JsonResponse(data, encoder=DjangoJSONEncoder, safe=False, **kwargs)
 
     def get(self, request, *args, **kwargs):
-        if Task.disallow_start(self.task_name):
+        if self.disallow_start():
             return HttpResponseForbidden(
                 'Forbidden. Task "%s" is already started.' % self.task_name)
         else:
@@ -103,8 +103,14 @@ class BaseAjaxTaskView(AdminRequiredMixin, JSONResponseView):
     def get_metadata(self):
         return getattr(self, 'metadata', None)
 
+    def start_task(self, data):
+        call_task(self.task_name, **data)
+
+    def disallow_start(self):
+        return Task.disallow_start(self.task_name)
+
     def post(self, request, *args, **kwargs):
-        if Task.disallow_start(self.task_name):
+        if self.disallow_start():
             return HttpResponseForbidden('Forbidden. Such task is already started.')
         if self.form_class is None:
             data = request.POST.dict()
@@ -116,7 +122,7 @@ class BaseAjaxTaskView(AdminRequiredMixin, JSONResponseView):
         data['user_id'] = request.user.pk
         data['metadata'] = self.get_metadata()
         data['module_name'] = getattr(self, 'module_name', None) or self.__module__.replace('views', 'tasks')
-        call_task(self.task_name, **data)
+        self.start_task(data)
         return self.json_response('The task is started. It can take a while.')
 
 

@@ -42,7 +42,7 @@ from django.utils.timezone import now
 
 # Project imports
 from apps.deployment.app_data import load_courts, load_terms, load_geo_entities
-from apps.document.models import DocumentType, DocumentField, DocumentTypeField
+from apps.document.models import DocumentType, DocumentField
 from apps.extract import dict_data_cache
 from apps.extract.models import Court, Term, GeoEntity
 
@@ -157,7 +157,7 @@ def document_loader(file_patch: str) -> None:
             tmp_file.seek(0)
             call_command('loaddata', tmp_file.name, app_label='document', stdout=buf, interactive=False)
             buf.seek(0)
-    DocumentTypeField.objects.update(dirty=False, training_finished=False)
+    DocumentField.objects.update(dirty=False, training_finished=False)
 
 
 class Command(BaseCommand):

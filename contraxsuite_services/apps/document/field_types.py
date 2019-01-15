@@ -25,8 +25,8 @@
 # -*- coding: utf-8 -*-
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.6/LICENSE"
-__version__ = "1.1.6"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.7/LICENSE"
+__version__ = "1.1.7"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -104,6 +104,20 @@ class ValueExtractionHint(Enum):
                 return max(l)
         else:
             return None
+
+
+def to_float(v) -> Optional[float]:
+    try:
+        return float(v) if v is not None else None
+    except ValueError:
+        return None
+
+
+def to_int(v) -> Optional[int]:
+    try:
+        return int(v) if v is not None else None
+    except ValueError:
+        return None
 
 
 class FieldType:
@@ -321,15 +335,14 @@ class FieldType:
         if value is not None:
             return value, possible_hint
         else:
-            return ValueExtractionHint.get_value(extracted, ValueExtractionHint.TAKE_FIRST.name), \
-                   ValueExtractionHint.TAKE_FIRST.name
+            return ValueExtractionHint.get_value(extracted, self.default_hint), self.default_hint
 
     def suggest_value(self,
                       document,
                       field,
                       location_text: str):
         value, hint = self.get_or_extract_value(document, field, location_text,
-                                                ValueExtractionHint.TAKE_FIRST.name, location_text)
+                                                self.default_hint, location_text)
         return value
 
     def save_value(self,
@@ -428,7 +441,7 @@ class FieldType:
         with transaction.atomic():
             field_value.save()
             if user:
-                models.DocumentTypeField.objects.set_dirty_for_value(field_value)
+                models.DocumentField.objects.set_dirty_for_value(field_value)
 
         return field_value
 
@@ -540,10 +553,10 @@ class ChoiceField(FieldType):
     value_extracting = False
 
     def merged_python_value_to_db(self, merged_python_value):
-        return merged_python_value
+        return str(merged_python_value)
 
     def merged_db_value_to_python(self, db_value):
-        return db_value
+        return str(db_value)
 
     def get_postgres_transform_map(self):
         return django_models.TextField
@@ -689,19 +702,16 @@ class FloatField(FieldType):
     ordinal = True
 
     def merged_python_value_to_db(self, merged_python_value):
-        return merged_python_value
+        return to_float(merged_python_value)
 
     def merged_db_value_to_python(self, db_value):
-        return db_value
+        return to_float(db_value)
 
     def get_postgres_transform_map(self):
         return RoundedFloatField
 
     def _extract_from_possible_value(self, field, possible_value):
-        try:
-            return float(possible_value)
-        except ValueError:
-            return None
+        return to_float(possible_value)
 
     def _extract_variants_from_text(self, field, text: str, **kwargs):
         amounts = get_amounts(text, return_sources=False)
@@ -723,19 +733,16 @@ class IntField(FieldType):
     ordinal = True
 
     def merged_python_value_to_db(self, merged_python_value):
-        return merged_python_value
+        return to_int(merged_python_value)
 
     def merged_db_value_to_python(self, db_value):
-        return db_value
+        return to_int(db_value)
 
     def get_postgres_transform_map(self):
         return django_models.IntegerField
 
     def _extract_from_possible_value(self, field, possible_value):
-        try:
-            return int(possible_value)
-        except ValueError:
-            return None
+        return to_int(possible_value)
 
     def _extract_variants_from_text(self, field, text: str, **kwargs):
         amounts = get_amounts(text, return_sources=False)
@@ -765,7 +772,7 @@ class AddressField(FieldType):
         return merged_python_value.get('address') if type(merged_python_value) is dict else str(merged_python_value)
 
     def merged_db_value_to_python(self, db_value):
-        return db_value
+        return {'address': db_value}
 
     def get_postgres_transform_map(self):
         return django_models.TextField
@@ -876,19 +883,16 @@ class DurationField(FieldType):
     MAX_DURATION = 5000 * 365
 
     def merged_python_value_to_db(self, merged_python_value):
-        return merged_python_value
+        return to_float(merged_python_value)
 
     def merged_db_value_to_python(self, db_value):
-        return db_value
+        return to_float(db_value)
 
     def get_postgres_transform_map(self):
         return RoundedFloatField
 
     def _extract_from_possible_value(self, field, possible_value):
-        try:
-            return float(possible_value)
-        except ValueError:
-            return None
+        return to_float(possible_value)
 
     def _extract_variants_from_text(self, field, text: str, **kwargs):
         durations = get_durations(text)
@@ -918,22 +922,16 @@ class RelatedInfoField(FieldType):
         return db_value
 
     def single_python_value_to_db(self, python_single_value):
-        return None
+        return python_single_value
 
     def single_db_value_to_python(self, db_value):
-        return None
+        return db_value
 
     def get_postgres_transform_map(self):
         return django_models.IntegerField
 
-    def merge_multi_python_values(self, previous_merge_result, value_to_merge_in):
-        if previous_merge_result:
-            return previous_merge_result + 1
-        else:
-            return 1
-
     def build_vectorization_pipeline(self) -> Tuple[List[Tuple[str, Any]], Callable[[], List[str]]]:
-        vect = vectorizers.NumberVectorizer()
+        vect = vectorizers.NumberVectorizer(to_float_converter=lambda merged: len(merged) if merged else 0)
         return [('vect', vect)], self._wrap_get_feature_names(vect)
 
 
@@ -981,10 +979,10 @@ class AmountField(FloatField):
     ordinal = True
 
     def merged_python_value_to_db(self, merged_python_value):
-        return merged_python_value
+        return to_float(merged_python_value)
 
     def merged_db_value_to_python(self, db_value):
-        return db_value
+        return to_float(db_value)
 
     def get_postgres_transform_map(self):
         return RoundedFloatField
@@ -1013,7 +1011,7 @@ class MoneyField(FloatField):
             return None
         if isinstance(merged_python_value, list):
             merged_python_value = merged_python_value[0]
-        amount = float(merged_python_value.get('amount')) or 0
+        amount = to_float(merged_python_value.get('amount')) or 0
         currency = merged_python_value.get('currency') or ''
         return '{}|{:020.4f}'.format(currency, amount)
 
@@ -1025,7 +1023,7 @@ class MoneyField(FloatField):
         amount_str = ar[1]  # type: str
         return {
             'currency': currency,
-            'amount': float(amount_str) if amount_str else None
+            'amount': to_float(amount_str)
         }
 
     def get_postgres_transform_map(self):
@@ -1044,7 +1042,7 @@ class MoneyField(FloatField):
             }
 
         try:
-            amount = float(str(possible_value))
+            amount = to_float(str(possible_value))
             return {
                 'currency': 'USD',
                 'amount': amount

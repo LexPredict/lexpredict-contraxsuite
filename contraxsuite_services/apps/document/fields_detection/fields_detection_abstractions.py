@@ -35,10 +35,11 @@ class DetectedFieldValue:
         self.value = pv
 
     def get_annotation_start(self):
-        return self.text_unit.location_start + (self.offset_start or 0) if self.text_unit else None
+        return self.text_unit.location_start + (self.offset_start or 0) \
+            if self.text_unit and self.text_unit.location_start is not None else None
 
     def get_annotation_end(self):
-        if not self.text_unit:
+        if not self.text_unit or self.text_unit.location_end is None:
             return None
         if self.offset_end:
             return self.text_unit.location_start + self.offset_end
@@ -62,7 +63,6 @@ class FieldDetectionStrategy:
     @classmethod
     def train_document_field_detector_model(cls,
                                             log: ProcessLogger,
-                                            document_type: DocumentType,
                                             field: DocumentField,
                                             train_data_project_ids: Optional[List],
                                             use_only_confirmed_field_values: bool = False) -> Optional[ClassifierModel]:
@@ -83,7 +83,6 @@ class DisabledFieldDetectionStrategy(FieldDetectionStrategy):
     @classmethod
     def train_document_field_detector_model(cls,
                                             log: ProcessLogger,
-                                            document_type: DocumentType,
                                             field: DocumentField,
                                             train_data_project_ids: Optional[List],
                                             use_only_confirmed_field_values: bool = False) -> Optional[ClassifierModel]:

@@ -54,8 +54,8 @@ from apps.dump.app_dump import get_full_dump, get_field_values_dump,\
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.6/LICENSE"
-__version__ = "1.1.6"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.7/LICENSE"
+__version__ = "1.1.7"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -124,7 +124,10 @@ class DumpDocumentConfigView(BaseDumpView):
     """
 
     def get_json_dump(self) -> str:
-        return get_app_config_dump()
+        document_type_codes = self.request.GET.get('document_type_codes') or None
+        if document_type_codes:
+            document_type_codes = document_type_codes.split(',')
+        return get_app_config_dump(document_type_codes)
 
 
 class FieldValuesDumpAPIView(APIView):

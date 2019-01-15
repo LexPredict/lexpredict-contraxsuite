@@ -6,6 +6,10 @@ filebeat.modules:
   error:
     enabled: true
     var.paths: ["/data/nginx_logs/error.log*"]
+- module: postgresql
+  log:
+    enabled: true
+    var.paths: ["/data/pg_data/pg_log/*.log*"]
 filebeat.prospectors:
 - type: log
   paths:

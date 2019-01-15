@@ -28,55 +28,52 @@
 import json
 import os
 import re
-import sys
-
-# Third-party imports
-from rest_framework import serializers, routers, viewsets
-from rest_framework.decorators import detail_route, list_route
-from rest_framework.exceptions import ValidationError, APIException
-from rest_framework.permissions import BasePermission, IsAuthenticated
-from rest_framework.views import APIView
 
 # Django imports
 from django.conf import settings
 from django.contrib.contenttypes.models import ContentType
 from django.core.files import File
 from django.core.files.storage import FileSystemStorage
-from django.http import JsonResponse
+from django.db import connection
 from django.db import transaction
-from django.db.models import Count, Subquery, Q, OuterRef, Exists
-
+from django.db.models import Count, Subquery, Q
+from django.http import JsonResponse
+# Third-party imports
+from rest_framework import serializers, routers, viewsets
+from rest_framework.decorators import detail_route, list_route
+from rest_framework.exceptions import ValidationError, APIException
+from rest_framework.permissions import BasePermission, IsAuthenticated
 from rest_framework.response import Response
+from rest_framework.views import APIView
 
 # Project imports
 from apps.analyze.models import DocumentCluster
 from apps.common.advancedcelery.fileaccess import prepare_file_access_handler
-from apps.common.mixins import JqListAPIMixin, APIActionMixin
-from apps.common.models import ReviewStatus, Action, SQCount
+from apps.common.log_utils import ErrorCollectingLogger
+from apps.common.mixins import JqListAPIMixin, APIActionMixin, APILoggingMixin
+from apps.common.models import ReviewStatus
 from apps.common.utils import get_api_module
-from apps.document.models import Document, DocumentType, DocumentFieldValue, DocumentTypeField
+from apps.document.events import events
+from apps.document.models import Document, DocumentType, DocumentFieldValue, DocumentField
 from apps.project.models import Project, TaskQueue, UploadSession, ProjectClustering, \
     DocumentFilter, ProjectDocumentsFilter
-from apps.task.utils.logger import get_django_logger
-from apps.users.models import User
 from apps.task.models import Task
 from apps.task.tasks import call_task, purge_task
-from urls import custom_apps
-from apps.project.tasks import THIS_MODULE    # noqa
-
+from apps.task.utils.logger import get_django_logger
+from apps.users.models import User
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.6/LICENSE"
-__version__ = "1.1.6"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.7/LICENSE"
+__version__ = "1.1.7"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
-
 
 file_access_handler = prepare_file_access_handler()
 
 common_api_module = get_api_module('common')
 users_api_module = get_api_module('users')
+ALREADY_EXISTS = 'Already exists'
 
 
 class PatchedListView(APIView):
@@ -235,7 +232,6 @@ class TaskQueueViewSet(JqListAPIMixin, viewsets.ModelViewSet):
 # --------------------------------------------------------
 
 def project_progress(obj):
-
     if not hasattr(obj, 'project_current_documents_count'):
         obj.project_current_documents_count = obj.document_set.count()
     if not hasattr(obj, 'project_reviewed_documents_count'):
@@ -322,14 +318,12 @@ class ProjectDetailSerializer(serializers.ModelSerializer):
 
 
 class ProjectCreateSerializer(serializers.ModelSerializer):
-
     class Meta:
         model = Project
         fields = ['pk', 'name', 'description', 'type', 'send_email_notification']
 
 
 class ProjectUpdateSerializer(ProjectDetailSerializer):
-
     class Meta(ProjectDetailSerializer.Meta):
         model = Project
         fields = ['pk', 'name', 'description', 'status', 'send_email_notification',
@@ -337,7 +331,6 @@ class ProjectUpdateSerializer(ProjectDetailSerializer):
 
 
 class ProjectListSerializer(ProjectDetailSerializer):
-
     class Meta:
         model = Project
         fields = ['pk', 'name',
@@ -397,21 +390,14 @@ class ProjectListSerializer(ProjectDetailSerializer):
         return target_filters
 
 
-class RecentProjectListSerializer(ProjectListSerializer):
-
-    class Meta:
-        model = Project
-        fields = ['pk', 'name',
-                  'status', 'status_data',
-                  'type', 'type_data', 'progress']
-
-
 def require_generic_contract_type(func):
     def decorator(cls, *args, **kwargs):
         project = cls.get_object()
+        cls.object = project
         if project.type and not project.type.is_generic():
             raise APIException('Allowed for projects with "Generic Contract Type" only')
         return func(cls, *args, **kwargs)
+
     decorator.__doc__ = func.__doc__
     return decorator
 
@@ -441,7 +427,7 @@ class ProjectPermissionViewMixin(object):
         return qs
 
 
-class ProjectViewSet(ProjectPermissionViewMixin, APIActionMixin,
+class ProjectViewSet(APILoggingMixin, ProjectPermissionViewMixin, APIActionMixin,
                      JqListAPIMixin, viewsets.ModelViewSet):
     """
     list: Project List
@@ -468,46 +454,17 @@ class ProjectViewSet(ProjectPermissionViewMixin, APIActionMixin,
 
     def get_queryset(self):
         qs = super().get_queryset()
-
         qs = qs.select_related('type').prefetch_related('status')
-
         if self.action != 'list':
             qs = qs.prefetch_related('owners', 'owners__role',
                                      'super_reviewers', 'super_reviewers__role',
                                      'reviewers', 'reviewers__role')
-
-            # WARN: This query hangs server - either count all project docs or count in serializer
-            # cluster_docs_subquery = Document.objects.filter(
-            #     project=OuterRef('pk'), documentcluster__projectclustering__isnull=False).distinct()
-            # WARN: the first query executes 30% slower than the second
-            # clusters_subquery = ProjectClustering.objects.filter(project=OuterRef('pk')) \
-            #     .order_by('-pk').annotate(clusters=Count('document_clusters')).values('clusters')[:1]
-
-            reviewed_docs_subquery = Document.objects.filter(
-                project=OuterRef('pk'), status__group__is_active=False)
-            clusters_subquery = ProjectClustering.objects \
-                .filter(project=OuterRef('pk')) \
-                .order_by('-pk') \
-                .extra(select={'clusters': "metadata->>'n_clusters'"}) \
-                .values('clusters')[:1]
-            qs = qs.annotate(
-                project_current_documents_count=Count('document'),
-                project_reviewed_documents_count=SQCount(reviewed_docs_subquery),
-                # project_clusters_documents_count=SQCount(cluster_docs_subquery),    # WARN: hangs
-                project_clusters_documents_count=Count('document'),
-                project_clusters_count=SQCount(clusters_subquery),
-            )
         return qs
 
     def get_extra_data(self, queryset):
-        return {'available_statuses': common_api_module.ReviewStatusSerializer(ReviewStatus.objects.select_related('group'), many=True).data}
-
-    @detail_route(methods=['get'])
-    def progress(self, request, **kwargs):
-        """
-        Project Progress - completed/uncompleted session, status of project tasks\n
-        """
-        return Response(project_progress(self.get_object()))
+        return {
+            'available_statuses': common_api_module.ReviewStatusSerializer(ReviewStatus.objects.select_related('group'),
+                                                                           many=True).data}
 
     @detail_route(methods=['post'])
     @require_generic_contract_type
@@ -519,7 +476,7 @@ class ProjectViewSet(ProjectPermissionViewMixin, APIActionMixin,
                 - n_clusters: int
                 - force: bool (optional) - force clustering if uncompleted tasks exist
         """
-        project = self.get_object()
+        project = getattr(self, 'object', None) or self.get_object()
 
         if not request.POST.get('force') == 'true':
             if project.uploadsession_set.filter(completed=False).exists():
@@ -555,15 +512,15 @@ class ProjectViewSet(ProjectPermissionViewMixin, APIActionMixin,
             Params:
                 - project_clustering_id: int (optional) - return last if not provided
         """
-        project = self.get_object()
+        project = getattr(self, 'object', None) or self.get_object()
         project_clustering_id = request.GET.get('project_clustering_id')
 
         clustering = project.projectclustering_set \
             .select_related('project', 'task') \
             .prefetch_related('document_clusters__documents') \
             .annotate(
-                project_current_documents_count=Count('project__document', distinct=True),
-                project_clusters_documents_count=Count('document_clusters__documents', distinct=True))
+            project_current_documents_count=Count('project__document', distinct=True),
+            project_clusters_documents_count=Count('document_clusters__documents', distinct=True))
 
         if project_clustering_id:
             clustering = clustering.get(pk=project_clustering_id)
@@ -592,7 +549,8 @@ class ProjectViewSet(ProjectPermissionViewMixin, APIActionMixin,
                                            .format(cluster['pk']))
                     cluster['reassigned_to_project_id'] = cluster_reassigning_data[0]['new_project_id']
 
-                cluster['cluster_terms'] = data['metadata']['clusters_data'][str(cluster['cluster_id'])]['cluster_terms']
+                cluster['cluster_terms'] = data['metadata']['clusters_data'][str(cluster['cluster_id'])][
+                    'cluster_terms']
 
             except KeyError:
                 pass
@@ -671,7 +629,16 @@ class ProjectViewSet(ProjectPermissionViewMixin, APIActionMixin,
             documents = Document.objects \
                 .filter(project=project, pk__in=document_ids)
         ret = documents.update(assignee=assignee_id)
+
+        self._fire_documents_changed(documents)
+
         return Response({'success': ret})
+
+    @staticmethod
+    def _fire_documents_changed(doc_qr):
+        log = ErrorCollectingLogger()
+        events.fire_documents_changed(log, doc_qr)
+        log.raise_if_error()
 
     @detail_route(methods=['post'])
     def set_status(self, request, **kwargs):
@@ -699,25 +666,17 @@ class ProjectViewSet(ProjectPermissionViewMixin, APIActionMixin,
 
         with transaction.atomic():
             is_active = ReviewStatus.objects.get(pk=status_id).is_active
-            document_type_fields = {}
             modified_fields = DocumentFieldValue.objects \
                 .filter(document__in=Subquery(documents.values('pk').distinct('pk').order_by('pk')),
                         document__status__is_active=not is_active,
                         removed_by_user=False) \
                 .order_by() \
-                .values_list('document__document_type_id', 'field_id') \
-                .distinct('document__document_type_id', 'field_id')
-            for document_type_id, field_id in modified_fields:
-                fields = document_type_fields.get(document_type_id)
-                if not fields:
-                    fields = []
-                    document_type_fields[document_type_id] = fields
-                fields.append(field_id)
-            for document_type_id, field_ids in document_type_fields.items():
-                DocumentTypeField.objects \
-                    .filter(document_type_id=document_type_id, document_field_id__in=field_ids) \
-                    .update(dirty=True)
+                .values_list('field_id') \
+                .distinct('field_id')
+            DocumentField.objects.filter(pk__in=Subquery(modified_fields)).update(dirty=True)
             ret = documents.update(status=status_id)
+
+        self._fire_documents_changed(documents)
 
         return Response({'success': ret})
 
@@ -729,25 +688,43 @@ class ProjectViewSet(ProjectPermissionViewMixin, APIActionMixin,
                 n: int - default is 5
         """
         last_n = int(request.GET.get('n', 5))
-        project_action_ids = Action.objects.filter(
-            user=request.user,
-            content_type=ContentType.objects.get_for_model(Project),
-            object_pk__isnull=False).order_by('-date').values_list('object_pk', flat=True)
-        existing_project_ids = Project.objects.values_list('pk', flat=True)
-        recent_project_ids = []
-        for i in project_action_ids:
-            i = int(i)
-            if len(recent_project_ids) == last_n:
-                break
-            if i in existing_project_ids and i not in recent_project_ids:
-                recent_project_ids.append(i)
-        clauses = ' '.join(['WHEN project_project.id=%s THEN %s' % (pk, i) for i, pk in enumerate(recent_project_ids)])
-        ordering = 'CASE %s END' % clauses
+        content_type_id = ContentType.objects.get_for_model(Project).id
+        user_id = request.user.pk
 
-        qs = self.get_queryset().filter(pk__in=recent_project_ids).extra(
-            select={'ordering': ordering}, order_by=('ordering',))
+        sql = '''
+            SELECT
+              p1.id project_id,
+              p1.name project_name,
+              (SELECT count(d1.id)
+               FROM document_document d1
+               WHERE d1.project_id = p1.id) extracted_doc_count,
+              (SELECT count(d2.id)
+               FROM document_document d2
+               WHERE d2.project_id = p1.id AND 
+                     d2.status_id IN (SELECT rs.id
+                                        FROM common_reviewstatus rs INNER JOIN common_reviewstatusgroup rsg
+                                            ON rs.group_id = rsg.id
+                                        WHERE rsg.is_active = FALSE)) reviewed_doc_count
+            FROM project_project p1 INNER JOIN common_action ca
+                ON ca.content_type_id = %s AND ca.user_id = %s AND ca.object_pk = p1.id :: VARCHAR
+            GROUP BY p1.id
+            ORDER BY max(ca.date) DESC
+            LIMIT %s
+        '''
+        result = list()
+        with connection.cursor() as cursor:
+            cursor.execute(sql, [content_type_id, user_id, last_n])
+            for project_id, project_name, extracted_doc_count, reviewed_doc_count in cursor.fetchall():
+                result.append({
+                    'name': project_name,
+                    'pk': project_id,
+                    'progress': {
+                        'project_current_documents_count': extracted_doc_count,
+                        'project_reviewed_documents_count': reviewed_doc_count
+                    }
+                })
 
-        return Response(RecentProjectListSerializer(qs, many=True).data)
+        return Response(result)
 
 
 # --------------------------------------------------------
@@ -927,7 +904,7 @@ class UploadSessionViewSet(UploadSessionPermissionViewMixin, APIActionMixin,
                 for doc in this_file_documents:
                     doc.delete()
             else:
-                raise APIException('Already exists')
+                raise APIException(ALREADY_EXISTS)
 
         if not folder_name:
             storage = FileSystemStorage(
@@ -986,6 +963,8 @@ class UploadSessionViewSet(UploadSessionPermissionViewMixin, APIActionMixin,
                 self._notify_upload_started(session)
 
         except Exception as e:
+            if str(e) == ALREADY_EXISTS:
+                return Response(ALREADY_EXISTS)
             raise APIException(str(e))
 
         return Response('Loaded')
@@ -1009,7 +988,6 @@ class UploadSessionViewSet(UploadSessionPermissionViewMixin, APIActionMixin,
         file_list = file_access_handler.list(folder_name)
 
         for file_path in file_list:
-
             file_name = os.path.basename(file_path)
 
             # Code for running locators and detecting field values has been moved to LoadDocuments task

@@ -26,6 +26,8 @@
 
 import pickle
 
+from rest_framework_tracking.models import APIRequestLog
+
 # Django imports
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
@@ -39,8 +41,8 @@ from apps.users.models import User
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.6/LICENSE"
-__version__ = "1.1.6"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.7/LICENSE"
+__version__ = "1.1.7"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -48,11 +50,14 @@ __email__ = "support@contraxsuite.com"
 class AppVar(models.Model):
     """Storage for application variables"""
 
-    # Task name
+    # variable name
     name = models.CharField(max_length=100, db_index=True, unique=True)
 
-    # additional data for a task
+    # variable data
     value = JSONField(blank=True, null=True)
+
+    # variable description
+    description = models.TextField(blank=True)
 
     # last modified date
     date = models.DateTimeField(auto_now=True, db_index=True)
@@ -65,18 +70,28 @@ class AppVar(models.Model):
         return "App Variable (name={})".format(self.name)
 
     @classmethod
-    def set(cls, name, value):
-        obj, _ = cls.objects.get_or_create(name=name)
-        obj.value = value
-        obj.save()
+    def set(cls, name, value, description='', overwrite=False) -> 'AppVar':
+        obj, created = cls.objects.get_or_create(
+            name=name,
+            defaults={"value": value, "description": description})
+        if not created and overwrite:
+            obj.value = value
+            obj.save()
         return obj
 
     @classmethod
-    def get(cls, name):
+    def get(cls, name, default=None):
+        for v in cls.objects.filter(name=name).values_list('value', flat=True):
+            return v
+        return default
+
+    @property
+    def val(self):
         try:
-            return cls.objects.get(name=name).value
-        except cls.DoesNotExist:
-            return None
+            self.refresh_from_db()
+        except AppVar.DoesNotExist:
+            self.save()
+        return self.value
 
     @classmethod
     def clear(cls, name):
@@ -231,3 +246,7 @@ class Action(models.Model):
 class SQCount(models.Subquery):
     template = "(SELECT count(*) FROM (%(subquery)s) _count)"
     output_field = models.IntegerField()
+
+
+class CustomAPIRequestLog(APIRequestLog):
+    sql_log = models.TextField(null=True, blank=True)

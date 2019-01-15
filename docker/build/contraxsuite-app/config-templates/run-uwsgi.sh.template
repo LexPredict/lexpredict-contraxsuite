@@ -20,4 +20,5 @@ su - ${SHARED_USER_NAME} -c "export LANG=C.UTF-8 && cd /contraxsuite_services &&
     uwsgi --socket 0.0.0.0:3031 \
             --plugins python3 \
             --protocol uwsgi \
+            --buffer-size 65535 \
             --wsgi wsgi:application"

@@ -16,7 +16,7 @@ from apps.document.fields_detection.formula_based_field_detection import Formula
 from apps.document.fields_detection.stop_words import detect_with_stop_words_by_field_and_full_text
 from apps.document.fields_detection.vectorizers import VectorizerStep
 from apps.document.models import ClassifierModel
-from apps.document.models import DocumentField, Document, DocumentType
+from apps.document.models import DocumentField, Document
 
 
 class FieldValueExtractor(VectorizerStep):
@@ -42,17 +42,14 @@ class FieldBasedMLOnlyFieldDetectionStrategy(FieldDetectionStrategy):
 
     @classmethod
     def get_user_data(cls,
-                      document_type: DocumentType,
                       field: DocumentField,
                       project_ids: Optional[List[str]]) -> Optional[List[dict]]:
-        qs_modified_document_ids = field_detection_utils.get_qs_active_modified_document_ids(document_type,
-                                                                                             field,
+        qs_modified_document_ids = field_detection_utils.get_qs_active_modified_document_ids(field,
                                                                                              project_ids)
-        qs_finished_document_ids = field_detection_utils.get_qs_finished_document_ids(document_type, project_ids)
+        qs_finished_document_ids = field_detection_utils.get_qs_finished_document_ids(field.document_type, project_ids)
 
         return list(Document.objects
-                    .filter(pk__in=Q(Subquery(qs_modified_document_ids))
-                                   | Q(Subquery(qs_finished_document_ids)))
+                    .filter(pk__in=Q(Subquery(qs_modified_document_ids)) | Q(Subquery(qs_finished_document_ids)))
                     .values_list('field_values', flat=True)[:settings.ML_TRAIN_DATA_SET_GROUP_LEN])
 
     @staticmethod
@@ -144,7 +141,6 @@ class FieldBasedMLOnlyFieldDetectionStrategy(FieldDetectionStrategy):
     @classmethod
     def train_document_field_detector_model(cls,
                                             log: ProcessLogger,
-                                            document_type: DocumentType,
                                             field: DocumentField,
                                             train_data_project_ids: Optional[List],
                                             use_only_confirmed_field_values: bool = False) -> Optional[ClassifierModel]:
@@ -166,13 +162,13 @@ class FieldBasedMLOnlyFieldDetectionStrategy(FieldDetectionStrategy):
                               .filter(project_id__in=train_data_project_ids) \
                               .values_list('field_values', flat=True)[:settings.ML_TRAIN_DATA_SET_GROUP_LEN])
         else:
-            train_data = list(cls.get_user_data(document_type, field, train_data_project_ids))
+            train_data = list(cls.get_user_data(field, train_data_project_ids))
 
         if not train_data:
             raise RuntimeError('Not enough train data for field {0} (#{1}). '
                                'Need at least {2} approved or changed documents of type {3}.'
                                .format(field.code, field.uid, settings.ML_TRAIN_DATA_SET_GROUP_LEN,
-                                       document_type.code))
+                                       field.document_type.code))
 
         depends_on_fields_types = cls.get_depends_on_uid_code_type(field)
         depends_on_fields_types = cls.remove_empty_fields(depends_on_fields_types, train_data)
@@ -226,7 +222,6 @@ class FieldBasedMLOnlyFieldDetectionStrategy(FieldDetectionStrategy):
 
         log.info('Testing the model...')
         cm = ClassifierModel()
-        cm.document_type = document_type
         cm.document_field = field
 
         predicted_oos = pipeline.predict(test_oos_feature_data)
@@ -271,10 +266,8 @@ class FieldBasedMLOnlyFieldDetectionStrategy(FieldDetectionStrategy):
             if detected_with_stop_words:
                 return detected_values or list()
 
-        document_type = doc.document_type  # type: DocumentType
         try:
-            classifier_model = ClassifierModel.objects \
-                .get(document_type=document_type, document_field=field)
+            classifier_model = ClassifierModel.objects.get(document_field=field)
             obj = classifier_model.get_trained_model_obj()  # type: Dict[str, Any]
 
             model = obj['model']
@@ -301,12 +294,13 @@ class FormulaAndFieldBasedMLFieldDetectionStrategy(FieldBasedMLOnlyFieldDetectio
         return True
 
     @classmethod
-    def train_document_field_detector_model(cls, log: ProcessLogger, document_type: DocumentType, field: DocumentField,
+    def train_document_field_detector_model(cls,
+                                            log: ProcessLogger,
+                                            field: DocumentField,
                                             train_data_project_ids: Optional[List],
                                             use_only_confirmed_field_values: bool = False) -> Optional[ClassifierModel]:
         try:
             return super().train_document_field_detector_model(log,
-                                                               document_type,
                                                                field,
                                                                train_data_project_ids,
                                                                use_only_confirmed_field_values)

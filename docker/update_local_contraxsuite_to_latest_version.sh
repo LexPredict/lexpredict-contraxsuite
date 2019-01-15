@@ -13,17 +13,17 @@ if [ ! -z "${DISTR_DOCKER_IMAGE_URL}" ]; then
     wget -qO- --user=${DISTR_USER} --password=${DISTR_PASSWORD} ${DISTR_DOCKER_IMAGE_URL} | sudo docker load
 
     if [ "${DISTR_DOCKER_IMAGE_NAME}" != "${CONTRAXSUITE_IMAGE_FULL_NAME}" ]; then
-        echo "Tagging contraxsuite image as: ${CONTRAXSUITE_IMAGE_FULL_NAME}:latest"
-        sudo docker tag ${DISTR_DOCKER_IMAGE_NAME}:latest ${CONTRAXSUITE_IMAGE_FULL_NAME}:latest
+        echo "Tagging contraxsuite image as: ${CONTRAXSUITE_IMAGE_FULL_NAME}:${CONTRAXSUITE_IMAGE_VERSION}"
+        sudo docker tag ${DISTR_DOCKER_IMAGE_NAME}:latest ${CONTRAXSUITE_IMAGE_FULL_NAME}:${CONTRAXSUITE_IMAGE_VERSION}
     fi
 
     if [ ! -z "${DOCKER_REGISTRY}" ]; then
-        echo "Pushing ${CONTRAXSUITE_IMAGE_FULL_NAME}:latest to its registry..."
-        sudo docker push ${CONTRAXSUITE_IMAGE_FULL_NAME}:latest
+        echo "Pushing ${CONTRAXSUITE_IMAGE_FULL_NAME}:${CONTRAXSUITE_IMAGE_VERSION} to its registry..."
+        sudo docker push ${CONTRAXSUITE_IMAGE_FULL_NAME}:${CONTRAXSUITE_IMAGE_VERSION}
     fi
 else
     echo "=== Pulling contraxsuite image from DockerHub "
-    sudo docker pull ${CONTRAXSUITE_IMAGE_FULL_NAME}
+    sudo docker pull ${CONTRAXSUITE_IMAGE_FULL_NAME}:${CONTRAXSUITE_IMAGE_VERSION}
 fi
 
 

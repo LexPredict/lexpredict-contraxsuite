@@ -19,6 +19,7 @@ from apps.document.fields_processing.field_processing_utils import merge_detecte
     order_field_detection
 from apps.document.models import ClassifierModel
 from apps.document.models import Document, DocumentType, DocumentField
+from apps.document.events import events
 
 STRATEGY_DISABLED = DisabledFieldDetectionStrategy()
 
@@ -36,7 +37,6 @@ FIELD_DETECTION_STRATEGY_REGISTRY = {st.code: st for st in _FIELD_DETECTION_STRA
 
 
 def train_document_field_detector_model(log: ProcessLogger,
-                                        document_type: DocumentType,
                                         field: DocumentField,
                                         train_data_project_ids: Optional[List],
                                         use_only_confirmed_field_values: bool = False) -> Optional[ClassifierModel]:
@@ -45,7 +45,6 @@ def train_document_field_detector_model(log: ProcessLogger,
         if field.value_detection_strategy else STRATEGY_DISABLED
 
     return strategy.train_document_field_detector_model(log,
-                                                        document_type,
                                                         field,
                                                         train_data_project_ids,
                                                         use_only_confirmed_field_values)
@@ -64,7 +63,9 @@ def detect_and_cache_field_values(log: ProcessLogger,
     detected_values = strategy.detect_field_values(log, doc, field)
     if save:
         save_detected_values(doc, field, detected_values)
-        field_value_cache.cache_field_values(doc, detected_values, save=True)
+        field_value_cache.cache_field_values(doc, detected_values,
+                                             save=True,
+                                             log=log)
     return detected_values
 
 
@@ -117,6 +118,13 @@ def detect_and_cache_field_values_for_document(log: ProcessLogger, document: Doc
     :return:
     """
 
+    save_cache = save
+    save_detected = save
+    if save and document.status and not document.status.is_active:
+        log.info('Forbidden storing detected field values for document with "completed"'
+                 ' status, document #{} ({})'.format(document.id, document.name))
+        save_detected = False
+
     document_type = document.document_type  # type: DocumentType
 
     all_fields = document_type.fields \
@@ -147,11 +155,12 @@ def detect_and_cache_field_values_for_document(log: ProcessLogger, document: Doc
                                                                        field)  # type: List[DetectedFieldValue]
         if detected_values:
             res.extend(detected_values)
-            if save:
+            if save_detected:
                 save_detected_values(document, field, detected_values)
 
-    if save:
-        field_value_cache.cache_field_values(document, res, save=True)
+    if save_cache:
+        field_value_cache.cache_field_values(document, res, save=True, log=log)
+
     return res
 
 

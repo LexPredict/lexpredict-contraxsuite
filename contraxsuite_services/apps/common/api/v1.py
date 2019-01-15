@@ -42,8 +42,8 @@ from apps.users.api.v1 import UserSerializer
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.6/LICENSE"
-__version__ = "1.1.6"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.7/LICENSE"
+__version__ = "1.1.7"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -170,23 +170,37 @@ class AppVarAPIView(APIView):
 
     @property
     def schema(self):
-        field_name = "params"
-        location = "body"
-        required = True
-        schema = coreschema.String(max_length=30)
         if self.request.method == 'GET':
-            field_name = "name"
-            location = "query"
-            required = False
+            fields = [
+                coreapi.Field(
+                    "name",
+                    required=False,
+                    location="query",
+                    schema=coreschema.String(max_length=30)
+                ),
+                coreapi.Field(
+                    "name_contains",
+                    required=False,
+                    location="query",
+                    schema=coreschema.String(max_length=30)
+                )]
         elif self.request.method == 'POST':
-            schema = coreschema.Object()
-        return schemas.ManualSchema(fields=[
-        coreapi.Field(
-            field_name,
-            required=required,
-            location=location,
-            schema=schema
-        )])
+            fields = [
+                coreapi.Field(
+                    "params",
+                    required=True,
+                    location="body",
+                    schema=coreschema.Object()
+                )]
+        else:
+            fields = [
+                coreapi.Field(
+                    "name",
+                    required=True,
+                    location="body",
+                    schema=coreschema.String(max_length=30)
+                )]
+        return schemas.ManualSchema(fields=fields)
 
     def get(self, request, *args, **kwargs):
         """
@@ -195,9 +209,14 @@ class AppVarAPIView(APIView):
                 - name: str - retrieve specific variable
         """
         var_name = request.GET.get('name')
+        name_contains = request.GET.get('name_contains')
         result = AppVar.objects.all()
         if var_name:
             result = result.filter(name=var_name)
+            if not result.exists():
+                return Response(status=404)
+        if name_contains:
+            result = result.filter(name__contains=name_contains)
             if not result.exists():
                 return Response(status=404)
         result = {i['name']: i['value'] for i in result.values('name', 'value')}

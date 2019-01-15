@@ -10,7 +10,7 @@ import django.db.models.deletion
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('document', '0090_auto_20181009_1149'),
+        ('document', '0105_auto_20181128_1238'),
         ('project', '0024_project_send_email_notification'),
     ]
 

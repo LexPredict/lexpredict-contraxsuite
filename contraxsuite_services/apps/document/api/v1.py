@@ -53,19 +53,21 @@ from rest_framework_nested import routers as nested_routers
 # Project imports
 from apps.analyze.models import *
 from apps.common.api.permissions import ReviewerReadOnlyPermission
+from apps.common.mixins import APILoggingMixin
 from apps.common.mixins import (
     SimpleRelationSerializer, JqListAPIMixin, TypeaheadAPIView,
     NestedKeyTextTransform, APIActionMixin)
 from apps.common.models import ReviewStatus
 from apps.common.utils import get_api_module
+from apps.document.events import events
+from apps.common.log_utils import ErrorCollectingLogger
 from apps.document.field_types import FIELD_TYPES_REGISTRY, FieldType
-from apps.document.fields_detection import field_detection
 from apps.document.fields_detection.field_detection_celery_api import run_detect_field_values_for_document
 from apps.document.fields_processing.field_value_cache import cache_field_values
 from apps.document.models import (
-    DocumentField, DocumentType, DocumentFieldValue, DocumentProperty, DocumentNote, DocumentTag, DocumentRelation,
-    TextUnitProperty, TextUnitNote, TextUnitTag, DocumentTypeField,
-    DocumentTypeFieldCategory)
+    DocumentField, DocumentType, DocumentFieldValue,
+    DocumentProperty, DocumentNote, DocumentTag, DocumentRelation,
+    TextUnitProperty, TextUnitNote, TextUnitTag, DocumentFieldCategory)
 from apps.document.views import show_document
 from apps.extract.models import *
 from apps.project.models import Project, DocumentFilter, ProjectDocumentsFilter
@@ -73,8 +75,8 @@ from apps.users.models import User
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.6/LICENSE"
-__version__ = "1.1.6"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.7/LICENSE"
+__version__ = "1.1.7"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -84,8 +86,9 @@ extract_api_module = get_api_module('extract')
 
 
 # --------------------------------------------------------
-# Document Views
+# Document Note Views
 # --------------------------------------------------------
+
 class UserSerializer(serializers.ModelSerializer):
     full_name = serializers.SerializerMethodField()
     photo = serializers.SerializerMethodField()
@@ -101,6 +104,100 @@ class UserSerializer(serializers.ModelSerializer):
     def get_full_name(self, obj):
         return obj.get_full_name()
 
+
+class DocumentNoteDetailSerializer(SimpleRelationSerializer):
+    document_id = serializers.PrimaryKeyRelatedField(
+        source='document', queryset=Document.objects.all())
+    field_value_id = serializers.PrimaryKeyRelatedField(
+        source='field_value', queryset=DocumentFieldValue.objects.all(), required=False)
+    field_id = serializers.PrimaryKeyRelatedField(
+        source='field', queryset=DocumentField.objects.all(), required=False)
+    user = UserSerializer(source='history.last.history_user', many=False, read_only=True)
+
+    # history = serializers.SerializerMethodField()
+
+    class Meta:
+        model = DocumentNote
+        fields = ['pk', 'note', 'timestamp', 'user',
+                  'location_start', 'location_end',
+                  'document_id', 'field_value_id', 'field_id']
+
+        # def get_history(self, obj):
+        #     return obj.history.values(
+        #         'id', 'document_id', 'history_date',
+        #         'history_user__username', 'note')
+
+
+class DocumentNoteCreateSerializer(DocumentNoteDetailSerializer):
+    class Meta(DocumentNoteDetailSerializer.Meta):
+        read_only_fields = ('timestamp', 'user')
+
+
+class DocumentNoteUpdateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = DocumentNote
+        fields = ['note']
+
+
+class DocumentNotePermissions(BasePermission):
+    # def has_permission(self, request, view):
+    #     if request.user.is_reviewer and view.kwargs.get('project_pk'):
+    #         return project_api_module.Project.objects.filter(pk=view.kwargs.get('project_pk'),
+    #                                                          reviewers=request.user).exists()
+    #     return True
+
+    def has_object_permission(self, request, view, obj):
+        if request.user.is_reviewer:
+            return obj.document.project.reviewers.filter(pk=request.user.pk).exists()
+        return True
+
+
+class DocumentNotePermissionViewMixin(object):
+    permission_classes = (IsAuthenticated, DocumentNotePermissions)
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        if self.request.user.is_reviewer:
+            qs = qs.filter(project__reviewers=self.request.user)
+        return qs
+
+
+class DocumentNoteViewSet(JqListAPIMixin, viewsets.ModelViewSet):
+    """
+    list: Document Note List
+    retrieve: Retrieve Document Note
+    create: Create Document Note
+    update: Update Document Note
+    partial_update: Partial Update Document Note
+    delete: Delete Document Note
+    """
+    queryset = DocumentNote.objects.all()
+
+    def get_queryset(self):
+
+        qs = super().get_queryset()
+
+        project_id = self.request.GET.get('project_id')
+        if project_id:
+            qs = qs.filter(document__project_id=project_id)
+
+        document_id = self.request.GET.get('document_id')
+        if document_id:
+            qs = qs.filter(document_id=document_id)
+
+        return qs
+
+    def get_serializer_class(self):
+        if self.action == 'create':
+            return DocumentNoteCreateSerializer
+        if self.action == 'update':
+            return DocumentNoteUpdateSerializer
+        return DocumentNoteDetailSerializer
+
+
+# --------------------------------------------------------
+# Document Views
+# --------------------------------------------------------
 
 class BaseDocumentSerializer(SimpleRelationSerializer):
     """
@@ -168,6 +265,7 @@ class DocumentWithFieldsDetailSerializer(BaseDocumentSerializer):
     """
     field_value_objects = serializers.SerializerMethodField()
     field_values = serializers.SerializerMethodField()
+    notes = DocumentNoteDetailSerializer(source='documentnote_set', many=True)
 
     class Meta:
         model = Document
@@ -175,7 +273,7 @@ class DocumentWithFieldsDetailSerializer(BaseDocumentSerializer):
                   'status', 'status_data', 'available_statuses_data',
                   'assignee', 'assignee_data', 'available_assignees_data',
                   'description', 'title', 'full_text',
-                  'field_value_objects', 'field_values']
+                  'field_value_objects', 'field_values', 'notes']
 
     def get_field_values(self, doc: Document):
         document_type = doc.document_type  # type: DocumentType
@@ -220,10 +318,18 @@ class DocumentWithFieldsDetailSerializer(BaseDocumentSerializer):
                         .values('field_id') \
                         .order_by('field_id') \
                         .distinct()
-                    DocumentTypeField.objects \
-                        .filter(document_type_id=instance.document_type_id, document_field_id__in=Subquery(field_ids)) \
+                    DocumentField.objects \
+                        .filter(document_type_id=instance.document_type_id, pk__in=Subquery(field_ids)) \
                         .update(dirty=True)
-            return super().update(instance, validated_data)
+            res = super().update(instance, validated_data)
+            log = ErrorCollectingLogger()
+            events.on_document_change.fire(events.DocumentChangedEvent(log, instance,
+                                                                       system_fields_changed=True,
+                                                                       generic_fields_changed=False,
+                                                                       user_fields_changed=False,
+                                                                       pre_detected_field_values=None))
+            log.raise_if_error()
+            return res
 
 
 class DocumentWithFieldsListSerializer(BaseDocumentSerializer):
@@ -501,7 +607,8 @@ def create_generic_data_annotation(field_code, output_field_class):
     return {field_code: transform}
 
 
-class ProjectDocumentsWithFieldsViewSet(DocumentPermissionViewMixin, APIActionMixin,
+class ProjectDocumentsWithFieldsViewSet(APILoggingMixin,
+                                        DocumentPermissionViewMixin, APIActionMixin,
                                         JqListAPIMixin, viewsets.ReadOnlyModelViewSet):
     """
     list: Document List with Fields
@@ -592,6 +699,8 @@ class ProjectDocumentsWithFieldsViewSet(DocumentPermissionViewMixin, APIActionMi
         if self.action == 'for_user':
             document_qs = document_qs.filter(assignee=self.request.user,
                                              status__group__is_active=True)
+        elif self.action == 'retrieve':
+            document_qs = document_qs.prefetch_related('documentnote_set')
 
         document_qs = document_qs \
             .select_related('status', 'status__group', 'document_type', 'assignee') \
@@ -615,10 +724,10 @@ class ProjectDocumentsWithFieldsViewSet(DocumentPermissionViewMixin, APIActionMi
             self._field_codes_to_field_names = dict()
             if filter_id is not None:
                 self._document_filter = DocumentFilter.objects.get(pk=filter_id)
-                filter_fields = DocumentTypeField.objects \
+                filter_fields = DocumentField.objects \
                     .filter(document_type=project.type,
-                            document_field__code__in=self._document_filter.get_filter_fields()) \
-                    .values_list('document_field__pk', 'document_field__type', 'document_field__code')
+                            code__in=self._document_filter.get_filter_fields()) \
+                    .values_list('pk', 'type', 'code')
                 for field_uid, field_type, field_code in filter_fields:
                     annotation = create_field_annotation(field_uid, field_type)
                     for field_name, transform in annotation.items():
@@ -770,100 +879,6 @@ class DocumentPropertyViewSet(JqListAPIMixin, viewsets.ModelViewSet):
         if self.action == 'update':
             return DocumentPropertyUpdateSerializer
         return DocumentPropertyDetailSerializer
-
-
-# --------------------------------------------------------
-# Document Note Views
-# --------------------------------------------------------
-
-class DocumentNoteDetailSerializer(SimpleRelationSerializer):
-    document_id = serializers.PrimaryKeyRelatedField(
-        source='document', queryset=Document.objects.all())
-    field_value_id = serializers.PrimaryKeyRelatedField(
-        source='field_value', queryset=DocumentFieldValue.objects.all(), required=False)
-    user = UserSerializer(source='history.last.history_user', many=False, read_only=True)
-
-    # history = serializers.SerializerMethodField()
-
-    class Meta:
-        model = DocumentNote
-        fields = ['pk', 'note', 'timestamp', 'user',
-                  # 'history',
-                  'document_id', 'field_value_id']
-
-        # def get_history(self, obj):
-        #     return obj.history.values(
-        #         'id', 'document_id', 'history_date',
-        #         'history_user__username', 'note')
-
-
-class DocumentNoteCreateSerializer(DocumentNoteDetailSerializer):
-    class Meta:
-        model = DocumentNote
-        fields = ['pk', 'note', 'document_id', 'field_value_id', 'timestamp', 'user']
-        read_only_fields = ('timestamp', 'user')
-
-
-class DocumentNoteUpdateSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = DocumentNote
-        fields = ['note']
-
-
-class DocumentNotePermissions(BasePermission):
-    # def has_permission(self, request, view):
-    #     if request.user.is_reviewer and view.kwargs.get('project_pk'):
-    #         return project_api_module.Project.objects.filter(pk=view.kwargs.get('project_pk'),
-    #                                                          reviewers=request.user).exists()
-    #     return True
-
-    def has_object_permission(self, request, view, obj):
-        if request.user.is_reviewer:
-            return obj.document.project.reviewers.filter(pk=request.user.pk).exists()
-        return True
-
-
-class DocumentNotePermissionViewMixin(object):
-    permission_classes = (IsAuthenticated, DocumentNotePermissions)
-
-    def get_queryset(self):
-        qs = super().get_queryset()
-        if self.request.user.is_reviewer:
-            qs = qs.filter(project__reviewers=self.request.user)
-        return qs
-
-
-class DocumentNoteViewSet(JqListAPIMixin, viewsets.ModelViewSet):
-    """
-    list: Document Note List
-    retrieve: Retrieve Document Note
-    create: Create Document Note
-    update: Update Document Note
-    partial_update: Partial Update Document Note
-    delete: Delete Document Note
-    """
-    queryset = DocumentNote.objects.all()
-
-    def get_queryset(self):
-
-        qs = super().get_queryset()
-
-        project_id = self.request.GET.get('project_id')
-        if project_id:
-            qs = qs.filter(document__project_id=project_id)
-
-        document_id = self.request.GET.get('document_id')
-        if document_id:
-            qs = qs.filter(document_id=document_id)
-
-        return qs
-
-    def get_serializer_class(self):
-        if self.action == 'create':
-            return DocumentNoteCreateSerializer
-        if self.action == 'update':
-            return DocumentNoteUpdateSerializer
-        return DocumentNoteDetailSerializer
 
 
 # --------------------------------------------------------
@@ -1182,9 +1197,9 @@ class DocumentFieldDetailSerializer(SimpleRelationSerializer):
 
     class Meta:
         model = DocumentField
-        fields = ['uid', 'code', 'title', 'description', 'type', 'value_aware', 'choices',
-                  'formula', 'modified_by__username', 'modified_date',
-                  'confidence', 'requires_text_annotations', 'read_only']
+        fields = ['uid', 'code', 'title', 'description', 'type', 'value_aware', 'choices', 'formula',
+                  'modified_by__username', 'modified_date', 'confidence', 'requires_text_annotations', 'read_only',
+                  'order', 'display_yes_no']
 
     def get_value_aware(self, obj: DocumentField):
         return obj.is_value_aware()
@@ -1222,44 +1237,33 @@ class DocumentFieldViewSet(JqListAPIMixin, viewsets.ModelViewSet):
 # Document Type Views
 # --------------------------------------------------------
 
-class DocumentTypeFieldCategorySerializer(serializers.ModelSerializer):
+class FieldCategorySerializer(serializers.ModelSerializer):
     class Meta:
-        model = DocumentTypeFieldCategory
+        model = DocumentFieldCategory
         fields = ['pk', 'name', 'order']
 
 
-class DocumentTypeFieldSerializer(serializers.ModelSerializer):
-    field_data = DocumentFieldDetailSerializer(
-        source='document_field', many=False, read_only=True)
-    category = DocumentTypeFieldCategorySerializer(many=False, read_only=True)
+class FieldDataSerializer(DocumentFieldDetailSerializer):
+    category = FieldCategorySerializer(many=False, read_only=True)
 
     class Meta:
-        model = DocumentTypeField
-        fields = ['field_data', 'category', 'order']
+        fields = DocumentFieldDetailSerializer.Meta.fields + ['category']
+        model = DocumentField
 
 
 class DocumentTypeDetailSerializer(SimpleRelationSerializer):
-    field_type_data = DocumentTypeFieldSerializer(
-        source='documenttypefield_set', many=True, read_only=True)
+    fields_data = FieldDataSerializer(source='fields', many=True, read_only=True)
 
     class Meta:
         model = DocumentType
-        fields = ['uid', 'code', 'title',
-                  'field_type_data', 'search_fields',
-                  'modified_by__username', 'modified_date', 'editor_type']
+        fields = ['uid', 'code', 'title', 'fields_data', 'search_fields', 'modified_by__username',
+                  'modified_date', 'editor_type']
 
     def to_representation(self, instance):
         ret = dict(super().to_representation(instance))
-        fields_data = []
-        field_type_data = ret.pop('field_type_data')
-        for field in field_type_data:
-            field_data = field['field_data']
-            field_data['category'] = field['category']
-            field_data['order'] = field['order']
+        for field in ret.get('fields_data'):
             # set search field flag
-            field_data['default'] = field_data['uid'] in ret['search_fields']
-            fields_data.append(field_data)
-        ret['fields_data'] = fields_data
+            field['default'] = field['uid'] in ret['search_fields']
         del ret['search_fields']
         return ret
 
@@ -1280,9 +1284,7 @@ class DocumentTypeViewSet(JqListAPIMixin, viewsets.ModelViewSet):
     delete: Delete Document Type
     """
     queryset = DocumentType.objects.select_related('modified_by') \
-        .prefetch_related('search_fields', 'documenttypefield_set',
-                          'documenttypefield_set__category',
-                          'documenttypefield_set__document_field')
+        .prefetch_related('search_fields', 'fields', 'fields__category', )
     permission_classes = (ReviewerReadOnlyPermission,)
 
     def get_serializer_class(self):
@@ -1480,7 +1482,7 @@ def do_delete_document_field_value(pk) -> Tuple[Document, Dict]:
         field_value.removed_by_user = True
         field_value.save()
 
-        DocumentTypeField.objects.set_dirty_for_value(field_value)
+        DocumentField.objects.set_dirty_for_value(field_value)
     return doc, _to_dto(field_value)
 
 

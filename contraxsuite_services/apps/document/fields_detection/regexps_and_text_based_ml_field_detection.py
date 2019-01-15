@@ -24,17 +24,14 @@ from apps.document.models import Document
 from apps.document.fields_detection.stop_words import detect_with_stop_words_by_field_and_full_text
 
 
-def get_user_data(document_type: DocumentType,
-                  field: DocumentField,
+def get_user_data(field: DocumentField,
                   project_ids: Optional[List[str]]) -> List[dict]:
-    qs_modified_document_ids = field_detection_utils.get_qs_active_modified_document_ids(document_type,
-                                                                                         field,
+    qs_modified_document_ids = field_detection_utils.get_qs_active_modified_document_ids(field,
                                                                                          project_ids)
 
-    qs_finished_document_ids = field_detection_utils.get_qs_finished_document_ids(document_type, project_ids)
+    qs_finished_document_ids = field_detection_utils.get_qs_finished_document_ids(field.document_type, project_ids)
 
     document_values = DocumentFieldValue.objects.filter(Q(field=field),
-                                                        Q(document__document_type=document_type),
                                                         Q(text_unit__isnull=False),
                                                         Q(document__in=Subquery(qs_modified_document_ids))
                                                         | Q(document__in=Subquery(qs_finished_document_ids)),
@@ -45,35 +42,34 @@ def get_user_data(document_type: DocumentType,
     return list(document_values)
 
 
-def get_external_field_values(document_type, field) -> List[dict]:
+def get_external_field_values(field) -> List[dict]:
     return list(ExternalFieldValue.objects
-                .filter(field_id=field.pk,
-                        type_id=document_type.pk)
+                .filter(field_id=field.pk)
                 .annotate(text_unit__text=F('text_unit_text'))
                 .values('text_unit__text', 'value', 'extraction_hint')
                 .annotate(created_by=Value(1, output_field=IntegerField()))[:settings.ML_TRAIN_DATA_SET_GROUP_LEN])
 
 
-def get_train_data_sets(document_type: DocumentType, field: DocumentField, project_ids: Optional[List[str]]) \
+def get_train_data_sets(field: DocumentField, project_ids: Optional[List[str]]) \
         -> List[Dict]:
     train_data_sets = []
-    user_data = get_user_data(document_type, field, project_ids)
+    user_data = get_user_data(field, project_ids)
     if user_data:
         train_data_sets.append(user_data)
-    external_field_values = get_external_field_values(document_type, field)
+    external_field_values = get_external_field_values(field)
     if external_field_values:
         train_data_sets.append(external_field_values)
     return train_data_sets
 
 
-def get_no_field_text_units(document_type: DocumentType, field: DocumentField) -> List[str]:
+def get_no_field_text_units(document_type: DocumentType, text_unit_type: str) -> List[str]:
     return list(
-        TextUnit.objects.filter(document__document_type_id=document_type.pk, unit_type=field.text_unit_type,
+        TextUnit.objects.filter(document__document_type_id=document_type.pk, unit_type=text_unit_type,
                                 related_field_values=None)
             .values_list('text', flat=True)[:settings.ML_TRAIN_DATA_SET_GROUP_LEN])
 
 
-def train_model(document_type: DocumentType, field: DocumentField, train_data_sets: List[dict]) -> ClassifierModel:
+def train_model(field: DocumentField, train_data_sets: List[dict]) -> ClassifierModel:
     df = pd.DataFrame.from_records(train_data_sets.pop(0))
     # add transferred external data
     for train_data in train_data_sets:
@@ -86,7 +82,7 @@ def train_model(document_type: DocumentType, field: DocumentField, train_data_se
 
     df['target_index'] = df['target_name'].factorize(sort=True)[0] + 1
 
-    df = df.append([{'text_unit__text': i} for i in get_no_field_text_units(document_type, field)])
+    df = df.append([{'text_unit__text': i} for i in get_no_field_text_units(field.document_type, field.text_unit_type)])
 
     df['target_index'] = df['target_index'].fillna(0).astype('int')
     df['target_name'] = df['target_name'].fillna(SkLearnClassifierModel.EMPTY_CAT_NAME).astype(
@@ -126,7 +122,6 @@ def train_model(document_type: DocumentType, field: DocumentField, train_data_se
 
     classifier_model.set_trained_model_obj(model)
     classifier_model.document_field = field
-    classifier_model.document_type = document_type
 
     predicted_os = text_clf.predict(x_test_os)
     predicted_is = text_clf.predict(x_test_is)
@@ -147,7 +142,6 @@ class TextBasedMLFieldDetectionStrategy(FieldDetectionStrategy):
     @classmethod
     def train_document_field_detector_model(cls,
                                             log: ProcessLogger,
-                                            document_type: DocumentType,
                                             field: DocumentField,
                                             train_data_project_ids: Optional[List],
                                             use_only_confirmed_field_values: bool = False) -> Optional[ClassifierModel]:
@@ -158,21 +152,20 @@ class TextBasedMLFieldDetectionStrategy(FieldDetectionStrategy):
             train_data = DocumentFieldValue.objects \
                 .filter(field_id=field.pk,
                         document__project_id__in=train_data_project_ids,
-                        document__document_type_id=document_type.pk,
                         removed_by_user=False) \
                 .values('created_by', 'text_unit__text', 'value', 'extraction_hint')
             train_data_sets = [list(train_data)]
         else:
-            train_data_sets = get_train_data_sets(document_type, field, train_data_project_ids)
+            train_data_sets = get_train_data_sets(field, train_data_project_ids)
 
         if not train_data_sets:
             log.info('Not enough data to train model for document_type #{0} and field #{1}.'
-                     .format(document_type.pk, field.pk))
+                     .format(field.document_type.pk, field.pk))
             return None
 
-        classifier_model = train_model(document_type, field, train_data_sets)
+        classifier_model = train_model(field, train_data_sets)
         log.info(
-            'Finished training model for document_type #{0} and field #{1}.'.format(document_type.pk, field.pk))
+            'Finished training model for document_type #{0} and field #{1}.'.format(field.document_type.pk, field.pk))
 
         return classifier_model
 
@@ -214,10 +207,8 @@ class TextBasedMLFieldDetectionStrategy(FieldDetectionStrategy):
         if detected_with_stop_words:
             return detected_values or list()
 
-        document_type = doc.document_type  # type: DocumentType
         try:
-            classifier_model = ClassifierModel.objects \
-                .get(document_type=document_type, document_field=field)
+            classifier_model = ClassifierModel.objects.get(document_field=field)
             sklearn_model = classifier_model.get_trained_model_obj()
             field_type_adapter = FIELD_TYPES_REGISTRY[field.type]
 
@@ -254,12 +245,13 @@ class RegexpsAndTextBasedMLFieldDetectionStrategy(TextBasedMLFieldDetectionStrat
         return True
 
     @classmethod
-    def train_document_field_detector_model(cls, log: ProcessLogger, document_type: DocumentType, field: DocumentField,
+    def train_document_field_detector_model(cls,
+                                            log: ProcessLogger,
+                                            field: DocumentField,
                                             train_data_project_ids: Optional[List],
                                             use_only_confirmed_field_values: bool = False) -> Optional[ClassifierModel]:
         try:
             return super().train_document_field_detector_model(log,
-                                                               document_type,
                                                                field,
                                                                train_data_project_ids,
                                                                use_only_confirmed_field_values)

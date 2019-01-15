@@ -38,15 +38,16 @@ from apps.analyze.models import DocumentCluster
 from apps.celery import app
 from apps.document.fields_detection.field_detection_celery_api import run_detect_field_values_as_sub_tasks
 from apps.document.fields_processing import field_value_cache
-from apps.document.models import Document
+from apps.document.models import Document, DocumentType
+from apps.document.events import events
 from apps.project.models import Project, ProjectClustering, UploadSession
-from apps.task.tasks import BaseTask
+from apps.task.tasks import BaseTask, CeleryTaskLogger
 from apps.task.utils.task_utils import TaskUtils
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.6/LICENSE"
-__version__ = "1.1.6"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.7/LICENSE"
+__version__ = "1.1.7"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -227,8 +228,9 @@ class ClusterProjectDocuments(BaseTask):
         self.push()
         self.log_info('Clustering completed. Updating document cache.')
 
+        log = CeleryTaskLogger(self)
         for doc in Document.objects.filter(project__pk=project_id):
-            field_value_cache.cache_generic_values(doc)
+            field_value_cache.cache_generic_values(doc, log=log)
 
         self.push()
         self.log_info('Finished.')
@@ -249,6 +251,9 @@ class ReassignProjectClusterDocuments(BaseTask):
 
         documents = Document.objects.filter(documentcluster__pk__in=cluster_ids)
         documents.update(project_id=new_project, document_type=new_project.type)
+
+        for document in documents:
+            events.on_document_deleted(document)
 
         task_model = self.task
         task_model.metadata = {

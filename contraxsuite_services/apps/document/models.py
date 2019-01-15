@@ -30,7 +30,8 @@ import os
 import pickle
 import re
 import uuid
-from typing import List
+from enum import Enum
+from typing import List, Optional, Tuple
 
 # Django imports
 from ckeditor.fields import RichTextField
@@ -39,8 +40,9 @@ from django.contrib.postgres.fields import JSONField
 from django.core.exceptions import ValidationError
 from django.core.serializers.json import DjangoJSONEncoder
 from django.core.validators import MinValueValidator
-from django.db import models
-from django.db.models import Count
+from django.db import models, transaction
+from django.db.models import Count, F, Value
+from django.db.models.functions import Concat
 from django.dispatch import receiver
 from django.utils.timezone import now
 from lexnlp.extract.en.definitions import get_definitions_in_sentence
@@ -52,14 +54,14 @@ from apps.common.managers import AdvancedManager
 from apps.common.models import get_default_status
 from apps.document import constants
 from apps.document.field_types import FieldType, FIELD_TYPES_REGISTRY, FIELD_TYPES_CHOICE, ValueExtractionHint, \
-    ORDINAL_EXTRACTION_HINTS
+    ORDINAL_EXTRACTION_HINTS, RelatedInfoField
 from apps.document.fields_detection.utils import remove_num_separators
 from apps.users.models import User
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.6/LICENSE"
-__version__ = "1.1.6"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.7/LICENSE"
+__version__ = "1.1.7"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -93,6 +95,49 @@ class TimeStampedModel(models.Model):
             models.signals.post_save.connect(func, sender=sender)
 
 
+class DocumentFieldCategory(models.Model):
+    name = models.CharField(max_length=100, db_index=True)
+
+    order = models.IntegerField(default=0)
+
+    class Meta:
+        verbose_name_plural = 'Document Field Categories'
+        ordering = ('order', 'name')
+
+    def __str__(self):
+        return self.name
+
+    def __repr__(self):
+        return "{1} (#{0})".format(self.pk, self.name)
+
+
+class DocumentFieldManager(models.Manager):
+    def set_dirty_for_value(self, value):
+        field = self.get(pk=value.field_id, document_type_id=value.document.document_type_id)
+        field.dirty = True
+        field.save()
+
+    def _get_dirty_fields_filter(self):
+        user_delay = DocumentFieldManager.get_user_delay()
+        return self.filter(dirty=True,
+                           value_detection_strategy__in=DocumentField.VALUE_DETECTION_TRAINABLE,
+                           training_finished=False,
+                           modified_date__lt=user_delay)
+
+    def has_dirty_fields(self):
+        return self._get_dirty_fields_filter().exists()
+
+    def get_dirty_fields(self):
+        return self._get_dirty_fields_filter().prefetch_related('document_type').all()
+
+    def assigned_fields(self):
+        return self.filter(document_type__isnull=False)
+
+    @staticmethod
+    def get_user_delay():
+        return now() - datetime.timedelta(seconds=settings.RETRAINING_DELAY_IN_SEC)
+
+
 class DocumentField(TimeStampedModel):
     """DocumentField object model
 
@@ -103,14 +148,16 @@ class DocumentField(TimeStampedModel):
     CONFIDENCE = ('High', 'Medium', 'Low')
     CONFIDENCE_CHOICES = ((i, i) for i in CONFIDENCE)
 
-    KIND_REQUIRED_FOR_CALCULATIONS = 'required_for_calculations'
-    KIND_CALCULATED = 'calculated'
-
     # Make pk field unique
     uid = StringUUIDField(primary_key=True, default=uuid.uuid4, editable=False)
 
+    document_type = models.ForeignKey('document.DocumentType', null=True, blank=False, related_name='fields')
+
     # Short name for field.
-    code = models.CharField(max_length=50, db_index=True, unique=True)
+    code = models.CharField(max_length=50, db_index=True, unique=False)
+
+    # Calculated field. Only for usage in __str__ function
+    long_code = models.CharField(max_length=150, null=False, unique=True, default=None)
 
     # Verbose name for field.
     title = models.CharField(max_length=100, db_index=True)
@@ -123,8 +170,7 @@ class DocumentField(TimeStampedModel):
                             default='string', db_index=True)
 
     # Type of the text unit to parse.
-    text_unit_type = models.CharField(max_length=10, choices=UNIT_TYPES,
-                                      default='sentence', db_index=True)
+    text_unit_type = models.CharField(max_length=10, choices=UNIT_TYPES, default='sentence', db_index=True)
 
     VD_DISABLED = 'disabled'
 
@@ -143,6 +189,14 @@ class DocumentField(TimeStampedModel):
     VD_PYTHON_CODED_FIELD = 'python_coded_field'
 
     VD_FIELD_BASED_REGEXPS = 'field_based_regexps'
+
+    VALUE_DETECTION_TRAINABLE = {
+        VD_REGEXPS_AND_TEXT_BASED_ML,
+        VD_TEXT_BASED_ML_ONLY,
+        VD_FORMULA_AND_FIELD_BASED_ML,
+        VD_PYTHON_CODED_FIELD,
+        VD_FIELD_BASED_ML_ONLY
+    }
 
     VALUE_DETECTION_STRATEGY_CHOICES = [(VD_DISABLED, 'Field detection disabled'),
                                         (VD_USE_REGEXPS_ONLY,
@@ -181,7 +235,37 @@ class DocumentField(TimeStampedModel):
 
     read_only = models.BooleanField(default=False, null=False, blank=False)
 
+    category = models.ForeignKey(DocumentFieldCategory, blank=True, null=True, db_index=True)
+
+    # In case the type of the field requires selecting one of pre-defined values -
+    # they should be stored \n-separated in the "choices" property
+    choices = models.TextField(blank=True, null=True)
+
+    # Used for quickly detecting a value if one of these regexps is matched.
+    # Format:
+    # { "regexp": "choice_value", "regexp": "choice_value", ..... }
+    # For field-based field detecting (formulas/ML/field detectors):
+    #   - strategies try to find any of these regexps
+    stop_words = JSONField(blank=True, null=True, encoder=DjangoJSONEncoder)
+
     metadata = CustomJSONField(blank=True, null=True, encoder=DjangoJSONEncoder)
+
+    training_finished = models.BooleanField(default=False)
+
+    dirty = models.BooleanField(default=False)
+
+    order = models.PositiveSmallIntegerField(default=0)
+
+    trained_after_documents_number = models.PositiveIntegerField(default=settings.TRAINED_AFTER_DOCUMENTS_NUMBER,
+                                                                 null=False, validators=[MinValueValidator(1)])
+
+    display_yes_no = models.BooleanField(default=False, null=False, blank=False)
+
+    modified_date = models.DateTimeField(auto_now=True)
+
+    created_date = models.DateTimeField(auto_now_add=True)
+
+    objects = DocumentFieldManager()
 
     def is_detectable(self):
         return self.value_detection_strategy and self.value_detection_strategy != self.VD_DISABLED
@@ -200,29 +284,26 @@ class DocumentField(TimeStampedModel):
         depends_on_fields = self.depends_on_fields.all()
         return {f.code for f in depends_on_fields} if depends_on_fields else None
 
-    # In case the type of the field requires selecting one of pre-defined values -
-    # they should be stored \n-separated in the "choices" property
-    choices = models.TextField(blank=True, null=True)
-
-    # Used for quickly detecting a value if one of these regexps is matched.
-    # Format:
-    # { "regexp": "choice_value", "regexp": "choice_value", ..... }
-    # For field-based field detecting (formulas/ML/field detectors):
-    #   - strategies try to find any of these regexps
-    stop_words = JSONField(blank=True, null=True, encoder=DjangoJSONEncoder)
-
     class Meta:
-        unique_together = (('code', 'modified_by', 'modified_date'),)
-        ordering = ('code',)
+        unique_together = (('code', 'document_type'), ('code', 'document_type', 'modified_by', 'modified_date'),)
+        indexes = [
+            models.Index(fields=['dirty']),
+            models.Index(fields=['training_finished']),
+            models.Index(fields=['modified_date']),
+        ]
+        ordering = ('long_code',)
 
     def __str__(self):
-        return "{0}".format(self.code)
+        return self.long_code
 
     def __repr__(self):
         return "{1} (#{0})".format(self.pk, self.code)
 
     def is_choice_field(self):
         return self.type in FIELD_TYPES_CHOICE
+
+    def is_related_info_field(self):
+        return self.type == RelatedInfoField.code
 
     def is_value_extracting_field(self):
         return self.type and FIELD_TYPES_REGISTRY[self.type].value_extracting
@@ -231,6 +312,24 @@ class DocumentField(TimeStampedModel):
         if not self.choices:
             return []
         return [choice.strip() for choice in self.choices.strip().splitlines()]
+
+    def can_retrain(self):
+        return self.dirty \
+               and not self.training_finished \
+               and self.modified_date < DocumentFieldManager.get_user_delay()
+
+    def save(self, *args, **kwargs):
+        with transaction.atomic():
+            document_type = None
+            if self.document_type is not None:
+                document_type = DocumentType.objects.get(pk=self.document_type.pk)
+            self.long_code = self.get_long_code(self, document_type)
+            super().save(*args, **kwargs)
+
+    @classmethod
+    def get_long_code(cls, field, document_type=None):
+        document_type = field.document_type if document_type is None else document_type
+        return '{0}: {1}'.format(document_type.code, field.code) if document_type is not None else field.code
 
 
 class DocumentType(TimeStampedModel):
@@ -250,10 +349,6 @@ class DocumentType(TimeStampedModel):
 
     # Verbose name for field.
     title = models.CharField(max_length=100, db_index=True)
-
-    # full set of fields to annotate on Document detail page
-    fields = models.ManyToManyField(
-        DocumentField, related_name='field_document_type', blank=True, through='DocumentTypeField')
 
     # Aliases of field codes for document import purposes.
     # Json format: { "alias1": "field_code1", "alias2": "field_code2", ...}
@@ -297,90 +392,12 @@ class DocumentType(TimeStampedModel):
     def is_generic(self):
         return self.code == DocumentType.GENERIC_TYPE_CODE
 
-
-class DocumentTypeFieldManager(models.Manager):
-    def set_dirty_for_value(self, value):
-        document_type_field = self.get(document_field_id=value.field_id,
-                                       document_type_id=value.document.document_type_id)
-        document_type_field.dirty = True
-        document_type_field.save()
-
-    def _get_dirty_fields_filter(self):
-        user_delay = DocumentTypeFieldManager.get_user_delay()
-        return self.filter(dirty=True,
-                           training_finished=False,
-                           modified_date__lt=user_delay)
-
-    def has_dirty_fields(self):
-        return self._get_dirty_fields_filter().exists()
-
-    def get_dirty_fields(self):
-        return self._get_dirty_fields_filter().prefetch_related('document_type', 'document_field').all()
-
-    @staticmethod
-    def get_user_delay():
-        return now() - datetime.timedelta(seconds=settings.RETRAINING_DELAY_IN_SEC)
-
-    def get_document_type_field(self, document_type_uid, field_uid):
-        return self.get(document_type__pk=document_type_uid, document_field__pk=field_uid)
-
-
-class DocumentTypeFieldCategory(models.Model):
-    name = models.CharField(max_length=100, db_index=True)
-    #
-    # type_fields = models.ManyToManyField(DocumentTypeField, db_index=True, related_name='category')
-
-    order = models.IntegerField(default=0)
-
-    class Meta:
-        verbose_name_plural = 'Document Type Field Categories'
-        ordering = ('order', 'name')
-
-    def __str__(self):
-        return self.name
-
-    def __repr__(self):
-        return "{1} (#{0})".format(self.pk, self.name)
-
-
-class DocumentTypeField(models.Model):
-    document_type = models.ForeignKey(DocumentType, on_delete=models.CASCADE,
-                                      db_column='documenttype_id')
-
-    document_field = models.ForeignKey(DocumentField, on_delete=models.CASCADE,
-                                       db_column='documentfield_id')
-
-    category = models.ForeignKey(DocumentTypeFieldCategory, blank=True, null=True, db_index=True)
-
-    training_finished = models.BooleanField(default=False)
-
-    dirty = models.BooleanField(default=False)
-
-    order = models.PositiveSmallIntegerField(default=0)
-
-    trained_after_documents_number = models.PositiveIntegerField(default=settings.TRAINED_AFTER_DOCUMENTS_NUMBER,
-                                                                 null=False, validators=[MinValueValidator(1)])
-    modified_date = models.DateTimeField(auto_now=True)
-
-    created_date = models.DateTimeField(auto_now_add=True)
-
-    objects = DocumentTypeFieldManager()
-
-    class Meta:
-        unique_together = ('document_type', 'document_field',)
-        indexes = [
-            models.Index(fields=['dirty']),
-            models.Index(fields=['training_finished']),
-            models.Index(fields=['modified_date']),
-        ]
-
-    def __str__(self):
-        return 'DocumentTypeField type:{} field:{}'.format(self.document_type.code, self.document_field.code)
-
-    def can_retrain(self):
-        return self.dirty \
-               and not self.training_finished \
-               and self.modified_date < DocumentTypeFieldManager.get_user_delay()
+    def save(self, *args, **kwargs):
+        with transaction.atomic():
+            super().save(*args, **kwargs)
+            DocumentField.objects \
+                .filter(document_type=self) \
+                .update(long_code=Concat(Value(self.code + ': '), F('code')))
 
 
 class DocumentManager(models.Manager):
@@ -496,6 +513,14 @@ class Document(models.Model):
 
     def is_completed(self):
         return self.status.is_active
+
+    def is_reviewed(self):
+        return not self.status.group.is_active
+
+    def cluster_id(self):
+        if not self.document_type.is_generic():
+            return None
+        return self.documentcluster_set.order_by('-pk').values_list('pk', flat=True).first()
 
 
 @receiver(models.signals.post_delete, sender=Document)
@@ -629,11 +654,18 @@ class DocumentNote(models.Model):
     # Document Field Value
     field_value = models.ForeignKey('document.DocumentFieldValue', blank=True, null=True, db_index=True)
 
+    # Document Field Value
+    field = models.ForeignKey('document.DocumentField', blank=True, null=True, db_index=True)
+
     # Document timestamp
     timestamp = models.DateTimeField(default=now, db_index=True)
 
     # Note body
     note = RichTextField()
+
+    location_start = models.IntegerField(null=True, blank=True)
+
+    location_end = models.IntegerField(null=True, blank=True)
 
     # Note history
     history = HistoricalRecords()
@@ -884,15 +916,18 @@ class DocumentFieldValue(TimeStampedModel):
 
     def __repr__(self):
         return "{0}.{1} = {2} (#{3})" \
-            .format(self.document.name, self.field.code, str(self.value)[:40], self.id)
+            .format(self.document_id, self.field_id, str(self.value)[:40], self.id)
 
     @property
     def python_value(self):
         field_type = self.field.get_field_type()  # type: FieldType
-        return field_type.single_db_value_to_python(self.value)
+        return field_type.single_db_value_to_python(self.value if not self.field.is_related_info_field()
+                                                    else self.location_text)
 
     @python_value.setter
     def python_value(self, pv):
+        if self.field.is_related_info_field():
+            return
         field_type = self.field.get_field_type()  # type: FieldType
         self.value = field_type.single_python_value_to_db(pv)
 
@@ -903,9 +938,6 @@ class ExternalFieldValue(TimeStampedModel):
     ExternalFieldValue contains external field values to train classifier.
     Transfer container for Training Data For Document Field Values.
     """
-
-    # DocumentType uid
-    type_id = models.CharField(max_length=36)
 
     # DocumentField uid
     field_id = models.CharField(max_length=36)
@@ -930,8 +962,16 @@ class ExternalFieldValue(TimeStampedModel):
             .format(self.type_id, self.field_id, str(self.value)[:40], self.id)
 
 
+class TextParts(Enum):
+    FULL = "FULL"
+    BEFORE_REGEXP = "BEFORE_REGEXP"
+    AFTER_REGEXP = "AFTER_REGEXP"
+
+
 class DocumentFieldDetector(models.Model):
     DEF_RE_FLAGS = re.DOTALL
+
+    TEXT_PARTS = tuple((text_part.value, text_part.value) for text_part in TextParts)
 
     uid = StringUUIDField(primary_key=True, default=uuid.uuid4, editable=False)
 
@@ -939,14 +979,13 @@ class DocumentFieldDetector(models.Model):
                               related_name='field_detectors')
 
     CAT_SIMPLE_CONFIG = 'simple_config'
-    CAT_TRY_ALWAYS_BEFORE_ML = 'try_always_before_ml'
+
+    CATEGORY_CHOICES = [(CAT_SIMPLE_CONFIG, 'Simple field detectors loaded and managed via '
+                                            '"Documents: Import Simple Field Detection Config" admin task.')]
 
     # Field detector category which can be used for finding some special field detectors
     # from the set of all available.
-    category = models.CharField(max_length=64, db_index=True, blank=True, null=True)
-
-    # Field Detectors with no document type specified work for any document type
-    document_type = models.ForeignKey(DocumentType, blank=True, null=True)
+    category = models.CharField(max_length=64, db_index=True, blank=True, null=True, choices=CATEGORY_CHOICES)
 
     # \n-separated list of words to search in the list of terms returned by get_definitions()
     # If set - this detector checks if the sentence if a definition of any term in this list.
@@ -974,6 +1013,9 @@ class DocumentFieldDetector(models.Model):
     extraction_hint = models.CharField(max_length=30, choices=EXTRACTION_HINT_CHOICES,
                                        default=EXTRACTION_HINT_CHOICES[0][0], db_index=True,
                                        blank=True, null=True)
+
+    text_part = models.CharField(max_length=30, choices=TEXT_PARTS, default=TEXT_PARTS[0][0], db_index=True,
+                                 blank=False, null=False)
 
     # Validator. If field is not of an ordinal type and TAKE_MIN/MAX are selected, throw error
     def clean_fields(self, exclude=('uid', 'field', 'document_type', 'exclude_regexps',
@@ -1028,12 +1070,12 @@ class DocumentFieldDetector(models.Model):
                     return True
         return False
 
-    def _matches_include_regexp(self, sentence: str) -> bool:
+    def _matches_include_regexp(self, sentence: str) -> Optional[Tuple[int, int]]:
         if self._include_matchers:
             for matcher_re in self._include_matchers:
-                for m in matcher_re.finditer(sentence):
-                    return True
-        return False
+                for match in matcher_re.finditer(sentence):
+                    return match.start(), match.end()
+        return None
 
     def _clean_def_words(self, s: str):
         res = ''.join(filter(lambda ss: ss.isalpha() or ss.isnumeric() or ss.isspace(), s))
@@ -1051,30 +1093,40 @@ class DocumentFieldDetector(models.Model):
                     return True
         return False
 
-    def matches(self, sentence: str):
+    def matches(self, sentence: str) -> Optional[Tuple[str, int, int]]:
         if self._include_matchers is None or self._exclude_matchers is None:
             self.compile_regexps()
 
         if not sentence:
-            return False
+            return None
 
         sentence = sentence.replace('\n', ' ').replace('\t', ' ')
 
-        if self.regexps_pre_process_lower:
-            sentence = sentence.lower()
+        sentence_without_lower = sentence
         if self.regexps_pre_process_remove_numeric_separators:
             sentence = remove_num_separators(sentence)
+            sentence_without_lower = sentence
+        if self.regexps_pre_process_lower:
+            sentence = sentence.lower()
 
-        if self._matches_exclude_regexp(sentence):
-            return False
-
-        if self._definition_words:
-            if not self._matches_definition_words(sentence):
-                return False
-
-            return not self._include_matchers or self._matches_include_regexp(sentence)
+        if self._matches_exclude_regexp(sentence) or \
+                (self._definition_words and not self._matches_definition_words(sentence)):
+            return None
         else:
-            return self._matches_include_regexp(sentence)
+            match = self._matches_include_regexp(sentence)
+            return (sentence_without_lower, match[0], match[1]) if match is not None else None
+
+    def matching_string(self, sentence: str) -> Optional[str]:
+        match = self.matches(sentence)
+        if match:
+            matching_string, begin, end = match
+            if self.text_part == TextParts.BEFORE_REGEXP.value:
+                return matching_string[:begin]
+            elif self.text_part == TextParts.AFTER_REGEXP.value:
+                return matching_string[end:]
+            else:
+                return sentence
+        return None
 
     class Meta:
         ordering = ('uid',)
@@ -1093,9 +1145,7 @@ class DocumentFieldDetectingConfig(models.Model):
 
 
 class ClassifierModel(models.Model):
-    document_type = models.ForeignKey(DocumentType, db_index=True, related_name='classifiers')
-
-    document_field = models.ForeignKey(DocumentField, db_index=True, null=True, blank=True)
+    document_field = models.ForeignKey(DocumentField, db_index=True, null=False, blank=True, default=None)
 
     trained_model = models.BinaryField(null=True, blank=True)
 
@@ -1118,7 +1168,7 @@ class ClassifierModel(models.Model):
 
     def __str__(self):
         return "ClassifierModel (document_type={0})" \
-            .format(self.document_type)
+            .format(self.document_field)
 
     def __repr__(self):
         return "ClassifierModel (id={0})".format(self.id)

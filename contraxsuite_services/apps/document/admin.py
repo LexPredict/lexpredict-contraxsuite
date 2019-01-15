@@ -30,12 +30,14 @@ from typing import List
 
 # Django imports
 from django import forms
+from django.contrib.admin.widgets import RelatedFieldWidgetWrapper
 from django.contrib import admin
-from django.contrib.admin.widgets import FilteredSelectMultiple
 from django.contrib.postgres import fields
+from django.db import transaction
 from django.utils.html import format_html_join
 from django_json_widget.widgets import JSONEditorWidget
 from simple_history.admin import SimpleHistoryAdmin
+from django.contrib.admin.widgets import FilteredSelectMultiple
 
 # Project imports
 from apps.common.script_utils import ScriptError
@@ -49,15 +51,16 @@ from apps.document.models import (
     Document, DocumentField, DocumentType,
     DocumentProperty, DocumentRelation, DocumentNote,
     DocumentFieldDetector, DocumentFieldValue, ExternalFieldValue,
-    ClassifierModel, TextUnit, TextUnitProperty, TextUnitNote, TextUnitTag, DocumentTypeField,
-    DocumentTypeFieldCategory)
-from apps.document.python_coded_fields import PYTHON_CODED_FIELDS_REGISTRY
+    ClassifierModel, TextUnit, TextUnitProperty, TextUnitNote, TextUnitTag,
+    DocumentFieldCategory)
+from apps.document.python_coded_fields_registry import PYTHON_CODED_FIELDS_REGISTRY
 from apps.document.fields_detection.stop_words import compile_stop_words, detect_value_with_stop_words
+from apps.document.events import events
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.6/LICENSE"
-__version__ = "1.1.6"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.7/LICENSE"
+__version__ = "1.1.7"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -86,9 +89,15 @@ class DocumentAdmin(ModelAdminWithPrettyJsonField, SimpleHistoryAdmin):
 
 
 class DocumentFieldForm(forms.ModelForm):
+    depends_on_fields = forms.ModelMultipleChoiceField(
+        queryset=DocumentField.objects.all(),
+        required=False,
+        widget=FilteredSelectMultiple('depends_on_fields', False))
+
     class Meta:
         model = DocumentField
         fields = '__all__'
+        exclude = ('long_code',)
 
     @classmethod
     def _extract_field_and_deps(cls, base_fields: List[DocumentField], fields_buffer: dict) -> dict:
@@ -168,9 +177,53 @@ class DocumentFieldForm(forms.ModelForm):
 class DocumentFieldAdmin(admin.ModelAdmin):
     form = DocumentFieldForm
     list_display = (
-        'code', 'title', 'description', 'type', 'formula', 'value_regexp', 'user', 'modified_date', 'confidence')
-    search_fields = ['code', 'title', 'description', 'created_by__username', 'confidence']
+        'document_type', 'code', 'category', 'order', 'title', 'description', 'type', 'formula', 'value_regexp', 'user',
+        'modified_date', 'confidence')
+    search_fields = ['document_type__code', 'code', 'category__name', 'title', 'description', 'created_by__username',
+                     'confidence']
     filter_horizontal = ('depends_on_fields',)
+
+    fieldsets = [
+        ('General', {
+            'fields': (
+                'created_by', 'modified_by', 'code', 'title', 'type', 'document_type', 'category', 'order',
+                'description',
+                'confidence', 'requires_text_annotations', 'read_only', 'choices'),
+        }),
+        ('Frontend Options', {
+            'fields': ('display_yes_no',),
+        }),
+        ('Field Detection: General', {
+            'fields': ('value_detection_strategy', 'text_unit_type', 'depends_on_fields'),
+        }),
+        ('Field Detection: Regexp-based', {
+            'fields': ('stop_words', 'value_regexp'),
+        }),
+        ('Field Detection: Machine Learning', {
+            'fields': ('classifier_init_script', 'training_finished', 'dirty', 'trained_after_documents_number'),
+        }),
+        ('Field Detection: Calculated Fields', {
+            'fields': ('formula',),
+        }),
+        ('Field Detection: Python-coded Fields', {
+            'fields': ('python_coded_field',),
+        }),
+        ('Metadata', {
+            'fields': ('metadata',),
+        }),
+    ]
+
+    def get_search_results(self, request, queryset, search_term):
+        qs, has_duplicates = super().get_search_results(request, queryset, search_term)
+        return qs.select_related('document_type', 'modified_by'), has_duplicates
+
+    def save_model(self, request, obj, form, change):
+        super().save_model(request, obj, form, change)
+        events.on_document_field_updated(obj)
+
+    def delete_model(self, request, obj):
+        super().delete_model(request, obj)
+        events.on_document_field_deleted(obj)
 
     @staticmethod
     def user(obj):
@@ -179,11 +232,9 @@ class DocumentFieldAdmin(admin.ModelAdmin):
 
 class DocumentFieldDetectorAdmin(admin.ModelAdmin):
     list_display = (
-        'document_type', 'field', 'detected_value', 'extraction_hint',
-        'include', 'regexps_pre_process_lower',
+        'field', 'detected_value', 'extraction_hint', 'include', 'regexps_pre_process_lower',
         'regexps_pre_process_remove_numeric_separators')
-    search_fields = ['document_type__code', 'document_type__title', 'field__code', 'field__title',
-                     'detected_value', 'extraction_hint', 'include_regexps']
+    search_fields = ['field__long_code', 'field__title', 'detected_value', 'extraction_hint', 'include_regexps']
 
     @staticmethod
     def document_type_code(obj):
@@ -227,8 +278,8 @@ class DocumentFieldValueAdmin(admin.ModelAdmin):
 
 
 class ExternalFieldValueAdmin(admin.ModelAdmin):
-    list_display = ('type_id', 'field_id', 'value', 'extraction_hint')
-    search_fields = ('type_id', 'field_id', 'value', 'extraction_hint')
+    list_display = ('field_id', 'value', 'extraction_hint')
+    search_fields = ('field_id', 'value', 'extraction_hint')
 
 
 class DocumentFieldInlineFormset(forms.models.BaseInlineFormSet):
@@ -262,16 +313,82 @@ class DocumentFieldInlineFormset(forms.models.BaseInlineFormSet):
                                                                                    document_field.code))
 
 
+class DocumentFieldFormInline(forms.ModelForm):
+    field = forms.ModelChoiceField(
+        queryset=DocumentField.objects.all(),
+        required=False)
+
+    def __init__(self, *args, **kwargs):
+        prefix = kwargs.get('prefix')
+        if prefix and kwargs.get('data') and kwargs.get('instance') is None:
+            uid = kwargs['data'].get('{0}-uid'.format(prefix))
+            if uid:
+                kwargs['instance'] = DocumentField.objects.get(pk=uid)
+        super().__init__(*args, **kwargs)
+        self.base_instance = kwargs.get('instance')
+        self._filter_tree = None
+        for _, field in self.fields.items():
+            print(field.widget.template_name)
+        if self.base_instance:
+            self.fields['field'].initial = self.base_instance
+            self.fields['field'].widget.template_name = 'documentfield_admin_select.html'
+
+    def save(self, *args, **kwargs):
+        form_instance = self.cleaned_data['field']
+        if form_instance != self.instance:
+            self.instance.document_type = None
+            self.instance.save()
+            self.instance = form_instance
+            self.instance.category = self.cleaned_data['category']
+            self.instance.order = self.cleaned_data['order']
+            self.instance.document_type = self.cleaned_data['document_type']
+            with transaction.atomic():
+                instance = super().save(commit=True)
+                return instance
+
+
 class DocumentFieldInlineAdmin(admin.TabularInline):
-    formset = DocumentFieldInlineFormset
-    model = DocumentType.fields.through
+    field = forms.ModelChoiceField(
+        queryset=DocumentField.objects.all(),
+        required=False)
+
+    fields = ['field', 'category', 'order']
+
+    form = DocumentFieldFormInline
+    model = DocumentField
+
+
+class DocumentTypeForm(forms.ModelForm):
+    search_fields = forms.ModelMultipleChoiceField(
+        queryset=DocumentField.objects.all(),
+        required=False,
+        widget=FilteredSelectMultiple('search_fields', False))
 
 
 class DocumentTypeAdmin(ModelAdminWithPrettyJsonField):
-    list_display = ('code', 'title', 'fields_num', 'user', 'fields', 'modified_date')
+    list_display = ('code', 'title', 'fields_num', 'user', 'modified_date')
     search_fields = ['code', 'title', 'created_by__username']
-    filter_horizontal = ('fields', 'search_fields')
+    filter_horizontal = ('search_fields',)
     inlines = (DocumentFieldInlineAdmin,)
+    form = DocumentTypeForm
+
+    fieldsets = [
+        ('General', {
+            'fields': (
+                'created_by', 'modified_by', 'code', 'title', 'editor_type', 'search_fields',),
+        }),
+
+        ('Document Import', {
+            'fields': (
+                'field_code_aliases',),
+        }),
+
+        ('Metadata', {
+            'fields': (
+                'metadata',),
+        }),
+
+    ]
 
     @staticmethod
     def fields_num(obj):
@@ -280,6 +397,14 @@ class DocumentTypeAdmin(ModelAdminWithPrettyJsonField):
     @staticmethod
     def user(obj):
         return obj.modified_by.username if obj.modified_by else None
+
+    def save_model(self, request, obj, form, change):
+        super().save_model(request, obj, form, change)
+        events.on_document_type_updated(obj)
+
+    def delete_model(self, request, obj):
+        super().delete_model(request, obj)
+        events.on_document_type_deleted(obj)
 
 
 class DocumentPropertyAdmin(admin.ModelAdmin):
@@ -318,24 +443,17 @@ class DocumentNoteAdmin(SimpleHistoryAdmin):
 
 
 class ClassifierModelAdmin(SimpleHistoryAdmin):
-    list_display = ('document_type', 'document_field',)
-    search_fields = ('document_type__code', 'document_type__title',
-                     'document_field__code', 'document_field__title')
+    list_display = ('document_field',)
+    search_fields = ('document_field__long_code', 'document_field__title')
 
 
-class DocumentTypeFieldAdmin(admin.ModelAdmin):
-    list_display = ('document_type', 'document_field', 'training_finished')
-    search_fields = ('document_type__code', 'document_type__title',
-                     'document_field__code', 'document_field__title')
-
-
-class DocumentTypeFieldCategoryForm(forms.ModelForm):
+class DocumentFieldCategoryForm(forms.ModelForm):
     class Meta:
-        model = DocumentTypeFieldCategory
+        model = DocumentFieldCategory
         fields = ['name', 'order']
 
-    type_fields = forms.ModelMultipleChoiceField(
-        queryset=DocumentTypeField.objects.all(),
+    fields = forms.ModelMultipleChoiceField(
+        queryset=DocumentField.objects.all(),
         label='Select Type Fields',
         required=False,
         widget=FilteredSelectMultiple('fields', False))
@@ -343,24 +461,24 @@ class DocumentTypeFieldCategoryForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         if self.instance:
-            self.fields['type_fields'].initial = self.instance.documenttypefield_set.all()
+            self.fields['fields'].initial = self.instance.documentfield_set.all()
 
     def save(self, *args, **kwargs):
         # TODO: Wrap reassignments into transaction
-        # NOTE: Previously assigned DocumentTypeFieldCategory are silently reset
+        # NOTE: Previously assigned DocumentFieldCategory are silently reset
         instance = super().save(commit=True)
-        self.fields['type_fields'].initial.update(category=None)
-        self.cleaned_data['type_fields'].update(category=instance)
+        self.fields['fields'].initial.update(category=None)
+        self.cleaned_data['fields'].update(category=instance)
         return instance
 
     def save_m2m(self, *args, **kwargs):
         pass
 
 
-class DocumentTypeFieldCategoryAdmin(admin.ModelAdmin):
+class DocumentFieldCategoryAdmin(admin.ModelAdmin):
     list_display = ('name', 'order')
     search_fields = ('name',)
-    form = DocumentTypeFieldCategoryForm
+    form = DocumentFieldCategoryForm
 
 
 admin.site.register(Document, DocumentAdmin)
@@ -377,5 +495,4 @@ admin.site.register(TextUnit, TextUnitAdmin)
 admin.site.register(TextUnitTag, TextUnitTagAdmin)
 admin.site.register(TextUnitNote, TextUnitNoteAdmin)
 admin.site.register(DocumentNote, DocumentNoteAdmin)
-admin.site.register(DocumentTypeField, DocumentTypeFieldAdmin)
-admin.site.register(DocumentTypeFieldCategory, DocumentTypeFieldCategoryAdmin)
+admin.site.register(DocumentFieldCategory, DocumentFieldCategoryAdmin)

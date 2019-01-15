@@ -39,8 +39,8 @@ from apps.document.models import (
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.6/LICENSE"
-__version__ = "1.1.6"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.7/LICENSE"
+__version__ = "1.1.7"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -186,7 +186,11 @@ urlpatterns += [
         views.TrainDocumentFieldDetectorModelTaskView.as_view(),
         name='train-document-field-detector-model',
     ),
-
+    url(
+        r'^find-broken-document-field-values/$',
+        views.FindBrokenDocumentFieldValuesTaskView.as_view(),
+        name='find-broken-document-field-values',
+    ),
     url(
         r'^cache-document-fields/$',
         views.CacheDocumentFieldsTaskView.as_view(),

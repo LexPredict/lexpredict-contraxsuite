@@ -48,8 +48,8 @@ from auth import CookieAuthentication
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.6/LICENSE"
-__version__ = "1.1.6"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.7/LICENSE"
+__version__ = "1.1.7"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -136,6 +136,18 @@ class Response404ErrorMiddleware(MiddlewareMixin):
         if response.status_code == 404:
             response = JsonResponse({'message': 'Not Found'})
             response.status_code = 404
+        return response
+
+
+class Response500ErrorMiddleware(MiddlewareMixin):
+    """
+    Custom page for 500 error
+    """
+    def process_response(self, request, response):
+        if response.status_code == 500 and settings.DEBUG is False and '/api/' in request.path:
+            response = JsonResponse({'message': response.reason_phrase,
+                                     'content': response.content.decode('utf-8')})
+            response.status_code = 500
         return response
 
 

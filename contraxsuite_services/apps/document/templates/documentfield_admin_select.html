@@ -1,0 +1,20 @@
+<div class="related-widget-wrapper">
+  <select name="{{ widget.name }}"{% include "django/forms/widgets/attrs.html" %}>{% for group_name, group_choices, group_index in widget.optgroups %}{% if group_name %}
+    <optgroup label="{{ group_name }}">{% endif %}{% for option in group_choices %}
+    {% include option.template_name with widget=option %}{% endfor %}{% if group_name %}
+    </optgroup>{% endif %}{% endfor %}
+  </select>
+  <a class="related-widget-wrapper-link change-related"
+     id="change_id_fields-{{ inline_admin_form.original.pk }}-field"
+     data-href-template="/admin/document/documentfield/__fk__/change/?_to_field=uid&_popup=1"
+     title="Change selected document field"
+     href="/admin/document/documentfield/{{ inline_admin_form.original.pk }}/change/?_to_field=uid&_popup=1">
+    <img src="/static/admin/img/icon-changelink.svg" alt="Change">
+  </a>
+  <a class="related-widget-wrapper-link add-related"
+     id="add_id_fields-{{ inline_admin_form.original.pk }}-field"
+     href="/admin/document/documentfield/add/?_to_field=uid&_popup=1"
+     title="Add another document field">
+    <img src="/static/admin/img/icon-addlink.svg" alt="Add">
+  </a>
+</div>

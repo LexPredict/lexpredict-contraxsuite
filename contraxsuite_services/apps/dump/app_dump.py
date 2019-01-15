@@ -33,7 +33,7 @@ from allauth.account.models import EmailAddress, EmailConfirmation
 
 from django.core import serializers as core_serializers
 from django.core.management import call_command
-from django.db.models import F
+from django.db.models import F, Subquery
 from django.http import HttpResponse
 
 
@@ -43,8 +43,8 @@ from typing import Any
 from apps.common.models import ReviewStatus, ReviewStatusGroup, AppVar
 from apps.deployment.models import Deployment
 from apps.document.models import (
-    DocumentField, DocumentType, DocumentFieldDetector, DocumentFieldValue, ExternalFieldValue, DocumentTypeField,
-    DocumentTypeFieldCategory)
+    DocumentField, DocumentType, DocumentFieldDetector, DocumentFieldValue, ExternalFieldValue,
+    DocumentFieldCategory)
 from apps.extract.models import Court, GeoAlias, GeoEntity, GeoRelation, Party, Term
 from apps.project.models import DocumentFilter
 from apps.task.models import TaskConfig
@@ -54,8 +54,7 @@ APP_CONFIG_MODELS = [
     DocumentType,
     DocumentField,
     DocumentFieldDetector,
-    DocumentTypeFieldCategory,
-    DocumentTypeField,
+    DocumentFieldCategory,
     DocumentFilter,
 ]
 
@@ -82,13 +81,15 @@ def default_object_handler(obj: Any) -> Any:
     return obj
 
 
-def get_dump(models: list, object_handler_by_model: dict = None) -> str:
+def get_dump(models: list, filter_by_model: dict = None, object_handler_by_model: dict = None) -> str:
     object_handler_by_model = object_handler_by_model or {}
-    app_models = []
+    objects = []
     for model in models:
         handler = object_handler_by_model.get(model) or default_object_handler
-        app_models += map(lambda obj: handler(obj), model.objects.all())
-    return core_serializers.serialize('json', app_models)
+        qs_filter = filter_by_model.get(model)
+        query_set = qs_filter(model.objects.get_queryset()) if qs_filter else model.objects.all()
+        objects += [handler(obj) for obj in query_set]
+    return core_serializers.serialize('json', objects)
 
 
 def write_dump(file_name: str, json_data):
@@ -112,9 +113,24 @@ def clear_owner(obj: Any) -> Any:
     return obj
 
 
-def get_app_config_dump() -> str:
+def get_app_config_dump(document_type_codes=None) -> str:
     object_handler_by_model = {DocumentField: clear_owner, DocumentFilter: clear_owner}
-    return get_dump(APP_CONFIG_MODELS, object_handler_by_model)
+    filter_by_model = {}
+    if document_type_codes:
+        document_field_filter = lambda qs: qs.filter(document_type__code__in=document_type_codes)
+        category_document_type_field = document_field_filter(DocumentField.objects.get_queryset()) \
+            .values_list('category__pk') \
+            .distinct('category__pk') \
+            .order_by('category__pk')
+
+        filter_by_model = {
+            DocumentType: lambda qs: qs.filter(code__in=document_type_codes),
+            DocumentField: document_field_filter,
+            DocumentFieldDetector: lambda qs: qs.filter(field__document_type__code__in=document_type_codes),
+            DocumentFieldCategory: lambda qs: qs.filter(pk__in=Subquery(category_document_type_field)),
+            DocumentFilter: lambda qs: qs.filter(document_type__code__in=document_type_codes)
+        }
+    return get_dump(APP_CONFIG_MODELS, filter_by_model, object_handler_by_model)
 
 
 def get_field_values_dump() -> str:
@@ -122,9 +138,8 @@ def get_field_values_dump() -> str:
         .filter(removed_by_user=False,
                 created_by__isnull=False,
                 text_unit__text__isnull=False) \
-        .annotate(type_id=F('document__document_type__pk'),
-                  text_unit_text=F('text_unit__text')) \
-        .values('type_id', 'field_id', 'value', 'extraction_hint',
+        .annotate(text_unit_text=F('text_unit__text')) \
+        .values('field_id', 'value', 'extraction_hint',
                 'text_unit_text', 'created_date', 'modified_date')
 
     transfer_objects = [ExternalFieldValue(**i) for i in data]

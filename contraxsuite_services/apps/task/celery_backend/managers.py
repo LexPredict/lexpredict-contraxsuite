@@ -1,16 +1,17 @@
 """Model managers."""
 from __future__ import absolute_import, unicode_literals
 
+import copy
 import datetime
 import warnings
-import copy
 from functools import wraps
 from itertools import count, groupby
 from traceback import format_exception
+from typing import Tuple
 
-from celery.result import AsyncResult
-from celery.states import READY_STATES, PROPAGATE_STATES, SUCCESS, UNREADY_STATES
 from celery import signature
+from celery.result import AsyncResult
+from celery.states import READY_STATES, PROPAGATE_STATES, SUCCESS, UNREADY_STATES, FAILURE, ALL_STATES
 from django.conf import settings
 from django.db import connections, router, transaction
 from django.db import models
@@ -162,6 +163,7 @@ class TaskManager(models.Manager):
                   task_name: str,
                   main_task_id: str,
                   description: str = None,
+                  args: Tuple = None,
                   source_data=None,
                   run_after_sub_tasks_finished=False):
         try:
@@ -180,6 +182,7 @@ class TaskManager(models.Manager):
             'description': description,
             'main_task_id': main_task.id if main_task else None,
             'date_start': now(),
+            'args': args,
             'source_data': source_data,
             'run_after_sub_tasks_finished': run_after_sub_tasks_finished})
         if not created:
@@ -249,9 +252,15 @@ class TaskManager(models.Manager):
             self.filter(id=task_id).update(
                 own_progress=F('own_progress') + Value(100) / F('push_steps'))
 
-    def main_tasks(self):
-        return self.filter(Q(main_task__isnull=True) | Q(main_task_id=F('id'))) \
-            .exclude(name__in=self.EXCLUDE_FROM_TRACKING)
+    NON_FAILED_STATES = set(ALL_STATES) - {FAILURE}
+
+    def main_tasks(self, show_failed_excluded_from_tracking:bool = False):
+        qr = self.filter(Q(main_task__isnull=True) | Q(main_task_id=F('id')))
+        if not show_failed_excluded_from_tracking:
+            qr = qr.exclude(name__in=self.EXCLUDE_FROM_TRACKING)
+        else:
+            qr = qr.exclude(Q(name__in=self.EXCLUDE_FROM_TRACKING) & Q(status__in=self.NON_FAILED_STATES))
+        return qr
 
     def unready_main_tasks(self):
         return self.main_tasks().filter(status__in=UNREADY_STATES)
@@ -345,8 +354,8 @@ class TaskManager(models.Manager):
             if total_status not in PROPAGATE_STATES:
                 self.run_after_sub_tasks(main_task_id)
             else:
-                self\
-                    .filter(main_task_id=main_task_id, run_after_sub_tasks_finished=True)\
+                self \
+                    .filter(main_task_id=main_task_id, run_after_sub_tasks_finished=True) \
                     .update(status=total_status, date_done=total_date_done)
 
         self.filter(id=main_task_id).update(date_done=total_date_done,

@@ -33,6 +33,7 @@ from django.core.urlresolvers import reverse
 from django.contrib.auth.forms import password_validation
 from django import forms
 from django.conf import settings
+from django.utils import timezone
 from django.utils.translation import ugettext as _
 
 from apps.common.utils import get_api_module, get_test_user
@@ -40,10 +41,22 @@ from apps.common.models import AppVar
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.6/LICENSE"
-__version__ = "1.1.6"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.7/LICENSE"
+__version__ = "1.1.7"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
+
+
+def token_creator(token_model, user, serializer):
+    """
+    Patched default creator method, see settings.REST_AUTH_TOKEN_CREATOR
+    see default in  rest_auth.utils.default_create_token
+    """
+    token, created = token_model.objects.get_or_create(user=user)
+    if created is False and getattr(settings, 'REST_AUTH_TOKEN_UPDATE_EXPIRATION_DATE', False):
+        token.created = timezone.now()
+        token.save()
+    return token
 
 
 class CookieAuthentication(TokenAuthentication):
@@ -61,9 +74,8 @@ class CookieAuthentication(TokenAuthentication):
     """
 
     def authenticate(self, request):
-
         # Add urls that don't require authorization
-        token_exempt_urls = [reverse('rest_login')]
+        token_exempt_urls = [reverse('rest_login'), reverse('rest_password_reset')]
 
         # authenticate only if request path is not in excepted urls
         # first check for existing AUTHORIZATION header
@@ -79,19 +91,49 @@ class CookieAuthentication(TokenAuthentication):
             # inject auth token into AUTHORIZATION header to authenticate via standard rest auth
             request.META['HTTP_AUTHORIZATION'] = auth_token
 
-        try:
-            res = super().authenticate(request)
-        except exceptions.AuthenticationFailed:
-            res = None
-
         # force authentication if auto_login feature is enabled
-        if not res and config.auto_login:
-            user = get_test_user()
-            token, _ = TokenModel.objects.get_or_create(user=user)
-            res = (user, token)
+        # if not res and config.auto_login:
+        #     user = get_test_user()
+        #     token, _ = TokenModel.objects.get_or_create(user=user)
+        #     res = (user, token)
 
         # res = (user, token) for authenticated user otherwise None
-        return res
+        return super().authenticate(request)
+
+    def authenticate_credentials(self, key):
+        model = self.get_model()
+        try:
+            token = model.objects.select_related('user').get(key=key)
+        except model.DoesNotExist:
+            raise exceptions.AuthenticationFailed(_('Invalid token.'))
+
+        if not token.user.is_active:
+            raise exceptions.AuthenticationFailed(_('User inactive or deleted.'))
+
+        if self.is_token_expired(token):
+            raise exceptions.AuthenticationFailed('Token has expired')
+
+        self.update_token_date(token)
+
+        return token.user, token
+
+    @staticmethod
+    def is_token_expired(token):
+        """
+        Check token expiration date
+        """
+        expires_in = timezone.timedelta(days=getattr(settings, 'REST_AUTH_TOKEN_EXPIRES_DAYS', 1))
+        expiration_date = token.created + expires_in
+        return timezone.now() > expiration_date
+
+    @staticmethod
+    def update_token_date(token):
+        """
+        Update token expiration date
+        """
+        if getattr(settings, 'REST_AUTH_TOKEN_UPDATE_EXPIRATION_DATE', False):
+            token.created = timezone.now()
+            token.save()
 
 
 # do not move above CookieAuthentication as it throws error

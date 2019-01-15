@@ -19,7 +19,7 @@ class AdvancedCelery(Celery):
 
         main_task_id = main_task_id or parent_id or root_id
         Task.objects.init_task(task_id, name, main_task_id, 'Args: {0}\nKwargs: {1}'.format(str(args), str(kwargs)),
-                               source_data, run_after_sub_tasks_finished)  # type: Task
+                               args, source_data, run_after_sub_tasks_finished)  # type: Task
 
         return super().send_task(name, args, kwargs, countdown, eta, task_id, producer, connection,
                                  router, result_cls, expires, publisher, link, link_error,

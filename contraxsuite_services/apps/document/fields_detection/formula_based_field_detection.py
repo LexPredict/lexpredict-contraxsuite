@@ -9,7 +9,7 @@ from apps.document.fields_detection.fields_detection_abstractions import FieldDe
 from apps.document.fields_detection.stop_words import detect_with_stop_words_by_field_and_full_text
 from apps.document.fields_processing.field_processing_utils import merge_document_field_values_to_python_value
 from apps.document.models import ClassifierModel
-from apps.document.models import DocumentType, DocumentField, Document
+from apps.document.models import DocumentField, Document
 
 
 class DocumentFieldFormulaError(RuntimeError):
@@ -38,7 +38,6 @@ class FormulaBasedFieldDetectionStrategy(FieldDetectionStrategy):
     @classmethod
     def train_document_field_detector_model(cls,
                                             log: ProcessLogger,
-                                            document_type: DocumentType,
                                             field: DocumentField,
                                             train_data_project_ids: Optional[List],
                                             use_only_confirmed_field_values: bool = False) -> Optional[ClassifierModel]:

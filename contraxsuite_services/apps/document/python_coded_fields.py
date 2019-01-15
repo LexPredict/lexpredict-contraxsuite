@@ -1,10 +1,10 @@
-import importlib
-import logging
-from typing import List, Any, Tuple, Dict, Optional
+from typing import List, Any, Tuple, Optional
 
-from django.conf import settings
+from django.contrib.postgres.aggregates.general import StringAgg
 
-from apps.document.models import DocumentType, DocumentField, ClassifierModel
+from apps.document import field_types
+from apps.document.models import DocumentField, ClassifierModel, Document
+from apps.extract.models import CurrencyUsage, DateUsage, PartyUsage
 
 
 class PythonCodedField:
@@ -14,73 +14,83 @@ class PythonCodedField:
 
     uses_cached_document_field_values = False
 
-    # If true - detect field values separately in each sentence.
+    # If true - detect field values separately in each sentence/paragraph.
     # If false - run get_values() against the whole document and next try to find matching text unit (sentence)
     #            for each detected value.
     # see apps.document.tasks.detect_field_values_for_python_coded_field()
-    by_sentence = True
+    detect_per_text_unit = True
 
     def train_document_field_detector_model(self,
-                                            document_type: DocumentType,
                                             document_field: DocumentField,
                                             train_data_project_ids: List,
                                             use_only_confirmed_field_values: bool = False) -> Optional[ClassifierModel]:
         return None
 
-    def get_values(self, text: str) -> List[Tuple[Any, int, int]]:
+    def get_values(self, doc: Document, text: str) -> List[Tuple[Any, Optional[int], Optional[int]]]:
         """
         Locates field values in text - either in a sentence or in a whole document text
         (depending on 'by_sentence' flag).
+        :param doc: Document in which the location is done
         :param text: Sentence or whole document text.
         :return: List of tuples: (value, location_start, location_end)
         """
         raise NotImplemented()
 
 
-# Registry of Python-coded fields in the form of: code -> PythonCodedField descendant instance.
-# DocumentField.python_coded_field can have one of field codes as its value.
-# In this case field values will be detected using the methods of PythonCodedField descendant registered in
-# this dictionary.
-PYTHON_CODED_FIELDS_REGISTRY = {}  # type: Dict[str, PythonCodedField]
+class PartiesField(PythonCodedField):
+    code = 'generic.Parties'
+    title = 'Parties'
+    type = field_types.StringField.code
+    detect_per_text_unit = False
+
+    def get_values(self, doc: Document, text: str) -> List[Tuple[Any, Optional[int], Optional[int]]]:
+        v = PartyUsage.objects.filter(text_unit__document_id=doc.id) \
+            .aggregate(value=StringAgg('party__name', delimiter=', ', distinct=True))
+        if v:
+            return [(v['value'], None, None)]
+        else:
+            return []
 
 
-def init_field_registry():
-    """
-    Searches for module called 'python_coded_fields' in each app. If there is such module and it has
-    'PYTHON_CODED_FIELDS' list attribute in it then try to add each field from this list to
-    PYTHON_CODED_FIELDS_REGISTRY.
-    Additionally updates choice values of DocumentField.python_coded_field model.
-    :return:
-    """
-    logging.info('Going to register Python-coded document fields from all Django apps...')
-    custom_apps = [i for i in settings.INSTALLED_APPS if i.startswith('apps.')]
-    for app_name in custom_apps:
-        module_str = '%s.python_coded_fields' % app_name
-        try:
-            fields_module = importlib.import_module(module_str)
-            if hasattr(fields_module, 'PYTHON_CODED_FIELDS'):
-                fields = fields_module.PYTHON_CODED_FIELDS
+class MaxCurrencyField(PythonCodedField):
+    code = 'generic.MaxCurrency'
+    title = 'Max Currency'
+    type = field_types.MoneyField.code
+    detect_per_text_unit = False
 
-                try:
-                    fields = list(fields)
-                except TypeError:
-                    raise TypeError('{0}.PYTHON_CODED_FIELDS is not iterable'.format(module_str))
+    def get_values(self, doc: Document, text: str) -> List[Tuple[Any, Optional[int], Optional[int]]]:
+        for v in CurrencyUsage.objects.filter(text_unit__document_id=doc.id) \
+                .order_by('-amount') \
+                .values('currency', 'amount'):
+            return [(v, None, None)]
+        return []
 
-                i = -1
-                for field in fields:
-                    i += 1
-                    try:
-                        PYTHON_CODED_FIELDS_REGISTRY[field.code] = field
-                    except AttributeError:
-                        raise AttributeError('{0}.PYTHON_CODED_FIELDS[{1}] is something wrong'.format(module_str, i))
-                    print('Registered python-coded document field: {0} ({1})'.format(field.title, field.code))
 
-        except ImportError:
-            continue
+class MinDateField(PythonCodedField):
+    code = 'generic.EarliestDate'
+    title = 'Earliest Date'
+    type = field_types.DateField.code
+    detect_per_text_unit = False
 
-    from apps.document.models import DocumentField
-    for f in DocumentField._meta.fields:
-        if f.name == 'python_coded_field':
-            f.choices = list((k, PYTHON_CODED_FIELDS_REGISTRY[k].title or k)
-                             for k in sorted(PYTHON_CODED_FIELDS_REGISTRY))
-            break
+    def get_values(self, doc: Document, text: str) -> List[Tuple[Any, Optional[int], Optional[int]]]:
+        for v in DateUsage.objects.filter(text_unit__document_id=doc.id) \
+                .order_by('date') \
+                .values_list('date', flat=True):
+            return [(v, None, None)]
+
+
+class MaxDateField(PythonCodedField):
+    code = 'generic.LatestDate'
+    title = 'Latest Date'
+    type = field_types.DateField.code
+    detect_per_text_unit = False
+
+    def get_values(self, doc: Document, text: str) -> List[Tuple[Any, Optional[int], Optional[int]]]:
+        for v in DateUsage.objects.filter(text_unit__document_id=doc.id) \
+                .order_by('-date') \
+                .values_list('date', flat=True):
+            return [(v, None, None)]
+        return []
+
+
+PYTHON_CODED_FIELDS = [PartiesField(), MinDateField(), MaxDateField(), MaxCurrencyField()]

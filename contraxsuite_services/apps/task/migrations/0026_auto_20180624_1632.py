@@ -15,6 +15,10 @@ class Migration(migrations.Migration):
     operations = [
         migrations.RemoveField(
             model_name='task',
+            name='main_task',
+        ),
+        migrations.RemoveField(
+            model_name='task',
             name='id',
         ),
         migrations.AlterField(

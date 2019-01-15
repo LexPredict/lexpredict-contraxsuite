@@ -66,6 +66,10 @@ export DOCKER_HOST_NAME_FLOWER=contrax-flower
 export SHARED_USER_ID=65432
 export SHARED_USER_NAME=contraxsuite_docker_user
 
+export SHARED_USER_LOG_READER_ID=65431
+export SHARED_USER_LOG_READER_NAME=contraxsuite_docker_log_reader
+
+
 export DOCKER_REGISTRY=
 export CONTRAXSUITE_IMAGE=lexpredict/lexpredict-contraxsuite
 
@@ -83,6 +87,10 @@ export DOCKER_POSTGRES_CPUS=4
 export DOCKER_POSTGRES_MEMORY=6G
 export DOCKER_POSTGRES_CPU_RESERVATIONS=1
 export DOCKER_POSTGRES_MEMORY_RESERVATIONS=2G
+
+export DOCKER_POSTGRES_CONFIG_FILE=deploy/postgres_params_high.conf
+export DOCKER_POSTGRES_CONFIG=
+
 export DOCKER_JUPYTER_CPUS=1
 export DOCKER_JUPYTER_MEMORY=4G
 export DOCKER_FLOWER_CPUS=1
@@ -108,6 +116,8 @@ export DOCKER_COMPOSE_FILE=docker-compose-single-host.yml
 
 export DOCKER_SWARM_ADVERTISE_ADDR=
 
+export CONTRAXSUITE_IMAGE_VERSION=latest
+
 
 if [ -f setenv_distr.sh ]
 then
@@ -126,3 +136,5 @@ if [ -z "${DOCKER_REGISTRY}" ]; then
 else
     export CONTRAXSUITE_IMAGE_FULL_NAME=${DOCKER_REGISTRY}/${CONTRAXSUITE_IMAGE}
 fi
+
+export DOCKER_POSTGRES_CONFIG=`cat ${DOCKER_POSTGRES_CONFIG_FILE}`

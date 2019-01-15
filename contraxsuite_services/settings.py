@@ -112,6 +112,7 @@ INSTALLED_APPS = (
     'rest_auth',
     'rest_auth.registration',
     'rest_framework_swagger',
+    'rest_framework_tracking',
 
     # LOCAL_APPS
     # 'apps.common',
@@ -149,6 +150,7 @@ MIDDLEWARE = (
     # custom middleware
     # 'apps.common.middleware.AutoLoginMiddleware',
     'apps.common.middleware.LoginRequiredMiddleware',
+    'apps.common.middleware.Response500ErrorMiddleware',
     'apps.common.middleware.Response404ErrorMiddleware',
     'apps.common.middleware.HttpResponseNotAllowedMiddleware',
     'apps.common.middleware.RequestUserMiddleware',
@@ -376,6 +378,13 @@ CELERY_RESULT_BACKEND = 'apps.task.celery_backend.database:DatabaseBackend'
 CELERY_UPDATE_MAIN_TASK_ON_EACH_SUB_TASK = False
 CELERY_RESULT_EXPIRES = 0
 # CELERY_WORKER_HIJACK_ROOT_LOGGER = False
+
+CELERY_QUEUE_SERIAL = 'serial'
+
+TASK_NAME_AUTO_REINDEX = 'apps.rawdb.tasks.auto_reindex'
+
+TASK_NAME_MANUAL_REINDEX = 'RawDB: Reindex'
+
 CELERY_BEAT_SCHEDULE = {
     # Backend cleanup is disabled to not miss debug info after long loading
     # 'advanced_celery.backend_cleanup': {
@@ -385,27 +394,32 @@ CELERY_BEAT_SCHEDULE = {
     'advanced_celery.track_tasks': {
         'task': 'advanced_celery.track_tasks',
         'schedule': 10.0,
-        'options': {'queue': 'serial', 'expires': 10},
+        'options': {'queue': CELERY_QUEUE_SERIAL, 'expires': 10},
     },
     'advanced_celery.clean_sub_tasks': {
         'task': 'advanced_celery.clean_sub_tasks',
         'schedule': 60.0,
-        'options': {'queue': 'serial', 'expires': 60},
+        'options': {'queue': CELERY_QUEUE_SERIAL, 'expires': 60},
     },
     'advanced_celery.retrain_dirty_fields': {
         'task': 'advanced_celery.retrain_dirty_fields',
         'schedule': 60.0,
-        'options': {'queue': 'serial', 'expires': 60},
+        'options': {'queue': CELERY_QUEUE_SERIAL, 'expires': 60},
     },
     'advanced_celery.track_session_completed': {
         'task': 'advanced_celery.track_session_completed',
         'schedule': 120.0,
-        'options': {'queue': 'serial', 'expires': 120},
+        'options': {'queue': CELERY_QUEUE_SERIAL, 'expires': 120},
     },
     'deployment.usage_stats': {
         'task': 'deployment.usage_stats',
         'schedule': 60*60*12,
         'options': {'queue': 'default', 'expires': 60*60*12},
+    },
+    'apps.rawdb.tasks.adapt_table_and_reindex_doc_type': {
+        'task': TASK_NAME_AUTO_REINDEX,
+        'schedule': 60,
+        'options': {'queue': CELERY_QUEUE_SERIAL, 'expires': 60},
     },
 }
 
@@ -418,7 +432,9 @@ EXCLUDE_FROM_TRACKING = {
     'advanced_celery.clean_dead_tasks',
     'advanced_celery.clean_tasks',
     'deployment.usage_stats',
-    'advanced_celery.retrain_dirty_fields'
+    'advanced_celery.retrain_dirty_fields',
+    'apps.rawdb.tasks.cache_document_fields_for_doc_ids_not_tracked',
+    TASK_NAME_AUTO_REINDEX
 }
 
 REMOVE_WHEN_READY = set()
@@ -569,6 +585,13 @@ REST_AUTH_SERIALIZERS = {
     'TOKEN_SERIALIZER': 'auth.TokenSerializer',
     'PASSWORD_CHANGE_SERIALIZER': 'auth.CustomPasswordChangeSerializer',
 }
+
+# rest auth token settings
+REST_AUTH_TOKEN_CREATOR = 'auth.token_creator'
+REST_AUTH_TOKEN_EXPIRES_DAYS = 3
+REST_AUTH_TOKEN_UPDATE_EXPIRATION_DATE = True
+
+# swagger settings
 SWAGGER_SETTINGS = {
     'USE_SESSION_AUTH': True,
     'JSON_EDITOR': True,
@@ -720,8 +743,8 @@ CORS_ORIGIN_ALLOW_ALL = True
 CORS_ALLOW_CREDENTIALS = False
 CORS_URLS_REGEX = r'^/api/.*$'
 
-VERSION_NUMBER = '1.1.6'
-VERSION_COMMIT = '7a1efce6'
+VERSION_NUMBER = '1.1.7'
+VERSION_COMMIT = '528656f'
 
 try:
     from local_settings import *
@@ -826,9 +849,11 @@ RETRAINING_TASK_EXECUTION_DELAY_IN_SEC = 1 * 60 * 60
 
 TRAINED_AFTER_DOCUMENTS_NUMBER = 100
 
-TEXT_UNITS_TO_PARSE_PACKAGE_SIZE = 10
+TEXT_UNITS_TO_PARSE_PACKAGE_SIZE = 50
 
 ML_TRAIN_DATA_SET_GROUP_LEN = 10000
+
+RAW_DB_FULL_TEXT_SEARCH_CUT_ABOVE_TEXT_LENGTH = 4 * 1024 * 1024
 
 # Debugging Docker Deployments:
 # CELERY_BROKER_URL = 'amqp://contrax1:contrax1@127.0.0.1:56720/contrax1_vhost'

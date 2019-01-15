@@ -335,7 +335,7 @@ default_statistics_target = 100	# range 1-10000
 					# requires logging_collector to be on.
 
 # This is used when logging to stderr:
-#logging_collector = off		# Enable capturing of stderr and csvlog
+logging_collector = on		# Enable capturing of stderr and csvlog
 					# into log files. Required to be on for
 					# csvlogs.
 					# (change requires restart)
@@ -412,7 +412,7 @@ default_statistics_target = 100	# range 1-10000
 					#   fatal
 					#   panic (effectively off)
 
-#log_min_duration_statement = -1	# -1 is disabled, 0 logs all statements
+log_min_duration_statement = 100	# -1 is disabled, 0 logs all statements
 					# and their durations, > 0 logs only
 					# statements running at least this number
 					# of milliseconds
@@ -430,6 +430,7 @@ default_statistics_target = 100	# range 1-10000
 #log_duration = off
 #log_error_verbosity = default		# terse, default, or verbose messages
 #log_hostname = off
+log_line_prefix = '%t [%p] '
 #log_line_prefix = ''			# special values:
 					#   %a = application name
 					#   %u = user name
@@ -641,3 +642,6 @@ default_text_search_config = 'pg_catalog.english'
 #------------------------------------------------------------------------------
 
 # Add settings for extensions here
+
+${DOCKER_POSTGRES_CONFIG}
+

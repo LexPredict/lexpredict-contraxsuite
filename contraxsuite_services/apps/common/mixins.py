@@ -38,6 +38,7 @@ from rest_framework import serializers
 from rest_framework.filters import BaseFilterBackend
 from rest_framework.generics import ListAPIView
 from rest_framework.response import Response
+from rest_framework_tracking.mixins import LoggingMixin
 
 # Django imports
 from django.contrib import messages
@@ -48,6 +49,7 @@ from django.core.exceptions import FieldError
 from django.core.paginator import Paginator, EmptyPage
 from django.core.serializers.json import DjangoJSONEncoder
 from django.core.urlresolvers import reverse
+from django.db import connection
 from django.db.models import Q, fields as django_fields
 from django.db.models.expressions import OrderBy, Random, RawSQL, Ref
 from django.db.models.sql.constants import ORDER_DIR
@@ -60,13 +62,14 @@ from django.views.generic.edit import CreateView, DeleteView, UpdateView
 from django.views.generic.list import MultipleObjectMixin
 
 # Project imports
-from apps.common.models import Action
+from apps.common.app_vars import TRACK_API, TRACK_API_GREATER_THAN
+from apps.common.models import Action, CustomAPIRequestLog
 from apps.common.utils import cap_words, export_qs_to_file, download
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.6/LICENSE"
-__version__ = "1.1.6"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.7/LICENSE"
+__version__ = "1.1.7"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -742,7 +745,7 @@ class NestedKeyTextTransform(KeyTextTransform):
         lhs, params = compiler.compile(self.lhs)
         return "(%s %s %%s)::%s" % (lhs, self.nested_operator,
                                     self._output_field.db_type(connection)),\
-               [self.nested_key_names] + params
+               [self.nested_key_names] + list(params)
 
 
 class APIActionMixin(object):
@@ -765,22 +768,30 @@ class APIActionMixin(object):
 
         user_action_name = self.get_action_name() or self.user_action_methods.get(request.method)\
                            or 'unknown'
-        if (self.lookup_url_kwarg or self.lookup_field) in self.kwargs:
+
+        user_action_object_pk = user_action_object = None
+        if 'pk' in self.kwargs:
+            # need this to get rid of extra sql in elif
+            user_action_object_pk = self.kwargs['pk']
+        elif (self.lookup_url_kwarg or self.lookup_field) in self.kwargs:
             user_action_object = self.get_object()
         else:
-            user_action_object = None
             if request.method == 'GET':
                 user_action_name = 'list'
         model = self.queryset.model
         content_type = ContentType.objects.get_for_model(model)
-        user_action = Action.objects.create(
+        user_action = Action(
             user=request.user,
             name=user_action_name,
-            content_type=content_type
+            # content_type=content_type
         )
-        if user_action_object:
+        if user_action_object_pk:
+            user_action.object_pk = user_action_object_pk
+        else:
             user_action.object = user_action_object
-            user_action.save()
+        # this should be added after all otherwise it throws error object has no content type
+        user_action.content_type = content_type
+        user_action.save()
         self.user_action = user_action
         return response
 
@@ -941,6 +952,25 @@ def get_order_by(self):
         seen.append((without_ordering, tuple(params)))
         result.append((resolved, (sql, params, is_ref)))
     return result
+
+
+class APILoggingMixin(LoggingMixin):
+    def should_log(self, request, response):
+        """
+        Log only if enable logging via AppVar
+        """
+        return TRACK_API.val
+
+    def handle_log(self):
+        """
+        Try to check if response time limit is enabled
+        """
+        if self.log['response_ms'] <= TRACK_API_GREATER_THAN.val:
+            return
+        self.log['sql_log'] = '\n'.join(['({}) {}'.format(
+            q.get('time') or q.get('duration', 0)/1000, q.get('sql') or '')
+                                         for q in connection.queries])
+        CustomAPIRequestLog(**self.log).save()
 
 
 from django.db.models.sql.compiler import SQLCompiler

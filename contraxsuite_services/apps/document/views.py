@@ -58,12 +58,12 @@ from apps.common.mixins import (
     JqPaginatedListView, PermissionRequiredMixin, SubmitView, TypeaheadView)
 from apps.common.utils import cap_words
 from apps.document.forms import DetectFieldValuesForm, TrainDocumentFieldDetectorModelForm, TrainAndTestForm, \
-    CacheDocumentFieldsForm, LoadDocumentWithFieldsForm
+    CacheDocumentFieldsForm, LoadDocumentWithFieldsForm, FindBrokenDocumentFieldValuesForm
 from apps.document.forms import ImportSimpleFieldDetectionConfigForm
 from apps.document.models import (
     Document, DocumentProperty, DocumentRelation, DocumentNote, DocumentTag,
     TextUnit, TextUnitProperty, TextUnitNote, TextUnitTag)
-from apps.document.tasks import ImportSimpleFieldDetectionConfig
+from apps.document.tasks import ImportSimpleFieldDetectionConfig, FindBrokenDocumentFieldValues
 from apps.extract.models import (
     AmountUsage, CitationUsage, CopyrightUsage, Court, CourtUsage, CurrencyUsage,
     DateDurationUsage, DateUsage, DefinitionUsage, DistanceUsage,
@@ -78,8 +78,8 @@ from apps.users.models import User
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.6/LICENSE"
-__version__ = "1.1.6"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.7/LICENSE"
+__version__ = "1.1.7"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -1198,6 +1198,12 @@ class CacheDocumentFieldsTaskView(BaseAjaxTaskView):
     task_name = 'Cache Document Fields'
     form_class = CacheDocumentFieldsForm
     html_form_class = 'popup-form cache-document-fields-form'
+
+
+class FindBrokenDocumentFieldValuesTaskView(BaseAjaxTaskView):
+    task_name = FindBrokenDocumentFieldValues.name
+    form_class = FindBrokenDocumentFieldValuesForm
+    html_form_class = 'popup-form find-broken-document-field-values-form'
 
 
 class TrainAndTestTaskView(BaseAjaxTaskView):

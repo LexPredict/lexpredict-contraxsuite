@@ -28,14 +28,15 @@ import json
 from django import forms
 from django.conf import settings
 
-from apps.document.models import DocumentType, DocumentTypeField, DocumentField
+from apps.document.models import DocumentType, DocumentField
 from apps.document.tasks import MODULE_NAME
 from apps.project.models import Project
+from apps.document.tasks import FindBrokenDocumentFieldValues
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.6/LICENSE"
-__version__ = "1.1.6"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.7/LICENSE"
+__version__ = "1.1.7"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -78,14 +79,16 @@ class CacheDocumentFieldsForm(forms.Form):
         self.cleaned_data['module_name'] = MODULE_NAME
 
 
-class DocumentTypeFieldModelChoiceField(forms.ModelChoiceField):
-    def label_from_instance(self, obj):
-        return "{0}: {1}".format(obj['document_type__code'], obj['document_field__code'])
+class FindBrokenDocumentFieldValuesForm(forms.Form):
+    header = FindBrokenDocumentFieldValues.name
 
-    def clean(self, value):
-        if not value:
-            return super().clean(value)
-        return json.loads(value.replace('\'', '"'))['pk']
+    document_field = forms.ModelChoiceField(queryset=DocumentField.objects.all(), required=False)
+
+    delete_broken = forms.BooleanField(required=False)
+
+    def _post_clean(self):
+        super()._post_clean()
+        self.cleaned_data['module_name'] = MODULE_NAME
 
 
 class ProjectModelMultipleChoiceField(forms.ModelMultipleChoiceField):
@@ -101,17 +104,12 @@ class ProjectModelMultipleChoiceField(forms.ModelMultipleChoiceField):
 class TrainAndTestForm(forms.Form):
     header = 'Train And Test'
 
-    document_type_field_id = DocumentTypeFieldModelChoiceField(
-        queryset=DocumentTypeField.objects
-            .exclude(document_field__value_detection_strategy__isnull=True)
-            .exclude(document_field__value_detection_strategy=DocumentField.VD_DISABLED)
-            .values('pk', 'document_type__code', 'document_field__code')
-            .order_by('document_type__code', 'document_field__code'),
+    document_field_id = forms.ModelChoiceField(
+        queryset=DocumentField.objects.assigned_fields()
+            .exclude(value_detection_strategy__isnull=True)
+            .exclude(value_detection_strategy=DocumentField.VD_DISABLED),
         label='Document Field',
         required=True)
-    skip_training = forms.BooleanField(required=False)
-
-    use_only_confirmed_field_values_for_training = forms.BooleanField(required=False)
 
     train_data_project_ids = ProjectModelMultipleChoiceField(
         queryset=Project.objects.all().values_list('pk', 'name'),
@@ -119,18 +117,23 @@ class TrainAndTestForm(forms.Form):
         widget=forms.SelectMultiple(attrs={'class': 'chosen compact'}),
         required=False)
 
-    skip_testing = forms.BooleanField(required=False)
-
-    use_only_confirmed_field_values_for_testing = forms.BooleanField(required=False)
-
     test_data_projects_ids = ProjectModelMultipleChoiceField(
         queryset=Project.objects.all().values_list('pk', 'name'),
         label='Test Data Projects',
         widget=forms.SelectMultiple(attrs={'class': 'chosen compact'}),
         required=False)
 
+    skip_training = forms.BooleanField(required=False)
+
+    use_only_confirmed_field_values_for_training = forms.BooleanField(required=False)
+
+    skip_testing = forms.BooleanField(required=False)
+
+    use_only_confirmed_field_values_for_testing = forms.BooleanField(required=False)
+
     def _post_clean(self):
         super()._post_clean()
+        self.cleaned_data['document_field_id'] = self.cleaned_data['document_field_id'].pk
         self.cleaned_data['module_name'] = MODULE_NAME
 
 
@@ -158,8 +161,6 @@ class ImportSimpleFieldDetectionConfigForm(forms.Form):
     header = 'Import Simple Field Detection Config'
 
     enctype = 'multipart/form-data'
-
-    document_type = forms.ModelChoiceField(queryset=DocumentType.objects.all(), required=True)
 
     document_field = forms.ModelChoiceField(queryset=DocumentField.objects.all(), required=True)
 

@@ -45,12 +45,13 @@ from django.views import defaults as default_views
 from settings import REST_FRAMEWORK
 from swagger_view import get_swagger_view
 from apps.project.views import DashboardView
-from apps.document.python_coded_fields import init_field_registry
+from apps.common.app_vars import init_app_vars
+from apps.document.python_coded_fields_registry import init_field_registry
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.6/LICENSE"
-__version__ = "1.1.6"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.7/LICENSE"
+__version__ = "1.1.7"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -164,3 +165,4 @@ if settings.DEBUG:
 
 
 init_field_registry()
+init_app_vars()

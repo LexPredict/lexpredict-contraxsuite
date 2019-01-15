@@ -20,10 +20,10 @@ zlib1g-dev
 
 # Postgresql and psycopg2 dependencies
 libpq-dev
-postgresql-client
+postgresql-client-9.6
 postgresql-client-common
-postgresql
-postgresql-contrib
+postgresql-9.6
+postgresql-contrib-9.6
 
 # Pillow dependencies
 libtiff5-dev
@@ -59,7 +59,7 @@ sox
 libjpeg-dev
 
 # ssl
-python-letsencrypt
+python3-certbot
 
 # npm (to install yuglify)
 npm

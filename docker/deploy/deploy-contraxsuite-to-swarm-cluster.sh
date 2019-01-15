@@ -4,6 +4,7 @@ set -e
 pushd ../
 
 export DOLLAR='$' # escape $ in envsubst
+export DOCKER_COMPOSE_CONFIG_VERSION=`date +%Y%m%d%H%M%S`
 
 source setenv.sh
 if [ -e setenv_local.sh ]
@@ -66,11 +67,24 @@ envsubst < ./config-templates/metricbeat.yml.template > ./temp/metricbeat.yml
 envsubst < ./config-templates/filebeat.yml.template > ./temp/filebeat.yml
 envsubst < ./config-templates/elasticsearch.yml.template > ./temp/elasticsearch.yml
 envsubst < ./config-templates/db-backup.sh.template > ./temp/db-backup.sh
+envsubst < ./config-templates/postgres_init.sql.template > ./temp/postgres_init.sql
 cp ./config-templates/*.conf ./temp/
 
+export FILEBEAT_CONFIG_VERSION=`md5sum ./temp/filebeat.yml | awk '{ print $1 }'`
+export METRICBEAT_CONFIG_VERSION=`md5sum ./temp/metricbeat.yml | awk '{ print $1 }'`
+export ELASTICSEARCH_CONFIG_VERSION=`md5sum ./temp/elasticsearch.yml | awk '{ print $1 }'`
+export LOGROTATE_CONFIG_VERSION=`md5sum ./temp/logrotate.conf | awk '{ print $1 }'`
+export LOGS_CRON_CONFIG_VERSION=`md5sum ./temp/logs-cron.conf | awk '{ print $1 }'`
+export PG_CONFIG_VERSION=`md5sum ./temp/postgresql.conf | awk '{ print $1 }'`
+export PG_BACKUP_SCRIPT_CONFIG_VERSION=`md5sum ./temp/db-backup.sh | awk '{ print $1 }'`
+export PG_BACKUP_CRON_CONFIG_VERSION=`md5sum ./temp/backup-cron.conf | awk '{ print $1 }'`
+export PG_INIT_SQL_CONFIG_VERSION=`md5sum ./temp/postgres_init.sql | awk '{ print $1 }'`
 
-echo "Starting with image: ${CONTRAXSUITE_IMAGE_FULL_NAME}"
+envsubst < ./docker-compose-templates/${DOCKER_COMPOSE_FILE} > ./temp/${DOCKER_COMPOSE_FILE}
+
+
+echo "Starting with image: ${CONTRAXSUITE_IMAGE_FULL_NAME}:${CONTRAXSUITE_IMAGE_VERSION}"
 
 echo "Starting with docker-compose config: ${DOCKER_COMPOSE_FILE}"
 
-sudo -E docker stack deploy --compose-file ${DOCKER_COMPOSE_FILE} contraxsuite
+sudo -E docker stack deploy --compose-file ./temp/${DOCKER_COMPOSE_FILE} contraxsuite

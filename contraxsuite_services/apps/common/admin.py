@@ -27,20 +27,23 @@
 # Django imports
 from django.contrib import admin
 
+from rest_framework_tracking.admin import APIRequestLogAdmin
+
 # Project imports
-from apps.common.models import AppVar, ReviewStatusGroup, ReviewStatus, Action
+from apps.common.models import AppVar, ReviewStatusGroup, ReviewStatus, Action,\
+    CustomAPIRequestLog, APIRequestLog
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.6/LICENSE"
-__version__ = "1.1.6"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.7/LICENSE"
+__version__ = "1.1.7"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
 
 class AppVarAdmin(admin.ModelAdmin):
-    list_display = ('name', 'value', 'user', 'date')
-    search_fields = ('name',)
+    list_display = ('name', 'value', 'user', 'description', 'date')
+    search_fields = ('name', 'description')
 
 
 class ReviewStatusGroupAdmin(admin.ModelAdmin):
@@ -58,6 +61,9 @@ class ActionAdmin(admin.ModelAdmin):
     search_fields = ('name', 'user__username')
 
 
+admin.site.unregister(APIRequestLog)
+
+admin.site.register(CustomAPIRequestLog, APIRequestLogAdmin)
 admin.site.register(AppVar, AppVarAdmin)
 admin.site.register(ReviewStatusGroup, ReviewStatusGroupAdmin)
 admin.site.register(ReviewStatus, ReviewStatusAdmin)

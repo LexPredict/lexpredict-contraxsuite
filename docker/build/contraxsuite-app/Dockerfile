@@ -13,7 +13,7 @@ RUN apt-get install -y -q gcc-5
 RUN echo "GCC 5 version: " && gcc-5 -v
 
 # This is required to get add-apt-repository command working
-RUN apt-get install -y -q build-essential software-properties-common python-software-properties
+RUN apt-get install -y -q build-essential software-properties-common
 
 
 
@@ -34,11 +34,12 @@ RUN apt-get install -y apt-transport-https
 
 # Install apt repositories
 RUN \
- add-apt-repository "deb http://apt.postgresql.org/pub/repos/apt/ xenial-pgdg main" \
- && wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | apt-key add - \
+ wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | apt-key add - \
+ && add-apt-repository "deb http://apt.postgresql.org/pub/repos/apt/ xenial-pgdg main" \
  && wget -qO - https://artifacts.elastic.co/GPG-KEY-elasticsearch | apt-key add - \
  && echo "deb https://artifacts.elastic.co/packages/6.x/apt stable main" | tee -a /etc/apt/sources.list.d/elastic-6.x.list \
  && add-apt-repository -y ppa:openjdk-r/ppa \
+ && add-apt-repository -y ppa:certbot/certbot \
  && apt-get -y update --fix-missing
 
 RUN apt-get install -y openjdk-8-jdk

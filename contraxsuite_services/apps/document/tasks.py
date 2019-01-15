@@ -30,20 +30,22 @@ from typing import Any, List, Set, Dict
 from celery import shared_task
 from celery.exceptions import SoftTimeLimitExceeded
 from django.conf import settings
+from django.contrib.contenttypes.models import ContentType
+from django.core import urlresolvers
 from django.db import transaction
 from django.utils.timezone import now
 from psycopg2 import InterfaceError, OperationalError
 
 from apps.celery import app
 from apps.common.advancedcelery.db_cache import DbCache
+from apps.common.log_utils import render_error
 from apps.document.field_types import FIELD_TYPES_REGISTRY, FieldType
 from apps.document.fields_detection import field_detection, field_detection_utils
 from apps.document.fields_detection.fields_detection_abstractions import DetectedFieldValue
 from apps.document.fields_detection.regexps_field_detection import apply_simple_config
 from apps.document.fields_processing import field_value_cache
 from apps.document.fields_processing.field_processing_utils import merge_document_field_values_to_python_value
-from apps.document.models import DocumentType, Document, ClassifierModel, DocumentFieldValue, TextUnit, DocumentField, \
-    DocumentTypeField
+from apps.document.models import DocumentType, Document, ClassifierModel, DocumentFieldValue, TextUnit, DocumentField
 from apps.project.models import Project
 from apps.task.models import Task
 from apps.task.tasks import BaseTask, ExtendedTask, CeleryTaskLogger, call_task, file_access_handler
@@ -51,8 +53,8 @@ from apps.task.utils.task_utils import TaskUtils
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.6/LICENSE"
-__version__ = "1.1.6"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.7/LICENSE"
+__version__ = "1.1.7"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -97,15 +99,13 @@ class DetectFieldValues(BaseTask):
         document_type = DocumentType.objects.get(pk=document_type_pk)
         document_fields = document_type.fields
         if not document_fields:
-            self.log_info('Can not find any fields assigned to document type: {0}'.format(
-                document_type))
+            self.log_info('Can not find any fields assigned to document type: {0}'.format(document_type))
             return
 
         if drop_classifier_model:
             self.log_info(
-                'Deleting field values and classifier models for document type: {0}'.format(
-                    document_type))
-            ClassifierModel.objects.filter(document_type=document_type).delete()
+                'Deleting field values and classifier models for document type: {0}'.format(document_type))
+            ClassifierModel.objects.filter(document_field__document_type=document_type).delete()
 
         task_count = 0
 
@@ -133,8 +133,7 @@ class DetectFieldValues(BaseTask):
                            DetectFieldValues.detect_field_values_for_document,
                            detect_field_values_for_document_args, source_data)
         if task_count == 0:
-            self.log_info('No documents in DB for document type: {0}'.format(
-                document_type))
+            self.log_info('No documents in DB for document type: {0}'.format(document_type))
         return task_count
 
     @staticmethod
@@ -158,13 +157,11 @@ class DetectFieldValues(BaseTask):
                                           do_not_write):
         doc = Document.objects.get(pk=document_id)
 
-        if doc.status and not doc.status.is_active:
-            task.log_info('Forbidden detecting field values for document with "completed"'
-                          ' status, document #{} ({})'.format(document_id, doc.name))
-            return
-
         log = CeleryTaskLogger(task)
 
+        # If the document is in one of completed statuses then
+        # the detected values wont be stored even if do_not_write = False.
+        # But caching should go as usual.
         dfvs = field_detection \
             .detect_and_cache_field_values_for_document(log, doc, save=not do_not_write)
 
@@ -186,19 +183,17 @@ class TrainDocumentFieldDetectorModel(BaseTask):
         else:
             document_type_pks = DocumentType.objects.values_list('uid', flat=True)
             for document_type_pk in document_type_pks:
-                self.train_model_for_document_type(
-                    document_type_pk)
+                self.train_model_for_document_type(document_type_pk)
 
     def train_model_for_document_type(self, document_type_pk: str) -> None:
-        self.log_info('Building classifier model for document type: {0}'.format(
-            document_type_pk))
+        self.log_info('Building classifier model for document type: {0}'.format(document_type_pk))
 
         document_type = DocumentType.objects.get(pk=document_type_pk)
 
         train_model_for_field_args = []
 
         for field in document_type.fields.all():
-            train_model_for_field_args.append((document_type.uid, field.uid))
+            train_model_for_field_args.append((field.uid,))
 
         self.run_sub_tasks('Train Model For Each Field',
                            TrainDocumentFieldDetectorModel.train_model_for_field,
@@ -212,16 +207,12 @@ class TrainDocumentFieldDetectorModel(BaseTask):
                  retry_backoff=True,
                  autoretry_for=(SoftTimeLimitExceeded, InterfaceError, OperationalError,),
                  max_retries=3)
-    def train_model_for_field(task: ExtendedTask, document_type_uid: str, field_uid: str) -> None:
-        document_type = DocumentType.objects.get(pk=document_type_uid)
+    def train_model_for_field(task: ExtendedTask, field_uid: str) -> None:
         field = DocumentField.objects.get(pk=field_uid)
         new_model = field_detection \
-            .train_document_field_detector_model(CeleryTaskLogger(task), document_type, field,
-                                                 None)  # type: ClassifierModel
+            .train_document_field_detector_model(CeleryTaskLogger(task), field, None)  # type: ClassifierModel
         if new_model:
-            ClassifierModel.objects \
-                .filter(document_type=document_type,
-                        document_field=field).delete()
+            ClassifierModel.objects.filter(document_field=field).delete()
             new_model.save()
 
 
@@ -232,13 +223,13 @@ class TrainDirtyDocumentFieldDetectorModel(BaseTask):
         self.log_info(
             'Going to train dirty field detector model based on the datasets stored in DB...')
 
-        dirty_fields = DocumentTypeField.objects.get_dirty_fields()
+        dirty_fields = DocumentField.objects.get_dirty_fields()
 
         if dirty_fields:
             train_model_for_dirty_field_args = []
 
-            for dirty_field in DocumentTypeField.objects.get_dirty_fields():  # type: DocumentTypeField
-                train_model_for_dirty_field_args.append((dirty_field.id,))
+            for dirty_field in DocumentField.objects.get_dirty_fields():
+                train_model_for_dirty_field_args.append((dirty_field.pk,))
 
             self.run_sub_tasks('Train Model For Dirty Fields',
                                TrainDirtyDocumentFieldDetectorModel.train_model_for_dirty_field,
@@ -253,28 +244,24 @@ class TrainDirtyDocumentFieldDetectorModel(BaseTask):
                  autoretry_for=(SoftTimeLimitExceeded, InterfaceError, OperationalError,),
                  max_retries=3)
     def train_model_for_dirty_field(task: ExtendedTask, dirty_field_id: Any) -> None:
-        dirty_field = DocumentTypeField.objects \
-            .filter(pk=dirty_field_id) \
-            .prefetch_related('document_type', 'document_field')[0]
-
+        dirty_field = DocumentField.objects.get(pk=dirty_field_id)
         if dirty_field.can_retrain():
             dirty_field.dirty = False
             dirty_field.save()
-            document_type = dirty_field.document_type
-            field = dirty_field.document_field
-            train_docs_count = field_detection_utils.get_approved_documents_number(document_type, field, None)
-            if train_docs_count >= settings.ML_TRAIN_DATA_SET_GROUP_LEN:
+            train_docs_count = field_detection_utils.get_approved_documents_number(dirty_field, None)
+            if train_docs_count >= dirty_field.trained_after_documents_number:
                 new_model = field_detection.train_document_field_detector_model(CeleryTaskLogger(task),
-                                                                                document_type, field, None)
+                                                                                dirty_field,
+                                                                                None)
                 if new_model:
-                    ClassifierModel.objects.filter(document_type=document_type, document_field=field).delete()
+                    ClassifierModel.objects.filter(document_field=dirty_field).delete()
                     new_model.save()
 
 
 @app.task(name='advanced_celery.retrain_dirty_fields', bind=True)
 def retrain_dirty_fields(self):
     TaskUtils.prepare_task_execution()
-    if DocumentTypeField.objects.has_dirty_fields():
+    if DocumentField.objects.has_dirty_fields():
         task_name = TrainDirtyDocumentFieldDetectorModel.name
         execution_delay = now() - datetime.timedelta(
             seconds=settings.RETRAINING_TASK_EXECUTION_DELAY_IN_SEC)
@@ -294,7 +281,7 @@ class TrainAndTest(BaseTask):
         self.log_info(
             'Going to train document field based on the datasets stored in DB...')
 
-        document_type_field_id = kwargs.get('document_type_field_id')
+        document_field_id = kwargs.get('document_field_id')
         skip_training = kwargs.get('skip_training')
         use_only_confirmed_field_values_for_training = kwargs.get('use_only_confirmed_field_values_for_training')
         train_data_project_ids = kwargs.get('train_data_project_ids')
@@ -303,9 +290,7 @@ class TrainAndTest(BaseTask):
         use_only_confirmed_field_values_for_testing = kwargs.get('use_only_confirmed_field_values_for_testing')
         test_data_projects_ids = kwargs.get('test_data_projects_ids')
 
-        document_type_field = DocumentTypeField.objects.get(pk=document_type_field_id)
-        document_type = document_type_field.document_type
-        field = document_type_field.document_field  # type: DocumentField
+        field = DocumentField.objects.get(pk=document_field_id)
 
         if not field.is_detectable():
             self.log_info('Field {0} is not detectable. Nothing to train and/or test.'.format(field.code))
@@ -321,12 +306,11 @@ class TrainAndTest(BaseTask):
 
             new_model = field_detection \
                 .train_document_field_detector_model(CeleryTaskLogger(self),
-                                                     document_type,
                                                      field,
                                                      train_data_project_ids,
                                                      use_only_confirmed_field_values_for_training)
             if new_model:
-                ClassifierModel.objects.filter(document_type=document_type, document_field=field).delete()
+                ClassifierModel.objects.filter(document_field=field).delete()
                 new_model.save()
 
                 if new_model.classifier_accuracy_report_in_sample:
@@ -349,15 +333,14 @@ class TrainAndTest(BaseTask):
         else:
             if not use_only_confirmed_field_values_for_testing:
                 test_document_ids = Document.objects \
-                    .filter(project_id__in=test_data_projects_ids, document_type_id=document_type.pk) \
+                    .filter(project_id__in=test_data_projects_ids, document_type_id=field.document_type.pk) \
                     .values_list('pk', flat=True)
             else:
                 test_document_ids = set(field_detection_utils
-                                        .get_qs_active_modified_document_ids(document_type,
-                                                                             field,
+                                        .get_qs_active_modified_document_ids(field,
                                                                              test_data_projects_ids))
                 test_document_ids.update(set(field_detection_utils
-                                             .get_qs_finished_document_ids(document_type,
+                                             .get_qs_finished_document_ids(field.document_type,
                                                                            test_data_projects_ids)))
 
             self.log_info('Testing field detection document-by-document...')
@@ -368,10 +351,10 @@ class TrainAndTest(BaseTask):
             if test_tasks_args:
                 self.run_sub_tasks('Test Field Detector Model', TrainAndTest.test_field_detector_model,
                                    test_tasks_args)
-
+                args_list = [(field.uid, new_model.pk if new_model else None)]
                 self.run_after_sub_tasks_finished('Join Field Detector Model Tests',
                                                   TrainAndTest.join_field_detector_model_tests,
-                                                  [(field.uid, document_type.uid, new_model.pk if new_model else None)])
+                                                  args_list)
 
     @staticmethod
     @shared_task(base=ExtendedTask,
@@ -444,11 +427,10 @@ class TrainAndTest(BaseTask):
                  max_retries=3)
     def join_field_detector_model_tests(task: ExtendedTask,
                                         field_uid,
-                                        document_type_uid,
                                         classifier_model_id):
         results = list(Task.objects \
                        .filter(main_task_id=task.request.parent_id,
-                               name=TrainAndTest.test_field_detector_model.name) \
+                               name=TrainAndTest.test_field_detector_model.name)
                        .values_list('result', flat=True))
 
         test_text_units_number = 0
@@ -483,7 +465,6 @@ class TrainAndTest(BaseTask):
             classifier_model.save()
 
         field = DocumentField.objects.get(pk=field_uid)
-        document_type = DocumentType.objects.get(pk=document_type_uid)
 
         task.log_info('Testing finished.\n'
                       'Document type: {0}.\n'
@@ -492,7 +473,7 @@ class TrainAndTest(BaseTask):
                       'Test documents number: {3}.\n'
                       'Test text units number: {4}.\n'
                       'Accuracy: {5}.\n'
-                      .format(document_type.code,
+                      .format(field.document_type.code,
                               field.code,
                               field.text_unit_type,
                               test_doc_number,
@@ -520,9 +501,9 @@ class CacheDocumentFields(BaseTask):
     def cache_document_fields_for_doc_ids(_task: ExtendedTask, doc_ids: Set):
         for doc in Document.objects.filter(pk__in=doc_ids):
             log = CeleryTaskLogger(_task)
-            field_value_cache.cache_generic_values(doc)
+            field_value_cache.cache_generic_values(doc, log=log)
             suggested_values = field_detection.detect_and_cache_field_values_for_document(log, doc, False)
-            field_value_cache.cache_field_values(doc, suggested_values, save=True)
+            field_value_cache.cache_field_values(doc, suggested_values, save=True, log=log)
 
     def process(self, project: Project = None, **_kwargs):
         document_qs = Document.objects
@@ -684,7 +665,7 @@ class LoadDocumentWithFields(BaseTask):
                 field_detection.detect_and_cache_field_values_for_document(log, document, True)
             else:
                 dfvs = field_detection.detect_and_cache_field_values_for_document(log, document, False)
-                field_value_cache.cache_field_values(document, dfvs, save=True)
+                field_value_cache.cache_field_values(document, dfvs, save=True, log=log)
 
         task.log_info('Loaded {0} field values for document #{1} ({2})'
                       .format(len(fields_to_values), document.pk, document.name))
@@ -699,7 +680,6 @@ class ImportSimpleFieldDetectionConfig(BaseTask):
     max_retries = 3
 
     def process(self,
-                document_type: Dict,
                 document_field: Dict,
                 config_csv_file: Dict,
                 drop_previous_field_detectors: bool,
@@ -707,17 +687,88 @@ class ImportSimpleFieldDetectionConfig(BaseTask):
                 **kwargs):
         try:
             self.log_info('Going to configure simple field detection config...')
-            document_type = DocumentType.objects.get(pk=document_type['pk'])
             document_field = DocumentField.objects.get(pk=document_field['pk'])
             csv_bytes = DbCache.get(config_csv_file['cache_key'])
             apply_simple_config(CeleryTaskLogger(self),
                                 document_field,
-                                document_type,
                                 csv_bytes,
                                 drop_previous_field_detectors,
                                 update_field_choice_values)
         finally:
             DbCache.clean_cache(config_csv_file['cache_key'])
+
+
+class FindBrokenDocumentFieldValues(BaseTask):
+    name = 'Find Broken Document Field Values'
+
+    @staticmethod
+    @shared_task(base=ExtendedTask,
+                 bind=True,
+                 soft_time_limit=3600,
+                 default_retry_delay=10,
+                 retry_backoff=True,
+                 autoretry_for=(SoftTimeLimitExceeded, InterfaceError, OperationalError),
+                 max_retries=3)
+    def check_document_field_values(task: ExtendedTask, dfv_ids: Set, delete_broken: bool = False):
+
+        for dfv in DocumentFieldValue.objects \
+                .filter(pk__in=dfv_ids) \
+                .select_related('field'):  # type: DocumentFieldValue
+            try:
+                temp_value = dfv.python_value
+                if temp_value is not None:
+                    field = dfv.field
+                    if field.is_choice_field() and temp_value not in field.get_choice_values():
+                        raise ValueError('Field value {0} is not in list of its choice values:\n{1}'
+                                         .format(temp_value, field.choices))
+            except:
+                if delete_broken:
+                    dfv.delete()
+                    msg = render_error('Found broken document field value.\n'
+                                       'Document field value id: {0}\n'
+                                       'DB value: {1}\n'
+                                       'The document field value has been deleted.\n'
+                                       .format(dfv.pk, dfv.value))
+                else:
+                    content_type = ContentType.objects.get_for_model(DocumentFieldValue)
+                    dfv_admin_url = urlresolvers \
+                        .reverse("admin:%s_%s_change" % (content_type.app_label, content_type.model), args=(dfv.pk,))
+                    msg = render_error('Found broken document field value.\n'
+                                       'Document field value id: {0}\n'
+                                       'DB value: {1}\n'
+                                       'Admin URL: {2}\n'.format(dfv.pk, dfv.value, dfv_admin_url))
+                task.log_info(msg)
+
+    def process(self, **kwargs):
+        document_field_arg = kwargs.get('document_field')
+        document_field_id = document_field_arg['pk'] if document_field_arg else None
+
+        delete_broken = kwargs.get('delete_broken')
+
+        dfv_qs = DocumentFieldValue.objects
+
+        if document_field_id:
+            dfv_qs = dfv_qs.filter(field_id=document_field_id)
+        else:
+            dfv_qs = dfv_qs.all()
+
+        dfv_ids = set()
+        total_num = dfv_qs.count()
+        count = 0
+        for dfv_id in dfv_qs.values_list('pk', flat=True):
+            count += 1
+            if len(dfv_ids) >= 1000:
+                self.log_info('Sub-tasks started for {0} document field values of {1}'.format(count, total_num))
+                self.run_sub_tasks('Check document field values', self.check_document_field_values,
+                                   [(dfv_ids, delete_broken)])
+                dfv_ids = set()
+            else:
+                dfv_ids.add(dfv_id)
+
+        if len(dfv_ids) > 0:
+            self.run_sub_tasks('Check document field values', self.check_document_field_values,
+                               [(dfv_ids, delete_broken)])
+            self.log_info('Sub-tasks started for {0} document field values of {1}'.format(count, total_num))
 
 
 app.register_task(DetectFieldValues())
@@ -727,3 +778,4 @@ app.register_task(CacheDocumentFields())
 app.register_task(TrainAndTest())
 app.register_task(LoadDocumentWithFields())
 app.register_task(ImportSimpleFieldDetectionConfig())
+app.register_task(FindBrokenDocumentFieldValues())

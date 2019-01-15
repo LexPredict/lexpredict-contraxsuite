@@ -9,7 +9,7 @@ from apps.document.fields_detection.fields_detection_abstractions import FieldDe
 from apps.document.fields_detection.stop_words import detect_with_stop_words_by_field_and_full_text
 from apps.document.fields_processing.field_processing_utils import merge_document_field_values_to_python_value
 from apps.document.models import ClassifierModel, TextUnit, DocumentFieldDetector
-from apps.document.models import DocumentType, DocumentField, Document
+from apps.document.models import DocumentField, Document
 
 
 class RegexpsOnlyFieldDetectionStrategy(FieldDetectionStrategy):
@@ -18,7 +18,6 @@ class RegexpsOnlyFieldDetectionStrategy(FieldDetectionStrategy):
     @classmethod
     def train_document_field_detector_model(cls,
                                             log: ProcessLogger,
-                                            document_type: DocumentType,
                                             field: DocumentField,
                                             train_data_project_ids: Optional[List],
                                             use_only_confirmed_field_values: bool = False) -> Optional[ClassifierModel]:
@@ -41,10 +40,8 @@ class RegexpsOnlyFieldDetectionStrategy(FieldDetectionStrategy):
             .filter(document=doc) \
             .filter(unit_type=field.text_unit_type) \
             .order_by('location_start', 'pk')
-        document_type = doc.document_type
 
-        field_detectors = DocumentFieldDetector.objects.filter(document_type=document_type,
-                                                               field=field)
+        field_detectors = DocumentFieldDetector.objects.filter(field=field)
 
         field_type_adapter = FIELD_TYPES_REGISTRY.get(field.type)  # type: FieldType
 
@@ -53,7 +50,8 @@ class RegexpsOnlyFieldDetectionStrategy(FieldDetectionStrategy):
         for text_unit in qs_text_units.iterator():
 
             for field_detector in field_detectors:
-                if field_detector.matches(text_unit.text):
+                matching_string = field_detector.matching_string(text_unit.text)
+                if matching_string is not None:
                     value = field_detector.detected_value
                     hint_name = None
                     if field_type_adapter.value_aware:
@@ -62,7 +60,7 @@ class RegexpsOnlyFieldDetectionStrategy(FieldDetectionStrategy):
                             .get_or_extract_value(doc,
                                                   field, value,
                                                   hint_name,
-                                                  text_unit.text)
+                                                  matching_string)
                         if value is None:
                             continue
 
@@ -87,7 +85,6 @@ class FieldBasedRegexpsDetectionStrategy(FieldDetectionStrategy):
     @classmethod
     def train_document_field_detector_model(cls,
                                             log: ProcessLogger,
-                                            document_type: DocumentType,
                                             field: DocumentField,
                                             train_data_project_ids: Optional[List],
                                             use_only_confirmed_field_values: bool = False) -> Optional[ClassifierModel]:
@@ -117,10 +114,7 @@ class FieldBasedRegexpsDetectionStrategy(FieldDetectionStrategy):
             if detected_with_stop_words:
                 return detected_values or list()
 
-        document_type = doc.document_type
-
-        field_detectors = DocumentFieldDetector.objects.filter(document_type=document_type,
-                                                               field=field)
+        field_detectors = DocumentFieldDetector.objects.filter(field=field)
         field_type_adapter = FIELD_TYPES_REGISTRY.get(field.type)  # type: FieldType
 
         detected_values = list()  # type: List[DetectedFieldValue]
@@ -130,7 +124,8 @@ class FieldBasedRegexpsDetectionStrategy(FieldDetectionStrategy):
                 continue
             depends_on_value = str(depends_on_value)
             for field_detector in field_detectors:
-                if field_detector.matches(depends_on_value):
+                matching_string = field_detector.matching_string(depends_on_value)
+                if matching_string is not None:
                     value = field_detector.detected_value
                     hint_name = None
                     if field_type_adapter.value_aware:
@@ -139,7 +134,7 @@ class FieldBasedRegexpsDetectionStrategy(FieldDetectionStrategy):
                             .get_or_extract_value(doc,
                                                   field, value,
                                                   hint_name,
-                                                  depends_on_value)
+                                                  matching_string)
                         if value is None:
                             continue
 
@@ -159,7 +154,6 @@ FD_CATEGORY_IMPORTED_SIMPLE_CONFIG = 'imported_simple_config'
 
 def apply_simple_config(log: ProcessLogger,
                         document_field: DocumentField,
-                        document_type: DocumentType,
                         csv: bytes,
                         drop_previous_field_detectors: bool,
                         update_field_choice_values: bool):
@@ -174,16 +168,13 @@ def apply_simple_config(log: ProcessLogger,
         document_field.save()
 
     log.info('Creating {2} naive field detectors for document field {0} and document type {1}...'
-             .format(document_field, document_type, df.shape[0]))
+             .format(document_field, document_field.document_type, df.shape[0]))
     log.set_progress_steps_number(int(row_num / 10) + 1)
     if drop_previous_field_detectors:
-        DocumentFieldDetector.objects.filter(field=document_field,
-                                             document_type=document_type,
-                                             category=FD_CATEGORY_IMPORTED_SIMPLE_CONFIG).delete()
+        DocumentFieldDetector.objects.filter(field=document_field, category=FD_CATEGORY_IMPORTED_SIMPLE_CONFIG).delete()
     for index, row in df.iterrows():
         detector = DocumentFieldDetector()
         detector.category = FD_CATEGORY_IMPORTED_SIMPLE_CONFIG
-        detector.document_type = document_type
         detector.field = document_field
         detector.regexps_pre_process_lower = True
         detector.detected_value = row[0]

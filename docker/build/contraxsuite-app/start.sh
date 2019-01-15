@@ -163,11 +163,12 @@ usage_stats.apply()
             uwsgi --socket 0.0.0.0:3031 \
                     --plugins python3 \
                     --protocol uwsgi \
+                    --buffer-size 65535 \
                     --wsgi wsgi:application"
     fi
 elif [ "$1" == "jupyter" ]; then
-    echo "Sleeping 15 seconds to let Postgres start and Django migrate"
-    sleep 15
+    echo "Sleeping 30 seconds to let Postgres start and Django migrate"
+    sleep 30
     echo "Starting Jupyter..."
 
     VENV_PATH=/contraxsuite_services/venv
@@ -200,40 +201,40 @@ with open('/home/${SHARED_USER_NAME}/.jupyter/jupyter_notebook_config.py', 'a') 
         ulimit -n 1000000 && \
         jupyter notebook --port=8888 --no-browser --ip=0.0.0.0"
 elif [ $1 == "flower" ]; then
-    echo "Sleeping 15 seconds to let Postgres start and Django migrate"
-    sleep 15
+    echo "Sleeping 30 seconds to let Postgres start and Django migrate"
+    sleep 30
     echo "Starting Flower..."
 
     su - ${SHARED_USER_NAME} -c "${ACTIVATE_VENV} && \
         ulimit -n 1000000 && \
         flower -A apps --port=5555 --address=0.0.0.0 --url_prefix=${DOCKER_FLOWER_BASE_PATH}"
 elif [ $1 == "celery-beat" ]; then
-    echo "Sleeping 15 seconds to let Postgres start and Django migrate"
-    sleep 15
+    echo "Sleeping 30 seconds to let Postgres start and Django migrate"
+    sleep 30
     echo "Starting Celery Beat and Serial Tasks Worker..."
 
     su - ${SHARED_USER_NAME} -c "${ACTIVATE_VENV} && \
         ulimit -n 1000000 && \
         celery -A apps worker -B -Q serial --concurrency=1 -Ofair -n beat@%h --statedb=/data/celery_worker_state/worker.state"
 elif [ $1 == "celery-high-prio" ]; then
-    echo "Sleeping 15 seconds to let Postgres start and Django migrate"
-    sleep 15
+    echo "Sleeping 30 seconds to let Postgres start and Django migrate"
+    sleep 30
     echo "Starting Celery High Priority Tasks Worker..."
 
     su - ${SHARED_USER_NAME} -c "${ACTIVATE_VENV} && \
         ulimit -n 1000000 && \
         celery -A apps worker -Q high_priority --concurrency=4 -Ofair -n high_priority@%h --statedb=/data/celery_worker_state/worker.state"
 elif [ $1 == "celery-master" ]; then
-    echo "Sleeping 15 seconds to let Postgres start and Django migrate"
-    sleep 15
+    echo "Sleeping 30 seconds to let Postgres start and Django migrate"
+    sleep 30
     echo "Starting Celery Master Low Resources Worker..."
 
     su - ${SHARED_USER_NAME} -c "${ACTIVATE_VENV} && \
         ulimit -n 1000000 && \
         celery -A apps worker -Q default,high_priority --concurrency=2 -Ofair -n master@%h --statedb=/data/celery_worker_state/worker.state"
 else
-    echo "Sleeping 15 seconds to let Postgres start and Django migrate"
-    sleep 15
+    echo "Sleeping 30 seconds to let Postgres start and Django migrate"
+    sleep 30
     echo "Starting Celery Default Priority Tasks Worker..."
 
     su - ${SHARED_USER_NAME} -c "${ACTIVATE_VENV} && \

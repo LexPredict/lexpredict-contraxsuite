@@ -4,6 +4,7 @@ from __future__ import unicode_literals
 
 import apps.common.utils
 from django.db import migrations, models
+import django.db.models.deletion
 
 
 class Migration(migrations.Migration):
@@ -22,5 +23,10 @@ class Migration(migrations.Migration):
             model_name='task',
             name='id',
             field=models.CharField(db_index=True, default=apps.common.utils.fast_uuid, max_length=255, primary_key=True, serialize=False, unique=True),
+        ),
+        migrations.AddField(
+            model_name='task',
+            name='main_task',
+            field=models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.CASCADE, to='task.Task'),
         ),
     ]

@@ -27,6 +27,7 @@
 # Standard imports
 import datetime
 import hashlib
+import importlib
 import json
 import math
 import mimetypes
@@ -58,19 +59,13 @@ from constance import config
 from django.conf import settings
 from django.db import transaction
 from django.db.models import Count, Q, Case, Value, When, IntegerField
-from django.db.utils import IntegrityError, DataError
 from django.utils.timezone import now
 from elasticsearch import Elasticsearch
 from elasticsearch.exceptions import RequestError
-from lexnlp.extract.en import (
-    amounts, citations, copyright, courts, dates, distances, definitions,
-    durations, geoentities, money, percents, ratios, regulations, trademarks, urls,
-    dict_entities)
 from lexnlp.extract.en.contracts.detector import is_contract
-from lexnlp.extract.en.entities.nltk_maxent import get_companies
+from lexnlp.nlp.en.segments.paragraphs import get_paragraphs
 from lexnlp.nlp.en.segments.sentences import get_sentence_span_list, pre_process_document
 from lexnlp.nlp.en.segments.titles import get_titles
-from lexnlp.nlp.en.tokens import get_stems, get_token_list
 from psycopg2 import InterfaceError, OperationalError
 # Scikit-learn imports
 from sklearn.cluster import Birch, DBSCAN, KMeans, MiniBatchKMeans
@@ -102,25 +97,21 @@ from apps.document.models import (
     Document, DocumentProperty, DocumentType, TextUnit, TextUnitProperty, TextUnitTag)
 from apps.extract import dict_data_cache
 from apps.extract import models as extract_models
+from apps.extract.locators import LOCATORS, LocationResults
 from apps.extract.models import (
-    AmountUsage, CitationUsage, CopyrightUsage,
-    Court, CourtUsage, CurrencyUsage,
-    DateDurationUsage, DateUsage, DefinitionUsage, DistanceUsage,
-    GeoAlias, GeoAliasUsage, GeoEntity, GeoEntityUsage, GeoRelation,
-    PercentUsage, RatioUsage, RegulationUsage,
-    Party, PartyUsage, Term, TermUsage, TrademarkUsage, UrlUsage)
+    Court, GeoAlias, GeoEntity, GeoRelation,
+    Party, Term, TermUsage)
 from apps.project.models import Project, UploadSession
 from apps.task.celery_backend.task_utils import revoke_task
 from apps.task.models import Task, TaskConfig
 from apps.task.utils.nlp.lang import get_language
 from apps.task.utils.ocr.textract import textract2text
 from apps.task.utils.task_utils import TaskUtils, pre_serialize
-from apps.task.utils.text.segment import segment_paragraphs
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.6/LICENSE"
-__version__ = "1.1.6"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.7/LICENSE"
+__version__ = "1.1.7"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -279,6 +270,8 @@ class ExtendedTask(app.Task):
         :param source_data:
         :return:
         """
+        if not args_list:
+            return
         sub_tasks = []
         task_config = _get_or_create_task_config(sub_task_function)
         for index, args in enumerate(args_list):
@@ -389,7 +382,7 @@ def end_chord(task: ExtendedTask, *args, **kwargs):
 
 
 def call_task_func(task_func: Callable, task_args: Tuple,
-                   user_id, source_data=None, metadata: Dict = None, visible: bool = True):
+                   user_id, source_data=None, metadata: Dict = None, visible: bool = True, queue: str = None):
     celery_task_id = str(fast_uuid())
 
     task = Task.objects.create(
@@ -403,7 +396,8 @@ def call_task_func(task_func: Callable, task_args: Tuple,
 
     task.write_log('Celery task id: {}\n'.format(celery_task_id))
     task_config = _get_or_create_task_config(task_func)
-    task_func.apply_async(args=task_args,
+    task_func.apply_async(queue=queue,
+                          args=task_args,
                           task_id=celery_task_id,
                           soft_time_limit=task_config.soft_time_limit)
     return task.pk
@@ -417,7 +411,7 @@ def call_task(task_name, **options):
     :return:
     """
     this_module_name = options.pop('module_name', __name__)
-    _this_module = sys.modules[this_module_name]
+    _this_module = importlib.import_module(this_module_name)
     task_class = getattr(_this_module, task_name.replace(' ', ''))
 
     if task_name == 'LoadDocuments' \
@@ -745,7 +739,10 @@ class LoadDocuments(BaseTask):
                 text=paragraph,
                 text_hash=hashlib.sha1(paragraph.encode("utf-8")).hexdigest(),
                 unit_type="paragraph",
-                language=get_language(paragraph)) for paragraph in segment_paragraphs(text)]
+                language=get_language(paragraph),
+                location_start=pos_start,
+                location_end=post_end)
+                for paragraph, pos_start, post_end in get_paragraphs(text, return_spans=True)]
 
             sentence_list = []
             for span in get_sentence_span_list(text):
@@ -805,9 +802,6 @@ class LoadDocuments(BaseTask):
                 'user_id': user_id,
                 'document_id': document.pk
             }])
-
-            if document_type:
-                run_detect_field_values_as_sub_tasks(task, [document.id])
 
         for linked_task_kwargs in linked_tasks:
             linked_task_kwargs['document_id'] = document.pk
@@ -1120,7 +1114,7 @@ class Locate(BaseTask):
                            locate_args)
 
         self.run_after_sub_tasks_finished('Cache Generic Document Data',
-                                          Locate.cache_generic_document_data,
+                                          Locate.on_locate_finished,
                                           [(document_id,)])
 
     @staticmethod
@@ -1132,10 +1126,11 @@ class Locate(BaseTask):
                  autoretry_for=(SoftTimeLimitExceeded, InterfaceError, OperationalError,),
                  max_retries=3
                  )
-    def cache_generic_document_data(_self: ExtendedTask, doc_id):
+    def on_locate_finished(_self: ExtendedTask, doc_id):
         doc = Document.objects.get(pk=doc_id)
         if doc:
-            field_value_cache.cache_generic_values(doc)
+            field_value_cache.cache_generic_values(doc, log=CeleryTaskLogger(_self))
+            run_detect_field_values_as_sub_tasks(_self, [doc.id])
 
     @staticmethod
     @shared_task(base=ExtendedTask,
@@ -1147,361 +1142,18 @@ class Locate(BaseTask):
                  max_retries=3
                  )
     def parse_text_units(self: ExtendedTask, text_unit_ids, user_id, locate):
-        tags = []
-        self.set_push_steps(len(locate) + 1)
         text_units = TextUnit.objects.filter(pk__in=text_unit_ids).values_list('pk', 'text', 'language')
         text_units = list(text_units)
+        location_results = LocationResults()
+        log = CeleryTaskLogger(self)
         for task_name, task_kwargs in locate.items():
-            self.push()
-            func_name = 'parse_%s' % task_name
-            try:
-                task_func = getattr(this_module, func_name)
-            except AttributeError:
-                self.log_error('Warning: "%s" method not found' % func_name)
-                continue
+            if task_name not in LOCATORS:
+                raise Exception('Programming error. Unknown locator: {0}'.format(task_name))
+            locator = LOCATORS[task_name]
 
             for text_unit_id, text, text_unit_lang in text_units:
-                found = None
-                try:
-                    found = task_func(text, text_unit_id, text_unit_lang, **task_kwargs)
-                except IntegrityError as e:
-                    # just skip if duplicated values BUT keep log to investigate issue
-                    if 'duplicate key value violates unique constraint' in str(e):
-                        self.log_error('Function "%s" caused error:' % func_name)
-                        self.log_error(str(e))
-                        continue
-                if found:
-                    tag_name = found if not isinstance(found, bool) else task_name
-                    tags.append((text_unit_id, tag_name))
-        if tags:
-            for text_unit_id, tag in tags:
-                TextUnitTag.objects.get_or_create(
-                    text_unit_id=text_unit_id,
-                    tag=tag,
-                    defaults=dict(user_id=user_id))
-
-
-def parse_amount(text, text_unit_id, _text_unit_lang):
-    found = list(amounts.get_amounts(text, return_sources=True, extended_sources=False))
-    AmountUsage.objects.filter(text_unit_id=text_unit_id).delete()
-    if found:
-        unique = set(found)
-        AmountUsage.objects.bulk_create(
-            [AmountUsage(
-                text_unit_id=text_unit_id,
-                amount=item[0],
-                amount_str=item[1][:300] if item[1] else None,
-                count=found.count(item)
-            ) for item in unique])
-    return bool(found)
-
-
-def parse_citation(text, text_unit_id, _text_unit_lang):
-    found = list(citations.get_citations(text, return_source=True))
-    CitationUsage.objects.filter(text_unit_id=text_unit_id).delete()
-    if found:
-        unique = set(found)
-        unique_len = len(unique)
-        for item in unique:
-            try:
-                CitationUsage.objects.create(
-                    text_unit_id=text_unit_id,
-                    volume=item[0],
-                    reporter=item[1],
-                    reporter_full_name=item[2],
-                    page=item[3],
-                    page2=item[4],
-                    court=item[5],
-                    year=item[6],
-                    citation_str=item[7],
-                    count=found.count(item))
-            except DataError:
-                unique_len -= 1
-        return bool(unique_len)
-    return False
-
-
-def parse_court(text, text_unit_id, text_unit_lang, **kwargs):
-    court_config = dict_data_cache.get_court_config()
-    found = [dict_entities.get_entity_id(i[0])
-             for i in courts.get_courts(text,
-                                        court_config_list=court_config,
-                                        text_languages=[text_unit_lang])]
-    CourtUsage.objects.filter(text_unit_id=text_unit_id).delete()
-    if found:
-        unique = set(found)
-        CourtUsage.objects.bulk_create(
-            [CourtUsage(
-                text_unit_id=text_unit_id,
-                court_id=court_id,
-                count=found.count(court_id)
-            ) for court_id in unique])
-    return bool(found)
-
-
-def parse_distance(text, text_unit_id, _text_unit_lang):
-    found = list(distances.get_distances(text, return_sources=True))
-    DistanceUsage.objects.filter(text_unit_id=text_unit_id).delete()
-    if found:
-        unique = set(found)
-        DistanceUsage.objects.bulk_create(
-            [DistanceUsage(
-                text_unit_id=text_unit_id,
-                amount=item[0],
-                amount_str=item[2],
-                distance_type=item[1],
-                count=found.count(item)
-            ) for item in unique])
-    return bool(found)
-
-
-def parse_date(text, text_unit_id, _text_unit_lang, **kwargs):
-    found = dates.get_dates_list(
-        text,
-        strict=kwargs.get('strict', False),
-        return_source=False)
-    DateUsage.objects.filter(text_unit_id=text_unit_id).delete()
-    if found:
-        unique = set([i.date() if isinstance(i, datetime.datetime) else i for i in found])
-        DateUsage.objects.bulk_create(
-            [DateUsage(
-                text_unit_id=text_unit_id,
-                date=item,
-                count=found.count(item)
-            ) for item in unique])
-    return bool(found)
-
-
-def parse_definition(text, text_unit_id, _text_unit_lang):
-    found = list(definitions.get_definitions(text))
-    DefinitionUsage.objects.filter(text_unit_id=text_unit_id).delete()
-    if found:
-        unique = set(found)
-        DefinitionUsage.objects.bulk_create(
-            [DefinitionUsage(
-                text_unit_id=text_unit_id,
-                definition=item,
-                count=found.count(item)
-            ) for item in unique])
-    return bool(found)
-
-
-def parse_duration(text, text_unit_id, _text_unit_lang):
-    found = list(durations.get_durations(text, return_sources=True))
-    DateDurationUsage.objects.filter(text_unit_id=text_unit_id).delete()
-    if found:
-        unique = set(found)
-        DateDurationUsage.objects.bulk_create(
-            [DateDurationUsage(
-                text_unit_id=text_unit_id,
-                amount=item[1],
-                amount_str=item[3],
-                duration_type=item[0],
-                duration_days=item[2],
-                count=found.count(item)
-            ) for item in unique])
-    return bool(found)
-
-
-def parse_currency(text, text_unit_id, _text_unit_lang):
-    found = list(money.get_money(text, return_sources=True))
-    CurrencyUsage.objects.filter(text_unit_id=text_unit_id).delete()
-    if found:
-        unique = set(found)
-        CurrencyUsage.objects.bulk_create(
-            [CurrencyUsage(
-                text_unit_id=text_unit_id,
-                amount=item[0],
-                amount_str=item[2],
-                currency=item[1],
-                count=found.count(item)
-            ) for item in unique])
-    return bool(found)
-
-
-def parse_party(text, text_unit_id, _text_unit_lang):
-    found = list(get_companies(text, count_unique=True, detail_type=True, name_upper=True))
-    PartyUsage.objects.filter(text_unit_id=text_unit_id).delete()
-    if found:
-        pu_list = []
-        for _party in found:
-            name, _type, type_abbr, type_label, type_desc, count = _party
-            defaults = dict(
-                type=_type,
-                type_label=type_label,
-                type_description=type_desc
-            )
-            party, _ = Party.objects.get_or_create(
-                name=name,
-                type_abbr=type_abbr or '',
-                defaults=defaults
-            )
-            pu_list.append(
-                PartyUsage(text_unit_id=text_unit_id,
-                           party=party,
-                           count=count))
-        PartyUsage.objects.bulk_create(pu_list)
-    return bool(found)
-
-
-def parse_percent(text, text_unit_id, _text_unit_lang):
-    found = list(percents.get_percents(text, return_sources=True))
-    PercentUsage.objects.filter(text_unit_id=text_unit_id).delete()
-    if found:
-        unique = set(found)
-        PercentUsage.objects.bulk_create(
-            [PercentUsage(
-                text_unit_id=text_unit_id,
-                amount=item[1],
-                amount_str=item[3],
-                unit_type=item[0],
-                total=item[2],
-                count=found.count(item)
-            ) for item in unique])
-    return bool(found)
-
-
-def parse_ratio(text, text_unit_id, _text_unit_lang):
-    found = list(ratios.get_ratios(text, return_sources=True))
-    RatioUsage.objects.filter(text_unit_id=text_unit_id).delete()
-    if found:
-        unique = set(found)
-        RatioUsage.objects.bulk_create(
-            [RatioUsage(
-                text_unit_id=text_unit_id,
-                amount=item[0],
-                amount2=item[1],
-                amount_str=item[3],
-                total=item[2],
-                count=found.count(item)
-            ) for item in unique])
-    return bool(found)
-
-
-def parse_regulation(text, text_unit_id, _text_unit_lang):
-    found = list(regulations.get_regulations(text))
-    RegulationUsage.objects.filter(text_unit_id=text_unit_id).delete()
-    if found:
-        unique = set(found)
-        RegulationUsage.objects.bulk_create(
-            [RegulationUsage(
-                text_unit_id=text_unit_id,
-                regulation_type=item[0],
-                regulation_name=item[1],
-                count=found.count(item)
-            ) for item in unique])
-    return bool(found)
-
-
-def parse_copyright(text, text_unit_id, _text_unit_lang):
-    found = list(copyright.get_copyright(text, return_sources=True))
-    CopyrightUsage.objects.filter(text_unit_id=text_unit_id).delete()
-    if found:
-        unique = set(found)
-        CopyrightUsage.objects.bulk_create(
-            [CopyrightUsage(
-                text_unit_id=text_unit_id,
-                year=item[1],
-                name=item[2][:200],
-                copyright_str=item[3][:200],
-                count=found.count(item)
-            ) for item in unique if len(item[2]) < 100])
-    return bool(found)
-
-
-def parse_trademark(text, text_unit_id, _text_unit_lang):
-    found = list(trademarks.get_trademarks(text))
-    TrademarkUsage.objects.filter(text_unit_id=text_unit_id).delete()
-    if found:
-        unique = set(found)
-        TrademarkUsage.objects.bulk_create(
-            [TrademarkUsage(
-                text_unit_id=text_unit_id,
-                trademark=item,
-                count=found.count(item)
-            ) for item in unique])
-    return bool(found)
-
-
-def parse_url(text, text_unit_id, _text_unit_lang):
-    found = list(urls.get_urls(text))
-    UrlUsage.objects.filter(text_unit_id=text_unit_id).delete()
-    if found:
-        unique = set(found)
-        UrlUsage.objects.bulk_create(
-            [UrlUsage(
-                text_unit_id=text_unit_id,
-                source_url=item,
-                count=found.count(item)
-            ) for item in unique])
-    return bool(found)
-
-
-def parse_geoentity(text, text_unit_id, text_unit_lang, **kwargs):
-    geo_config = dict_data_cache.get_geo_config()
-    priority = kwargs.get('priority', True)
-    entity_alias_pairs = list(geoentities.get_geoentities(text,
-                                                          geo_config,
-                                                          text_languages=[text_unit_lang],
-                                                          priority=priority))
-
-    GeoEntityUsage.objects.filter(text_unit_id=text_unit_id).delete()
-    GeoAliasUsage.objects.filter(text_unit_id=text_unit_id).delete()
-    entity_ids = [dict_entities.get_entity_id(entity) for entity, _alias in entity_alias_pairs]
-    if entity_ids:
-        unique = set(entity_ids)
-        GeoEntityUsage.objects.bulk_create([
-            GeoEntityUsage(
-                text_unit_id=text_unit_id,
-                entity_id=idd,
-                count=entity_ids.count(idd)) for idd in unique])
-
-    alias_ids = [dict_entities.get_alias_id(alias) for _entity, alias in entity_alias_pairs]
-    if alias_ids:
-        unique = set(alias_ids)
-        GeoAliasUsage.objects.bulk_create([
-            GeoAliasUsage(
-                text_unit_id=text_unit_id,
-                alias_id=idd,
-                count=alias_ids.count(idd)) for idd in unique if idd])
-
-    return bool(entity_ids)
-
-
-def parse_term(text, text_unit_id, _text_unit_lang, **kwargs):
-    term_stems = dict_data_cache.get_term_config()
-    text_stems = ' %s ' % ' '.join(get_stems(text, lowercase=True))
-    text_tokens = get_token_list(text, lowercase=True)
-    term_usages = []
-    for stemmed_term, data in term_stems.items():
-        # stem not found in text
-        if stemmed_term not in text_stems:
-            continue
-        # if stem has 1 variant only
-        if data['length'] == 1:
-            count = text_stems.count(stemmed_term)
-            if count:
-                term_data = list(data['values'][0])
-                term_data.append(count)
-                term_usages.append(term_data)
-        # case when f.e. stem "respons" is equal to multiple terms
-        # ["response", "responsive", "responsibility"]
-        else:
-            for term_data in data['values']:
-                term_data = list(term_data)
-                count = text_tokens.count(term_data[0])
-                if count:
-                    term_data.append(count)
-                    term_usages.append(term_data)
-                    # TODO: "responsibilities"
-
-    TermUsage.objects.filter(text_unit_id=text_unit_id).delete()
-    TermUsage.objects.bulk_create([
-        TermUsage(
-            text_unit_id=text_unit_id,
-            term_id=pk,
-            count=count) for _, pk, count in term_usages])
-    return bool(term_usages)
+                locator.try_parsing(log, location_results, text, text_unit_id, text_unit_lang, **task_kwargs)
+        location_results.save(log, user_id)
 
 
 # sample of custom task
@@ -2312,14 +1964,14 @@ def clean_sub_tasks(self):
         .delete()
 
     # Delete all completed system/periodic tasks from DB
-    Task.objects\
-        .filter(name__in=Task.objects.EXCLUDE_FROM_TRACKING, own_date_done__lt=del_sub_tasks_date)\
+    Task.objects \
+        .filter(name__in=Task.objects.EXCLUDE_FROM_TRACKING, own_date_done__lt=del_sub_tasks_date) \
         .delete()
 
     # Delete excess tasks from task list
     del_ready_tasks_date = now() - datetime.timedelta(seconds=settings.REMOVE_READY_TASKS_DELAY_IN_SEC)
-    Task.objects\
-        .filter(name__in=settings.REMOVE_WHEN_READY, date_done__lt=del_ready_tasks_date)\
+    Task.objects \
+        .filter(name__in=settings.REMOVE_WHEN_READY, date_done__lt=del_ready_tasks_date) \
         .delete()
 
 
@@ -2330,12 +1982,15 @@ def purge_task(task_pk):
     :return:
     """
 
-    try:
-        task = Task.objects.get(pk=task_pk)
-    except Task.DoesNotExist:
-        return
+    task = task_pk
 
-    message = 'Task "Purge task", app task id={}'.format(task_pk)
+    if not isinstance(task, Task):
+        try:
+            task = Task.objects.get(pk=task)
+        except Task.DoesNotExist:
+            return
+
+    message = 'Task "Purge task", app task id={}'.format(task.pk)
     logger.info(message)
 
     celery_task = AsyncResult(task.id)
@@ -2350,7 +2005,7 @@ def purge_task(task_pk):
     # delete Task
     task.delete()
 
-    ret += 'Task(id={}), TaskHistory, '.format(task_pk)
+    ret += 'Task(id={}), TaskHistory, '.format(task.pk)
 
     ret += 'main celery task, children celery tasks, {} TaskResult(s)'.format(
         subtask_results_deleted[0] + 1)
