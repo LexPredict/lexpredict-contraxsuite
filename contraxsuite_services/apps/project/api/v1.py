@@ -53,6 +53,7 @@ from apps.common.log_utils import ErrorCollectingLogger
 from apps.common.mixins import JqListAPIMixin, APIActionMixin, APILoggingMixin
 from apps.common.models import ReviewStatus
 from apps.common.utils import get_api_module
+from apps.document.constants import DOCUMENT_TYPE_PK_GENERIC_DOCUMENT
 from apps.document.events import events
 from apps.document.models import Document, DocumentType, DocumentFieldValue, DocumentField
 from apps.project.models import Project, TaskQueue, UploadSession, ProjectClustering, \
@@ -695,6 +696,7 @@ class ProjectViewSet(APILoggingMixin, ProjectPermissionViewMixin, APIActionMixin
             SELECT
               p1.id project_id,
               p1.name project_name,
+              CASE WHEN p1.type_id = %s THEN TRUE ELSE FALSE END AS is_generic,
               (SELECT count(d1.id)
                FROM document_document d1
                WHERE d1.project_id = p1.id) extracted_doc_count,
@@ -713,11 +715,12 @@ class ProjectViewSet(APILoggingMixin, ProjectPermissionViewMixin, APIActionMixin
         '''
         result = list()
         with connection.cursor() as cursor:
-            cursor.execute(sql, [content_type_id, user_id, last_n])
-            for project_id, project_name, extracted_doc_count, reviewed_doc_count in cursor.fetchall():
+            cursor.execute(sql, [DOCUMENT_TYPE_PK_GENERIC_DOCUMENT, content_type_id, user_id, last_n])
+            for project_id, project_name, is_generic, extracted_doc_count, reviewed_doc_count in cursor.fetchall():
                 result.append({
                     'name': project_name,
                     'pk': project_id,
+                    'is_generic': is_generic,
                     'progress': {
                         'project_current_documents_count': extracted_doc_count,
                         'project_reviewed_documents_count': reviewed_doc_count
