@@ -1,0 +1,36 @@
+{% extends "admin/change_form.html" %}
+
+{% block content %}
+    <div class="alert alert-block alert-warning">
+        <b>The following user tasks are running:</b>
+                <ul>
+                    {% for task_name in running_tasks %}
+                        <li>{{ task_name }}</li>
+                    {% endfor %}
+                </ul>
+                <p>
+                    Saving this {{ opts.verbose_name }} can cause their crashing because of document type / field structure changes.
+                </p>
+            </div>
+            <button type="submit" class="btn btn-high btn-info" name="{{ confirmation_button_name }}"
+                    onclick="action_button_clicked('{{ source_action }}', '{{ confirmation_button_name }}')">
+                Yes, I'm sure
+            </button>
+            <div style="display: none">
+                {{ block.super }}
+            </div>
+{% endblock %}
+
+
+{% block extrajs %}
+	{{ block.super }}
+
+	<script type="text/javascript">
+        function action_button_clicked(source_action, target_action) {
+            var button = $('button[type="submit"][name="' + source_action + '"]')[0];
+            button.name = target_action;
+            button.click();
+        }
+	</script>
+
+{% endblock %}

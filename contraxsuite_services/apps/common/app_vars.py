@@ -34,8 +34,8 @@ from apps.common.models import AppVar
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.7/LICENSE"
-__version__ = "1.1.7"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.8/LICENSE"
+__version__ = "1.1.8"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -62,3 +62,10 @@ TRACK_API_GREATER_THAN = AppVar.set(
     'track_api_greater_than', 250,
     'If API request processing time is enabled then the requests '
     'longer than this value in ms will be tracked. Values: milliseconds')
+TRACK_API_SAVE_SQL_LOG = AppVar.set(
+    'track_api_save_sql_log', False,
+    'If API request processing time is enabled then save sql logs')
+ENABLE_AUTH_TOKEN_IN_QUERY_STRING = AppVar.set(
+    'enable_auth_token_in_query_string', False,
+    'Enables/disables ability to authenticate via query string param auth_token in query string'
+    'in API calls. WARNING: this is insecure setting for DEV purposes only!!!')

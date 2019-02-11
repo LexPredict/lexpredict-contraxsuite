@@ -185,7 +185,7 @@ class TextBasedMLFieldDetectionStrategy(FieldDetectionStrategy):
                                   text_unit: TextUnit) -> Optional[DetectedFieldValue]:
         field_uid, value, hint_name = cls.predict_value(sklearn_model, text_unit)
         if field_uid == field.uid:
-            if field_type_adapter.value_aware:
+            if field_type_adapter.requires_value:
                 hint_name = hint_name or ValueExtractionHint.TAKE_FIRST.name
                 value, hint_name = field_type_adapter \
                     .get_or_extract_value(document, field, value, hint_name, text_unit.text)

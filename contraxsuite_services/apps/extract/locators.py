@@ -36,7 +36,6 @@ class ParseResults:
 
 class LocationResults:
     def __init__(self) -> None:
-        super().__init__()
         self.tags = defaultdict(set)  # type: Dict[int, Set[str]]
         self.located_usage_entities = defaultdict(list)  # type: Dict[Type[Usage], List]
         self.processed_usage_entity_classes = set()  # type: Set[Type[Usage]]
@@ -50,11 +49,12 @@ class LocationResults:
                 self.tags.update({text_unit_id: tag_str for tag_str in parse_results.text_unit_tags})
             if parse_results.usage_entities:
                 self.tags[text_unit_id].add(locator.code)
-                self.located_usage_entities.update(parse_results.usage_entities)
+                for k, v in parse_results.usage_entities.items():
+                    self.located_usage_entities[k].extend(v)
 
     def save(self, log: ProcessLogger, user_id):
-        with transaction.atomic():
-            try:
+        try:
+            with transaction.atomic():
                 if self.processed_text_unit_ids:
                     TextUnitTag.objects.filter(text_unit_id__in=self.processed_text_unit_ids).delete()
                     for entity_class in self.processed_usage_entity_classes:
@@ -74,13 +74,13 @@ class LocationResults:
                 log.info(
                     'Stored {0} usage entities and {1} tags for {2} text units'
                         .format(count, len(tag_models), len(self.processed_text_unit_ids)))
-            except:
-                msg = render_error('Unable to store location results.\n'
-                                   'Text unit ids: {text_unit_ids}\n'
-                                   'Usage models caused the problem:\n{entities}'
-                                   .format(text_unit_ids=self.processed_text_unit_ids,
-                                           entities='\n'.join([str(e) for e in self.processed_usage_entity_classes])))
-                log.error(msg)
+        except:
+            msg = render_error('Unable to store location results.\n'
+                               'Text unit ids: {text_unit_ids}\n'
+                               'Usage models caused the problem:\n{entities}'
+                               .format(text_unit_ids=self.processed_text_unit_ids,
+                                       entities='\n'.join([str(e) for e in self.processed_usage_entity_classes])))
+            log.error(msg)
 
 
 class Locator:
@@ -203,7 +203,7 @@ class DefinitionLocator(Locator):
     locates_usage_model_classes = [DefinitionUsage]
 
     def parse(self, text, text_unit_id, _text_unit_lang, **kwargs) -> ParseResults:
-        found = list(definitions.get_definitions(text))
+        found = list(definitions.get_definitions_in_sentence(text))
         if found:
             unique = set(found)
             return ParseResults({DefinitionUsage: [DefinitionUsage(text_unit_id=text_unit_id,

@@ -26,8 +26,8 @@ from django.db import models
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.7/LICENSE"
-__version__ = "1.1.7"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.8/LICENSE"
+__version__ = "1.1.8"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -48,7 +48,7 @@ class Term(models.Model):
     Legal term/dictionary entry
     """
     term = models.CharField(max_length=1024, db_index=True)
-    source = models.CharField(max_length=128, db_index=True, null=True)
+    source = models.CharField(max_length=1024, db_index=True, null=True)
     definition_url = models.CharField(max_length=1024, null=True)
 
     class Meta:
@@ -116,7 +116,7 @@ class GeoAlias(models.Model):
     entity = models.ForeignKey(GeoEntity, db_index=True)
     locale = models.CharField(max_length=10, default='en-us', db_index=True)
     alias = models.CharField(max_length=1024, db_index=True)
-    type = models.CharField(max_length=20, default='abbreviation', db_index=True)
+    type = models.CharField(max_length=1024, default='abbreviation', db_index=True)
 
     def __str__(self):
         return "GeoAlias (alias={0}, type={1}, entity={2}" \
@@ -220,8 +220,8 @@ class DefinitionUsage(Usage):
     """
     Definition usage
     """
-    definition = models.CharField(max_length=128, db_index=True)
-    definition_str = models.CharField(max_length=512, blank=True, null=True)
+    definition = models.TextField()
+    definition_str = models.TextField(blank=True, null=True)
 
     class Meta:
         unique_together = (("text_unit", "definition"),)
@@ -288,7 +288,7 @@ class Court(models.Model):
     name = models.CharField(max_length=1024, db_index=True)
     level = models.CharField(max_length=30, db_index=True, blank=True)
     jurisdiction = models.CharField(max_length=30, db_index=True, blank=True)
-    alias = models.CharField(max_length=100, db_index=True, blank=True)
+    alias = models.CharField(max_length=1024, db_index=True, blank=True)
 
     class Meta:
         ordering = ('court_id',)
@@ -360,8 +360,8 @@ class CurrencyUsage(BaseAmountUsage):
     """
     Currency usage
     """
-    usage_type = models.CharField(max_length=20, db_index=True)
-    currency = models.CharField(max_length=20, db_index=True)
+    usage_type = models.CharField(max_length=1024, db_index=True)
+    currency = models.CharField(max_length=1024, db_index=True)
 
     class Meta:
         ordering = ('text_unit', 'usage_type', 'currency', '-amount')
@@ -375,7 +375,7 @@ class DistanceUsage(BaseAmountUsage):
     """
     Distance usage
     """
-    distance_type = models.CharField(max_length=20, db_index=True)
+    distance_type = models.CharField(max_length=1024, db_index=True)
 
     class Meta:
         ordering = ('text_unit', 'distance_type', '-amount')
@@ -404,7 +404,7 @@ class PercentUsage(BaseAmountUsage):
     """
     Percent usage
     """
-    unit_type = models.CharField(max_length=20, db_index=True)
+    unit_type = models.CharField(max_length=1024, db_index=True)
     total = models.FloatField(blank=True, null=True)
 
     class Meta:
@@ -419,7 +419,7 @@ class DateDurationUsage(BaseAmountUsage):
     """
     Date Duration usage
     """
-    duration_type = models.CharField(max_length=20, blank=True, null=True, db_index=True)
+    duration_type = models.CharField(max_length=1024, blank=True, null=True, db_index=True)
     duration_days = models.FloatField(blank=True, null=True)
 
     class Meta:
@@ -436,13 +436,13 @@ class CitationUsage(Usage):
     Citation usage
     """
     volume = models.PositiveSmallIntegerField()
-    reporter = models.CharField(max_length=20, db_index=True)
-    reporter_full_name = models.CharField(max_length=200, blank=True, null=True, db_index=True)
+    reporter = models.CharField(max_length=1024, db_index=True)
+    reporter_full_name = models.CharField(max_length=1024, blank=True, null=True, db_index=True)
     page = models.PositiveSmallIntegerField()
-    page2 = models.CharField(max_length=10, blank=True, null=True)
-    court = models.CharField(max_length=20, blank=True, null=True, db_index=True)
+    page2 = models.CharField(max_length=1024, blank=True, null=True)
+    court = models.CharField(max_length=1024, blank=True, null=True, db_index=True)
     year = models.PositiveSmallIntegerField(blank=True, null=True, db_index=True)
-    citation_str = models.CharField(max_length=100)
+    citation_str = models.CharField(max_length=1024)
 
     class Meta:
         ordering = ('text_unit', 'reporter', '-count')

@@ -24,7 +24,7 @@
 """
 # -*- coding: utf-8 -*-
 
-from constance import config
+from allauth.account.forms import LoginForm
 from rest_auth.models import TokenModel
 from rest_framework import serializers
 from rest_framework.authentication import TokenAuthentication, exceptions
@@ -38,11 +38,12 @@ from django.utils.translation import ugettext as _
 
 from apps.common.utils import get_api_module, get_test_user
 from apps.common.models import AppVar
+from apps.common.app_vars import ENABLE_AUTH_TOKEN_IN_QUERY_STRING
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.7/LICENSE"
-__version__ = "1.1.7"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.8/LICENSE"
+__version__ = "1.1.8"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -81,11 +82,12 @@ class CookieAuthentication(TokenAuthentication):
         # first check for existing AUTHORIZATION header
         if not request.META.get('HTTP_AUTHORIZATION') and request.META['PATH_INFO'] not in token_exempt_urls:
             # second check to fetch auth_token from query string (GET params)
-            # tolen should be just key without "Token "
-            auth_token = request.GET.get('auth_token')
+            # token should be just key without "Token "
+            if ENABLE_AUTH_TOKEN_IN_QUERY_STRING.val and request.GET.get('auth_token'):
+                auth_token = request.GET.get('auth_token')
+                if auth_token:
+                    auth_token = 'Token ' + request.GET.get('auth_token')
             # either get auth token from cookies
-            if auth_token:
-                auth_token = 'Token ' + request.GET.get('auth_token')
             else:
                 auth_token = request.COOKIES.get('auth_token', '')
             # inject auth token into AUTHORIZATION header to authenticate via standard rest auth
@@ -202,6 +204,17 @@ class CustomSetPasswordForm(forms.Form):
         if commit:
             self.user.save()
         return self.user
+
+
+class CustomLoginForm(LoginForm):
+    """
+    Inject auth_token in cookies right after successful login via plain django views
+    """
+    def login(self, request, **kwargs):
+        response = super().login(request, **kwargs)
+        token, _ = TokenModel.objects.get_or_create(user=request.user)
+        response.set_cookie('auth_token', 'Token %s' % token)
+        return response
 
 
 class CustomPasswordChangeSerializer(serializers.Serializer):

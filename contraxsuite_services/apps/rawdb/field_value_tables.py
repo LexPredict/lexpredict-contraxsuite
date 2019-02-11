@@ -158,7 +158,8 @@ def _build_generic_field_handlers(table_name: str) -> List[field_handlers.FieldH
 def build_field_handlers(document_type: DocumentType, table_name: str,
                          include_generic_fields: bool = True,
                          include_user_fields: bool = True,
-                         include_suggested_fields: bool = True) \
+                         include_suggested_fields: bool = True,
+                         exclude_hidden_always_fields: bool = False) \
         -> List[field_handlers.FieldHandler]:
     res = list()
 
@@ -169,16 +170,20 @@ def build_field_handlers(document_type: DocumentType, table_name: str,
 
     if include_user_fields:
         doc_field_qr = DocumentField.objects.filter(document_type=document_type)
+        if exclude_hidden_always_fields:
+            doc_field_qr = doc_field_qr.filter(hidden_always=False)
         for field in doc_field_qr.order_by('order', 'code'):  # type: DocumentField
             field_type = field.get_field_type()  # type: field_types.FieldType
             field_handler_class = FIELD_DB_SUPPORT_REGISTRY[field_type.code]
-            field_handler = field_handler_class(field.code, field.title, table_name)
+            field_handler = field_handler_class(field.code, field.title, table_name, field.default_value)
             res.append(field_handler)
 
             if include_suggested_fields and field.is_detectable() and not field.read_only:
                 field_code_suggested = field.code + '_suggested'
-                field_handler_suggested = field_handler_class(field_code_suggested, field.title + ': Suggested',
-                                                              table_name)
+                field_handler_suggested = field_handler_class(field_code_suggested,
+                                                              field.title + ': Suggested',
+                                                              table_name,
+                                                              field.default_value)
                 res.append(field_handler_suggested)
 
     return res
@@ -394,11 +399,11 @@ def _build_insert_clause(log: ProcessLogger,
             insert_clause = handler.get_pg_sql_insert_clause(document.language,
                                                              python_values)  # type: SQLInsertClause
             insert_clauses.append(insert_clause)
-        except:
+        except Exception as ex:
             msg = render_error(
                 'Unable to cache field values.\n'
                 'Document: {0} (#{1}).\n'
-                'Field: {2}'.format(document.name, document.id, handler.field_code))
+                'Field: {2}'.format(document.name, document.id, handler.field_code), caused_by=ex)
             log.error(msg)
 
     columns_clause, values_clause = SQLInsertClause.join(insert_clauses)
@@ -486,7 +491,8 @@ def get_columns(document_type: DocumentType, include_suggested: bool = True, inc
     handlers = build_field_handlers(document_type,
                                     table_name,
                                     include_suggested_fields=include_suggested,
-                                    include_generic_fields=include_generic)
+                                    include_generic_fields=include_generic,
+                                    exclude_hidden_always_fields=True)
     return _get_columns(handlers)
 
 
@@ -558,7 +564,7 @@ def get_documents(requester: User,
         return None
 
     table_name = build_table_name(document_type.code)
-    handlers = build_field_handlers(document_type, table_name)
+    handlers = build_field_handlers(document_type, table_name, exclude_hidden_always_fields=True)
     existing_columns = _get_columns(handlers)  # type: List[field_handlers.ColumnDesc]
     existing_column_name_to_desc = {column.name: column
                                     for column in

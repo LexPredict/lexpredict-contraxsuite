@@ -355,7 +355,7 @@ logging_collector = on		# Enable capturing of stderr and csvlog
 					# or size-driven rotation.  Default is
 					# off, meaning append to existing files
 					# in all cases.
-#log_rotation_age = 1d			# Automatic rotation of logfiles will
+log_rotation_age = 1d			# Automatic rotation of logfiles will
 					# happen after that time.  0 disables.
 #log_rotation_size = 10MB		# Automatic rotation of logfiles will
 					# happen after that much log output.
@@ -412,7 +412,7 @@ logging_collector = on		# Enable capturing of stderr and csvlog
 					#   fatal
 					#   panic (effectively off)
 
-log_min_duration_statement = 100	# -1 is disabled, 0 logs all statements
+log_min_duration_statement = ${DOCKER_POSTGRES_LOG_MIN_DUR_STMT}	# -1 is disabled, 0 logs all statements
 					# and their durations, > 0 logs only
 					# statements running at least this number
 					# of milliseconds

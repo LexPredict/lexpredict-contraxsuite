@@ -25,23 +25,29 @@
 # -*- coding: utf-8 -*-
 
 # Standard imports
+import datetime
 import traceback
 from typing import List
 
 # Django imports
 from django import forms
-from django.contrib.admin.widgets import RelatedFieldWidgetWrapper
+from django.contrib.admin.actions import delete_selected
+from django.contrib.admin.options import TO_FIELD_VAR
+from django.contrib.admin.utils import get_deleted_objects, unquote
 from django.contrib import admin
 from django.contrib.postgres import fields
-from django.db import transaction
+from django.db import transaction, router
+from django.template.response import TemplateResponse
 from django.utils.html import format_html_join
 from django_json_widget.widgets import JSONEditorWidget
 from simple_history.admin import SimpleHistoryAdmin
 from django.contrib.admin.widgets import FilteredSelectMultiple
+from django.utils.timezone import now
 
 # Project imports
+import settings
 from apps.common.script_utils import ScriptError
-from apps.document.field_types import FIELD_TYPES_REGISTRY
+from apps.document.field_types import FIELD_TYPES_REGISTRY, RelatedInfoField
 from apps.document.fields_detection.formula_based_field_detection import FormulaBasedFieldDetectionStrategy, \
     DocumentFieldFormulaError
 from apps.document.fields_detection.formula_and_field_based_ml_field_detection import \
@@ -56,11 +62,12 @@ from apps.document.models import (
 from apps.document.python_coded_fields_registry import PYTHON_CODED_FIELDS_REGISTRY
 from apps.document.fields_detection.stop_words import compile_stop_words, detect_value_with_stop_words
 from apps.document.events import events
+from apps.task.models import Task
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.7/LICENSE"
-__version__ = "1.1.7"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.8/LICENSE"
+__version__ = "1.1.8"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -88,11 +95,162 @@ class DocumentAdmin(ModelAdminWithPrettyJsonField, SimpleHistoryAdmin):
     search_fields = ['document_type__code', 'name']
 
 
+class DeleteWithUsersTasksValidationActionAdmin(admin.ModelAdmin):
+    users_tasks_running_save_warning_template = 'admin/document/users_tasks_warning_save_form.html'
+    delete_confirmation_template = 'admin/document/users_tasks_warning_delete_form.html'
+    delete_selected_confirmation_template = 'admin/document/users_tasks_warning_delete_selected_form.html'
+    task_validation_for_new_objects_enabled = False
+
+    class QSList(list):
+        def __init__(self, qs):
+            super().__init__(qs)
+            self.qs = qs
+
+        def count(self, **kwargs):
+            return len(self)
+
+        def delete(self):
+            self.qs.delete()
+
+    @classmethod
+    def users_tasks_validation_enabled(cls):
+        from apps.rawdb.app_vars import APP_VAR_DISABLE_RAW_DB_CACHING
+        from apps.document.app_vars import ADMIN_RUNNING_TASKS_VALIDATION_ENABLED
+        return not APP_VAR_DISABLE_RAW_DB_CACHING.val and ADMIN_RUNNING_TASKS_VALIDATION_ENABLED.val
+
+    @classmethod
+    def get_user_tasks_names(cls):
+        if cls.users_tasks_validation_enabled():
+            execution_delay = now() - datetime.timedelta(seconds=settings.USER_TASK_EXECUTION_DELAY)
+            tasks = Task.objects \
+                .get_active_user_tasks(execution_delay=execution_delay) \
+                .distinct('name') \
+                .order_by('name') \
+                .values_list('name', flat=True)
+            return list(tasks)
+        else:
+            return None
+
+    def delete_selected_action(self, model_admin, request, qs):
+        objects = DeleteWithUsersTasksValidationActionAdmin.QSList(qs)
+        if request.POST.get('post'):
+            using = router.db_for_write(model_admin.model)
+            opts = model_admin.model._meta
+            deletable_objects, model_count, perms_needed, protected = get_deleted_objects(
+                objects, opts, request.user, model_admin.admin_site, using)
+            if not protected:
+                res = delete_selected(model_admin, request, objects)
+                [self.on_object_deleted(obj) for obj in objects]
+                return res
+        response = delete_selected(model_admin, request, objects)
+        context = response.context_data
+        context['running_tasks'] = self.get_user_tasks_names() or None
+        return TemplateResponse(request, model_admin.delete_selected_confirmation_template, context)
+
+    def get_actions(self, request):
+        actions = super().get_actions(request)
+        func, name, title = actions['delete_selected']
+        actions['delete_selected'] = (self.delete_selected_action, name, title)
+        return actions
+
+    def delete_model(self, request, obj):
+        super().delete_model(request, obj)
+        self.on_object_deleted(obj)
+
+    def on_object_deleted(self, obj):
+        raise RuntimeError('Not implemented')
+
+    @classmethod
+    def _get_confirm_action_name(cls, base_action):
+        return '_confirm' + base_action
+
+    def _prepare_form_template(self, request, object_id, form_url='', extra_context=None):
+        self.change_form_template = None
+        if request.method == 'POST':
+            base_actions = ['_save', '_continue', '_addanother']
+            source_action = None
+            for action in base_actions:
+                if self._get_confirm_action_name(action) in request.POST:
+                    request.POST = request.POST.copy()
+                    request.POST[action] = request.POST[self._get_confirm_action_name(action)]
+                    source_action = action
+                    break
+            if not source_action:
+                user_tasks = self.get_user_tasks_names()
+                if user_tasks:
+                    for action in base_actions:
+                        if action in request.POST:
+                            form = None
+                            to_field = request.POST.get(TO_FIELD_VAR, request.GET.get(TO_FIELD_VAR))
+                            if not to_field or (to_field and self.to_field_allowed(request, to_field)):
+                                obj = self.get_object(request, unquote(object_id), to_field) if object_id else None
+                                ModelForm = self.get_form(request, obj)
+                                form = ModelForm(request.POST, request.FILES, instance=obj)
+                            if form and form.is_valid():
+                                self.change_form_template = self.users_tasks_running_save_warning_template
+                                extra_context = extra_context or {}
+                                extra_context['confirmation_button_name'] = self._get_confirm_action_name(action)
+                                extra_context['source_action'] = action
+                                extra_context['running_tasks'] = user_tasks
+                            else:
+                                break
+        return extra_context
+
+    def add_view(self, request, form_url='', extra_context=None):
+        if self.task_validation_for_new_objects_enabled:
+            extra_context = self._prepare_form_template(request, None, form_url, extra_context)
+        return super().add_view(request, form_url, extra_context)
+
+    def change_view(self, request, object_id, form_url='', extra_context=None):
+        extra_context = self._prepare_form_template(request, object_id, form_url, extra_context)
+        return super().change_view(request, object_id, form_url, extra_context=extra_context)
+
+    def render_delete_form(self, request, context):
+        context = context or {}
+        context['running_tasks'] = self.get_user_tasks_names() or None
+        return super().render_delete_form(request, context)
+
+    @classmethod
+    def get_confirmation_form(cls, form_class):
+
+        class ConfirmationForm(form_class):
+
+            def is_valid(self):
+                return False
+
+        return ConfirmationForm
+
+    def get_form(self, request, obj=None, **kwargs):
+        form_class = super().get_form(request, obj=None, **kwargs)
+        if self.change_form_template == self.users_tasks_running_save_warning_template:
+            form_class = self.get_confirmation_form(form_class)
+        return form_class
+
+
 class DocumentFieldForm(forms.ModelForm):
     depends_on_fields = forms.ModelMultipleChoiceField(
         queryset=DocumentField.objects.all(),
         required=False,
         widget=FilteredSelectMultiple('depends_on_fields', False))
+
+    hide_until_python = forms.CharField(
+        widget=forms.Textarea,
+        required=False,
+        help_text='Boolean expression in python syntax. Use field codes for this expression'
+    )
+
+    hide_until_js = forms.CharField(
+        widget=forms.Textarea,
+        required=False,
+        disabled=True,
+        help_text='Target expression ("Hide until python" expression converted to JavaScript syntax for frontend). '
+                  'Allowed operators: +, -, *, /, ===, !==, ==, !=, &&, ||, >, <, >=, <=, %')
+
+    display_yes_no = forms.BooleanField(
+        required=False,
+        help_text='Display Yes if Related Info Text Found, otherwise No')
+
+    default_value = forms.CharField(widget=forms.Textarea, required=False)
 
     class Meta:
         model = DocumentField
@@ -107,18 +265,44 @@ class DocumentFieldForm(forms.ModelForm):
                 cls._extract_field_and_deps(field.depends_on_fields.all(), fields_buffer)
         return fields_buffer
 
+    def calc_formula(self, field_code, type_code, formula, fields_to_values, form_field, formula_name='formula'):
+        try:
+            FormulaBasedFieldDetectionStrategy.calc_formula(field_code, type_code, formula, fields_to_values)
+        except DocumentFieldFormulaError as ex:
+            base_error_class = type(ex.base_error).__name__
+            base_error_msg = str(ex.base_error)
+            lines = list()
+            lines.append('Error caught while trying to execute {0} on example values:'.format(formula_name))
+            for field_name in ex.field_values:
+                lines.append('{0}={1}'.format(field_name, ex.field_values[field_name]))
+            lines.append("{0}. {1} in {2} of field '{3}' at line {4}".format(base_error_class,
+                                                                             base_error_msg,
+                                                                             formula_name,
+                                                                             ex.field_code,
+                                                                             ex.line_number))
+            self.add_error(form_field, lines)
+        except Exception:
+            trace = traceback.format_exc()
+            raise forms.ValidationError(
+                'Tried to eval {0} on example values:\n{1}\nGot error:\n{2}'.format(formula_name,
+                                                                                    str(fields_to_values),
+                                                                                    trace))
+
     def clean(self):
         field_code = self.cleaned_data.get('code')
         formula = self.cleaned_data.get('formula')
         type_code = self.cleaned_data.get('type')
         depends_on_fields = self.cleaned_data.get('depends_on_fields') or []
+        document_type = self.cleaned_data.get('document_type')
         depends_on_fields = list(depends_on_fields)
         classifier_init_script = self.cleaned_data['classifier_init_script']
         stop_words = self.cleaned_data['stop_words']
+        hide_until_python = self.cleaned_data['hide_until_python']
+        default_value = self.cleaned_data['default_value']
 
         try:
             stop_words = compile_stop_words(stop_words)
-            _v = detect_value_with_stop_words(stop_words, 'dummy text')
+            detect_value_with_stop_words(stop_words, 'dummy text')
         except Exception as err:
             self.add_error('stop_words', str(err))
 
@@ -150,32 +334,42 @@ class DocumentFieldForm(forms.ModelForm):
                                                                        python_coded_field.type,
                                                                        type_code))
 
-        if not formula or not formula.strip() or not type_code:
-            return self.cleaned_data
+        if formula and formula.strip() and type_code:
+            self.calc_formula(field_code, type_code, formula, fields_to_values, 'formula')
 
+        hide_until_python = hide_until_python.strip() if hide_until_python else None
+        if hide_until_python:
+            fields_to_values = {field.code: FIELD_TYPES_REGISTRY[field.type].example_python_value(field)
+                                for field in list(document_type.fields.all())}
+            code = self.instance.code if self.instance else None
+            if code and code in fields_to_values:
+                del fields_to_values[code]
+            if type_code:
+                fields_to_values[field_code] = FIELD_TYPES_REGISTRY[type_code]\
+                    .example_python_value(DocumentField(**self.cleaned_data))
+
+            self.calc_formula(field_code,
+                              None,
+                              hide_until_python,
+                              fields_to_values,
+                              'hide_until_python',
+                              formula_name='hide until python')
+
+        if default_value and type_code == RelatedInfoField.code:
+            self.add_error('default_value', 'Related info field can\'t have default value')
+
+        document_field = DocumentField(**self.cleaned_data)
         try:
-            FormulaBasedFieldDetectionStrategy.calc_formula(field_code, type_code, formula, fields_to_values)
-        except DocumentFieldFormulaError as ex:
-            base_error_class = type(ex.base_error).__name__
-            base_error_msg = str(ex.base_error)
-            lines = list()
-            lines.append("Error caught while trying to execute formula on example values:")
-            for field_name in ex.field_values:
-                lines.append('{0}={1}'.format(field_name, ex.field_values[field_name]))
-            lines.append("{0}. {1} in formula of field '{2}' at line {3}".format(base_error_class, base_error_msg,
-                                                                                 ex.field_code, ex.line_number))
-            self.add_error('formula', lines)
-        except Exception:
-            trace = traceback.format_exc()
-            raise forms.ValidationError(
-                'Tried to eval formula on example values:\n{0}\nGot error:\n{1}'.format(
-                    str(fields_to_values), trace))
+            document_field.test_value_regexp()
+        except Exception as exc:
+            self.add_error('value_regexp', exc)
 
         return self.cleaned_data
 
 
-class DocumentFieldAdmin(admin.ModelAdmin):
+class DocumentFieldAdmin(DeleteWithUsersTasksValidationActionAdmin):
     form = DocumentFieldForm
+    task_validation_for_new_objects_enabled = True
     list_display = (
         'document_type', 'code', 'category', 'order', 'title', 'description', 'type', 'formula', 'value_regexp', 'user',
         'modified_date', 'confidence')
@@ -188,10 +382,13 @@ class DocumentFieldAdmin(admin.ModelAdmin):
             'fields': (
                 'created_by', 'modified_by', 'code', 'title', 'type', 'document_type', 'category', 'order',
                 'description',
-                'confidence', 'requires_text_annotations', 'read_only', 'choices'),
+                'confidence', 'requires_text_annotations', 'read_only', 'default_value'),
+        }),
+        ('Choice / Multi-choice Fields', {
+            'fields': ('choices', 'allow_values_not_specified_in_choices'),
         }),
         ('Frontend Options', {
-            'fields': ('display_yes_no',),
+            'fields': ('hidden_always', 'hide_until_python', 'hide_until_js', 'display_yes_no',),
         }),
         ('Field Detection: General', {
             'fields': ('value_detection_strategy', 'text_unit_type', 'depends_on_fields'),
@@ -221,8 +418,7 @@ class DocumentFieldAdmin(admin.ModelAdmin):
         super().save_model(request, obj, form, change)
         events.on_document_field_updated(obj)
 
-    def delete_model(self, request, obj):
-        super().delete_model(request, obj)
+    def on_object_deleted(self, obj):
         events.on_document_field_deleted(obj)
 
     @staticmethod
@@ -230,10 +426,28 @@ class DocumentFieldAdmin(admin.ModelAdmin):
         return obj.modified_by.username if obj.modified_by else None
 
 
+class DocumentFieldDetectorForm(forms.ModelForm):
+
+    def clean(self):
+        field_detector = DocumentFieldDetector(**self.cleaned_data)
+
+        try:
+            field_detector.test_exclude_regexps()
+        except Exception as exc:
+            self.add_error('exclude_regexps', exc)
+
+        try:
+            field_detector.test_include_regexps()
+        except Exception as exc:
+            self.add_error('include_regexps', exc)
+
+        return self.cleaned_data
+
+
 class DocumentFieldDetectorAdmin(admin.ModelAdmin):
+    form = DocumentFieldDetectorForm
     list_display = (
-        'field', 'detected_value', 'extraction_hint', 'include', 'regexps_pre_process_lower',
-        'regexps_pre_process_remove_numeric_separators')
+        'field', 'detected_value', 'extraction_hint', 'include', 'regexps_pre_process_lower')
     search_fields = ['field__long_code', 'field__title', 'detected_value', 'extraction_hint', 'include_regexps']
 
     @staticmethod
@@ -335,16 +549,15 @@ class DocumentFieldFormInline(forms.ModelForm):
 
     def save(self, *args, **kwargs):
         form_instance = self.cleaned_data['field']
-        if form_instance != self.instance:
-            self.instance.document_type = None
-            self.instance.save()
-            self.instance = form_instance
-            self.instance.category = self.cleaned_data['category']
-            self.instance.order = self.cleaned_data['order']
-            self.instance.document_type = self.cleaned_data['document_type']
-            with transaction.atomic():
-                instance = super().save(commit=True)
-                return instance
+        with transaction.atomic():
+            if form_instance != self.instance:
+                self.instance.document_type = None
+                self.instance.save()
+                self.instance = form_instance
+                self.instance.category = self.cleaned_data['category']
+                self.instance.order = self.cleaned_data['order']
+                self.instance.document_type = self.cleaned_data['document_type']
+            return super().save(*args, **kwargs)
 
 
 class DocumentFieldInlineAdmin(admin.TabularInline):
@@ -365,7 +578,7 @@ class DocumentTypeForm(forms.ModelForm):
         widget=FilteredSelectMultiple('search_fields', False))
 
 
-class DocumentTypeAdmin(ModelAdminWithPrettyJsonField):
+class DocumentTypeAdmin(ModelAdminWithPrettyJsonField, DeleteWithUsersTasksValidationActionAdmin):
     list_display = ('code', 'title', 'fields_num', 'user', 'modified_date')
     search_fields = ['code', 'title', 'created_by__username']
     filter_horizontal = ('search_fields',)
@@ -402,8 +615,7 @@ class DocumentTypeAdmin(ModelAdminWithPrettyJsonField):
         super().save_model(request, obj, form, change)
         events.on_document_type_updated(obj)
 
-    def delete_model(self, request, obj):
-        super().delete_model(request, obj)
+    def on_object_deleted(self, obj):
         events.on_document_type_deleted(obj)
 
 

@@ -68,6 +68,17 @@ envsubst < ./config-templates/filebeat.yml.template > ./temp/filebeat.yml
 envsubst < ./config-templates/elasticsearch.yml.template > ./temp/elasticsearch.yml
 envsubst < ./config-templates/db-backup.sh.template > ./temp/db-backup.sh
 envsubst < ./config-templates/postgres_init.sql.template > ./temp/postgres_init.sql
+
+NGINX_CUSTOMER_TEMPLATE=./config-templates/nginx-customer.conf.template
+NGINX_CUSTOMER_CONF=./temp/nginx-customer.conf
+
+if [ -f ${NGINX_CUSTOMER_TEMPLATE} ]; then
+    envsubst < ${NGINX_CUSTOMER_TEMPLATE} > ${NGINX_CUSTOMER_CONF}
+else
+    echo '# no customer config included' > ${NGINX_CUSTOMER_CONF}
+fi
+export NGINX_CUSTOMER_CONF_VERSION=`md5sum ${NGINX_CUSTOMER_CONF} | awk '{ print $1 }'`
+
 cp ./config-templates/*.conf ./temp/
 
 export FILEBEAT_CONFIG_VERSION=`md5sum ./temp/filebeat.yml | awk '{ print $1 }'`

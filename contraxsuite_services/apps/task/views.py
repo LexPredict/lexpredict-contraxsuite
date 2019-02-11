@@ -43,6 +43,7 @@ from apps.common.mixins import (
     AdminRequiredMixin, CustomDetailView, DjangoJSONEncoder,
     JSONResponseView, JqPaginatedListView, TechAdminRequiredMixin)
 from apps.common.utils import get_api_module
+from apps.deployment.app_data import DICTIONARY_DATA_URL_MAP
 from apps.document.models import DocumentProperty, TextUnitProperty
 from apps.task.forms import (
     LoadDocumentsForm, LocateTermsForm, LocateForm,
@@ -53,13 +54,14 @@ from apps.task.forms import (
 from apps.task.models import Task
 from apps.task.tasks import call_task, clean_tasks, purge_task
 from apps.dump.app_dump import get_model_fixture_dump, load_fixture_from_dump, download
+from apps.imanage_integration.tasks import IManageSynchronization
 
 project_api_module = get_api_module('project')
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.7/LICENSE"
-__version__ = "1.1.7"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.8/LICENSE"
+__version__ = "1.1.8"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -84,6 +86,7 @@ class BaseAjaxTaskView(AdminRequiredMixin, JSONResponseView):
     task_name = 'Task'
     form_class = None
     html_form_class = 'popup-form'
+    task_name = IManageSynchronization.name
 
     @staticmethod
     def json_response(data, **kwargs):
@@ -127,24 +130,6 @@ class BaseAjaxTaskView(AdminRequiredMixin, JSONResponseView):
 
 
 class LoadTaskView(AdminRequiredMixin, JSONResponseView):
-    # TODO: parse github repo?
-    # f.e.: https://api.github.com/repos/LexPredict/lexpredict-legal-dictionary/contents/en
-    paths_map = dict(
-        terms_accounting_1='accounting/ifrs_iasb.csv',
-        terms_accounting_2='accounting/uk_gaap.csv',
-        terms_accounting_3='accounting/us_fasb.csv',
-        terms_accounting_4='accounting/us_gaap.csv',
-        terms_accounting_5='accounting/us_gasb.csv',
-        terms_financial_1='financial/financial.csv',
-        terms_legal_1='legal/common_law.csv',
-        terms_legal_2='legal/us_cfr.csv',
-        terms_legal_3='legal/us_usc.csv',
-        terms_legal_4='legal/common_US_terms_top1000.csv',
-        terms_scientific_1='scientific/us_hazardous_waste.csv',
-        courts_1='legal/ca_courts.csv',
-        courts_2='legal/us_courts.csv',
-        geoentities_1='geopolitical/geopolitical_divisions.csv',
-    )
     tasks_map = dict(
         terms=dict(task_name='Load Terms'),
         courts=dict(task_name='Load Courts'),
@@ -173,8 +158,8 @@ class LoadTaskView(AdminRequiredMixin, JSONResponseView):
                 continue
             repo_paths = ['{}/{}/{}'.format(settings.GIT_DATA_REPO_ROOT,
                                             j.replace('{}_locale_'.format(i), ''),
-                                            self.paths_map[i])
-                          for i in data if i.startswith(task_alias) and i in self.paths_map
+                                            DICTIONARY_DATA_URL_MAP[i])
+                          for i in data if i.startswith(task_alias) and i in DICTIONARY_DATA_URL_MAP
                           for j in data if j.startswith('{}_locale_'.format(i))]
             file_path = data.get('{}_file_path'.format(task_alias)) or None
             delete = '{}_delete'.format(task_alias) in data

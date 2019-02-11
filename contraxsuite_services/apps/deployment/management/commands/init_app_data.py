@@ -28,9 +28,10 @@
 import io
 import pathlib
 import shutil
+import traceback
 from os import listdir, mkdir, path
 from tempfile import NamedTemporaryFile
-from typing import Dict, Tuple, Any, Callable, Optional
+from typing import Dict, Tuple, Any, Callable, Optional, Type
 from zipfile import ZipFile
 import pandas as pd
 
@@ -39,9 +40,12 @@ from django.core.management import call_command
 from django.core.management.base import BaseCommand
 from django.db import transaction
 from django.utils.timezone import now
+from django.db import models
 
 # Project imports
-from apps.deployment.app_data import load_courts, load_terms, load_geo_entities
+from apps.common.models import AppVar
+from apps.deployment.app_data import load_courts, load_terms, load_geo_entities, get_terms_data_urls, load_terms_data, \
+    get_courts_data_urls, load_courts_data, get_geoentities_data_urls, load_geoentities_data
 from apps.document.models import DocumentType, DocumentField
 from apps.extract import dict_data_cache
 from apps.extract.models import Court, Term, GeoEntity
@@ -49,7 +53,7 @@ from apps.extract.models import Court, Term, GeoEntity
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
 __license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.4/LICENSE"
-__version__ = "1.1.4"
+__version__ = "1.1.8"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -62,13 +66,8 @@ def load_csv_files(zip_file: ZipFile, files: list) -> pd.DataFrame:
     return df
 
 
-def terms_loader(zip_file: ZipFile, files: list) -> None:
-    if Term.objects.exists():
-        print('Terms data already uploaded')
-        return
-    print('Uploading terms...')
+def load_terms_df(df: pd.DataFrame) -> None:
 
-    df = load_csv_files(zip_file, files)
     with transaction.atomic():
         terms_count = load_terms(df)
 
@@ -78,13 +77,7 @@ def terms_loader(zip_file: ZipFile, files: list) -> None:
     dict_data_cache.cache_term_stems()
 
 
-def courts_loader(zip_file: ZipFile, files: list) -> None:
-    if Court.objects.exists():
-        print('Courts data already uploaded')
-        return
-    print('Uploading courts...')
-
-    df = load_csv_files(zip_file, files)
+def load_courts_df(df: pd.DataFrame) -> None:
     with transaction.atomic():
         courts_count = load_courts(df)
 
@@ -94,13 +87,7 @@ def courts_loader(zip_file: ZipFile, files: list) -> None:
     dict_data_cache.cache_court_config()
 
 
-def geoentities_loader(zip_file: ZipFile, files: list) -> None:
-    if GeoEntity.objects.exists():
-        print('Geo config data already uploaded')
-        return
-    print('Uploading geo config ...')
-
-    df = load_csv_files(zip_file, files)
+def load_geoentities_df(df: pd.DataFrame) -> None:
     with transaction.atomic():
         geo_aliases_count, geo_entities_count = load_geo_entities(df)
 
@@ -109,6 +96,36 @@ def geoentities_loader(zip_file: ZipFile, files: list) -> None:
     print('Caching geo config for Locate tasks...')
 
     dict_data_cache.cache_geo_config()
+
+
+def terms_loader(zip_file: ZipFile, files: list) -> None:
+    if Term.objects.exists():
+        print('Terms data already uploaded')
+        return
+    print('Uploading terms...')
+
+    df = load_csv_files(zip_file, files)
+    load_terms_df(df)
+
+
+def courts_loader(zip_file: ZipFile, files: list) -> None:
+    if Court.objects.exists():
+        print('Courts data already uploaded')
+        return
+    print('Uploading courts...')
+
+    df = load_csv_files(zip_file, files)
+    load_courts_df(df)
+
+
+def geoentities_loader(zip_file: ZipFile, files: list) -> None:
+    if GeoEntity.objects.exists():
+        print('Geo config data already uploaded')
+        return
+    print('Uploading geo config...')
+
+    df = load_csv_files(zip_file, files)
+    load_geoentities_df(df)
 
 
 DICTIONARY_LOADER_BY_FILE_PREFIX = dict(
@@ -146,7 +163,7 @@ def document_loader(file_patch: str) -> None:
     if initialized:
         print('Document data already initialized')
         return
-    print('Uploading document data ...')
+    print('Uploading document data...')
 
     zip_file = ZipFile(file_patch)
     for file_info in zip_file.infolist():
@@ -185,6 +202,30 @@ class Command(BaseCommand):
             mkdir(proceed_dir)
         return proceed_dir
 
+    @classmethod
+    def init_dictionary_data(cls,
+                             dictionary_name: str,
+                             initialization_flag: AppVar,
+                             dict_model: Type[models.Model],
+                             urls: list,
+                             data_loader: Callable[[str], pd.DataFrame],
+                             df_loader: Callable[[pd.DataFrame], None]) -> None:
+        if not initialization_flag.val:
+            initialized = dict_model.objects.exists()
+            if not initialized:
+                print('Uploading {0}...'.format(dictionary_name))
+                try:
+                    df = pd.DataFrame()
+                    for url in urls:
+                        df = df.append(data_loader(url))
+                    df_loader(df)
+                    initialized = True
+                except Exception:
+                    print(traceback.print_exc())
+            if initialized:
+                initialization_flag.value = initialized
+                initialization_flag.save()
+
     def handle(self, *args: Tuple, **options: Dict[Any, Any]) -> None:
         print('Uploading application data...')
         data_dir = options['data_dir']
@@ -199,3 +240,27 @@ class Command(BaseCommand):
                 if loader:
                     loader(file_patch)
                 shutil.move(file_patch, '{0}/{1}'.format(self.get_proceed_dir(data_dir), file))
+
+        from apps.deployment.app_vars import DEPLOYMENT_TERMS_INITIALIZED, \
+            DEPLOYMENT_COURTS_INITIALIZED, DEPLOYMENT_GEOENTITIES_INITIALIZED
+
+        self.init_dictionary_data('terms',
+                                  DEPLOYMENT_TERMS_INITIALIZED,
+                                  Term,
+                                  get_terms_data_urls(),
+                                  load_terms_data,
+                                  load_terms_df)
+
+        self.init_dictionary_data('courts',
+                                  DEPLOYMENT_COURTS_INITIALIZED,
+                                  Court,
+                                  get_courts_data_urls(),
+                                  load_courts_data,
+                                  load_courts_df)
+
+        self.init_dictionary_data('geo config',
+                                  DEPLOYMENT_GEOENTITIES_INITIALIZED,
+                                  GeoEntity,
+                                  get_geoentities_data_urls(),
+                                  load_geoentities_data,
+                                  load_geoentities_df)

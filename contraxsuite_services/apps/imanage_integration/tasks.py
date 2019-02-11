@@ -1,0 +1,168 @@
+import json
+from itertools import chain
+from typing import List, Dict, Any
+
+from billiard.exceptions import SoftTimeLimitExceeded
+from celery import shared_task
+from celery.states import UNREADY_STATES
+from django.db import connection
+from django.utils import timezone
+from psycopg2 import InterfaceError, OperationalError
+
+from apps.celery import app
+from apps.common.collection_utils import chunks
+from apps.common.log_utils import render_error
+from apps.common.streaming_utils import buffer_contents_into_file
+from apps.common.sql_commons import fetch_int, SQLClause
+from apps.imanage_integration.models import IManageConfig, IManageDocument
+from apps.task.models import Task
+from apps.task.tasks import BaseTask, ExtendedTask, LoadDocuments, call_task
+
+
+class IManageSynchronization(BaseTask):
+    name = 'IManage Synchronization'
+    soft_time_limit = 6000
+    default_retry_delay = 10
+    retry_backoff = True
+    autoretry_for = (SoftTimeLimitExceeded, InterfaceError, OperationalError,)
+    max_retries = 3
+
+    @staticmethod
+    @shared_task(base=ExtendedTask,
+                 bind=True,
+                 soft_time_limit=600,
+                 default_retry_delay=10,
+                 retry_backoff=True,
+                 autoretry_for=(SoftTimeLimitExceeded, InterfaceError, OperationalError),
+                 max_retries=0)
+    def sync_imanage_document(task: ExtendedTask, imanage_config_id: int, imanage_doc_id: str):
+        imanage_doc = IManageDocument.objects \
+            .filter(imanage_config_id=imanage_config_id, imanage_doc_id=imanage_doc_id) \
+            .select_related('imanage_config').get()
+        try:
+            imanage_config = imanage_doc.imanage_config
+            project = imanage_config.resolve_dst_project(imanage_doc.imanage_doc_data)
+            project_id = project.pk
+
+            assignee = imanage_config.resolve_assignee(imanage_doc.imanage_doc_data)
+            assignee_id = assignee.pk if assignee else None
+
+            auth_token = imanage_config.login()
+            filename, response = imanage_config.load_document(auth_token, imanage_doc_id)
+            with buffer_contents_into_file(filename, response) as temp_fn:
+                kwargs = {
+                    'document_type_id': imanage_config.document_type_id,
+                    'project_id': project_id,
+                    'assignee_id': assignee_id,
+                    'propagate_exception': True,
+                    'run_standard_locators': True,
+                    'metadata': {}
+                }
+
+                ret = LoadDocuments.create_document_local(task, temp_fn, filename, kwargs)  # type: Dict[str, Any]
+                if ret:
+                    imanage_doc.document_id = ret['document_id']
+                    imanage_doc.last_sync_date = timezone.now()
+                    imanage_doc.save(update_fields=['document_id', 'last_sync_date'])
+                else:
+                    raise RuntimeError('No document loaded.')
+        except:
+            imanage_doc.import_problem = True
+            imanage_doc.save(update_fields=['import_problem'])
+
+    def sync_imanage_config(self, imanage_config: IManageConfig):
+        auth_token = imanage_config.login()
+
+        # Step 1: Find documents about which we don't know and store their ids in IManageDocument table
+        imanage_docs = imanage_config.search_documents(auth_token)
+
+        with connection.cursor() as cursor:
+            for docs_chunk in chunks(imanage_docs, 50):  # type: List[Dict]
+                insert_clause = 'insert into "{table_name}" ' \
+                                '(imanage_config_id, imanage_doc_id, imanage_doc_number, imanage_doc_data, ' \
+                                ' import_problem) ' \
+                                'values {values_place_holders} on conflict do nothing'.format(
+                    table_name=IManageDocument._meta.db_table,
+                    values_place_holders=', '.join(['(%s, %s, %s, %s, %s)'] * len(docs_chunk)))
+                params = list(chain(*[(imanage_config.pk,
+                                       str(doc['id']),
+                                       str(doc.get('document_number')) if 'document_number' in doc else None,
+                                       json.dumps(doc),
+                                       False)
+                                      for doc in docs_chunk]))
+                cursor.execute(insert_clause, params)
+
+        # Step 2. Get iManage doc ids for which we don't have Contraxsuite Documents created
+        # Further we can add re-reading them from iManage by some logic
+        args = [(imanage_config.id, imanage_doc_id) for imanage_doc_id in
+                IManageDocument.objects.filter(imanage_config=imanage_config,
+                                               import_problem=False,
+                                               document__isnull=True).values_list('imanage_doc_id', flat=True)]
+        imanage_config.last_sync_start = timezone.now()
+        imanage_config.save(update_fields=['last_sync_start'])
+        self.run_sub_tasks('Sync iManage documents for config: {0}'.format(imanage_config.code),
+                           IManageSynchronization.sync_imanage_document, args)
+
+    def process(self, **kwargs):
+        if Task.objects \
+                .exclude(id=self.request.id) \
+                .filter(name=IManageSynchronization.name, status__in=UNREADY_STATES) \
+                .exists():
+            self.log_info('Previous IManage Synchronization task is still running. Exiting.')
+            return
+
+        imanage_config_dict = kwargs.get('imanage_config')
+        auto = kwargs.get('auto')
+
+        if auto:
+            qr = IManageConfig.objects.raw('''select * from "{table_name}" where enabled = True 
+            and (last_sync_start is null 
+            or (last_sync_start + (sync_frequency_minutes::text||\' minute\')::INTERVAL) <= now())'''
+                                           .format(table_name=IManageConfig._meta.db_table))
+        else:
+            if imanage_config_dict:
+                qr = IManageConfig.objects.filter(pk=imanage_config_dict['pk'], enabled=True)
+            else:
+                qr = IManageConfig.objects.filter(enabled=True)
+
+        found = False
+        for imanage_config in list(qr):
+            try:
+                found = True
+                self.sync_imanage_config(imanage_config)
+            except:
+                self.log_error(render_error('Unable to synchronize iManage config "{0}"'.format(imanage_config.code)))
+                return
+        if not found:
+            self.log_info('No enabled iManage configs matching the specified criteria found.')
+
+
+UNREADY_STATE_TUPLE = tuple(UNREADY_STATES)
+
+
+@shared_task(base=ExtendedTask,
+             bind=True,
+             soft_time_limit=600,
+             default_retry_delay=10,
+             retry_backoff=True,
+             autoretry_for=(SoftTimeLimitExceeded, InterfaceError, OperationalError),
+             max_retries=0)
+def trigger_imanage_sync(_task: ExtendedTask):
+    # SQL: Return 1 if there are enabled imanage configs last time processed too long ago
+    # and there are no sync tasks pending.
+    sql = SQLClause('''select case when ( 
+    exists (select * from "{table_name}" where enabled = True 
+    and (last_sync_start is null 
+    or (last_sync_start + (sync_frequency_minutes::text||\' minute\')::INTERVAL) <= now()) 
+    limit 1)
+    and not exists (select * from "{task_table_name}" where name = %s and status in %s) 
+    ) then 1 else 0 end   
+    '''.format(table_name=IManageConfig._meta.db_table, task_table_name=Task._meta.db_table),
+                    [IManageSynchronization.name, UNREADY_STATE_TUPLE])
+
+    with connection.cursor() as cursor:
+        if fetch_int(cursor, sql):
+            call_task(IManageSynchronization.name, auto=True, module_name='apps.imanage_integration.tasks')
+
+
+app.register_task(IManageSynchronization())

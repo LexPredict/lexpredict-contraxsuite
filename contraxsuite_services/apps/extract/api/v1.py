@@ -55,8 +55,8 @@ from apps.common.mixins import (
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.7/LICENSE"
-__version__ = "1.1.7"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.8/LICENSE"
+__version__ = "1.1.8"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -112,7 +112,9 @@ class BaseUsageListAPIView(JqListAPIView, ViewSetDataMixin):
         document_id = self.request.GET.get('document_id') or getattr(self, 'document_id', None)
         if document_id:
             qs = qs.filter(text_unit__document_id=document_id)
-        return qs.select_related('text_unit', 'text_unit__document')
+            return qs.select_related('text_unit')
+        else:
+            return qs.select_related('text_unit', 'text_unit__document')
 
     @staticmethod
     def filter(search_str, qs, _or_lookup,
@@ -466,7 +468,11 @@ class PartyUsageListAPIView(BaseUsageListAPIView):
         party_search_iexact = self.request.GET.get("party_search_iexact", "")
         if party_search_iexact:
             qs = qs.filter(party__name__iexact=party_search_iexact)
-        qs = qs.select_related('party', 'text_unit', 'text_unit__document')
+        document_id = self.request.GET.get('document_id') or getattr(self, 'document_id', None)
+        if document_id:
+            qs = qs.select_related('party', 'text_unit')
+        else:
+            qs = qs.select_related('party', 'text_unit', 'text_unit__document')
         return qs
 
 

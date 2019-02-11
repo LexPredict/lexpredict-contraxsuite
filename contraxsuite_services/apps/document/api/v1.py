@@ -39,7 +39,7 @@ from django.contrib.postgres.aggregates.general import StringAgg
 from django.core.urlresolvers import reverse
 from django.db import transaction
 from django.db.models import F, Min, Max, \
-    IntegerField, FloatField, DateField, TextField, Subquery
+    IntegerField, FloatField, DateField, TextField, Subquery, Prefetch
 from django.http import JsonResponse
 from elasticsearch import Elasticsearch
 from rest_framework import serializers, routers, viewsets, status
@@ -53,6 +53,7 @@ from rest_framework_nested import routers as nested_routers
 # Project imports
 from apps.analyze.models import *
 from apps.common.api.permissions import ReviewerReadOnlyPermission
+from apps.common.log_utils import ErrorCollectingLogger
 from apps.common.mixins import APILoggingMixin
 from apps.common.mixins import (
     SimpleRelationSerializer, JqListAPIMixin, TypeaheadAPIView,
@@ -60,7 +61,6 @@ from apps.common.mixins import (
 from apps.common.models import ReviewStatus
 from apps.common.utils import get_api_module
 from apps.document.events import events
-from apps.common.log_utils import ErrorCollectingLogger
 from apps.document.field_types import FIELD_TYPES_REGISTRY, FieldType
 from apps.document.fields_detection.field_detection_celery_api import run_detect_field_values_for_document
 from apps.document.fields_processing.field_value_cache import cache_field_values
@@ -75,8 +75,8 @@ from apps.users.models import User
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.7/LICENSE"
-__version__ = "1.1.7"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.8/LICENSE"
+__version__ = "1.1.8"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -737,9 +737,9 @@ class ProjectDocumentsWithFieldsViewSet(APILoggingMixin,
 
             self.field_names_to_field_types = dict()
             if field_uids:
-                fields_qr = document_type.fields.filter(pk__in=field_uids)
+                fields_qr = document_type.fields.filter(pk__in=field_uids, hidden_always=False)
             else:
-                fields_qr = document_type.search_fields.all()
+                fields_qr = document_type.search_fields.filter(hidden_always=False)
 
             for field_uid, field_type, formula, read_only, field_code, value_detection_strategy in fields_qr \
                     .values_list('pk', 'type', 'formula', 'read_only', 'code', 'value_detection_strategy'):
@@ -1195,17 +1195,28 @@ class DocumentFieldDetailSerializer(SimpleRelationSerializer):
 
     choices = serializers.SerializerMethodField()
 
+    hide_until = serializers.SerializerMethodField()
+
+    depends_on_fields = serializers.SerializerMethodField()
+
     class Meta:
         model = DocumentField
         fields = ['uid', 'code', 'title', 'description', 'type', 'value_aware', 'choices', 'formula',
                   'modified_by__username', 'modified_date', 'confidence', 'requires_text_annotations', 'read_only',
-                  'order', 'display_yes_no']
+                  'order', 'display_yes_no', 'allow_values_not_specified_in_choices', 'default_value', 'hide_until',
+                  'hidden_always', 'depends_on_fields']
 
     def get_value_aware(self, obj: DocumentField):
         return obj.is_value_aware()
 
     def get_choices(self, obj: DocumentField):
         return obj.get_choice_values()
+
+    def get_hide_until(self, obj: DocumentField):
+        return obj.hide_until_js
+
+    def get_depends_on_fields(self,  obj: DocumentField):
+        return [field.pk for field in obj.depends_on_fields.all()]
 
 
 class DocumentFieldCreateSerializer(serializers.ModelSerializer):
@@ -1224,7 +1235,10 @@ class DocumentFieldViewSet(JqListAPIMixin, viewsets.ModelViewSet):
     partial_update: Partial Update Document Field
     delete: Delete Document Field
     """
-    queryset = DocumentField.objects.all()
+    queryset = DocumentField.objects\
+        .all()\
+        .prefetch_related(Prefetch('depends_on_fields',  queryset=DocumentField.objects.all().only('pk')))
+
     permission_classes = (ReviewerReadOnlyPermission,)
 
     def get_serializer_class(self):
@@ -1284,7 +1298,9 @@ class DocumentTypeViewSet(JqListAPIMixin, viewsets.ModelViewSet):
     delete: Delete Document Type
     """
     queryset = DocumentType.objects.select_related('modified_by') \
-        .prefetch_related('search_fields', 'fields', 'fields__category', )
+        .prefetch_related('search_fields', 'fields', 'fields__category',
+                          Prefetch('fields__depends_on_fields',  queryset=DocumentField.objects.all().only('pk')))
+
     permission_classes = (ReviewerReadOnlyPermission,)
 
     def get_serializer_class(self):
@@ -1347,7 +1363,7 @@ class DocumentFieldValueViewSet(JqListAPIMixin, viewsets.ModelViewSet):
         if value:
             qs = qs.filter(value__val=value)
 
-        return qs
+        return qs.prefetch_related('field')
 
     def destroy(self, request, *args, **kwargs):
         instance = self.get_object()
@@ -1372,6 +1388,10 @@ class FieldLogicError(RuntimeError):
 
 
 class NoValueProvidedOrLocated(FieldLogicError):
+    pass
+
+
+class RelatedInfoFieldNotRequiringAnnotationOnlySupportsYesAsValue(FieldLogicError):
     pass
 
 
@@ -1406,7 +1426,7 @@ def do_save_document_field_value(request_data: Dict, user) -> Tuple[Document, Di
     value = request_data.get('value')
     location_start = request_data.get('location_start')
     location_end = request_data.get('location_end')
-    selection_range = location_start and location_end
+    selection_range = location_start is not None and location_end is not None
     location_text = None
     text_unit = None
 
@@ -1446,6 +1466,15 @@ def do_save_document_field_value(request_data: Dict, user) -> Tuple[Document, Di
             # TODO: Refactor the API
             delete_all_field_values(doc, document_field, None)
             return doc, {'document': doc.pk, 'field': document_field.uid, 'value': None}
+
+    if document_field.is_related_info_field() and not document_field.requires_text_annotations:
+        if not value or value == 'No':
+            delete_all_field_values(doc, document_field, None)
+            return doc, {'document': doc.pk, 'field': document_field.uid, 'value': None}
+        elif value != 'Yes':
+            raise RelatedInfoFieldNotRequiringAnnotationOnlySupportsYesAsValue('''Field {0} is a related info field with 
+annotations disabled. It only supports "Yes" or "No" as a value to represent the fact that the related info is 
+contained in the document but it is not specified where exactly it is contained.'''.format(document_field.code))
 
     field_value = field_type.save_value(doc,
                                         document_field,
@@ -1626,7 +1655,7 @@ class DocumentFieldValueHistorySerializer(SimpleRelationSerializer):
                   'latest_history_type']
 
     def get_value(self, obj):
-        return obj.history_object.val
+        return obj.history_object.value
 
     def get_object_id(self, obj):
         return obj.history_object.pk

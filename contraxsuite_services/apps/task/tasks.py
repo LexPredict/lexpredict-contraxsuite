@@ -89,7 +89,8 @@ from apps.celery import app
 from apps.common.advancedcelery.fileaccess import prepare_file_access_handler
 from apps.common.log_utils import ProcessLogger
 from apps.common.utils import fast_uuid
-from apps.deployment.app_data import load_geo_entities, load_terms, load_courts
+from apps.deployment.app_data import load_geo_entities, load_terms, load_courts, load_terms_data, \
+    load_geoentities_data, load_courts_data
 from apps.document.constants import DOCUMENT_TYPE_PK_GENERIC_DOCUMENT
 from apps.document.fields_detection.field_detection_celery_api import run_detect_field_values_as_sub_tasks
 from apps.document.fields_processing import field_value_cache
@@ -105,13 +106,14 @@ from apps.project.models import Project, UploadSession
 from apps.task.celery_backend.task_utils import revoke_task
 from apps.task.models import Task, TaskConfig
 from apps.task.utils.nlp.lang import get_language
+from apps.task.utils.nlp.parsed_text_corrector import ParsedTextCorrector
 from apps.task.utils.ocr.textract import textract2text
 from apps.task.utils.task_utils import TaskUtils, pre_serialize
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.7/LICENSE"
-__version__ = "1.1.7"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.8/LICENSE"
+__version__ = "1.1.8"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -159,7 +161,8 @@ class ExtendedTask(app.Task):
 
     @property
     def task(self) -> Task:
-        return Task.objects.get(id=self.request.id)
+        self.init_cache()
+        return self._cached_data['task']
 
     @property
     def task_name(self) -> str:
@@ -171,7 +174,9 @@ class ExtendedTask(app.Task):
 
     @log_extra.setter
     def log_extra(self, v: Dict):
-        Task.objects.set_log_extra(self.request.id, v)
+        this_task = self.task  # type: Task
+        this_task.log_extra = v
+        this_task.save(update_fields=['log_extra'])
 
     def log_info(self, message, **kwargs):
         self.task.write_log(message, level='info', **kwargs)
@@ -187,8 +192,9 @@ class ExtendedTask(app.Task):
 
     def init_cache(self):
         if not self._cached_data:
-            this_task = self.task
+            this_task = Task.objects.get(id=self.request.id)
             self._cached_data = dict()
+            self._cached_data['task'] = this_task
             self._cached_data['main_task_id'] = this_task.main_task_id
 
     @property
@@ -197,16 +203,30 @@ class ExtendedTask(app.Task):
         return self._cached_data.get('main_task_id')
 
     def set_push_steps(self, value: int):
-        Task.objects.set_push_steps(self.request.id, value)
+        this_task = self.task  # type: Task
+        this_task.push_steps = value
+        this_task.save(update_fields=['push_steps'])
 
     def push(self):
-        Task.objects.push(self.request.id)
+        this_task = self.task  # type: Task
+        this_task.own_progress = this_task.own_progress + 100.0 / this_task.push_steps
+        if this_task.is_sub_task():
+            this_task.progress = this_task.progress + 100.0 / this_task.push_steps
+            this_task.save(update_fields=['own_progress', 'progress'])
+        else:
+            this_task.save(update_fields=['own_progress'])
 
     def get_progress(self):
         return Task.objects.get(id=self.request.id).progress
 
     def update_progress(self, value: float):
-        Task.objects.update_progress(self.request.id, int(value))
+        this_task = self.task  # type: Task
+        this_task.own_progress = value
+        if this_task.is_sub_task():
+            this_task.progress = value
+            this_task.save(update_fields=['own_progress', 'progress'])
+        else:
+            this_task.save(update_fields=['own_progress'])
 
     def _render_task_failed(self, args, kwargs, exc, exception_trace) -> str:
         if isinstance(exc, SoftTimeLimitExceeded):
@@ -536,8 +556,6 @@ class LoadDocuments(BaseTask):
                  max_retries=3)
     def create_document(task: ExtendedTask, uri: str, kwargs):
         with file_access_handler.get_local_fn(uri) as (fn, file_name):
-            task.task.title = 'Load Document: {0}'.format(uri)
-            task.log_extra = {'log_document_name': uri}
             return LoadDocuments.create_document_local(task, fn, uri, kwargs)
 
     # FIXME: this becomes unuseful as we CANNOT subclass from LoadDocument now - it hasn't self in methods!!!
@@ -554,12 +572,12 @@ class LoadDocuments(BaseTask):
         try:
             data = parser.from_file(file_path, settings.TIKA_SERVER_ENDPOINT) \
                 if settings.TIKA_SERVER_ENDPOINT else parser.from_file(file_path)
-            parsed = data['content']
+            parsed = data.get('content')
             metadata = data['metadata']
             if parsed and len(parsed) >= 100:
                 return parsed, 'tika', metadata
             else:
-                task.log_error('TIKA returned too small test for file: ' + original_file_name)
+                task.log_error('TIKA returned too small text for file: ' + original_file_name)
                 return None, None, None
         except:
             task.log_error('Caught exception while trying to parse file with Tika:{0}\n{1}'
@@ -583,6 +601,8 @@ class LoadDocuments(BaseTask):
 
     @staticmethod
     def create_document_local(task: ExtendedTask, file_path, file_name, kwargs):
+        task.task.title = 'Load Document: {0}'.format(file_name)
+        task.log_extra = {'log_document_name': file_name}
 
         ret = []
         document_name = os.path.basename(file_name)
@@ -592,17 +612,22 @@ class LoadDocuments(BaseTask):
         should_run_standard_locators = bool(kwargs.get('run_standard_locators'))
         user_id = kwargs.get('user_id')
         project_id = kwargs.get('project_id')
+        assignee_id = kwargs.get('assignee_id')
         document_type_id = kwargs.get('document_type_id')
 
         # OLD API: Check for existing record
-        if upload_session_id is None and \
-                Document.objects.filter(name=document_name, source=document_source).exists():
-            task.log_info('SKIP (EXISTS): ' + file_name)
-            return
+        if upload_session_id is None:
+            document_id = Document.objects \
+                .filter(name=document_name, source=document_source) \
+                .values_list('pk', flat=True) \
+                .first()
+            if document_id:
+                task.log_info('SKIP (EXISTS): ' + file_name)
+                return {'document_id': document_id}
 
         text = None  # type: str
         metadata = {}
-        new_ui = kwargs.get('propagate_exception')
+        propagate_exceptions = kwargs.get('propagate_exception')
 
         _fn, ext = os.path.splitext(file_name)
         if not ext:
@@ -629,7 +654,7 @@ class LoadDocuments(BaseTask):
             text = re.sub(r'<[\s/]*(?:[A-Za-z]+|[Hh]\d)[\s/]*>', '', text)
 
         if not text:
-            if new_ui:
+            if propagate_exceptions:
                 raise RuntimeError('No text extracted.')
             task.log_info('SKIP (ERROR): ' + file_name)
             return
@@ -658,6 +683,10 @@ class LoadDocuments(BaseTask):
             metadata['tables'] = [
                 [list(j) for j in list(i.fillna('').to_records(index=False)) if not i.empty]
                 for i in document_tables if not i.empty]
+
+        # remove extra line breaks
+        corrector = ParsedTextCorrector()
+        text = corrector.correct_if_corrupted(text)
 
         # Language identification
         language, lang_detector = get_language(text, get_parser=True)
@@ -694,6 +723,7 @@ class LoadDocuments(BaseTask):
             document = Document.objects.create(
                 document_type=document_type,
                 project=project,
+                assignee_id=assignee_id,
                 upload_session=upload_session,
                 name=document_name,
                 description=file_name,
@@ -864,7 +894,7 @@ class LoadTerms(BaseTask):
 
     def load_terms_from_path(self, path: str, real_fn: str, terms_df: pd):
         self.log_info('Parse "%s"' % real_fn or path)
-        data = pd.read_csv(path)
+        data = load_terms_data(path)
         self.log_info('Detected %d terms' % len(data))
         return terms_df.append(data)
 
@@ -921,7 +951,7 @@ class LoadGeoEntities(BaseTask):
 
     def load_geo_entities_from_path(self, path: str, real_fn: str, entities_df: pd.DataFrame):
         self.log_info('Parse "%s"' % real_fn or path)
-        data = pd.read_csv(path)
+        data = load_geoentities_data(path)
         self.log_info('Detected %d entities' % len(data))
         return entities_df.append(data)
 
@@ -975,7 +1005,7 @@ class LoadCourts(BaseTask):
 
     def load_courts_from_path(self, path: str, real_fn: str):
         self.log_info('Parse "%s"' % real_fn or path)
-        dictionary_data = pd.read_csv(path).dropna(subset=['Court ID']).fillna('')
+        dictionary_data = load_courts_data(path)
         courts_count = load_courts(dictionary_data)
         self.log_info('Detected %d courts' % courts_count)
 

@@ -30,8 +30,9 @@ class RawdbConfig(AppConfig):
             from apps.document.models import DocumentField
 
             try:
-                call_task_func(auto_reindex_not_tracked, (document_field.document_type.code,),
-                               None, queue=settings.CELERY_QUEUE_SERIAL)
+                if document_field.document_type:
+                    call_task_func(auto_reindex_not_tracked, (document_field.document_type.code,),
+                                   None, queue=settings.CELERY_QUEUE_SERIAL)
             except DocumentField.DoesNotExist:
                 pass
 

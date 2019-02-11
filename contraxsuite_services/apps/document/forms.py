@@ -35,10 +35,20 @@ from apps.document.tasks import FindBrokenDocumentFieldValues
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.7/LICENSE"
-__version__ = "1.1.7"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.8/LICENSE"
+__version__ = "1.1.8"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
+
+
+class ProjectModelMultipleChoiceField(forms.ModelMultipleChoiceField):
+    def label_from_instance(self, obj):
+        return obj[1]
+
+    def clean(self, values):
+        if not values:
+            return super().clean(values)
+        return [json.loads(value.replace('\'', '"'))[0] for value in values]
 
 
 class DetectFieldValuesForm(forms.Form):
@@ -46,13 +56,21 @@ class DetectFieldValuesForm(forms.Form):
 
     document_type = forms.ModelChoiceField(queryset=DocumentType.objects.all(), required=False)
 
+    project_ids = ProjectModelMultipleChoiceField(
+        queryset=Project.objects.all().values_list('pk', 'name'),
+        label='Projects',
+        widget=forms.SelectMultiple(attrs={'class': 'chosen compact'}),
+        required=False)
+
     document_name = forms.CharField(strip=True, required=False)
+
+    do_not_run_for_modified_documents = forms.BooleanField(
+        label='Do not detect values for documents modified by user',
+        initial=True,
+        required=False)
 
     do_not_write = forms.BooleanField(label='Do not write detected values to DB (only log)',
                                       required=False)
-
-    drop_classifier_model = forms.BooleanField(
-        label='Drop classifier and detect initial values with regexps', required=False)
 
     def _post_clean(self):
         super()._post_clean()
@@ -89,16 +107,6 @@ class FindBrokenDocumentFieldValuesForm(forms.Form):
     def _post_clean(self):
         super()._post_clean()
         self.cleaned_data['module_name'] = MODULE_NAME
-
-
-class ProjectModelMultipleChoiceField(forms.ModelMultipleChoiceField):
-    def label_from_instance(self, obj):
-        return obj[1]
-
-    def clean(self, values):
-        if not values:
-            return super().clean(values)
-        return [json.loads(value.replace('\'', '"'))[0] for value in values]
 
 
 class TrainAndTestForm(forms.Form):

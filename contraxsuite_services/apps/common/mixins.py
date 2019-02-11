@@ -62,14 +62,14 @@ from django.views.generic.edit import CreateView, DeleteView, UpdateView
 from django.views.generic.list import MultipleObjectMixin
 
 # Project imports
-from apps.common.app_vars import TRACK_API, TRACK_API_GREATER_THAN
+from apps.common.app_vars import TRACK_API, TRACK_API_GREATER_THAN, TRACK_API_SAVE_SQL_LOG
 from apps.common.models import Action, CustomAPIRequestLog
 from apps.common.utils import cap_words, export_qs_to_file, download
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.7/LICENSE"
-__version__ = "1.1.7"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.8/LICENSE"
+__version__ = "1.1.8"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -450,6 +450,7 @@ class JqPaginatedListView(AjaxListView):
                           DOES_NOT_CONTAIN_CASE_SENSITIVE='contains',
                           NOT_EQUAL='exact')
     field_types = dict()
+    field_name_transform_map = {}
     unique_field = 'pk'
 
     def get_field_types(self):
@@ -473,6 +474,7 @@ class JqPaginatedListView(AjaxListView):
             for filter_num in range(filterscount):
                 num = str(filter_num)
                 field = self.request.GET.get('filterdatafield' + num).replace('-', '_')
+                field = self.field_name_transform_map.get(field, field)
                 value = (self.get_field_types() or self.field_types).get(field, str)(
                     self.request.GET.get('filtervalue' + num))
                 condition = self.request.GET.get('filtercondition' + num)
@@ -561,7 +563,10 @@ class JqPaginatedListView(AjaxListView):
         elif qs.exists():
             total_records = qs.count()
             qs = self.paginate(qs)
-            data = super().get_json_data(qs=qs, **kwargs)
+            if getattr(self, 'deep_processing', True):
+                data = super().get_json_data(qs=qs, **kwargs)
+            else:
+                data = list(qs)
         return {'data': data, 'total_records': total_records}
 
     @staticmethod
@@ -632,6 +637,7 @@ class JqListAPIMixin(object):
 
     def filter_queryset(self, queryset):
         jq_view = JqPaginatedListView(request=self.request)
+        jq_view.field_name_transform_map = getattr(self, 'field_name_transform_map', {})
         if 'sortdatafield' in self.request.GET or 'filterscount' in self.request.GET:
             queryset = jq_view.filter_and_sort(queryset)
         return queryset
@@ -967,9 +973,10 @@ class APILoggingMixin(LoggingMixin):
         """
         if self.log['response_ms'] <= TRACK_API_GREATER_THAN.val:
             return
-        self.log['sql_log'] = '\n'.join(['({}) {}'.format(
-            q.get('time') or q.get('duration', 0)/1000, q.get('sql') or '')
-                                         for q in connection.queries])
+        if TRACK_API_SAVE_SQL_LOG.val:
+            self.log['sql_log'] = '\n'.join(['({}) {}'.format(
+                q.get('time') or q.get('duration', 0)/1000, q.get('sql') or '')
+                                             for q in connection.queries])
         CustomAPIRequestLog(**self.log).save()
 
 

@@ -216,7 +216,7 @@ services:
     #  - 127.0.0.1:54320:5432 #
 
   contrax-tika:
-    image: lexpredict/tika-server:1.6
+    image: lexpredict/tika-server:1.7
     networks:
       - contrax_net
     deploy:
@@ -433,6 +433,9 @@ services:
       - contraxsuite_data_media:/data/media
       - contraxsuite_internal_nginx_logs:/var/log/nginx
       - contraxsuite_nginx_server_include:/etc/nginx/server_include
+    configs:
+      - source: nginx_cust_${NGINX_CUSTOMER_CONF_VERSION}
+        target: /etc/nginx/nginx-customer.conf
     ports:
       - 0.0.0.0:80:8080
       - 0.0.0.0:443:4443
@@ -655,3 +658,5 @@ configs:
     file: ./backup-cron.conf
   pg_init_sql_${PG_INIT_SQL_CONFIG_VERSION}:
     file: ./postgres_init.sql
+  nginx_cust_${NGINX_CUSTOMER_CONF_VERSION}:
+    file: ./nginx-customer.conf

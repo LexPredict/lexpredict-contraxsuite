@@ -24,17 +24,40 @@
 """
 # -*- coding: utf-8 -*-
 
-# Django imports
+# Standard imports
+import pandas as pd
 from pandas import DataFrame
 from typing import Callable, Tuple
+
+# Project imports
+import settings
 from apps.extract.models import GeoEntity, GeoAlias, Term, Court
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
 __license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.4/LICENSE"
-__version__ = "1.1.4"
+__version__ = "1.1.8"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
+
+# TODO: parse github repo?
+# f.e.: https://api.github.com/repos/LexPredict/lexpredict-legal-dictionary/contents/en
+DICTIONARY_DATA_URL_MAP = dict(
+        terms_accounting_1='accounting/ifrs_iasb.csv',
+        terms_accounting_2='accounting/uk_gaap.csv',
+        terms_accounting_3='accounting/us_fasb.csv',
+        terms_accounting_4='accounting/us_gaap.csv',
+        terms_accounting_5='accounting/us_gasb.csv',
+        terms_financial_1='financial/financial.csv',
+        terms_legal_1='legal/common_law.csv',
+        terms_legal_2='legal/us_cfr.csv',
+        terms_legal_3='legal/us_usc.csv',
+        terms_legal_4='legal/common_US_terms_top1000.csv',
+        terms_scientific_1='scientific/us_hazardous_waste.csv',
+        courts_1='legal/ca_courts.csv',
+        courts_2='legal/us_courts.csv',
+        geoentities_1='geopolitical/geopolitical_divisions.csv',
+    )
 
 LOCALES_MAP = (
         ('German Name', 'de', 'German Name'),
@@ -150,3 +173,35 @@ def load_courts(df: DataFrame) -> int:
     Court.objects.bulk_create(courts_dst)
     return len(df)
 
+
+def get_dictionary_data_urls(dictionary_name: str, locale: str) -> list:
+    result = []
+    for key, url in DICTIONARY_DATA_URL_MAP.items():
+        if key.startswith(dictionary_name):
+            url = '{0}/{1}/{2}'.format(settings.GIT_DATA_REPO_ROOT, locale, url)
+            result.append(url)
+    return result
+
+
+def get_terms_data_urls(locale='en') -> list:
+    return get_dictionary_data_urls('terms', locale)
+
+
+def get_courts_data_urls(locale='en') -> list:
+    return get_dictionary_data_urls('courts', locale)
+
+
+def get_geoentities_data_urls(locale='multi') -> list:
+    return get_dictionary_data_urls('geoentities', locale)
+
+
+def load_terms_data(url: str) -> pd.DataFrame:
+    return pd.read_csv(url)
+
+
+def load_courts_data(url: str) -> pd.DataFrame:
+    return pd.read_csv(url).dropna(subset=['Court ID']).fillna('')
+
+
+def load_geoentities_data(url: str) -> pd.DataFrame:
+    return pd.read_csv(url)

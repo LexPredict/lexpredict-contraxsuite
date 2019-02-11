@@ -41,6 +41,7 @@ import os
 import re
 import sys
 import warnings
+import importlib
 
 # Third-party imports
 from celery.schedules import crontab
@@ -131,7 +132,9 @@ INSTALLED_APPS = (
 )
 
 apps_dir = PROJECT_DIR('apps')
-INSTALLED_APPS += tuple('apps.%s' % name for name in os.listdir(apps_dir) if os.path.isdir(os.path.join(apps_dir, name)) and '__' not in name)
+PROJECT_APPS = tuple('apps.%s' % name for name in os.listdir(apps_dir)
+                     if os.path.isdir(os.path.join(apps_dir, name)) and '__' not in name)
+INSTALLED_APPS += PROJECT_APPS
 
 
 # MIDDLEWARE CONFIGURATION
@@ -352,11 +355,13 @@ ACCOUNT_AUTHENTICATION_METHOD = 'username_email'
 ACCOUNT_EMAIL_REQUIRED = True
 ACCOUNT_EMAIL_VERIFICATION = 'mandatory'
 ACCOUNT_ALLOW_REGISTRATION = False
+ACCOUNT_LOGIN_ATTEMPTS_LIMIT = 10
 ACCOUNT_LOGIN_ATTEMPTS_TIMEOUT = 5
 # ACCOUNT_ADAPTER = 'apps.users.adapters.AccountAdapter'
 # Set the allauth adapter to be the 2FA adapter
 # ACCOUNT_ADAPTER = 'allauth_2fa.adapter.OTPAdapter'
 ACCOUNT_ADAPTER = 'apps.users.adapters.AccountAdapter'
+ACCOUNT_FORMS = {'login': 'auth.CustomLoginForm'}
 SOCIALACCOUNT_ADAPTER = 'apps.users.adapters.SocialAccountAdapter'
 
 # Custom user app defaults
@@ -384,6 +389,8 @@ CELERY_QUEUE_SERIAL = 'serial'
 TASK_NAME_AUTO_REINDEX = 'apps.rawdb.tasks.auto_reindex'
 
 TASK_NAME_MANUAL_REINDEX = 'RawDB: Reindex'
+
+TASK_NAME_IMANAGE_TRIGGER_SYNC = 'apps.imanage_integration.tasks.trigger_imanage_sync'
 
 CELERY_BEAT_SCHEDULE = {
     # Backend cleanup is disabled to not miss debug info after long loading
@@ -421,6 +428,11 @@ CELERY_BEAT_SCHEDULE = {
         'schedule': 60,
         'options': {'queue': CELERY_QUEUE_SERIAL, 'expires': 60},
     },
+    'apps.imanage_integration.tasks.trigger_imanage_sync': {
+        'task': TASK_NAME_IMANAGE_TRIGGER_SYNC,
+        'schedule': 60,
+        'options': {'queue': 'serial', 'expires': 60},
+    }
 }
 
 EXCLUDE_FROM_TRACKING = {
@@ -434,11 +446,13 @@ EXCLUDE_FROM_TRACKING = {
     'deployment.usage_stats',
     'advanced_celery.retrain_dirty_fields',
     'apps.rawdb.tasks.cache_document_fields_for_doc_ids_not_tracked',
-    TASK_NAME_AUTO_REINDEX
+    TASK_NAME_AUTO_REINDEX,
+    TASK_NAME_IMANAGE_TRIGGER_SYNC,
 }
 
 REMOVE_WHEN_READY = set()
 
+USER_TASK_EXECUTION_DELAY = 24 * 60 * 60
 REMOVE_SUB_TASKS_DELAY_IN_SEC = 60
 REMOVE_READY_TASKS_DELAY_IN_SEC = 24 * 60 * 60
 
@@ -743,8 +757,8 @@ CORS_ORIGIN_ALLOW_ALL = True
 CORS_ALLOW_CREDENTIALS = False
 CORS_URLS_REGEX = r'^/api/.*$'
 
-VERSION_NUMBER = '1.1.7'
-VERSION_COMMIT = '528656f'
+VERSION_NUMBER = '1.1.8'
+VERSION_COMMIT = 'cdd28414'
 
 try:
     from local_settings import *

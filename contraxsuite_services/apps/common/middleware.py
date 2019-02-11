@@ -48,8 +48,8 @@ from auth import CookieAuthentication
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.7/LICENSE"
-__version__ = "1.1.7"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.8/LICENSE"
+__version__ = "1.1.8"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -218,16 +218,25 @@ class CookieMiddleware(MiddlewareMixin):
     def process_response(self, request, response):
         auth_token = request.COOKIES.get('auth_token', request.META.get('HTTP_AUTHORIZATION'))
 
-        # if login set response cookie auth_token from login response - "key"
+        # if login - set response cookie auth_token from login response - "key"
         if request.META['PATH_INFO'] == reverse('rest_login') \
                 and hasattr(response, 'data') \
                 and response.data and response.data.get('key'):
             response.set_cookie('auth_token', 'Token %s' % response.data['key'])
+
+        # delete token after logout via django UI
+        elif request.META['PATH_INFO'] == reverse('account_logout') and request.method == 'POST':
+            response.delete_cookie('auth_token')
+            # INFO: token is deleted in apps.users.AccountAdapter.logout
+            # because here we have AnonimousUser
+
+        # for login via django UI - set auth_token in auth.CustomLoginForm
+
         # otherwise set auth_token from incoming headers or cookie
         elif auth_token:
             response.set_cookie('auth_token', auth_token)
 
-        # set extra cookie variables
+        # set extra cookie variables if user exists
         if request.user and hasattr(request.user, 'get_full_name'):
             response.set_cookie('user_name', request.user.get_full_name())
             response.set_cookie('user_id', request.user.pk)

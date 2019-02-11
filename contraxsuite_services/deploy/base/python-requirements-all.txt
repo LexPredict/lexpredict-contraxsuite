@@ -84,3 +84,4 @@ Werkzeug==0.12.2
 python-tds==1.9.1
 pyOpenSSL==18.0.0
 bitarray==0.8.3
+jiphy==1.2.2

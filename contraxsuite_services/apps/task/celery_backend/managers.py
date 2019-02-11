@@ -1,6 +1,6 @@
 """Model managers."""
 from __future__ import absolute_import, unicode_literals
-
+from django.db.utils import IntegrityError
 import copy
 import datetime
 import warnings
@@ -422,37 +422,41 @@ class TaskManager(models.Manager):
             initial_values['date_done'] = initial_values.get('own_date_done')
             initial_values['progress'] = initial_values.get('own_progress')
 
-        obj, created = self.get_or_create(id=task_id, defaults=initial_values)
+        try:
+            obj, created = self.get_or_create(id=task_id, defaults=initial_values)
 
-        if traceback:
-            obj.write_log('Traceback:\n{0}'.format(traceback))
+            if traceback:
+                obj.write_log('Traceback:\n{0}'.format(traceback))
 
-        if not created:
-            if task_name and not obj.name:
-                obj.name = task_name
+            if not created:
+                if task_name and not obj.name:
+                    obj.name = task_name
 
-            # Main task id should be assigned in init_task or on initial store result.
-            # If the task is already initialized with main_task_id = None - here it can be rewritten
-            # with some value by Celery itself.
+                # Main task id should be assigned in init_task or on initial store result.
+                # If the task is already initialized with main_task_id = None - here it can be rewritten
+                # with some value by Celery itself.
 
-            obj.own_status = status
+                obj.own_status = status
 
-            if obj.own_date_done is None:
-                obj.own_date_done = now() if status in READY_STATES else None
+                if obj.own_date_done is None:
+                    obj.own_date_done = now() if status in READY_STATES else None
 
-            if obj.own_status == SUCCESS:
-                obj.own_progress = 100
+                if obj.own_status == SUCCESS:
+                    obj.own_progress = 100
 
-            obj.result = result
-            obj.traceback = traceback
-            obj.celery_metadata = metadata
+                obj.result = result
+                obj.traceback = traceback
+                obj.celery_metadata = metadata
 
-            if obj.is_sub_task():
-                obj.status = obj.own_status
-                obj.date_done = obj.own_date_done
-                obj.progress = obj.own_progress
+                if obj.is_sub_task():
+                    obj.status = obj.own_status
+                    obj.date_done = obj.own_date_done
+                    obj.progress = obj.own_progress
 
-            obj.save()
+                obj.save()
+        except IntegrityError:
+            print('Orphan sub-task detected: {0}'.format(initial_values))
+            obj = self.model(**initial_values)
 
         return obj
 
@@ -495,6 +499,17 @@ class TaskManager(models.Manager):
     def filter_metadata(self, **kwargs):
         opts = {'metadata__%s' % k: v for k, v in kwargs.items()}
         return self.main_tasks().filter(**opts)
+
+    def get_active_user_tasks(self, execution_delay: datetime.datetime = None) -> QuerySet:
+        start_date_limit = now() - datetime.timedelta(seconds=3 * 24 * 60 * 60)
+        qs = self\
+            .filter(Q(main_task__isnull=True) | Q(main_task_id=F('id')))\
+            .filter(status__in=UNREADY_STATES)\
+            .exclude(name__in=settings.EXCLUDE_FROM_TRACKING) \
+            .filter(Q(date_start__isnull=True) | Q(date_start__gt=start_date_limit))
+        if execution_delay:
+            qs = qs.filter(Q(date_work_start__isnull=True) | Q(date_work_start__gt=execution_delay))
+        return qs
 
     def active_tasks_exist(self, task_name: str, execution_delay: datetime.datetime,
                            activity_filter: QuerySet = None) -> bool:

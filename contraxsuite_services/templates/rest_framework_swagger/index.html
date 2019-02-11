@@ -60,6 +60,48 @@
         <div id="collapseOne" class="collapse hide" aria-labelledby="headingOne" data-parent="#accordion">
           <div class="card-body">
             <div>
+              <div>
+                <p>To use swagger page for API calls, you have to authenticate first, go to rest-auth > login,
+                  fill in password and username, send request and ensure that response has auth_token (key) in reponse.</p>
+                <p>And then you will be able to use other API calls without any modifications and injecting auth_token,
+                  because auth_token will exist in cookies, so no need to care about auth_token after login</p>
+                <p>For API calls f.e. via "requests" lib:
+                  <ul>
+                    <li><b>Method #1</b>: add "?auth_token=..." to *query string*, *not to request's data*, they are different things
+                      so the right way to do API calls is:
+                      <pre>
+import json, requests
+
+headers = {'Accept': "application/json", 'Content-Type': "application/json"}
+url =  'https://some.site.com/api/v1/project/projects/201/?auth_token=c607f555bf71f0ff37d61622be01a2a280bddb95'
+data = json.dumps({"description": "new"})
+resp = requests.request("PATCH", url, headers=headers,  data=data)
+                      </pre>
+                    </li>
+                    <li><b>Method #2</b>: send authentication token in request headers:
+                      <pre>
+import json, requests
+
+headers = {'Accept': "application/json", 'Content-Type': "application/json", 'AUTHORIZATION': "Token c607f555bf71f0ff37d61622be01a2a280bddb95"}
+url =  'https://some.site.com/api/v1/project/projects/201/'
+data = json.dumps({"description": "new"})
+resp = requests.request("PATCH", url, headers=headers,  data=data)
+                      </pre>
+                    </li>
+                    <li><b>Method #3</b>: use cookies to send authentication token:
+                      <pre>
+import json, requests
+
+headers = {'Accept': "application/json", 'Content-Type': "application/json"}
+url =  'https://some.site.com/api/v1/project/projects/201/'
+data = json.dumps({"description": "new"})
+cookies = {"auth_token": "Token c607f555bf71f0ff37d61622be01a2a280bddb95"}
+resp = requests.request("PATCH", url, headers=headers,  data=data, cookies=cookies)
+                      </pre>
+                    </li>
+                <p>Note that there  is no need to add "Token " before actual token for auth_token in query string,
+                  but token format *Token ACTUAL_TOKEN_UID* is required for authentication via headers and cookies.</p>
+              </div>
               <table class="table table-bordered table-striped">
                 <tr>
                   <th>Parameter</th>

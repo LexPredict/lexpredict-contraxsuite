@@ -28,7 +28,6 @@
 import datetime
 import importlib
 import io
-import os
 import random
 import re
 import uuid
@@ -38,13 +37,14 @@ import django_excel as excel
 import pandas as pd
 import pdfkit as pdf
 from allauth.account.models import EmailAddress
-from jinja2 import Environment, FileSystemLoader, PackageLoader
+from jinja2 import Environment, FileSystemLoader
 from weasyprint import HTML
 
 # Django imports
 from django.conf import settings
 from django.conf.urls import url
 from django.core.urlresolvers import reverse
+from django.core.serializers.json import DjangoJSONEncoder
 from django.http import HttpResponse
 from django.utils.text import slugify
 from django.utils import numberformat
@@ -55,10 +55,20 @@ from apps.users.models import User, Role
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.7/LICENSE"
-__version__ = "1.1.7"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.8/LICENSE"
+__version__ = "1.1.8"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
+
+
+class CustomDjangoJSONEncoder(DjangoJSONEncoder):
+    """
+    JSONEncoder subclass that knows how to encode unusual objects.
+    """
+    def default(self, obj):
+        if isinstance(obj, set):
+            return list(obj)
+        return super().default(obj)
 
 
 class Map(dict):
@@ -289,6 +299,8 @@ def get_api_module(app_name):
 
 
 def download_xls(data: pd.DataFrame, file_name='output', sheet_name='doc'):
+    if isinstance(data, list):
+        data = pd.DataFrame(data)
     buffer = io.BytesIO()
     writer = pd.ExcelWriter(buffer, engine='xlsxwriter')
     data.to_excel(writer, index=False, sheet_name=sheet_name, encoding='utf-8')

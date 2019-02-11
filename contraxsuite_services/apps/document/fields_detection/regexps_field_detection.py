@@ -47,14 +47,15 @@ class RegexpsOnlyFieldDetectionStrategy(FieldDetectionStrategy):
 
         detected_values = list()  # type: List[DetectedFieldValue]
 
-        for text_unit in qs_text_units.iterator():
+        for text_unit in qs_text_units.iterator():  # type: TextUnit
 
             for field_detector in field_detectors:
-                matching_string = field_detector.matching_string(text_unit.text)
+                matching_string = field_detector.matching_string(text_unit.text,
+                                                                 text_is_sentence=text_unit.is_sentence())
                 if matching_string is not None:
                     value = field_detector.detected_value
                     hint_name = None
-                    if field_type_adapter.value_aware:
+                    if field_type_adapter.requires_value:
                         hint_name = field_detector.extraction_hint or ValueExtractionHint.TAKE_FIRST.name
                         value, hint_name = field_type_adapter \
                             .get_or_extract_value(doc,
@@ -123,12 +124,12 @@ class FieldBasedRegexpsDetectionStrategy(FieldDetectionStrategy):
             if not depends_on_value:
                 continue
             depends_on_value = str(depends_on_value)
-            for field_detector in field_detectors:
-                matching_string = field_detector.matching_string(depends_on_value)
+            for field_detector in field_detectors:  # type: DocumentFieldDetector
+                matching_string = field_detector.matching_string(depends_on_value, text_is_sentence=False)
                 if matching_string is not None:
                     value = field_detector.detected_value
                     hint_name = None
-                    if field_type_adapter.value_aware:
+                    if field_type_adapter.requires_value:
                         hint_name = field_detector.extraction_hint or ValueExtractionHint.TAKE_FIRST.name
                         value, hint_name = field_type_adapter \
                             .get_or_extract_value(doc,

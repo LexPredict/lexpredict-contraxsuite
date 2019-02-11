@@ -32,6 +32,7 @@ import re
 import uuid
 from enum import Enum
 from typing import List, Optional, Tuple
+import jiphy
 
 # Django imports
 from ckeditor.fields import RichTextField
@@ -45,23 +46,23 @@ from django.db.models import Count, F, Value
 from django.db.models.functions import Concat
 from django.dispatch import receiver
 from django.utils.timezone import now
-from lexnlp.extract.en.definitions import get_definitions_in_sentence
+from lexnlp.extract.en.definitions import get_definitions_in_sentence, get_definitions
 from simple_history.models import HistoricalRecords
 
 # Project imports
 from apps.common.fields import StringUUIDField, CustomJSONField
 from apps.common.managers import AdvancedManager
+from apps.common.utils import CustomDjangoJSONEncoder
 from apps.common.models import get_default_status
 from apps.document import constants
 from apps.document.field_types import FieldType, FIELD_TYPES_REGISTRY, FIELD_TYPES_CHOICE, ValueExtractionHint, \
     ORDINAL_EXTRACTION_HINTS, RelatedInfoField
-from apps.document.fields_detection.utils import remove_num_separators
 from apps.users.models import User
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.7/LICENSE"
-__version__ = "1.1.7"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.8/LICENSE"
+__version__ = "1.1.8"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -237,9 +238,15 @@ class DocumentField(TimeStampedModel):
 
     category = models.ForeignKey(DocumentFieldCategory, blank=True, null=True, db_index=True)
 
+    default_value = JSONField(blank=True, null=True, encoder=DjangoJSONEncoder, help_text='''Default value used 
+    for showing in frontend instead of None/null (empty) value. Currently makes sense only for choice / multi-choice
+    fields. Should be defined in JSON format - strings should be quoted, null means empty value. Example: "landlord"''')
+
     # In case the type of the field requires selecting one of pre-defined values -
     # they should be stored \n-separated in the "choices" property
     choices = models.TextField(blank=True, null=True)
+
+    allow_values_not_specified_in_choices = models.BooleanField(blank=False, null=False, default=False)
 
     # Used for quickly detecting a value if one of these regexps is matched.
     # Format:
@@ -259,6 +266,12 @@ class DocumentField(TimeStampedModel):
     trained_after_documents_number = models.PositiveIntegerField(default=settings.TRAINED_AFTER_DOCUMENTS_NUMBER,
                                                                  null=False, validators=[MinValueValidator(1)])
 
+    hidden_always = models.BooleanField(default=False, null=False, blank=False)
+
+    hide_until_python = models.TextField(null=True, blank=True)
+
+    hide_until_js = models.TextField(null=True, blank=True)
+
     display_yes_no = models.BooleanField(default=False, null=False, blank=False)
 
     modified_date = models.DateTimeField(auto_now=True)
@@ -274,7 +287,7 @@ class DocumentField(TimeStampedModel):
         return FIELD_TYPES_REGISTRY[self.type]
 
     def is_value_aware(self):
-        return self.get_field_type().value_aware
+        return self.get_field_type().requires_value
 
     def get_depends_on_uids(self):
         depends_on_fields = self.depends_on_fields.all()
@@ -293,6 +306,10 @@ class DocumentField(TimeStampedModel):
         ]
         ordering = ('long_code',)
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._compiled_value_regexp = None
+
     def __str__(self):
         return self.long_code
 
@@ -310,8 +327,18 @@ class DocumentField(TimeStampedModel):
 
     def get_choice_values(self) -> List[str]:
         if not self.choices:
-            return []
+            return list()
         return [choice.strip() for choice in self.choices.strip().splitlines()]
+
+    def set_choice_values(self, choices: List[str]):
+        self.choices = '\n'.join(choices) if choices else None
+
+    def store_choice_value_if_not_present(self, new_choice: str):
+        choices = set(self.get_choice_values())
+        if new_choice not in choices:
+            choices.add(new_choice)
+            self.set_choice_values(sorted(choices))
+            self.save()
 
     def can_retrain(self):
         return self.dirty \
@@ -319,6 +346,8 @@ class DocumentField(TimeStampedModel):
                and self.modified_date < DocumentFieldManager.get_user_delay()
 
     def save(self, *args, **kwargs):
+        self.hide_until_python = self.hide_until_python.strip() if self.hide_until_python else ''
+        self.hide_until_js = jiphy.to.javascript(self.hide_until_python) if self.hide_until_python else ''
         with transaction.atomic():
             document_type = None
             if self.document_type is not None:
@@ -330,6 +359,23 @@ class DocumentField(TimeStampedModel):
     def get_long_code(cls, field, document_type=None):
         document_type = field.document_type if document_type is None else document_type
         return '{0}: {1}'.format(document_type.code, field.code) if document_type is not None else field.code
+
+    def test_value_regexp(self):
+        self._compile_value_regexp()
+
+    def _compile_value_regexp(self):
+        return re.compile(self.value_regexp)
+
+    def get_compiled_value_regexp(self):
+        if not self._compiled_value_regexp and self.value_regexp and self.value_regexp.strip():
+            try:
+                self._compiled_value_regexp = self._compile_value_regexp()
+            except Exception as exc:
+                raise SyntaxError(
+                    'Unable to compile value regexp for field {0}. Regexp:\n{1}\n'
+                    'Reason: {2}'
+                        .format(self.code, self.value_regexp, exc))
+        return self._compiled_value_regexp
 
 
 class DocumentType(TimeStampedModel):
@@ -387,7 +433,7 @@ class DocumentType(TimeStampedModel):
 
     @classmethod
     def generic_pk(cls):
-        return cls.generic().pk
+        return constants.DOCUMENT_TYPE_PK_GENERIC_DOCUMENT
 
     def is_generic(self):
         return self.code == DocumentType.GENERIC_TYPE_CODE
@@ -442,14 +488,14 @@ class Document(models.Model):
     sentences = models.PositiveIntegerField(default=0, null=False)
 
     # Document metadata from original file
-    metadata = JSONField(blank=True, encoder=DjangoJSONEncoder)
+    metadata = JSONField(blank=True, encoder=CustomDjangoJSONEncoder)
 
     # Cache of document field values for document in the format of dict: { field_uid: field_value }
     # For calculated fields this dict additionally contains: { field_uid_suggested: calculated_field_value }
-    field_values = JSONField(blank=True, null=True, encoder=DjangoJSONEncoder)
+    field_values = JSONField(blank=True, null=True, encoder=CustomDjangoJSONEncoder)
 
     # Cache of generic document values like: max_currency_amount, cluster id e.t.c. for showing in batch project grids
-    generic_data = JSONField(blank=True, null=True, encoder=DjangoJSONEncoder)
+    generic_data = JSONField(blank=True, null=True, encoder=CustomDjangoJSONEncoder)
 
     # Document title
     title = models.CharField(max_length=1024, db_index=True, null=True)
@@ -728,6 +774,9 @@ class TextUnit(models.Model):
     def __repr__(self):
         return "TextUnit (id={0})".format(self.id)
 
+    def is_sentence(self) -> bool:
+        return self.unit_type == 'sentence'
+
 
 class TextUnitTag(models.Model):
     """TextUnitTag object model
@@ -985,42 +1034,55 @@ class DocumentFieldDetector(models.Model):
 
     # Field detector category which can be used for finding some special field detectors
     # from the set of all available.
-    category = models.CharField(max_length=64, db_index=True, blank=True, null=True, choices=CATEGORY_CHOICES)
+    category = models.CharField(max_length=64, db_index=True, blank=True, null=True, choices=CATEGORY_CHOICES,
+                                help_text='''Field detector category used for technical needs e.g. for determining 
+which field detectors were created automatically during import process.''')
 
-    # \n-separated list of words to search in the list of terms returned by get_definitions()
-    # If set - this detector checks if the sentence if a definition of any term in this list.
-    #          Include/exclude regexps are additionally checked next only if the definition matches.
-    # If not set - apply include/exclude regexps to all sentences.
-    definition_words = models.TextField(blank=True, null=True)
+    exclude_regexps = models.TextField(blank=True, null=True,
+                                       help_text='''\\n-separated regexps excluding sentences from possible match. 
+Exclude regexps are checked before include regexps or definition words. If one of exclude regexps matches text of a 
+text unit then the field detector exits and skips this text unit. Whole text unit does not need to match an 
+exclude regexp. The regexps are searched in the text unit.''')
 
-    # \n-separated regexps excluding sentences from possible match
-    exclude_regexps = models.TextField(blank=True, null=True)
+    definition_words = models.TextField(blank=True, null=True,
+                                        help_text='''\\n-separated list of definition words (in lowercase) expected 
+to be in the text unit. Definition words are checked after the exclude regexps. If definition words are assigned 
+to the field detector then get_definitions() function is executed on the text unit. If it finds nothing then skip the
+text unit. If the text unit contains one of the definitions from this field then: If there are no include regexps 
+then the whole text unit matches the field detector. If there are include regexps then check against them.''')
 
-    # \n-separated regexps for detecting sentences containing field values
-    # Process order: (1) exclude, (2) include
-    include_regexps = models.TextField(blank=True, null=True)
+    include_regexps = models.TextField(blank=True, null=True, help_text='''\\n-separated list of regexps to which 
+should be found in the text unit for it to match the field detector. Include regexps are checked after the definition 
+words and include regexps. An include regexp does not need to match the whole sentence but it only should be found in 
+the sentence. Example: "house" - will match any sentence containing this word. Please avoid using ".*" and similar 
+unlimited multipliers. They can cause catastrophic backtracking and slowdown or crash the whole system. 
+Use ".{0,100}" or similar instead.''')
 
-    regexps_pre_process_lower = models.BooleanField(blank=False, null=False, default=False)
-
-    regexps_pre_process_remove_numeric_separators = models.BooleanField(blank=False,
-                                                                        null=False,
-                                                                        default=False)
+    regexps_pre_process_lower = models.BooleanField(blank=False, null=False, default=False,
+                                                    help_text='Bring sentence/paragraph to lower case before processing'
+                                                              ' with this field detector.')
 
     # For choice fields - the value which should be set if a sentence matches this detector
-    detected_value = models.CharField(max_length=256, blank=True, null=True)
+    detected_value = models.CharField(max_length=256, blank=True, null=True, help_text='''Assigns this string value to 
+the field if this field detector matches. Makes sense for choice/multi-choice/string fields only which don't have 
+an extraction function which will be applied to the matching text.''')
 
     # Number of value to extract in case of multiple values
     extraction_hint = models.CharField(max_length=30, choices=EXTRACTION_HINT_CHOICES,
                                        default=EXTRACTION_HINT_CHOICES[0][0], db_index=True,
-                                       blank=True, null=True)
+                                       blank=True, null=True, help_text='''Hint for selection one of multiple possible
+values found by an extraction function of the corresponding field type. Example: Date field finds 5 dates and the last
+of them should be taken.''')
 
     text_part = models.CharField(max_length=30, choices=TEXT_PARTS, default=TEXT_PARTS[0][0], db_index=True,
-                                 blank=False, null=False)
+                                 blank=False, null=False, help_text='''Defines which part of the matching 
+sentence / paragraph should be passed to the extraction function of the corresponding field type. 
+Example: "2019-01-23 is the Start date and 2019-01-24 is the end date." If include regexp is "is.{0,100}Start" and 
+text part = BEFORE_REGEXP then "2019-01-23 " will be passed to get_dates().''')
 
     # Validator. If field is not of an ordinal type and TAKE_MIN/MAX are selected, throw error
     def clean_fields(self, exclude=('uid', 'field', 'document_type', 'exclude_regexps',
                                     'include_regexps', 'regexps_pre_process_lower',
-                                    'regexps_pre_process_remove_numeric_separators',
                                     'detected_value')):
         field_type = FIELD_TYPES_REGISTRY[self.field.type]
 
@@ -1037,6 +1099,32 @@ class DocumentFieldDetector(models.Model):
         self._exclude_matchers = None
         self._definition_words = None
 
+    def _compile_include_regexps(self):
+        include_matchers = []
+
+        if self.include_regexps:
+            for r in self.include_regexps.split('\n'):
+                r = r.strip()
+                if r:
+                    include_matchers.append(re.compile(r, self.DEF_RE_FLAGS))
+        return include_matchers
+
+    def _compile_exclude_regexp(self):
+        exclude_matchers = []
+
+        if self.exclude_regexps:
+            for r in self.exclude_regexps.split('\n'):
+                r = r.strip()
+                if r:
+                    exclude_matchers.append(re.compile(r, self.DEF_RE_FLAGS))
+        return exclude_matchers
+
+    def test_include_regexps(self):
+        self._compile_include_regexps()
+
+    def test_exclude_regexps(self):
+        self._compile_exclude_regexp()
+
     def compile_regexps(self):
 
         if self.definition_words:
@@ -1047,21 +1135,19 @@ class DocumentFieldDetector(models.Model):
                     dw.append(self._clean_def_words(w))
             self._definition_words = dw or None
 
-        self._include_matchers = []
+        try:
+            self._include_matchers = self._compile_include_regexps()
+        except Exception as exc:
+            raise SyntaxError('Unable to compile include regexp for field detector #{1} and field {2}. Regexp:\n{0}\n'
+                              'Reason: {3}'
+                              .format(self.include_regexps, self.pk, self.field.code, exc))
 
-        if self.include_regexps:
-            for r in self.include_regexps.split('\n'):
-                r = r.strip()
-                if r:
-                    self._include_matchers.append(re.compile(r, self.DEF_RE_FLAGS))
-
-        self._exclude_matchers = []
-
-        if self.exclude_regexps:
-            for r in self.exclude_regexps.split('\n'):
-                r = r.strip()
-                if r:
-                    self._exclude_matchers.append(re.compile(r, self.DEF_RE_FLAGS))
+        try:
+            self._exclude_matchers = self._compile_exclude_regexp()
+        except Exception as exc:
+            raise SyntaxError('Unable to compile exclude regexp for field detector #{1} and field {2}. Regexp:\n{0}\n'
+                              'Reason: {3}'
+                              .format(self.exclude_regexps, self.pk, self.field.code, exc))
 
     def _matches_exclude_regexp(self, sentence: str) -> bool:
         if self._exclude_matchers:
@@ -1070,20 +1156,21 @@ class DocumentFieldDetector(models.Model):
                     return True
         return False
 
-    def _matches_include_regexp(self, sentence: str) -> Optional[Tuple[int, int]]:
+    def _match_include_regexp_or_none(self, sentence: str, sentence_before_lower: str) -> Optional[
+        Tuple[str, int, int]]:
         if self._include_matchers:
             for matcher_re in self._include_matchers:
                 for match in matcher_re.finditer(sentence):
-                    return match.start(), match.end()
+                    return sentence_before_lower, match.start(), match.end()
         return None
 
     def _clean_def_words(self, s: str):
         res = ''.join(filter(lambda ss: ss.isalpha() or ss.isnumeric() or ss.isspace(), s))
         return ' '.join(res.split()).lower()
 
-    def _matches_definition_words(self, sentence: str) -> bool:
+    def _matches_definition_words(self, text: str, text_is_sentence: bool) -> bool:
         if self._definition_words:
-            terms = get_definitions_in_sentence(sentence)
+            terms = get_definitions_in_sentence(text) if text_is_sentence else get_definitions(text)
             if not terms:
                 return False
             terms = set([self._clean_def_words(t) for t in terms])
@@ -1093,31 +1180,34 @@ class DocumentFieldDetector(models.Model):
                     return True
         return False
 
-    def matches(self, sentence: str) -> Optional[Tuple[str, int, int]]:
+    def matches(self, text: str, text_is_sentence: bool = True) -> Optional[Tuple[str, int, int]]:
         if self._include_matchers is None or self._exclude_matchers is None:
             self.compile_regexps()
 
-        if not sentence:
+        if not text:
             return None
 
-        sentence = sentence.replace('\n', ' ').replace('\t', ' ')
+        text = text.replace('\n', ' ').replace('\t', ' ')
 
-        sentence_without_lower = sentence
-        if self.regexps_pre_process_remove_numeric_separators:
-            sentence = remove_num_separators(sentence)
-            sentence_without_lower = sentence
+        sentence_without_lower = text
         if self.regexps_pre_process_lower:
-            sentence = sentence.lower()
+            text = text.lower()
 
-        if self._matches_exclude_regexp(sentence) or \
-                (self._definition_words and not self._matches_definition_words(sentence)):
+        if self._matches_exclude_regexp(text):
             return None
         else:
-            match = self._matches_include_regexp(sentence)
-            return (sentence_without_lower, match[0], match[1]) if match is not None else None
+            if self._definition_words:
+                if not self._matches_definition_words(text, text_is_sentence):
+                    return None
+                elif not self._include_matchers:
+                    return sentence_without_lower, 0, len(sentence_without_lower)
+                else:
+                    return self._match_include_regexp_or_none(text, sentence_without_lower)
+            else:
+                return self._match_include_regexp_or_none(text, sentence_without_lower)
 
-    def matching_string(self, sentence: str) -> Optional[str]:
-        match = self.matches(sentence)
+    def matching_string(self, text: str, text_is_sentence: bool = True) -> Optional[str]:
+        match = self.matches(text, text_is_sentence)
         if match:
             matching_string, begin, end = match
             if self.text_part == TextParts.BEFORE_REGEXP.value:
@@ -1125,7 +1215,7 @@ class DocumentFieldDetector(models.Model):
             elif self.text_part == TextParts.AFTER_REGEXP.value:
                 return matching_string[end:]
             else:
-                return sentence
+                return text
         return None
 
     class Meta:

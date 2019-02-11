@@ -155,7 +155,11 @@ usage_stats.apply()
     if [ "$2" == "shell" ]; then
         /bin/bash
     else
-        echo "Starting Django..."
+        echo ""
+        echo ""
+        echo "Starting Django at host ${DOCKER_DJANGO_HOST_NAME}..."
+        echo ""
+        echo ""
 
         su - ${SHARED_USER_NAME} -c "${ACTIVATE_VENV} && \
             ulimit -n 1000000 && \

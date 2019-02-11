@@ -65,8 +65,8 @@ from apps.users.models import User
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.7/LICENSE"
-__version__ = "1.1.7"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.8/LICENSE"
+__version__ = "1.1.8"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -606,6 +606,24 @@ class ProjectViewSet(APILoggingMixin, ProjectPermissionViewMixin, APIActionMixin
 
         return Response('OK')
 
+    @detail_route(methods=['get'])
+    def assignees(self, request, **kwargs):
+        """
+        Get assignees data
+        """
+        # permissions check
+        project = self.get_object()
+
+        result = []
+        for user in project.reviewers.all().union(project.owners.all()).distinct():
+            docs = project.document_set.filter(assignee=user)
+            result.append({
+                'assignee_id': user.id,
+                'assignee_name': user.get_full_name(),
+                'documents_count': docs.count(),
+                'document_ids': docs.values_list('pk', flat=True)})
+        return Response(result)
+
     @detail_route(methods=['post'])
     def assign_documents(self, request, **kwargs):
         """
@@ -613,6 +631,7 @@ class ProjectViewSet(APILoggingMixin, ProjectPermissionViewMixin, APIActionMixin
             Params:
                 document_ids: list[int]
                 all: any value - update all documents if any value
+                no_document_ids: list[int] - exclude those docs from action (if "all" is set)
                 assignee_id: int
             Returns:
                 int (number of reassigned documents)

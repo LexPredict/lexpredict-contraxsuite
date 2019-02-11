@@ -25,8 +25,8 @@
 # -*- coding: utf-8 -*-
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.7/LICENSE"
-__version__ = "1.1.7"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.8/LICENSE"
+__version__ = "1.1.8"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -68,6 +68,10 @@ class ValueExtractionHint(Enum):
     TAKE_MAX = "TAKE_MAX"
 
     @staticmethod
+    def _is_money(v) -> bool:
+        return type(v) is dict and 'amount' in v and 'currency' in v
+
+    @staticmethod
     def get_value(l: Optional[List], hint: str):
         if not l:
             return None
@@ -78,30 +82,10 @@ class ValueExtractionHint(Enum):
             return l[1]
         elif str(hint) == ValueExtractionHint.TAKE_FIRST.name and len(l) > 0:
             return l[0]
-        # WARNING: currently doesn't check if min/max are possible.
-        # ...That is checked exclusively by model.clean_fields() in ./models.py
         elif str(hint) == ValueExtractionHint.TAKE_MIN.name:
-            if type(l[0]) is dict \
-                    and (l[0]).get('currency') \
-                    and (l[0]).get('amount') is not None:
-                amount_list = [x.get('amount') for x in l]
-                result = [e for e in l if e['amount'] == min(amount_list)]
-                return result
-            else:
-                # Return min of list of amounts
-                return min(l)
-        # WARNING: currently doesn't check if min/max are possible.
-        # ...That is checked exclusively by model.clean_fields() in ./models.py
+            return min(l, key=lambda dd: dd['amount']) if ValueExtractionHint._is_money(l[0]) else min(l)
         elif str(hint) == ValueExtractionHint.TAKE_MAX.name:
-            if type(l[0]) is dict \
-                    and (l[0]).get('currency') \
-                    and (l[0]).get('amount') is not None:
-                amount_list = [x.get('amount') for x in l]
-                result = [e for e in l if e['amount'] == max(amount_list)]
-                return result
-            else:
-                # Return max of list of amounts
-                return max(l)
+            return max(l, key=lambda dd: dd['amount']) if ValueExtractionHint._is_money(l[0]) else max(l)
         else:
             return None
 
@@ -133,11 +117,14 @@ class FieldType:
     multi_value = False
 
     # Should this field store some value or only mark piece of text as related to this field
-    value_aware = False
+    requires_value = False
+
+    # Should this field allow storing some value even if it is not required
+    allows_value = False
 
     # Does this field support extracting concrete value from sentence
     # or it only allows pre-assigned values.
-    # (for value_aware fields)
+    # (for value requiring fields)
     value_extracting = False
 
     ordinal = False
@@ -360,7 +347,7 @@ class FieldType:
         Saves a new value to the field. Depending on the field type it should either
         rewrite existing DocumentFieldValues or add new ones.
         """
-        if self.value_aware and value is None:
+        if self.requires_value and value is None:
             return None
 
         if self.multi_value:
@@ -490,7 +477,8 @@ class FieldType:
 class StringField(FieldType):
     code = 'string'
     title = 'String (vectorizer uses words as tokens)'
-    value_aware = True
+    requires_value = True
+    allows_value = True
     value_extracting = True
 
     def get_postgres_transform_map(self):
@@ -500,10 +488,10 @@ class StringField(FieldType):
         return "example_string"
 
     def _extract_variants_from_text(self, field, text: str, **kwargs):
-        regexp = field.value_regexp
+        regexp = field.get_compiled_value_regexp()
         extracted = None
         if regexp:
-            extracted = re.findall(regexp, text)
+            extracted = regexp.findall(text)
             for index, value in enumerate(extracted):
                 extracted[index] = value.strip()
 
@@ -526,7 +514,8 @@ class StringFieldWholeValueAsAToken(FieldType):
 class LongTextField(FieldType):
     code = 'text'
     title = 'Long Text'
-    value_aware = True
+    requires_value = True
+    allows_value = True
     value_extracting = True
 
     def get_postgres_transform_map(self):
@@ -549,20 +538,21 @@ class LongTextField(FieldType):
 class ChoiceField(FieldType):
     code = 'choice'
     title = 'Choice'
-    value_aware = True
+    requires_value = True
+    allows_value = True
     value_extracting = False
 
     def merged_python_value_to_db(self, merged_python_value):
-        return str(merged_python_value)
+        return str(merged_python_value) if merged_python_value else None
 
     def merged_db_value_to_python(self, db_value):
-        return str(db_value)
+        return str(db_value) if db_value else None
 
     def get_postgres_transform_map(self):
         return django_models.TextField
 
     def _extract_from_possible_value(self, field, possible_value):
-        if possible_value in field.get_choice_values():
+        if field.allow_values_not_specified_in_choices or possible_value in field.get_choice_values():
             return possible_value
         else:
             return None
@@ -587,7 +577,8 @@ class MultiChoiceField(ChoiceField):
     code = 'multi_choice'
     title = 'Multi Choice'
     multi_value = True
-    value_aware = True
+    requires_value = True
+    allows_value = True
     value_extracting = False
 
     def merged_python_value_to_db(self, merged_python_value):
@@ -603,9 +594,11 @@ class MultiChoiceField(ChoiceField):
         return {p.strip() for p in str(db_value).split(',')}
 
     def single_python_value_to_db(self, python_single_value):
-        return python_single_value
+        return str(python_single_value)
 
     def single_db_value_to_python(self, db_value):
+        if not isinstance(db_value, str):
+            raise RuntimeError('Non-string value found for a multi-choice field. Please run cleanup.')
         return db_value
 
     def get_postgres_transform_map(self):
@@ -632,7 +625,8 @@ class MultiChoiceField(ChoiceField):
 class DateField(FieldType):
     code = 'date'
     title = 'Date: Non-recurring Events'
-    value_aware = True
+    requires_value = True
+    allows_value = True
     value_extracting = True
     ordinal = True
 
@@ -697,7 +691,8 @@ class RecurringDateField(DateField):
 class FloatField(FieldType):
     code = 'float'
     title = 'Floating Point Number'
-    value_aware = True
+    requires_value = True
+    allows_value = True
     value_extracting = True
     ordinal = True
 
@@ -728,7 +723,8 @@ class FloatField(FieldType):
 class IntField(FieldType):
     code = 'int'
     title = 'Integer Number'
-    value_aware = True
+    requires_value = True
+    allows_value = True
     value_extracting = True
     ordinal = True
 
@@ -763,7 +759,8 @@ class IntField(FieldType):
 class AddressField(FieldType):
     code = 'address'
     title = 'Address'
-    value_aware = True
+    requires_value = True
+    allows_value = True
     value_extracting = True
 
     def merged_python_value_to_db(self, merged_python_value):
@@ -837,7 +834,8 @@ class AddressField(FieldType):
 class CompanyField(FieldType):
     code = 'company'
     title = 'Company'
-    value_aware = True
+    requires_value = True
+    allows_value = True
     value_extracting = True
 
     def merged_python_value_to_db(self, merged_python_value):
@@ -877,7 +875,8 @@ class CompanyField(FieldType):
 class DurationField(FieldType):
     code = 'duration'
     title = 'Duration'
-    value_aware = True
+    requires_value = True
+    allows_value = True
     value_extracting = True
     ordinal = True
     MAX_DURATION = 5000 * 365
@@ -912,7 +911,8 @@ class RelatedInfoField(FieldType):
     code = 'related_info'
     title = 'Related Info'
     multi_value = True
-    value_aware = False
+    requires_value = False
+    allows_value = True
     value_extracting = False
 
     def merged_python_value_to_db(self, merged_python_value):
@@ -938,7 +938,8 @@ class RelatedInfoField(FieldType):
 class PersonField(FieldType):
     code = 'person'
     title = 'Person'
-    value_aware = True
+    requires_value = True
+    allows_value = True
     value_extracting = True
 
     def merged_python_value_to_db(self, merged_python_value):
@@ -974,7 +975,8 @@ class PersonField(FieldType):
 class AmountField(FloatField):
     code = 'amount'
     title = 'Amount'
-    value_aware = True
+    requires_value = True
+    allows_value = True
     value_extracting = True
     ordinal = True
 
@@ -1002,7 +1004,8 @@ class AmountField(FloatField):
 class MoneyField(FloatField):
     code = 'money'
     title = 'Money'
-    value_aware = True
+    requires_value = True
+    allows_value = True
     value_extracting = True
     ordinal = True
 
@@ -1018,6 +1021,12 @@ class MoneyField(FloatField):
     def merged_db_value_to_python(self, db_value):
         if db_value is None:
             return None
+        if isinstance(db_value, dict):
+            return {
+                'currency': db_value.get('currency'),
+                'amount': float(db_value.get('amount')) if 'amount' in db_value else None
+            }
+
         ar = db_value.split('|')
         currency = ar[0]
         amount_str = ar[1]  # type: str
@@ -1094,7 +1103,8 @@ class MoneyField(FloatField):
 class GeographyField(FieldType):
     code = 'geography'
     title = 'Geography'
-    value_aware = True
+    requires_value = True
+    allows_value = True
     value_extracting = True
 
     def get_postgres_transform_map(self):

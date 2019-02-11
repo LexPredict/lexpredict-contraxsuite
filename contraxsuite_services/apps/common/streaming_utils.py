@@ -1,4 +1,7 @@
 import csv
+import os
+import tempfile
+from contextlib import contextmanager
 from typing import Generator, Any, List
 
 from django.core.serializers.json import DjangoJSONEncoder
@@ -34,3 +37,19 @@ def json_gen(v: Any, encoder=None) -> Generator[str, None, None]:
         encoder = DjangoJSONEncoder()
 
     yield from encoder.iterencode(v)
+
+
+@contextmanager
+def buffer_contents_into_file(filename, http_response) -> Generator[str, None, None]:
+    _, ext = os.path.splitext(filename) if filename else None
+    _fd, fn = tempfile.mkstemp(suffix=ext)
+    try:
+        with open(fn, 'bw') as f:
+            for chunk in http_response.iter_content(chunk_size=4096):
+                if chunk:
+                    f.write(chunk)
+        http_response.close()
+        yield fn
+    finally:
+        http_response.close()
+        os.remove(fn)

@@ -21,4 +21,6 @@ ${NGINX_EXTERNAL_ROUTES}
 
     include /etc/nginx/server_include/*.conf;
 
+    include /etc/nginx/nginx-customer.conf;
+
 }

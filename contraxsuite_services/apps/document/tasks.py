@@ -33,6 +33,7 @@ from django.conf import settings
 from django.contrib.contenttypes.models import ContentType
 from django.core import urlresolvers
 from django.db import transaction
+from django.db.models import Q, Subquery
 from django.utils.timezone import now
 from psycopg2 import InterfaceError, OperationalError
 
@@ -53,8 +54,8 @@ from apps.task.utils.task_utils import TaskUtils
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.7/LICENSE"
-__version__ = "1.1.7"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.8/LICENSE"
+__version__ = "1.1.8"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -64,8 +65,13 @@ MODULE_NAME = __name__
 class DetectFieldValues(BaseTask):
     name = 'Detect Field Values'
 
-    def process(self, document_type: DocumentType = None, document_name: str = None,
-                do_not_write=False, drop_classifier_model=False, **kwargs):
+    def process(self,
+                document_type: DocumentType = None,
+                project_ids=list,
+                document_name: str = None,
+                do_not_run_for_modified_documents=True,
+                do_not_write=False,
+                **kwargs):
         self.log_info("Going to detect document field values based on "
                       "the pre-coded regexps and field values entered by users...")
 
@@ -79,62 +85,46 @@ class DetectFieldValues(BaseTask):
             self.push()
             return
 
-        if document_type:
-            document_type_pk = document_type['pk'] if isinstance(document_type, dict) else document_type.pk
-            self.detect_field_values_for_document_type(
-                document_type_pk, document_name, do_not_write, drop_classifier_model)
-        else:
-            document_type_pks = DocumentType.objects.all().values_list('uid', flat=True)
-            for document_type_pk in document_type_pks:
-                self.detect_field_values_for_document_type(
-                    document_type_pk, document_name, do_not_write, drop_classifier_model)
-
-    def detect_field_values_for_document_type(self, document_type_pk,
-                                              document_name: str,
-                                              do_not_write,
-                                              drop_classifier_model):
-        self.log_info(
-            'Detecting field values for document type: {0}'.format(
-                document_type_pk))
-        document_type = DocumentType.objects.get(pk=document_type_pk)
-        document_fields = document_type.fields
-        if not document_fields:
-            self.log_info('Can not find any fields assigned to document type: {0}'.format(document_type))
-            return
-
-        if drop_classifier_model:
-            self.log_info(
-                'Deleting field values and classifier models for document type: {0}'.format(document_type))
-            ClassifierModel.objects.filter(document_field__document_type=document_type).delete()
-
         task_count = 0
+        if isinstance(document_type, dict):
+            document_type = DocumentType.objects.get(pk=document_type['pk'])
+        document_types = [document_type] if document_type else DocumentType.objects.all()
+        document_type_pks = []
+        for document_type in document_types:
+            if document_type.pk and document_type.fields.exists():
+                document_type_pks.append(document_type.pk)
+            else:
+                self.log_info('Can not find any fields assigned to document type: {0}'.format(document_type))
 
         detect_field_values_for_document_args = []
         source_data = []
-
+        qs = Document.objects.filter(document_type_id__in=document_type_pks, status__is_active=True)
         if document_name:
-            documents_query = Document.objects.filter(document_type=document_type, name=document_name)
-        else:
-            documents_query = Document.objects.filter(document_type=document_type)
+            qs = qs.filter(name=document_name)
+        if project_ids:
+            qs = qs.filter(project_id__in=project_ids)
+        if do_not_run_for_modified_documents:
+            modified_document_ids = DocumentFieldValue.objects \
+                .filter(Q(created_by__isnull=False) | Q(removed_by_user=True)) \
+                .distinct('document_id')\
+                .values_list('document_id')
+            qs = qs.exclude(pk__in=Subquery(modified_document_ids))
 
-        for doc_id, source, name in documents_query.values_list('id', 'source', 'name'):
+        for doc_id, source, name in qs.values_list('id', 'source', 'name'):
             detect_field_values_for_document_args.append((doc_id, do_not_write))
             if source:
                 source_data.append('{0}/{1}'.format(source, name))
             else:
                 source_data.append(name)
             task_count += 1
-        else:
-            if document_name:
-                self.log_info(
-                    'Document {0} of type {1} not found'.format(document_name, document_type))
 
         self.run_sub_tasks('Detect Field Values For Each Document',
                            DetectFieldValues.detect_field_values_for_document,
                            detect_field_values_for_document_args, source_data)
-        if task_count == 0:
-            self.log_info('No documents in DB for document type: {0}'.format(document_type))
-        return task_count
+        if task_count > 0:
+            self.log_info('Found {0} documents'.format(task_count))
+        else:
+            self.log_info('No documents found')
 
     @staticmethod
     @shared_task(base=ExtendedTask,
@@ -517,11 +507,11 @@ class CacheDocumentFields(BaseTask):
             if len(doc_id_pack) >= 10:
                 self.run_sub_tasks('Cache field values for a set of documents',
                                    self.cache_document_fields_for_doc_ids,
-                                   [(doc_id_pack,)])
+                                   [(list(doc_id_pack),)])
                 doc_id_pack = set()
         if len(doc_id_pack) > 0:
             self.run_sub_tasks('Cache field values for a set of documents', self.cache_document_fields_for_doc_ids,
-                               [(doc_id_pack,)])
+                               [(list(doc_id_pack),)])
 
 
 class LoadDocumentWithFields(BaseTask):
@@ -757,17 +747,17 @@ class FindBrokenDocumentFieldValues(BaseTask):
         count = 0
         for dfv_id in dfv_qs.values_list('pk', flat=True):
             count += 1
-            if len(dfv_ids) >= 1000:
+            if len(dfv_ids) >= 100:
                 self.log_info('Sub-tasks started for {0} document field values of {1}'.format(count, total_num))
                 self.run_sub_tasks('Check document field values', self.check_document_field_values,
-                                   [(dfv_ids, delete_broken)])
+                                   [(list(dfv_ids), delete_broken)])
                 dfv_ids = set()
             else:
                 dfv_ids.add(dfv_id)
 
         if len(dfv_ids) > 0:
             self.run_sub_tasks('Check document field values', self.check_document_field_values,
-                               [(dfv_ids, delete_broken)])
+                               [(list(dfv_ids), delete_broken)])
             self.log_info('Sub-tasks started for {0} document field values of {1}'.format(count, total_num))
 
 

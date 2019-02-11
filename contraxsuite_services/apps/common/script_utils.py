@@ -52,3 +52,18 @@ def eval_script(script_title: str, script_code: str, eval_locals: Dict[str, Any]
         return eval(script_code, {}, eval_locals_full)
     except:
         raise ScriptError(script_title, script_code)
+
+
+def exec_script(script_title: str, script_code: str, eval_locals: Dict[str, Any]) -> Any:
+    if '__' in script_code:
+        raise SyntaxError('Classifier init script contains "__" string. This may be unsafe for python eval.')
+    try:
+        eval_locals_full = dict()
+        eval_locals_full.update(settings.SCRIPTS_BASE_EVAL_LOCALS)
+        if eval_locals:
+            eval_locals_full.update(eval_locals)
+        eval_globals = {}
+        exec(script_code, eval_globals, eval_locals)
+        return eval_locals.get('result')
+    except:
+        raise ScriptError(script_title, script_code)
