@@ -38,6 +38,7 @@ from rest_framework import serializers
 from rest_framework.filters import BaseFilterBackend
 from rest_framework.generics import ListAPIView
 from rest_framework.response import Response
+from django.http.response import StreamingHttpResponse
 from rest_framework_tracking.mixins import LoggingMixin
 
 # Django imports
@@ -965,6 +966,9 @@ class APILoggingMixin(LoggingMixin):
         """
         Log only if enable logging via AppVar
         """
+        # do not log FileResponse and other possible large responses
+        if isinstance(response, StreamingHttpResponse):
+            return False
         return TRACK_API.val
 
     def handle_log(self):

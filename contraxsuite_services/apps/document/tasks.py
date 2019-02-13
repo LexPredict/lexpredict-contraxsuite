@@ -153,7 +153,7 @@ class DetectFieldValues(BaseTask):
         # the detected values wont be stored even if do_not_write = False.
         # But caching should go as usual.
         dfvs = field_detection \
-            .detect_and_cache_field_values_for_document(log, doc, save=not do_not_write)
+            .detect_and_cache_field_values_for_document(log, doc, save=not do_not_write, clear_old_values=True)
 
         task.log_info('Detected {0} field values for document #{1} ({2})'.format(
             len(dfvs), document_id, doc.name))
@@ -492,7 +492,8 @@ class CacheDocumentFields(BaseTask):
         for doc in Document.objects.filter(pk__in=doc_ids):
             log = CeleryTaskLogger(_task)
             field_value_cache.cache_generic_values(doc, log=log)
-            suggested_values = field_detection.detect_and_cache_field_values_for_document(log, doc, False)
+            suggested_values = field_detection.detect_and_cache_field_values_for_document(log, doc, False,
+                                                                                          clear_old_values=False)
             field_value_cache.cache_field_values(doc, suggested_values, save=True, log=log)
 
     def process(self, project: Project = None, **_kwargs):
@@ -652,9 +653,10 @@ class LoadDocumentWithFields(BaseTask):
                 field_detection.save_detected_values(document, field, values)
 
             if run_detect_field_values:
-                field_detection.detect_and_cache_field_values_for_document(log, document, True)
+                field_detection.detect_and_cache_field_values_for_document(log, document, True, clear_old_values=False)
             else:
-                dfvs = field_detection.detect_and_cache_field_values_for_document(log, document, False)
+                dfvs = field_detection.detect_and_cache_field_values_for_document(log, document, False,
+                                                                                  clear_old_values=False)
                 field_value_cache.cache_field_values(document, dfvs, save=True, log=log)
 
         task.log_info('Loaded {0} field values for document #{1} ({2})'

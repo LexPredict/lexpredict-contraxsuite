@@ -332,6 +332,18 @@ class FieldType:
                                                 self.default_hint, location_text)
         return value
 
+    def _get_value_to_save(self, document, field, location_start: int, location_end: int, value):
+        if self.multi_value:
+            q = models.DocumentFieldValue.objects.filter(document=document,
+                                                         field=field,
+                                                         location_start=location_start,
+                                                         location_end=location_end)
+            q = q.filter(value__isnull=True) if value is None else q.filter(value=value)
+
+            return q.first()
+        else:
+            return models.DocumentFieldValue.objects.filter(document=document, field=field).first()
+
     def save_value(self,
                    document,
                    field,
@@ -347,19 +359,12 @@ class FieldType:
         Saves a new value to the field. Depending on the field type it should either
         rewrite existing DocumentFieldValues or add new ones.
         """
+        field_value = self._get_value_to_save(document, field, location_start, location_end, value)
         if self.requires_value and value is None:
-            return None
+            field_value and (allow_overwriting_user_data or not field_value.is_user_value()) and field_value.delete()
+            return value
 
         if self.multi_value:
-
-            q = models.DocumentFieldValue.objects.filter(document=document,
-                                                         field=field,
-                                                         location_start=location_start,
-                                                         location_end=location_end)
-            q = q.filter(value__isnull=True) if value is None else q.filter(value=value)
-
-            field_value = q.first()
-
             if field_value:
                 if field_value.removed_by_user:
                     if allow_overwriting_user_data:
@@ -375,8 +380,6 @@ class FieldType:
                                 extraction_hint,
                                 user)
         else:
-            field_value = models.DocumentFieldValue.objects.filter(document=document, field=field).first()
-
             if field_value:
                 models.DocumentFieldValue.objects \
                     .filter(document=document, field=field) \
@@ -386,10 +389,7 @@ class FieldType:
                 field_value = models.DocumentFieldValue()
 
             # This will work only for existing field values having filled created_by or modified_by.
-            if not allow_overwriting_user_data \
-                    and (field_value.created_by is not None
-                         or field_value.modified_by is not None
-                         or field_value.removed_by_user):
+            if not allow_overwriting_user_data and field_value.is_user_value():
                 return field_value
             else:
                 return self._update(field_value, document, field, location_start, location_end,

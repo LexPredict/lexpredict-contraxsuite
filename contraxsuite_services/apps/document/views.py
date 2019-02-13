@@ -42,7 +42,7 @@ from django.contrib.postgres.fields.jsonb import KeyTextTransform
 from django.contrib.sites.models import Site
 from django.core.urlresolvers import reverse
 from django.db.models import Count, F, Prefetch
-from django.http import HttpResponse
+from django.http import FileResponse
 from django.shortcuts import get_object_or_404, redirect
 from django.shortcuts import render
 from django.views.generic import DetailView
@@ -348,10 +348,9 @@ def show_document(request, pk):
                              file_source,
                              file_name)
     mimetype = python_magic.from_file(file_path)
-    with open(file_path, 'rb') as a_file:
-        response = HttpResponse(a_file.read(), content_type=mimetype)
-        response['Content-Disposition'] = 'inline;filename={}'.format(file_name)
-        return response
+    response = FileResponse(open(file_path, 'rb'), content_type=mimetype)
+    response['Content-Disposition'] = 'inline; filename="{}"'.format(file_name)
+    return response
 
 
 class DocumentNoteListView(JqPaginatedListView):
