@@ -17,9 +17,8 @@ from apps.document.fields_detection.regexps_field_detection import RegexpsOnlyFi
 from apps.document.fields_processing import field_value_cache
 from apps.document.fields_processing.field_processing_utils import merge_detected_field_values_to_python_value, \
     order_field_detection
-from apps.document.models import ClassifierModel
+from apps.document.models import ClassifierModel, DocumentFieldValue
 from apps.document.models import Document, DocumentType, DocumentField
-from apps.document.events import events
 
 STRATEGY_DISABLED = DisabledFieldDetectionStrategy()
 
@@ -108,13 +107,17 @@ def save_detected_values(document: Document,
         return len(detected_values)
 
 
-def detect_and_cache_field_values_for_document(log: ProcessLogger, document: Document, save: bool = True):
+def detect_and_cache_field_values_for_document(log: ProcessLogger,
+                                               document: Document,
+                                               save: bool = True,
+                                               clear_old_values: bool = True):
     """
     Detects field values for a document and stores their DocumentFieldValue objects as well as Document.field_value.
     These two should always be consistent.
     :param log:
     :param document:
     :param save:
+    :param clear_old_values:
     :return:
     """
 
@@ -153,6 +156,18 @@ def detect_and_cache_field_values_for_document(log: ProcessLogger, document: Doc
         detected_values = field_detection_strategy.detect_field_values(log,
                                                                        document,
                                                                        field)  # type: List[DetectedFieldValue]
+
+        if save_detected and clear_old_values:
+            # Delete previously detected values
+            # to avoid accumulating garbage on each iteration.
+            DocumentFieldValue.objects \
+                .filter(document=document,
+                        field=field,
+                        removed_by_user=False,
+                        created_by__isnull=True,
+                        modified_by__isnull=True) \
+                .delete()
+
         if detected_values:
             res.extend(detected_values)
             if save_detected:

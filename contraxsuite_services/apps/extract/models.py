@@ -37,7 +37,7 @@ class Usage(models.Model):
     Base usage model
     """
     text_unit = models.ForeignKey('document.TextUnit', db_index=True)
-    count = models.IntegerField(null=False, default=0)
+    count = models.IntegerField(null=False, default=0, db_index=True)
 
     class Meta:
         abstract = True
@@ -67,7 +67,9 @@ class TermUsage(Usage):
 
     class Meta:
         unique_together = (("text_unit", "term"),)
-        ordering = ['-count', 'term__term']
+        # Warning: ordering on non-indexed fields or on multiple fields in joined tables
+        # catastrophically slows down queries on large tables
+        ordering = ['-count']
 
     def __str__(self):
         return "TermUsage (term={0}, text_unit={1}, count={2})" \
@@ -131,7 +133,9 @@ class GeoEntityUsage(Usage):
 
     class Meta:
         unique_together = (("text_unit", "entity"),)
-        ordering = ('text_unit', '-count', 'entity')
+        # Warning: ordering on non-indexed fields or on multiple fields in joined tables
+        # catastrophically slows down queries on large tables
+        ordering = ('-count',)
 
     def __str__(self):
         return "GeoEntityUsage (entity={0}, text_unit={1}, count={2})" \
@@ -146,7 +150,9 @@ class GeoAliasUsage(Usage):
 
     class Meta:
         unique_together = (("text_unit", "alias"),)
-        ordering = ('text_unit', '-count', 'alias')
+        # Warning: ordering on non-indexed fields or on multiple fields in joined tables
+        # catastrophically slows down queries on large tables
+        ordering = ('-count',)
 
     def __str__(self):
         return "GeoAliasUsage (alias={0}, text_unit={1}, count={2})" \
@@ -183,7 +189,9 @@ class PartyUsage(Usage):
 
     class Meta:
         unique_together = (("text_unit", "party"),)
-        ordering = ('text_unit', '-count', 'party')
+        # Warning: ordering on non-indexed fields or on multiple fields in joined tables
+        # catastrophically slows down queries on large tables
+        ordering = ('-count',)
 
     def __str__(self):
         return "PartyUsage (party={0}, role={1}, text_unit={2})" \
@@ -204,12 +212,14 @@ class DateUsage(Usage):
     )
 
     date = models.DateField(db_index=True)
-    date_str = models.CharField(max_length=128, blank=True, null=True)
+    date_str = models.CharField(max_length=128, blank=True, null=True, db_index=True)
     format = models.CharField(max_length=30, choices=FORMAT_CHOICES, default=ED, db_index=True)
 
     class Meta:
         unique_together = (("text_unit", "date"),)
-        ordering = ('text_unit', 'date', '-count')
+        # Warning: ordering on non-indexed fields or on multiple fields in joined tables
+        # catastrophically slows down queries on large tables
+        ordering = ('-count',)
 
     def __str__(self):
         return "DateUsage (date={0}, text_unit={1})" \
@@ -220,12 +230,14 @@ class DefinitionUsage(Usage):
     """
     Definition usage
     """
-    definition = models.TextField()
+    definition = models.TextField(db_index=True)
     definition_str = models.TextField(blank=True, null=True)
 
     class Meta:
         unique_together = (("text_unit", "definition"),)
-        ordering = ('text_unit', '-count', 'definition')
+        # Warning: ordering on non-indexed fields or on multiple fields in joined tables
+        # catastrophically slows down queries on large tables
+        ordering = ('-count',)
 
     def __str__(self):
         return "DefinitionUsage (definition={0}, text_unit={1})" \
@@ -242,7 +254,9 @@ class CopyrightUsage(Usage):
 
     class Meta:
         unique_together = (("text_unit", "name", "year"),)
-        ordering = ('text_unit', '-count', 'name')
+        # Warning: ordering on non-indexed fields or on multiple fields in joined tables
+        # catastrophically slows down queries on large tables
+        ordering = ('-count',)
 
     def __str__(self):
         return "CopyrightUsage (copyright={0}, text_unit={1})" \
@@ -257,7 +271,9 @@ class TrademarkUsage(Usage):
 
     class Meta:
         unique_together = (("text_unit", "trademark"),)
-        ordering = ('text_unit', '-count', 'trademark')
+        # Warning: ordering on non-indexed fields or on multiple fields in joined tables
+        # catastrophically slows down queries on large tables
+        ordering = ('-count',)
 
     def __str__(self):
         return "TrademarkUsage (trademark={0}, text_unit={1})" \
@@ -272,7 +288,9 @@ class UrlUsage(Usage):
 
     class Meta:
         unique_together = (("text_unit", "source_url"),)
-        ordering = ('text_unit', '-count', 'source_url')
+        # Warning: ordering on non-indexed fields or on multiple fields in joined tables
+        # catastrophically slows down queries on large tables
+        ordering = ('-count',)
 
     def __str__(self):
         return "UrlUsage (source_url={0}, text_unit={1})" \
@@ -306,7 +324,9 @@ class CourtUsage(Usage):
 
     class Meta:
         unique_together = (("text_unit", "court"),)
-        ordering = ('text_unit', '-count', 'court')
+        # Warning: ordering on non-indexed fields or on multiple fields in joined tables
+        # catastrophically slows down queries on large tables
+        ordering = ('-count',)
 
     def __str__(self):
         return "CourtUsage (court={0}, text_unit={1})" \
@@ -323,7 +343,9 @@ class RegulationUsage(Usage):
 
     class Meta:
         unique_together = (("text_unit", "entity", "regulation_type"),)
-        ordering = ('text_unit', '-count', 'regulation_type', 'entity')
+        # Warning: ordering on non-indexed fields or on multiple fields in joined tables
+        # catastrophically slows down queries on large tables
+        ordering = ('-count',)
 
     def __str__(self):
         return "RegulationUsage (regulation_name={0}, text_unit={1})" \
@@ -334,12 +356,14 @@ class BaseAmountUsage(Usage):
     """
     Base Amount usage model
     """
-    amount = models.FloatField(blank=True, null=True)
-    amount_str = models.CharField(max_length=300, blank=True, null=True)
+    amount = models.FloatField(blank=True, null=True, db_index=True)
+    amount_str = models.CharField(max_length=300, blank=True, null=True, db_index=True)
 
     class Meta:
         abstract = True
-        ordering = ('text_unit', '-amount', 'count')
+        # Warning: ordering on non-indexed fields or on multiple fields in joined tables
+        # catastrophically slows down queries on large tables
+        ordering = ('-amount',)
 
     def save(self, *args, **kwargs):
         if self.amount_str:
@@ -364,7 +388,9 @@ class CurrencyUsage(BaseAmountUsage):
     currency = models.CharField(max_length=1024, db_index=True)
 
     class Meta:
-        ordering = ('text_unit', 'usage_type', 'currency', '-amount')
+        # Warning: ordering on non-indexed fields or on multiple fields in joined tables
+        # catastrophically slows down queries on large tables
+        ordering = ('-amount',)
 
     def __str__(self):
         return "CurrencyUsage (usage_type={0}, currency={1}), amount={2})" \
@@ -378,7 +404,9 @@ class DistanceUsage(BaseAmountUsage):
     distance_type = models.CharField(max_length=1024, db_index=True)
 
     class Meta:
-        ordering = ('text_unit', 'distance_type', '-amount')
+        # Warning: ordering on non-indexed fields or on multiple fields in joined tables
+        # catastrophically slows down queries on large tables
+        ordering = ('-amount',)
 
     def __str__(self):
         return "DistanceUsage (distance_type={0}, amount={1})" \
@@ -389,11 +417,13 @@ class RatioUsage(BaseAmountUsage):
     """
     Ratio usage
     """
-    amount2 = models.FloatField(blank=True, null=True)
-    total = models.FloatField(blank=True, null=True)
+    amount2 = models.FloatField(blank=True, null=True, db_index=True)
+    total = models.FloatField(blank=True, null=True, db_index=True)
 
     class Meta:
-        ordering = ('text_unit', '-amount', '-amount2')
+        # Warning: ordering on non-indexed fields or on multiple fields in joined tables
+        # catastrophically slows down queries on large tables
+        ordering = ('-amount',)
 
     def __str__(self):
         return "RatioUsage ({0} : {1})" \
@@ -405,10 +435,12 @@ class PercentUsage(BaseAmountUsage):
     Percent usage
     """
     unit_type = models.CharField(max_length=1024, db_index=True)
-    total = models.FloatField(blank=True, null=True)
+    total = models.FloatField(blank=True, null=True, db_index=True)
 
     class Meta:
-        ordering = ('text_unit', 'unit_type', '-amount')
+        # Warning: ordering on non-indexed fields or on multiple fields in joined tables
+        # catastrophically slows down queries on large tables
+        ordering = ('-amount',)
 
     def __str__(self):
         return "PercentUsage (unit_type={0}, amount={1})" \
@@ -420,11 +452,13 @@ class DateDurationUsage(BaseAmountUsage):
     Date Duration usage
     """
     duration_type = models.CharField(max_length=1024, blank=True, null=True, db_index=True)
-    duration_days = models.FloatField(blank=True, null=True)
+    duration_days = models.FloatField(blank=True, null=True, db_index=True)
 
     class Meta:
         unique_together = (("text_unit", "amount_str"),)
-        ordering = ('text_unit', 'amount', '-count')
+        # Warning: ordering on non-indexed fields or on multiple fields in joined tables
+        # catastrophically slows down queries on large tables
+        ordering = ('amount',)
 
     def __str__(self):
         return "DateDurationUsage (amount_str={0}, text_unit={1})" \
@@ -435,17 +469,19 @@ class CitationUsage(Usage):
     """
     Citation usage
     """
-    volume = models.PositiveSmallIntegerField()
+    volume = models.PositiveSmallIntegerField(db_index=True)
     reporter = models.CharField(max_length=1024, db_index=True)
     reporter_full_name = models.CharField(max_length=1024, blank=True, null=True, db_index=True)
-    page = models.PositiveSmallIntegerField()
-    page2 = models.CharField(max_length=1024, blank=True, null=True)
+    page = models.PositiveSmallIntegerField(db_index=True)
+    page2 = models.CharField(max_length=1024, blank=True, null=True, db_index=True)
     court = models.CharField(max_length=1024, blank=True, null=True, db_index=True)
     year = models.PositiveSmallIntegerField(blank=True, null=True, db_index=True)
-    citation_str = models.CharField(max_length=1024)
+    citation_str = models.CharField(max_length=1024, db_index=True)
 
     class Meta:
-        ordering = ('text_unit', 'reporter', '-count')
+        # Warning: ordering on non-indexed fields or on multiple fields in joined tables
+        # catastrophically slows down queries on large tables
+        ordering = ('-count',)
 
     def __str__(self):
         return "CitationUsage (citation_str={0}, text_unit={1})" \

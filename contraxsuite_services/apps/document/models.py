@@ -463,7 +463,7 @@ class Document(models.Model):
     name = models.CharField(max_length=1024, db_index=True, null=True)
 
     # Document description, as provided by metadata or user-entered.
-    description = models.TextField(null=True)
+    description = models.TextField(null=True, db_index=True)
 
     # Language,  as detected upon ingestion and stored via ISO code
     language = models.CharField(max_length=3, blank=True, null=True, db_index=True)
@@ -979,6 +979,9 @@ class DocumentFieldValue(TimeStampedModel):
             return
         field_type = self.field.get_field_type()  # type: FieldType
         self.value = field_type.single_python_value_to_db(pv)
+
+    def is_user_value(self):
+        return self.created_by is not None or self.modified_by is not None or self.removed_by_user
 
 
 class ExternalFieldValue(TimeStampedModel):
