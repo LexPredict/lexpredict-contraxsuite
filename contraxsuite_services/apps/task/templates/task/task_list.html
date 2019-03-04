@@ -130,7 +130,7 @@
        data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
       Run Task<span class="caret"></span>
     </a>
-    <ul class="dropdown-menu multi-level" role="menu" aria-labelledby="dropdownMenu">
+    <ul class="dropdown-menu multi-level" role="menu" aria-labelledby="dropdownMenu" style="transform:none !important">
       <li class="dropdown-submenu">
         <a class="dropdown-item" href="#" tabindex="-1">
           <i class="fa fa-file-text-o"></i> Load Data</a>
@@ -160,10 +160,17 @@
       </li>
 
       {% if custom_task_menu_item_templates|length > 0 %}
-        {% for template in custom_task_menu_item_templates %}
-          <li class="divider"></li>
-          {% include template %}
-        {% endfor %}
+        <li class="dropdown-submenu">
+          <a class="dropdown-item" href="#" tabindex="-1">
+            <i class="fa fa-file-text-o"></i> Applications Tasks</a>
+          <ul class="dropdown-menu">
+
+              {% for template in custom_task_menu_item_templates %}
+                <li class="divider"></li>
+                {% include template %}
+              {% endfor %}
+          </ul>
+        </li>
       {% endif %}
 
       <li class="divider"></li>
@@ -250,30 +257,36 @@
         </ul>
       </li>
       <li class="divider"></li>
-      <li class="dropdown-item">
-        <a class="task" href="#"
-           data-href="{% url "task:clean-project" %}"
-           data-btn-text="Go">
-          <i class="fa fa-trash"></i>
-          Clean Project</a>
-      </li>
-      <li class="dropdown-item">
-        <a class="task" href="#"
-           data-href="{% url "task:total-cleanup" %}"
-           data-btn-text="Go">
-          <i class="fa fa-trash"></i>
-          Total Cleanup</a>
-      </li>
-      <li class="dropdown-item">
-        <a class="task" href="#"
-           data-href="{% url "task:clean-tasks" %}"
-           data-btn-text="Clean"
-           data-type="red"
-           data-btn-class="btn-u btn-sm btn-d"
-           data-content="Clean tasks with <span class='tag tag-success'>SUCCESS</span> or <span class='tag tag-danger'>FAILURE</span> statuses?<br />
-                         Note: this task scheduled on Mondays.">
-          <i class="fa fa-trash"></i>
-          Clean Task List</a>
+      <li class="dropdown-submenu">
+        <a class="dropdown-item" href="#" tabindex="-1">
+          <i class="fa fa-database"></i> Cleanup</a>
+        <ul class="dropdown-menu">
+          <li class="dropdown-item">
+            <a class="task" href="#"
+               data-href="{% url "task:clean-project" %}"
+               data-btn-text="Go">
+              <i class="fa fa-trash"></i>
+              Clean Project</a>
+          </li>
+          <li class="dropdown-item">
+            <a class="task" href="#"
+               data-href="{% url "task:total-cleanup" %}"
+               data-btn-text="Go">
+              <i class="fa fa-trash"></i>
+              Total Cleanup</a>
+          </li>
+          <li class="dropdown-item">
+            <a class="task" href="#"
+               data-href="{% url "task:clean-tasks" %}"
+               data-btn-text="Clean"
+               data-type="red"
+               data-btn-class="btn-u btn-sm btn-d"
+               data-content="Clean tasks with <span class='tag tag-success'>SUCCESS</span> or <span class='tag tag-danger'>FAILURE</span> statuses?<br />
+                             Note: this task scheduled on Mondays.">
+              <i class="fa fa-trash"></i>
+              Clean Task List</a>
+          </li>
+        </ul>
       </li>
     </ul>
   </div>

@@ -1,4 +1,5 @@
 location / {
+    include /etc/nginx/${DOCKER_NGINX_CORS_CONFIG};
     alias /contraxsuite_frontend/;
     index index.html index.htm;
 }

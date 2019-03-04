@@ -10,7 +10,12 @@ source ./setenv.sh
 
 if [ ! -z "${DISTR_DOCKER_IMAGE_URL}" ]; then
     echo "=== Downloading Contraxsuite image from dist server"
-    wget -qO- --user=${DISTR_USER} --password=${DISTR_PASSWORD} ${DISTR_DOCKER_IMAGE_URL} | sudo docker load
+    rm -f ./image.tar
+    apt-get update
+    apt-get -y install axel
+    axel --num-connections=5 ${DISTR_DOCKER_IMAGE_URL} -o ./image.tar
+    sudo docker load < image.tar
+    rm -f ./image.tar
 
     if [ "${DISTR_DOCKER_IMAGE_NAME}" != "${CONTRAXSUITE_IMAGE_FULL_NAME}" ]; then
         echo "Tagging contraxsuite image as: ${CONTRAXSUITE_IMAGE_FULL_NAME}:${CONTRAXSUITE_IMAGE_VERSION}"

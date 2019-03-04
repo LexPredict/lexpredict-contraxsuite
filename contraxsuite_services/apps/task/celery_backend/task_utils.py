@@ -66,13 +66,13 @@ def get_date_done(all_dates_done: List[datetime]) -> Union[None, datetime]:
         return None
 
 
-def revoke_task(_task):
+def revoke_task(_task, wait=False, timeout=None):
     if getattr(_task, 'children', None) is not None:
         for child_task in _task.children:
             revoke_task(child_task)
     if getattr(_task, 'status', None) == 'PENDING':
         try:
-            _task.revoke(terminate=True)
+            _task.revoke(terminate=True, wait=wait, timeout=timeout)
         except RuntimeError as e:
             if "Acquire on closed pool" in str(e):
                 # TODO: define what we should do in this case

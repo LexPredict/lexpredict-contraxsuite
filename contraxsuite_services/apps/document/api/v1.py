@@ -75,8 +75,8 @@ from apps.users.models import User
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.8/LICENSE"
-__version__ = "1.1.8"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.9/LICENSE"
+__version__ = "1.1.9"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -1215,7 +1215,7 @@ class DocumentFieldDetailSerializer(SimpleRelationSerializer):
     def get_hide_until(self, obj: DocumentField):
         return obj.hide_until_js
 
-    def get_depends_on_fields(self,  obj: DocumentField):
+    def get_depends_on_fields(self, obj: DocumentField):
         return [field.pk for field in obj.depends_on_fields.all()]
 
 
@@ -1235,9 +1235,9 @@ class DocumentFieldViewSet(JqListAPIMixin, viewsets.ModelViewSet):
     partial_update: Partial Update Document Field
     delete: Delete Document Field
     """
-    queryset = DocumentField.objects\
-        .all()\
-        .prefetch_related(Prefetch('depends_on_fields',  queryset=DocumentField.objects.all().only('pk')))
+    queryset = DocumentField.objects \
+        .all() \
+        .prefetch_related(Prefetch('depends_on_fields', queryset=DocumentField.objects.all().only('pk')))
 
     permission_classes = (ReviewerReadOnlyPermission,)
 
@@ -1299,7 +1299,7 @@ class DocumentTypeViewSet(JqListAPIMixin, viewsets.ModelViewSet):
     """
     queryset = DocumentType.objects.select_related('modified_by') \
         .prefetch_related('search_fields', 'fields', 'fields__category',
-                          Prefetch('fields__depends_on_fields',  queryset=DocumentField.objects.all().only('pk')))
+                          Prefetch('fields__depends_on_fields', queryset=DocumentField.objects.all().only('pk')))
 
     permission_classes = (ReviewerReadOnlyPermission,)
 
@@ -1410,7 +1410,8 @@ def delete_all_field_values(doc: Document, field: DocumentField, value_python):
         value_db = field_type.single_python_value_to_db(value_python)
         q = q.filter(value=value_db)
 
-    q.update(removed_by_user=True)
+    q.filter(location_start__isnull=True, location_end__isnull=True).delete()
+    q.exclude(location_start__isnull=True, location_end__isnull=True).update(removed_by_user=True)
 
 
 def do_save_document_field_value(request_data: Dict, user) -> Tuple[Document, Dict]:
@@ -1508,10 +1509,13 @@ def do_delete_document_field_value(pk) -> Tuple[Document, Dict]:
     doc = field_value.document
 
     with transaction.atomic():
-        field_value.removed_by_user = True
-        field_value.save()
-
+        if field_value.location_start is None and field_value.location_end is None:
+            field_value.delete()
+        else:
+            field_value.removed_by_user = True
+            field_value.save()
         DocumentField.objects.set_dirty_for_value(field_value)
+
     return doc, _to_dto(field_value)
 
 

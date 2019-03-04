@@ -29,8 +29,8 @@ from apps.common.models import AppVar
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.8/LICENSE"
-__version__ = "1.1.8"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.9/LICENSE"
+__version__ = "1.1.9"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -45,3 +45,7 @@ DEPLOYMENT_COURTS_INITIALIZED = AppVar.set(
 DEPLOYMENT_GEOENTITIES_INITIALIZED = AppVar.set(
     'deployment_geoentities_initialized', False,
     'True if geo entities was loaded during first application startup')
+
+DEPLOYMENT_DOCUMENT_DATA_INITIALIZED = AppVar.set(
+    'deployment_document_data_initialized', False,
+    'True if document data was loaded during first application startup')

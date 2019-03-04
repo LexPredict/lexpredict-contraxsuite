@@ -89,8 +89,7 @@ from apps.celery import app
 from apps.common.advancedcelery.fileaccess import prepare_file_access_handler
 from apps.common.log_utils import ProcessLogger
 from apps.common.utils import fast_uuid
-from apps.deployment.app_data import load_geo_entities, load_terms, load_courts, load_terms_data, \
-    load_geoentities_data, load_courts_data
+from apps.deployment.app_data import load_geo_entities, load_terms, load_courts
 from apps.document.constants import DOCUMENT_TYPE_PK_GENERIC_DOCUMENT
 from apps.document.fields_detection.field_detection_celery_api import run_detect_field_values_as_sub_tasks
 from apps.document.fields_processing import field_value_cache
@@ -108,12 +107,13 @@ from apps.task.models import Task, TaskConfig
 from apps.task.utils.nlp.lang import get_language
 from apps.task.utils.nlp.parsed_text_corrector import ParsedTextCorrector
 from apps.task.utils.ocr.textract import textract2text
+from apps.task.utils.ocr.tika import parametrized_tika_parser
 from apps.task.utils.task_utils import TaskUtils, pre_serialize
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.8/LICENSE"
-__version__ = "1.1.8"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.9/LICENSE"
+__version__ = "1.1.9"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -564,13 +564,16 @@ class LoadDocuments(BaseTask):
         pass
 
     @staticmethod
-    def try_parsing_with_tika(task: ExtendedTask, file_path, ext, original_file_name):
+    def try_parsing_with_tika(task: ExtendedTask, file_path, ext, original_file_name,
+                              propagate_exceptions:bool = True):
         task.log_info('Trying TIKA for file: ' + original_file_name)
         if settings.TIKA_DISABLE:
             task.log_info('TIKA is disabled in config')
             return None, None, None
         try:
-            data = parser.from_file(file_path, settings.TIKA_SERVER_ENDPOINT) \
+            # here we command Tika to use OCR for image-based PDFs
+            # or switch to 'native' call parser.from_file(file_path, settings. ...)
+            data = parametrized_tika_parser.parse_default_pdf_ocr('all', file_path, settings.TIKA_SERVER_ENDPOINT) \
                 if settings.TIKA_SERVER_ENDPOINT else parser.from_file(file_path)
             parsed = data.get('content')
             metadata = data['metadata']
@@ -579,19 +582,24 @@ class LoadDocuments(BaseTask):
             else:
                 task.log_error('TIKA returned too small text for file: ' + original_file_name)
                 return None, None, None
-        except:
+        except Exception as ex:
             task.log_error('Caught exception while trying to parse file with Tika:{0}\n{1}'
                            .format(original_file_name, format_exc()))
+            if propagate_exceptions:
+                raise ex
             return None, None, None
 
     @staticmethod
-    def try_parsing_with_textract(task: ExtendedTask, file_path, ext, original_file_name):
+    def try_parsing_with_textract(task: ExtendedTask, file_path, ext, original_file_name,
+                                  propagate_exceptions:bool = True):
         task.log_info('Trying Textract for file: ' + original_file_name)
         try:
             return textract2text(file_path, ext=ext), 'textract'
-        except:
+        except Exception as ex:
             task.log_info('Caught exception while trying to parse file with Textract: {0}\n{1}'
                           .format(original_file_name, format_exc()))
+            if propagate_exceptions:
+                raise ex
             return None, None
 
     @staticmethod
@@ -644,10 +652,11 @@ class LoadDocuments(BaseTask):
                     task, file_path, ext, file_name)
         else:
             text, parser_name, metadata = LoadDocuments.try_parsing_with_tika(
-                task, file_path, ext, file_name)
+                task, file_path, ext, file_name, propagate_exceptions=propagate_exceptions)
             if not text:
                 text, parser_name = LoadDocuments.try_parsing_with_textract(task, file_path,
-                                                                            ext, file_name)
+                                                                            ext, file_name,
+                                                                            propagate_exceptions=propagate_exceptions)
         if text is not None:
             text = pre_process_document(text)
             # TODO: migrate it in lexnlp if it works good
@@ -894,7 +903,7 @@ class LoadTerms(BaseTask):
 
     def load_terms_from_path(self, path: str, real_fn: str, terms_df: pd):
         self.log_info('Parse "%s"' % real_fn or path)
-        data = load_terms_data(path)
+        data = pd.read_csv(path)
         self.log_info('Detected %d terms' % len(data))
         return terms_df.append(data)
 
@@ -951,7 +960,7 @@ class LoadGeoEntities(BaseTask):
 
     def load_geo_entities_from_path(self, path: str, real_fn: str, entities_df: pd.DataFrame):
         self.log_info('Parse "%s"' % real_fn or path)
-        data = load_geoentities_data(path)
+        data = pd.read_csv(path)
         self.log_info('Detected %d entities' % len(data))
         return entities_df.append(data)
 
@@ -1005,7 +1014,7 @@ class LoadCourts(BaseTask):
 
     def load_courts_from_path(self, path: str, real_fn: str):
         self.log_info('Parse "%s"' % real_fn or path)
-        dictionary_data = load_courts_data(path)
+        dictionary_data = pd.read_csv(path)
         courts_count = load_courts(dictionary_data)
         self.log_info('Detected %d courts' % courts_count)
 
@@ -2005,10 +2014,12 @@ def clean_sub_tasks(self):
         .delete()
 
 
-def purge_task(task_pk):
+def purge_task(task_pk, wait=False, timeout=None):
     """
     Purge task method.
     :param task_pk:
+    :param wait:
+    :param timeout
     :return:
     """
 
@@ -2026,7 +2037,7 @@ def purge_task(task_pk):
     celery_task = AsyncResult(task.id)
     logger.info('Celery task id={}'.format(task.id))
 
-    revoke_task(celery_task)
+    revoke_task(celery_task, wait=wait, timeout=timeout)
     ret = 'Deleted '
 
     # delete TaskResults for subtasks

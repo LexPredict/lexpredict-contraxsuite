@@ -29,6 +29,8 @@ import itertools
 import operator
 import uuid
 from typing import Callable, Set, Any
+
+from celery.states import UNREADY_STATES
 from luqum.parser import parser, BaseOperation, Group, SearchField, Not, Word
 from functools import reduce
 
@@ -51,8 +53,8 @@ from apps.users.models import User
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.8/LICENSE"
-__version__ = "1.1.8"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.9/LICENSE"
+__version__ = "1.1.9"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -331,13 +333,18 @@ class Project(models.Model):
 
     def drop_clusters(self):
         project = self
+        # Stop running tusks
+        from apps.task.tasks import purge_task
+        from apps.project.tasks import ClusterProjectDocuments
+        for task in project.project_tasks.filter(name=ClusterProjectDocuments.name, status__in=UNREADY_STATES):
+            purge_task(task.pk, wait=True, timeout=1.5)
         # delete DocumentClusters
         for pcl in project.projectclustering_set.all():
             pcl.document_clusters.all().delete()
         # delete ProjectClustering
         project.projectclustering_set.all().delete()
         # delete ClusterProjectDocuments Tasks
-        project.project_tasks.filter(name='Cluster Project Documents').delete()
+        project.project_tasks.filter(name=ClusterProjectDocuments.name).delete()
 
     def cleanup(self, delete=False):
 

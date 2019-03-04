@@ -28,7 +28,8 @@ class DetectedFieldValue:
 
     @property
     def python_value(self):
-        return self.value
+        # Let's duplicate DocumentFieldValue logic here, to get cache_field_values working correctly
+        return self.text_unit.text if self.field.is_related_info_field() and self.text_unit else self.value
 
     @python_value.setter
     def python_value(self, pv):

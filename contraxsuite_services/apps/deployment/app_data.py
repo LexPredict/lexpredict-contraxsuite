@@ -36,7 +36,7 @@ from apps.extract.models import GeoEntity, GeoAlias, Term, Court
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
 __license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.4/LICENSE"
-__version__ = "1.1.8"
+__version__ = "1.1.9"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -154,6 +154,7 @@ def load_terms(df: DataFrame) -> int:
 
 
 def load_courts(df: DataFrame) -> int:
+    df = df.dropna(subset=['Court ID']).fillna('')
     df['Court ID'] = df['Court ID'].astype(int)
 
     courts_dst = []
@@ -195,13 +196,8 @@ def get_geoentities_data_urls(locale='multi') -> list:
     return get_dictionary_data_urls('geoentities', locale)
 
 
-def load_terms_data(url: str) -> pd.DataFrame:
-    return pd.read_csv(url)
-
-
-def load_courts_data(url: str) -> pd.DataFrame:
-    return pd.read_csv(url).dropna(subset=['Court ID']).fillna('')
-
-
-def load_geoentities_data(url: str) -> pd.DataFrame:
-    return pd.read_csv(url)
+def load_df(urls: list) -> pd.DataFrame:
+    df = pd.DataFrame()
+    for url in urls:
+        df = df.append(pd.read_csv(url))
+    return df

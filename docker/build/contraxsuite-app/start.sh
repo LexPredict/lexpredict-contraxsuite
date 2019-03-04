@@ -145,7 +145,8 @@ usage_stats.apply()
     python manage.py collectstatic --noinput && \
     python manage.py set_site && \
     python manage.py create_superuser --username=${DOCKER_DJANGO_ADMIN_NAME} --email=${DOCKER_DJANGO_ADMIN_EMAIL} --password=${DOCKER_DJANGO_ADMIN_PASSWORD} && \
-    python manage.py init_app_data --data-dir=/data/data_update && \
+    python manage.py init_app_data --data-dir=/data/data_update --arch-files && \
+    python manage.py init_app_data --data-dir=/data/builtin_data --upload-dict-data-from-repository && \
     python manage.py loadnewdata fixtures/common/*.json && \
     python manage.py loadnewdata fixtures/private/*.json && \
     python manage.py loadnewdata fixtures/additional/*.json && \

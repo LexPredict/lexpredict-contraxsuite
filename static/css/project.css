@@ -431,13 +431,16 @@ mark {
   z-index: 99999 !important;
 }
 #page-title {
-  padding: 35px 0;
+  padding: 10px 0;
 }
 #page-title h1 {
   float: left;
 }
 .content-wrap {
-  padding: 40px 0;
+  padding: 10px 0;
+}
+#copyrights {
+  padding: 10px 0;
 }
 section h2,
 section h3 {
@@ -1117,4 +1120,26 @@ footer .footer-slider .t-rotate {
 }
 li.dropdown-item>a {
   color: #212529;
+}
+
+body {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  right: 0;
+}
+
+#wrapper {
+  display: table;
+  height: 100%;
+}
+
+#wrapper #content {
+  display: table-row;
+  height: 100%;
+}
+
+#wrapper #footer {
+  margin-top: 10px !important;
 }

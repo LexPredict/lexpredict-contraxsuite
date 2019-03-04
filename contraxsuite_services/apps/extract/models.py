@@ -26,8 +26,8 @@ from django.db import models
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.8/LICENSE"
-__version__ = "1.1.8"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.9/LICENSE"
+__version__ = "1.1.9"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -469,10 +469,10 @@ class CitationUsage(Usage):
     """
     Citation usage
     """
-    volume = models.PositiveSmallIntegerField(db_index=True)
+    volume = models.PositiveIntegerField(db_index=True)
     reporter = models.CharField(max_length=1024, db_index=True)
     reporter_full_name = models.CharField(max_length=1024, blank=True, null=True, db_index=True)
-    page = models.PositiveSmallIntegerField(db_index=True)
+    page = models.PositiveIntegerField(db_index=True)
     page2 = models.CharField(max_length=1024, blank=True, null=True, db_index=True)
     court = models.CharField(max_length=1024, blank=True, null=True, db_index=True)
     year = models.PositiveSmallIntegerField(blank=True, null=True, db_index=True)

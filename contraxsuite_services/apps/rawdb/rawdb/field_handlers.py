@@ -264,9 +264,15 @@ class FieldHandler:
     ColumnDesc => info for frontend, methods for querying.
     """
 
-    def __init__(self, field_code: str, field_title: str, table_name: str, default_value=None) -> None:
+    def __init__(self,
+                 field_code: str,
+                 field_title: str,
+                 table_name: str,
+                 default_value=None,
+                 field_column_name_base: str = None) -> None:
         super().__init__()
         self.field_code = field_code
+        self.field_column_name_base = field_column_name_base or escape_column_name(field_code)
         self.field_title = field_title
         self.table_name = table_name
         self.default_value = default_value
@@ -285,10 +291,14 @@ class FieldHandler:
 
 
 class StringWithTextSearchFieldHandler(FieldHandler):
-    def __init__(self, field_code: str, field_title: str, table_name: str, default_value: str = None) -> None:
-        super().__init__(field_code, field_title, table_name, default_value)
-        self.output_column = escape_column_name(field_code)
-        self.text_search_column = escape_column_name(field_code + '_text_search')
+    def __init__(self, field_code: str,
+                 field_title: str,
+                 table_name: str,
+                 default_value: str = None,
+                 field_column_name_base: str = None) -> None:
+        super().__init__(field_code, field_title, table_name, default_value, field_column_name_base)
+        self.output_column = escape_column_name(self.field_column_name_base)
+        self.text_search_column = escape_column_name(self.field_column_name_base + '_text_search')
 
     def python_values_to_single_db_value_for_text_search(self, python_values: List) -> Optional[str]:
         return first_or_none(python_values) or self.default_value
@@ -306,7 +316,10 @@ class StringWithTextSearchFieldHandler(FieldHandler):
             return text
 
     def get_client_column_descriptions(self) -> List[ColumnDesc]:
-        return [TextSearchColumnDesc(self.field_code, self.output_column, self.field_title, ValueType.STRING,
+        return [TextSearchColumnDesc(self.field_code,
+                                     self.output_column,
+                                     self.field_title,
+                                     ValueType.STRING,
                                      self.text_search_column)]
 
     def get_pg_index_definitions(self) -> Optional[List[str]]:
@@ -330,15 +343,22 @@ class StringWithTextSearchFieldHandler(FieldHandler):
 
 
 class StringFieldHandler(FieldHandler):
-    def __init__(self, field_code: str, field_title: str, table_name: str, default_value: str = None) -> None:
-        super().__init__(field_code, field_title, table_name, default_value)
-        self.column = escape_column_name(field_code)
+    def __init__(self,
+                 field_code: str,
+                 field_title: str,
+                 table_name: str,
+                 default_value: str = None,
+                 field_column_name_base: str = None) -> None:
+        super().__init__(field_code, field_title, table_name, default_value, field_column_name_base)
+        self.column = escape_column_name(self.field_column_name_base)
 
     def python_values_to_single_db_value(self, python_values: List) -> Optional[str]:
         return first_or_none(python_values) or self.default_value
 
     def get_client_column_descriptions(self) -> List[ColumnDesc]:
-        return [StringColumnDesc(self.field_code, self.column, self.field_title, ValueType.STRING)]
+        return [StringColumnDesc(self.field_code,
+                                 self.column,
+                                 self.field_title, ValueType.STRING)]
 
     def get_pg_index_definitions(self) -> Optional[List[str]]:
         return ['using GIN ("{column}" gin_trgm_ops)'
@@ -363,9 +383,14 @@ class ComparableFieldHandler(FieldHandler):
     def get_client_column_descriptions(self) -> List[ColumnDesc]:
         pass
 
-    def __init__(self, field_code: str, field_title: str, table_name: str, default_value=None) -> None:
-        super().__init__(field_code, field_title, table_name, default_value)
-        self.column = escape_column_name(field_code)
+    def __init__(self,
+                 field_code: str,
+                 field_title: str,
+                 table_name: str,
+                 default_value=None,
+                 field_column_name_base: str = None) -> None:
+        super().__init__(field_code, field_title, table_name, default_value, field_column_name_base)
+        self.column = escape_column_name(self.field_column_name_base)
 
     def get_pg_index_definitions(self) -> Optional[List[str]]:
         return None
@@ -405,9 +430,15 @@ class FloatFieldHandler(ComparableFieldHandler):
 class DateFieldHandler(ComparableFieldHandler):
     pg_type = PgTypes.DATE
 
-    def __init__(self, field_code: str, field_title: str, table_name: str, default_value=None) -> None:
+    def __init__(self,
+                 field_code: str,
+                 field_title: str,
+                 table_name: str,
+                 default_value=None,
+                 field_column_name_base: str = None) -> None:
         super().__init__(field_code, field_title, table_name,
-                         dateparser.parse(default_value) if default_value else None)
+                         dateparser.parse(default_value) if default_value else None,
+                         field_column_name_base)
 
     def python_values_to_single_db_value(self, python_values: List) -> Any:
         python_value = first_or_none(python_values) or self.default_value
@@ -420,10 +451,15 @@ class DateFieldHandler(ComparableFieldHandler):
 
 
 class MoneyFieldHandler(FieldHandler):
-    def __init__(self, field_code: str, field_title: str, table_name: str, default_value=None) -> None:
-        super().__init__(field_code, field_title, table_name, default_value)
-        self.currency_column = escape_column_name(field_code + '_currency')
-        self.amount_column = escape_column_name(field_code + '_amount')
+    def __init__(self,
+                 field_code: str,
+                 field_title: str,
+                 table_name: str,
+                 default_value=None,
+                 field_column_name_base: str = None) -> None:
+        super().__init__(field_code, field_title, table_name, default_value, field_column_name_base)
+        self.currency_column = escape_column_name(self.field_column_name_base + '_currency')
+        self.amount_column = escape_column_name(self.field_column_name_base + '_amount')
 
     def get_client_column_descriptions(self) -> List[ColumnDesc]:
         return [
@@ -460,10 +496,15 @@ class RelatedInfoFieldHandler(FieldHandler):
     def get_client_column_descriptions(self) -> List[ColumnDesc]:
         return [RelatedInfoColumnDesc(self.field_code, self.column, self.field_title, self.text_column)]
 
-    def __init__(self, field_code: str, field_title: str, table_name: str, default_value=None) -> None:
-        super().__init__(field_code, field_title, table_name, default_value)
-        self.column = escape_column_name(field_code)
-        self.text_column = escape_column_name(field_code) + '_text'
+    def __init__(self,
+                 field_code: str,
+                 field_title: str,
+                 table_name: str,
+                 default_value=None,
+                 field_column_name_base: str = None) -> None:
+        super().__init__(field_code, field_title, table_name, default_value, field_column_name_base)
+        self.column = escape_column_name(self.field_column_name_base)
+        self.text_column = escape_column_name(self.field_column_name_base) + '_text'
 
     def get_pg_index_definitions(self) -> Optional[List[str]]:
         return ['using GIN ("{column}" gin_trgm_ops)'.format(table_name=self.table_name, column=self.text_column)]
@@ -492,9 +533,14 @@ class BooleanFieldHandler(FieldHandler):
     def get_client_column_descriptions(self) -> List[ColumnDesc]:
         return [BooleanColumnDesc(self.field_code, self.column, self.field_title)]
 
-    def __init__(self, field_code: str, field_title: str, table_name: str, default_value:bool = None) -> None:
-        super().__init__(field_code, field_title, table_name, default_value)
-        self.column = escape_column_name(field_code)
+    def __init__(self,
+                 field_code: str,
+                 field_title: str,
+                 table_name: str,
+                 default_value: bool = None,
+                 field_column_name_base: str = None) -> None:
+        super().__init__(field_code, field_title, table_name, default_value, field_column_name_base)
+        self.column = escape_column_name(self.field_column_name_base)
 
     def get_pg_index_definitions(self) -> Optional[List[SQLClause]]:
         return None

@@ -13,7 +13,7 @@ def dict_fetch_all(columns: List[str], cursor) -> List[Dict]:
 def escape_column_name(field_code: str, do_snake_case:bool = True):
     res = snake_case(field_code) if do_snake_case else field_code
     res = ''.join([ch.lower() if ch.isalnum() else '_' for ch in res])
-    res = res if res[0].isalpha() else '_' + res
+    res = res if len(res) > 0 and res[0].isalpha() else '_' + res
     while '__' in res:
         res = res.replace('__', '_')
     return res

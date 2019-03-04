@@ -25,8 +25,8 @@
 # -*- coding: utf-8 -*-
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.8/LICENSE"
-__version__ = "1.1.8"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.9/LICENSE"
+__version__ = "1.1.9"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -40,6 +40,7 @@ import dateparser
 import pyap
 from django.db import models as django_models
 from django.db import transaction
+from django.db.models import Q
 from lexnlp.extract.en.addresses.addresses import get_addresses
 from lexnlp.extract.en.amounts import get_amounts
 from lexnlp.extract.en.dates import get_dates_list
@@ -359,9 +360,11 @@ class FieldType:
         Saves a new value to the field. Depending on the field type it should either
         rewrite existing DocumentFieldValues or add new ones.
         """
-        field_value = self._get_value_to_save(document, field, location_start, location_end, value)
+        field_value = self._get_value_to_save(document, field,
+                                              location_start, location_end, value)  # type: 'DocumentFieldValue'
         if self.requires_value and value is None:
-            field_value and (allow_overwriting_user_data or not field_value.is_user_value()) and field_value.delete()
+            if field_value and (allow_overwriting_user_data or not field_value.is_user_value()):
+                field_value.delete()
             return value
 
         if self.multi_value:
@@ -381,10 +384,22 @@ class FieldType:
                                 user)
         else:
             if field_value:
-                models.DocumentFieldValue.objects \
-                    .filter(document=document, field=field) \
-                    .exclude(pk=field_value.pk) \
-                    .delete()
+                qr = models.DocumentFieldValue.objects.filter(document=document, field=field).exclude(pk=field_value.pk)
+                if not allow_overwriting_user_data:
+                    qr = qr.exclude(Q(created_by__isnull=False) | Q(modified_by__isnull=False)) \
+
+                qr.filter(location_start__isnull=True, location_end__isnull=True).delete()
+                qr.exclude(location_start__isnull=True, location_end__isnull=True).update(removed_by_user=True)
+
+                if (field_value.location_start is not None or field_value.location_end is not None) \
+                        and location_start is None and location_end is None:
+                    if field_value.removed_by_user:
+                        field_value = models.DocumentFieldValue()
+                    elif allow_overwriting_user_data:
+                        models.DocumentFieldValue.objects.filter(pk=field_value.pk).update(removed_by_user=True)
+                        field_value = models.DocumentFieldValue()
+                    else:
+                        return field_value
             else:
                 field_value = models.DocumentFieldValue()
 
@@ -525,10 +540,10 @@ class LongTextField(FieldType):
         return "example\nmulti-line\ntext"
 
     def _extract_variants_from_text(self, field, text: str, **kwargs):
-        regexp = field.value_regexp
+        regexp = field.get_compiled_value_regexp()
         extracted = None
         if regexp:
-            extracted = re.findall(regexp, text)
+            extracted = regexp.findall(text)
             for index, value in enumerate(extracted):
                 extracted[index] = value.strip()
 
@@ -933,6 +948,12 @@ class RelatedInfoField(FieldType):
     def build_vectorization_pipeline(self) -> Tuple[List[Tuple[str, Any]], Callable[[], List[str]]]:
         vect = vectorizers.NumberVectorizer(to_float_converter=lambda merged: len(merged) if merged else 0)
         return [('vect', vect)], self._wrap_get_feature_names(vect)
+
+    def example_python_value(self, field):
+        return 1
+
+    def merge_multi_python_values(self, previous_merge_result, value_to_merge_in):
+        return super().merge_multi_python_values(previous_merge_result, value_to_merge_in or '')
 
 
 class PersonField(FieldType):

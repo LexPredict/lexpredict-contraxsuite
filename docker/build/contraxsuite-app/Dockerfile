@@ -1,4 +1,5 @@
-FROM ubuntu:16.04
+FROM ubuntu:18.04
+ENV DEBIAN_FRONTEND noninteractive
 
 # Update apt first time - initial ubuntu image contains no data
 RUN apt-get -y update --fix-missing
@@ -63,7 +64,6 @@ RUN echo -e \'LANG="en_US.UTF-8"\nLANGUAGE="en_US:en"\n\' > /etc/default/locale
 ENV LANG C.UTF-8
 
 RUN npm -g install yuglify
-RUN ln -s /usr/bin/nodejs /usr/bin/node
 
 
 RUN virtualenv -p /usr/bin/python3 /contraxsuite_services/venv && chmod ug+x /contraxsuite_services/venv/bin/activate
