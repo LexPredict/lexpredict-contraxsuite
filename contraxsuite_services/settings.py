@@ -753,11 +753,11 @@ NOTEBOOK_ARGUMENTS = [
 
 # django-cors-headers settings
 # https://github.com/ottoyiu/django-cors-headers/
-CORS_ORIGIN_ALLOW_ALL = True
-CORS_ALLOW_CREDENTIALS = False
-CORS_URLS_REGEX = r'^/api/.*$'
+# CORS_ORIGIN_ALLOW_ALL = True
+# CORS_ALLOW_CREDENTIALS = False
+# CORS_URLS_REGEX = r'^.*$'
 
-VERSION_NUMBER = '1.1.8'
+VERSION_NUMBER = '1.1.9'
 VERSION_COMMIT = 'cdd28414'
 
 try:

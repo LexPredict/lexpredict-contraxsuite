@@ -216,7 +216,7 @@ services:
     #  - 127.0.0.1:54320:5432 #
 
   contrax-tika:
-    image: lexpredict/tika-server:1.7
+    image: lexpredict/tika-server:1.9
     networks:
       - contrax_net
     deploy:

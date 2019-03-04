@@ -24,14 +24,85 @@
 """
 # -*- coding: utf-8 -*-
 # Tika imports
+import os
+import tempfile
 from tika import parser
+from tika.parser import _parse
+from tika.tika import getRemoteFile, callServer
+from typing import Tuple, Dict
+
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.8/LICENSE"
-__version__ = "1.1.8"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.9/LICENSE"
+__version__ = "1.1.9"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
+
+
+class TikaParametrizedParser:
+    def __init__(self):
+        self.tika_files_path = tempfile.gettempdir()
+        self.tika_jar_path = tempfile.gettempdir()
+        serverHost = "localhost"
+        port = "9998"
+        self.server_endpoint = os.getenv(
+            'TIKA_SERVER_ENDPOINT', 'http://' + serverHost + ':' + port)
+
+    def parse_default_pdf_ocr(self,
+              option: str,
+              url_or_path: str,
+              server_endpoint: str = None) -> Dict:
+        return self.parse(option, url_or_path, server_endpoint,
+                          extra_headers={'pdf-parse': 'pdf_ocr'})
+
+    def parse(self,
+              option: str,
+              url_or_path: str,
+              server_endpoint: str = None,
+              verbose: int = 0,
+              tika_server_jar: str = None,
+              response_mime_type: str = 'application/json',
+              services: dict = None,
+              raw_response: bool = False,
+              extra_headers: Dict[str, str] = None) -> Dict:
+
+        services = services if services else \
+            {'meta': '/meta', 'text': '/tika', 'all': '/rmeta/text'}
+        tika_server_jar = tika_server_jar if tika_server_jar else self.tika_jar_path
+        server_endpoint = server_endpoint if server_endpoint else self.server_endpoint
+
+        path, file_type = getRemoteFile(url_or_path, self.tika_files_path)
+        service = services.get(option, services['all'])
+        if service == '/tika':
+            response_mime_type = 'text/plain'
+        content_path = self.make_content_disposition_header(path)
+
+        headers = {
+            'Accept': response_mime_type,
+            'Content-Disposition': content_path
+        }
+        if extra_headers:
+            headers = {**headers, **extra_headers}
+
+        status, response = callServer('put',
+                                      server_endpoint,
+                                      service,
+                                      open(path, 'rb'),
+                                      headers,
+                                      verbose,
+                                      tika_server_jar,
+                                      rawResponse=raw_response)
+
+        if file_type == 'remote':
+            os.unlink(path)
+        return _parse((status, response))
+
+    def make_content_disposition_header(self, fn):
+        return 'attachment; filename=%s' % os.path.basename(fn)
+
+
+parametrized_tika_parser = TikaParametrizedParser()
 
 
 def tika2text(file_path):

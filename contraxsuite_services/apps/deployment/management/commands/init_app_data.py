@@ -40,12 +40,11 @@ from django.core.management import call_command
 from django.core.management.base import BaseCommand
 from django.db import transaction
 from django.utils.timezone import now
-from django.db import models
 
 # Project imports
 from apps.common.models import AppVar
-from apps.deployment.app_data import load_courts, load_terms, load_geo_entities, get_terms_data_urls, load_terms_data, \
-    get_courts_data_urls, load_courts_data, get_geoentities_data_urls, load_geoentities_data
+from apps.deployment.app_data import load_courts, load_terms, load_geo_entities, get_terms_data_urls, \
+    get_courts_data_urls, get_geoentities_data_urls, load_df
 from apps.document.models import DocumentType, DocumentField
 from apps.extract import dict_data_cache
 from apps.extract.models import Court, Term, GeoEntity
@@ -53,136 +52,212 @@ from apps.extract.models import Court, Term, GeoEntity
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
 __license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.4/LICENSE"
-__version__ = "1.1.8"
+__version__ = "1.1.9"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
 
-def load_csv_files(zip_file: ZipFile, files: list) -> pd.DataFrame:
-    df = pd.DataFrame()
-    for file in files:
-        csv = io.BytesIO(zip_file.read(file))
-        df = df.append(pd.read_csv(csv))
-    return df
+class DataLoader:
+    def __init__(self, initialization_flag: AppVar = None):
+        self.initialization_flag = initialization_flag
+
+    def load(self) -> None:
+        raise RuntimeError('Not implemented')
+
+    def load_once(self) -> None:
+        if not self.initialization_flag or not self.initialization_flag.val:
+            try:
+                self.load()
+            except Exception:
+                print(traceback.print_exc())
+                return
+            if self.initialization_flag:
+                self.initialization_flag.value = True
+                self.initialization_flag.save()
+        else:
+            print('Data is already initialized. Reset {0} flag to repeat initialization'
+                  .format(self.initialization_flag.name))
 
 
-def load_terms_df(df: pd.DataFrame) -> None:
+class ZipFileLoader(DataLoader):
+    def __init__(self, zip_file: ZipFile = None, files: list = None, initialization_flag: AppVar = None):
+        super().__init__(initialization_flag)
+        self.zip_file = zip_file
+        self.files = files
 
-    with transaction.atomic():
-        terms_count = load_terms(df)
+    def load_df(self) -> pd.DataFrame:
+        df = pd.DataFrame()
+        for file in self.files:
+            csv = io.BytesIO(self.zip_file.read(file))
+            df = df.append(pd.read_csv(csv))
+        return df
 
-    print('Detected %d terms' % terms_count)
-    print('Caching terms config for Locate tasks...')
+    def upload_df(self, df: pd.DataFrame) -> None:
+        raise RuntimeError('Not implemented')
 
-    dict_data_cache.cache_term_stems()
-
-
-def load_courts_df(df: pd.DataFrame) -> None:
-    with transaction.atomic():
-        courts_count = load_courts(df)
-
-    print('Detected %d courts' % courts_count)
-    print('Caching courts config for Locate tasks...')
-
-    dict_data_cache.cache_court_config()
-
-
-def load_geoentities_df(df: pd.DataFrame) -> None:
-    with transaction.atomic():
-        geo_aliases_count, geo_entities_count = load_geo_entities(df)
-
-    print('Total created: %d GeoAliases' % geo_aliases_count)
-    print('Total created: %d GeoEntities' % geo_entities_count)
-    print('Caching geo config for Locate tasks...')
-
-    dict_data_cache.cache_geo_config()
+    def load(self) -> None:
+        self.upload_df(self.load_df())
 
 
-def terms_loader(zip_file: ZipFile, files: list) -> None:
-    if Term.objects.exists():
-        print('Terms data already uploaded')
-        return
-    print('Uploading terms...')
+class TermsLoader(ZipFileLoader):
 
-    df = load_csv_files(zip_file, files)
-    load_terms_df(df)
+    def __init__(self, zip_file: ZipFile = None, files: list = None):
+        from apps.deployment.app_vars import DEPLOYMENT_TERMS_INITIALIZED
+        super().__init__(zip_file, files, DEPLOYMENT_TERMS_INITIALIZED)
 
+    def upload_df(self, df: pd.DataFrame) -> None:
+        if Term.objects.exists():
+            print('Terms data already uploaded')
+            return
+        print('Uploading terms...')
 
-def courts_loader(zip_file: ZipFile, files: list) -> None:
-    if Court.objects.exists():
-        print('Courts data already uploaded')
-        return
-    print('Uploading courts...')
+        with transaction.atomic():
+            terms_count = load_terms(df)
 
-    df = load_csv_files(zip_file, files)
-    load_courts_df(df)
+        print('Detected %d terms' % terms_count)
+        print('Caching terms config for Locate tasks...')
 
-
-def geoentities_loader(zip_file: ZipFile, files: list) -> None:
-    if GeoEntity.objects.exists():
-        print('Geo config data already uploaded')
-        return
-    print('Uploading geo config...')
-
-    df = load_csv_files(zip_file, files)
-    load_geoentities_df(df)
+        dict_data_cache.cache_term_stems()
 
 
-DICTIONARY_LOADER_BY_FILE_PREFIX = dict(
-    terms=terms_loader,
-    courts=courts_loader,
-    geoentities=geoentities_loader
-)
+class CourtsLoader(ZipFileLoader):
+
+    def __init__(self, zip_file: ZipFile = None, files: list = None):
+        from apps.deployment.app_vars import DEPLOYMENT_COURTS_INITIALIZED
+        super().__init__(zip_file, files, DEPLOYMENT_COURTS_INITIALIZED)
+
+    def upload_df(self, df: pd.DataFrame) -> None:
+        if Court.objects.exists():
+            print('Courts data already uploaded')
+            return
+        print('Uploading courts...')
+
+        with transaction.atomic():
+            courts_count = load_courts(df)
+
+        print('Detected %d courts' % courts_count)
+        print('Caching courts config for Locate tasks...')
+
+        dict_data_cache.cache_court_config()
 
 
-def dictionary_loader(file_patch: str) -> None:
-    zip_file = ZipFile(file_patch)
-    files_by_loader = dict()
-    for file_info in zip_file.infolist():
-        if file_info.filename.endswith('/'):
-            continue
-        for prefix, loader in DICTIONARY_LOADER_BY_FILE_PREFIX.items():
-            if file_info.filename.startswith(prefix):
-                files = files_by_loader.get(loader)
-                if not files:
-                    files = list()
-                    files_by_loader[loader] = files
-                files.append(file_info)
+class GeoEntitiesLoader(ZipFileLoader):
+
+    def __init__(self, zip_file: ZipFile = None, files: list = None):
+        from apps.deployment.app_vars import DEPLOYMENT_GEOENTITIES_INITIALIZED
+        super().__init__(zip_file, files, DEPLOYMENT_GEOENTITIES_INITIALIZED)
+
+    def upload_df(self, df: pd.DataFrame) -> None:
+        if GeoEntity.objects.exists():
+            print('Geo config data already uploaded')
+            return
+        print('Uploading geo config...')
+
+        with transaction.atomic():
+            geo_aliases_count, geo_entities_count = load_geo_entities(df)
+
+        print('Total created: %d GeoAliases' % geo_aliases_count)
+        print('Total created: %d GeoEntities' % geo_entities_count)
+        print('Caching geo config for Locate tasks...')
+
+        dict_data_cache.cache_geo_config()
+
+
+class DictionaryLoader(DataLoader):
+
+    dictionary_loader_by_file_prefix = dict(
+        terms=TermsLoader,
+        courts=CourtsLoader,
+        geoentities=GeoEntitiesLoader
+    )
+
+    def __init__(self, file_patch: str):
+        super().__init__()
+        self.file_patch = file_patch
+
+    def load(self) -> None:
+        zip_file = ZipFile(self.file_patch)
+        files_by_loader = dict()
+        for file_info in zip_file.infolist():
+            if file_info.filename.endswith('/'):
+                continue
+            for prefix, LoaderClass in DictionaryLoader.dictionary_loader_by_file_prefix.items():
+                if file_info.filename.startswith(prefix):
+                    files = files_by_loader.get(LoaderClass)
+                    if not files:
+                        files = list()
+                        files_by_loader[LoaderClass] = files
+                    files.append(file_info)
+                    break
+        for LoaderClass, files in files_by_loader.items():
+            loader = LoaderClass(zip_file=zip_file, files=files)
+            loader.load_once()
+
+
+class DocumentDataLoader(DataLoader):
+
+    def __init__(self, file_patch: str):
+        from apps.deployment.app_vars import DEPLOYMENT_DOCUMENT_DATA_INITIALIZED
+        super().__init__(DEPLOYMENT_DOCUMENT_DATA_INITIALIZED)
+        self.file_patch = file_patch
+
+    def load(self) -> None:
+        initialized = False
+        for document_type in DocumentType.objects.all()[:2]:
+            if document_type.code != 'document.GenericDocument':
+                initialized = True
                 break
-    for loader, files in files_by_loader.items():
-        loader(zip_file, files)
+        initialized = initialized or DocumentField.objects.exists()
+        if initialized:
+            print('Document data already uploaded')
+            return
+        print('Uploading document data...')
+
+        zip_file = ZipFile(self.file_patch)
+        for file_info in zip_file.infolist():
+            data = zip_file.read(file_info)
+            buf = io.StringIO()
+            with NamedTemporaryFile(mode='wb', suffix='.json') as tmp_file:
+                tmp_file.write(data)
+                tmp_file.seek(0)
+                call_command('loaddata', tmp_file.name, app_label='document', stdout=buf, interactive=False)
+                buf.seek(0)
+        DocumentField.objects.update(dirty=False, training_finished=False)
 
 
-def document_loader(file_patch: str) -> None:
-    initialized = False
-    for document_type in DocumentType.objects.all()[:2]:
-        if document_type.code != 'document.GenericDocument':
-            initialized = True
-            break
-    initialized = initialized or DocumentField.objects.exists()
-    if initialized:
-        print('Document data already initialized')
-        return
-    print('Uploading document data...')
+class TermsByUrlLoader(TermsLoader):
 
-    zip_file = ZipFile(file_patch)
-    for file_info in zip_file.infolist():
-        data = zip_file.read(file_info)
-        buf = io.StringIO()
-        with NamedTemporaryFile(mode='wb', suffix='.json') as tmp_file:
-            tmp_file.write(data)
-            tmp_file.seek(0)
-            call_command('loaddata', tmp_file.name, app_label='document', stdout=buf, interactive=False)
-            buf.seek(0)
-    DocumentField.objects.update(dirty=False, training_finished=False)
+    def __init__(self):
+        super().__init__()
+
+    def load_df(self) -> pd.DataFrame:
+        return load_df(get_terms_data_urls())
+
+
+class CourtsByUrlLoader(CourtsLoader):
+
+    def __init__(self):
+        super().__init__()
+
+    def load_df(self) -> pd.DataFrame:
+        return load_df(get_courts_data_urls())
+
+
+class GeoEntitiesByUrlLoader(GeoEntitiesLoader):
+
+    def __init__(self):
+        super().__init__()
+
+    def load_df(self) -> pd.DataFrame:
+        return load_df(get_geoentities_data_urls())
 
 
 class Command(BaseCommand):
     help = 'Uploads application data from specified folder'
 
     loader_by_file_prefix = dict(
-        document_data=document_loader,
-        dict_data=dictionary_loader
+        document_data=lambda file_patch: DocumentDataLoader(file_patch).load_once(),
+        dict_data=lambda file_patch: DictionaryLoader(file_patch).load_once()
     )
 
     def get_file_loader(self, file: str) -> Optional[Callable[[str], None]]:
@@ -192,7 +267,9 @@ class Command(BaseCommand):
         return None
 
     def add_arguments(self, parser) -> None:
-        parser.add_argument('--data-dir', required=True, type=str)
+        parser.add_argument('--data-dir', required=False, type=str)
+        parser.add_argument('--upload-dict-data-from-repository', default=False, action='store_true')
+        parser.add_argument('--arch-files',  default=False, action='store_true')
 
     @classmethod
     def get_proceed_dir(cls, data_dir):
@@ -202,65 +279,28 @@ class Command(BaseCommand):
             mkdir(proceed_dir)
         return proceed_dir
 
-    @classmethod
-    def init_dictionary_data(cls,
-                             dictionary_name: str,
-                             initialization_flag: AppVar,
-                             dict_model: Type[models.Model],
-                             urls: list,
-                             data_loader: Callable[[str], pd.DataFrame],
-                             df_loader: Callable[[pd.DataFrame], None]) -> None:
-        if not initialization_flag.val:
-            initialized = dict_model.objects.exists()
-            if not initialized:
-                print('Uploading {0}...'.format(dictionary_name))
-                try:
-                    df = pd.DataFrame()
-                    for url in urls:
-                        df = df.append(data_loader(url))
-                    df_loader(df)
-                    initialized = True
-                except Exception:
-                    print(traceback.print_exc())
-            if initialized:
-                initialization_flag.value = initialized
-                initialization_flag.save()
-
     def handle(self, *args: Tuple, **options: Dict[Any, Any]) -> None:
-        print('Uploading application data...')
-        data_dir = options['data_dir']
-        if not path.exists(data_dir):
-            print('Data folder does not exist')
+        data_dir = options.get('data_dir')
+        upload_dict_data_from_repository = options.get('upload_dict_data_from_repository')
+        arch_files = options.get('arch_files')
 
-        for file in listdir(data_dir):
-            if not path.isdir(file) and file.endswith('.zip'):
-                print('Processing {0}...'.format(file))
-                file_patch = '{0}/{1}'.format(data_dir, file)
-                loader = self.get_file_loader(file)
-                if loader:
-                    loader(file_patch)
-                shutil.move(file_patch, '{0}/{1}'.format(self.get_proceed_dir(data_dir), file))
+        if data_dir:
+            print('Uploading application data from {0}...'.format(data_dir))
+            if path.exists(data_dir):
+                for file in listdir(data_dir):
+                    if not path.isdir(file) and file.endswith('.zip'):
+                        print('Processing {0}...'.format(file))
+                        file_patch = '{0}/{1}'.format(data_dir, file)
+                        loader = self.get_file_loader(file)
+                        if loader:
+                            loader(file_patch)
+                        if arch_files:
+                            shutil.move(file_patch, '{0}/{1}'.format(self.get_proceed_dir(data_dir), file))
+            else:
+                print('Data folder does not exist')
 
-        from apps.deployment.app_vars import DEPLOYMENT_TERMS_INITIALIZED, \
-            DEPLOYMENT_COURTS_INITIALIZED, DEPLOYMENT_GEOENTITIES_INITIALIZED
-
-        self.init_dictionary_data('terms',
-                                  DEPLOYMENT_TERMS_INITIALIZED,
-                                  Term,
-                                  get_terms_data_urls(),
-                                  load_terms_data,
-                                  load_terms_df)
-
-        self.init_dictionary_data('courts',
-                                  DEPLOYMENT_COURTS_INITIALIZED,
-                                  Court,
-                                  get_courts_data_urls(),
-                                  load_courts_data,
-                                  load_courts_df)
-
-        self.init_dictionary_data('geo config',
-                                  DEPLOYMENT_GEOENTITIES_INITIALIZED,
-                                  GeoEntity,
-                                  get_geoentities_data_urls(),
-                                  load_geoentities_data,
-                                  load_geoentities_df)
+        if upload_dict_data_from_repository:
+            print('Uploading dictionary data data from repository...'.format(data_dir))
+            TermsByUrlLoader().load_once()
+            CourtsByUrlLoader().load_once()
+            GeoEntitiesByUrlLoader().load_once()

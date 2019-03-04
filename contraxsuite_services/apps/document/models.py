@@ -56,13 +56,14 @@ from apps.common.utils import CustomDjangoJSONEncoder
 from apps.common.models import get_default_status
 from apps.document import constants
 from apps.document.field_types import FieldType, FIELD_TYPES_REGISTRY, FIELD_TYPES_CHOICE, ValueExtractionHint, \
-    ORDINAL_EXTRACTION_HINTS, RelatedInfoField
+    ORDINAL_EXTRACTION_HINTS, RelatedInfoField, StringField, StringFieldWholeValueAsAToken, LongTextField, ChoiceField, \
+    MultiChoiceField
 from apps.users.models import User
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.8/LICENSE"
-__version__ = "1.1.8"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.9/LICENSE"
+__version__ = "1.1.9"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -155,7 +156,7 @@ class DocumentField(TimeStampedModel):
     document_type = models.ForeignKey('document.DocumentType', null=True, blank=False, related_name='fields')
 
     # Short name for field.
-    code = models.CharField(max_length=50, db_index=True, unique=False)
+    code = models.CharField(max_length=40, db_index=True, unique=False)
 
     # Calculated field. Only for usage in __str__ function
     long_code = models.CharField(max_length=150, null=False, unique=True, default=None)
@@ -349,6 +350,11 @@ class DocumentField(TimeStampedModel):
         self.hide_until_python = self.hide_until_python.strip() if self.hide_until_python else ''
         self.hide_until_js = jiphy.to.javascript(self.hide_until_python) if self.hide_until_python else ''
         with transaction.atomic():
+            if not self._state.adding:
+                for values in DocumentField.objects.filter(pk=self.pk).values('document_type__pk', 'type'):
+                    if values['document_type__pk'] != self.document_type.pk or values['type'] != self.type:
+                        DocumentFieldValue.objects.filter(field=self).delete()
+                        break
             document_type = None
             if self.document_type is not None:
                 document_type = DocumentType.objects.get(pk=self.document_type.pk)
@@ -360,21 +366,17 @@ class DocumentField(TimeStampedModel):
         document_type = field.document_type if document_type is None else document_type
         return '{0}: {1}'.format(document_type.code, field.code) if document_type is not None else field.code
 
-    def test_value_regexp(self):
-        self._compile_value_regexp()
-
-    def _compile_value_regexp(self):
-        return re.compile(self.value_regexp)
+    @classmethod
+    def compile_value_regexp(cls, value_regexp: str):
+        return re.compile(value_regexp)
 
     def get_compiled_value_regexp(self):
         if not self._compiled_value_regexp and self.value_regexp and self.value_regexp.strip():
             try:
-                self._compiled_value_regexp = self._compile_value_regexp()
+                self._compiled_value_regexp = self.compile_value_regexp(self.value_regexp)
             except Exception as exc:
-                raise SyntaxError(
-                    'Unable to compile value regexp for field {0}. Regexp:\n{1}\n'
-                    'Reason: {2}'
-                        .format(self.code, self.value_regexp, exc))
+                msg = 'Unable to compile value regexp for field {0}. Regexp:\n{1}\nReason: {2}'
+                raise SyntaxError(msg.format(self.code, self.value_regexp, exc))
         return self._compiled_value_regexp
 
 
@@ -1025,6 +1027,14 @@ class DocumentFieldDetector(models.Model):
 
     TEXT_PARTS = tuple((text_part.value, text_part.value) for text_part in TextParts)
 
+    FIELD_TYPES_ALLOWED_FOR_DETECTED_VALUE = {
+        StringField.code,
+        StringFieldWholeValueAsAToken.code,
+        LongTextField.code,
+        ChoiceField.code,
+        MultiChoiceField.code,
+    }
+
     uid = StringUUIDField(primary_key=True, default=uuid.uuid4, editable=False)
 
     field = models.ForeignKey(DocumentField, blank=False, null=False,
@@ -1102,31 +1112,15 @@ text part = BEFORE_REGEXP then "2019-01-23 " will be passed to get_dates().''')
         self._exclude_matchers = None
         self._definition_words = None
 
-    def _compile_include_regexps(self):
-        include_matchers = []
-
-        if self.include_regexps:
-            for r in self.include_regexps.split('\n'):
+    @classmethod
+    def compile_regexps_string(cls, regexps: str) -> list:
+        matchers = []
+        if regexps:
+            for r in regexps.split('\n'):
                 r = r.strip()
                 if r:
-                    include_matchers.append(re.compile(r, self.DEF_RE_FLAGS))
-        return include_matchers
-
-    def _compile_exclude_regexp(self):
-        exclude_matchers = []
-
-        if self.exclude_regexps:
-            for r in self.exclude_regexps.split('\n'):
-                r = r.strip()
-                if r:
-                    exclude_matchers.append(re.compile(r, self.DEF_RE_FLAGS))
-        return exclude_matchers
-
-    def test_include_regexps(self):
-        self._compile_include_regexps()
-
-    def test_exclude_regexps(self):
-        self._compile_exclude_regexp()
+                    matchers.append(re.compile(r, cls.DEF_RE_FLAGS))
+        return matchers
 
     def compile_regexps(self):
 
@@ -1139,14 +1133,14 @@ text part = BEFORE_REGEXP then "2019-01-23 " will be passed to get_dates().''')
             self._definition_words = dw or None
 
         try:
-            self._include_matchers = self._compile_include_regexps()
+            self._include_matchers = self.compile_regexps_string(self.include_regexps)
         except Exception as exc:
             raise SyntaxError('Unable to compile include regexp for field detector #{1} and field {2}. Regexp:\n{0}\n'
                               'Reason: {3}'
                               .format(self.include_regexps, self.pk, self.field.code, exc))
 
         try:
-            self._exclude_matchers = self._compile_exclude_regexp()
+            self._exclude_matchers = self.compile_regexps_string(self.exclude_regexps)
         except Exception as exc:
             raise SyntaxError('Unable to compile exclude regexp for field detector #{1} and field {2}. Regexp:\n{0}\n'
                               'Reason: {3}'
@@ -1220,6 +1214,21 @@ text part = BEFORE_REGEXP then "2019-01-23 " will be passed to get_dates().''')
             else:
                 return text
         return None
+
+    @classmethod
+    def validate_detected_value(cls, field_type: str, detected_value: str) -> None:
+        if detected_value and field_type not in cls.FIELD_TYPES_ALLOWED_FOR_DETECTED_VALUE:
+            field_types = [FIELD_TYPES_REGISTRY[ft].title for ft in cls.FIELD_TYPES_ALLOWED_FOR_DETECTED_VALUE]
+            raise RuntimeError('Detected value is allowed only for {0} fields'.format(', '.join(field_types)))
+
+    def get_validated_detected_value(self, field=None) -> str:
+        field = field or self.field
+        try:
+            self.detected_value and self.validate_detected_value(field.type, self.detected_value)
+            return self.detected_value
+        except Exception as exc:
+            msg = 'Field detector #{0} (field: {1}) has incorrect detected value. {2}'.format(self.pk, field.code, exc)
+            raise RuntimeError(msg)
 
     class Meta:
         ordering = ('uid',)

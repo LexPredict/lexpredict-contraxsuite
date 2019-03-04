@@ -53,7 +53,7 @@ class RegexpsOnlyFieldDetectionStrategy(FieldDetectionStrategy):
                 matching_string = field_detector.matching_string(text_unit.text,
                                                                  text_is_sentence=text_unit.is_sentence())
                 if matching_string is not None:
-                    value = field_detector.detected_value
+                    value = field_detector.get_validated_detected_value(field)
                     hint_name = None
                     if field_type_adapter.requires_value:
                         hint_name = field_detector.extraction_hint or ValueExtractionHint.TAKE_FIRST.name
@@ -127,7 +127,7 @@ class FieldBasedRegexpsDetectionStrategy(FieldDetectionStrategy):
             for field_detector in field_detectors:  # type: DocumentFieldDetector
                 matching_string = field_detector.matching_string(depends_on_value, text_is_sentence=False)
                 if matching_string is not None:
-                    value = field_detector.detected_value
+                    value = field_detector.get_validated_detected_value(field)
                     hint_name = None
                     if field_type_adapter.requires_value:
                         hint_name = field_detector.extraction_hint or ValueExtractionHint.TAKE_FIRST.name

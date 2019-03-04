@@ -1,24 +1,26 @@
 {% extends "admin/change_form.html" %}
 
 {% block content %}
-    <div class="alert alert-block alert-warning">
-        <b>The following user tasks are running:</b>
+    {% if running_tasks %}
+        <div class="alert alert-block alert-warning">
+            <b>The following user tasks are running:</b>
                 <ul>
                     {% for task_name in running_tasks %}
                         <li>{{ task_name }}</li>
                     {% endfor %}
                 </ul>
-                <p>
-                    Saving this {{ opts.verbose_name }} can cause their crashing because of document type / field structure changes.
-                </p>
-            </div>
-            <button type="submit" class="btn btn-high btn-info" name="{{ confirmation_button_name }}"
-                    onclick="action_button_clicked('{{ source_action }}', '{{ confirmation_button_name }}')">
-                Yes, I'm sure
-            </button>
-            <div style="display: none">
-                {{ block.super }}
-            </div>
+            <p>
+                Saving this {{ opts.verbose_name }} can cause their crashing because of document type / field structure changes.
+            </p>
+        </div>
+    {% endif %}
+    <button type="submit" class="btn btn-high btn-info" name="{{ confirmation_button_name }}"
+            onclick="action_button_clicked('{{ source_action }}', '{{ confirmation_button_name }}')">
+        Yes, I'm sure
+    </button>
+    <div style="display: none">
+        {{ block.super }}
+    </div>
 {% endblock %}
 
 

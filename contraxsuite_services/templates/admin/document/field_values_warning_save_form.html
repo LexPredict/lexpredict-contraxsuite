@@ -1,0 +1,15 @@
+{% extends "admin/document/users_tasks_warning_save_form.html" %}
+
+{% block content %}
+    {% if values_validation_modified_fields %}
+        <div class="alert alert-block alert-error">
+            <b>Warning: data can be lost!</b>
+            <p>You are trying to change {{ values_validation_modified_fields }}. Existing document field values become invalid and will be removed.</p>
+            <ul>
+                <li>User entered values: {{ values_validation_user_values_number }}</li>
+                <li>Automatically detected values: {{ values_validation_detected_values_number }}</li>
+            </ul>
+        </div>
+    {% endif %}
+    {{ block.super }}
+{% endblock %}

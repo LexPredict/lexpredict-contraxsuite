@@ -69,8 +69,8 @@ from apps.common.utils import cap_words, export_qs_to_file, download
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.8/LICENSE"
-__version__ = "1.1.8"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.9/LICENSE"
+__version__ = "1.1.9"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -560,7 +560,10 @@ class JqPaginatedListView(AjaxListView):
         export_to = self.request.GET.get('export_to')
         qs = self.filter_and_sort(qs)
         if export_to or not enable_pagination:
-            data = super().get_json_data(qs=qs, **kwargs)
+            if getattr(self, 'deep_processing', True):
+                data = super().get_json_data(qs=qs, **kwargs)
+            else:
+                data = list(qs)
         elif qs.exists():
             total_records = qs.count()
             qs = self.paginate(qs)

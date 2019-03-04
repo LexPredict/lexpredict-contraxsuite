@@ -1,4 +1,5 @@
 # Standard imports
+from collections import Iterable
 from typing import Dict, Any, List, Optional
 
 # Django imports
@@ -16,8 +17,8 @@ from apps.extract.models import CurrencyUsage
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.8/LICENSE"
-__version__ = "1.1.8"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.9/LICENSE"
+__version__ = "1.1.9"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -74,6 +75,9 @@ def cache_field_values(doc: Document,
             else:
                 suggested_value_db = doc.field_values.get(suggested_field_uid) if doc.field_values else None
 
+            # suggested_value_db can be list, None or int, Iterable validation should be here
+            if isinstance(suggested_value_db, Iterable) and f.is_related_info_field():
+                suggested_value_db = len(suggested_value_db)
             field_uids_to_field_values_db[suggested_field_uid] = suggested_value_db
 
     if save:

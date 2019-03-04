@@ -54,8 +54,8 @@ from apps.task.utils.task_utils import TaskUtils
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.8/LICENSE"
-__version__ = "1.1.8"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.9/LICENSE"
+__version__ = "1.1.9"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -81,7 +81,7 @@ class DetectFieldValues(BaseTask):
 
             self.run_sub_tasks('Detect Field Values For Single Document',
                                DetectFieldValues.detect_field_values_for_document,
-                               [(document_id, False)])
+                               [(document_id, False, True)])
             self.push()
             return
 
@@ -111,7 +111,7 @@ class DetectFieldValues(BaseTask):
             qs = qs.exclude(pk__in=Subquery(modified_document_ids))
 
         for doc_id, source, name in qs.values_list('id', 'source', 'name'):
-            detect_field_values_for_document_args.append((doc_id, do_not_write))
+            detect_field_values_for_document_args.append((doc_id, do_not_write, True))
             if source:
                 source_data.append('{0}/{1}'.format(source, name))
             else:
@@ -136,15 +136,18 @@ class DetectFieldValues(BaseTask):
                  max_retries=3)
     def detect_field_values_for_document(task: ExtendedTask,
                                          document_id,
-                                         do_not_write):
+                                         do_not_write,
+                                         clear_old_values):
         DetectFieldValues._detect_field_values_for_document(task,
                                                             document_id,
-                                                            do_not_write)
+                                                            do_not_write,
+                                                            clear_old_values=clear_old_values)
 
     @staticmethod
     def _detect_field_values_for_document(task: ExtendedTask,
                                           document_id,
-                                          do_not_write):
+                                          do_not_write,
+                                          clear_old_values=True):
         doc = Document.objects.get(pk=document_id)
 
         log = CeleryTaskLogger(task)
@@ -153,7 +156,9 @@ class DetectFieldValues(BaseTask):
         # the detected values wont be stored even if do_not_write = False.
         # But caching should go as usual.
         dfvs = field_detection \
-            .detect_and_cache_field_values_for_document(log, doc, save=not do_not_write, clear_old_values=True)
+            .detect_and_cache_field_values_for_document(log, doc,
+                                                        save=not do_not_write,
+                                                        clear_old_values=clear_old_values)
 
         task.log_info('Detected {0} field values for document #{1} ({2})'.format(
             len(dfvs), document_id, doc.name))

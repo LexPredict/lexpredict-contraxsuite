@@ -1,3 +1,5 @@
+port_in_redirect off;
+
 location /advanced {
     uwsgi_pass  ${DOCKER_HOST_NAME_UWSGI}:3031;
     uwsgi_read_timeout 300;
@@ -5,12 +7,14 @@ location /advanced {
 }
 
 location /api {
+    include /etc/nginx/${DOCKER_NGINX_CORS_CONFIG};
     uwsgi_pass  ${DOCKER_HOST_NAME_UWSGI}:3031;
     uwsgi_read_timeout 300;
     include /etc/nginx/uwsgi_params;
 }
 
 location /rest-auth {
+    include /etc/nginx/${DOCKER_NGINX_CORS_CONFIG};
     uwsgi_pass  ${DOCKER_HOST_NAME_UWSGI}:3031;
     uwsgi_read_timeout 300;
     include /etc/nginx/uwsgi_params;
@@ -45,6 +49,8 @@ location ${DOCKER_JUPYTER_BASE_URL} {
     auth_basic "Contraxsuite";
     auth_basic_user_file /etc/nginx/.kibana_htpasswd;
 }
+
+rewrite ^/kibana$ /kibana/ redirect;
 
 location ~ ^/kibana/(.*)${DOLLAR} {
     # workaround to start nginx, if host is unreachable

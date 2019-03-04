@@ -168,22 +168,49 @@ def build_field_handlers(document_type: DocumentType, table_name: str,
     if include_generic_fields:
         res.extend(_build_generic_field_handlers(table_name))
 
+    # Prevent repeating column names.
+    # Lets assume generic field codes are unique as well as system field codes.
+    # Assigning 1 to their usage count for further taking it into account when building
+    # column name bases for the user fields.
+    field_code_use_counts = {field_handler.field_column_name_base: 1 for field_handler in res}
+
     if include_user_fields:
         doc_field_qr = DocumentField.objects.filter(document_type=document_type)
         if exclude_hidden_always_fields:
             doc_field_qr = doc_field_qr.filter(hidden_always=False)
         for field in doc_field_qr.order_by('order', 'code'):  # type: DocumentField
             field_type = field.get_field_type()  # type: field_types.FieldType
-            field_handler_class = FIELD_DB_SUPPORT_REGISTRY[field_type.code]
-            field_handler = field_handler_class(field.code, field.title, table_name, field.default_value)
-            res.append(field_handler)
 
+            # Escape field code and take max 40 chars for using as the column name base
+            field_code_escaped = escape_column_name(field.code)[:40]
+
+            # If we already have this escaped field code in the dict then
+            # attach an index to it to avoid repeating of the column names.
+            field_code_use_count = field_code_use_counts.get(field_code_escaped)
+            if field_code_use_count is not None:
+                field_code_use_counts[field_code_escaped] = field_code_use_count + 1
+                counter_str = str(field_code_use_count)
+
+                # make next repeated column name to be column1, column2, ...
+                # make it fitting into 40 chars by cutting the field code on the required number of chars to fit the num
+                field_code_escaped = field_code_escaped[:40 - len(counter_str) - 1] + '_' + counter_str
+            else:
+                field_code_use_counts[field_code_escaped] = 1
+
+            field_handler_class = FIELD_DB_SUPPORT_REGISTRY[field_type.code]
+            field_handler = field_handler_class(field.code,
+                                                field.title,
+                                                table_name,
+                                                field.default_value,
+                                                field_column_name_base=field_code_escaped)
+            res.append(field_handler)
             if include_suggested_fields and field.is_detectable() and not field.read_only:
                 field_code_suggested = field.code + '_suggested'
                 field_handler_suggested = field_handler_class(field_code_suggested,
                                                               field.title + ': Suggested',
                                                               table_name,
-                                                              field.default_value)
+                                                              field.default_value,
+                                                              field_column_name_base=field_code_escaped + '_suggested')
                 res.append(field_handler_suggested)
 
     return res

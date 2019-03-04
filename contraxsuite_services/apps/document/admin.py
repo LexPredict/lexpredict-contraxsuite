@@ -26,32 +26,37 @@
 
 # Standard imports
 import datetime
+import re
 import traceback
 from typing import List
 
 # Django imports
 from django import forms
+from django.contrib import admin
 from django.contrib.admin.actions import delete_selected
 from django.contrib.admin.options import TO_FIELD_VAR
 from django.contrib.admin.utils import get_deleted_objects, unquote
-from django.contrib import admin
+from django.contrib.admin.widgets import FilteredSelectMultiple
 from django.contrib.postgres import fields
 from django.db import transaction, router
+from django.db.models import Q
 from django.template.response import TemplateResponse
 from django.utils.html import format_html_join
+from django.utils.timezone import now
 from django_json_widget.widgets import JSONEditorWidget
 from simple_history.admin import SimpleHistoryAdmin
-from django.contrib.admin.widgets import FilteredSelectMultiple
-from django.utils.timezone import now
 
 # Project imports
 import settings
 from apps.common.script_utils import ScriptError
+from apps.common.sql_commons import escape_column_name
+from apps.document.events import events
 from apps.document.field_types import FIELD_TYPES_REGISTRY, RelatedInfoField
-from apps.document.fields_detection.formula_based_field_detection import FormulaBasedFieldDetectionStrategy, \
-    DocumentFieldFormulaError
 from apps.document.fields_detection.formula_and_field_based_ml_field_detection import \
     FieldBasedMLOnlyFieldDetectionStrategy
+from apps.document.fields_detection.formula_based_field_detection import FormulaBasedFieldDetectionStrategy, \
+    DocumentFieldFormulaError
+from apps.document.fields_detection.stop_words import compile_stop_words, detect_value_with_stop_words
 from apps.document.fields_processing.field_processing_utils import order_field_detection
 from apps.document.models import (
     Document, DocumentField, DocumentType,
@@ -60,14 +65,12 @@ from apps.document.models import (
     ClassifierModel, TextUnit, TextUnitProperty, TextUnitNote, TextUnitTag,
     DocumentFieldCategory)
 from apps.document.python_coded_fields_registry import PYTHON_CODED_FIELDS_REGISTRY
-from apps.document.fields_detection.stop_words import compile_stop_words, detect_value_with_stop_words
-from apps.document.events import events
 from apps.task.models import Task
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.8/LICENSE"
-__version__ = "1.1.8"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.9/LICENSE"
+__version__ = "1.1.9"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -95,11 +98,10 @@ class DocumentAdmin(ModelAdminWithPrettyJsonField, SimpleHistoryAdmin):
     search_fields = ['document_type__code', 'name']
 
 
-class DeleteWithUsersTasksValidationActionAdmin(admin.ModelAdmin):
-    users_tasks_running_save_warning_template = 'admin/document/users_tasks_warning_save_form.html'
+class UsersTasksValidationAdmin(admin.ModelAdmin):
+    save_warning_template = 'admin/document/users_tasks_warning_save_form.html'
     delete_confirmation_template = 'admin/document/users_tasks_warning_delete_form.html'
     delete_selected_confirmation_template = 'admin/document/users_tasks_warning_delete_selected_form.html'
-    task_validation_for_new_objects_enabled = False
 
     class QSList(list):
         def __init__(self, qs):
@@ -132,7 +134,7 @@ class DeleteWithUsersTasksValidationActionAdmin(admin.ModelAdmin):
             return None
 
     def delete_selected_action(self, model_admin, request, qs):
-        objects = DeleteWithUsersTasksValidationActionAdmin.QSList(qs)
+        objects = UsersTasksValidationAdmin.QSList(qs)
         if request.POST.get('post'):
             using = router.db_for_write(model_admin.model)
             opts = model_admin.model._meta
@@ -164,7 +166,14 @@ class DeleteWithUsersTasksValidationActionAdmin(admin.ModelAdmin):
     def _get_confirm_action_name(cls, base_action):
         return '_confirm' + base_action
 
-    def _prepare_form_template(self, request, object_id, form_url='', extra_context=None):
+    def build_warning_context(self, object_id, form) -> dict:
+        warning_context = {}
+        user_tasks = self.get_user_tasks_names()
+        if user_tasks:
+            warning_context['running_tasks'] = user_tasks
+        return warning_context
+
+    def _prepare_form_template(self, request, object_id, extra_context=None):
         self.change_form_template = None
         if request.method == 'POST':
             base_actions = ['_save', '_continue', '_addanother']
@@ -176,34 +185,29 @@ class DeleteWithUsersTasksValidationActionAdmin(admin.ModelAdmin):
                     source_action = action
                     break
             if not source_action:
-                user_tasks = self.get_user_tasks_names()
-                if user_tasks:
+                form = None
+                to_field = request.POST.get(TO_FIELD_VAR, request.GET.get(TO_FIELD_VAR))
+                if not to_field or (to_field and self.to_field_allowed(request, to_field)):
+                    obj = self.get_object(request, unquote(object_id), to_field) if object_id else None
+                    ModelForm = self.get_form(request, obj)
+                    form = ModelForm(request.POST, request.FILES, instance=obj)
+                if not form or not form.is_valid():
+                    return extra_context
+                warning_context = self.build_warning_context(object_id, form)
+                if warning_context:
                     for action in base_actions:
                         if action in request.POST:
-                            form = None
-                            to_field = request.POST.get(TO_FIELD_VAR, request.GET.get(TO_FIELD_VAR))
-                            if not to_field or (to_field and self.to_field_allowed(request, to_field)):
-                                obj = self.get_object(request, unquote(object_id), to_field) if object_id else None
-                                ModelForm = self.get_form(request, obj)
-                                form = ModelForm(request.POST, request.FILES, instance=obj)
-                            if form and form.is_valid():
-                                self.change_form_template = self.users_tasks_running_save_warning_template
-                                extra_context = extra_context or {}
-                                extra_context['confirmation_button_name'] = self._get_confirm_action_name(action)
-                                extra_context['source_action'] = action
-                                extra_context['running_tasks'] = user_tasks
-                            else:
-                                break
+                            extra_context = {**warning_context, **extra_context} if extra_context else warning_context
+                            self.change_form_template = self.save_warning_template
+                            extra_context['confirmation_button_name'] = self._get_confirm_action_name(action)
+                            extra_context['source_action'] = action
+                            break
         return extra_context
 
-    def add_view(self, request, form_url='', extra_context=None):
-        if self.task_validation_for_new_objects_enabled:
-            extra_context = self._prepare_form_template(request, None, form_url, extra_context)
-        return super().add_view(request, form_url, extra_context)
-
     def change_view(self, request, object_id, form_url='', extra_context=None):
-        extra_context = self._prepare_form_template(request, object_id, form_url, extra_context)
-        return super().change_view(request, object_id, form_url, extra_context=extra_context)
+        with transaction.atomic():
+            extra_context = self._prepare_form_template(request, object_id, extra_context)
+            return super().change_view(request, object_id, form_url, extra_context=extra_context)
 
     def render_delete_form(self, request, context):
         context = context or {}
@@ -214,7 +218,6 @@ class DeleteWithUsersTasksValidationActionAdmin(admin.ModelAdmin):
     def get_confirmation_form(cls, form_class):
 
         class ConfirmationForm(form_class):
-
             def is_valid(self):
                 return False
 
@@ -222,12 +225,52 @@ class DeleteWithUsersTasksValidationActionAdmin(admin.ModelAdmin):
 
     def get_form(self, request, obj=None, **kwargs):
         form_class = super().get_form(request, obj=None, **kwargs)
-        if self.change_form_template == self.users_tasks_running_save_warning_template:
+        if self.change_form_template == self.save_warning_template:
             form_class = self.get_confirmation_form(form_class)
         return form_class
 
 
+class FieldValuesValidationAdmin(UsersTasksValidationAdmin):
+
+    save_warning_template = 'admin/document/field_values_warning_save_form.html'
+
+    def build_warning_context(self, object_id, form) -> dict:
+        warning_context = super().build_warning_context(object_id, form)
+        document_type_changed = 'document_type' in form.changed_data
+        field_type_changed = 'type' in form.changed_data
+        if object_id is not None and self.model is DocumentField \
+                and (document_type_changed or field_type_changed):
+            values_number = DocumentFieldValue.objects.filter(field=form.instance).count()
+            if values_number > 0:
+                user_values_number = DocumentFieldValue.objects \
+                    .filter(field=form.instance) \
+                    .filter(Q(created_by__isnull=False) | Q(modified_by__isnull=False) | Q(removed_by_user=True)) \
+                    .count()
+                if values_number > 0:
+                    detected_values_number = values_number - user_values_number
+                    detected_values_number = detected_values_number if detected_values_number > 0 else 0
+                    warning_context['values_validation_user_values_number'] = user_values_number
+                    warning_context['values_validation_detected_values_number'] = detected_values_number
+                    modified_fields = None
+                    if document_type_changed and field_type_changed:
+                        modified_fields = 'document type and field type'
+                    elif document_type_changed:
+                        modified_fields = 'document type'
+                    elif field_type_changed:
+                        modified_fields = 'field type'
+                    warning_context['values_validation_modified_fields'] = modified_fields
+        return warning_context
+
+    def add_view(self, request, form_url='', extra_context=None):
+        with transaction.atomic():
+            extra_context = self._prepare_form_template(request, None, extra_context)
+            return super().add_view(request, form_url, extra_context)
+
+
 class DocumentFieldForm(forms.ModelForm):
+    MAX_ESCAPED_FIELD_CODE_LEN = 40
+    R_AZ = re.compile(r'[a-zA-Z]')
+
     depends_on_fields = forms.ModelMultipleChoiceField(
         queryset=DocumentField.objects.all(),
         required=False,
@@ -345,7 +388,7 @@ class DocumentFieldForm(forms.ModelForm):
             if code and code in fields_to_values:
                 del fields_to_values[code]
             if type_code:
-                fields_to_values[field_code] = FIELD_TYPES_REGISTRY[type_code]\
+                fields_to_values[field_code] = FIELD_TYPES_REGISTRY[type_code] \
                     .example_python_value(DocumentField(**self.cleaned_data))
 
             self.calc_formula(field_code,
@@ -358,18 +401,44 @@ class DocumentFieldForm(forms.ModelForm):
         if default_value and type_code == RelatedInfoField.code:
             self.add_error('default_value', 'Related info field can\'t have default value')
 
-        document_field = DocumentField(**self.cleaned_data)
         try:
-            document_field.test_value_regexp()
+            DocumentField.compile_value_regexp(self.cleaned_data['value_regexp'])
         except Exception as exc:
             self.add_error('value_regexp', exc)
+
+        # Ensure field code is not too long for Postgres column names
+        # We use field codes to build column names for Postgres tables.
+        # Max length of column name is 63. We escape them to snake case and sometimes add postfixes to them.
+        # Lets assume that we should have max 23 chars for postfixes and max 40 chars for the field code.
+        field_code_escaped = escape_column_name(field_code)
+        if len(field_code_escaped) > self.MAX_ESCAPED_FIELD_CODE_LEN:
+            self.add_error('code', '''Field code is too long. Field codes are used to build column names of DB tables.
+Escaped version should have max {max_length} chars but it is {length} chars long. Current escaped version of the 
+specified field code is: "{field_code_escaped}"'''
+                           .format(max_length=self.MAX_ESCAPED_FIELD_CODE_LEN,
+                                   length=len(field_code_escaped),
+                                   field_code_escaped=field_code_escaped))
+        if not self.R_AZ.search(field_code_escaped):
+            self.add_error('code', '''Field codes are used to build column names of DB tables. Escaped version of 
+the specified field code should contain at least one latin letter. Current escaped version of the specified field 
+code is: "{0}"'''.format(field_code_escaped))
+
+        if self.initial and 'type' in self.changed_data:
+            wrong_field_detector_pks = []
+            for field_detector in DocumentFieldDetector.objects.filter(field=self.instance):
+                try:
+                    DocumentFieldDetector.validate_detected_value(type_code, field_detector.detected_value)
+                except Exception:
+                    wrong_field_detector_pks.append('#' + field_detector.pk)
+            if wrong_field_detector_pks:
+                self.add_error('type', 'Detected value is not allowed for this field type, please unset detected value '
+                                       'for this field detectors: {0}'.format(', '.join(wrong_field_detector_pks)))
 
         return self.cleaned_data
 
 
-class DocumentFieldAdmin(DeleteWithUsersTasksValidationActionAdmin):
+class DocumentFieldAdmin(FieldValuesValidationAdmin):
     form = DocumentFieldForm
-    task_validation_for_new_objects_enabled = True
     list_display = (
         'document_type', 'code', 'category', 'order', 'title', 'description', 'type', 'formula', 'value_regexp', 'user',
         'modified_date', 'confidence')
@@ -427,19 +496,22 @@ class DocumentFieldAdmin(DeleteWithUsersTasksValidationActionAdmin):
 
 
 class DocumentFieldDetectorForm(forms.ModelForm):
-
     def clean(self):
-        field_detector = DocumentFieldDetector(**self.cleaned_data)
-
         try:
-            field_detector.test_exclude_regexps()
+            DocumentFieldDetector.compile_regexps_string(self.cleaned_data['exclude_regexps'])
         except Exception as exc:
             self.add_error('exclude_regexps', exc)
 
         try:
-            field_detector.test_include_regexps()
+            DocumentFieldDetector.compile_regexps_string(self.cleaned_data['include_regexps'])
         except Exception as exc:
             self.add_error('include_regexps', exc)
+
+        try:
+            DocumentFieldDetector.validate_detected_value(self.cleaned_data['field'].type,
+                                                          self.cleaned_data['detected_value'])
+        except Exception as exc:
+            self.add_error('detected_value', exc)
 
         return self.cleaned_data
 
@@ -578,7 +650,7 @@ class DocumentTypeForm(forms.ModelForm):
         widget=FilteredSelectMultiple('search_fields', False))
 
 
-class DocumentTypeAdmin(ModelAdminWithPrettyJsonField, DeleteWithUsersTasksValidationActionAdmin):
+class DocumentTypeAdmin(ModelAdminWithPrettyJsonField, UsersTasksValidationAdmin):
     list_display = ('code', 'title', 'fields_num', 'user', 'modified_date')
     search_fields = ['code', 'title', 'created_by__username']
     filter_horizontal = ('search_fields',)
