@@ -42,16 +42,22 @@ from apps.document.models import (
     DocumentField, DocumentType, DocumentFieldDetector, DocumentFieldValue, ExternalFieldValue,
     DocumentFieldCategory)
 from apps.extract.models import Court, GeoAlias, GeoEntity, GeoRelation, Party, Term
-from apps.project.models import DocumentFilter
 from apps.task.models import TaskConfig
 from apps.users.models import User, Role
+
+__author__ = "ContraxSuite, LLC; LexPredict, LLC"
+__copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.0/LICENSE"
+__version__ = "1.2.0"
+__maintainer__ = "LexPredict, LLC"
+__email__ = "support@contraxsuite.com"
+
 
 APP_CONFIG_MODELS = [
     DocumentType,
     DocumentField,
     DocumentFieldDetector,
     DocumentFieldCategory,
-    DocumentFilter,
 ]
 
 FULL_DUMP_MODELS = [User,
@@ -78,7 +84,8 @@ def default_object_handler(obj: Any) -> Any:
 
 
 def get_dump(models: list, filter_by_model: dict = None, object_handler_by_model: dict = None) -> str:
-    object_handler_by_model = object_handler_by_model or {}
+    filter_by_model = filter_by_model if filter_by_model is not None else {}
+    object_handler_by_model = object_handler_by_model if object_handler_by_model is not None else {}
     objects = []
     for model in models:
         handler = object_handler_by_model.get(model) or default_object_handler
@@ -110,10 +117,12 @@ def clear_owner(obj: Any) -> Any:
 
 
 def get_app_config_dump(document_type_codes=None) -> str:
-    object_handler_by_model = {DocumentField: clear_owner, DocumentFilter: clear_owner}
+    object_handler_by_model = {DocumentField: clear_owner}
     filter_by_model = {}
     if document_type_codes:
-        document_field_filter = lambda qs: qs.filter(document_type__code__in=document_type_codes)
+        def document_field_filter(qs):
+            return qs.filter(document_type__code__in=document_type_codes)
+
         category_document_type_field = document_field_filter(DocumentField.objects.get_queryset()) \
             .values_list('category__pk') \
             .distinct('category__pk') \
@@ -124,7 +133,6 @@ def get_app_config_dump(document_type_codes=None) -> str:
             DocumentField: document_field_filter,
             DocumentFieldDetector: lambda qs: qs.filter(field__document_type__code__in=document_type_codes),
             DocumentFieldCategory: lambda qs: qs.filter(pk__in=Subquery(category_document_type_field)),
-            DocumentFilter: lambda qs: qs.filter(document_type__code__in=document_type_codes)
         }
     return get_dump(APP_CONFIG_MODELS, filter_by_model, object_handler_by_model)
 

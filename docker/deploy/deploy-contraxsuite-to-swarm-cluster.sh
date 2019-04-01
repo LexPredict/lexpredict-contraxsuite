@@ -42,6 +42,7 @@ export NGINX_EXTERNAL_ROUTES=$(envsubst < ./config-templates/nginx-external-rout
 if sudo [ ! -z "$(sudo ls -A ${VOLUME_FRONTEND})" ]; then
    NGINX_FORNTEND_ROUTES=$(envsubst < ./config-templates/nginx-frontend-routes.conf.template | sed 's/^/    /')
    export NGINX_EXTERNAL_ROUTES=${NGINX_FORNTEND_ROUTES}$'\n\n'${NGINX_EXTERNAL_ROUTES}
+   export DOCKER_FRONTEND_ROOT_URL=${DOCKER_DJANGO_HOST_NAME}
 fi
 
 if sudo [ -f ${VOLUME_NGINX_CERTS}/certificate.pem ]; then

@@ -38,6 +38,7 @@ from django.db import connection
 from django.db import transaction
 from django.db.models import Count, Subquery, Q
 from django.http import JsonResponse
+from django.utils.timezone import now
 # Third-party imports
 from rest_framework import serializers, routers, viewsets
 from rest_framework.decorators import detail_route, list_route
@@ -54,7 +55,7 @@ from apps.common.mixins import JqListAPIMixin, APIActionMixin, APILoggingMixin
 from apps.common.models import ReviewStatus
 from apps.common.utils import get_api_module
 from apps.document.constants import DOCUMENT_TYPE_PK_GENERIC_DOCUMENT
-from apps.document.events import events
+from apps.document import signals
 from apps.document.models import Document, DocumentType, DocumentFieldValue, DocumentField
 from apps.project.models import Project, TaskQueue, UploadSession, ProjectClustering, \
     DocumentFilter, ProjectDocumentsFilter
@@ -65,8 +66,8 @@ from apps.users.models import User
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.9/LICENSE"
-__version__ = "1.1.9"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.0/LICENSE"
+__version__ = "1.2.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -545,9 +546,12 @@ class ProjectViewSet(APILoggingMixin, ProjectPermissionViewMixin, APIActionMixin
                     cluster['reassigned'] = True
                     cluster_reassigning_data = [i for i in reassigning_data
                                                 if cluster['pk'] in i['cluster_ids']]
-                    if len(cluster_reassigning_data) != 1:
-                        raise APIException('Found more than one reassigning of cluster id={}'
-                                           .format(cluster['pk']))
+
+                    # In case of previous errors we can have more than one reassigning stored.
+                    # This is wrong but the system should continue working.
+                    # if len(cluster_reassigning_data) != 1:
+                    #    raise APIException('Found more than one reassigning of cluster id={}'
+                    #                        .format(cluster['pk']))
                     cluster['reassigned_to_project_id'] = cluster_reassigning_data[0]['new_project_id']
 
                 cluster['cluster_terms'] = data['metadata']['clusters_data'][str(cluster['cluster_id'])][
@@ -648,16 +652,15 @@ class ProjectViewSet(APILoggingMixin, ProjectPermissionViewMixin, APIActionMixin
             document_ids = request.data.get('document_ids')
             documents = Document.objects \
                 .filter(project=project, pk__in=document_ids)
-        ret = documents.update(assignee=assignee_id)
+        ret = documents.update(assignee=assignee_id, assign_date=now())
 
-        self._fire_documents_changed(documents)
+        self._fire_documents_changed(documents, user=request.user)
 
         return Response({'success': ret})
 
-    @staticmethod
-    def _fire_documents_changed(doc_qr):
+    def _fire_documents_changed(self, doc_qr, user:User):
         log = ErrorCollectingLogger()
-        events.fire_documents_changed(log, doc_qr)
+        signals.fire_documents_changed(self.__class__, log, doc_qr, changed_by_user=user)
         log.raise_if_error()
 
     @detail_route(methods=['post'])
@@ -696,7 +699,7 @@ class ProjectViewSet(APILoggingMixin, ProjectPermissionViewMixin, APIActionMixin
             DocumentField.objects.filter(pk__in=Subquery(modified_fields)).update(dirty=True)
             ret = documents.update(status=status_id)
 
-        self._fire_documents_changed(documents)
+        self._fire_documents_changed(documents, user=request.user)
 
         return Response({'success': ret})
 

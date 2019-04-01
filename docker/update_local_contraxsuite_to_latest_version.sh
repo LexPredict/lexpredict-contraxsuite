@@ -11,9 +11,7 @@ source ./setenv.sh
 if [ ! -z "${DISTR_DOCKER_IMAGE_URL}" ]; then
     echo "=== Downloading Contraxsuite image from dist server"
     rm -f ./image.tar
-    apt-get update
-    apt-get -y install axel
-    axel --num-connections=5 ${DISTR_DOCKER_IMAGE_URL} -o ./image.tar
+    wget --user=${DISTR_USER} --password=${DISTR_PASSWORD} ${DISTR_DOCKER_IMAGE_URL} -O ./image.tar
     sudo docker load < image.tar
     rm -f ./image.tar
 

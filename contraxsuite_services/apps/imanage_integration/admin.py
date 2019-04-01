@@ -29,6 +29,12 @@ class IManageConfigForm(ModelForm):
             'document_number': '67890'
         }
         eval_locals = IManageConfig.prepare_eval_locals(example_doc)
+        password = self.cleaned_data.get('auth_password')
+        if not password and self.instance and self.instance.pk:
+            conf = IManageConfig.objects.filter(pk=self.instance.pk).first()  # type: IManageConfig
+            if conf:
+                self.cleaned_data['auth_password'] = conf.auth_password
+
         assignee_code = self.cleaned_data['assignee_resolving_code']
         project_code = self.cleaned_data['project_resolving_code']
         if assignee_code:

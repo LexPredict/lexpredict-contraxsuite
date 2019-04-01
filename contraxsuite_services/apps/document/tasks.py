@@ -54,8 +54,8 @@ from apps.task.utils.task_utils import TaskUtils
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.9/LICENSE"
-__version__ = "1.1.9"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.0/LICENSE"
+__version__ = "1.2.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -715,7 +715,7 @@ class FindBrokenDocumentFieldValues(BaseTask):
                 temp_value = dfv.python_value
                 if temp_value is not None:
                     field = dfv.field
-                    if field.is_choice_field() and temp_value not in field.get_choice_values():
+                    if field.is_choice_field() and not field.is_choice_value(temp_value):
                         raise ValueError('Field value {0} is not in list of its choice values:\n{1}'
                                          .format(temp_value, field.choices))
             except:

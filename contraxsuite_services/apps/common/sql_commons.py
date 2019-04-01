@@ -1,6 +1,7 @@
 import re
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple, Generator
 
+from django.db import connection
 from pydash.strings import snake_case
 
 SORT_DIRECTIONS = {'asc', 'desc'}
@@ -10,7 +11,7 @@ def dict_fetch_all(columns: List[str], cursor) -> List[Dict]:
     return [dict(zip(columns, row)) for row in cursor.fetchall()]
 
 
-def escape_column_name(field_code: str, do_snake_case:bool = True):
+def escape_column_name(field_code: str, do_snake_case: bool = True):
     res = snake_case(field_code) if do_snake_case else field_code
     res = ''.join([ch.lower() if ch.isalnum() else '_' for ch in res])
     res = res if len(res) > 0 and res[0].isalpha() else '_' + res
@@ -67,7 +68,7 @@ def join_clauses(separator: str, clauses: List[Optional['SQLClause']], add_paren
     return SQLClause(separator.join(sql), params)
 
 
-def format_clause(sql_template: str, *args, **kwargs):
+def format_clause(sql_template: str, *args, **kwargs) -> SQLClause:
     format_args = [c.sql if isinstance(c, SQLClause) else (c or '') for c in args] if args else []
     format_kwargs = {name: value.sql if isinstance(value, SQLClause) else (value or '')
                      for name, value in kwargs.items()} if kwargs else {}
@@ -127,3 +128,17 @@ def fetch_int(cursor, sql: SQLClause) -> int:
     cursor.execute(sql.sql, sql.params)
     return cursor.fetchone()[0]
 
+
+def fetch_bool(cursor, sql: SQLClause) -> bool:
+    cursor.execute(sql.sql, sql.params)
+    return bool(cursor.fetchone()[0])
+
+
+def sql_query(sql: str, params: List = None) -> Generator[Tuple, None, None]:
+    with connection.cursor() as cursor:
+        cursor.execute(sql, params)
+        rows = cursor.fetchmany(100)
+        while rows:
+            for row in rows:
+                yield row
+            rows = cursor.fetchmany(100)

@@ -28,6 +28,7 @@
 import traceback
 from typing import Dict, Tuple
 from urllib import parse
+from datetime import datetime
 
 # Third-party imports
 import numpy as np
@@ -60,7 +61,7 @@ from apps.common.mixins import (
     NestedKeyTextTransform, APIActionMixin)
 from apps.common.models import ReviewStatus
 from apps.common.utils import get_api_module
-from apps.document.events import events
+from apps.document import signals
 from apps.document.field_types import FIELD_TYPES_REGISTRY, FieldType
 from apps.document.fields_detection.field_detection_celery_api import run_detect_field_values_for_document
 from apps.document.fields_processing.field_value_cache import cache_field_values
@@ -75,8 +76,8 @@ from apps.users.models import User
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.9/LICENSE"
-__version__ = "1.1.9"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.0/LICENSE"
+__version__ = "1.2.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -214,7 +215,7 @@ class BaseDocumentSerializer(SimpleRelationSerializer):
         model = Document
         fields = ['pk', 'name', 'document_type', 'file_size',
                   'status', 'status_data', 'status_name', 'available_statuses_data',
-                  'assignee', 'assignee_data', 'assignee_name', 'available_assignees_data',
+                  'assignee', 'assign_date', 'assignee_data', 'assignee_name', 'available_assignees_data',
                   'project', 'description', 'title']
 
     def get_available_assignees_data(self, obj):
@@ -271,7 +272,7 @@ class DocumentWithFieldsDetailSerializer(BaseDocumentSerializer):
         model = Document
         fields = ['pk', 'name', 'document_type', 'file_size',
                   'status', 'status_data', 'available_statuses_data',
-                  'assignee', 'assignee_data', 'available_assignees_data',
+                  'assignee', 'assign_date', 'assignee_data', 'available_assignees_data',
                   'description', 'title', 'full_text',
                   'field_value_objects', 'field_values', 'notes']
 
@@ -321,13 +322,25 @@ class DocumentWithFieldsDetailSerializer(BaseDocumentSerializer):
                     DocumentField.objects \
                         .filter(document_type_id=instance.document_type_id, pk__in=Subquery(field_ids)) \
                         .update(dirty=True)
+
+            user = self.context['request'].user  # type: User
+            new_assignee = validated_data.get('assignee')
+            prev_assignee = instance.assignee
+            if new_assignee is None and prev_assignee is not None:
+                validated_data['assign_date'] = None
+            elif new_assignee is not None and (prev_assignee is None or new_assignee.pk != prev_assignee.pk):
+                validated_data['assign_date'] = datetime.now(tz=user.get_time_zone())
+
             res = super().update(instance, validated_data)
             log = ErrorCollectingLogger()
-            events.on_document_change.fire(events.DocumentChangedEvent(log, instance,
-                                                                       system_fields_changed=True,
-                                                                       generic_fields_changed=False,
-                                                                       user_fields_changed=False,
-                                                                       pre_detected_field_values=None))
+            signals.fire_document_changed(self.__class__,
+                                          log=log,
+                                          document=instance,
+                                          system_fields_changed=True,
+                                          generic_fields_changed=False,
+                                          user_fields_changed=False,
+                                          pre_detected_field_values=None,
+                                          changed_by_user=user)
             log.raise_if_error()
             return res
 
@@ -343,7 +356,7 @@ class DocumentWithFieldsListSerializer(BaseDocumentSerializer):
         fields = ['pk', 'name', 'document_type',
                   'description', 'title', 'file_size',
                   'status', 'status_data', 'status_name',
-                  'assignee', 'assignee_data', 'assignee_name',
+                  'assignee', 'assign_date', 'assignee_data', 'assignee_name',
                   'field_values']
 
     def get_field_values(self, doc):
@@ -373,7 +386,7 @@ class ExtendedDocumentWithFieldsListSerializer(GenericDocumentSerializer,
         fields = ['pk', 'name', 'document_type',
                   'description', 'title', 'file_size',
                   'status', 'status_data', 'status_name',
-                  'assignee', 'assignee_data', 'assignee_name',
+                  'assignee', 'assign_date', 'assignee_data', 'assignee_name',
                   'field_values', 'cluster_id', 'parties',
                   'min_date', 'max_date',
                   'max_currency_amount', 'max_currency_name']
@@ -1491,10 +1504,10 @@ contained in the document but it is not specified where exactly it is contained.
     return doc, _to_dto(field_value)
 
 
-def cache_and_detect_field_values(doc: Document):
+def cache_and_detect_field_values(doc: Document, user: User = None):
     # First pre-cache field_values right in web-api thread to avoid missync between
     # just stored DocumentFieldValue-s and Document.field_values
-    cache_field_values(doc, None, save=True)
+    cache_field_values(doc, None, save=True, changed_by_user=user)
 
     # Next start field re-detection and re-caching in Celery because there can be other fields
     # depending on the changed fields.
@@ -1558,7 +1571,7 @@ class AnnotationViewSet(viewsets.ModelViewSet):
     def update(self, request, *args, **kwargs):
         try:
             doc, res = do_save_document_field_value(request.data, request.user)
-            cache_and_detect_field_values(doc)
+            cache_and_detect_field_values(doc, user=request.user)
         except Exception as e:
             res = render_error_json(None, e)
 
@@ -1574,7 +1587,7 @@ class AnnotationViewSet(viewsets.ModelViewSet):
     def destroy(self, request, *args, **kwargs):
         try:
             doc, res = do_delete_document_field_value(kwargs['pk'])
-            cache_and_detect_field_values(doc)
+            cache_and_detect_field_values(doc, user=request.user)
         except Exception as e:
             res = render_error_json(None, e)
         return Response(res)
@@ -1632,7 +1645,7 @@ class AnnotationViewSet(viewsets.ModelViewSet):
 
         for doc in documents_to_cache:
             if doc:
-                cache_and_detect_field_values(doc)
+                cache_and_detect_field_values(doc, user=request.user)
 
         return Response(res)
 

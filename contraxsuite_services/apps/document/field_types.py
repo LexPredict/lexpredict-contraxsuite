@@ -25,16 +25,15 @@
 # -*- coding: utf-8 -*-
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.9/LICENSE"
-__version__ = "1.1.9"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.0/LICENSE"
+__version__ = "1.2.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
-import re
 from datetime import datetime, date
 from enum import Enum, unique
 from random import randint, random
-from typing import List, Tuple, Optional, Any, Callable
+from typing import List, Tuple, Optional, Any, Callable, Dict
 
 import dateparser
 import pyap
@@ -348,9 +347,9 @@ class FieldType:
     def save_value(self,
                    document,
                    field,
-                   location_start: int,
-                   location_end: int,
-                   location_text: str,
+                   location_start: Optional[int],
+                   location_end: Optional[int],
+                   location_text: Optional[str],
                    text_unit,
                    value=None,
                    user=None,
@@ -386,8 +385,7 @@ class FieldType:
             if field_value:
                 qr = models.DocumentFieldValue.objects.filter(document=document, field=field).exclude(pk=field_value.pk)
                 if not allow_overwriting_user_data:
-                    qr = qr.exclude(Q(created_by__isnull=False) | Q(modified_by__isnull=False)) \
-
+                    qr = qr.exclude(Q(created_by__isnull=False) | Q(modified_by__isnull=False))
                 qr.filter(location_start__isnull=True, location_end__isnull=True).delete()
                 qr.exclude(location_start__isnull=True, location_end__isnull=True).update(removed_by_user=True)
 
@@ -567,7 +565,7 @@ class ChoiceField(FieldType):
         return django_models.TextField
 
     def _extract_from_possible_value(self, field, possible_value):
-        if field.allow_values_not_specified_in_choices or possible_value in field.get_choice_values():
+        if field.is_choice_value(possible_value):
             return possible_value
         else:
             return None
@@ -586,6 +584,43 @@ class ChoiceField(FieldType):
         return [('clean', vectorizers.ReplaceNoneTransformer('')),
                 ('vect', vect),
                 ('tfidf', TfidfTransformer())], self._wrap_get_feature_names(vect)
+
+
+class BooleanField(FieldType):
+    code = 'boolean'
+    title = 'Boolean'
+    requires_value = True
+    allows_value = True
+    value_extracting = False
+
+    def merged_python_value_to_db(self, merged_python_value):
+        return bool(merged_python_value)
+
+    def merged_db_value_to_python(self, db_value):
+        return bool(db_value)
+
+    def get_postgres_transform_map(self):
+        return django_models.BooleanField
+
+    def _extract_from_possible_value(self, field, possible_value):
+        if not possible_value:
+            return False
+        if type(possible_value) is bool:
+            return bool(possible_value)
+        elif type(possible_value) is str:
+            return str(possible_value).lower() in {'yes', 'on', 'true'}
+        else:
+            return bool(possible_value)
+
+    def _extract_variants_from_text(self, field, text: str, **kwargs):
+        return None
+
+    def example_python_value(self, field):
+        return False
+
+    def build_vectorization_pipeline(self) -> Tuple[List[Tuple[str, Any]], Callable[[], List[str]]]:
+        vect = vectorizers.NumberVectorizer()
+        return [('vect', vect)], self._wrap_get_feature_names(vect)
 
 
 class MultiChoiceField(ChoiceField):
@@ -635,6 +670,58 @@ class MultiChoiceField(ChoiceField):
         return [('clean', vectorizers.ReplaceNoneTransformer('')),
                 ('vect', count_vectorizer),
                 ('tfidf', TfidfTransformer())], self._wrap_get_feature_names(count_vectorizer)
+
+
+class DateTimeField(FieldType):
+    code = 'datetime'
+    title = 'DateTime: Non-recurring Events'
+    requires_value = True
+    allows_value = True
+    value_extracting = True
+    ordinal = True
+
+    def merged_python_value_to_db(self, merged_python_value):
+        if not merged_python_value:
+            return None
+
+        if type(merged_python_value) is date or type(merged_python_value) is datetime:
+            return merged_python_value.isoformat()
+
+        if type(merged_python_value) is str:
+            return merged_python_value
+
+        return None
+
+    def merged_db_value_to_python(self, db_value):
+        if not db_value:
+            return None
+
+        return dateparser.parse(str(db_value))
+
+    def get_postgres_transform_map(self):
+        return django_models.DateTimeField
+
+    def _extract_from_possible_value(self, field, possible_value):
+        if isinstance(possible_value, datetime) or isinstance(possible_value, date):
+            return possible_value
+        else:
+            try:
+                return dateparser.parse(str(possible_value))
+            except:
+                return None
+
+    def _extract_variants_from_text(self, field, text: str, **kwargs):
+        dates = get_dates_list(text) or []
+        dates = [d.date() if isinstance(d, datetime) else d
+                 for d in dates if d.year < 3000]
+        return dates or None
+
+    def example_python_value(self, field):
+        return datetime.now()
+
+    def build_vectorization_pipeline(self) -> Tuple[List[Tuple[str, Any]], Callable[[], List[str]]]:
+        vect = vectorizers.SerialDateVectorizer()
+        return [('vect', vect)], lambda: vect.get_feature_names()
 
 
 class DateField(FieldType):
@@ -1179,7 +1266,9 @@ _FIELD_TYPES = (StringField,
                 StringFieldWholeValueAsAToken,
                 LongTextField,
                 IntField,
+                BooleanField,
                 FloatField,
+                DateTimeField,
                 DateField,
                 RecurringDateField,
                 CompanyField,
@@ -1193,4 +1282,4 @@ _FIELD_TYPES = (StringField,
                 MoneyField,
                 GeographyField)
 
-FIELD_TYPES_REGISTRY = {field_type.code: field_type() for field_type in _FIELD_TYPES}
+FIELD_TYPES_REGISTRY = {field_type.code: field_type() for field_type in _FIELD_TYPES}  # type: Dict[str, FieldType]

@@ -27,16 +27,18 @@
 # Future imports
 from __future__ import unicode_literals, absolute_import
 
+import tzlocal
 # Django imports
 from django.contrib.auth.models import AbstractUser
 from django.db import models
 from django.utils.encoding import python_2_unicode_compatible
 from django.utils.translation import ugettext_lazy as _
+from timezone_field import TimeZoneField
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.9/LICENSE"
-__version__ = "1.1.9"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.0/LICENSE"
+__version__ = "1.2.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -80,6 +82,7 @@ class User(AbstractUser):
     name = models.CharField(_('Name of User'), blank=True, max_length=255)
     role = models.ForeignKey(Role, blank=True, null=True)
     organization = models.CharField(_('Organization'), max_length=100, blank=True, null=True)
+    timezone = TimeZoneField(blank=True, null=True)
     photo = models.ImageField(upload_to='photos/', max_length=100, blank=True, null=True)
 
     class Meta(object):
@@ -121,3 +124,6 @@ class User(AbstractUser):
             full_name = '%s %s' % (self.first_name, self.last_name)
             return full_name.strip()
         return self.username
+
+    def get_time_zone(self):
+        return self.timezone or tzlocal.get_localzone()

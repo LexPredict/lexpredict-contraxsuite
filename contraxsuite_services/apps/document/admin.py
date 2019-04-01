@@ -50,7 +50,7 @@ from simple_history.admin import SimpleHistoryAdmin
 import settings
 from apps.common.script_utils import ScriptError
 from apps.common.sql_commons import escape_column_name
-from apps.document.events import events
+from apps.document import signals
 from apps.document.field_types import FIELD_TYPES_REGISTRY, RelatedInfoField
 from apps.document.fields_detection.formula_and_field_based_ml_field_detection import \
     FieldBasedMLOnlyFieldDetectionStrategy
@@ -69,8 +69,8 @@ from apps.task.models import Task
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.9/LICENSE"
-__version__ = "1.1.9"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.0/LICENSE"
+__version__ = "1.2.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -231,7 +231,6 @@ class UsersTasksValidationAdmin(admin.ModelAdmin):
 
 
 class FieldValuesValidationAdmin(UsersTasksValidationAdmin):
-
     save_warning_template = 'admin/document/field_values_warning_save_form.html'
 
     def build_warning_context(self, object_id, form) -> dict:
@@ -485,10 +484,10 @@ class DocumentFieldAdmin(FieldValuesValidationAdmin):
 
     def save_model(self, request, obj, form, change):
         super().save_model(request, obj, form, change)
-        events.on_document_field_updated(obj)
+        signals.document_field_changed.send(self.__class__, user=request.user, document_field=obj)
 
     def on_object_deleted(self, obj):
-        events.on_document_field_deleted(obj)
+        signals.document_field_deleted.send(self.__class__, user=None, document_field=obj)
 
     @staticmethod
     def user(obj):
@@ -685,10 +684,10 @@ class DocumentTypeAdmin(ModelAdminWithPrettyJsonField, UsersTasksValidationAdmin
 
     def save_model(self, request, obj, form, change):
         super().save_model(request, obj, form, change)
-        events.on_document_type_updated(obj)
+        signals.document_type_changed.send(self.__class__, user=None, document_type=obj)
 
     def on_object_deleted(self, obj):
-        events.on_document_type_deleted(obj)
+        signals.document_type_deleted.send(self.__class__, user=None, document_type=obj)
 
 
 class DocumentPropertyAdmin(admin.ModelAdmin):

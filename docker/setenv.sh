@@ -131,6 +131,8 @@ then
     source setenv_local.sh
 fi
 
+export DOCKER_FRONTEND_ROOT_URL=${DOCKER_DJANGO_HOST_NAME}
+
 if [ -z "${DOCKER_REGISTRY}" ]; then
     export CONTRAXSUITE_IMAGE_FULL_NAME=${CONTRAXSUITE_IMAGE}
 else
