@@ -57,7 +57,6 @@ from apps.common.advancedcelery.fileaccess.local_file_access import LocalFileAcc
 warnings.filterwarnings('ignore',
                         message='''Trying to unpickle estimator|The psycopg2 wheel package will be renamed|numpy.core.umath_tests''')
 
-
 ROOT_DIR = environ.Path(__file__) - 2
 PROJECT_DIR = ROOT_DIR.path('contraxsuite_services')
 APPS_DIR = PROJECT_DIR.path('apps')
@@ -86,6 +85,7 @@ INSTALLED_APPS = (
     'allauth.account',  # registration
     'allauth.socialaccount',  # registration
     'simple_history',  # historical records
+    'django_celery_beat',  # task scheduling via DB
     'django_celery_results',  # for celery tasks
     'filebrowser',  # browse/upload documents
     'django_extensions',
@@ -105,7 +105,7 @@ INSTALLED_APPS = (
     'constance',  # django-constance
     'constance.backends.database',  # django-constance backend
     'corsheaders',  # inject CORS headers into response
-    'django_json_widget',   # widget for json field for admin site
+    'django_json_widget',  # widget for json field for admin site
 
     # django-rest
     'rest_framework',
@@ -135,7 +135,6 @@ apps_dir = PROJECT_DIR('apps')
 PROJECT_APPS = tuple('apps.%s' % name for name in os.listdir(apps_dir)
                      if os.path.isdir(os.path.join(apps_dir, name)) and '__' not in name)
 INSTALLED_APPS += PROJECT_APPS
-
 
 # MIDDLEWARE CONFIGURATION
 # ------------------------------------------------------------------------------
@@ -246,6 +245,9 @@ TEMPLATES = [
 DEFAULT_FROM_EMAIL = '"ContraxSuite" <support@contraxsuite.com>'
 DEFAULT_REPLY_TO = '"ContraxSuite" <support@contraxsuite.com>'
 SERVER_EMAIL = '"ContraxSuite" <support@contraxsuite.com>'
+
+EMAIL_TIMEOUT = 30
+EMAIL_PARALLEL_SEND = 8
 
 # See: http://django-crispy-forms.readthedocs.io/en/latest/install.html#template-packs
 CRISPY_TEMPLATE_PACK = 'bootstrap4'
@@ -392,6 +394,8 @@ TASK_NAME_MANUAL_REINDEX = 'RawDB: Reindex'
 
 TASK_NAME_IMANAGE_TRIGGER_SYNC = 'apps.imanage_integration.tasks.trigger_imanage_sync'
 
+TASK_NAME_TRIGGER_DIGESTS = 'apps.notifications.tasks.trigger_digests'
+
 CELERY_BEAT_SCHEDULE = {
     # Backend cleanup is disabled to not miss debug info after long loading
     # 'advanced_celery.backend_cleanup': {
@@ -420,8 +424,8 @@ CELERY_BEAT_SCHEDULE = {
     },
     'deployment.usage_stats': {
         'task': 'deployment.usage_stats',
-        'schedule': 60*60*12,
-        'options': {'queue': 'default', 'expires': 60*60*12},
+        'schedule': 60 * 60 * 12,
+        'options': {'queue': 'default', 'expires': 60 * 60 * 12},
     },
     'apps.rawdb.tasks.adapt_table_and_reindex_doc_type': {
         'task': TASK_NAME_AUTO_REINDEX,
@@ -432,6 +436,11 @@ CELERY_BEAT_SCHEDULE = {
         'task': TASK_NAME_IMANAGE_TRIGGER_SYNC,
         'schedule': 60,
         'options': {'queue': 'serial', 'expires': 60},
+    },
+    'apps.notifications.trigger_digests': {
+        'task': TASK_NAME_TRIGGER_DIGESTS,
+        'schedule': 5,
+        'options': {'queue': 'serial', 'expires': 5},
     }
 }
 
@@ -448,6 +457,7 @@ EXCLUDE_FROM_TRACKING = {
     'apps.rawdb.tasks.cache_document_fields_for_doc_ids_not_tracked',
     TASK_NAME_AUTO_REINDEX,
     TASK_NAME_IMANAGE_TRIGGER_SYNC,
+    TASK_NAME_TRIGGER_DIGESTS
 }
 
 REMOVE_WHEN_READY = set()
@@ -474,6 +484,7 @@ CELERY_TASK_QUEUES = (
     Queue('default', routing_key='task_default.#'),
     Queue('high_priority', routing_key='task_high_priority.#'),
     Queue('serial', routing_key='task_serial.#'),
+    Queue('beat-db', routing_key='task_beat_db.#'),
 )
 
 CELERY_TASK_DEFAULT_QUEUE = 'default'
@@ -757,8 +768,40 @@ NOTEBOOK_ARGUMENTS = [
 # CORS_ALLOW_CREDENTIALS = False
 # CORS_URLS_REGEX = r'^.*$'
 
-VERSION_NUMBER = '1.1.9'
+VERSION_NUMBER = '1.2.0'
 VERSION_COMMIT = 'cdd28414'
+
+DIGEST_TEMPLATES_PATH = 'apps/notifications/digest_templates'
+NOTIFICATION_TEMPLATES_PATH = 'apps/notifications/notification_templates'
+
+DATA_UPLOAD_MAX_NUMBER_FIELDS = None
+
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTOCOL', 'https')
+
+CALCULATED_FIELDS_EVAL_LOCALS = {'datetime': datetime, 'len': len}
+
+SCRIPTS_BASE_EVAL_LOCALS = {'datetime': datetime, 'len': len}
+
+RETRAINING_DELAY_IN_SEC = 1 * 60 * 60
+
+RETRAINING_TASK_EXECUTION_DELAY_IN_SEC = 1 * 60 * 60
+
+TRAINED_AFTER_DOCUMENTS_NUMBER = 100
+
+TEXT_UNITS_TO_PARSE_PACKAGE_SIZE = 50
+
+ML_TRAIN_DATA_SET_GROUP_LEN = 10000
+
+RAW_DB_FULL_TEXT_SEARCH_CUT_ABOVE_TEXT_LENGTH = 4 * 1024 * 1024
+
+# Debugging Docker Deployments:
+# CELERY_BROKER_URL = 'amqp://contrax1:contrax1@127.0.0.1:56720/contrax1_vhost'
+# CELERY_CACHE_REDIS_URL = 'redis://127.0.0.1:63790/0'
+# CELERY_FILE_ACCESS_TYPE = 'Nginx'
+# CELERY_FILE_ACCESS_NGINX_ROOT_URL = 'http://127.0.0.1:800/media/data/documents/'
+# TIKA_FOR_EXTENSIONS = ['pdf']
+
+FRONTEND_ROOT_URL = None
 
 try:
     from local_settings import *
@@ -782,6 +825,8 @@ try:
             REMOVE_WHEN_READY.add(task_name)
 except (ImportError, NameError):
     pass
+
+PIPELINE['PIPELINE_ENABLED'] = PIPELINE_ENABLED
 
 BASE_URL = re.sub('^/+', '', BASE_URL)
 BASE_URL = re.sub('/+$', '', BASE_URL)
@@ -847,31 +892,3 @@ AUTOLOGIN_ALWAYS_OPEN_URLS = [
 AUTOLOGIN_TEST_USER_FORBIDDEN_URLS = [
     'accounts/(?!login|logout)',
 ]
-
-DATA_UPLOAD_MAX_NUMBER_FIELDS = None
-PIPELINE['PIPELINE_ENABLED'] = PIPELINE_ENABLED
-
-SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTOCOL', 'https')
-
-CALCULATED_FIELDS_EVAL_LOCALS = {'datetime': datetime, 'len': len}
-
-SCRIPTS_BASE_EVAL_LOCALS = {'datetime': datetime, 'len': len}
-
-RETRAINING_DELAY_IN_SEC = 1 * 60 * 60
-
-RETRAINING_TASK_EXECUTION_DELAY_IN_SEC = 1 * 60 * 60
-
-TRAINED_AFTER_DOCUMENTS_NUMBER = 100
-
-TEXT_UNITS_TO_PARSE_PACKAGE_SIZE = 50
-
-ML_TRAIN_DATA_SET_GROUP_LEN = 10000
-
-RAW_DB_FULL_TEXT_SEARCH_CUT_ABOVE_TEXT_LENGTH = 4 * 1024 * 1024
-
-# Debugging Docker Deployments:
-# CELERY_BROKER_URL = 'amqp://contrax1:contrax1@127.0.0.1:56720/contrax1_vhost'
-# CELERY_CACHE_REDIS_URL = 'redis://127.0.0.1:63790/0'
-# CELERY_FILE_ACCESS_TYPE = 'Nginx'
-# CELERY_FILE_ACCESS_NGINX_ROOT_URL = 'http://127.0.0.1:800/media/data/documents/'
-# TIKA_FOR_EXTENSIONS = ['pdf']

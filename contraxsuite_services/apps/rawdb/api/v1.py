@@ -1,4 +1,31 @@
+"""
+    Copyright (C) 2017, ContraxSuite, LLC
+
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU Affero General Public License as
+    published by the Free Software Foundation, either version 3 of the
+    License, or (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU Affero General Public License for more details.
+
+    You should have received a copy of the GNU Affero General Public License
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+    You can also be released from the requirements of the license by purchasing
+    a commercial license from ContraxSuite, LLC. Buying such a license is
+    mandatory as soon as you develop commercial activities involving ContraxSuite
+    software without disclosing the source code of your own applications.  These
+    activities include: offering paid services to customers as an ASP or "cloud"
+    provider, processing documents on the fly in a web application,
+    or shipping ContraxSuite within a closed source product.
+"""
+
+from django.db.models import Q
 import time
+from collections import defaultdict
 from typing import Dict, List, Any, Set
 
 from django.conf.urls import url
@@ -13,11 +40,18 @@ from apps.common.url_utils import as_bool, as_int, as_int_list, as_str_list
 from apps.document.models import DocumentType
 from apps.project.models import Project
 from apps.rawdb.constants import FT_COMMON_FILTER, FT_USER_DOC_GRID_CONFIG
-from apps.rawdb.field_value_tables import get_columns, get_documents, DocumentQueryResults, \
-    FIELD_CODES_SHOW_BY_DEFAULT_GENERIC, FIELD_CODES_SHOW_BY_DEFAULT_NON_GENERIC
+from apps.rawdb.field_value_tables import get_columns, query_documents, DocumentQueryResults, \
+    FIELD_CODES_SHOW_BY_DEFAULT_GENERIC, FIELD_CODES_SHOW_BY_DEFAULT_NON_GENERIC, FIELD_CODES_HIDE_FROM_CONFIG_API
 from apps.rawdb.models import SavedFilter
 from apps.rawdb.rawdb.field_handlers import ColumnDesc
 from apps.rawdb.rawdb.query_parsing import parse_order_by
+
+__author__ = "ContraxSuite, LLC; LexPredict, LLC"
+__copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.0/LICENSE"
+__version__ = "1.2.0"
+__maintainer__ = "LexPredict, LLC"
+__email__ = "support@contraxsuite.com"
 
 
 def _column_to_dto(column: ColumnDesc, add_query_syntax: bool = False) -> Dict:
@@ -73,49 +107,55 @@ class RawDBConfigAPIView(APILoggingMixin, APIView):
             columns = get_columns(document_type,
                                   include_suggested=False,
                                   include_generic=document_type.is_generic())  # type: List[ColumnDesc]
+            columns = [c for c in columns if c.field_code not in FIELD_CODES_HIDE_FROM_CONFIG_API]
 
             system_fields = FIELD_CODES_SHOW_BY_DEFAULT_GENERIC \
                 if document_type.is_generic() else FIELD_CODES_SHOW_BY_DEFAULT_NON_GENERIC
             search_fields = set(document_type.search_fields.all().values_list('code', flat=True))
 
             default_columns = {c.name for c in columns
-                               if c.field_code in system_fields or c.field_code in search_fields}
+                               if c.field_code not in FIELD_CODES_HIDE_FROM_CONFIG_API
+                               and (c.field_code in system_fields or c.field_code in search_fields)}
 
             document_type_schema[document_type.code] = _document_type_schema_to_dto(document_type,
                                                                                     columns,
                                                                                     default_columns,
                                                                                     add_query_syntax)
 
-        common_filters_by_document_type = dict()
+        common_filters_by_document_type = defaultdict(list)  # type: Dict[List]
 
-        for document_type_code, filter_id, title in SavedFilter.objects \
-                .filter(user__isnull=True, project_id__isnull=True, filter_type=FT_COMMON_FILTER) \
-                .values_list('document_type__code', 'id', 'title'):
-            common_filters_by_document_type[document_type_code] = {
+        for document_type_code, filter_id, title, display_order in SavedFilter.objects \
+                .filter(project_id__isnull=True, filter_type=FT_COMMON_FILTER) \
+                .filter(Q(user__isnull=True) | Q(user=request.user)) \
+                .values_list('document_type__code', 'id', 'title', 'display_order'):
+            common_filters_by_document_type[document_type_code].append({
                 'id': filter_id,
-                'title': title
-            }
+                'title': title,
+                'display_order': display_order
+            })
 
-        common_filters_by_project = dict()
+        common_filters_by_project = defaultdict(list)  # type: Dict[List]
 
-        for project_id, filter_id, title in SavedFilter.objects \
-                .filter(user__isnull=True, project_id__isnull=False, filter_type=FT_COMMON_FILTER) \
-                .values_list('project_id', 'id', 'title'):
-            common_filters_by_project[project_id] = {
+        for project_id, filter_id, title, display_order in SavedFilter.objects \
+                .filter(project_id__isnull=False, filter_type=FT_COMMON_FILTER) \
+                .filter(Q(user__isnull=True) | Q(user=request.user)) \
+                .values_list('project_id', 'id', 'title', 'display_order'):
+            common_filters_by_project[project_id].append({
                 'id': filter_id,
-                'title': title
-            }
+                'title': title,
+                'display_order': display_order
+            })
 
-        user_doc_grid_configs_by_project = dict()
+        user_doc_grid_configs_by_project = defaultdict(list)  # type: Dict[List]
 
         for project_id, columns, column_filters, order_by in SavedFilter.objects \
                 .filter(user=request.user, project_id__isnull=False, filter_type=FT_USER_DOC_GRID_CONFIG) \
                 .values_list('project_id', 'columns', 'column_filters', 'order_by'):
-            user_doc_grid_configs_by_project[project_id] = {
+            user_doc_grid_configs_by_project[project_id].append({
                 'columns': columns,
                 'column_filters': column_filters,
                 'order_by': order_by
-            }
+            })
 
         return Response({
             'document_type_schema': document_type_schema,
@@ -194,19 +234,19 @@ class DocumentsAPIView(APIView):
                                                                           column, direction in
                                                                           order_by] if order_by else None
                                                          })
-            query_results = get_documents(requester=request.user,
-                                          document_type=document_type,
-                                          project_ids=project_ids,
-                                          column_names=columns,
-                                          saved_filter_ids=saved_filters,
-                                          column_filters=column_filters,
-                                          order_by=order_by,
-                                          offset=offset,
-                                          limit=limit,
-                                          return_documents=return_data,
-                                          return_reviewed_count=return_reviewed,
-                                          return_total_count=return_total,
-                                          ignore_errors=ignore_errors)  # type: DocumentQueryResults
+            query_results = query_documents(requester=request.user,
+                                            document_type=document_type,
+                                            project_ids=project_ids,
+                                            column_names=columns,
+                                            saved_filter_ids=saved_filters,
+                                            column_filters=column_filters,
+                                            order_by=order_by,
+                                            offset=offset,
+                                            limit=limit,
+                                            return_documents=return_data,
+                                            return_reviewed_count=return_reviewed,
+                                            return_total_count=return_total,
+                                            ignore_errors=ignore_errors)  # type: DocumentQueryResults
 
             if fmt.lower() == 'csv':
                 if not return_data:
@@ -246,13 +286,13 @@ class ProjectStatsAPIView(APIView):
 
             saved_filters = as_int_list(request.GET, 'saved_filters')  # type: List[int]
 
-            query_results = get_documents(request.user,
-                                          project.type,
-                                          [project.pk],
-                                          saved_filter_ids=saved_filters,
-                                          return_reviewed_count=True,
-                                          return_documents=False,
-                                          return_total_count=True)  # type: DocumentQueryResults
+            query_results = query_documents(requester=request.user,
+                                            document_type=project.type,
+                                            project_ids=[project.pk],
+                                            saved_filter_ids=saved_filters,
+                                            return_reviewed_count=True,
+                                            return_documents=False,
+                                            return_total_count=True)  # type: DocumentQueryResults
             if not query_results:
                 return Response({'time': time.time() - start})
 

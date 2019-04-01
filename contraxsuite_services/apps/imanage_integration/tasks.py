@@ -1,6 +1,6 @@
 import json
 from itertools import chain
-from typing import List, Dict, Any
+from typing import List, Dict
 
 from billiard.exceptions import SoftTimeLimitExceeded
 from celery import shared_task
@@ -12,8 +12,8 @@ from psycopg2 import InterfaceError, OperationalError
 from apps.celery import app
 from apps.common.collection_utils import chunks
 from apps.common.log_utils import render_error
-from apps.common.streaming_utils import buffer_contents_into_file
 from apps.common.sql_commons import fetch_int, SQLClause
+from apps.common.streaming_utils import buffer_contents_into_file
 from apps.imanage_integration.models import IManageConfig, IManageDocument
 from apps.task.models import Task
 from apps.task.tasks import BaseTask, ExtendedTask, LoadDocuments, call_task
@@ -36,6 +36,7 @@ class IManageSynchronization(BaseTask):
                  autoretry_for=(SoftTimeLimitExceeded, InterfaceError, OperationalError),
                  max_retries=0)
     def sync_imanage_document(task: ExtendedTask, imanage_config_id: int, imanage_doc_id: str):
+        task.log_info('Synchronizing iManage document #{0} or config #{1}'.format(imanage_doc_id, imanage_config_id))
         imanage_doc = IManageDocument.objects \
             .filter(imanage_config_id=imanage_config_id, imanage_doc_id=imanage_doc_id) \
             .select_related('imanage_config').get()
@@ -46,7 +47,9 @@ class IManageSynchronization(BaseTask):
 
             assignee = imanage_config.resolve_assignee(imanage_doc.imanage_doc_data)
             assignee_id = assignee.pk if assignee else None
+            task.log_info('Assignee resolved to: {0}'.format(assignee.get_full_name() if assignee else '<no assignee>'))
 
+            task.log_info('Downloading iManage document contents into a temp file...')
             auth_token = imanage_config.login()
             filename, response = imanage_config.load_document(auth_token, imanage_doc_id)
             with buffer_contents_into_file(filename, response) as temp_fn:
@@ -56,25 +59,52 @@ class IManageSynchronization(BaseTask):
                     'assignee_id': assignee_id,
                     'propagate_exception': True,
                     'run_standard_locators': True,
-                    'metadata': {}
+                    'metadata': {},
+                    'do_not_check_exists': True
                 }
 
-                ret = LoadDocuments.create_document_local(task, temp_fn, filename, kwargs)  # type: Dict[str, Any]
-                if ret:
-                    imanage_doc.document_id = ret['document_id']
+                pre_defined_fields = None
+                if imanage_doc.imanage_doc_data and imanage_config.imanage_to_contraxsuite_field_binding:
+                    pre_defined_fields = dict()
+                    for imanage_field_code, contraxsuite_field_code \
+                            in dict(imanage_config.imanage_to_contraxsuite_field_binding).items():
+                        imanage_field_value = imanage_doc.imanage_doc_data.get(imanage_field_code)
+                        if imanage_field_value:
+                            pre_defined_fields[contraxsuite_field_code] = imanage_field_value
+                            task.log_info('Assigning iManage field {0} to Contraxsuite field {1}: {2}'
+                                          .format(imanage_field_code, contraxsuite_field_code, imanage_field_value))
+                        else:
+                            task.log_info('iManage field {0} has no value assigned.'
+                                          .format(imanage_field_code))
+                else:
+                    task.log_info('No binding of iManage fields to Contraxsuite fields.')
+
+                document_id = LoadDocuments \
+                    .create_document_local(task, temp_fn, filename, kwargs,
+                                           return_doc_id=True,
+                                           pre_defined_doc_fields_code_to_python_val=pre_defined_fields)
+
+                if document_id:
+                    task.log_info('Created Contraxsuite document #{0}'.format(document_id))
+                    imanage_doc.document_id = document_id
                     imanage_doc.last_sync_date = timezone.now()
                     imanage_doc.save(update_fields=['document_id', 'last_sync_date'])
                 else:
+                    task.log_error('Unable to create Contraxsuite document for '
+                                   'iManage document #{0}'.format(imanage_doc_id))
                     raise RuntimeError('No document loaded.')
-        except:
+        except Exception as ex:
+            task.log_error('Unable to synchronize iManage document #{0}'.format(imanage_doc_id))
             imanage_doc.import_problem = True
             imanage_doc.save(update_fields=['import_problem'])
+            raise ex
 
     def sync_imanage_config(self, imanage_config: IManageConfig):
         auth_token = imanage_config.login()
 
         # Step 1: Find documents about which we don't know and store their ids in IManageDocument table
         imanage_docs = imanage_config.search_documents(auth_token)
+        self.log_info('Found {0} documents at imanage server'.format(len(imanage_docs) if imanage_docs else None))
 
         with connection.cursor() as cursor:
             for docs_chunk in chunks(imanage_docs, 50):  # type: List[Dict]
@@ -100,6 +130,8 @@ class IManageSynchronization(BaseTask):
                                                document__isnull=True).values_list('imanage_doc_id', flat=True)]
         imanage_config.last_sync_start = timezone.now()
         imanage_config.save(update_fields=['last_sync_start'])
+        self.log_info('Found {0} new imanage documents for which we do not have Contraxsute documents'
+                      .format(len(args) if args else 0))
         self.run_sub_tasks('Sync iManage documents for config: {0}'.format(imanage_config.code),
                            IManageSynchronization.sync_imanage_document, args)
 

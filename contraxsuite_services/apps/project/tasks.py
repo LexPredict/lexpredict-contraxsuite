@@ -36,18 +36,18 @@ from sklearn.feature_extraction.text import TfidfVectorizer, TfidfTransformer
 # Project imports
 from apps.analyze.models import DocumentCluster
 from apps.celery import app
+from apps.document import signals
 from apps.document.fields_detection.field_detection_celery_api import run_detect_field_values_as_sub_tasks
 from apps.document.fields_processing import field_value_cache
-from apps.document.models import Document, DocumentType
-from apps.document.events import events
+from apps.document.models import Document
 from apps.project.models import Project, ProjectClustering, UploadSession
 from apps.task.tasks import BaseTask, CeleryTaskLogger
 from apps.task.utils.task_utils import TaskUtils
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.9/LICENSE"
-__version__ = "1.1.9"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.0/LICENSE"
+__version__ = "1.2.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -253,7 +253,7 @@ class ReassignProjectClusterDocuments(BaseTask):
         documents.update(project_id=new_project, document_type=new_project.type)
 
         for document in documents:
-            events.on_document_deleted(document)
+            signals.document_deleted.send(self.__class__, user=None, document=document)
 
         task_model = self.task
         task_model.metadata = {

@@ -1,0 +1,181 @@
+{%- macro fmt_date(value) -%}
+{{ value.strftime('%m/%d/%Y %I:%M %p (%Z)') if value else '&lt;no date&gt;' }}
+{%- endmacro -%}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>{{ subject }}</title>
+    <link href="https://fonts.googleapis.com/css?family=Source+Sans+Pro" rel="stylesheet">
+    <style>
+        body {
+            color: #16325C;
+            font-family: "Source Sans Pro";
+            font-size: 16px;
+            font-weight: 600;
+            box-shadow: inset 0 0 0px #D8DDE6;
+            background-color: #F4F6F9;
+            padding: 0 0 0 0;
+            margin: 0 0 0 0;
+        }
+
+        .logo {
+            padding: 10px 8px 10px 8px;
+            margin: 0 0 0 0;
+            box-shadow: 0 2px 0px #D8DDE6;
+            background-color: #fff;
+        }
+
+        .logo svg {
+            margin-right: 20px;
+        }
+        .logo a {
+            color: #16325C;
+            font-style: normal;
+            text-decoration: none;
+        }
+
+        .header {
+            padding: 0 10px 0 10px;
+        }
+
+        .table-container {
+            background-color: #fff;
+            margin-bottom: 32px;
+        }
+
+        .table-wrapper {
+            font-family: "Source Sans Pro";
+            font-size: 13px;
+            color: #334C70;
+            font-weight: normal;
+            background-color: #fff;
+            margin: 0 10px 0 10px;
+        }
+
+        .table-wrapper tr:nth-child(even) {
+            background: #fff;
+        }
+
+        .table-wrapper tr:nth-child(odd) {
+            background: #f8fbfe;
+        }
+
+        .table-wrapper td {
+            height: 28px;
+            padding-top: 4px;
+            padding-left: 10px;
+            padding-right: 10px;
+        }
+
+        .table-wrapper td a {
+            color: #1589EE;
+        }
+
+        .table-wrapper .header-cell {
+            font-weight: bold;
+            text-overflow: ellipsis;
+            white-space: normal;
+            border-bottom: 1px solid #D8DDE6;
+            background-color: #fff;
+        }
+
+        .table-wrapper .header-row {
+            border-bottom: 1px solid #D8DDE6;
+        }
+
+        .column-prop-name {
+            text-align: left;
+            padding-right: 32px;
+            white-space: nowrap;
+            font-weight: bold;
+        }
+
+        .column-prop-value {
+            text-align: left;
+            font-weight: normal;
+        }
+
+    </style>
+</head>
+<body>
+<div class="logo">
+    <div style="float: left"><a href="{{ app_url }}"><img src="images/logo.png" width="134" height="28" /></a></div>
+    <div style="display: inline; margin-left: 32px"><a href="{{ app_url }}">at {{ app_url[app_url.find('://') + 3:] }}</a></div>
+</div>
+
+<div class="header">
+    <table style="width: 100%">
+        <colgroup>
+            <col style="width: auto;" />
+            <col style="width: 100%;" />
+
+        </colgroup>
+        <tr><td class="column-prop-name">User:</td><td class="column-prop-value">{{ to_user.get_full_name() }}</td></tr>
+        <tr><td class="column-prop-name">Document type:</td><td class="column-prop-value">{{ document_type.title }}</td></tr>
+    {%- if period_aware -%}
+        <tr><td class="column-prop-name">Period:</td><td class="column-prop-value">{{ fmt_date(period_start) }}&nbsp;&nbsp;-&nbsp;&nbsp;{{ fmt_date(period_end) }}</td></tr>
+    {%- endif -%}
+    </table>
+    {% if not documents.documents %}
+        <p>{{ no_docs_message }}</p>
+    {% else %}
+        <p>{{ header }}</p>
+    {% endif %}
+</div>
+
+{% if documents.documents %}
+<div>
+    <div class="table-container">
+        <table class="table-wrapper" cellpadding="0" cellspacing="0">
+            <thead>
+            <tr class="header-row">
+                {% for column in documents.columns[2:] %}
+                    <td class="header-cell" style="text-align: center">{{ column.title }}</td>
+                {% endfor %}
+            </tr>
+            </thead>
+            <tbody>
+            {% for document in documents.documents %}
+                <tr>
+                    {% set project_id = document['project_id'] %}
+                    {% set document_id = document['document_id'] %}
+                    {% set document_name = document['document_name'] %}
+                    {% set doc_url = doc_url_resolver(document_type.code, project_id, document_id) %}
+                    <td style="text-align: left">
+                        <a href="{{ doc_url }}">{{ document_name }}</a>
+                    </td>
+                    {% for column in documents.columns[3:] %}
+                        {% set value = document.get(column.name) %}
+                        {% set column_type = column.value_type.value %}
+                        {% if column_type == 'float' %}
+                            <td style="text-align: right">
+                                {{ '%0.2f'| format(value) if value is not none else '' }}
+                            </td>
+                        {% elif column_type == 'boolean' or column_type == 'related_info' %}
+                            <td style="text-align: center">
+                                {{ 'Yes' if value else 'No' }}
+                            </td>
+                        {% elif column_type == 'date' %}
+                            <td style="text-align: center">
+                                <nobr>{{ value.astimezone(to_user.get_time_zone()).strftime('%m/%d/%Y') if value is not none else '' }}</nobr>
+                            </td>
+                        {% elif column_type == 'datetime' %}
+                            <td style="text-align: center">
+                                <nobr>{{ value.astimezone(to_user.get_time_zone()).strftime('%m/%d/%Y %I:%M %p (%Z)') if value is not none else '' }}</nobr>
+                            </td>
+                        {% else %}
+                            <td style="text-align: center">
+                                {{ value if value is not none else '' }}
+                            </td>
+                        {% endif %}
+                    {% endfor %}
+                </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endif %}
+</body>
+</html>

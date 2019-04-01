@@ -19,6 +19,7 @@ from apps.document.fields_processing.field_processing_utils import merge_detecte
     order_field_detection
 from apps.document.models import ClassifierModel, DocumentFieldValue
 from apps.document.models import Document, DocumentType, DocumentField
+from apps.users.models import User
 
 STRATEGY_DISABLED = DisabledFieldDetectionStrategy()
 
@@ -110,7 +111,11 @@ def save_detected_values(document: Document,
 def detect_and_cache_field_values_for_document(log: ProcessLogger,
                                                document: Document,
                                                save: bool = True,
-                                               clear_old_values: bool = True):
+                                               clear_old_values: bool = True,
+                                               changed_by_user: User = None,
+                                               system_fields_changed: bool = False,
+                                               generic_fields_changed: bool = False,
+                                               document_initial_load: bool = False):
     """
     Detects field values for a document and stores their DocumentFieldValue objects as well as Document.field_value.
     These two should always be consistent.
@@ -118,6 +123,10 @@ def detect_and_cache_field_values_for_document(log: ProcessLogger,
     :param document:
     :param save:
     :param clear_old_values:
+    :param changed_by_user
+    :param system_fields_changed
+    :param generic_fields_changed
+    :param document_initial_load
     :return:
     """
 
@@ -174,7 +183,11 @@ def detect_and_cache_field_values_for_document(log: ProcessLogger,
                 save_detected_values(document, field, detected_values)
 
     if save_cache:
-        field_value_cache.cache_field_values(document, res, save=True, log=log)
+        field_value_cache.cache_field_values(document, suggested_field_values=res, save=True, log=log,
+                                             changed_by_user=changed_by_user,
+                                             system_fields_changed=system_fields_changed,
+                                             generic_fields_changed=generic_fields_changed,
+                                             document_initial_load=document_initial_load)
 
     return res
 

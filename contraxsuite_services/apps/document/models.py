@@ -62,8 +62,8 @@ from apps.users.models import User
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.9/LICENSE"
-__version__ = "1.1.9"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.0/LICENSE"
+__version__ = "1.2.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -331,6 +331,9 @@ class DocumentField(TimeStampedModel):
             return list()
         return [choice.strip() for choice in self.choices.strip().splitlines()]
 
+    def is_choice_value(self, possible_value):
+        return self.allow_values_not_specified_in_choices or possible_value in self.get_choice_values()
+
     def set_choice_values(self, choices: List[str]):
         self.choices = '\n'.join(choices) if choices else None
 
@@ -387,7 +390,7 @@ class DocumentType(TimeStampedModel):
 
     DOCUMENT_EDITOR_CHOICES = ['save_by_field', 'save_all_fields_at_once', 'no_text']
     DOCUMENT_EDITOR_CHOICES = [(i, i) for i in DOCUMENT_EDITOR_CHOICES]
-    GENERIC_TYPE_CODE = 'document.GenericDocument'
+    GENERIC_TYPE_CODE = constants.DOCUMENT_TYPE_CODE_GENERIC_DOCUMENT
 
     # Make pk field unique
     uid = StringUUIDField(primary_key=True, default=uuid.uuid4, editable=False)
@@ -517,6 +520,8 @@ class Document(models.Model):
 
     assignee = models.ForeignKey(User, blank=True, null=True, db_index=True)
 
+    assign_date = models.DateTimeField(blank=True, null=True)
+
     upload_session = models.ForeignKey('project.UploadSession', blank=True, null=True,
                                        db_index=True)
 
@@ -560,7 +565,7 @@ class Document(models.Model):
         return field_uid + '_suggested'
 
     def is_completed(self):
-        return self.status.is_active
+        return not self.status.is_active
 
     def is_reviewed(self):
         return not self.status.group.is_active

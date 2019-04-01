@@ -1,12 +1,45 @@
+"""
+    Copyright (C) 2017, ContraxSuite, LLC
+
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU Affero General Public License as
+    published by the Free Software Foundation, either version 3 of the
+    License, or (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU Affero General Public License for more details.
+
+    You should have received a copy of the GNU Affero General Public License
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+    You can also be released from the requirements of the license by purchasing
+    a commercial license from ContraxSuite, LLC. Buying such a license is
+    mandatory as soon as you develop commercial activities involving ContraxSuite
+    software without disclosing the source code of your own applications.  These
+    activities include: offering paid services to customers as an ASP or "cloud"
+    provider, processing documents on the fly in a web application,
+    or shipping ContraxSuite within a closed source product.
+"""
+
 import re
 from datetime import datetime, date
 from enum import Enum
-from typing import List, Optional, Any, Tuple, Dict
+from typing import List, Optional, Any, Tuple, Dict, Set
 
 import dateparser
 
 from apps.common.sql_commons import escape_column_name, first_or_none, SQLClause, SQLInsertClause
 from apps.rawdb.rawdb.errors import FilterSyntaxError, FilterValueParsingError
+
+__author__ = "ContraxSuite, LLC; LexPredict, LLC"
+__copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.0/LICENSE"
+__version__ = "1.2.0"
+__maintainer__ = "LexPredict, LLC"
+__email__ = "support@contraxsuite.com"
+
 
 PG_DEFAULT_LANGUAGE = 'english'
 
@@ -20,6 +53,7 @@ class PgTypes(Enum):
     VARCHAR = 'character varying'
     TSVECTOR = 'tsvector'
     TIMESTAMP = 'timestamp without time zone'
+    TIMESTAMP_WITH_TIMEZONE = 'timestamp with time zone'
     DATE = 'date'
     NUMERIC_50_4 = 'numeric(50,4)'
     TEXT = 'text'
@@ -30,6 +64,7 @@ class ValueType(Enum):
     FLOAT = 'float'
     STRING = 'string'
     DATE = 'date'
+    DATETIME = 'datetime'
     BOOLEAN = 'boolean'
     CURRENCY = 'currency'
     RELATED_INFO = 'related_info'
@@ -233,6 +268,14 @@ class DateColumnDesc(ComparableColumnDesc):
         return dateparser.parse(str(filter_value)).date()
 
 
+class DateTimeColumnDesc(ComparableColumnDesc):
+    def __init__(self, field_code: str, name: str, title: str) -> None:
+        super().__init__(field_code, name, title, ValueType.DATETIME, None)
+
+    def convert_value_from_filter_to_db(self, filter_value: str) -> Any:
+        return dateparser.parse(str(filter_value))
+
+
 class BooleanColumnDesc(ColumnDesc):
     def __init__(self, field_code: str, name: str, title: str) -> None:
         super().__init__(field_code, name, title, ValueType.BOOLEAN, None)
@@ -266,16 +309,24 @@ class FieldHandler:
 
     def __init__(self,
                  field_code: str,
+                 field_type: str,
                  field_title: str,
                  table_name: str,
                  default_value=None,
-                 field_column_name_base: str = None) -> None:
+                 field_column_name_base: str = None,
+                 is_suggested: bool = False) -> None:
         super().__init__()
         self.field_code = field_code
+        self.field_type = field_type
         self.field_column_name_base = field_column_name_base or escape_column_name(field_code)
         self.field_title = field_title
         self.table_name = table_name
         self.default_value = default_value
+        self.is_suggested = is_suggested
+
+    def __str__(self) -> str:
+        return '{table_name}.{field_code}: {field_type}' \
+            .format(table_name=self.table_name, field_code=self.field_code, field_type=self.field_type)
 
     def get_client_column_descriptions(self) -> List[ColumnDesc]:
         pass
@@ -286,25 +337,35 @@ class FieldHandler:
     def get_pg_index_definitions(self) -> Optional[List[str]]:
         pass
 
-    def get_pg_sql_insert_clause(self, document_language: str, python_values: List) -> SQLInsertClause:
+    def get_pg_sql_insert_clause(self, document_language: str, python_value) -> SQLInsertClause:
+        pass
+
+    def python_value_to_indexed_field_value(self, dfv_python_value) -> Any:
+        pass
+
+    def columns_to_field_value(self, columns: Dict[str, Any]) -> Any:
         pass
 
 
 class StringWithTextSearchFieldHandler(FieldHandler):
-    def __init__(self, field_code: str,
+    def __init__(self,
+                 field_code: str,
+                 field_type: str,
                  field_title: str,
                  table_name: str,
                  default_value: str = None,
-                 field_column_name_base: str = None) -> None:
-        super().__init__(field_code, field_title, table_name, default_value, field_column_name_base)
+                 field_column_name_base: str = None,
+                 is_suggested: bool = False) -> None:
+        super().__init__(field_code, field_type, field_title, table_name, default_value, field_column_name_base,
+                         is_suggested)
         self.output_column = escape_column_name(self.field_column_name_base)
         self.text_search_column = escape_column_name(self.field_column_name_base + '_text_search')
 
-    def python_values_to_single_db_value_for_text_search(self, python_values: List) -> Optional[str]:
-        return first_or_none(python_values) or self.default_value
+    def python_value_to_single_db_value_for_text_search(self, python_value) -> Optional[str]:
+        return python_value or self.default_value
 
-    def python_values_to_single_db_value_for_output(self, python_values: List) -> Optional[str]:
-        text = self.python_values_to_single_db_value_for_text_search(python_values)
+    def python_value_to_indexed_field_value(self, python_value) -> Optional[str]:
+        text = self.python_value_to_single_db_value_for_text_search(python_value)
 
         if not text:
             return None
@@ -332,28 +393,34 @@ class StringWithTextSearchFieldHandler(FieldHandler):
             self.text_search_column: PgTypes.TSVECTOR
         }
 
-    def get_pg_sql_insert_clause(self, document_language: str, python_values: List) -> SQLInsertClause:
-        db_value_for_search = self.python_values_to_single_db_value_for_text_search(python_values)
-        db_value_for_output = self.python_values_to_single_db_value_for_output(python_values)
+    def get_pg_sql_insert_clause(self, document_language: str, python_value) -> SQLInsertClause:
+        db_value_for_search = self.python_value_to_single_db_value_for_text_search(python_value)
+        db_value_for_output = self.python_value_to_indexed_field_value(python_value)
         return SQLInsertClause('"{output_column}", "{text_search_column}"'
                                .format(output_column=self.output_column, text_search_column=self.text_search_column),
                                [],
                                '%s, to_tsvector(%s, %s)',
                                [db_value_for_output, PG_DEFAULT_LANGUAGE, db_value_for_search])
 
+    def columns_to_field_value(self, columns: Dict[str, Any]) -> Any:
+        return columns.get(self.output_column)
+
 
 class StringFieldHandler(FieldHandler):
     def __init__(self,
                  field_code: str,
+                 field_type: str,
                  field_title: str,
                  table_name: str,
                  default_value: str = None,
-                 field_column_name_base: str = None) -> None:
-        super().__init__(field_code, field_title, table_name, default_value, field_column_name_base)
+                 field_column_name_base: str = None,
+                 is_suggested: bool = False) -> None:
+        super().__init__(field_code, field_type, field_title, table_name, default_value, field_column_name_base,
+                         is_suggested)
         self.column = escape_column_name(self.field_column_name_base)
 
-    def python_values_to_single_db_value(self, python_values: List) -> Optional[str]:
-        return first_or_none(python_values) or self.default_value
+    def python_value_to_indexed_field_value(self, python_value) -> Optional[str]:
+        return python_value or self.default_value
 
     def get_client_column_descriptions(self) -> List[ColumnDesc]:
         return [StringColumnDesc(self.field_code,
@@ -369,15 +436,18 @@ class StringFieldHandler(FieldHandler):
             self.column: PgTypes.VARCHAR
         }
 
-    def get_pg_sql_insert_clause(self, document_language: str, python_values: List) -> SQLInsertClause:
-        db_value = self.python_values_to_single_db_value(python_values)
+    def get_pg_sql_insert_clause(self, document_language: str, python_value: List) -> SQLInsertClause:
+        db_value = self.python_value_to_indexed_field_value(python_value)
         return SQLInsertClause('"{column}"'.format(column=self.column), [], '%s', [db_value])
+
+    def columns_to_field_value(self, columns: Dict[str, Any]) -> Any:
+        return columns.get(self.column)
 
 
 class ComparableFieldHandler(FieldHandler):
     pg_type = None  # type: PgTypes
 
-    def python_values_to_single_db_value(self, python_values: List) -> Any:
+    def python_value_to_indexed_field_value(self, python_value) -> Any:
         pass
 
     def get_client_column_descriptions(self) -> List[ColumnDesc]:
@@ -385,11 +455,14 @@ class ComparableFieldHandler(FieldHandler):
 
     def __init__(self,
                  field_code: str,
+                 field_type: str,
                  field_title: str,
                  table_name: str,
                  default_value=None,
-                 field_column_name_base: str = None) -> None:
-        super().__init__(field_code, field_title, table_name, default_value, field_column_name_base)
+                 field_column_name_base: str = None,
+                 is_suggested: bool = False) -> None:
+        super().__init__(field_code, field_type, field_title, table_name, default_value, field_column_name_base,
+                         is_suggested)
         self.column = escape_column_name(self.field_column_name_base)
 
     def get_pg_index_definitions(self) -> Optional[List[str]]:
@@ -400,16 +473,19 @@ class ComparableFieldHandler(FieldHandler):
             self.column: self.pg_type
         }
 
-    def get_pg_sql_insert_clause(self, document_language: str, python_values: List) -> SQLInsertClause:
+    def get_pg_sql_insert_clause(self, document_language: str, python_value: List) -> SQLInsertClause:
         return SQLInsertClause('"{column}"'.format(column=self.column), [],
-                               '%s', [self.python_values_to_single_db_value(python_values)])
+                               '%s', [self.python_value_to_indexed_field_value(python_value)])
+
+    def columns_to_field_value(self, columns: Dict[str, Any]) -> Any:
+        return columns.get(self.column)
 
 
 class IntFieldHandler(ComparableFieldHandler):
     pg_type = PgTypes.INTEGER
 
-    def python_values_to_single_db_value(self, python_values: List) -> Any:
-        python_value = first_or_none(python_values) or self.default_value
+    def python_value_to_indexed_field_value(self, python_value) -> Any:
+        python_value = python_value or self.default_value
         return int(python_value) if python_value else None
 
     def get_client_column_descriptions(self) -> List[ColumnDesc]:
@@ -419,8 +495,8 @@ class IntFieldHandler(ComparableFieldHandler):
 class FloatFieldHandler(ComparableFieldHandler):
     pg_type = PgTypes.DOUBLE
 
-    def python_values_to_single_db_value(self, python_values: List) -> Any:
-        python_value = first_or_none(python_values) or self.default_value
+    def python_value_to_indexed_field_value(self, python_value) -> Any:
+        python_value = python_value or self.default_value
         return float(python_value) if python_value else None
 
     def get_client_column_descriptions(self) -> List[ColumnDesc]:
@@ -432,16 +508,18 @@ class DateFieldHandler(ComparableFieldHandler):
 
     def __init__(self,
                  field_code: str,
+                 field_type: str,
                  field_title: str,
                  table_name: str,
                  default_value=None,
-                 field_column_name_base: str = None) -> None:
-        super().__init__(field_code, field_title, table_name,
+                 field_column_name_base: str = None,
+                 is_suggested: bool = False) -> None:
+        super().__init__(field_code, field_type, field_title, table_name,
                          dateparser.parse(default_value) if default_value else None,
-                         field_column_name_base)
+                         field_column_name_base, is_suggested)
 
-    def python_values_to_single_db_value(self, python_values: List) -> Any:
-        python_value = first_or_none(python_values) or self.default_value
+    def python_value_to_indexed_field_value(self, python_value) -> Any:
+        python_value = python_value or self.default_value
         return python_value if type(python_value) is date \
             else python_value.date() if type(python_value) is datetime \
             else None
@@ -450,14 +528,40 @@ class DateFieldHandler(ComparableFieldHandler):
         return [DateColumnDesc(self.field_code, self.column, self.field_title)]
 
 
-class MoneyFieldHandler(FieldHandler):
+class DateTimeFieldHandler(ComparableFieldHandler):
+    pg_type = PgTypes.TIMESTAMP_WITH_TIMEZONE
+
     def __init__(self,
                  field_code: str,
+                 field_type: str,
                  field_title: str,
                  table_name: str,
                  default_value=None,
-                 field_column_name_base: str = None) -> None:
-        super().__init__(field_code, field_title, table_name, default_value, field_column_name_base)
+                 field_column_name_base: str = None,
+                 is_suggested: bool = False) -> None:
+        super().__init__(field_code, field_type, field_title, table_name,
+                         dateparser.parse(default_value) if default_value else None,
+                         field_column_name_base, is_suggested)
+
+    def python_value_to_indexed_field_value(self, python_value) -> Any:
+        python_value = python_value or self.default_value
+        return python_value if type(python_value) is date or type(python_value) is datetime else None
+
+    def get_client_column_descriptions(self) -> List[ColumnDesc]:
+        return [DateTimeColumnDesc(self.field_code, self.column, self.field_title)]
+
+
+class MoneyFieldHandler(FieldHandler):
+    def __init__(self,
+                 field_code: str,
+                 field_type: str,
+                 field_title: str,
+                 table_name: str,
+                 default_value=None,
+                 field_column_name_base: str = None,
+                 is_suggested: bool = False) -> None:
+        super().__init__(field_code, field_type, field_title, table_name, default_value, field_column_name_base,
+                         is_suggested)
         self.currency_column = escape_column_name(self.field_column_name_base + '_currency')
         self.amount_column = escape_column_name(self.field_column_name_base + '_amount')
 
@@ -472,8 +576,11 @@ class MoneyFieldHandler(FieldHandler):
             self.amount_column: PgTypes.NUMERIC_50_4
         }
 
-    def get_pg_sql_insert_clause(self, document_language: str, python_values: List) -> SQLInsertClause:
-        money = first_or_none(python_values) or self.default_value  # Dict
+    def python_value_to_indexed_field_value(self, dfv_python_value) -> Any:
+        return dfv_python_value or self.default_value
+
+    def get_pg_sql_insert_clause(self, document_language: str, python_value: List) -> SQLInsertClause:
+        money = self.python_value_to_indexed_field_value(python_value)  # Dict
         currency = money.get('currency') if money else None
         amount = money.get('amount') if money else None
         return SQLInsertClause('"{currency_column}", '
@@ -481,15 +588,36 @@ class MoneyFieldHandler(FieldHandler):
                                                           amount_column=self.amount_column), [],
                                '%s, %s', [currency, amount])
 
+    def columns_to_field_value(self, columns: Dict[str, Any]) -> Any:
+        currency = columns.get(self.currency_column)
+        amount = columns.get(self.amount_column)
+        if amount is None and currency is None:
+            return None
+        else:
+            return {
+                'currency': currency,
+                'amount': amount
+            }
+
     def get_pg_index_definitions(self) -> Optional[List[str]]:
         return ['using GIN ("{column}" gin_trgm_ops)'
                     .format(table_name=self.table_name, column=self.currency_column)]
 
 
 class AddressFieldHandler(StringFieldHandler):
-    def python_values_to_single_db_value(self, python_values: List) -> Any:
-        address = first_or_none(python_values) or self.default_value # Dict
-        return str(address.get('address') or '') if address else None
+    def get_pg_sql_insert_clause(self, document_language: str, python_value: List) -> SQLInsertClause:
+        address = self.python_value_to_indexed_field_value(python_value)  # type: Dict[str, Any]
+        db_value = str(address.get('address') or '') if address else None
+        return SQLInsertClause('"{column}"'.format(column=self.column), [], '%s', [db_value])
+
+    def columns_to_field_value(self, columns: Dict[str, Any]) -> Any:
+        s = columns.get(self.column)
+        if s is None:
+            return None
+        else:
+            return {
+                'address': s
+            }
 
 
 class RelatedInfoFieldHandler(FieldHandler):
@@ -498,11 +626,14 @@ class RelatedInfoFieldHandler(FieldHandler):
 
     def __init__(self,
                  field_code: str,
+                 field_type: str,
                  field_title: str,
                  table_name: str,
                  default_value=None,
-                 field_column_name_base: str = None) -> None:
-        super().__init__(field_code, field_title, table_name, default_value, field_column_name_base)
+                 field_column_name_base: str = None,
+                 is_suggested: bool = False) -> None:
+        super().__init__(field_code, field_type, field_title, table_name, default_value, field_column_name_base,
+                         is_suggested)
         self.column = escape_column_name(self.field_column_name_base)
         self.text_column = escape_column_name(self.field_column_name_base) + '_text'
 
@@ -515,19 +646,25 @@ class RelatedInfoFieldHandler(FieldHandler):
             self.text_column: PgTypes.TEXT
         }
 
-    def get_pg_sql_insert_clause(self, document_language: str, python_values: List) -> SQLInsertClause:
-        yes_no = bool(python_values or self.default_value)
-        related_info_text = '\n'.join([str(v) for v in python_values if v]) if python_values else None
+    def python_value_to_indexed_field_value(self, python_value) -> Any:
+        return bool(python_value or self.default_value)
+
+    def get_pg_sql_insert_clause(self, document_language: str, python_value) -> SQLInsertClause:
+        yes_no = self.python_value_to_indexed_field_value(python_value)
+        related_info_text = '\n'.join([str(v) for v in python_value if v]) if python_value else None
         return SQLInsertClause('"{column}", "{text_column}"'.format(column=self.column, text_column=self.text_column),
                                [],
                                '%s, %s', [yes_no, related_info_text])
+
+    def columns_to_field_value(self, columns: Dict[str, Any]) -> Any:
+        return columns.get(self.column)
 
 
 class BooleanFieldHandler(FieldHandler):
     pg_type = PgTypes.BOOLEAN
 
-    def python_values_to_single_db_value(self, python_values: List) -> Any:
-        python_value = first_or_none(python_values) or self.default_value
+    def python_value_to_indexed_field_value(self, python_value) -> Any:
+        python_value = python_value or self.default_value
         return bool(python_value) if python_value is not None else False
 
     def get_client_column_descriptions(self) -> List[ColumnDesc]:
@@ -535,11 +672,14 @@ class BooleanFieldHandler(FieldHandler):
 
     def __init__(self,
                  field_code: str,
+                 field_type: str,
                  field_title: str,
                  table_name: str,
                  default_value: bool = None,
-                 field_column_name_base: str = None) -> None:
-        super().__init__(field_code, field_title, table_name, default_value, field_column_name_base)
+                 field_column_name_base: str = None,
+                 is_suggested: bool = False) -> None:
+        super().__init__(field_code, field_type, field_title, table_name, default_value, field_column_name_base,
+                         is_suggested)
         self.column = escape_column_name(self.field_column_name_base)
 
     def get_pg_index_definitions(self) -> Optional[List[SQLClause]]:
@@ -550,14 +690,28 @@ class BooleanFieldHandler(FieldHandler):
             self.column: self.pg_type
         }
 
-    def get_pg_sql_insert_clause(self, document_language: str, python_values: List) -> SQLInsertClause:
+    def get_pg_sql_insert_clause(self, document_language: str, python_value) -> SQLInsertClause:
         return SQLInsertClause('"{column}"'.format(column=self.column), [],
-                               '%s', [self.python_values_to_single_db_value(python_values)])
+                               '%s', [self.python_value_to_indexed_field_value(python_value)])
+
+    def columns_to_field_value(self, columns: Dict[str, Any]) -> Any:
+        return columns.get(self.column)
 
 
 class MultichoiceFieldHandler(StringFieldHandler):
-    def python_values_to_single_db_value(self, python_values: List) -> Any:
-        if not python_values:
+    def python_value_to_indexed_field_value(self, python_value) -> Any:
+        if not python_value:
             return self.default_value
 
-        return ', '.join(sorted({str(v) for v in python_values}))
+        return set(python_value)
+
+    def get_pg_sql_insert_clause(self, document_language: str, python_value: List) -> SQLInsertClause:
+        python_value = self.python_value_to_indexed_field_value(python_value)  # type: Set[str]
+        db_value = ', '.join(sorted(python_value)) if python_value else None
+        return SQLInsertClause('"{column}"'.format(column=self.column), [], '%s', [db_value])
+
+    def columns_to_field_value(self, columns: Dict[str, Any]) -> Any:
+        v = columns.get(self.column)  # type: str
+        if not v:
+            return None
+        return set({vv.strip() for vv in v.split(',')})

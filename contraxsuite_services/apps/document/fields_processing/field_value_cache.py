@@ -7,18 +7,19 @@ from django.contrib.postgres.aggregates.general import StringAgg
 from django.db.models import Min, Max
 
 from apps.common.log_utils import ProcessLogger
-from apps.document.events import events
+from apps.document import signals
 # Project imports
 from apps.document.field_types import FIELD_TYPES_REGISTRY, FieldType
 from apps.document.fields_detection.fields_detection_abstractions import DetectedFieldValue
 from apps.document.fields_processing.field_processing_utils import merge_detected_field_values_to_python_value
 from apps.document.models import DocumentField, Document, DocumentType
 from apps.extract.models import CurrencyUsage
+from apps.users.models import User
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.9/LICENSE"
-__version__ = "1.1.9"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.0/LICENSE"
+__version__ = "1.2.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -26,7 +27,11 @@ __email__ = "support@contraxsuite.com"
 def cache_field_values(doc: Document,
                        suggested_field_values: Optional[List[DetectedFieldValue]],
                        save: bool = True,
-                       log: ProcessLogger = None) -> Dict[str, Any]:
+                       log: ProcessLogger = None,
+                       changed_by_user: User = None,
+                       system_fields_changed: bool = False,
+                       generic_fields_changed: bool = False,
+                       document_initial_load: bool = False) -> Dict[str, Any]:
     """
     Loads DocumentFieldValue objects from DB, merges them to get python field values of their fields for the document,
     converts them to the sortable DB-aware form and saves them to Document.field_values.
@@ -34,6 +39,10 @@ def cache_field_values(doc: Document,
     :param save:
     :param suggested_field_values:
     :param log
+    :param changed_by_user
+    :param system_fields_changed
+    :param generic_fields_changed
+    :param document_initial_load
     :return:
     """
     document_type = doc.document_type  # type: DocumentType
@@ -84,13 +93,15 @@ def cache_field_values(doc: Document,
         doc.field_values = {uid: len(value) if uid in related_info_field_uids and value is not None else value
                             for uid, value in field_uids_to_field_values_db.items()}
         doc.save()
-        events.on_document_change(
-            events.DocumentChangedEvent(log=log,
-                                        document=doc,
-                                        system_fields_changed=False,
-                                        generic_fields_changed=False,
-                                        user_fields_changed=True,
-                                        pre_detected_field_values=field_codes_to_suggested_values))
+        signals.fire_document_changed(sender=cache_field_values,
+                                      changed_by_user=changed_by_user,
+                                      log=log,
+                                      document=doc,
+                                      system_fields_changed=system_fields_changed,
+                                      generic_fields_changed=generic_fields_changed,
+                                      user_fields_changed=True,
+                                      pre_detected_field_values=field_codes_to_suggested_values,
+                                      document_initial_load=document_initial_load)
 
     return field_uids_to_field_values_db
 
@@ -119,14 +130,17 @@ def get_generic_values(doc: Document) -> Dict[str, Any]:
 
 
 def cache_generic_values(doc: Document, save: bool = True,
-                         log: ProcessLogger = None):
+                         log: ProcessLogger = None,
+                         fire_doc_changed_event: bool = True):
     doc.generic_data = get_generic_values(doc)
 
     if save:
         doc.save(update_fields=['generic_data'])
-        events.on_document_change(events.DocumentChangedEvent(log=log,
-                                                              document=doc,
-                                                              system_fields_changed=False,
-                                                              generic_fields_changed=True,
-                                                              user_fields_changed=False,
-                                                              pre_detected_field_values=None))
+        if fire_doc_changed_event:
+            signals.fire_document_changed(sender=cache_generic_values,
+                                          log=log,
+                                          document=doc,
+                                          system_fields_changed=False,
+                                          generic_fields_changed=True,
+                                          user_fields_changed=False,
+                                          pre_detected_field_values=None)

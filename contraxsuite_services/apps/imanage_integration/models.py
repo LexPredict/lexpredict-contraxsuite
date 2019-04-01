@@ -33,17 +33,22 @@ class IManageConfig(models.Model):
     document_type = models.ForeignKey(DocumentType, blank=False, null=False, help_text='''Type of documents on 
         Contraxsuite side to be created based on iManage documents.''')
 
-    project = models.ForeignKey(Project, blank=True, null=True, help_text='''Project into which the imanage documents
+    project = models.ForeignKey(Project, blank=True, null=True, help_text='''Project into which the iManage documents
     should be saved.''')
 
     project_resolving_code = models.TextField(blank=True, null=True, help_text='''Python code returning project 
     based on the provided iManage document data in the form of dict.''')
 
-    assignee = models.ForeignKey(User, blank=True, null=True, help_text='''User to which the imanage documents 
+    assignee = models.ForeignKey(User, blank=True, null=True, help_text='''User to which the iManage documents 
     should be assigned.''')
 
     assignee_resolving_code = models.TextField(blank=True, null=True, help_text='''Python code returning assignee user 
         based on the provided iManage document data in the form of dict.''')
+
+    imanage_to_contraxsuite_field_binding = JSONField(encoder=DjangoJSONEncoder,
+                                                      null=True, blank=True,
+                                                      help_text='''JSON mapping of iManage field codes to Contraxsuite 
+                                                      field codes. Example: { "custom1": "field_code_1" }''')
 
     last_sync_start = models.DateTimeField(null=True, blank=True)
 
@@ -95,11 +100,16 @@ class IManageConfig(models.Model):
         return root_url.rstrip('/') + '/' + path.lstrip('/')
 
     def login(self) -> str:
-        r_imanage_auth = requests.put(self.build_url('/api/v1/session/login'),
-                                      json={'user_id': self.auth_user,
-                                            'password': self.auth_password},
-                                      proxies=self.requests_proxies,
-                                      verify=self.requests_verify_ssl_certs).json()
+        url = self.build_url('/api/v1/session/login')
+        resp = requests.put(url,
+                            json={'user_id': self.auth_user,
+                                  'password': self.auth_password},
+                            proxies=self.requests_proxies,
+                            verify=self.requests_verify_ssl_certs)
+        if resp.status_code != 200:
+            raise Exception('Unable to login to iManage at {0}\nStatus code: {1}\nResponse text:\n{1}'
+                            .format(url, resp.status_code, resp.text or resp.json()))
+        r_imanage_auth = resp.json()
         return r_imanage_auth["X-Auth-Token"]
 
     def search_documents(self, auth_token: str, additional_params: Dict = None) -> List[Dict]:

@@ -1,0 +1,40 @@
+{%- macro fmt_date(value) -%}
+{{ value.strftime('%m/%d/%Y %I:%M %p (%Z)') if value else '<no date>' }}
+{%- endmacro -%}
+Contraxsuite by LexPredict ({{ app_url }})
+
+User: {{ to_user.get_full_name() }}
+Document type: {{ document_type.title }}
+{% if period_aware -%}
+Period: {{ fmt_date(period_start) }} - {{ fmt_date(period_end) }}
+{%- endif %}
+
+{% if not documents.documents -%}
+{{ no_docs_message }}
+{%- else %}
+{{ header }}
+
+{%- for document in documents.documents -%}
+    {%- set project_id = document['project_id'] -%}
+    {%- set document_id = document['document_id'] -%}
+    {%- set document_name = document['document_name'] -%}
+    {%- set doc_url = doc_url_resolver(document_type.code, project_id, document_id) %}
+
+URL: {{ doc_url }}
+    {%- for column in documents.columns[2:] -%}
+        {%- set value = document.get(column.name) -%}
+        {%- set column_type = column.value_type.value -%}
+        {%- if column_type == 'float' %}
+{{ column.title }}: {{ '%0.2f'| format(value) if value is not none else '' }}
+        {%- elif column_type == 'boolean' or column_type == 'related_info' %}
+{{ column.title }}: {{ 'Yes' if value else 'No' }}
+        {%- elif column_type == 'date' %}
+{{ column.title }}: {{ value.astimezone(to_user.get_time_zone()).strftime('%m/%d/%Y') if value is not none else '' }}
+        {%- elif column_type == 'datetime' %}
+{{ column.title }}: {{ value.astimezone(to_user.get_time_zone()).strftime('%m/%d/%Y %I:%M %p (%Z)') if value is not none else '' }}
+        {%- else %}
+{{ column.title }}: {{ value if value is not none else '' }}
+        {%- endif -%}
+    {%- endfor %}
+{%- endfor -%}
+{%- endif -%}

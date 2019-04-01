@@ -91,10 +91,12 @@ from apps.common.log_utils import ProcessLogger
 from apps.common.utils import fast_uuid
 from apps.deployment.app_data import load_geo_entities, load_terms, load_courts
 from apps.document.constants import DOCUMENT_TYPE_PK_GENERIC_DOCUMENT
-from apps.document.fields_detection.field_detection_celery_api import run_detect_field_values_as_sub_tasks
+from apps.document.fields_detection.field_detection import detect_and_cache_field_values_for_document
 from apps.document.fields_processing import field_value_cache
+from apps.document.field_types import FieldType, FIELD_TYPES_REGISTRY
 from apps.document.models import (
-    Document, DocumentProperty, DocumentType, TextUnit, TextUnitProperty, TextUnitTag)
+    Document, DocumentField, DocumentProperty, DocumentType, DocumentFieldValue,
+    TextUnit, TextUnitProperty, TextUnitTag)
 from apps.extract import dict_data_cache
 from apps.extract import models as extract_models
 from apps.extract.locators import LOCATORS, LocationResults
@@ -109,11 +111,12 @@ from apps.task.utils.nlp.parsed_text_corrector import ParsedTextCorrector
 from apps.task.utils.ocr.textract import textract2text
 from apps.task.utils.ocr.tika import parametrized_tika_parser
 from apps.task.utils.task_utils import TaskUtils, pre_serialize
+from apps.users.models import User
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.9/LICENSE"
-__version__ = "1.1.9"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.0/LICENSE"
+__version__ = "1.2.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -280,7 +283,8 @@ class ExtendedTask(app.Task):
                       sub_tasks_group_title: str,
                       sub_task_function,
                       args_list: List[Tuple],
-                      source_data: List[str] = None):
+                      source_data: List[str] = None,
+                      countdown: int = None):
         """
         Asynchronously execute sub_task_method on each tuple of arguments from the provided list.
 
@@ -288,6 +292,7 @@ class ExtendedTask(app.Task):
         :param sub_task_function:
         :param args_list:
         :param source_data:
+        :param countdown: Delay in seconds before running the sub-tasks.
         :return:
         """
         if not args_list:
@@ -305,7 +310,10 @@ class ExtendedTask(app.Task):
                 title=sub_tasks_group_title)
             sub_tasks.append(sub_task_signature)
 
-        self.chord(sub_tasks)
+        self.log_info(
+            '{0}: {1} starting {2} sub-tasks...'.format(self.task_name, sub_tasks_group_title, len(sub_tasks)))
+        for ss in sub_tasks:
+            ss.apply_async(countdown=countdown)
 
     def run_sub_tasks_class_based(self,
                                   sub_tasks_group_title: str,
@@ -443,6 +451,8 @@ def call_task(task_name, **options):
 
     project_id = options.get('project_id')
     session_id = options.get('session_id')
+    countdown = options.get('countdown')
+    eta = options.get('eta')
 
     task = Task.objects.create(
         id=celery_task_id,
@@ -465,7 +475,9 @@ def call_task(task_name, **options):
     if async:
         task_class().apply_async(kwargs=options,
                                  task_id=celery_task_id,
-                                 soft_time_limit=task_config.soft_time_limit)
+                                 soft_time_limit=task_config.soft_time_limit,
+                                 countdown=countdown,
+                                 eta=eta)
     else:
         task_class()(**options)
     return task.pk
@@ -565,7 +577,7 @@ class LoadDocuments(BaseTask):
 
     @staticmethod
     def try_parsing_with_tika(task: ExtendedTask, file_path, ext, original_file_name,
-                              propagate_exceptions:bool = True):
+                              propagate_exceptions: bool = True):
         task.log_info('Trying TIKA for file: ' + original_file_name)
         if settings.TIKA_DISABLE:
             task.log_info('TIKA is disabled in config')
@@ -591,7 +603,7 @@ class LoadDocuments(BaseTask):
 
     @staticmethod
     def try_parsing_with_textract(task: ExtendedTask, file_path, ext, original_file_name,
-                                  propagate_exceptions:bool = True):
+                                  propagate_exceptions: bool = True):
         task.log_info('Trying Textract for file: ' + original_file_name)
         try:
             return textract2text(file_path, ext=ext), 'textract'
@@ -608,7 +620,40 @@ class LoadDocuments(BaseTask):
         return titles[0] if titles else None
 
     @staticmethod
-    def create_document_local(task: ExtendedTask, file_path, file_name, kwargs):
+    def store_pre_defined_doc_fields(task: ExtendedTask,
+                                     doc: Document,
+                                     user: User,
+                                     fields_code_to_python_val: Dict[str, Any]):
+        if not fields_code_to_python_val:
+            return
+
+        document_type = doc.document_type  # type: DocumentType
+
+        all_fields = {f.code: f for f in DocumentField.objects.filter(document_type=document_type).all()}
+
+        for field_code, python_val in fields_code_to_python_val.items():
+            field = all_fields.get(field_code)  # type: DocumentField
+            if not field:
+                task.log_error('Refusing to store pre-defined document field value for field {0}.\n'
+                               'Document type {1} does not have such field'.format(field_code, document_type.code))
+                continue
+            if field.requires_text_annotations:
+                task.log_error('Refusing to store pre-defined document field value for field {0}.\n'
+                               'The field requires text annotation.'.format(field_code, document_type.code))
+                continue
+
+            field_type = field.get_field_type()  # type: FieldType
+            field_type.save_value(document=doc, field=field, location_start=None, location_end=None, location_text=None,
+                                  text_unit=None, value=python_val, user=user, allow_overwriting_user_data=True,
+                                  extraction_hint=None)
+
+    @staticmethod
+    def create_document_local(task: ExtendedTask,
+                              file_path,
+                              file_name,
+                              kwargs,
+                              pre_defined_doc_fields_code_to_python_val: Dict[str, Any] = None,
+                              return_doc_id: bool = False):
         task.task.title = 'Load Document: {0}'.format(file_name)
         task.log_extra = {'log_document_name': file_name}
 
@@ -622,16 +667,17 @@ class LoadDocuments(BaseTask):
         project_id = kwargs.get('project_id')
         assignee_id = kwargs.get('assignee_id')
         document_type_id = kwargs.get('document_type_id')
+        do_not_check_exists = bool(kwargs.get('do_not_check_exists'))
 
         # OLD API: Check for existing record
-        if upload_session_id is None:
+        if not do_not_check_exists and upload_session_id is None:
             document_id = Document.objects \
                 .filter(name=document_name, source=document_source) \
                 .values_list('pk', flat=True) \
                 .first()
             if document_id:
                 task.log_info('SKIP (EXISTS): ' + file_name)
-                return {'document_id': document_id}
+                return document_id if return_doc_id else {'document_id': document_id}
 
         text = None  # type: str
         metadata = {}
@@ -666,7 +712,7 @@ class LoadDocuments(BaseTask):
             if propagate_exceptions:
                 raise RuntimeError('No text extracted.')
             task.log_info('SKIP (ERROR): ' + file_name)
-            return
+            return None
 
         if metadata is None:
             metadata = {}
@@ -733,6 +779,7 @@ class LoadDocuments(BaseTask):
                 document_type=document_type,
                 project=project,
                 assignee_id=assignee_id,
+                assign_date=now() if assignee_id else None,
                 upload_session=upload_session,
                 name=document_name,
                 description=file_name,
@@ -821,6 +868,14 @@ class LoadDocuments(BaseTask):
                         value=str(round(subjectivity)))]
             TextUnitProperty.objects.bulk_create(text_unit_properties)
 
+            if pre_defined_doc_fields_code_to_python_val:
+                user = User.objects.get(pk=user_id) if user_id is not None else None
+                LoadDocuments. \
+                    store_pre_defined_doc_fields(task,
+                                                 doc=document,
+                                                 user=user,
+                                                 fields_code_to_python_val=pre_defined_doc_fields_code_to_python_val)
+
             # save extra document info
             kwargs['document'] = document
         LoadDocuments.save_extra_document_data(**kwargs)
@@ -839,7 +894,9 @@ class LoadDocuments(BaseTask):
                 'session_id': upload_session_id,
                 'metadata': {'session_id': upload_session_id, 'file_name': file_name},
                 'user_id': user_id,
-                'document_id': document.pk
+                'document_id': document.pk,
+                'doc_loaded_by_user_id': user_id,
+                'document_initial_load': True
             }])
 
         for linked_task_kwargs in linked_tasks:
@@ -850,7 +907,10 @@ class LoadDocuments(BaseTask):
             ret.append({'linked_task_id': linked_task_id,
                         'document_id': document.pk})
 
-        return json.dumps(ret) if ret else None
+        if return_doc_id:
+            return document.pk
+        else:
+            return json.dumps(ret) if ret else None
 
 
 class UpdateElasticsearchIndex(BaseTask):
@@ -1084,6 +1144,8 @@ class Locate(BaseTask):
     def process(self, **kwargs):
 
         document_id = kwargs.get('document_id')
+        doc_loaded_by_user_id = kwargs.get('doc_loaded_by_user_id')
+        document_initial_load = bool(kwargs.get('document_initial_load'))
 
         # detect items to locate/delete
         if 'locate' in kwargs:
@@ -1154,7 +1216,7 @@ class Locate(BaseTask):
 
         self.run_after_sub_tasks_finished('Cache Generic Document Data',
                                           Locate.on_locate_finished,
-                                          [(document_id,)])
+                                          [(document_id, doc_loaded_by_user_id, document_initial_load)])
 
     @staticmethod
     @shared_task(base=ExtendedTask,
@@ -1165,11 +1227,22 @@ class Locate(BaseTask):
                  autoretry_for=(SoftTimeLimitExceeded, InterfaceError, OperationalError,),
                  max_retries=3
                  )
-    def on_locate_finished(_self: ExtendedTask, doc_id):
+    def on_locate_finished(_self: ExtendedTask, doc_id, doc_loaded_by_user_id, document_initial_load):
         doc = Document.objects.get(pk=doc_id)
         if doc:
-            field_value_cache.cache_generic_values(doc, log=CeleryTaskLogger(_self))
-            run_detect_field_values_as_sub_tasks(_self, [doc.id])
+            log = CeleryTaskLogger(_self)
+            user = User.objects.get(pk=doc_loaded_by_user_id) if doc_loaded_by_user_id is not None \
+                else User.objects.filter(id=1).first()  # type: User
+
+            if not user or not user.is_admin:
+                raise Exception('User who is loading the document is unspecified and the first user in '
+                                'the system is not admin. Something is wrong.')
+
+            field_value_cache.cache_generic_values(doc, log=log, save=True, fire_doc_changed_event=False)
+            detect_and_cache_field_values_for_document(log=log, document=doc, save=True, clear_old_values=True,
+                                                       changed_by_user=user, system_fields_changed=True,
+                                                       generic_fields_changed=True,
+                                                       document_initial_load=document_initial_load)
 
     @staticmethod
     @shared_task(base=ExtendedTask,

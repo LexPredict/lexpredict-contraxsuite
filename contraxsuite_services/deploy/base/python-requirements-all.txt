@@ -2,11 +2,12 @@ bs4==0.0.1
 celery[redis]==4.2.0
 https://github.com/LexPredict/datefinder/archive/master.zip
 https://github.com/LexPredict/lexpredict-lexnlp/archive/master.zip
-dateparser==0.6.0
+dateparser==0.7.0
 django==1.11.18
 django-allauth==0.31.0
 django-allauth-2fa==0.4.4
 django-autocomplete-light==3.2.10
+django-celery-beat==1.4.0
 django-celery-results==1.0.1
 django-ckeditor==5.2.1
 django-constance==2.0.0
@@ -57,7 +58,7 @@ pdfkit==0.6.1
 pillow==4.0.0
 psycopg2-binary==2.7.5
 pyap==0.1
-pycountry==17.1.8
+pycountry==18.5.26
 pydash==4.7.4
 pyexcel-xlsx==0.3.0
 pylint-django==0.7.2
@@ -67,8 +68,8 @@ python-logstash==0.4.6
 python-Levenshtein==0.12.0
 python-magic==0.4.15
 pytz==2016.7
-regex==2016.01.10
-requests==2.20.0
+regex==2017.9.23
+requests==2.21.0
 scikit-learn==0.19.1
 scikit-multilearn==0.0.5
 scipy==1.0.0

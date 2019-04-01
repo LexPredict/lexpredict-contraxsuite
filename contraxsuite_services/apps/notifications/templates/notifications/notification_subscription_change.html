@@ -1,0 +1,28 @@
+{% extends "admin/change_form.html" %}
+
+{% block content %}
+    {% if adminform.form.instance.pk %}
+        <div class="alert alert-block alert-warning">
+            <b>To test the notification rendering leave it disabled
+                and open one of the following links in separate browser tabs:</b>
+            <ul>
+                <li><a href="{% url 'notifications:render-notification' adminform.form.instance.pk 'html' %}">HTML
+                    version</a></li>
+                <li><a href="{% url 'notifications:render-notification' adminform.form.instance.pk 'txt' %}">text
+                    version</a></li>
+            </ul>
+
+        </div>
+    {% else %}
+        <div class="alert alert-block alert-warning">
+            <b>To generate links for testing the notification rendering uncheck "enabled" and click "Save and continue".
+            </b>
+        </div>
+    {% endif %}
+    {{ block.super }}
+{% endblock %}
+
+
+{% block extrajs %}
+    {{ block.super }}
+{% endblock %}
