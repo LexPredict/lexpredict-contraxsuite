@@ -3,7 +3,7 @@ celery[redis]==4.2.0
 https://github.com/LexPredict/datefinder/archive/master.zip
 https://github.com/LexPredict/lexpredict-lexnlp/archive/master.zip
 dateparser==0.7.0
-django==1.11.18
+django==1.11.20
 django-allauth==0.31.0
 django-allauth-2fa==0.4.4
 django-autocomplete-light==3.2.10
