@@ -24,8 +24,11 @@
 """
 # -*- coding: utf-8 -*-
 
+# Standard imports
 import pickle
+import sys
 
+from django.db.models.deletion import CASCADE
 from rest_framework_tracking.models import APIRequestLog
 
 # Django imports
@@ -35,16 +38,28 @@ from django.contrib.postgres.fields import JSONField
 from django.db import models
 from django.dispatch import receiver
 from django.utils.timezone import now
+from django.db import transaction
 
 # Project imports
 from apps.users.models import User
+from apps.common import signals
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.0/LICENSE"
-__version__ = "1.2.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.1/LICENSE"
+__version__ = "1.2.1"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
+
+
+def is_migration_in_process() -> bool:
+    for arg in sys.argv:
+        if arg == 'migrate' or arg == 'makemigrations':
+            return True
+    return False
+
+
+is_migrating = is_migration_in_process()
 
 
 class AppVar(models.Model):
@@ -64,13 +79,20 @@ class AppVar(models.Model):
 
     # last modified user
     user = models.ForeignKey(
-        User, related_name="created_%(class)s_set", null=True, blank=True, db_index=True)
+        User, related_name="created_%(class)s_set", null=True, blank=True, db_index=True, on_delete=CASCADE)
 
     def __str__(self):
         return "App Variable (name={})".format(self.name)
 
     @classmethod
     def set(cls, name, value, description='', overwrite=False) -> 'AppVar':
+        if is_migrating:
+            mock = AppVar()
+            mock.name = name
+            mock.value = value
+            mock.description = description
+            return mock
+
         obj, created = cls.objects.get_or_create(
             name=name,
             defaults={"value": value, "description": description})
@@ -158,7 +180,7 @@ class ReviewStatus(models.Model):
     order = models.PositiveSmallIntegerField()
 
     # Status group
-    group = models.ForeignKey(ReviewStatusGroup, blank=True, null=True, db_index=True)
+    group = models.ForeignKey(ReviewStatusGroup, blank=True, null=True, db_index=True, on_delete=CASCADE)
 
     # flag to detect f.e. whether we should recalculate fields for a document
     is_active = models.BooleanField(default=True, db_index=True)
@@ -174,10 +196,17 @@ class ReviewStatus(models.Model):
         return "ReviewStatus (pk={0}, name={1})" \
             .format(self.pk, self.name)
 
+    def _fire_saved(self, old_instance=None):
+        signals.review_status_saved.send(self.__class__, user=None, instance=self, old_instance=old_instance)
+
     def save(self, **kwargs):
         if not self.code:
             self.code = self.name.lower().replace(' ', '_')
-        return super().save(**kwargs)
+        old_instance = ReviewStatus.objects.filter(pk=self.pk).first()
+        res = super().save(**kwargs)
+        with transaction.atomic():
+            transaction.on_commit(lambda: self._fire_saved(old_instance))
+        return res
 
     @classmethod
     def initial_status(cls):
@@ -218,7 +247,7 @@ class ObjectStorage(models.Model):
 
 
 class Action(models.Model):
-    user = models.ForeignKey(User, blank=True, null=True)
+    user = models.ForeignKey(User, blank=True, null=True, on_delete=models.CASCADE)
     name = models.CharField(max_length=50, default='list')
     content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE)
     object_pk = models.CharField(max_length=36, blank=True, null=True)

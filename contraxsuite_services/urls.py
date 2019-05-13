@@ -31,11 +31,12 @@ from __future__ import unicode_literals
 import importlib
 
 # Third-party imports
+from django.conf.urls import url
 from filebrowser.sites import site as filebrowser_site
 
 # Django imports
 from django.conf import settings
-from django.conf.urls import include, url
+from django.urls import include, path
 from django.conf.urls.static import static
 from django.contrib import admin
 from django.contrib.staticfiles.urls import staticfiles_urlpatterns
@@ -51,8 +52,8 @@ from apps.document.python_coded_fields_registry import init_field_registry
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.0/LICENSE"
-__version__ = "1.2.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.1/LICENSE"
+__version__ = "1.2.1"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -78,7 +79,7 @@ urlpatterns = [
     # url(r'^project/', include('apps.project.urls', namespace='project')),
     # url(r'^task/', include('apps.task.urls', namespace='task')),
     # Custom
-    url(r'^{0}admin/filebrowser/'.format(settings.BASE_URL), include(filebrowser_site.urls)),
+    url(r'^{0}admin/filebrowser/'.format(settings.BASE_URL), filebrowser_site.urls),
     url(r'^{0}api-auth/'.format(settings.BASE_URL), include('rest_framework.urls')),
     url(r'^rest-auth/'.format(settings.BASE_URL), include('rest_auth.urls')),
     url(r'^rest-auth/registration/'.format(settings.BASE_URL), include('rest_auth.registration.urls')),
@@ -101,7 +102,7 @@ for app_name in custom_apps:
     module_str = 'apps.%s.urls' % app_name
     spec = importlib.util.find_spec(module_str)
     if spec:
-        include_urls = include(module_str, namespace=app_name)
+        include_urls = include((module_str, app_name))  # namespace=app_name)
         urlpatterns += [url(r'^' + settings.BASE_URL + app_name + '/', include_urls)]
 
     # add api urlpatterns
@@ -135,7 +136,7 @@ for app_name in custom_apps:
             ]
 for api_version, this_api_urlpatterns in api_urlpatterns.items():
     urlpatterns += [
-        url(r'^api/', include(this_api_urlpatterns, namespace=api_version)),
+        url(r'^api/', include((this_api_urlpatterns, api_version))),
     ]
 
 
@@ -164,7 +165,8 @@ if settings.DEBUG:
         import debug_toolbar
 
         urlpatterns += [
-            url(r'^' + settings.BASE_URL + '__debug__/', include(debug_toolbar.urls)),
+            # url(r'^' + settings.BASE_URL + '__debug__/', include(debug_toolbar.urls)),
+            path('__debug__/', include(debug_toolbar.urls)),
         ]
 
 

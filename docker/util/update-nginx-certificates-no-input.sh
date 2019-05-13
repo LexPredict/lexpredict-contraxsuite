@@ -5,6 +5,8 @@ pushd ../
 source volumes.sh
 source setenv.sh
 
+export SLACK_WEBHOOK=$1
+
 echo "=== Setting up letsencrypt certs ==="
 
 sudo add-apt-repository ppa:certbot/certbot -y
@@ -26,9 +28,9 @@ sudo rm -r ./.certs
 
 if [ -e ./certificate_change_occured ]
 then
-  curl -X POST --data-urlencode "payload={\"channel\": \"#ops-notifications\", \"username\": \"Letsencrypt renewal bot\", \"text\": \"The certificate for ${DOCKER_DJANGO_HOST_NAME} has been successfully renewed.\", \"icon_emoji\": \":ok_hand:\"}" https://hooks.slack.com/services/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
+  curl -X POST --data-urlencode "payload={\"channel\": \"#ops-notifications\", \"username\": \"Letsencrypt renewal bot\", \"text\": \"The certificate for ${DOCKER_DJANGO_HOST_NAME} has been successfully renewed.\", \"icon_emoji\": \":ok_hand:\"}" $SLACK_WEBHOOK || echo  "Certificate updated"
 else
-  curl -X POST --data-urlencode "payload={\"channel\": \"#ops-notifications\", \"username\": \"Letsencrypt renewal bot\", \"text\": \"There was a problem with renewing certificate for ${DOCKER_DJANGO_HOST_NAME}.\", \"icon_emoji\": \":thumbsdown:\"}" https://hooks.slack.com/services/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
+  curl -X POST --data-urlencode "payload={\"channel\": \"#ops-notifications\", \"username\": \"Letsencrypt renewal bot\", \"text\": \"There was a problem with renewing certificate for ${DOCKER_DJANGO_HOST_NAME}.\", \"icon_emoji\": \":thumbsdown:\"}" $SLACK_WEBHOOK || echo "Certificate not updated"
 fi
 
 sudo rm ./certificate_change_occured

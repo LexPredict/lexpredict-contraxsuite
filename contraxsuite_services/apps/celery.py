@@ -36,46 +36,54 @@ from celery.app import trace
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.0/LICENSE"
-__version__ = "1.2.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.1/LICENSE"
+__version__ = "1.2.1"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
+
 # Set celery environment
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'settings')  # pragma: no cover
-django.setup()
 
-# advanced_celery adds workarounds for celery issue which requires specific import order
-from apps.task.celery_backend.advanced_celery import AdvancedCelery  # noqa
+WAS_INIT = False
+try:
+    django.setup()
+except RuntimeError:
+    WAS_INIT = True
+    pass
 
-app = AdvancedCelery('apps')
+if True: # not WAS_INIT:
+    # advanced_celery adds workarounds for celery issue which requires specific import order
+    from apps.task.celery_backend.advanced_celery import AdvancedCelery  # noqa
 
-app.config_from_object('django.conf:settings', namespace='CELERY')
-app.autodiscover_tasks(force=True)
+    app = AdvancedCelery('apps')
 
-old_build_tracer = trace.build_tracer
+    app.config_from_object('django.conf:settings', namespace='CELERY')
+    app.autodiscover_tasks(force=True)
 
-
-def build_tracer_patched(name, task, loader=None, hostname=None, *args, **kwargs):
-    old_trace_task = old_build_tracer(name, task, loader, hostname, *args, **kwargs)
-    worker = hostname
-
-    def trace_task_patched(uuid, *args1, **kwargs1):
-        from apps.task.utils.task_utils import TaskUtils
-        from apps.task.models import Task
-
-        TaskUtils.prepare_task_execution()
-        Task.objects.start_processing(task_id=uuid, worker=worker)
-
-        return old_trace_task(uuid, *args1, **kwargs1)
-
-    return trace_task_patched
+    old_build_tracer = trace.build_tracer
 
 
-trace.build_tracer = build_tracer_patched
+    def build_tracer_patched(name, task, loader=None, hostname=None, *args, **kwargs):
+        old_trace_task = old_build_tracer(name, task, loader, hostname, *args, **kwargs)
+        worker = hostname
+
+        def trace_task_patched(uuid, *args1, **kwargs1):
+            from apps.task.utils.task_utils import TaskUtils
+            from apps.task.models import Task
+
+            TaskUtils.prepare_task_execution()
+            Task.objects.start_processing(task_id=uuid, worker=worker)
+
+            return old_trace_task(uuid, *args1, **kwargs1)
+
+        return trace_task_patched
 
 
-# Bind debug task
-@app.task(bind=True)
-def debug_task(self):
-    print('Request: {0!r}'.format(self.request))  # pragma: no cover
+    trace.build_tracer = build_tracer_patched
+
+
+    # Bind debug task
+    @app.task(bind=True)
+    def debug_task(self):
+        print('Request: {0!r}'.format(self.request))  # pragma: no cover

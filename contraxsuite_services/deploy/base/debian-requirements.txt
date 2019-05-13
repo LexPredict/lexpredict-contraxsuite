@@ -8,12 +8,8 @@ python3-dev
 python-setuptools
 python-virtualenv
 python-pip
-nginx-full
 uwsgi
 uwsgi-plugin-python3
-
-# GIT
-git
 
 # Pillow, pylibmc
 zlib1g-dev
@@ -22,8 +18,6 @@ zlib1g-dev
 libpq-dev
 postgresql-client-9.6
 postgresql-client-common
-postgresql-9.6
-postgresql-contrib-9.6
 
 # Pillow dependencies
 libtiff5-dev
@@ -57,9 +51,6 @@ libmad0
 libsox-fmt-mp3
 sox
 libjpeg-dev
-
-# ssl
-python3-certbot
 
 # npm (to install yuglify)
 npm

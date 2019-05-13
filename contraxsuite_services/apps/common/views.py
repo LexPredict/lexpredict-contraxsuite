@@ -40,17 +40,17 @@ from django.views.generic.edit import FormView
 from django.utils.translation import ugettext_lazy as _
 
 # Project imports
-from apps.common.mixins import TechAdminRequiredMixin
+import apps.common.mixins
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.0/LICENSE"
-__version__ = "1.2.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.1/LICENSE"
+__version__ = "1.2.1"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
 
-class AppConfigView(TechAdminRequiredMixin, FormView):
+class AppConfigView(apps.common.mixins.TechAdminRequiredMixin, FormView):
     form_class = ConstanceForm
     template_name = 'common/config_form.html'
 

@@ -35,6 +35,14 @@ filebeat.prospectors:
   json.keys_under_root: true
   json.add_error_key: true
   json.overwrite_keys: true
+- type: log
+  paths:
+    - /data/logs/frontend-*.log_json
+  fields:
+    logger: frontend
+  json.keys_under_root: true
+  json.add_error_key: true
+  json.overwrite_keys: true
 
 # If changing index names here - don't forget to change them in settings.py.
 # Celery task logs are loaded in Django UI by requesting Elasticsearch

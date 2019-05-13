@@ -45,14 +45,6 @@ from apps.extract.models import Court, GeoAlias, GeoEntity, GeoRelation, Party, 
 from apps.task.models import TaskConfig
 from apps.users.models import User, Role
 
-__author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.0/LICENSE"
-__version__ = "1.2.0"
-__maintainer__ = "LexPredict, LLC"
-__email__ = "support@contraxsuite.com"
-
-
 APP_CONFIG_MODELS = [
     DocumentType,
     DocumentField,
@@ -202,11 +194,11 @@ def load_fixture_from_dump(data, mode='default'):
             result = StringIO()
             sys.stdout = result
             if mode == 'soft':
-                call_command('loadnewdata', f.name, skip_if_exists='any', interactive=False)
+                call_command('loadnewdata', f.name, skip_if_exists='any')
             elif mode == 'partial':
-                call_command('loadnewdata', f.name, skip_if_exists='one', interactive=False)
+                call_command('loadnewdata', f.name, skip_if_exists='one')
             else:
-                call_command('loaddata', f.name, interactive=False)
+                call_command('loaddata', f.name)
             sys.stdout = old_stdout
             result_string = result.getvalue()
         ret = {'status': 'success',

@@ -32,6 +32,7 @@ from traceback import format_exc
 # Third-party imports
 from celery import states
 from dateutil import parser as date_parser
+from django.db.models.deletion import CASCADE
 from elasticsearch import Elasticsearch
 
 # Django imports
@@ -50,8 +51,8 @@ from apps.users.models import User
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.0/LICENSE"
-__version__ = "1.2.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.1/LICENSE"
+__version__ = "1.2.1"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -79,13 +80,13 @@ class Task(models.Model):
         default=fast_uuid
     )
 
-    main_task = models.ForeignKey('self', blank=True, null=True)
+    main_task = models.ForeignKey('self', blank=True, null=True, on_delete=CASCADE)
 
     name = models.CharField(max_length=100, db_index=True, null=True, blank=True)
     description = models.CharField(max_length=1024, db_index=False, null=True, blank=True)
     date_start = models.DateTimeField(default=now, db_index=True)
     date_work_start = models.DateTimeField(blank=True, null=True, db_index=True)
-    user = models.ForeignKey(User, db_index=True, blank=True, null=True)
+    user = models.ForeignKey(User, db_index=True, blank=True, null=True, on_delete=CASCADE)
     celery_metadata = JSONField(blank=True, null=True)
     metadata = JSONField(blank=True, null=True)
     args = JSONField(blank=True, null=True, db_index=True)
@@ -128,8 +129,9 @@ class Task(models.Model):
     push_steps = models.IntegerField(null=True, blank=True, default=1)
     failure_processed = models.BooleanField(null=False, blank=False, default=False)
 
-    project = models.ForeignKey('project.Project', blank=True, null=True, db_index=True)
-    upload_session = models.ForeignKey('project.UploadSession', blank=True, null=True, db_index=True)
+    project = models.ForeignKey('project.Project', blank=True, null=True, db_index=True, on_delete=CASCADE)
+    upload_session = models.ForeignKey('project.UploadSession', blank=True,
+                                       null=True, db_index=True, on_delete=CASCADE)
     run_after_sub_tasks_finished = models.BooleanField(editable=False, default=False)
 
     objects = TaskManager()

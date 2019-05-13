@@ -16,6 +16,7 @@ from apps.rawdb.field_value_tables import FIELD_CODE_DOC_ID, FIELD_CODE_DOC_NAME
     FIELD_CODES_SHOW_BY_DEFAULT_NON_GENERIC, FIELD_CODES_SHOW_BY_DEFAULT_GENERIC, FIELD_CODES_HIDE_BY_DEFAULT, \
     EmptyDocumentQueryResults
 from apps.rawdb.rawdb.field_handlers import FieldHandler
+from apps.task.tasks import file_access_handler
 from apps.users.models import User
 from .models import DocumentDigestConfig, DocumentDigestSendDate, DIGEST_PERIODS_BY_CODE, \
     DOC_FILTERS_BY_CODE, DocumentNotificationSubscription
@@ -26,10 +27,26 @@ def ensure_no_dir_change(fn: str):
         raise RuntimeError('File name should be inside its parent dir: {0}'.format(fn))
 
 
+def get_notification_template_resource(rfn: str) -> Optional[bytes]:
+    fn = os.path.normpath(os.path.join(settings.NOTIFICATION_CUSTOM_TEMPLATES_PATH_IN_MEDIA, rfn))
+    if not fn.startswith(settings.NOTIFICATION_CUSTOM_TEMPLATES_PATH_IN_MEDIA):
+        raise RuntimeError('File name should be inside its parent dir: {0}'.format(rfn))
+
+    res = file_access_handler.read(fn)
+    if res:
+        return res
+    fn = os.path.normpath(os.path.join(settings.NOTIFICATION_EMBEDDED_TEMPLATES_PATH, rfn))
+    if not fn.startswith(settings.NOTIFICATION_EMBEDDED_TEMPLATES_PATH):
+        raise RuntimeError('File name should be inside its parent dir: {0}'.format(rfn))
+
+    with open(fn, 'br') as f:
+        return f.read()
+
+
 RE_SRC_ATTACHMENT = re.compile(r'(<.{1,2000}")(images/)([^"]+)(".{1,2000})>')
 
 
-def send_email(log: ProcessLogger, dst_user, subject: str, txt: str, html: str, image_dir: str):
+def send_email(log: ProcessLogger, dst_user, subject: str, txt: str, html: str, image_dir: str, cc: Set[str] = None):
     if not dst_user.email:
         log.error('Destination user {0} has no email assigned'.format(dst_user.get_full_name()))
         return
@@ -37,6 +54,7 @@ def send_email(log: ProcessLogger, dst_user, subject: str, txt: str, html: str, 
     try:
         email = EmailMultiAlternatives(subject=subject,
                                        body=txt,
+                                       cc=list(cc) if cc else None,
                                        from_email=settings.DEFAULT_FROM_EMAIL,
                                        to=['"{0}" <{1}>'.format(dst_user.get_full_name(), dst_user.email)])
         if html:
@@ -45,13 +63,11 @@ def send_email(log: ProcessLogger, dst_user, subject: str, txt: str, html: str, 
             email.attach_alternative(email_html, 'text/html')
 
             for image_fn in images:
-                ensure_no_dir_change(image_fn)
-                with open(os.path.join(image_dir, image_fn), 'br') as f:
-                    data = f.read()
-                    img = MIMEImage(data)
-                    img.add_header('Content-Id', '<' + image_fn + '>')
-                    img.add_header("Content-Disposition", "inline", filename=image_fn)
-                    email.attach(img)
+                data = get_notification_template_resource(os.path.join(image_dir, image_fn))
+                img = MIMEImage(data)
+                img.add_header('Content-Id', '<' + image_fn + '>')
+                img.add_header("Content-Disposition", "inline", filename=image_fn)
+                email.attach(img)
 
         email.send(fail_silently=False)
     except Exception as caused_by:
@@ -61,20 +77,21 @@ def send_email(log: ProcessLogger, dst_user, subject: str, txt: str, html: str, 
 
 
 class RenderedNotification:
-    __slots__ = ['dst_users', 'subject', 'txt', 'html', 'image_dir']
+    __slots__ = ['dst_users', 'subject', 'txt', 'html', 'image_dir', 'cc']
 
-    def __init__(self, dst_users: Set[User], subject: str, txt: str, html: str, image_dir: str) -> None:
+    def __init__(self, dst_users: Set[User], subject: str, txt: str, html: str, image_dir: str, cc: Set[str]) -> None:
         super().__init__()
         self.dst_users = dst_users
         self.subject = subject
         self.txt = txt
         self.html = html
         self.image_dir = image_dir
+        self.cc = cc
 
     def send(self, log: ProcessLogger):
         with ThreadPoolExecutor(max_workers=settings.EMAIL_PARALLEL_SEND) as executor:
             executor.map(lambda tpl: send_email(*tpl),
-                         [(log, dst_user, self.subject, self.txt, self.html, self.image_dir)
+                         [(log, dst_user, self.subject, self.txt, self.html, self.image_dir, self.cc)
                           for dst_user in self.dst_users],
                          timeout=settings.EMAIL_TIMEOUT * len(self.dst_users))
 
@@ -101,19 +118,6 @@ class RenderedDigest:
                    html=self.html,
                    image_dir=self.image_dir)
         DocumentDigestSendDate.store_digest_sent(self.config, self.dst_user, self.date)
-
-
-def get_digest_template_dir(config: DocumentDigestConfig) -> str:
-    ensure_no_dir_change(config.template_name)
-    return os.path.join(settings.DIGEST_TEMPLATES_PATH, config.template_name)
-
-
-def get_notification_template_dir(subscription: DocumentNotificationSubscription) -> str:
-    return os.path.join(settings.NOTIFICATION_TEMPLATES_PATH, subscription.template_name)
-
-
-def get_template_image_dir(template_dir: str) -> str:
-    return os.path.join(template_dir, 'images')
 
 
 def render_digest(config: DocumentDigestConfig,
@@ -177,18 +181,17 @@ def render_digest(config: DocumentDigestConfig,
 
     html = None
 
-    template_dir = get_digest_template_dir(config)
+    html_template = get_notification_template_resource(os.path.join(config.template_name, 'template.html'))
+    if html_template:
+        html = Template(html_template.decode('utf-8')).render(template_context)
 
-    html_template = os.path.join(template_dir, 'template.html')
-    if os.path.isfile(html_template):
-        with open(html_template) as f:
-            html = Template(f.read()).render(template_context)
+    txt_template_name = os.path.join(config.template_name, 'template.txt')
+    txt_template = get_notification_template_resource(txt_template_name)
+    if not txt_template:
+        raise RuntimeError('Txt template not found: {0}'.format(txt_template_name))
+    txt = Template(txt_template.decode('utf-8')).render(template_context)
 
-    txt_template = os.path.join(template_dir, 'template.txt')
-    with open(txt_template) as f:
-        txt = Template(f.read()).render(template_context)
-
-    image_dir = get_template_image_dir(template_dir)
+    image_dir = os.path.join(config.template_name, 'images')
 
     return RenderedDigest(config=config,
                           dst_user=dst_user,
@@ -265,21 +268,21 @@ def render_notification(already_sent_user_ids: Set,
 
     html = None
 
-    template_dir = get_notification_template_dir(subscription)
+    html_template = get_notification_template_resource(os.path.join(subscription.template_name, 'template.html'))
+    if html_template:
+        html = Template(html_template.decode('utf-8')).render(template_context)
 
-    html_template = os.path.join(template_dir, 'template.html')
-    if os.path.isfile(html_template):
-        with open(html_template) as f:
-            html = Template(f.read()).render(template_context)
+    txt_template_name = os.path.join(subscription.template_name, 'template.txt')
+    txt_template = get_notification_template_resource(txt_template_name)
+    if not txt_template:
+        raise RuntimeError('Txt template not found: {0}'.format(txt_template_name))
+    txt = Template(txt_template.decode('utf-8')).render(template_context)
 
-    txt_template = os.path.join(template_dir, 'template.txt')
-    with open(txt_template) as f:
-        txt = Template(f.read()).render(template_context)
-
-    image_dir = get_template_image_dir(template_dir)
+    image_dir = os.path.join(subscription.template_name, 'images')
 
     return RenderedNotification(dst_users=recipients,
                                 subject=subject,
                                 txt=txt,
                                 html=html,
-                                image_dir=image_dir)
+                                image_dir=image_dir,
+                                cc=subscription.get_cc_addrs())

@@ -42,7 +42,7 @@ from django.http import HttpResponse
 
 # Third-party imports
 from rest_framework import serializers, generics, schemas
-from rest_framework.views import APIView
+import rest_framework.views
 from rest_framework.response import Response
 from rest_framework.parsers import FileUploadParser
 
@@ -54,13 +54,13 @@ from apps.dump.app_dump import get_full_dump, get_field_values_dump,\
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.0/LICENSE"
-__version__ = "1.2.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.1/LICENSE"
+__version__ = "1.2.1"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
 
-class BaseDumpView(APIView):
+class BaseDumpView(rest_framework.views.APIView):
     permission_classes = (SuperuserRequiredPermission,)
 
     def __init__(self, *args, **kwargs):
@@ -87,7 +87,7 @@ class BaseDumpView(APIView):
             with NamedTemporaryFile(mode='w+', suffix='.json') as f:
                 json.dump(data, f)
                 f.seek(0)
-                call_command(self._command, f.name, stdout=buf, interactive=False)
+                call_command(self._command, f.name, stdout=buf)
                 buf.seek(0)
             return HttpResponse(content=self.get_json_dump(),
                                 content_type='Application/json',
@@ -130,7 +130,7 @@ class DumpDocumentConfigView(BaseDumpView):
         return get_app_config_dump(document_type_codes)
 
 
-class FieldValuesDumpAPIView(APIView):
+class FieldValuesDumpAPIView(rest_framework.views.APIView):
     permission_classes = (SuperuserRequiredPermission,)
 
     def get(self, request, *args, **kwargs):
@@ -154,7 +154,7 @@ class FieldValuesDumpAPIView(APIView):
             with NamedTemporaryFile(mode='w+b', suffix='.json') as f:
                 f.write(data)
                 f.flush()
-                call_command('loaddata', f.name, interactive=False)
+                call_command('loaddata', f.name)
             return Response("OK")
         except Exception as e:
             tb = traceback.format_exc()

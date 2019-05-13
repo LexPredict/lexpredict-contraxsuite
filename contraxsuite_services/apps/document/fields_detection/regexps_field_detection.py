@@ -1,5 +1,5 @@
 import io
-from typing import Optional, List
+from typing import Optional, List, Iterable
 
 import pandas as pd
 
@@ -20,7 +20,8 @@ class RegexpsOnlyFieldDetectionStrategy(FieldDetectionStrategy):
                                             log: ProcessLogger,
                                             field: DocumentField,
                                             train_data_project_ids: Optional[List],
-                                            use_only_confirmed_field_values: bool = False) -> Optional[ClassifierModel]:
+                                            use_only_confirmed_field_values: bool = False,
+                                            train_documents: Iterable[Document] = None) -> Optional[ClassifierModel]:
 
         return None
 
@@ -88,7 +89,8 @@ class FieldBasedRegexpsDetectionStrategy(FieldDetectionStrategy):
                                             log: ProcessLogger,
                                             field: DocumentField,
                                             train_data_project_ids: Optional[List],
-                                            use_only_confirmed_field_values: bool = False) -> Optional[ClassifierModel]:
+                                            use_only_confirmed_field_values: bool = False,
+                                            train_documents: Iterable[Document] = None) -> Optional[ClassifierModel]:
 
         return None
 
@@ -157,7 +159,8 @@ def apply_simple_config(log: ProcessLogger,
                         document_field: DocumentField,
                         csv: bytes,
                         drop_previous_field_detectors: bool,
-                        update_field_choice_values: bool):
+                        update_field_choice_values: bool,
+                        csv_contains_regexps: bool = False):
     df = pd.read_csv(io.BytesIO(csv), dtype=str)
     if df.shape[0] < 1 or df.shape[1] < 1:
         raise ValueError('Config csv contains no data')
@@ -174,12 +177,25 @@ def apply_simple_config(log: ProcessLogger,
     if drop_previous_field_detectors:
         DocumentFieldDetector.objects.filter(field=document_field, category=FD_CATEGORY_IMPORTED_SIMPLE_CONFIG).delete()
     for index, row in df.iterrows():
+        if len(row) == 0:
+            continue
+
+        includes = row.dropna()
+
+        if not csv_contains_regexps:
+            includes = [i.strip().replace(' ', '\s{1,100}') for i in includes]
+        includes = [i for i in includes if i]
+
+        if len(includes) == 1:
+            log.info('There are no search strings specified for detected value {0}'.format(row[0]))
+            continue
+
         detector = DocumentFieldDetector()
         detector.category = FD_CATEGORY_IMPORTED_SIMPLE_CONFIG
         detector.field = document_field
         detector.regexps_pre_process_lower = True
         detector.detected_value = row[0]
-        detector.include_regexps = '\n'.join(row.dropna()).lower()
+        detector.include_regexps = '\n'.join(includes[1:])
         detector.save()
         if index % 10 == 0:
             log.step_progress()

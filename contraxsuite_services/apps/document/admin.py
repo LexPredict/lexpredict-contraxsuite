@@ -24,8 +24,9 @@
 """
 # -*- coding: utf-8 -*-
 
+import inspect
+import json
 # Standard imports
-import datetime
 import re
 import traceback
 from typing import List
@@ -42,18 +43,15 @@ from django.db import transaction, router
 from django.db.models import Q
 from django.template.response import TemplateResponse
 from django.utils.html import format_html_join
-from django.utils.timezone import now
+from django.utils.safestring import mark_safe
 from django_json_widget.widgets import JSONEditorWidget
 from simple_history.admin import SimpleHistoryAdmin
 
 # Project imports
-import settings
 from apps.common.script_utils import ScriptError
-from apps.common.sql_commons import escape_column_name
 from apps.document import signals
 from apps.document.field_types import FIELD_TYPES_REGISTRY, RelatedInfoField
-from apps.document.fields_detection.formula_and_field_based_ml_field_detection import \
-    FieldBasedMLOnlyFieldDetectionStrategy
+from apps.document.fields_detection.field_based_ml_field_detection import init_classifier_impl
 from apps.document.fields_detection.formula_based_field_detection import FormulaBasedFieldDetectionStrategy, \
     DocumentFieldFormulaError
 from apps.document.fields_detection.stop_words import compile_stop_words, detect_value_with_stop_words
@@ -69,8 +67,8 @@ from apps.task.models import Task
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.0/LICENSE"
-__version__ = "1.2.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.1/LICENSE"
+__version__ = "1.2.1"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -123,9 +121,8 @@ class UsersTasksValidationAdmin(admin.ModelAdmin):
     @classmethod
     def get_user_tasks_names(cls):
         if cls.users_tasks_validation_enabled():
-            execution_delay = now() - datetime.timedelta(seconds=settings.USER_TASK_EXECUTION_DELAY)
             tasks = Task.objects \
-                .get_active_user_tasks(execution_delay=execution_delay) \
+                .get_active_user_tasks() \
                 .distinct('name') \
                 .order_by('name') \
                 .values_list('name', flat=True)
@@ -142,7 +139,8 @@ class UsersTasksValidationAdmin(admin.ModelAdmin):
                 objects, opts, request.user, model_admin.admin_site, using)
             if not protected:
                 res = delete_selected(model_admin, request, objects)
-                [self.on_object_deleted(obj) for obj in objects]
+                for obj in objects:
+                    self.on_object_deleted(obj)
                 return res
         response = delete_selected(model_admin, request, objects)
         context = response.context_data
@@ -267,8 +265,8 @@ class FieldValuesValidationAdmin(UsersTasksValidationAdmin):
 
 
 class DocumentFieldForm(forms.ModelForm):
-    MAX_ESCAPED_FIELD_CODE_LEN = 40
-    R_AZ = re.compile(r'[a-zA-Z]')
+    MAX_ESCAPED_FIELD_CODE_LEN = 50
+    R_FIELD_CODE = re.compile(r'^[a-z][a-z0-9_]*$')
 
     depends_on_fields = forms.ModelMultipleChoiceField(
         queryset=DocumentField.objects.all(),
@@ -292,7 +290,12 @@ class DocumentFieldForm(forms.ModelForm):
         required=False,
         help_text='Display Yes if Related Info Text Found, otherwise No')
 
-    default_value = forms.CharField(widget=forms.Textarea, required=False)
+    classifier_init_script = forms.Field(required=False, widget=forms.Textarea,
+                                         help_text=mark_safe('''Classifier initialization script. 
+    Here is how it used: <br /><br />
+    ''' + '<br />'.join(inspect.getsource(init_classifier_impl)
+                        .replace(' ', '&nbsp;').replace('\t', '&nbsp;&nbsp;&nbsp;&nbsp;')
+                        .split('\n'))))
 
     class Meta:
         model = DocumentField
@@ -330,6 +333,21 @@ class DocumentFieldForm(forms.ModelForm):
                                                                                     str(fields_to_values),
                                                                                     trace))
 
+    PARAM_CODE = 'code'
+
+    def validate_field_code(self):
+
+        field_code = self.cleaned_data.get(self.PARAM_CODE)
+
+        if not self.R_FIELD_CODE.match(field_code):
+            self.add_error('code', '''Field codes must be lowercase, should start with a latin letter and contain 
+            only latin letters, digits, and underscores. You cannot use a field code you have already used for this 
+            document type.'''.format(field_code))
+
+    UNSURE_CHOICE_VALUE = 'unsure_choice_value'
+
+    UNSURE_THRESHOLDS = 'unsure_thresholds_by_value'
+
     def clean(self):
         field_code = self.cleaned_data.get('code')
         formula = self.cleaned_data.get('formula')
@@ -340,7 +358,36 @@ class DocumentFieldForm(forms.ModelForm):
         classifier_init_script = self.cleaned_data['classifier_init_script']
         stop_words = self.cleaned_data['stop_words']
         hide_until_python = self.cleaned_data['hide_until_python']
-        default_value = self.cleaned_data['default_value']
+        default_value = self.cleaned_data.get('default_value')
+        unsure_choice_value = self.cleaned_data[self.UNSURE_CHOICE_VALUE]
+        choice_values = DocumentField.parse_choice_values(self.cleaned_data['choices'])
+        unsure_thresholds_by_value = self.cleaned_data.get(self.UNSURE_THRESHOLDS)
+
+        field_type = FIELD_TYPES_REGISTRY[type_code]
+
+        if unsure_choice_value and (not choice_values or unsure_choice_value not in choice_values):
+            self.add_error(self.UNSURE_CHOICE_VALUE, '"Unsure choice value" must be listed in the choice values.')
+
+        if unsure_thresholds_by_value is not None:
+            if not hasattr(unsure_thresholds_by_value, 'items'):
+                self.add_error(self.UNSURE_THRESHOLDS, 'Must be a dict of choice values to float thresholds [0..1]')
+            else:
+                if not choice_values:
+                    self.add_error(self.UNSURE_THRESHOLDS, '"Unsure" thresholds are set but choice values are not.')
+                if not unsure_choice_value:
+                    self.add_error(self.UNSURE_THRESHOLDS, '"Unsure" thresholds are set but '
+                                                           '"unsure" choice value is not.')
+
+                if choice_values and unsure_choice_value:
+                    for k, v in unsure_thresholds_by_value.items():
+                        if k == unsure_choice_value:
+                            self.add_error(self.UNSURE_THRESHOLDS, 'Please set thresholds only for "sure" choice '
+                                                                   'values and not for ' + k)
+                        elif k not in choice_values:
+                            self.add_error(self.UNSURE_THRESHOLDS, 'Value not in choice values: ' + k)
+                        if (not isinstance(v, int) and not isinstance(v, float)) or v < 0 or v > 1:
+                            self.add_error(self.UNSURE_THRESHOLDS, 'Threshold should be a float value between 0 and 1: '
+                                           + k)
 
         try:
             stop_words = compile_stop_words(stop_words)
@@ -349,7 +396,7 @@ class DocumentFieldForm(forms.ModelForm):
             self.add_error('stop_words', str(err))
 
         try:
-            FieldBasedMLOnlyFieldDetectionStrategy.init_classifier_impl(field_code, classifier_init_script)
+            init_classifier_impl(field_code, classifier_init_script)
         except ScriptError as err:
             self.add_error('classifier_init_script', str(err).split('\n'))
 
@@ -383,12 +430,11 @@ class DocumentFieldForm(forms.ModelForm):
         if hide_until_python:
             fields_to_values = {field.code: FIELD_TYPES_REGISTRY[field.type].example_python_value(field)
                                 for field in list(document_type.fields.all())}
-            code = self.instance.code if self.instance else None
-            if code and code in fields_to_values:
-                del fields_to_values[code]
+            if field_code and field_code in fields_to_values:
+                del fields_to_values[field_code]
             if type_code:
                 fields_to_values[field_code] = FIELD_TYPES_REGISTRY[type_code] \
-                    .example_python_value(DocumentField(**self.cleaned_data))
+                    .example_python_value(self.instance)
 
             self.calc_formula(field_code,
                               None,
@@ -397,30 +443,19 @@ class DocumentFieldForm(forms.ModelForm):
                               'hide_until_python',
                               formula_name='hide until python')
 
-        if default_value and type_code == RelatedInfoField.code:
-            self.add_error('default_value', 'Related info field can\'t have default value')
+        if default_value is not None:
+            if type_code == RelatedInfoField.code:
+                self.add_error('default_value', 'Related info field can\'t have default value')
+            elif field_type.extract_from_possible_value(self.instance, default_value) != default_value:
+                self.add_error('default_value', 'Wrong value for type {0}. Example: {1}'
+                               .format(type_code, json.dumps(field_type.example_python_value(self.instance))))
 
         try:
             DocumentField.compile_value_regexp(self.cleaned_data['value_regexp'])
         except Exception as exc:
             self.add_error('value_regexp', exc)
 
-        # Ensure field code is not too long for Postgres column names
-        # We use field codes to build column names for Postgres tables.
-        # Max length of column name is 63. We escape them to snake case and sometimes add postfixes to them.
-        # Lets assume that we should have max 23 chars for postfixes and max 40 chars for the field code.
-        field_code_escaped = escape_column_name(field_code)
-        if len(field_code_escaped) > self.MAX_ESCAPED_FIELD_CODE_LEN:
-            self.add_error('code', '''Field code is too long. Field codes are used to build column names of DB tables.
-Escaped version should have max {max_length} chars but it is {length} chars long. Current escaped version of the 
-specified field code is: "{field_code_escaped}"'''
-                           .format(max_length=self.MAX_ESCAPED_FIELD_CODE_LEN,
-                                   length=len(field_code_escaped),
-                                   field_code_escaped=field_code_escaped))
-        if not self.R_AZ.search(field_code_escaped):
-            self.add_error('code', '''Field codes are used to build column names of DB tables. Escaped version of 
-the specified field code should contain at least one latin letter. Current escaped version of the specified field 
-code is: "{0}"'''.format(field_code_escaped))
+        self.validate_field_code()
 
         if self.initial and 'type' in self.changed_data:
             wrong_field_detector_pks = []
@@ -465,7 +500,8 @@ class DocumentFieldAdmin(FieldValuesValidationAdmin):
             'fields': ('stop_words', 'value_regexp'),
         }),
         ('Field Detection: Machine Learning', {
-            'fields': ('classifier_init_script', 'training_finished', 'dirty', 'trained_after_documents_number'),
+            'fields': ('classifier_init_script', 'unsure_choice_value', 'unsure_thresholds_by_value',
+                       'training_finished', 'dirty', 'trained_after_documents_number'),
         }),
         ('Field Detection: Calculated Fields', {
             'fields': ('formula',),
@@ -733,7 +769,7 @@ class ClassifierModelAdmin(SimpleHistoryAdmin):
 class DocumentFieldCategoryForm(forms.ModelForm):
     class Meta:
         model = DocumentFieldCategory
-        fields = ['name', 'order']
+        fields = ['name', 'order', 'export_key']
 
     fields = forms.ModelMultipleChoiceField(
         queryset=DocumentField.objects.all(),

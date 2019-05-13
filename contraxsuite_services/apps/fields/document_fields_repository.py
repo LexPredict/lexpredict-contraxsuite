@@ -25,14 +25,15 @@
 
 import importlib
 
-from django.conf.urls import include
+# from django.conf.urls import include
+from django.urls import include
 
 import settings
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.0/LICENSE"
-__version__ = "1.2.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.1/LICENSE"
+__version__ = "1.2.1"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -54,7 +55,7 @@ def _init_document_fields():
         spec = importlib.util.find_spec(module_str)
         if not spec:
             continue
-        include_fields = include(module_str, namespace=app_name)
+        include_fields = include((module_str, app_name))  # namespace=app_name)
 
         try:
             app_document_fields = include_fields[0].__getattribute__('DOCUMENT_FIELDS')

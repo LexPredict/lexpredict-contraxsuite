@@ -29,8 +29,8 @@ import tempfile
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.0/LICENSE"
-__version__ = "1.2.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.1/LICENSE"
+__version__ = "1.2.1"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -47,10 +47,10 @@ def test_local_file_access():
         f.write('Hello, World2!')
 
     lfa = LocalFileAccess(root_dir=temp_dir)
-    assert_list_equal(lfa.list('sub1/sub2'), ['sub1/sub2/file.txt'])
-    assert_list_equal(lfa.list('sub1'), ['sub1/file2.txt', 'sub1/sub2/file.txt'])
+    assert_list_equal(lfa.list_documents('sub1/sub2'), ['sub1/sub2/file.txt'])
+    assert_list_equal(lfa.list_documents('sub1'), ['sub1/file2.txt', 'sub1/sub2/file.txt'])
 
-    with lfa.get_local_fn('sub1/sub2/file.txt') as (fn, _uri):
+    with lfa.get_as_local_fn('sub1/sub2/file.txt') as (fn, _uri):
         with open(fn, 'r') as f:
             assert_equal(f.readline(), 'Hello, World!')
 

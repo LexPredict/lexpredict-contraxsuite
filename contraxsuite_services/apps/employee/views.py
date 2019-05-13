@@ -31,7 +31,7 @@ from __future__ import absolute_import, unicode_literals
 import datetime
 
 # Django imports
-from django.core.urlresolvers import reverse
+from django.urls import reverse
 from django.db.models import Count, F
 from django.views.generic import DetailView
 
@@ -41,19 +41,18 @@ from apps.employee.models import (
     Employee, Employer, Provision)
 from apps.employee.forms import LocateEmployeesForm
 from apps.task.views import BaseAjaxTaskView
-from apps.common.mixins import (
-    JSONResponseView, JqPaginatedListView, PermissionRequiredMixin)
+import apps.common.mixins
 
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.0/LICENSE"
-__version__ = "1.2.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.1/LICENSE"
+__version__ = "1.2.1"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
 
-class EmployeeListView(JqPaginatedListView):
+class EmployeeListView(apps.common.mixins.JqPaginatedListView):
     model = Employee
     json_fields = ['document__pk', 'document__name', 'document__description',
                    'document__document_type', 'name', 'annual_salary',
@@ -89,7 +88,7 @@ class EmployeeListView(JqPaginatedListView):
         return ctx
 
 
-class ProvisionListView(JqPaginatedListView):
+class ProvisionListView(apps.common.mixins.JqPaginatedListView):
     model = Provision
     template_name = "employee/provision_list.html"
     json_fields = ['text_unit__text', 'text_unit__pk', 'similarity', 'type',
@@ -111,7 +110,7 @@ class ProvisionListView(JqPaginatedListView):
         return qs
 
 
-class EmployerListView(JqPaginatedListView):
+class EmployerListView(apps.common.mixins.JqPaginatedListView):
     model = Employer
     template_name = "employee/employer_list.html"
     json_fields = ['name']
@@ -124,7 +123,7 @@ class EmployerListView(JqPaginatedListView):
         return data
 
 
-class EmployeeDetailView(PermissionRequiredMixin, DetailView):
+class EmployeeDetailView(apps.common.mixins.PermissionRequiredMixin, DetailView):
     model = Employee
     template_name = "employee/employee_detail.html"
     raise_exception = True
@@ -133,7 +132,7 @@ class EmployeeDetailView(PermissionRequiredMixin, DetailView):
         return self.request.user.can_view_document(self.get_object().document)
 
 
-class EmployerDetailView(PermissionRequiredMixin, DetailView):
+class EmployerDetailView(apps.common.mixins.PermissionRequiredMixin, DetailView):
     model = Employer
     template_name = "employee/employer_detail.html"
     raise_exception = True
@@ -148,7 +147,7 @@ class EmployerDetailView(PermissionRequiredMixin, DetailView):
         return ctx
 
 
-class EmployeeGeoChartView(JSONResponseView):
+class EmployeeGeoChartView(apps.common.mixins.JSONResponseView):
 
     def get_json_data(self, request, *args, **kwargs):
         qs = Employee.objects.all()
@@ -160,7 +159,7 @@ class EmployeeGeoChartView(JSONResponseView):
         return data
 
 
-class EmployeeTimelineChartView(JSONResponseView):
+class EmployeeTimelineChartView(apps.common.mixins.JSONResponseView):
 
     def get_json_data(self, request, *args, **kwargs):
 

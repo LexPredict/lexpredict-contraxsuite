@@ -24,13 +24,13 @@
 """
 
 from django.conf import settings
-from typing import Union
 
+from apps.common.advancedcelery.fileaccess.file_access import FileAccessHandler
 from apps.common.advancedcelery.fileaccess.local_file_access import LocalFileAccess
 from apps.common.advancedcelery.fileaccess.nginx_http_file_access import NginxHttpFileAccess
 
 
-def prepare_file_access_handler() -> Union[LocalFileAccess, NginxHttpFileAccess]:
+def prepare_file_access_handler() -> FileAccessHandler:
     access_type = settings.CELERY_FILE_ACCESS_TYPE
     if access_type == 'Local':
         return LocalFileAccess(settings.CELERY_FILE_ACCESS_LOCAL_ROOT_DIR)

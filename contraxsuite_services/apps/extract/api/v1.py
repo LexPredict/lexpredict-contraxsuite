@@ -42,7 +42,7 @@ from rest_framework.generics import ListAPIView
 # Django imports
 from django.conf import settings
 from django.conf.urls import url
-from django.core.urlresolvers import reverse
+from django.urls import reverse
 from django.db.models import Q, Sum, F, Min, Max
 from django.db.models.functions import TruncMonth
 from django.http import JsonResponse, HttpResponse
@@ -50,18 +50,17 @@ from django.http import JsonResponse, HttpResponse
 # Project imports
 from apps.document.models import Document
 from apps.extract.models import *
-from apps.common.mixins import (
-    SimpleRelationSerializer, JqListAPIView, JqListAPIMixin)
+import apps.common.mixins
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.0/LICENSE"
-__version__ = "1.2.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.1/LICENSE"
+__version__ = "1.2.1"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
 
-class BaseUsageSerializer(SimpleRelationSerializer):
+class BaseUsageSerializer(apps.common.mixins.SimpleRelationSerializer):
     class Meta:
         fields = []
         base_fields = ['pk',
@@ -93,7 +92,7 @@ class ViewSetDataMixin(object):
         return serializer.data
 
 
-class BaseUsageListAPIView(JqListAPIView, ViewSetDataMixin):
+class BaseUsageListAPIView(apps.common.mixins.JqListAPIView, ViewSetDataMixin):
 
     filters = None
 
@@ -263,7 +262,7 @@ class GeoEntityUpdateSerializer(serializers.ModelSerializer):
         fields = ['pk', 'priority']
 
 
-class GeoEntityViewSet(JqListAPIMixin, viewsets.ModelViewSet):
+class GeoEntityViewSet(apps.common.mixins.JqListAPIMixin, viewsets.ModelViewSet):
     """
     list: Geo Entity List
     retrieve: Retrieve Geo Entity
@@ -503,7 +502,7 @@ class PartySerializer(serializers.ModelSerializer):
                   'type_description', 'description']
 
 
-class PartyViewSet(JqListAPIMixin, viewsets.ReadOnlyModelViewSet):
+class PartyViewSet(apps.common.mixins.JqListAPIMixin, viewsets.ReadOnlyModelViewSet):
     """
     list: Party List
     retrieve: Retrieve Party

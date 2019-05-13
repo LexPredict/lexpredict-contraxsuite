@@ -1,9 +1,9 @@
 import re
-from typing import Dict, Any, Tuple, Optional, List, Union
-from apps.document.models import TextUnit, Document, DocumentField
-from apps.document.fields_detection.fields_detection_abstractions import FieldDetectionStrategy, DetectedFieldValue, \
-    ProcessLogger
-from apps.document.field_types import FIELD_TYPES_REGISTRY, ValueExtractionHint, FieldType
+from typing import Dict, Any, Tuple, Optional, List
+
+from apps.document.field_types import FIELD_TYPES_REGISTRY, FieldType
+from apps.document.fields_detection.fields_detection_abstractions import DetectedFieldValue
+from apps.document.models import DocumentField
 
 
 def compile_stop_words(stop_words_dict: Dict[str, Any]) -> Optional[Dict]:

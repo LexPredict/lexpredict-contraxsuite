@@ -23,7 +23,7 @@
 No value
     {%- endif -%}
 {%- endmacro -%}
-Contraxsuite by LexPredict ({{ app_url[app_url.find('://') + 3:] }})
+Contraxsuite by LexPredict
 
 {{ header }}
 

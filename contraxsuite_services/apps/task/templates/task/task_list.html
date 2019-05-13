@@ -237,7 +237,7 @@
       <li class="divider"></li>
       <li class="dropdown-submenu">
         <a class="dropdown-item" href="#" tabindex="-1">
-          <i class="fa fa-database"></i> Fixtures</a>
+          <i class="fa fa-database"></i>Export and Import</a>
         <ul class="dropdown-menu">
 
           <li class="dropdown-item">
@@ -253,6 +253,20 @@
                data-btn-text="Go">
               <i class="fa fa-download"></i>
               Dump Fixtures to file</a>
+          </li>
+          <li class="dropdown-item">
+            <a class="task" href="#"
+               data-href="{% url "document:import-document-type" %}"
+               data-btn-text="Go">
+              <i class="fa fa-upload"></i>
+              Import document type</a>
+          </li>
+          <li class="dropdown-item">
+            <a class="task" href="#"
+               data-href="{% url "document:export-document-type" %}"
+               data-btn-text="Go">
+              <i class="fa fa-download"></i>
+              Export document type</a>
           </li>
         </ul>
       </li>

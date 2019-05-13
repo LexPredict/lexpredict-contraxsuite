@@ -28,19 +28,17 @@
 from __future__ import absolute_import, unicode_literals
 
 # Django imports
-from django.core.urlresolvers import reverse
+from django.urls import reverse
 from django.views.generic import RedirectView
 
 # Project imports
-from apps.common.mixins import (
-    JqPaginatedListView, TechAdminRequiredMixin,
-    CustomDetailView, CustomUpdateView)
+import apps.common.mixins
 from apps.users.models import User
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.0/LICENSE"
-__version__ = "1.2.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.1/LICENSE"
+__version__ = "1.2.1"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -59,7 +57,7 @@ class BaseUserView(object):
         return True
 
 
-class UserUpdateView(BaseUserView, CustomUpdateView):
+class UserUpdateView(BaseUserView, apps.common.mixins.CustomUpdateView):
     def get_fields(self):
         if self.request.user.is_reviewer:
             return ['username', 'first_name', 'last_name', 'name', 'photo']
@@ -69,7 +67,7 @@ class UserUpdateView(BaseUserView, CustomUpdateView):
         return reverse('users:user-detail', args=[self.kwargs[self.slug_field]])
 
 
-class UserDetailView(BaseUserView, CustomDetailView):
+class UserDetailView(BaseUserView, apps.common.mixins.CustomDetailView):
     context_object_name = 'a_user'
 
     def get_update_url(self):
@@ -89,7 +87,7 @@ class UserRedirectView(RedirectView):
                        kwargs={'username': self.request.user.username})
 
 
-class UserListView(TechAdminRequiredMixin, JqPaginatedListView):
+class UserListView(apps.common.mixins.TechAdminRequiredMixin, apps.common.mixins.JqPaginatedListView):
     model = User
     extra_json_fields = ['role__name']
 

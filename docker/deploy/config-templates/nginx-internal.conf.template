@@ -10,7 +10,7 @@ server {
     keepalive_timeout 0;
 
 
-    location /media/data/documents/ {
+    location /media/data/ {
         root /data;
         autoindex on;
         autoindex_format json;

@@ -1,28 +1,3 @@
-"""
-    Copyright (C) 2017, ContraxSuite, LLC
-
-    This program is free software: you can redistribute it and/or modify
-    it under the terms of the GNU Affero General Public License as
-    published by the Free Software Foundation, either version 3 of the
-    License, or (at your option) any later version.
-
-    This program is distributed in the hope that it will be useful,
-    but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-    GNU Affero General Public License for more details.
-
-    You should have received a copy of the GNU Affero General Public License
-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
-    You can also be released from the requirements of the license by purchasing
-    a commercial license from ContraxSuite, LLC. Buying such a license is
-    mandatory as soon as you develop commercial activities involving ContraxSuite
-    software without disclosing the source code of your own applications.  These
-    activities include: offering paid services to customers as an ASP or "cloud"
-    provider, processing documents on the fly in a web application,
-    or shipping ContraxSuite within a closed source product.
-"""
-
 from django.db.models import Q
 import time
 from collections import defaultdict
@@ -31,10 +6,10 @@ from typing import Dict, List, Any, Set
 from django.conf.urls import url
 from django.http import StreamingHttpResponse
 from rest_framework.response import Response
-from rest_framework.views import APIView
+import rest_framework.views
 
 from apps.common.errors import APIRequestError
-from apps.common.mixins import APILoggingMixin
+import apps.common.mixins
 from apps.common.streaming_utils import csv_gen, GeneratorList
 from apps.common.url_utils import as_bool, as_int, as_int_list, as_str_list
 from apps.document.models import DocumentType
@@ -45,13 +20,6 @@ from apps.rawdb.field_value_tables import get_columns, query_documents, Document
 from apps.rawdb.models import SavedFilter
 from apps.rawdb.rawdb.field_handlers import ColumnDesc
 from apps.rawdb.rawdb.query_parsing import parse_order_by
-
-__author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.0/LICENSE"
-__version__ = "1.2.0"
-__maintainer__ = "LexPredict, LLC"
-__email__ = "support@contraxsuite.com"
 
 
 def _column_to_dto(column: ColumnDesc, add_query_syntax: bool = False) -> Dict:
@@ -97,7 +65,7 @@ def _query_results_to_json(query_results: DocumentQueryResults, exec_time: float
     return {k: v for k, v in res.items() if v is not None}
 
 
-class RawDBConfigAPIView(APILoggingMixin, APIView):
+class RawDBConfigAPIView(apps.common.mixins.APILoggingMixin, rest_framework.views.APIView):
     def get(self, request, *args, **kwargs):
         start = time.time()
         add_query_syntax = as_bool(request.GET, 'add_query_syntax', False)
@@ -166,7 +134,7 @@ class RawDBConfigAPIView(APILoggingMixin, APIView):
         })
 
 
-class DocumentsAPIView(APIView):
+class DocumentsAPIView(rest_framework.views.APIView):
     URL_PARAM_PREFIX_FILTER = 'where_'
 
     MAX_RETURNED_DOCUMENTS_JSON = 200
@@ -276,7 +244,7 @@ class DocumentsAPIView(APIView):
             return APIRequestError(message='Unable to process request', caused_by=e, http_status_code=500).to_response()
 
 
-class ProjectStatsAPIView(APIView):
+class ProjectStatsAPIView(rest_framework.views.APIView):
     def get(self, request, project_id: int, *_args, **_kwargs):
         try:
             start = time.time()

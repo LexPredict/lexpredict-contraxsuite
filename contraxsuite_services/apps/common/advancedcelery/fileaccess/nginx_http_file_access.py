@@ -23,14 +23,18 @@
     or shipping ContraxSuite within a closed source product.
 """
 import os
-import requests
 import tempfile
 from contextlib import contextmanager
 from typing import List
+from typing import Optional
 from urllib.parse import quote
 
+import requests
 
-class NginxHttpFileAccess:
+from .file_access import FileAccessHandler
+
+
+class NginxHttpFileAccess(FileAccessHandler):
     def __init__(self, root_url: str):
         self.root_url = root_url
 
@@ -65,7 +69,7 @@ class NginxHttpFileAccess:
         return file_list
 
     @contextmanager
-    def get_local_fn(self, rel_file_path: str):
+    def get_as_local_fn(self, rel_file_path: str):
         if rel_file_path.startswith('/'):
             rel_file_path = rel_file_path[1]
         url = self.root_url + '/' + quote(rel_file_path)
@@ -82,6 +86,21 @@ class NginxHttpFileAccess:
         finally:
             r.close()
             os.remove(fn)
+
+    def read(self, rel_file_path: str) -> Optional[bytes]:
+        if rel_file_path.startswith('/'):
+            rel_file_path = rel_file_path[1]
+        url = self.root_url + '/' + quote(rel_file_path)
+        r = requests.get(url, stream=True)
+        if r.status_code == 404:
+            return None
+        elif r.status_code != 200:
+            raise RuntimeError('Unable to read file: {0}. Http status code: {1}. Http message: {2}'
+                               .format(rel_file_path, r.status_code, r.text))
+        try:
+            return r.content
+        finally:
+            r.close()
 
     def __str__(self):
         return 'NginxFileAccess: {0}'.format(self.root_url)

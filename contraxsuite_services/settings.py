@@ -41,18 +41,18 @@ import os
 import re
 import sys
 import warnings
-import importlib
+# import importlib
 
 # Third-party imports
 from celery.schedules import crontab
 from kombu import Queue
 
 # Django imports
-from django.core.urlresolvers import reverse_lazy
+from django.urls import reverse_lazy
 
 # App imports
-from contraxsuite_logging import ContraxsuiteJSONFormatter, prepare_log_dirs
-from apps.common.advancedcelery.fileaccess.local_file_access import LocalFileAccess
+from contraxsuite_logging import prepare_log_dirs   # ContraxsuiteJSONFormatter
+# from apps.common.advancedcelery.fileaccess.local_file_access import LocalFileAccess
 
 warnings.filterwarnings('ignore',
                         message='''Trying to unpickle estimator|The psycopg2 wheel package will be renamed|numpy.core.umath_tests''')
@@ -65,6 +65,8 @@ DEBUG = False
 DEBUG_SQL = False
 DEBUG_TEMPLATE = False
 
+INTERNAL_IPS = ['127.0.0.1', '::1']
+
 # APP CONFIGURATION
 # ------------------------------------------------------------------------------
 INSTALLED_APPS = (
@@ -75,7 +77,6 @@ INSTALLED_APPS = (
     'django.contrib.sites',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-
     'suit',  # Admin
     'django.contrib.admin',
 
@@ -135,6 +136,7 @@ apps_dir = PROJECT_DIR('apps')
 PROJECT_APPS = tuple('apps.%s' % name for name in os.listdir(apps_dir)
                      if os.path.isdir(os.path.join(apps_dir, name)) and '__' not in name)
 INSTALLED_APPS += PROJECT_APPS
+
 
 # MIDDLEWARE CONFIGURATION
 # ------------------------------------------------------------------------------
@@ -392,6 +394,12 @@ TASK_NAME_AUTO_REINDEX = 'apps.rawdb.tasks.auto_reindex'
 
 TASK_NAME_MANUAL_REINDEX = 'RawDB: Reindex'
 
+TASK_NAME_UPDATE_PROJECT_DOCUMENTS = 'RawDB: Update project documents'
+
+TASK_NAME_UPDATE_ASSIGNEE_FOR_DOCUMENTS = 'RawDB: Update assignee for documents'
+
+TASK_NAME_UPDATE_STATUS_NAME_FOR_DOCUMENTS = 'RawDB: Update status name for documents'
+
 TASK_NAME_IMANAGE_TRIGGER_SYNC = 'apps.imanage_integration.tasks.trigger_imanage_sync'
 
 TASK_NAME_TRIGGER_DIGESTS = 'apps.notifications.tasks.trigger_digests'
@@ -517,7 +525,9 @@ CKEDITOR_CONFIGS = {
 
 # django-filebrowser
 # relative path in /media dir
-FILEBROWSER_DIRECTORY = 'data/documents/'
+FILEBROWSER_DIRECTORY = 'data/'
+
+FILEBROWSER_DOCUMENTS_DIRECTORY = 'data/documents/'
 # don't try to import a mis-installed PIL
 STRICT_PIL = True
 # Allowed extensions for file upload
@@ -542,6 +552,7 @@ CELERY_FILE_ACCESS_TYPE = 'Local'
 CELERY_FILE_ACCESS_LOCAL_ROOT_DIR = MEDIA_ROOT + '/' + FILEBROWSER_DIRECTORY
 # CELERY_FILE_ACCESS_TYPE = 'Nginx'
 # CELERY_FILE_ACCESS_NGINX_ROOT_URL = 'http://localhost:8888/media/'
+CELERY_FILE_ACCESS_DOCUMENTS_DIR = 'documents/'
 
 # django-constance settings
 # https://django-constance.readthedocs.io/en/latest/
@@ -598,7 +609,7 @@ REST_FRAMEWORK = {
     'DEFAULT_VERSION': 'v1',
     'ALLOWED_VERSIONS': ('v1',),
     'DEFAULT_AUTHENTICATION_CLASSES': (
-        'auth.CookieAuthentication',
+        'authenticator.CookieAuthentication',
         # 'rest_framework.authentication.TokenAuthentication',
         # 'rest_framework.authentication.SessionAuthentication',
     ),
@@ -607,12 +618,12 @@ REST_FRAMEWORK = {
     )
 }
 REST_AUTH_SERIALIZERS = {
-    'TOKEN_SERIALIZER': 'auth.TokenSerializer',
-    'PASSWORD_CHANGE_SERIALIZER': 'auth.CustomPasswordChangeSerializer',
+    'TOKEN_SERIALIZER': 'authenticator.TokenSerializer',
+    'PASSWORD_CHANGE_SERIALIZER': 'authenticator.CustomPasswordChangeSerializer',
 }
 
 # rest auth token settings
-REST_AUTH_TOKEN_CREATOR = 'auth.token_creator'
+REST_AUTH_TOKEN_CREATOR = 'authenticator.token_creator'
 REST_AUTH_TOKEN_EXPIRES_DAYS = 3
 REST_AUTH_TOKEN_UPDATE_EXPIRATION_DATE = True
 
@@ -645,10 +656,12 @@ GIT_DATA_REPO_ROOT = 'https://raw.githubusercontent.com/' \
 # logging
 CELERY_LOG_FILE_PATH = PROJECT_DIR('logs/celery-{0}.log'.format(platform.node()))
 LOG_FILE_PATH = PROJECT_DIR('logs/django-{0}.log'.format(platform.node()))
+FRONT_LOG_FILE_PATH = PROJECT_DIR('logs/frontend-{0}.log'.format(platform.node()))
 DB_LOG_FILE_PATH = PROJECT_DIR('logs/db-{0}.log'.format(platform.node()))
 
 prepare_log_dirs(CELERY_LOG_FILE_PATH)
 prepare_log_dirs(LOG_FILE_PATH)
+prepare_log_dirs(FRONT_LOG_FILE_PATH)
 prepare_log_dirs(DB_LOG_FILE_PATH)
 
 LOGGING = {
@@ -706,6 +719,14 @@ LOGGING = {
             'filename': LOG_FILE_PATH + '_json',
             'formatter': 'json',
         },
+        'json_frontend': {
+            'level': 'DEBUG',
+            'class': 'logging.handlers.RotatingFileHandler',
+            'maxBytes': 1024 * 1024 * 10,
+            'backupCount': 5,
+            'filename': FRONT_LOG_FILE_PATH + '_json',
+            'formatter': 'json',
+        },
         'json_celery': {
             'level': 'DEBUG',
             'class': 'logging.handlers.RotatingFileHandler',
@@ -739,6 +760,11 @@ LOGGING = {
             'level': 'DEBUG',
             'propagate': True,
         },
+        'frontend': {
+            'handlers': ['json_frontend'],
+            'level': 'DEBUG',
+            'propagate': True,
+        },
         'django.db.backends': {
             'handlers': ['text_db', 'json_db'],  # Quiet by default!
             'propagate': False,
@@ -768,11 +794,12 @@ NOTEBOOK_ARGUMENTS = [
 # CORS_ALLOW_CREDENTIALS = False
 # CORS_URLS_REGEX = r'^.*$'
 
-VERSION_NUMBER = '1.2.0'
+VERSION_NUMBER = '1.2.1'
 VERSION_COMMIT = 'cdd28414'
 
-DIGEST_TEMPLATES_PATH = 'apps/notifications/digest_templates'
-NOTIFICATION_TEMPLATES_PATH = 'apps/notifications/notification_templates'
+NOTIFICATION_EMBEDDED_TEMPLATES_PATH = 'apps/notifications/notification_templates'
+NOTIFICATION_CUSTOM_TEMPLATES_PATH_IN_MEDIA = 'notification_templates'
+
 
 DATA_UPLOAD_MAX_NUMBER_FIELDS = None
 
@@ -834,7 +861,7 @@ if BASE_URL:
     BASE_URL += '/'
 
 STATIC_URL = ('/' + BASE_URL if BASE_URL else '/') + 'static/'
-MEDIA_URL = BASE_URL + 'media/'
+MEDIA_URL = '/' + BASE_URL + 'media/'
 # LoginRequiredMiddleware settings
 LOGIN_EXEMPT_URLS = (
     r'^' + BASE_URL + 'accounts/',  # allow any URL under /accounts/*
@@ -842,6 +869,7 @@ LOGIN_EXEMPT_URLS = (
     r'^api/v',  # allow any URL under /api/v*
     r'^' + BASE_URL + '__debug__/',  # allow debug toolbar
     r'^' + BASE_URL + 'extract/search/',
+    r'^api/v\d+/logging/log_message/'
 )
 
 TEMPLATES[0]['OPTIONS']['debug'] = DEBUG_TEMPLATE

@@ -1,27 +1,3 @@
-"""
-    Copyright (C) 2017, ContraxSuite, LLC
-
-    This program is free software: you can redistribute it and/or modify
-    it under the terms of the GNU Affero General Public License as
-    published by the Free Software Foundation, either version 3 of the
-    License, or (at your option) any later version.
-
-    This program is distributed in the hope that it will be useful,
-    but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-    GNU Affero General Public License for more details.
-
-    You should have received a copy of the GNU Affero General Public License
-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
-    You can also be released from the requirements of the license by purchasing
-    a commercial license from ContraxSuite, LLC. Buying such a license is
-    mandatory as soon as you develop commercial activities involving ContraxSuite
-    software without disclosing the source code of your own applications.  These
-    activities include: offering paid services to customers as an ASP or "cloud"
-    provider, processing documents on the fly in a web application,
-    or shipping ContraxSuite within a closed source product.
-"""
 import hashlib
 from typing import List, Dict, Optional, Tuple, Any, Generator, Set
 
@@ -33,6 +9,7 @@ from apps.common.log_utils import ProcessLogger, render_error
 from apps.common.sql_commons import fetch_int, escape_column_name, sum_list, SQLClause, \
     SQLInsertClause, join_clauses, format_clause, fetch_dicts
 from apps.document import field_types
+from apps.document.constants import DOCUMENT_FIELD_CODE_MAX_LEN
 from apps.document.fields_processing.field_value_cache import get_generic_values
 from apps.document.models import DocumentType, Document, DocumentField, DocumentFieldValue
 from apps.rawdb.models import SavedFilter
@@ -40,16 +17,8 @@ from apps.rawdb.rawdb import field_handlers
 from apps.rawdb.rawdb.errors import Forbidden, UnknownColumnError
 from apps.rawdb.rawdb.query_parsing import SortDirection, parse_column_filters
 from apps.users.models import User
-from .signals import fire_document_fields_changed, DocumentEvent
 from .rawdb.query_parsing import parse_order_by
-
-__author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.0/LICENSE"
-__version__ = "1.2.0"
-__maintainer__ = "LexPredict, LLC"
-__email__ = "support@contraxsuite.com"
-
+from .signals import fire_document_fields_changed, DocumentEvent
 
 TABLE_NAME_PREFIX = 'doc_fields_'
 
@@ -146,7 +115,7 @@ FIELD_DB_SUPPORT_REGISTRY = {
     field_types.DateField.code: field_handlers.DateFieldHandler,
     field_types.RecurringDateField.code: field_handlers.DateFieldHandler,
     field_types.CompanyField.code: field_handlers.StringFieldHandler,
-    field_types.DurationField.code: field_handlers.IntFieldHandler,
+    field_types.DurationField.code: field_handlers.FloatFieldHandler,
     field_types.AddressField.code: field_handlers.AddressFieldHandler,
     field_types.RelatedInfoField.code: field_handlers.RelatedInfoFieldHandler,
     field_types.ChoiceField.code: field_handlers.StringFieldHandler,
@@ -197,7 +166,7 @@ _FIELD_CODES_GENERIC = {_FIELD_CODE_CLUSTER_ID, _FIELD_CODE_PARTIES,
                         _FIELD_CODE_LARGEST_CURRENCY, _FIELD_CODE_EARLIEST_DATE, _FIELD_CODE_LATEST_DATE}
 
 FIELD_CODES_SHOW_BY_DEFAULT_NON_GENERIC = {
-    FIELD_CODE_DOC_NAME, FIELD_CODE_PROJECT_NAME, FIELD_CODE_ASSIGNEE_NAME, FIELD_CODE_STATUS_NAME
+    FIELD_CODE_DOC_NAME, FIELD_CODE_ASSIGNEE_NAME, FIELD_CODE_STATUS_NAME
 }
 
 FIELD_CODES_SHOW_BY_DEFAULT_GENERIC = {
@@ -293,8 +262,8 @@ def build_field_handlers(document_type: DocumentType, table_name: str = None,
         for field in doc_field_qr.order_by('order', 'code'):  # type: DocumentField
             field_type = field.get_field_type()  # type: field_types.FieldType
 
-            # Escape field code and take max 40 chars for using as the column name base
-            field_code_escaped = escape_column_name(field.code)[:40]
+            # Escape field code and take max N chars for using as the column name base
+            field_code_escaped = escape_column_name(field.code)[:DOCUMENT_FIELD_CODE_MAX_LEN]
 
             # If we already have this escaped field code in the dict then
             # attach an index to it to avoid repeating of the column names.
@@ -304,8 +273,9 @@ def build_field_handlers(document_type: DocumentType, table_name: str = None,
                 counter_str = str(field_code_use_count)
 
                 # make next repeated column name to be column1, column2, ...
-                # make it fitting into 40 chars by cutting the field code on the required number of chars to fit the num
-                field_code_escaped = field_code_escaped[:40 - len(counter_str) - 1] + '_' + counter_str
+                # make it fitting into N chars by cutting the field code on the required number of chars to fit the num
+                field_code_escaped = field_code_escaped[:DOCUMENT_FIELD_CODE_MAX_LEN - len(counter_str) - 1] \
+                                     + '_' + counter_str
             else:
                 field_code_use_counts[field_code_escaped] = 1
 
@@ -325,7 +295,7 @@ def build_field_handlers(document_type: DocumentType, table_name: str = None,
                                                               field.title + ': Suggested',
                                                               table_name,
                                                               field.default_value,
-                                                              field_column_name_base=field_code_escaped + '_suggested',
+                                                              field_column_name_base=field_code_escaped + '_sug',
                                                               is_suggested=True)
                 res.append(field_handler_suggested)
 
@@ -458,6 +428,9 @@ def adapt_table_structure(log: ProcessLogger, document_type: DocumentType,
 
     reindex_needed = False
 
+    dropped_columns = list()  # type: List[Tuple[str, str]]
+    added_columns = list()  # type: List[Tuple[str, str]]
+
     with connection.cursor() as cursor:
         with transaction.atomic():
             existing_columns = get_table_columns_from_pg(cursor, table_name)  # type: Dict[str, str]
@@ -469,6 +442,7 @@ def adapt_table_structure(log: ProcessLogger, document_type: DocumentType,
                 if not should_be_type or should_be_type != existing_type:
                     # column does not exist in "should_be_columns" or has different type
                     alter_table_actions.append('drop column "{column}"'.format(column=existing_name))
+                    dropped_columns.append((existing_name, existing_type))
 
             for should_be_name, should_be_type in should_be_columns.items():
                 existing_type = existing_columns.get(should_be_name)
@@ -477,11 +451,17 @@ def adapt_table_structure(log: ProcessLogger, document_type: DocumentType,
                     # different type (and has been dropped in prev loop)
                     alter_table_actions.append('add column "{column}" {pg_type}'
                                                .format(column=should_be_name, pg_type=should_be_type))
+                    added_columns.append((should_be_name, should_be_type))
+
             if alter_table_actions:
                 if not check_only:
                     alter_table_sql = 'alter table "{table_name}"\n{actions}' \
                         .format(table_name=table_name, actions=',\n'.join(alter_table_actions))
                     cursor.execute(alter_table_sql, [])
+                    log.info('Altered table: {0}\nDropped columns:\n{1}\nAdded columns:\n{2}'
+                             .format(table_name,
+                                     '\n'.join([c + ': ' + t for c, t in dropped_columns]),
+                                     '\n'.join([c + ': ' + t for c, t in added_columns])))
                     cleanup_saved_filters(document_type, set(should_be_columns.keys()))
                 reindex_needed = True
 
@@ -722,7 +702,16 @@ def cache_document_fields(log: ProcessLogger,
                                                       document_id=document.pk,
                                                       table_name=table_name,
                                                       handlers=handlers)
-        cursor.execute(insert_clause.sql, insert_clause.params)
+        try:
+            cursor.execute(insert_clause.sql, insert_clause.params)
+        except:
+            import sys
+            etype, evalue, _ = sys.exc_info()
+            log.error('Error {etype}: {evalue}\n' +
+                      'in cache_document_fields(doc_id={document_id})\nSQL: {sql}\nParams: {ptrs}.\n\n'.
+                      format(etype=etype, evalue=evalue, document_id=document.pk,
+                             sql=insert_clause.sql, ptrs=insert_clause.params))
+            raise
 
     inserted_document_fields = {h.field_code:
                                     h.python_value_to_indexed_field_value(field_to_python_values.get(h.field_code))

@@ -24,13 +24,15 @@
 """
 
 from django.db import models
+from django.db.models.deletion import CASCADE
+
 from apps.document.models import Document, TextUnit
 from apps.extract.models import Usage
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.0/LICENSE"
-__version__ = "1.2.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.1/LICENSE"
+__version__ = "1.2.1"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -42,7 +44,7 @@ class Employer(models.Model):
 
 class EmployerUsage(Usage):
 
-    employer = models.ForeignKey(Employer, db_index=True)
+    employer = models.ForeignKey(Employer, db_index=True, on_delete=CASCADE)
 
     class Meta:
         ordering = ['-count']
@@ -50,9 +52,9 @@ class EmployerUsage(Usage):
 
 class Employee(models.Model):
 
-    document = models.ForeignKey(Document, db_index=True)
+    document = models.ForeignKey(Document, db_index=True, on_delete=CASCADE)
     name = models.CharField(max_length=1024, db_index=True)
-    employer = models.ForeignKey(Employer, db_index=True, blank=True, null=True)
+    employer = models.ForeignKey(Employer, db_index=True, blank=True, null=True, on_delete=CASCADE)
     annual_salary = models.FloatField(blank=True, null=True)
     salary_currency = models.CharField(max_length=10, blank=True, null=True)
     vacation_yearly = models.CharField(max_length=1024, db_index=True, null=True)
@@ -78,9 +80,9 @@ class Employee(models.Model):
 
 class Provision(models.Model):
 
-    text_unit = models.ForeignKey(TextUnit)
+    text_unit = models.ForeignKey(TextUnit, on_delete=CASCADE)
     similarity = models.DecimalField(max_digits=5, decimal_places=2)
-    employee = models.ForeignKey(Employee)
-    document = models.ForeignKey(Document)
+    employee = models.ForeignKey(Employee, on_delete=CASCADE)
+    document = models.ForeignKey(Document, on_delete=CASCADE)
     type = models.TextField(max_length=255)    # noncompete, termination
 

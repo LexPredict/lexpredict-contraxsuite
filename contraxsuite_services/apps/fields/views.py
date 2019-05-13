@@ -27,7 +27,7 @@ import json
 from typing import List
 
 import settings
-from apps.common.mixins import (JSONResponseView)
+import apps.common.mixins
 from apps.document.models import Document
 from apps.fields.document_fields_repository import DOCUMENT_FIELDS
 from apps.fields.forms import BuildFieldDetectorDatasetForm, TrainFieldDetectorModelForm
@@ -38,8 +38,8 @@ from apps.task.views import BaseAjaxTaskView
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.0/LICENSE"
-__version__ = "1.2.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.1/LICENSE"
+__version__ = "1.2.1"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -63,7 +63,7 @@ def _to_dto(annotation_model: DocumentAnnotation):
     }
 
 
-class DocumentAnnotationStorageSearchView(JSONResponseView):
+class DocumentAnnotationStorageSearchView(apps.common.mixins.JSONResponseView):
     @staticmethod
     def annotate_by_model(document: Document, document_class_name: str, field: str, text: str) -> \
             List[DocumentAnnotation]:
@@ -123,7 +123,7 @@ class DocumentAnnotationStorageSearchView(JSONResponseView):
         return {'rows': [_to_dto(a) for a in annotation_models]}
 
 
-class DocumentAnnotationStorageView(JSONResponseView):
+class DocumentAnnotationStorageView(apps.common.mixins.JSONResponseView):
     @staticmethod
     def trigger_retraining_model(document_class, document_id):
         if settings.FIELDS_RETRAIN_MODEL_ON_ANNOTATIONS_CHANGE:
@@ -245,7 +245,7 @@ class DocumentAnnotationStorageView(JSONResponseView):
         return None
 
 
-class FieldEditorBackendView(JSONResponseView):
+class FieldEditorBackendView(apps.common.mixins.JSONResponseView):
     def get_json_data(self, request, *args, **kwargs):
         if request.method == 'PUT':
             data = json.loads(request.body.decode('utf-8'))
@@ -294,7 +294,7 @@ class FieldEditorBackendView(JSONResponseView):
         return None
 
 
-class DocumentFieldsView(JSONResponseView):
+class DocumentFieldsView(apps.common.mixins.JSONResponseView):
     def get_json_data(self, request, *args, **kwargs):
         doc_class_name = kwargs.get('document_class')
         doc_class_fields = DOCUMENT_FIELDS.get(doc_class_name)

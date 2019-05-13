@@ -36,14 +36,14 @@ No value
             font-size: 16px;
             font-weight: 600;
             box-shadow: inset 0 0 0px #D8DDE6;
-            background-color: #F4F6F9;
+            background-color: #fff;
             padding: 0 0 0 0;
             margin: 0 0 0 0;
         }
 
         .logo {
             padding: 10px 8px 10px 8px;
-            margin: 0 0 0 0;
+            margin: 0 0 16px 0;
             box-shadow: 0 2px 0px #D8DDE6;
             background-color: #fff;
         }
@@ -80,7 +80,7 @@ No value
         }
 
         .table-wrapper tr:nth-child(odd) {
-            background: #f8fbfe;
+            background: #fff;
         }
 
         .table-wrapper td {
@@ -110,8 +110,7 @@ No value
 </head>
 <body>
 <div class="logo">
-    <div style="float: left"><a href="{{ app_url }}"><img src="images/logo.png" width="134" height="28" /></a></div>
-    <div style="display: inline; margin-left: 32px"><a href="{{ app_url }}">at {{ app_url[app_url.find('://') + 3:] }}</a></div>
+    <div><a href="{{ app_url }}"><img src="images/logo.png" width="134" height="28" /></a></div>
 </div>
 <div class="header">
     <p>{{ header }}</p>

@@ -40,9 +40,17 @@
 </li>
 <li class="dropdown-item">
   <a class="task" href="#"
+     data-href="{% url "document:fix-document-field-codes" %}"
+     data-btn-text="Process">
+    <i class="fa fa-object-group"></i>
+    Documents: Fix Document Field Codes
+  </a>
+</li>
+<li class="dropdown-item">
+  <a class="task" href="#"
      data-href="{% url "document:import-simple-field-detection-config" %}"
      data-btn-text="Process">
     <i class="fa fa-object-group"></i>
-    Documents: Import Simple Field Detection Config
+    Documents: Import CSV Field Detection Config
   </a>
 </li>

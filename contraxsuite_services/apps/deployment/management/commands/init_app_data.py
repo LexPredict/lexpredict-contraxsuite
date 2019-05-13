@@ -52,7 +52,7 @@ from apps.extract.models import Court, Term, GeoEntity
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
 __license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.4/LICENSE"
-__version__ = "1.2.0"
+__version__ = "1.2.1"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -220,7 +220,7 @@ class DocumentDataLoader(DataLoader):
             with NamedTemporaryFile(mode='wb', suffix='.json') as tmp_file:
                 tmp_file.write(data)
                 tmp_file.seek(0)
-                call_command('loaddata', tmp_file.name, app_label='document', stdout=buf, interactive=False)
+                call_command('loaddata', tmp_file.name, app_label='document', stdout=buf)
                 buf.seek(0)
         DocumentField.objects.update(dirty=False, training_finished=False)
 

@@ -44,14 +44,14 @@ from apps.task.models import Task
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.0/LICENSE"
-__version__ = "1.2.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.1/LICENSE"
+__version__ = "1.2.1"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
 path_help_text_sample = '''
 Relative path to a file with {}. A file should be in "&lt;ROOT_DIR&gt;/data/"
- or "&lt;APPS_DIR&gt;/media/%s" folder.''' % settings.FILEBROWSER_DIRECTORY
+ or "&lt;APPS_DIR&gt;/media/%s" folder.''' % settings.FILEBROWSER_DOCUMENTS_DIRECTORY
 
 
 class LoadDocumentsForm(forms.Form):
@@ -61,10 +61,9 @@ class LoadDocumentsForm(forms.Form):
         max_length=1000,
         required=True,
         help_text='''
-        Relative path to a folder with uploaded files. For example, "new" or "/".<br />
-        You can choose any folder or file in "/media/%s" folder.<br />
+        Path to a folder with uploaded files relative to "/media/%s". For example, "new" or "/".<br />
         Create new folders and upload new documents if needed.
-        ''' % settings.FILEBROWSER_DIRECTORY)
+        ''' % settings.FILEBROWSER_DOCUMENTS_DIRECTORY)
     source_type = forms.CharField(
         max_length=100,
         required=False)
@@ -155,17 +154,17 @@ class LocateForm(forms.Form):
     url_delete = child_field('Url')
 
     parse = LTRRadioField(
-        choices=(('paragraphs', 'Parse Text Units with "paragraph" type'),
-                 ('sentences', 'Parse Text Units with both "paragraph" and "sentence" types')),
-        help_text='Warning! Parsing both "paragraph" and "sentence" Text Unit types'
-                  ' will take much more time',
-        initial='paragraphs',
+        choices=(('sentences', 'Parse Text Units with "sentence" types'),
+                 ('paragraphs', 'Parse Text Units with "paragraph" type')),
+        initial='sentences',
         required=False)
+
+    project = forms.ModelChoiceField(queryset=Project.objects.all(), required=False)
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         for field in list(self.fields.keys()):
-            if field in ['parse', 'locate_all']:
+            if field in ['parse', 'locate_all', 'project']:
                 continue
             field_name = field.split('_')[0]
             available_locators = list(settings.REQUIRED_LOCATORS) + list(

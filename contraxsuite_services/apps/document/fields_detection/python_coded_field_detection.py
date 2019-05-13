@@ -1,4 +1,4 @@
-from typing import Optional, List
+from typing import Optional, List, Iterable
 
 from apps.document.field_types import FIELD_TYPES_REGISTRY
 from apps.document.field_types import FieldType
@@ -26,14 +26,16 @@ class PythonCodedFieldDetectionStrategy(FieldDetectionStrategy):
                                             log: ProcessLogger,
                                             field: DocumentField,
                                             train_data_project_ids: Optional[List],
-                                            use_only_confirmed_field_values: bool = False) -> Optional[ClassifierModel]:
+                                            use_only_confirmed_field_values: bool = False,
+                                            train_documents: Iterable[Document] = None) -> Optional[ClassifierModel]:
         python_coded_field = PYTHON_CODED_FIELDS_REGISTRY.get(field.python_coded_field)  # type: PythonCodedField
         if not python_coded_field:
             raise RuntimeError('Unknown python-coded field: {0}'.format(field.python_coded_field))
 
         return python_coded_field.train_document_field_detector_model(field,
                                                                       train_data_project_ids,
-                                                                      use_only_confirmed_field_values)
+                                                                      use_only_confirmed_field_values,
+                                                                      train_documents)
 
     @classmethod
     def detect_field_values(cls,

@@ -56,7 +56,7 @@ def eval_script(script_title: str, script_code: str, eval_locals: Dict[str, Any]
 
 def exec_script(script_title: str, script_code: str, eval_locals: Dict[str, Any]) -> Any:
     if '__' in script_code:
-        raise SyntaxError('Classifier init script contains "__" string. This may be unsafe for python eval.')
+        raise SyntaxError('Script contains "__" string. This may be unsafe for python eval.')
     try:
         eval_locals_full = dict()
         eval_locals_full.update(settings.SCRIPTS_BASE_EVAL_LOCALS)

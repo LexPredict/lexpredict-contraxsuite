@@ -1,4 +1,4 @@
-from typing import List, Any, Tuple, Optional
+from typing import List, Any, Tuple, Optional, Iterable
 
 from django.contrib.postgres.aggregates.general import StringAgg
 
@@ -23,7 +23,8 @@ class PythonCodedField:
     def train_document_field_detector_model(self,
                                             document_field: DocumentField,
                                             train_data_project_ids: List,
-                                            use_only_confirmed_field_values: bool = False) -> Optional[ClassifierModel]:
+                                            use_only_confirmed_field_values: bool = False,
+                                            train_documents: Iterable[Document] = None) -> Optional[ClassifierModel]:
         return None
 
     def get_values(self, doc: Document, text: str) -> List[Tuple[Any, Optional[int], Optional[int]]]:
