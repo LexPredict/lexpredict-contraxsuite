@@ -28,47 +28,40 @@
 import traceback
 from typing import Dict, Tuple
 from urllib import parse
-from datetime import datetime
+import datetime
 
 # Third-party imports
 import numpy as np
 import pandas as pd
 # Django imports
-from django.conf import settings
 from django.conf.urls import url
 from django.contrib.postgres.aggregates.general import StringAgg
-from django.core.urlresolvers import reverse
-from django.db import transaction
+from django.urls import reverse
 from django.db.models import F, Min, Max, \
     IntegerField, FloatField, DateField, TextField, Subquery, Prefetch
 from django.http import JsonResponse
 from elasticsearch import Elasticsearch
 from rest_framework import serializers, routers, viewsets, status
-from rest_framework.decorators import detail_route, list_route
+from rest_framework.decorators import action
 from rest_framework.generics import ListAPIView
 from rest_framework.permissions import BasePermission, IsAuthenticated
 from rest_framework.response import Response
-from rest_framework.views import APIView
+import rest_framework.views
 from rest_framework_nested import routers as nested_routers
+import apps.common.mixins
 
 # Project imports
 from apps.analyze.models import *
 from apps.common.api.permissions import ReviewerReadOnlyPermission
 from apps.common.log_utils import ErrorCollectingLogger
-from apps.common.mixins import APILoggingMixin
-from apps.common.mixins import (
-    SimpleRelationSerializer, JqListAPIMixin, TypeaheadAPIView,
-    NestedKeyTextTransform, APIActionMixin)
+import apps.common.mixins
 from apps.common.models import ReviewStatus
 from apps.common.utils import get_api_module
 from apps.document import signals
-from apps.document.field_types import FIELD_TYPES_REGISTRY, FieldType
+from apps.document.fields_detection import field_detection
 from apps.document.fields_detection.field_detection_celery_api import run_detect_field_values_for_document
 from apps.document.fields_processing.field_value_cache import cache_field_values
-from apps.document.models import (
-    DocumentField, DocumentType, DocumentFieldValue,
-    DocumentProperty, DocumentNote, DocumentTag, DocumentRelation,
-    TextUnitProperty, TextUnitNote, TextUnitTag, DocumentFieldCategory)
+from apps.document.models import *
 from apps.document.views import show_document
 from apps.extract.models import *
 from apps.project.models import Project, DocumentFilter, ProjectDocumentsFilter
@@ -76,8 +69,8 @@ from apps.users.models import User
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.0/LICENSE"
-__version__ = "1.2.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.1/LICENSE"
+__version__ = "1.2.1"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -106,7 +99,7 @@ class UserSerializer(serializers.ModelSerializer):
         return obj.get_full_name()
 
 
-class DocumentNoteDetailSerializer(SimpleRelationSerializer):
+class DocumentNoteDetailSerializer(apps.common.mixins.SimpleRelationSerializer):
     document_id = serializers.PrimaryKeyRelatedField(
         source='document', queryset=Document.objects.all())
     field_value_id = serializers.PrimaryKeyRelatedField(
@@ -163,7 +156,7 @@ class DocumentNotePermissionViewMixin(object):
         return qs
 
 
-class DocumentNoteViewSet(JqListAPIMixin, viewsets.ModelViewSet):
+class DocumentNoteViewSet(apps.common.mixins.JqListAPIMixin, viewsets.ModelViewSet):
     """
     list: Document Note List
     retrieve: Retrieve Document Note
@@ -200,7 +193,7 @@ class DocumentNoteViewSet(JqListAPIMixin, viewsets.ModelViewSet):
 # Document Views
 # --------------------------------------------------------
 
-class BaseDocumentSerializer(SimpleRelationSerializer):
+class BaseDocumentSerializer(apps.common.mixins.SimpleRelationSerializer):
     """
     Base serializer for all documents
     """
@@ -242,7 +235,7 @@ class SimpleDocumentSerializer(BaseDocumentSerializer):
         fields = ['pk', 'name', 'document_type', 'project', 'status_name']
 
 
-class GenericDocumentSerializer(SimpleRelationSerializer):
+class GenericDocumentSerializer(apps.common.mixins.SimpleRelationSerializer):
     """
     Serializer for documents with Generic Contract type
     """
@@ -329,7 +322,7 @@ class DocumentWithFieldsDetailSerializer(BaseDocumentSerializer):
             if new_assignee is None and prev_assignee is not None:
                 validated_data['assign_date'] = None
             elif new_assignee is not None and (prev_assignee is None or new_assignee.pk != prev_assignee.pk):
-                validated_data['assign_date'] = datetime.now(tz=user.get_time_zone())
+                validated_data['assign_date'] = datetime.datetime.now(tz=user.get_time_zone())
 
             res = super().update(instance, validated_data)
             log = ErrorCollectingLogger()
@@ -445,8 +438,8 @@ class DocumentPermissionViewMixin(object):
         return qs
 
 
-class DocumentViewSet(DocumentPermissionViewMixin, APIActionMixin,
-                      JqListAPIMixin, viewsets.ModelViewSet):
+class DocumentViewSet(DocumentPermissionViewMixin, apps.common.mixins.APIActionMixin,
+                      apps.common.mixins.JqListAPIMixin, viewsets.ModelViewSet):
     """
     list:
         Document List\n
@@ -512,7 +505,7 @@ class DocumentViewSet(DocumentPermissionViewMixin, APIActionMixin,
             return DocumentWithFieldsListSerializer
         return DocumentWithFieldsDetailSerializer
 
-    @detail_route(methods=['get'])
+    @action(detail=True, methods=['get'])
     def extraction(self, request, **kwargs):
         """
         Standard extracted info - Top level + details\n
@@ -583,12 +576,12 @@ class DocumentViewSet(DocumentPermissionViewMixin, APIActionMixin,
             session.delete()
         return Response({'session_removed': remove_session}, status=200)
 
-    @detail_route(methods=['get'])
+    @action(detail=True, methods=['get'])
     def show(self, request, **kwargs):
         document = self.get_object()
         return show_document(request, document.pk)
 
-    @list_route(methods=['get'], url_path='for-user')
+    @action(detail=False, methods=['get'], url_path='for-user')
     def for_user(self, request, *args, **kwrags):
         return super().list(request, *args, **kwrags)
 
@@ -605,7 +598,7 @@ def create_field_annotation(field_uid, field_type: FieldType):
         nested_route.extend(output_field[1])
         output_field = output_field[0]
 
-    transform = NestedKeyTextTransform(nested_route, 'field_values', output_field=output_field())
+    transform = apps.common.mixins.NestedKeyTextTransform(nested_route, 'field_values', output_field=output_field())
     transform.key_name = field_uid
     return {_field_uid: transform}
 
@@ -615,14 +608,14 @@ def create_generic_data_annotation(field_code, output_field_class):
     Create annotation for "metadata__field_values__uid__maybe" json field
     """
     nested_route = [field_code]
-    transform = NestedKeyTextTransform(nested_route, 'generic_data', output_field=output_field_class())
+    transform = apps.common.mixins.NestedKeyTextTransform(nested_route, 'generic_data', output_field=output_field_class())
     transform.key_name = field_code
     return {field_code: transform}
 
 
-class ProjectDocumentsWithFieldsViewSet(APILoggingMixin,
-                                        DocumentPermissionViewMixin, APIActionMixin,
-                                        JqListAPIMixin, viewsets.ReadOnlyModelViewSet):
+class ProjectDocumentsWithFieldsViewSet(apps.common.mixins.APILoggingMixin,
+                                        DocumentPermissionViewMixin, apps.common.mixins.APIActionMixin,
+                                        apps.common.mixins.JqListAPIMixin, viewsets.ReadOnlyModelViewSet):
     """
     list: Document List with Fields
     retrieve: Document Detail with Fields
@@ -811,12 +804,12 @@ class ProjectDocumentsWithFieldsViewSet(APILoggingMixin,
             data[field['title']] = data['field_values'].apply(lambda x: x.get(field['pk']) if x else '')
         return data
 
-    @detail_route(methods=['get'])
+    @action(detail=True, methods=['get'])
     def show(self, request, **kwargs):
         document = self.get_object()
         return show_document(request, document.pk)
 
-    @list_route(methods=['get'], url_path='for-user')
+    @action(detail=False, methods=['get'], url_path='for-user')
     def for_user(self, request, *args, **kwrags):
         return super().list(request, *args, **kwrags)
 
@@ -850,7 +843,7 @@ class DocumentSentimentChartAPIView(ListAPIView):
 # Document Property Views
 # --------------------------------------------------------
 
-class DocumentPropertyDetailSerializer(SimpleRelationSerializer):
+class DocumentPropertyDetailSerializer(apps.common.mixins.SimpleRelationSerializer):
     class Meta:
         model = DocumentProperty
         fields = ['pk', 'key', 'value',
@@ -875,7 +868,7 @@ class DocumentPropertyUpdateSerializer(serializers.ModelSerializer):
         fields = ['key', 'value']
 
 
-class DocumentPropertyViewSet(JqListAPIMixin, viewsets.ModelViewSet):
+class DocumentPropertyViewSet(apps.common.mixins.JqListAPIMixin, viewsets.ModelViewSet):
     """
     list: Document Property List
     retrieve: Retrieve Document Property
@@ -898,7 +891,7 @@ class DocumentPropertyViewSet(JqListAPIMixin, viewsets.ModelViewSet):
 # Document Tag Views
 # --------------------------------------------------------
 
-class DocumentTagDetailSerializer(SimpleRelationSerializer):
+class DocumentTagDetailSerializer(apps.common.mixins.SimpleRelationSerializer):
     class Meta:
         model = DocumentTag
         fields = ['pk', 'tag', 'timestamp',
@@ -922,7 +915,7 @@ class DocumentTagUpdateSerializer(serializers.ModelSerializer):
         fields = ['tag']
 
 
-class DocumentTagViewSet(JqListAPIMixin, viewsets.ModelViewSet):
+class DocumentTagViewSet(apps.common.mixins.JqListAPIMixin, viewsets.ModelViewSet):
     """
     Document Tag List
     retrieve: Retrieve Document Tag
@@ -945,7 +938,7 @@ class DocumentTagViewSet(JqListAPIMixin, viewsets.ModelViewSet):
 # Text Unit Views
 # --------------------------------------------------------
 
-class TextUnitDetailSerializer(SimpleRelationSerializer):
+class TextUnitDetailSerializer(apps.common.mixins.SimpleRelationSerializer):
     class Meta:
         model = TextUnit
         fields = ['pk', 'unit_type', 'language', 'text', 'text_hash',
@@ -953,7 +946,7 @@ class TextUnitDetailSerializer(SimpleRelationSerializer):
                   'document__document_type', 'document__description']
 
 
-class TextUnitViewSet(JqListAPIMixin, viewsets.ReadOnlyModelViewSet):
+class TextUnitViewSet(apps.common.mixins.JqListAPIMixin, viewsets.ReadOnlyModelViewSet):
     """
     list: Text Unit List
     retrieve: Retrieve Text Unit
@@ -1001,7 +994,7 @@ class TextUnitViewSet(JqListAPIMixin, viewsets.ReadOnlyModelViewSet):
 # Text Unit Tag Views
 # --------------------------------------------------------
 
-class TextUnitTagDetailSerializer(SimpleRelationSerializer):
+class TextUnitTagDetailSerializer(apps.common.mixins.SimpleRelationSerializer):
     class Meta:
         model = TextUnitTag
         fields = ['pk', 'tag', 'timestamp', 'user__username',
@@ -1026,7 +1019,7 @@ class TextUnitTagUpdateSerializer(serializers.ModelSerializer):
         fields = ['tag']
 
 
-class TextUnitTagViewSet(JqListAPIMixin, viewsets.ModelViewSet):
+class TextUnitTagViewSet(apps.common.mixins.JqListAPIMixin, viewsets.ModelViewSet):
     """
     list: Text Unit Tag List
     retrieve: Retrieve Text Unit Tag
@@ -1054,7 +1047,7 @@ class TextUnitTagViewSet(JqListAPIMixin, viewsets.ModelViewSet):
 # Text Unit Note Views
 # --------------------------------------------------------
 
-class TextUnitNoteDetailSerializer(SimpleRelationSerializer):
+class TextUnitNoteDetailSerializer(apps.common.mixins.SimpleRelationSerializer):
     history = serializers.SerializerMethodField()
     username = serializers.CharField(
         source='history.last.history_user.username',
@@ -1089,7 +1082,7 @@ class TextUnitNoteUpdateSerializer(serializers.ModelSerializer):
         fields = ['note']
 
 
-class TextUnitNoteViewSet(JqListAPIMixin, viewsets.ModelViewSet):
+class TextUnitNoteViewSet(apps.common.mixins.JqListAPIMixin, viewsets.ModelViewSet):
     """
     list: Text Unit Note List
     retrieve: Retrieve Text Unit Note
@@ -1117,7 +1110,7 @@ class TextUnitNoteViewSet(JqListAPIMixin, viewsets.ModelViewSet):
 # Text Unit Property Views
 # --------------------------------------------------------
 
-class TextUnitPropertyDetailSerializer(SimpleRelationSerializer):
+class TextUnitPropertyDetailSerializer(apps.common.mixins.SimpleRelationSerializer):
     class Meta:
         model = TextUnitProperty
         fields = ['pk', 'key', 'value',
@@ -1143,7 +1136,7 @@ class TextUnitPropertyUpdateSerializer(serializers.ModelSerializer):
         fields = ['key', 'value']
 
 
-class TextUnitPropertyViewSet(JqListAPIMixin, viewsets.ModelViewSet):
+class TextUnitPropertyViewSet(apps.common.mixins.JqListAPIMixin, viewsets.ModelViewSet):
     """
     list: Text Unit Property List
     retrieve: Retrieve Text Unit Property
@@ -1166,7 +1159,7 @@ class TextUnitPropertyViewSet(JqListAPIMixin, viewsets.ModelViewSet):
 # Typeahead Views for Global Search bar
 # --------------------------------------------------------
 
-class TypeaheadDocument(TypeaheadAPIView):
+class TypeaheadDocument(apps.common.mixins.TypeaheadAPIView):
     """
     Typeahead Document\n
         Kwargs: field_name: [name, description]
@@ -1177,7 +1170,7 @@ class TypeaheadDocument(TypeaheadAPIView):
     limit_reviewers_qs_by_field = ''
 
 
-class TypeaheadTextUnitTag(TypeaheadAPIView):
+class TypeaheadTextUnitTag(apps.common.mixins.TypeaheadAPIView):
     """
     Typeahead Text Unit Tag\n
         Kwargs: field_name: [tag]
@@ -1188,7 +1181,7 @@ class TypeaheadTextUnitTag(TypeaheadAPIView):
     limit_reviewers_qs_by_field = 'text_unit__document'
 
 
-class TypeaheadDocumentProperty(TypeaheadAPIView):
+class TypeaheadDocumentProperty(apps.common.mixins.TypeaheadAPIView):
     """
     Typeahead Text Unit Property\n
         Kwargs: field_name: [key]
@@ -1203,7 +1196,7 @@ class TypeaheadDocumentProperty(TypeaheadAPIView):
 # Document Field Views
 # --------------------------------------------------------
 
-class DocumentFieldDetailSerializer(SimpleRelationSerializer):
+class DocumentFieldDetailSerializer(apps.common.mixins.SimpleRelationSerializer):
     value_aware = serializers.SerializerMethodField()
 
     choices = serializers.SerializerMethodField()
@@ -1214,10 +1207,15 @@ class DocumentFieldDetailSerializer(SimpleRelationSerializer):
 
     class Meta:
         model = DocumentField
-        fields = ['uid', 'code', 'title', 'description', 'type', 'value_aware', 'choices', 'formula',
-                  'modified_by__username', 'modified_date', 'confidence', 'requires_text_annotations', 'read_only',
-                  'order', 'display_yes_no', 'allow_values_not_specified_in_choices', 'default_value', 'hide_until',
-                  'hidden_always', 'depends_on_fields']
+        fields = ['uid', 'document_type', 'code', 'long_code', 'title', 'description', 'type',
+                  'text_unit_type', 'value_detection_strategy', 'python_coded_field',
+                  'classifier_init_script', 'formula', 'value_regexp', 'depends_on_fields',
+                  'confidence', 'requires_text_annotations', 'read_only', 'category',
+                  'default_value', 'choices', 'allow_values_not_specified_in_choices',
+                  'stop_words', 'metadata', 'training_finished', 'dirty', 'order',
+                  'trained_after_documents_number', 'hidden_always',
+                  'hide_until', 'display_yes_no', 'value_aware', 'created_by', 'modified_by',
+                  'created_date', 'modified_date']
 
     def get_value_aware(self, obj: DocumentField):
         return obj.is_value_aware()
@@ -1235,11 +1233,19 @@ class DocumentFieldDetailSerializer(SimpleRelationSerializer):
 class DocumentFieldCreateSerializer(serializers.ModelSerializer):
     class Meta:
         model = DocumentField
-        fields = ['uid', 'code', 'title', 'description', 'type', 'choices', 'confidence', 'requires_text_annotations',
-                  'read_only']
+        fields = ['document_type', 'code', 'long_code', 'title', 'description', 'type',
+                  'text_unit_type', 'value_detection_strategy', 'python_coded_field',
+                  'classifier_init_script', 'formula', 'value_regexp', 'depends_on_fields',
+                  'confidence', 'requires_text_annotations', 'read_only', 'category',
+                  'default_value', 'choices', 'allow_values_not_specified_in_choices',
+                  'stop_words', 'metadata', 'training_finished', 'dirty', 'order',
+                  'trained_after_documents_number', 'hidden_always', 'hide_until_python',
+                  'hide_until_js', 'display_yes_no']
 
 
-class DocumentFieldViewSet(JqListAPIMixin, viewsets.ModelViewSet):
+class DocumentFieldViewSet(apps.common.mixins.JqListAPIMixin,
+                           apps.common.mixins.APIFormFieldsMixin,
+                           viewsets.ModelViewSet):
     """
     list: Document Field List
     retrieve: Retrieve Document Field
@@ -1249,15 +1255,81 @@ class DocumentFieldViewSet(JqListAPIMixin, viewsets.ModelViewSet):
     delete: Delete Document Field
     """
     queryset = DocumentField.objects \
-        .all() \
+        .select_related('document_type', 'modified_by') \
         .prefetch_related(Prefetch('depends_on_fields', queryset=DocumentField.objects.all().only('pk')))
-
     permission_classes = (ReviewerReadOnlyPermission,)
+    options_serializer = DocumentFieldCreateSerializer
 
     def get_serializer_class(self):
         if self.action in ('create', 'update', 'partial_update'):
             return DocumentFieldCreateSerializer
         return DocumentFieldDetailSerializer
+
+
+# --------------------------------------------------------
+# Document Field Views
+# --------------------------------------------------------
+
+class DocumentFieldDetectorDetailSerializer(apps.common.mixins.SimpleRelationSerializer):
+    include_regexps = serializers.SerializerMethodField()
+
+    class Meta:
+        model = DocumentFieldDetector
+        fields = ['uid', 'field__code', 'field__title', 'detected_value',
+                  'extraction_hint', 'include_regexps', 'regexps_pre_process_lower']
+
+    def get_include_regexps(self, obj):
+        return obj.include_regexps.split('\n') if obj.field else None
+
+
+def check(func):
+    def wrapper(self, value):
+        try:
+            func(self, value)
+        except Exception as exc:
+            raise serializers.ValidationError(exc)
+        return value
+    return wrapper
+
+
+class DocumentFieldDetectorCreateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = DocumentFieldDetector
+        fields = '__all__'
+
+    @check
+    def validate_exclude_regexps(self, value):
+        DocumentFieldDetector.compile_regexps_string(value)
+
+    @check
+    def validate_include_regexps(self, value):
+        DocumentFieldDetector.compile_regexps_string(value)
+
+    @check
+    def validate(self, data):
+        DocumentFieldDetector.validate_detected_value(data['field'].type,
+                                                      data['detected_value'])
+
+
+class DocumentFieldDetectorViewSet(apps.common.mixins.JqListAPIMixin,
+                                   apps.common.mixins.APIFormFieldsMixin,
+                                   viewsets.ModelViewSet):
+    """
+    list: Document Field List
+    retrieve: Retrieve Document Field
+    create: Create Document Field
+    update: Update Document Field
+    partial_update: Partial Update Document Field
+    delete: Delete Document Field
+    """
+    queryset = DocumentFieldDetector.objects.select_related('field')
+    permission_classes = (ReviewerReadOnlyPermission,)
+    options_serializer = DocumentFieldDetectorCreateSerializer
+
+    def get_serializer_class(self):
+        if self.action in ('create', 'update', 'partial_update'):
+            return DocumentFieldDetectorCreateSerializer
+        return DocumentFieldDetectorDetailSerializer
 
 
 # --------------------------------------------------------
@@ -1278,13 +1350,15 @@ class FieldDataSerializer(DocumentFieldDetailSerializer):
         model = DocumentField
 
 
-class DocumentTypeDetailSerializer(SimpleRelationSerializer):
+class DocumentTypeDetailSerializer(apps.common.mixins.SimpleRelationSerializer):
     fields_data = FieldDataSerializer(source='fields', many=True, read_only=True)
+    created_by = UserSerializer(many=False)
+    modified_by = UserSerializer(many=False)
 
     class Meta:
         model = DocumentType
         fields = ['uid', 'code', 'title', 'fields_data', 'search_fields', 'modified_by__username',
-                  'modified_date', 'editor_type']
+                  'editor_type', 'created_by', 'created_date', 'modified_by', 'modified_date']
 
     def to_representation(self, instance):
         ret = dict(super().to_representation(instance))
@@ -1296,12 +1370,28 @@ class DocumentTypeDetailSerializer(SimpleRelationSerializer):
 
 
 class DocumentTypeCreateSerializer(serializers.ModelSerializer):
+
     class Meta:
         model = DocumentType
         fields = ['uid', 'code', 'title', 'fields', 'search_fields', 'editor_type']
 
 
-class DocumentTypeViewSet(JqListAPIMixin, viewsets.ModelViewSet):
+class DocumentTypeOptionsSerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = DocumentType
+        fields = ['uid', 'code', 'title', 'search_fields', 'editor_type',
+                  'created_by', 'created_date', 'modified_by', 'modified_date']
+
+    def get_fields(self):
+        fields = super().get_fields()
+        fields['fields'] = fields['search_fields']
+        return fields
+
+
+class DocumentTypeViewSet(apps.common.mixins.JqListAPIMixin,
+                          apps.common.mixins.APIFormFieldsMixin,
+                          viewsets.ModelViewSet):
     """
     list: Document Type List\n
     retrieve: Retrieve Document Type
@@ -1315,6 +1405,7 @@ class DocumentTypeViewSet(JqListAPIMixin, viewsets.ModelViewSet):
                           Prefetch('fields__depends_on_fields', queryset=DocumentField.objects.all().only('pk')))
 
     permission_classes = (ReviewerReadOnlyPermission,)
+    options_serializer = DocumentTypeOptionsSerializer
 
     def get_serializer_class(self):
         if self.action in ('create', 'update', 'partial_update'):
@@ -1344,7 +1435,7 @@ class DocumentFieldValueSerializer(serializers.ModelSerializer):
         return obj.python_value
 
 
-class DocumentFieldValueViewSet(JqListAPIMixin, viewsets.ModelViewSet):
+class DocumentFieldValueViewSet(apps.common.mixins.JqListAPIMixin, viewsets.ModelViewSet):
     """
     list: Document Field Value List
     retrieve: Retrieve Document Field Value
@@ -1580,7 +1671,7 @@ class AnnotationViewSet(viewsets.ModelViewSet):
     def create(self, request, *args, **kwargs):
         return self.update(request, *args, **kwargs)
 
-    @list_route(methods=['put'])
+    @action(detail=False, methods=['put'])
     def annotate(self, request, *args, **kwargs):
         return self.update(request, *args, **kwargs)
 
@@ -1592,7 +1683,7 @@ class AnnotationViewSet(viewsets.ModelViewSet):
             res = render_error_json(None, e)
         return Response(res)
 
-    @list_route(methods=['post'])
+    @action(detail=False, methods=['post'])
     def suggest(self, request, *args, **kwargs):
         """
         Suggest field value before creating an annotation.
@@ -1611,7 +1702,7 @@ class AnnotationViewSet(viewsets.ModelViewSet):
 
         return Response({'suggested_value': field_value})
 
-    @list_route(methods=['put'])
+    @action(detail=False, methods=['put'])
     def batch(self, request, *args, **kwargs):
         """
         Create batch of annotations\n
@@ -1654,7 +1745,7 @@ class AnnotationViewSet(viewsets.ModelViewSet):
 # Document Field Value History Views
 # --------------------------------------------------------
 
-class DocumentFieldValueHistorySerializer(SimpleRelationSerializer):
+class DocumentFieldValueHistorySerializer(apps.common.mixins.SimpleRelationSerializer):
     object_id = serializers.SerializerMethodField()
     history_id = serializers.SerializerMethodField()
     history_user = serializers.SerializerMethodField()
@@ -1694,7 +1785,7 @@ class DocumentFieldValueHistorySerializer(SimpleRelationSerializer):
         return obj.instance.history.latest().get_history_type_display()
 
 
-class DocumentFieldValueHistoryViewSet(JqListAPIMixin, viewsets.ModelViewSet):
+class DocumentFieldValueHistoryViewSet(apps.common.mixins.JqListAPIMixin, viewsets.ModelViewSet):
     """
     list: Document Field Value History List
     retrieve: Retrieve Document Field Value History
@@ -1717,14 +1808,14 @@ class DocumentFieldValueHistoryViewSet(JqListAPIMixin, viewsets.ModelViewSet):
         return Response(serializer.data)
 
 
-class StatsAPIView(APIView):
+class StatsAPIView(rest_framework.views.APIView):
     def get(self, request, *args, **kwargs):
 
         # get admin tasks data
         task_api_module = get_api_module('task')
         task_api_view = task_api_module.TaskViewSet(request=request)
         task_api_view.format_kwarg = {}
-        admin_task_df = pd.DataFrame(task_api_view.list(request=request).data)
+        admin_task_df = pd.DataFrame(task_api_view.list_documents(request=request).data)
         admin_task_total_count = admin_task_df.shape[0]
         admin_task_by_status_count = dict(admin_task_df.groupby(['status']).size()) \
             if not admin_task_df.empty else 0
@@ -1732,7 +1823,7 @@ class StatsAPIView(APIView):
         # get projects data
         project_api_view = project_api_module.ProjectViewSet(request=request)
         project_api_view.format_kwarg = {}
-        project_data = project_api_view.list(request=request).data
+        project_data = project_api_view.list_documents(request=request).data
         if not project_data:
             project_total_count = project_completed_count = project_completed_weight = \
                 project_progress_avg = project_documents_total_count = \
@@ -1756,7 +1847,7 @@ class StatsAPIView(APIView):
         # get task queues data
         task_queue_api_view = project_api_module.TaskQueueViewSet(request=request)
         task_queue_api_view.format_kwarg = {}
-        task_queue_data = task_queue_api_view.list(request=request).data
+        task_queue_data = task_queue_api_view.list_documents(request=request).data
         if not task_queue_data:
             task_queue_total_count = task_queue_completed_count = task_queue_completed_weight = \
                 task_queue_progress_avg = task_queue_documents_total_count = \
@@ -1940,6 +2031,7 @@ class StatsAPIView(APIView):
 main_router = routers.DefaultRouter()
 main_router.register(r'documents', DocumentViewSet, 'document')
 main_router.register(r'document-fields', DocumentFieldViewSet, 'document-field')
+main_router.register(r'document-field-detectors', DocumentFieldDetectorViewSet, 'document-field-detector')
 
 main_router.register(r'document-field-values', DocumentFieldValueViewSet, 'document-field-value')
 main_router.register(r'annotations', AnnotationViewSet, 'annotation')

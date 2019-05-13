@@ -23,11 +23,12 @@
     or shipping ContraxSuite within a closed source product.
 """
 from django.db import models
+from django.db.models.deletion import CASCADE
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.0/LICENSE"
-__version__ = "1.2.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.1/LICENSE"
+__version__ = "1.2.1"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -36,7 +37,7 @@ class Usage(models.Model):
     """
     Base usage model
     """
-    text_unit = models.ForeignKey('document.TextUnit', db_index=True)
+    text_unit = models.ForeignKey('document.TextUnit', db_index=True, on_delete=CASCADE)
     count = models.IntegerField(null=False, default=0, db_index=True)
 
     class Meta:
@@ -63,7 +64,7 @@ class TermUsage(Usage):
     """
     Legal term/dictionary usage
     """
-    term = models.ForeignKey(Term, db_index=True)
+    term = models.ForeignKey(Term, db_index=True, on_delete=CASCADE)
 
     class Meta:
         unique_together = (("text_unit", "term"),)
@@ -102,8 +103,8 @@ class GeoRelation(models.Model):
     """
     GeoPolitical Entity relation
     """
-    entity_a = models.ForeignKey(GeoEntity, db_index=True, related_name="entity_a_set")
-    entity_b = models.ForeignKey(GeoEntity, db_index=True, related_name="entity_b_set")
+    entity_a = models.ForeignKey(GeoEntity, db_index=True, related_name="entity_a_set", on_delete=CASCADE)
+    entity_b = models.ForeignKey(GeoEntity, db_index=True, related_name="entity_b_set", on_delete=CASCADE)
     relation_type = models.CharField(max_length=128, db_index=True)
 
     def __str__(self):
@@ -115,7 +116,7 @@ class GeoAlias(models.Model):
     """
     GeoPolitical aliases
     """
-    entity = models.ForeignKey(GeoEntity, db_index=True)
+    entity = models.ForeignKey(GeoEntity, db_index=True, on_delete=CASCADE)
     locale = models.CharField(max_length=10, default='en-us', db_index=True)
     alias = models.CharField(max_length=1024, db_index=True)
     type = models.CharField(max_length=1024, default='abbreviation', db_index=True)
@@ -129,7 +130,7 @@ class GeoEntityUsage(Usage):
     """
     Geo Entity usage
     """
-    entity = models.ForeignKey(GeoEntity, db_index=True)
+    entity = models.ForeignKey(GeoEntity, db_index=True, on_delete=CASCADE)
 
     class Meta:
         unique_together = (("text_unit", "entity"),)
@@ -146,7 +147,7 @@ class GeoAliasUsage(Usage):
     """
     Geo Alias usage
     """
-    alias = models.ForeignKey(GeoAlias, db_index=True)
+    alias = models.ForeignKey(GeoAlias, db_index=True, on_delete=CASCADE)
 
     class Meta:
         unique_together = (("text_unit", "alias"),)
@@ -184,7 +185,7 @@ class PartyUsage(Usage):
     """
     Party usage
     """
-    party = models.ForeignKey(Party, db_index=True)
+    party = models.ForeignKey(Party, db_index=True, on_delete=CASCADE)
     role = models.CharField(max_length=1024, db_index=True, blank=True, null=True)
 
     class Meta:
@@ -320,7 +321,7 @@ class CourtUsage(Usage):
     """
     Court usage
     """
-    court = models.ForeignKey(Court, db_index=True)
+    court = models.ForeignKey(Court, db_index=True, on_delete=CASCADE)
 
     class Meta:
         unique_together = (("text_unit", "court"),)
@@ -337,7 +338,7 @@ class RegulationUsage(Usage):
     """
     Regulation usage
     """
-    entity = models.ForeignKey(GeoEntity, null=True, blank=True, db_index=True)
+    entity = models.ForeignKey(GeoEntity, null=True, blank=True, db_index=True, on_delete=CASCADE)
     regulation_type = models.CharField(max_length=128, db_index=True)
     regulation_name = models.CharField(max_length=1024, db_index=True)
 

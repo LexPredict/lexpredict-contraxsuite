@@ -31,7 +31,7 @@ from __future__ import absolute_import, unicode_literals
 import datetime
 
 # Django imports
-from django.core.urlresolvers import reverse
+from django.urls import reverse
 from django.db.models import Count
 
 # Project imports
@@ -40,19 +40,17 @@ from apps.analyze.models import (
     TextUnitClassification, TextUnitClassifier, TextUnitClassifierSuggestion,
     TextUnitSimilarity, TextUnitCluster)
 from apps.document.views import SubmitTextUnitTagView
-from apps.common.mixins import (
-    AdminRequiredMixin, CustomDeleteView,
-    JqPaginatedListView, TypeaheadView)
+import apps.common.mixins
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.0/LICENSE"
-__version__ = "1.2.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.1/LICENSE"
+__version__ = "1.2.1"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
 
-class TextUnitClassificationListView(JqPaginatedListView):
+class TextUnitClassificationListView(apps.common.mixins.JqPaginatedListView):
     """TextUnitClassificationListView
 
     CBV for list of TextUnitClassification records
@@ -63,6 +61,7 @@ class TextUnitClassificationListView(JqPaginatedListView):
                    'text_unit__pk', 'text_unit__unit_type', 'text_unit__language',
                    'class_name', 'class_value', 'user__username', 'timestamp']
     limit_reviewers_qs_by_field = 'text_unit__document'
+    template_name = 'analyze/text_unit_classification_list.html'
 
     def get_json_data(self, **kwargs):
         data = super().get_json_data()
@@ -93,7 +92,7 @@ class TextUnitClassificationListView(JqPaginatedListView):
         return qs
 
 
-class TextUnitClassificationDeleteView(CustomDeleteView):
+class TextUnitClassificationDeleteView(apps.common.mixins.CustomDeleteView):
     """TextUnitClassificationDeleteView
 
     CBV for deletion of TextUnitClassification records
@@ -109,7 +108,7 @@ class TextUnitClassificationDeleteView(CustomDeleteView):
         return self.request.user.can_view_document(document)
 
 
-class TextUnitClassifierListView(JqPaginatedListView):
+class TextUnitClassifierListView(apps.common.mixins.JqPaginatedListView):
     """TextUnitClassifierListView
 
     CBV for list of TextUnitClassifier records
@@ -117,6 +116,7 @@ class TextUnitClassifierListView(JqPaginatedListView):
     model = TextUnitClassifier
     json_fields = ['name', 'version', 'class_name', 'is_active']
     annotate = {'suggestions': Count('textunitclassifiersuggestion')}
+    template_name = 'analyze/text_unit_classifier_list.html'
 
     def get_json_data(self, **kwargs):
         data = super().get_json_data()
@@ -129,7 +129,7 @@ class TextUnitClassifierListView(JqPaginatedListView):
         return data
 
 
-class TextUnitClassifierDeleteView(AdminRequiredMixin, CustomDeleteView):
+class TextUnitClassifierDeleteView(apps.common.mixins.AdminRequiredMixin, apps.common.mixins.CustomDeleteView):
     """TextUnitClassifierListView
 
     CBV for deletion of TextUnitClassifier records
@@ -143,7 +143,7 @@ class TextUnitClassifierDeleteView(AdminRequiredMixin, CustomDeleteView):
         return reverse('analyze:text-unit-classifier-list')
 
 
-class TextUnitClassifierSuggestionListView(JqPaginatedListView):
+class TextUnitClassifierSuggestionListView(apps.common.mixins.JqPaginatedListView):
     """TextUnitClassifierSuggestionListView
 
     CBV for list of TextUnitClassifierSuggestion records
@@ -155,6 +155,7 @@ class TextUnitClassifierSuggestionListView(JqPaginatedListView):
                    'text_unit__pk',
                    'class_name', 'class_value', 'classifier_run', 'classifier_confidence']
     limit_reviewers_qs_by_field = 'text_unit__document'
+    template_name = 'analyze/text_unit_classifier_suggestion_list.html'
 
     def get_json_data(self, **kwargs):
         data = super().get_json_data()
@@ -179,7 +180,7 @@ class TextUnitClassifierSuggestionListView(JqPaginatedListView):
         return qs
 
 
-class TextUnitClassifierSuggestionDeleteView(CustomDeleteView):
+class TextUnitClassifierSuggestionDeleteView(apps.common.mixins.CustomDeleteView):
     """TextUnitClassifierSuggestionDeleteView
 
     CBV for deletion of TextUnitClassifierSuggestion records
@@ -194,7 +195,7 @@ class TextUnitClassifierSuggestionDeleteView(CustomDeleteView):
         return self.request.user.can_view_document(document)
 
 
-class DocumentClusterListView(JqPaginatedListView):
+class DocumentClusterListView(apps.common.mixins.JqPaginatedListView):
     """DocumentClusterListView
 
     CBV for list of DocumentCluster records
@@ -229,7 +230,7 @@ class DocumentClusterListView(JqPaginatedListView):
         return qs
 
 
-class DocumentSimilarityListView(JqPaginatedListView):
+class DocumentSimilarityListView(apps.common.mixins.JqPaginatedListView):
     """DocumentSimilarityListView
 
     CBV for list of DocumentSimilarity records
@@ -259,7 +260,7 @@ class DocumentSimilarityListView(JqPaginatedListView):
         return qs
 
 
-class TextUnitSimilarityListView(JqPaginatedListView):
+class TextUnitSimilarityListView(apps.common.mixins.JqPaginatedListView):
     """TextUnitSimilarityListView
 
     CBV for list of TextUnitSimilarity records
@@ -295,7 +296,7 @@ class TextUnitSimilarityListView(JqPaginatedListView):
         return qs
 
 
-class PartySimilarityListView(JqPaginatedListView):
+class PartySimilarityListView(apps.common.mixins.JqPaginatedListView):
     """PartySimilarityListView
 
     CBV for list of PartySimilarity records
@@ -324,7 +325,7 @@ class PartySimilarityListView(JqPaginatedListView):
         return qs
 
 
-class TextUnitClusterListView(JqPaginatedListView):
+class TextUnitClusterListView(apps.common.mixins.JqPaginatedListView):
     """PartySimilarityListView
 
     CBV for list of TextUnitCluster records
@@ -362,7 +363,7 @@ class TextUnitClusterListView(JqPaginatedListView):
         return qs
 
 
-class TypeaheadTextUnitClassName(TypeaheadView):
+class TypeaheadTextUnitClassName(apps.common.mixins.TypeaheadView):
     model = TextUnitClassification
     search_field = 'class_name'
     limit_reviewers_qs_by_field = 'text_unit__document'

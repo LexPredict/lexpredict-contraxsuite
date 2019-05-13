@@ -1,6 +1,7 @@
 #!/bin/bash
 
 set -e
+source /hash_sums.sh
 
 IMAGE_UUID_FILE=/build.uuid
 DEPLOYMENT_UUID_FILE=/deployment_uuid/deployment.uuid
@@ -117,6 +118,12 @@ elif [ "$1" == "uwsgi" ]; then
     VENDOR_DIR=/static/vendor
     rm -rf ${VENDOR_DIR}/jqwidgets
     unzip ${JQWIDGETS_ZIP} "jqwidgets/*" -d ${VENDOR_DIR}
+
+
+    echo "Updating customizable notification templates in media folder..."
+    mkdir -p /data/media/data/notification_templates
+    copy_unchanged_files /contraxsuite_services/apps/notifications/notification_templates /data/media/data/notification_templates /deployment_uuid/notification_templates_hashes
+    chown -R -v ${SHARED_USER_NAME}:${SHARED_USER_NAME} /data/media/data/notification_templates || true
 
     cat /build.info > /contraxsuite_services/staticfiles/version.txt
     echo "" >> /contraxsuite_services/staticfiles/version.txt

@@ -14,7 +14,7 @@ def migrate_doc_size(apps, schema_editor):
         try:
             file_size = os.path.getsize(os.path.join(
                 '/data/media',
-                settings.FILEBROWSER_DIRECTORY,
+                settings.FILEBROWSER_DOCUMENTS_DIRECTORY,
                 doc.source_path))
             doc.file_size = file_size
             doc.save()

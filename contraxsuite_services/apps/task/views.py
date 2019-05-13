@@ -30,7 +30,7 @@ import traceback
 
 # Django imports
 from django.conf import settings
-from django.core.urlresolvers import reverse
+from django.urls import reverse
 from django.db.models import F
 from django.db.models.functions import Now, Coalesce
 from django.http import JsonResponse, HttpResponseForbidden
@@ -39,9 +39,7 @@ from django.views.generic.edit import FormView
 
 # Project imports
 from apps.analyze.models import TextUnitClassifier
-from apps.common.mixins import (
-    AdminRequiredMixin, CustomDetailView, DjangoJSONEncoder,
-    JSONResponseView, JqPaginatedListView, TechAdminRequiredMixin)
+import apps.common.mixins
 from apps.common.utils import get_api_module
 from apps.deployment.app_data import DICTIONARY_DATA_URL_MAP
 from apps.document.models import DocumentProperty, TextUnitProperty
@@ -60,13 +58,13 @@ project_api_module = get_api_module('project')
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.0/LICENSE"
-__version__ = "1.2.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.1/LICENSE"
+__version__ = "1.2.1"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
 
-class BaseTaskView(AdminRequiredMixin, FormView):
+class BaseTaskView(apps.common.mixins.AdminRequiredMixin, FormView):
     template_name = 'task/task_form.html'
     task_name = 'Task'
 
@@ -82,15 +80,15 @@ class BaseTaskView(AdminRequiredMixin, FormView):
         return ctx
 
 
-class BaseAjaxTaskView(AdminRequiredMixin, JSONResponseView):
+class BaseAjaxTaskView(apps.common.mixins.AdminRequiredMixin, apps.common.mixins.JSONResponseView):
+    task_class = None
     task_name = 'Task'
     form_class = None
     html_form_class = 'popup-form'
-    task_name = IManageSynchronization.name
 
     @staticmethod
     def json_response(data, **kwargs):
-        return JsonResponse(data, encoder=DjangoJSONEncoder, safe=False, **kwargs)
+        return JsonResponse(data, encoder=apps.common.mixins.DjangoJSONEncoder, safe=False, **kwargs)
 
     def get(self, request, *args, **kwargs):
         if self.disallow_start():
@@ -107,7 +105,7 @@ class BaseAjaxTaskView(AdminRequiredMixin, JSONResponseView):
         return getattr(self, 'metadata', None)
 
     def start_task(self, data):
-        call_task(self.task_name, **data)
+        call_task(self.task_class or self.task_name, **data)
 
     def disallow_start(self):
         return Task.disallow_start(self.task_name)
@@ -129,7 +127,7 @@ class BaseAjaxTaskView(AdminRequiredMixin, JSONResponseView):
         return self.json_response('The task is started. It can take a while.')
 
 
-class LoadTaskView(AdminRequiredMixin, JSONResponseView):
+class LoadTaskView(apps.common.mixins.AdminRequiredMixin, apps.common.mixins.JSONResponseView):
     tasks_map = dict(
         terms=dict(task_name='Load Terms'),
         courts=dict(task_name='Load Courts'),
@@ -141,7 +139,7 @@ class LoadTaskView(AdminRequiredMixin, JSONResponseView):
 
     @staticmethod
     def json_response(data, **kwargs):
-        return JsonResponse(data, encoder=DjangoJSONEncoder, safe=False, **kwargs)
+        return JsonResponse(data, encoder=apps.common.mixins.DjangoJSONEncoder, safe=False, **kwargs)
 
     def post(self, request, *args, **kwargs):
         data = request.POST.dict()
@@ -215,6 +213,13 @@ class LocateTaskView(BaseAjaxTaskView):
         if not form.is_valid():
             return self.json_response(form.errors, status=404)
         data = form.cleaned_data
+
+        project_id = None
+        project_ref = data.get('project')
+        if project_ref:
+            del data['project']
+            project_id = project_ref.pk
+
         task_names = set([i.split('_')[0] for i in data if i != 'parse'])
         custom_task_names = task_names & self.custom_tasks
         lexnlp_task_names = task_names - self.custom_tasks
@@ -266,6 +271,7 @@ class LocateTaskView(BaseAjaxTaskView):
                       tasks=lexnlp_task_data,
                       parse=data['parse'],
                       user_id=request.user.pk,
+                      project_id=project_id,
                       metadata={
                           'description': [i for i, j in lexnlp_task_data.items()
                                           if j.get('locate')],
@@ -383,7 +389,7 @@ class PartySimilarityView(BaseAjaxTaskView):
                            'link': 'extract:party-usage-list'}])
 
 
-class TaskDetailView(CustomDetailView):
+class TaskDetailView(apps.common.mixins.CustomDetailView):
     model = Task
 
     def get_form_class(self):
@@ -393,17 +399,17 @@ class TaskDetailView(CustomDetailView):
         return None
 
 
-class CleanTasksView(TechAdminRequiredMixin, JSONResponseView):
+class CleanTasksView(apps.common.mixins.TechAdminRequiredMixin, apps.common.mixins.JSONResponseView):
     def get_json_data(self, request, *args, **kwargs):
         return clean_tasks(delta_days=0)
 
 
-class PurgeTaskView(TechAdminRequiredMixin, JSONResponseView):
+class PurgeTaskView(apps.common.mixins.TechAdminRequiredMixin, apps.common.mixins.JSONResponseView):
     def get_json_data(self, request, *args, **kwargs):
         return purge_task(task_pk=request.POST.get('task_pk'))
 
 
-class TaskListView(AdminRequiredMixin, JqPaginatedListView):
+class TaskListView(apps.common.mixins.AdminRequiredMixin, apps.common.mixins.JqPaginatedListView):
     model = Task
     ordering = '-date_start'
     json_fields = ['name', 'date_start', 'username', 'metadata',
@@ -413,6 +419,7 @@ class TaskListView(AdminRequiredMixin, JqPaginatedListView):
     db_work_time = Coalesce(F('date_done') - F('date_work_start'), Now() - F('date_work_start'),
                             F('date_start') - F('date_start'))
     db_user = Coalesce(F('user__username'), F('main_task__user__username'))
+    template_name = 'task/task_list.html'
 
     def get_queryset(self):
         qs = Task.objects.main_tasks().order_by('-date_start')

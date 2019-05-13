@@ -4,6 +4,7 @@ from typing import Dict, Any, List, Optional
 
 # Django imports
 from django.contrib.postgres.aggregates.general import StringAgg
+from django.db import transaction
 from django.db.models import Min, Max
 
 from apps.common.log_utils import ProcessLogger
@@ -18,8 +19,8 @@ from apps.users.models import User
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.0/LICENSE"
-__version__ = "1.2.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.1/LICENSE"
+__version__ = "1.2.1"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -92,7 +93,7 @@ def cache_field_values(doc: Document,
     if save:
         doc.field_values = {uid: len(value) if uid in related_info_field_uids and value is not None else value
                             for uid, value in field_uids_to_field_values_db.items()}
-        doc.save()
+        doc.save(update_fields=["field_values"])
         signals.fire_document_changed(sender=cache_field_values,
                                       changed_by_user=changed_by_user,
                                       log=log,

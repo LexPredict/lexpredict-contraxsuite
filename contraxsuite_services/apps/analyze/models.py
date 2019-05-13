@@ -24,6 +24,7 @@
 """
 # Django imports
 from django.db import models
+from django.db.models.deletion import CASCADE
 from django.utils.timezone import now
 
 # App imports
@@ -33,8 +34,8 @@ from apps.users.models import User
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.0/LICENSE"
-__version__ = "1.2.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.1/LICENSE"
+__version__ = "1.2.1"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -49,7 +50,7 @@ class TextUnitClassification(models.Model):
     timestamp auditing.
     """
     # Text unit
-    text_unit = models.ForeignKey(TextUnit, db_index=True)
+    text_unit = models.ForeignKey(TextUnit, db_index=True, on_delete=CASCADE)
 
     # Class name/label name
     class_name = models.CharField(max_length=1024, db_index=True)
@@ -61,7 +62,7 @@ class TextUnitClassification(models.Model):
     timestamp = models.DateTimeField(default=now, db_index=True)
 
     # User
-    user = models.ForeignKey(User, db_index=True, null=True)
+    user = models.ForeignKey(User, db_index=True, null=True, on_delete=CASCADE)
 
     class Meta:
         ordering = ('text_unit', 'class_name', 'timestamp')
@@ -113,7 +114,7 @@ class TextUnitClassifierSuggestion(models.Model):
     #TODO: Mainline OvR/OvO assessment.
     """
     # Classifier object
-    classifier = models.ForeignKey(TextUnitClassifier, db_index=True)
+    classifier = models.ForeignKey(TextUnitClassifier, db_index=True, on_delete=CASCADE)
 
     # Run timestamp
     classifier_run = models.DateTimeField(default=now, db_index=True)
@@ -122,7 +123,7 @@ class TextUnitClassifierSuggestion(models.Model):
     classifier_confidence = models.FloatField(default=0.0)
 
     # Text unit
-    text_unit = models.ForeignKey(TextUnit, db_index=True)
+    text_unit = models.ForeignKey(TextUnit, db_index=True, on_delete=CASCADE)
 
     # Class name
     class_name = models.CharField(max_length=1024, db_index=True)
@@ -205,11 +206,11 @@ class DocumentSimilarity(models.Model):
 
     # Left or source document
     document_a = models.ForeignKey(Document, db_index=True,
-                                   related_name="document_a_similarity_set")
+                                   related_name="document_a_similarity_set", on_delete=CASCADE)
 
     # Right or target document
     document_b = models.ForeignKey(Document, db_index=True,
-                                   related_name="document_b_similarity_set")
+                                   related_name="document_b_similarity_set", on_delete=CASCADE)
 
     # Similarity
     similarity = models.DecimalField(max_digits=5, decimal_places=2)
@@ -232,10 +233,12 @@ class TextUnitSimilarity(models.Model):
     These similarities can be calculated along any dimension.
     """
     # Left or source text unit
-    text_unit_a = models.ForeignKey(TextUnit, db_index=True, related_name="similar_text_unit_a_set")
+    text_unit_a = models.ForeignKey(TextUnit, db_index=True,
+                                    related_name="similar_text_unit_a_set", on_delete=CASCADE)
 
     # Right or target text unit
-    text_unit_b = models.ForeignKey(TextUnit, db_index=True, related_name="similar_text_unit_b_set")
+    text_unit_b = models.ForeignKey(TextUnit,
+                                    db_index=True, related_name="similar_text_unit_b_set", on_delete=CASCADE)
 
     # Similarity score
     similarity = models.DecimalField(max_digits=5, decimal_places=2)
@@ -260,11 +263,11 @@ class PartySimilarity(models.Model):
     """
     # "Left" or "source" party
     party_a = models.ForeignKey(Party, db_index=True,
-                                related_name="party_a_similarity_set")
+                                related_name="party_a_similarity_set", on_delete=CASCADE)
 
     # "Right" or "target" party
     party_b = models.ForeignKey(Party, db_index=True,
-                                related_name="party_b_similarity_set")
+                                related_name="party_b_similarity_set", on_delete=CASCADE)
 
     # Similarity score
     similarity = models.DecimalField(max_digits=5, decimal_places=2)

@@ -39,6 +39,7 @@ import sys
 import traceback
 from traceback import format_exc
 from typing import List, Dict, Tuple, Any, Callable
+from inspect import isclass
 
 # Additional libraries
 import fuzzywuzzy.fuzz
@@ -91,12 +92,11 @@ from apps.common.log_utils import ProcessLogger
 from apps.common.utils import fast_uuid
 from apps.deployment.app_data import load_geo_entities, load_terms, load_courts
 from apps.document.constants import DOCUMENT_TYPE_PK_GENERIC_DOCUMENT
+from apps.document.field_types import FieldType
 from apps.document.fields_detection.field_detection import detect_and_cache_field_values_for_document
 from apps.document.fields_processing import field_value_cache
-from apps.document.field_types import FieldType, FIELD_TYPES_REGISTRY
 from apps.document.models import (
-    Document, DocumentField, DocumentProperty, DocumentType, DocumentFieldValue,
-    TextUnit, TextUnitProperty, TextUnitTag)
+    Document, DocumentField, DocumentProperty, DocumentType, TextUnit, TextUnitProperty, TextUnitTag)
 from apps.extract import dict_data_cache
 from apps.extract import models as extract_models
 from apps.extract.locators import LOCATORS, LocationResults
@@ -115,8 +115,8 @@ from apps.users.models import User
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.0/LICENSE"
-__version__ = "1.2.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.1/LICENSE"
+__version__ = "1.2.1"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -410,7 +410,10 @@ def end_chord(task: ExtendedTask, *args, **kwargs):
 
 
 def call_task_func(task_func: Callable, task_args: Tuple,
-                   user_id, source_data=None, metadata: Dict = None, visible: bool = True, queue: str = None):
+                   user_id, source_data=None, metadata: Dict = None,
+                   visible: bool = True, queue: str = None,
+                   run_after_sub_tasks_finished: bool = False,
+                   main_task_id: str = None):
     celery_task_id = str(fast_uuid())
 
     task = Task.objects.create(
@@ -420,6 +423,8 @@ def call_task_func(task_func: Callable, task_args: Tuple,
         source_data=source_data,
         metadata=metadata,
         visible=visible if visible is not None else True,
+        run_after_sub_tasks_finished=run_after_sub_tasks_finished,
+        main_task_id=main_task_id
     )
 
     task.write_log('Celery task id: {}\n'.format(celery_task_id))
@@ -434,15 +439,20 @@ def call_task_func(task_func: Callable, task_args: Tuple,
 def call_task(task_name, **options):
     """
     Call celery task by name
-    :param task_name: str, task tane
+    :param task_name: str task name or task class
     :param options: task params
     :return:
     """
-    this_module_name = options.pop('module_name', __name__)
-    _this_module = importlib.import_module(this_module_name)
-    task_class = getattr(_this_module, task_name.replace(' ', ''))
+    if isclass(task_name):
+        task_class_resolved = task_name
+        task_name_resolved = task_class_resolved.name
+    else:
+        task_name_resolved = str(task_name)
+        this_module_name = options.pop('module_name', __name__)
+        _this_module = importlib.import_module(this_module_name)
+        task_class_resolved = getattr(_this_module, task_name_resolved.replace(' ', ''))
 
-    if task_name == 'LoadDocuments' \
+    if task_name_resolved == 'LoadDocuments' \
             and 'metadata' in options and 'session_id' in options['metadata']:
         options['propagate_exception'] = True
         options['metadata']['propagate_exception'] = True
@@ -456,7 +466,7 @@ def call_task(task_name, **options):
 
     task = Task.objects.create(
         id=celery_task_id,
-        name=task_name,
+        name=task_name_resolved,
         user_id=options.get('user_id'),
         metadata=options.get('metadata', {}),
         kwargs=pre_serialize(celery_task_id, None, options),
@@ -471,15 +481,15 @@ def call_task(task_name, **options):
     task.write_log('Celery task id: {}\n'.format(celery_task_id))
     options['task_id'] = task.id
     async = options.pop('async', True)
-    task_config = _get_or_create_task_config(task_class)
+    task_config = _get_or_create_task_config(task_class_resolved)
     if async:
-        task_class().apply_async(kwargs=options,
+        task_class_resolved().apply_async(kwargs=options,
                                  task_id=celery_task_id,
                                  soft_time_limit=task_config.soft_time_limit,
                                  countdown=countdown,
                                  eta=eta)
     else:
-        task_class()(**options)
+        task_class_resolved()(**options)
     return task.pk
 
 
@@ -509,7 +519,7 @@ class LoadDocuments(BaseTask):
     Load Document, i.e. create Document and TextUnit objects
     from uploaded document files in a given directory
     :param kwargs: task_id - Task id
-                   source_path - (str) relative dir path in media/FILEBROWSER_DIRECTORY
+                   source_path - (str) relative dir path in media/FILEBROWSER_DOCUMENTS_DIRECTORY
                    delete - (bool) delete old objects
                    document_type - (DocumentType) f.e. lease.LeaseDocument
                    source_type - (str) f.e. "SEC data"
@@ -530,7 +540,7 @@ class LoadDocuments(BaseTask):
 
         path = kwargs['source_data']
         self.log_info('Parse {0} at {1}'.format(path, file_access_handler))
-        file_list = file_access_handler.list(path)
+        file_list = file_access_handler.list_documents(path)
 
         self.log_info("Detected {0} files. Added {0} subtasks.".format(len(file_list)))
 
@@ -567,7 +577,7 @@ class LoadDocuments(BaseTask):
                  autoretry_for=(SoftTimeLimitExceeded, InterfaceError, OperationalError),
                  max_retries=3)
     def create_document(task: ExtendedTask, uri: str, kwargs):
-        with file_access_handler.get_local_fn(uri) as (fn, file_name):
+        with file_access_handler.get_document_as_local_fn(uri) as (fn, file_name):
             return LoadDocuments.create_document_local(task, fn, uri, kwargs)
 
     # FIXME: this becomes unuseful as we CANNOT subclass from LoadDocument now - it hasn't self in methods!!!
@@ -620,40 +630,12 @@ class LoadDocuments(BaseTask):
         return titles[0] if titles else None
 
     @staticmethod
-    def store_pre_defined_doc_fields(task: ExtendedTask,
-                                     doc: Document,
-                                     user: User,
-                                     fields_code_to_python_val: Dict[str, Any]):
-        if not fields_code_to_python_val:
-            return
-
-        document_type = doc.document_type  # type: DocumentType
-
-        all_fields = {f.code: f for f in DocumentField.objects.filter(document_type=document_type).all()}
-
-        for field_code, python_val in fields_code_to_python_val.items():
-            field = all_fields.get(field_code)  # type: DocumentField
-            if not field:
-                task.log_error('Refusing to store pre-defined document field value for field {0}.\n'
-                               'Document type {1} does not have such field'.format(field_code, document_type.code))
-                continue
-            if field.requires_text_annotations:
-                task.log_error('Refusing to store pre-defined document field value for field {0}.\n'
-                               'The field requires text annotation.'.format(field_code, document_type.code))
-                continue
-
-            field_type = field.get_field_type()  # type: FieldType
-            field_type.save_value(document=doc, field=field, location_start=None, location_end=None, location_text=None,
-                                  text_unit=None, value=python_val, user=user, allow_overwriting_user_data=True,
-                                  extraction_hint=None)
-
-    @staticmethod
     def create_document_local(task: ExtendedTask,
                               file_path,
                               file_name,
                               kwargs,
-                              pre_defined_doc_fields_code_to_python_val: Dict[str, Any] = None,
-                              return_doc_id: bool = False):
+                              return_doc_id: bool = False,
+                              pre_defined_doc_fields_code_to_python_val: Dict[str, Any] = None):
         task.task.title = 'Load Document: {0}'.format(file_name)
         task.log_extra = {'log_document_name': file_name}
 
@@ -803,32 +785,38 @@ class LoadDocuments(BaseTask):
                     key=k,
                     value=v) for k, v in metadata.items() if v]
 
-            polarity, subjectivity = TextBlob(text).sentiment
-            document_properties += [
-                DocumentProperty(
-                    created_by_id=user_id,
-                    modified_by_id=user_id,
-                    document_id=document.pk,
-                    key='polarity',
-                    value=str(round(polarity, 3))),
-                DocumentProperty(
-                    created_by_id=user_id,
-                    modified_by_id=user_id,
-                    document_id=document.pk,
-                    key='subjectivity',
-                    value=str(round(subjectivity, 3)))]
+            try:
+                polarity, subjectivity = TextBlob(text).sentiment
+                document_properties += [
+                    DocumentProperty(
+                        created_by_id=user_id,
+                        modified_by_id=user_id,
+                        document_id=document.pk,
+                        key='polarity',
+                        value=str(round(polarity, 3))),
+                    DocumentProperty(
+                        created_by_id=user_id,
+                        modified_by_id=user_id,
+                        document_id=document.pk,
+                        key='subjectivity',
+                        value=str(round(subjectivity, 3)))]
+            except AttributeError:
+                pass
             DocumentProperty.objects.bulk_create(document_properties)
 
             # create text units
-            paragraph_list = [TextUnit(
-                document=document,
-                text=paragraph,
-                text_hash=hashlib.sha1(paragraph.encode("utf-8")).hexdigest(),
-                unit_type="paragraph",
-                language=get_language(paragraph),
-                location_start=pos_start,
-                location_end=post_end)
-                for paragraph, pos_start, post_end in get_paragraphs(text, return_spans=True)]
+            paragraph_list = []  # type: List[TextUnit]
+            paragraphs = LoadDocuments.safely_get_paragraphs(text)
+            for paragraph, pos_start, post_end in paragraphs:
+                ptr = TextUnit(
+                    document=document,
+                    text=paragraph,
+                    unit_type="paragraph",
+                    location_start=pos_start,
+                    location_end=post_end)
+                ptr.language = get_language(paragraph)
+                ptr.text_hash = hashlib.sha1(paragraph.encode("utf-8")).hexdigest()
+                paragraph_list.append(ptr)
 
             sentence_list = []
             for span in get_sentence_span_list(text):
@@ -856,25 +844,21 @@ class LoadDocuments(BaseTask):
             # create Text Unit Properties
             text_unit_properties = []
             for pk, text in document.textunit_set.values_list('pk', 'text'):
-                polarity, subjectivity = TextBlob(text).sentiment
-                text_unit_properties += [
-                    TextUnitProperty(
-                        text_unit_id=pk,
-                        key='polarity',
-                        value=str(round(polarity))),
-                    TextUnitProperty(
-                        text_unit_id=pk,
-                        key='subjectivity',
-                        value=str(round(subjectivity)))]
-            TextUnitProperty.objects.bulk_create(text_unit_properties)
-
-            if pre_defined_doc_fields_code_to_python_val:
-                user = User.objects.get(pk=user_id) if user_id is not None else None
-                LoadDocuments. \
-                    store_pre_defined_doc_fields(task,
-                                                 doc=document,
-                                                 user=user,
-                                                 fields_code_to_python_val=pre_defined_doc_fields_code_to_python_val)
+                try:
+                    polarity, subjectivity = TextBlob(text).sentiment
+                    text_unit_properties += [
+                        TextUnitProperty(
+                            text_unit_id=pk,
+                            key='polarity',
+                            value=str(round(polarity))),
+                        TextUnitProperty(
+                            text_unit_id=pk,
+                            key='subjectivity',
+                            value=str(round(subjectivity)))]
+                except AttributeError:
+                    continue
+            if text_unit_properties:
+                TextUnitProperty.objects.bulk_create(text_unit_properties)
 
             # save extra document info
             kwargs['document'] = document
@@ -896,8 +880,17 @@ class LoadDocuments(BaseTask):
                 'user_id': user_id,
                 'document_id': document.pk,
                 'doc_loaded_by_user_id': user_id,
-                'document_initial_load': True
+                'document_initial_load': True,
+                'predefined_field_codes_to_python_values': pre_defined_doc_fields_code_to_python_val
             }])
+        else:
+            if pre_defined_doc_fields_code_to_python_val:
+                user = User.objects.get(pk=user_id) if user_id is not None else None
+                Locate. \
+                    store_pre_defined_doc_fields(log=CeleryTaskLogger(task),
+                                                 doc=document,
+                                                 user=user,
+                                                 fields_code_to_python_val=pre_defined_doc_fields_code_to_python_val)
 
         for linked_task_kwargs in linked_tasks:
             linked_task_kwargs['document_id'] = document.pk
@@ -911,6 +904,13 @@ class LoadDocuments(BaseTask):
             return document.pk
         else:
             return json.dumps(ret) if ret else None
+
+    @staticmethod
+    def safely_get_paragraphs(text: str) -> List[Tuple[str, int, int]]:
+        try:
+            return list(get_paragraphs(text, return_spans=True))
+        except:
+            return [(text, 0, len(text) - 1)]
 
 
 class UpdateElasticsearchIndex(BaseTask):
@@ -987,7 +987,7 @@ class LoadTerms(BaseTask):
             terms_df = self.load_terms_from_path(path, None, terms_df)
 
         if file_path:
-            with file_access_handler.get_local_fn(file_path) as (fn, file_name):
+            with file_access_handler.get_as_local_fn(file_path) as (fn, file_name):
                 terms_df = self.load_terms_from_path(fn, file_name, terms_df)
 
         self.push()
@@ -1047,7 +1047,7 @@ class LoadGeoEntities(BaseTask):
             entities_df = self.load_geo_entities_from_path(path, None, entities_df)
 
         if file_path:
-            with file_access_handler.get_local_fn(file_path) as (fn, file_name):
+            with file_access_handler.get_as_local_fn(file_path) as (fn, file_name):
                 entities_df = self.load_geo_entities_from_path(fn, file_name, entities_df)
 
         if entities_df.empty:
@@ -1096,7 +1096,7 @@ class LoadCourts(BaseTask):
         for path in repo_paths:
             self.load_courts_from_path(path, None)
         if file_path:
-            with file_access_handler.get_local_fn(file_path) as (fn, file_name):
+            with file_access_handler.get_as_local_fn(file_path) as (fn, file_name):
                 self.load_courts_from_path(fn, file_name)
         self.push()
 
@@ -1146,6 +1146,8 @@ class Locate(BaseTask):
         document_id = kwargs.get('document_id')
         doc_loaded_by_user_id = kwargs.get('doc_loaded_by_user_id')
         document_initial_load = bool(kwargs.get('document_initial_load'))
+        predefined_field_codes_to_python_values = kwargs.get('predefined_field_codes_to_python_values')
+        project_id = kwargs.get('project_id')
 
         # detect items to locate/delete
         if 'locate' in kwargs:
@@ -1178,7 +1180,11 @@ class Locate(BaseTask):
             return
 
         # define number of async tasks
-        text_units = TextUnit.objects.all()
+        if project_id:
+            text_units = TextUnit.objects.filter(document__project__id=project_id)
+        else:
+            text_units = TextUnit.objects.all()
+
         if document_id:
             text_units = text_units.filter(document_id=document_id)
         locate_in = kwargs.get('parse')
@@ -1216,7 +1222,36 @@ class Locate(BaseTask):
 
         self.run_after_sub_tasks_finished('Cache Generic Document Data',
                                           Locate.on_locate_finished,
-                                          [(document_id, doc_loaded_by_user_id, document_initial_load)])
+                                          [(document_id, doc_loaded_by_user_id, document_initial_load,
+                                            predefined_field_codes_to_python_values)])
+
+    @staticmethod
+    def store_pre_defined_doc_fields(log: ProcessLogger,
+                                     doc: Document,
+                                     user: User,
+                                     fields_code_to_python_val: Dict[str, Any]):
+        if not fields_code_to_python_val:
+            return
+
+        document_type = doc.document_type  # type: DocumentType
+
+        all_fields = {f.code: f for f in DocumentField.objects.filter(document_type=document_type).all()}
+
+        for field_code, python_val in fields_code_to_python_val.items():
+            field = all_fields.get(field_code)  # type: DocumentField
+            if not field:
+                log.error('Refusing to store pre-defined document field value for field {0}.\n'
+                          'Document type {1} does not have such field'.format(field_code, document_type.code))
+                continue
+            if field.requires_text_annotations:
+                log.error('Refusing to store pre-defined document field value for field {0}.\n'
+                          'The field requires text annotation.'.format(field_code, document_type.code))
+                continue
+
+            field_type = field.get_field_type()  # type: FieldType
+            field_type.save_value(document=doc, field=field, location_start=None, location_end=None, location_text=None,
+                                  text_unit=None, value=python_val, user=user, allow_overwriting_user_data=True,
+                                  extraction_hint=None)
 
     @staticmethod
     @shared_task(base=ExtendedTask,
@@ -1227,7 +1262,10 @@ class Locate(BaseTask):
                  autoretry_for=(SoftTimeLimitExceeded, InterfaceError, OperationalError,),
                  max_retries=3
                  )
-    def on_locate_finished(_self: ExtendedTask, doc_id, doc_loaded_by_user_id, document_initial_load):
+    def on_locate_finished(_self: ExtendedTask, doc_id, doc_loaded_by_user_id, document_initial_load,
+                           predefined_field_codes_to_python_values: Dict[str, Any] = None):
+        if not doc_id:
+            return
         doc = Document.objects.get(pk=doc_id)
         if doc:
             log = CeleryTaskLogger(_self)
@@ -1237,12 +1275,21 @@ class Locate(BaseTask):
             if not user or not user.is_admin:
                 raise Exception('User who is loading the document is unspecified and the first user in '
                                 'the system is not admin. Something is wrong.')
+            if predefined_field_codes_to_python_values:
+                Locate.store_pre_defined_doc_fields(log=log,
+                                                    doc=doc,
+                                                    user=user,
+                                                    fields_code_to_python_val=predefined_field_codes_to_python_values)
+                ignore_field_codes = predefined_field_codes_to_python_values.keys()
+            else:
+                ignore_field_codes = None
 
             field_value_cache.cache_generic_values(doc, log=log, save=True, fire_doc_changed_event=False)
             detect_and_cache_field_values_for_document(log=log, document=doc, save=True, clear_old_values=True,
                                                        changed_by_user=user, system_fields_changed=True,
                                                        generic_fields_changed=True,
-                                                       document_initial_load=document_initial_load)
+                                                       document_initial_load=document_initial_load,
+                                                       ignore_field_codes=ignore_field_codes)
 
     @staticmethod
     @shared_task(base=ExtendedTask,

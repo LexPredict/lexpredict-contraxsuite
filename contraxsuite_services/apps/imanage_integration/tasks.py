@@ -10,6 +10,7 @@ from django.utils import timezone
 from psycopg2 import InterfaceError, OperationalError
 
 from apps.celery import app
+from apps.task.tasks import CeleryTaskLogger
 from apps.common.collection_utils import chunks
 from apps.common.log_utils import render_error
 from apps.common.sql_commons import fetch_int, SQLClause
@@ -42,10 +43,11 @@ class IManageSynchronization(BaseTask):
             .select_related('imanage_config').get()
         try:
             imanage_config = imanage_doc.imanage_config
-            project = imanage_config.resolve_dst_project(imanage_doc.imanage_doc_data)
+            log = CeleryTaskLogger(task)
+            project = imanage_config.resolve_dst_project(imanage_doc.imanage_doc_data, log)
             project_id = project.pk
 
-            assignee = imanage_config.resolve_assignee(imanage_doc.imanage_doc_data)
+            assignee = imanage_config.resolve_assignee(imanage_doc.imanage_doc_data, log)
             assignee_id = assignee.pk if assignee else None
             task.log_info('Assignee resolved to: {0}'.format(assignee.get_full_name() if assignee else '<no assignee>'))
 
@@ -153,9 +155,9 @@ class IManageSynchronization(BaseTask):
                                            .format(table_name=IManageConfig._meta.db_table))
         else:
             if imanage_config_dict:
-                qr = IManageConfig.objects.filter(pk=imanage_config_dict['pk'], enabled=True)
+                qr = IManageConfig.objects.filter(pk=imanage_config_dict['pk'])
             else:
-                qr = IManageConfig.objects.filter(enabled=True)
+                qr = IManageConfig.objects.all()
 
         found = False
         for imanage_config in list(qr):

@@ -2,7 +2,7 @@ from typing import List, Dict, Any, Tuple, Set, Union
 
 from apps.document.field_types import FieldType
 from apps.document.fields_detection.fields_detection_abstractions import DetectedFieldValue
-from apps.document.models import DocumentFieldValue
+from apps.document.models import DocumentFieldValue, DocumentField
 
 
 def order_field_detection(fields_and_deps: List[Tuple[str, Set[str]]]) -> List:
@@ -35,20 +35,36 @@ def order_field_detection(fields_and_deps: List[Tuple[str, Set[str]]]) -> List:
 
 
 def merge_detected_field_values_to_python_value(detected_field_values: List[Union[DetectedFieldValue,
-                                                                                  DocumentFieldValue]]) \
+                                                                                  DocumentFieldValue]],
+                                                return_extended=False) \
         -> Dict[str, Any]:
     field_codes_to_merged_python_values = dict()
+    codes_to_fields = dict()  # type: Dict[str, DocumentField]
 
     for fv in detected_field_values:  # type: Union[DetectedFieldValue, DocumentFieldValue]
         field = fv.field
         field_type = fv.field.get_field_type()  # type: FieldType
+        codes_to_fields[field.code] = field
         field_codes_to_merged_python_values[field.code] = field_type \
             .merge_multi_python_values(field_codes_to_merged_python_values.get(field.code), fv.python_value)
-
-    return field_codes_to_merged_python_values
+    if not return_extended:
+        return field_codes_to_merged_python_values
+    else:
+        res = dict()
+        for code, value in field_codes_to_merged_python_values.items():
+            res[code] = {
+                'code': code,
+                'type': codes_to_fields[code].type,
+                'title': codes_to_fields[code].title,
+                'order': codes_to_fields[code].order,
+                'value': value
+            }
+        return res
 
 
 def merge_document_field_values_to_python_value(detected_field_values: List[Union[DetectedFieldValue,
-                                                                                  DocumentFieldValue]]) \
+                                                                                  DocumentFieldValue]],
+                                                return_extended=False) \
         -> Dict[str, Any]:
-    return merge_detected_field_values_to_python_value(detected_field_values)
+    return merge_detected_field_values_to_python_value(detected_field_values,
+                                                       return_extended=return_extended)

@@ -26,19 +26,19 @@
 
 # Third-party imports
 from rest_framework import routers, serializers, viewsets
-from rest_framework.views import APIView
+import rest_framework.views
 
 # Django imports
 from django.conf.urls import url
 
 # Project imports
 from apps.task.views import *
-from apps.common.mixins import JqListAPIMixin
+import apps.common.mixins
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.0/LICENSE"
-__version__ = "1.2.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.1/LICENSE"
+__version__ = "1.2.1"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -81,7 +81,7 @@ class TaskSerializer(serializers.HyperlinkedModelSerializer):
         return result
 
 
-class TaskViewSet(JqListAPIMixin, viewsets.ReadOnlyModelViewSet):
+class TaskViewSet(apps.common.mixins.JqListAPIMixin, viewsets.ReadOnlyModelViewSet):
     """
     list: Task List
     retrieve: Retrieve Task
@@ -90,7 +90,7 @@ class TaskViewSet(JqListAPIMixin, viewsets.ReadOnlyModelViewSet):
     serializer_class = TaskSerializer
 
 
-class LoadDictionariesAPIView(APIView, LoadTaskView):
+class LoadDictionariesAPIView(rest_framework.views.APIView, LoadTaskView):
     """
     "Load Dictionaries" admin task\n
     POST params:
@@ -138,7 +138,7 @@ class LoadDictionariesAPIView(APIView, LoadTaskView):
     http_method_names = ["post"]
 
 
-class LoadDocumentsAPIView(APIView, LoadDocumentsView):
+class LoadDocumentsAPIView(rest_framework.views.APIView, LoadDocumentsView):
     """
     "Load Documents" admin task\n
     POST params:
@@ -150,7 +150,7 @@ class LoadDocumentsAPIView(APIView, LoadDocumentsView):
     http_method_names = ["get", "post"]
 
 
-class LocateTaskAPIVIew(APIView, LocateTaskView):
+class LocateTaskAPIVIew(rest_framework.views.APIView, LocateTaskView):
     """
     "Locate" admin task\n
     POST params:
@@ -196,7 +196,7 @@ class LocateTaskAPIVIew(APIView, LocateTaskView):
     http_method_names = ["get", "post"]
 
 
-class ExistingClassifierClassifyAPIView(APIView, ExistedClassifierClassifyView):
+class ExistingClassifierClassifyAPIView(rest_framework.views.APIView, ExistedClassifierClassifyView):
     """
     "Classify using existing classifier" admin task\n
     POST params:
@@ -208,7 +208,7 @@ class ExistingClassifierClassifyAPIView(APIView, ExistedClassifierClassifyView):
     http_method_names = ["get", "post"]
 
 
-class NewClassifierClassifyAPIView(APIView, CreateClassifierClassifyView):
+class NewClassifierClassifyAPIView(rest_framework.views.APIView, CreateClassifierClassifyView):
     """
     "Classify using new classifier" admin task\n
     POST params:
@@ -225,14 +225,14 @@ class NewClassifierClassifyAPIView(APIView, CreateClassifierClassifyView):
     http_method_names = ["get", "post"]
 
 
-class UpdateElasticsearchIndexAPIView(APIView, UpdateElasticsearchIndexView):
+class UpdateElasticsearchIndexAPIView(rest_framework.views.APIView, UpdateElasticsearchIndexView):
     """
     "Update ElasticSearch Index" admin task\n
     """
     http_method_names = ["get", "post"]
 
 
-class ClusterAPIView(APIView, ClusterView):
+class ClusterAPIView(rest_framework.views.APIView, ClusterView):
     """
     "Cluster" admin task\n
     POST params:
@@ -249,7 +249,7 @@ class ClusterAPIView(APIView, ClusterView):
     http_method_names = ["get", "post"]
 
 
-class SimilarityAPIView(APIView, SimilarityView):
+class SimilarityAPIView(rest_framework.views.APIView, SimilarityView):
     """
     "Similarity" admin task\n
     POST params:
@@ -262,7 +262,7 @@ class SimilarityAPIView(APIView, SimilarityView):
     http_method_names = ["get", "post"]
 
 
-class PartySimilarityAPIView(APIView, PartySimilarityView):
+class PartySimilarityAPIView(rest_framework.views.APIView, PartySimilarityView):
     """
     "Party Similarity" admin task\n
     POST params:
@@ -274,14 +274,14 @@ class PartySimilarityAPIView(APIView, PartySimilarityView):
     http_method_names = ["get", "post"]
 
 
-class CleanTasksAPIView(APIView, CleanTasksView):
+class CleanTasksAPIView(rest_framework.views.APIView, CleanTasksView):
     """
     "Clean Tasks" admin task\n
     """
     http_method_names = ["post"]
 
 
-class PurgeTaskAPIView(APIView, PurgeTaskView):
+class PurgeTaskAPIView(rest_framework.views.APIView, PurgeTaskView):
     """
     "Purge Task" admin task\n
     POST params:
@@ -290,7 +290,7 @@ class PurgeTaskAPIView(APIView, PurgeTaskView):
     http_method_names = ["post"]
 
 
-class TaskStatusAPIView(APIView):
+class TaskStatusAPIView(rest_framework.views.APIView):
     """
     Check admin task status\n
     GET params:

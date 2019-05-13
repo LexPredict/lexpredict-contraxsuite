@@ -29,14 +29,15 @@ from django import forms
 from django.conf import settings
 
 from apps.document.models import DocumentType, DocumentField
+from apps.document.tasks import FindBrokenDocumentFieldValues, FixDocumentFieldCodes
 from apps.document.tasks import MODULE_NAME
 from apps.project.models import Project
-from apps.document.tasks import FindBrokenDocumentFieldValues
+from .tasks import ImportCSVFieldDetectionConfig
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.0/LICENSE"
-__version__ = "1.2.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.1/LICENSE"
+__version__ = "1.2.1"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -109,6 +110,14 @@ class FindBrokenDocumentFieldValuesForm(forms.Form):
         self.cleaned_data['module_name'] = MODULE_NAME
 
 
+class FixDocumentFieldCodesForm(forms.Form):
+    header = FixDocumentFieldCodes.name
+
+    def _post_clean(self):
+        super()._post_clean()
+        self.cleaned_data['module_name'] = MODULE_NAME
+
+
 class TrainAndTestForm(forms.Form):
     header = 'Train And Test'
 
@@ -155,7 +164,7 @@ class LoadDocumentWithFieldsForm(forms.Form):
             Relative path to a folder with uploaded files. For example, "new" or "/".<br />
             You can choose any folder or file in "/media/%s" folder.<br />
             Create new folders and upload new documents if needed.
-            ''' % settings.FILEBROWSER_DIRECTORY)
+            ''' % settings.FILEBROWSER_DOCUMENTS_DIRECTORY)
     document_name = forms.CharField(max_length=1024, required=False)
     document_fields = forms.CharField(
         widget=forms.Textarea,
@@ -165,19 +174,67 @@ class LoadDocumentWithFieldsForm(forms.Form):
     run_detect_field_values = forms.BooleanField(required=False)
 
 
-class ImportSimpleFieldDetectionConfigForm(forms.Form):
-    header = 'Import Simple Field Detection Config'
+class ImportCSVFieldDetectionConfigForm(forms.Form):
+    header = ImportCSVFieldDetectionConfig.name
 
     enctype = 'multipart/form-data'
 
     document_field = forms.ModelChoiceField(queryset=DocumentField.objects.all(), required=True)
 
-    config_csv_file = forms.FileField(required=True)
+    config_csv_file = forms.FileField(required=True, help_text='''CSV file with rows of the following structure: 
+    detected value,substring1,substring2,...,substringN . First row should contain column headers (ignored). 
+    The task will create a regexp 
+    field detector per each row. The detector will be returning the specified detected value if one of the 
+    substrings found (include regexp will be: substring1\\nsubstring2\\n...\\nsubstringN). 
+    ''')
 
-    drop_previous_field_detectors = forms.BooleanField(required=False)
+    drop_previous_field_detectors = forms.BooleanField(required=False, help_text='''Drop previous field detectors 
+    created by using this task for the specified field. The task marks the created field detectors with 
+    "imported_simple_config" category and they can be easily found among the others.''', initial=True)
 
-    update_field_choice_values = forms.BooleanField(required=False)
+    update_field_choice_values = forms.BooleanField(required=False, help_text='''If set the choice values of the 
+    specified field will be set to the sorted list of the "detected values" from the CSV file.''', initial=True)
+
+    csv_contains_regexps = forms.BooleanField(required=False, help_text='''Check if the CSV file contains regexps in 
+    aliases/substrings to search for. Otherwise the aliases will be treated as simply substrings to search for,
+    spaces in them will be converted to \\s and maybe similar other conversions will be applied to bring them 
+    to the regexp form usable in field detectors.''')
 
     def _post_clean(self):
         super()._post_clean()
         self.cleaned_data['module_name'] = MODULE_NAME
+
+
+class ExportDocumentTypeForm(forms.Form):
+    header = 'Export Document Type'
+
+    document_type = forms.ModelChoiceField(queryset=DocumentType.objects.all(), required=True)
+
+
+class ImportDocumentTypeForm(forms.Form):
+    header = 'Import Document Type'
+
+    document_type_config_csv_file = forms.FileField(required=True)
+
+    action = forms.ChoiceField(
+        label='Action',
+        choices=(
+            ('validate', 'Validate Only'),
+            ('validate|import', 'Validate and import if valid'),
+            ('import|auto_fix|retain_missing_objects',
+             'Import and force auto-fixes – Retain extra fields / field detectors'),
+            ('import|auto_fix|remove_missing_objects',
+             'Import and force auto-fixes – Remove extra fields / field detectors from DB')
+        ),
+        help_text="""
+        WARNING: 'Import and force auto-fixes – Remove extra fields/field detectors from DB' AND 'Import 
+        and force auto-fixes – Retain extra fields/field detectors' can delete user data. It is recommended you 
+        'Validate Only' first and review the log so you know what you are deleting.
+        """,
+        initial='validate',
+        required=True)
+
+    update_cache = forms.BooleanField(
+        label='Documents: Cache document fields after import finished',
+        initial=True,
+        required=False)

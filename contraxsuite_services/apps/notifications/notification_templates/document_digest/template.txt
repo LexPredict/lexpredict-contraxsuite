@@ -1,7 +1,7 @@
 {%- macro fmt_date(value) -%}
 {{ value.strftime('%m/%d/%Y %I:%M %p (%Z)') if value else '<no date>' }}
 {%- endmacro -%}
-Contraxsuite by LexPredict ({{ app_url }})
+Contraxsuite by LexPredict
 
 User: {{ to_user.get_full_name() }}
 Document type: {{ document_type.title }}

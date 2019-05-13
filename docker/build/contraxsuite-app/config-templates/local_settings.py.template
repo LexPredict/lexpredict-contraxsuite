@@ -75,6 +75,7 @@ from contraxsuite_logging import ContraxsuiteJSONFormatter
 CELERY_LOG_FILE_PATH = '/data/logs/celery-{0}.log'.format(platform.node())
 LOG_FILE_PATH = '/data/logs/django-{0}.log'.format(platform.node())
 DB_LOG_FILE_PATH = '/data/logs/db-{0}.log'.format(platform.node())
+FRONT_LOG_FILE_PATH = '/data/logs/frontend-{0}.log'.format(platform.node())
 
 LOGGING = {
     'version': 1,
@@ -135,6 +136,12 @@ LOGGING = {
             'filename': DB_LOG_FILE_PATH + '_json',
             'formatter': 'json',
         },
+        'json_frontend': {
+            'level': 'DEBUG',
+            'class': 'logging.handlers.WatchedFileHandler',
+            'filename': FRONT_LOG_FILE_PATH + '_json',
+            'formatter': 'json',
+        }
     },
     'loggers': {
         'apps.task.models': {
@@ -157,11 +164,16 @@ LOGGING = {
             'propagate': False,
             'level': 'ERROR',
         },
+        'frontend': {
+            'handlers': ['json_frontend'],
+            'level': 'INFO',
+            'propagate': True,
+        }
     },
 }
 
 CELERY_FILE_ACCESS_TYPE = 'Nginx'
-CELERY_FILE_ACCESS_NGINX_ROOT_URL = 'http://${DOCKER_NGINX_SERVER_NAME}:80/media/data/documents/'
+CELERY_FILE_ACCESS_NGINX_ROOT_URL = 'http://${DOCKER_NGINX_SERVER_NAME}:80/media/data/'
 
 ACCOUNT_EMAIL_VERIFICATION='${DOCKER_DJANGO_ACCOUNT_EMAIL_VERIFICATION}'
 

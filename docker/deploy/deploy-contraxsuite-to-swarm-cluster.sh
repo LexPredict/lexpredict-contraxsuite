@@ -94,6 +94,10 @@ export PG_INIT_SQL_CONFIG_VERSION=`md5sum ./temp/postgres_init.sql | awk '{ prin
 
 envsubst < ./docker-compose-templates/${DOCKER_COMPOSE_FILE} > ./temp/${DOCKER_COMPOSE_FILE}
 
+echo "Refreshing scheduled Cron tasks"
+
+sudo crontab -l > crontemp && cat crontemp | grep "sudo docker system prune -af" >/dev/null || echo "0 0 * * * sudo docker system prune -af > /dev/null 2>&1" >> crontemp && cat crontemp | sudo crontab - && rm crontemp
+sudo crontab -l > crontemp && cat crontemp | grep "sudo bash es_recovery.sh" >/dev/null || echo "0,15,30,45 * * * * cd /data/deploy/contraxsuite-deploy/docker/util && sudo bash es_recovery.sh ${SLACK_WEBHOOK_URL} > /dev/null 2>&1" >> crontemp && cat crontemp | sudo crontab - && rm crontemp
 
 echo "Starting with image: ${CONTRAXSUITE_IMAGE_FULL_NAME}:${CONTRAXSUITE_IMAGE_VERSION}"
 

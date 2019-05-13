@@ -38,20 +38,21 @@ from django.db import connection
 from django.db import transaction
 from django.db.models import Count, Subquery, Q
 from django.http import JsonResponse
+from django.urls import path, include
 from django.utils.timezone import now
 # Third-party imports
 from rest_framework import serializers, routers, viewsets
-from rest_framework.decorators import detail_route, list_route
+from rest_framework.decorators import detail_route, list_route, action
 from rest_framework.exceptions import ValidationError, APIException
 from rest_framework.permissions import BasePermission, IsAuthenticated
 from rest_framework.response import Response
-from rest_framework.views import APIView
+import rest_framework.views
 
 # Project imports
 from apps.analyze.models import DocumentCluster
 from apps.common.advancedcelery.fileaccess import prepare_file_access_handler
 from apps.common.log_utils import ErrorCollectingLogger
-from apps.common.mixins import JqListAPIMixin, APIActionMixin, APILoggingMixin
+import apps.common.mixins
 from apps.common.models import ReviewStatus
 from apps.common.utils import get_api_module
 from apps.document.constants import DOCUMENT_TYPE_PK_GENERIC_DOCUMENT
@@ -60,25 +61,23 @@ from apps.document.models import Document, DocumentType, DocumentFieldValue, Doc
 from apps.project.models import Project, TaskQueue, UploadSession, ProjectClustering, \
     DocumentFilter, ProjectDocumentsFilter
 from apps.task.models import Task
-from apps.task.tasks import call_task, purge_task
+from apps.task.tasks import call_task, purge_task, file_access_handler
 from apps.task.utils.logger import get_django_logger
 from apps.users.models import User
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.0/LICENSE"
-__version__ = "1.2.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.1/LICENSE"
+__version__ = "1.2.1"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
-
-file_access_handler = prepare_file_access_handler()
 
 common_api_module = get_api_module('common')
 users_api_module = get_api_module('users')
 ALREADY_EXISTS = 'Already exists'
 
 
-class PatchedListView(APIView):
+class PatchedListView(rest_framework.views.APIView):
     def get(self, request, *args, **kwargs):
         data = self.get_json_data(**kwargs)
         return JsonResponse(data, safe=False)
@@ -196,7 +195,7 @@ class TaskQueueSerializer(serializers.ModelSerializer):
         return instance
 
 
-class TaskQueueViewSet(JqListAPIMixin, viewsets.ModelViewSet):
+class TaskQueueViewSet(apps.common.mixins.JqListAPIMixin, viewsets.ModelViewSet):
     """
     list: Task Queue List
     retrieve: Retrieve Task Queue
@@ -429,8 +428,11 @@ class ProjectPermissionViewMixin(object):
         return qs
 
 
-class ProjectViewSet(APILoggingMixin, ProjectPermissionViewMixin, APIActionMixin,
-                     JqListAPIMixin, viewsets.ModelViewSet):
+class ProjectViewSet(apps.common.mixins.APILoggingMixin,
+                     ProjectPermissionViewMixin,
+                     apps.common.mixins.APIActionMixin,
+                     apps.common.mixins.JqListAPIMixin,
+                     viewsets.ModelViewSet):
     """
     list: Project List
     retrieve: Retrieve Project
@@ -468,7 +470,6 @@ class ProjectViewSet(APILoggingMixin, ProjectPermissionViewMixin, APIActionMixin
             'available_statuses': common_api_module.ReviewStatusSerializer(ReviewStatus.objects.select_related('group'),
                                                                            many=True).data}
 
-    @detail_route(methods=['post'])
     @require_generic_contract_type
     def cluster(self, request, **kwargs):
         """
@@ -506,7 +507,6 @@ class ProjectViewSet(APILoggingMixin, ProjectPermissionViewMixin, APIActionMixin
         return Response({'task_id': task_id,
                          'project_clustering_id': project_clustering.id})
 
-    @detail_route(methods=['get'], url_path='clustering-status')
     @require_generic_contract_type
     def clustering_status(self, request, **kwargs):
         """
@@ -562,8 +562,8 @@ class ProjectViewSet(APILoggingMixin, ProjectPermissionViewMixin, APIActionMixin
 
         return Response(data)
 
-    @detail_route(methods=['post'], url_path='send-clusters-to-project')
-    @require_generic_contract_type
+    @action(detail=True, methods=['post'], url_path='send-clusters-to-project')
+    # @require_generic_contract_type
     def send_clusters_to_project(self, request, **kwargs):
         """
         Send clusters to another Project\n
@@ -593,7 +593,7 @@ class ProjectViewSet(APILoggingMixin, ProjectPermissionViewMixin, APIActionMixin
 
         return Response('OK')
 
-    @detail_route(methods=['post'])
+    @action(detail=True, methods=['post'])
     # @require_generic_contract_type
     def cleanup(self, request, **kwargs):
         """
@@ -610,7 +610,7 @@ class ProjectViewSet(APILoggingMixin, ProjectPermissionViewMixin, APIActionMixin
 
         return Response('OK')
 
-    @detail_route(methods=['get'])
+    @action(detail=True, methods=['get'])
     def assignees(self, request, **kwargs):
         """
         Get assignees data
@@ -628,7 +628,7 @@ class ProjectViewSet(APILoggingMixin, ProjectPermissionViewMixin, APIActionMixin
                 'document_ids': docs.values_list('pk', flat=True)})
         return Response(result)
 
-    @detail_route(methods=['post'])
+    @action(detail=True, methods=['post'])
     def assign_documents(self, request, **kwargs):
         """
         Bulk assign batch of documents to a review team member\n
@@ -663,7 +663,7 @@ class ProjectViewSet(APILoggingMixin, ProjectPermissionViewMixin, APIActionMixin
         signals.fire_documents_changed(self.__class__, log, doc_qr, changed_by_user=user)
         log.raise_if_error()
 
-    @detail_route(methods=['post'])
+    @action(detail=True, methods=['post'])
     def set_status(self, request, **kwargs):
         """
         Bulk set status for batch of documents\n
@@ -703,7 +703,7 @@ class ProjectViewSet(APILoggingMixin, ProjectPermissionViewMixin, APIActionMixin
 
         return Response({'success': ret})
 
-    @list_route(methods=['get'])
+    @action(detail=False, methods=['get'])
     def recent(self, request, **kwargs):
         """
         Get recent N projects\n
@@ -805,8 +805,10 @@ class UploadSessionPermissionViewMixin(object):
         return qs
 
 
-class UploadSessionViewSet(UploadSessionPermissionViewMixin, APIActionMixin,
-                           JqListAPIMixin, viewsets.ModelViewSet):
+class UploadSessionViewSet(UploadSessionPermissionViewMixin,
+                           apps.common.mixins.APIActionMixin,
+                           apps.common.mixins.JqListAPIMixin,
+                           viewsets.ModelViewSet):
     """
     list: Session Upload List
     retrieve: Retrieve Session Upload
@@ -839,7 +841,7 @@ class UploadSessionViewSet(UploadSessionPermissionViewMixin, APIActionMixin,
         project.drop_clusters()
         return super().create(request, *args, **kwargs)
 
-    @detail_route(methods=['get'])
+    @action(detail=True, methods=['get'])
     def progress(self, request, **kwargs):
         """
         Get Progress for a session per files (short form)
@@ -854,7 +856,7 @@ class UploadSessionViewSet(UploadSessionPermissionViewMixin, APIActionMixin,
                   'session_status': session.status}
         return Response(result)
 
-    @list_route(methods=['get'])
+    @action(detail=False, methods=['get'])
     def status(self, request, **kwargs):
         """
         Get status of Upload Sessions
@@ -883,7 +885,7 @@ class UploadSessionViewSet(UploadSessionPermissionViewMixin, APIActionMixin,
                 _session_id: FileSystemStorage(
                     location=os.path.join(
                         settings.MEDIA_ROOT,
-                        settings.FILEBROWSER_DIRECTORY,
+                        settings.FILEBROWSER_DOCUMENTS_DIRECTORY,
                         _session_id))
                 for _session_id in project.uploadsession_set.values_list('pk', flat=True)}
 
@@ -902,7 +904,7 @@ class UploadSessionViewSet(UploadSessionPermissionViewMixin, APIActionMixin,
             _storage = FileSystemStorage(
                 location=os.path.join(
                     settings.MEDIA_ROOT,
-                    settings.FILEBROWSER_DIRECTORY,
+                    settings.FILEBROWSER_DOCUMENTS_DIRECTORY,
                     session_id))
             if _storage.exists(file_.name) or Document.objects.filter(
                     source_path=os.path.join(
@@ -935,7 +937,7 @@ class UploadSessionViewSet(UploadSessionPermissionViewMixin, APIActionMixin,
             storage = FileSystemStorage(
                 location=os.path.join(
                     settings.MEDIA_ROOT,
-                    settings.FILEBROWSER_DIRECTORY,
+                    settings.FILEBROWSER_DOCUMENTS_DIRECTORY,
                     session_id))
 
             stored_file_name = storage.save(file_.name, file_.file)
@@ -950,7 +952,7 @@ class UploadSessionViewSet(UploadSessionPermissionViewMixin, APIActionMixin,
         except Exception as exc:
             get_django_logger().exception(exc)
 
-    @detail_route(methods=['post'])
+    @action(detail=True, methods=['post'])
     def upload(self, request, **kwargs):
         """
         Upload a File\n
@@ -994,7 +996,7 @@ class UploadSessionViewSet(UploadSessionPermissionViewMixin, APIActionMixin,
 
         return Response('Loaded')
 
-    @detail_route(methods=['post'])
+    @action(detail=True, methods=['post'])
     def batch_upload(self, request, **kwargs):
         """
         Upload files from given sub-folder in media/data/documents folder\n
@@ -1010,7 +1012,7 @@ class UploadSessionViewSet(UploadSessionPermissionViewMixin, APIActionMixin,
         if not session_id or not folder_name:
             raise ValidationError('Provide session id and folder name.')
 
-        file_list = file_access_handler.list(folder_name)
+        file_list = file_access_handler.list_documents(folder_name)
 
         for file_path in file_list:
             file_name = os.path.basename(file_path)
@@ -1034,7 +1036,7 @@ class UploadSessionViewSet(UploadSessionPermissionViewMixin, APIActionMixin,
 
         return Response('Started')
 
-    @detail_route(methods=['post'])
+    @action(detail=True, methods=['post'])
     def _batch_upload(self, request, **kwargs):
         """
         Upload batch of files\n
@@ -1050,7 +1052,7 @@ class UploadSessionViewSet(UploadSessionPermissionViewMixin, APIActionMixin,
         kwargs['folder'] = folder_name
         if folder_name:
             dir_path = os.path.join(settings.MEDIA_ROOT,
-                                    settings.FILEBROWSER_DIRECTORY,
+                                    settings.FILEBROWSER_DOCUMENTS_DIRECTORY,
                                     folder_name)
             files = os.listdir(dir_path)
             for file_name in files:
@@ -1066,7 +1068,8 @@ class UploadSessionViewSet(UploadSessionPermissionViewMixin, APIActionMixin,
 
         return Response('No folder specified', status=400)
 
-    @detail_route(methods=['delete'], url_path='delete-file')
+    #@action(detail=True, methods=['delete'], url_path='delete-file')
+    @action(methods=['delete'], url_path='delete-file', detail=True)
     def delete_file(self, request, **kwargs):
         """
         Delete a file from session\n
@@ -1083,7 +1086,7 @@ class UploadSessionViewSet(UploadSessionPermissionViewMixin, APIActionMixin,
             storage = FileSystemStorage(
                 location=os.path.join(
                     settings.MEDIA_ROOT,
-                    settings.FILEBROWSER_DIRECTORY,
+                    settings.FILEBROWSER_DOCUMENTS_DIRECTORY,
                     session_id))
 
             if storage.exists(file_name):
@@ -1177,7 +1180,7 @@ class ProjectClusteringSerializer(serializers.ModelSerializer):
                   'project_clusters_documents_count']
 
 
-class ProjectClusteringViewSet(JqListAPIMixin, viewsets.ReadOnlyModelViewSet):
+class ProjectClusteringViewSet(apps.common.mixins.JqListAPIMixin, viewsets.ReadOnlyModelViewSet):
     """
     list: ProjectCluster List
     retrieve: ProjectCluster Details
@@ -1224,7 +1227,8 @@ class SimpleDocumentFilterSerializer(DocumentFilterSerializer):
         fields = ['pk', 'title', 'order', 'project', 'document_type', 'created_by']
 
 
-class DocumentFilterViewSet(APIActionMixin, JqListAPIMixin, viewsets.ModelViewSet):
+class DocumentFilterViewSet(apps.common.mixins.APIActionMixin,
+                            apps.common.mixins.JqListAPIMixin, viewsets.ModelViewSet):
     """
     list: Document Filter List
     retrieve: Retrieve Document Filter
@@ -1232,7 +1236,7 @@ class DocumentFilterViewSet(APIActionMixin, JqListAPIMixin, viewsets.ModelViewSe
     queryset = DocumentFilter.objects.all().select_related('project', 'document_type', 'created_by')
     serializer_class = DocumentFilterSerializer
 
-    @list_route(methods=['get'], url_path='for-user')
+    @action(detail=False, methods=['get'], url_path='for-user')
     def user_filters(self, request, *args, **kwargs):
         # TODO: check for Anonymous user
         qs = self.queryset.filter(created_by=request.user)
@@ -1250,7 +1254,8 @@ class ProjectDocumentsFilterProjectSerializer(serializers.ModelSerializer):
         fields = ['pk', 'project', 'filter_query', 'created_by']
 
 
-class ProjectDocumentsFilterViewSet(APIActionMixin, JqListAPIMixin, viewsets.ModelViewSet):
+class ProjectDocumentsFilterViewSet(apps.common.mixins.APIActionMixin,
+                                    apps.common.mixins.JqListAPIMixin, viewsets.ModelViewSet):
     """
     list: Project Documents Filter List
     retrieve: Retrieve Project Documents Filter
@@ -1270,3 +1275,11 @@ router.register(r'upload-session', UploadSessionViewSet, 'upload-session')
 router.register(r'document-filters', DocumentFilterViewSet, 'document-filter')
 router.register(r'project-documents-filters', ProjectDocumentsFilterViewSet,
                 'project-documents-filter')
+
+urlpatterns = [
+    path('', include(router.urls)),
+    path('projects/<int:pk>/clustering-status/',
+         ProjectViewSet.as_view({'get': 'clustering_status'}), name='clustering_status'),
+    path('projects/<int:pk>/cluster/',
+         ProjectViewSet.as_view({'post': 'cluster'}), name='cluster')
+]

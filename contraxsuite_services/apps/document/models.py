@@ -32,8 +32,8 @@ import re
 import uuid
 from enum import Enum
 from typing import List, Optional, Tuple
-import jiphy
 
+import jiphy
 # Django imports
 from ckeditor.fields import RichTextField
 from django.conf import settings
@@ -42,7 +42,8 @@ from django.core.exceptions import ValidationError
 from django.core.serializers.json import DjangoJSONEncoder
 from django.core.validators import MinValueValidator
 from django.db import models, transaction
-from django.db.models import Count, F, Value
+from django.db.models import Count, F, Value, Q
+from django.db.models.deletion import CASCADE
 from django.db.models.functions import Concat
 from django.dispatch import receiver
 from django.utils.timezone import now
@@ -52,8 +53,8 @@ from simple_history.models import HistoricalRecords
 # Project imports
 from apps.common.fields import StringUUIDField, CustomJSONField
 from apps.common.managers import AdvancedManager
-from apps.common.utils import CustomDjangoJSONEncoder
 from apps.common.models import get_default_status
+from apps.common.utils import CustomDjangoJSONEncoder
 from apps.document import constants
 from apps.document.field_types import FieldType, FIELD_TYPES_REGISTRY, FIELD_TYPES_CHOICE, ValueExtractionHint, \
     ORDINAL_EXTRACTION_HINTS, RelatedInfoField, StringField, StringFieldWholeValueAsAToken, LongTextField, ChoiceField, \
@@ -62,8 +63,8 @@ from apps.users.models import User
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.0/LICENSE"
-__version__ = "1.2.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.1/LICENSE"
+__version__ = "1.2.1"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -79,9 +80,9 @@ class TimeStampedModel(models.Model):
     created_date = models.DateTimeField(auto_now_add=True, db_index=True)
     modified_date = models.DateTimeField(auto_now=True, db_index=True)
     created_by = models.ForeignKey(
-        User, related_name="created_%(class)s_set", null=True, blank=True, db_index=True)
+        User, related_name="created_%(class)s_set", null=True, blank=True, db_index=True, on_delete=CASCADE)
     modified_by = models.ForeignKey(
-        User, related_name="modified_%(class)s_set", null=True, blank=True, db_index=True)
+        User, related_name="modified_%(class)s_set", null=True, blank=True, db_index=True, on_delete=CASCADE)
 
     class Meta:
         abstract = True
@@ -101,6 +102,8 @@ class DocumentFieldCategory(models.Model):
     name = models.CharField(max_length=100, db_index=True)
 
     order = models.IntegerField(default=0)
+
+    export_key = StringUUIDField(default=uuid.uuid4, editable=True, unique=True, null=False)
 
     class Meta:
         verbose_name_plural = 'Document Field Categories'
@@ -153,10 +156,15 @@ class DocumentField(TimeStampedModel):
     # Make pk field unique
     uid = StringUUIDField(primary_key=True, default=uuid.uuid4, editable=False)
 
-    document_type = models.ForeignKey('document.DocumentType', null=True, blank=False, related_name='fields')
+    document_type = models.ForeignKey('document.DocumentType', null=True, blank=False,
+                                      related_name='fields', on_delete=CASCADE)
 
     # Short name for field.
-    code = models.CharField(max_length=40, db_index=True, unique=False)
+    code = models.CharField(max_length=constants.DOCUMENT_FIELD_CODE_MAX_LEN,
+                            db_index=True, unique=False, help_text='''Field codes are used for creating 
+    columns in DB tables, in field formulas (Python syntax), for human-readable data representation in APIs. 
+    Field codes must be lowercase, should start with a latin letter and contain only latin letters, digits, 
+    and underscores. You cannot use a field code you have already used for this document type.''')
 
     # Calculated field. Only for usage in __str__ function
     long_code = models.CharField(max_length=150, null=False, unique=True, default=None)
@@ -174,6 +182,8 @@ class DocumentField(TimeStampedModel):
     # Type of the text unit to parse.
     text_unit_type = models.CharField(max_length=10, choices=UNIT_TYPES, default='sentence', db_index=True)
 
+    DEFAULT_UNSURE_THRESHOLD = 0.9
+
     VD_DISABLED = 'disabled'
 
     VD_USE_REGEXPS_ONLY = 'use_regexps_only'
@@ -188,6 +198,8 @@ class DocumentField(TimeStampedModel):
 
     VD_FIELD_BASED_ML_ONLY = 'fields_based_ml_only'
 
+    VD_FIELD_BASED_WITH_UNSURE_ML_ONLY = 'fields_based_prob_ml_only'
+
     VD_PYTHON_CODED_FIELD = 'python_coded_field'
 
     VD_FIELD_BASED_REGEXPS = 'field_based_regexps'
@@ -197,7 +209,8 @@ class DocumentField(TimeStampedModel):
         VD_TEXT_BASED_ML_ONLY,
         VD_FORMULA_AND_FIELD_BASED_ML,
         VD_PYTHON_CODED_FIELD,
-        VD_FIELD_BASED_ML_ONLY
+        VD_FIELD_BASED_ML_ONLY,
+        VD_FIELD_BASED_WITH_UNSURE_ML_ONLY
     }
 
     VALUE_DETECTION_STRATEGY_CHOICES = [(VD_DISABLED, 'Field detection disabled'),
@@ -212,6 +225,8 @@ class DocumentField(TimeStampedModel):
                                         (VD_FORMULA_AND_FIELD_BASED_ML,
                                          'Start with formula, switch to fields-based ML when possible.'),
                                         (VD_FIELD_BASED_ML_ONLY, 'Use pre-trained field-based ML only.'),
+                                        (VD_FIELD_BASED_WITH_UNSURE_ML_ONLY,
+                                         'Use pre-trained field-based ML with "Unsure" category.'),
                                         (VD_PYTHON_CODED_FIELD, 'Use python class for value detection.'),
                                         (VD_FIELD_BASED_REGEXPS, 'Apply regexp field detectors to '
                                                                  'depends-on field values')]
@@ -220,13 +235,28 @@ class DocumentField(TimeStampedModel):
                                                 choices=VALUE_DETECTION_STRATEGY_CHOICES,
                                                 default=VD_USE_REGEXPS_ONLY)
 
+    unsure_choice_value = models.CharField(max_length=256, blank=True, null=True,
+                                           help_text='''Makes sense for machine learning 
+    strategies with "Unsure" category. The strategy will return this value if probabilities of all other categories 
+    appear lower than the specified threshold.''')
+
+    unsure_thresholds_by_value = JSONField(encoder=DjangoJSONEncoder, null=True, blank=True,
+                                           help_text='''Makes sense for machine learning 
+    strategies with "Unsure" category. The strategy will return concrete result (one of choice values) only if 
+    the probability of the detected value is greater than this threshold. Otherwise the strategy returns None 
+    or the choice value specified in "Unsure choice value" field. Format: { "value1": 0.9, "value2": 0.5, ...}.
+     Default: ''' + str(DEFAULT_UNSURE_THRESHOLD))
+
     python_coded_field = models.CharField(max_length=100, db_index=True, null=True, blank=True)
 
     classifier_init_script = models.TextField(null=True, blank=True)
 
     formula = models.TextField(null=True, blank=True)
 
-    value_regexp = models.TextField(null=True, blank=True)
+    value_regexp = models.TextField(null=True, blank=True, help_text='''Used for string fields. First ether regexp 
+    field detectors or ML finds sentences/paragraphs/parts of them containing value of the field. Next for string 
+    fields this regexp is used to find a substring in the sentence/paragraph/part of them and use it as the 
+    field value. If re.findall() is used. If the regexp returns multiple groups then the first group is used.''')
 
     depends_on_fields = models.ManyToManyField('self', blank=True, related_name='affects_fields', symmetrical=False)
 
@@ -237,7 +267,7 @@ class DocumentField(TimeStampedModel):
 
     read_only = models.BooleanField(default=False, null=False, blank=False)
 
-    category = models.ForeignKey(DocumentFieldCategory, blank=True, null=True, db_index=True)
+    category = models.ForeignKey(DocumentFieldCategory, blank=True, null=True, db_index=True, on_delete=CASCADE)
 
     default_value = JSONField(blank=True, null=True, encoder=DjangoJSONEncoder, help_text='''Default value used 
     for showing in frontend instead of None/null (empty) value. Currently makes sense only for choice / multi-choice
@@ -326,13 +356,23 @@ class DocumentField(TimeStampedModel):
     def is_value_extracting_field(self):
         return self.type and FIELD_TYPES_REGISTRY[self.type].value_extracting
 
-    def get_choice_values(self) -> List[str]:
-        if not self.choices:
+    @classmethod
+    def parse_choice_values(cls, choices: str) -> List[str]:
+        if not choices:
             return list()
-        return [choice.strip() for choice in self.choices.strip().splitlines()]
+        return [choice.strip() for choice in choices.strip().splitlines()]
+
+    def get_choice_values(self) -> List[str]:
+        return self.parse_choice_values(self.choices)
 
     def is_choice_value(self, possible_value):
+        # update get_invalid_choice_values function if this logic will be changed
         return self.allow_values_not_specified_in_choices or possible_value in self.get_choice_values()
+
+    def get_invalid_choice_values(self):
+        return DocumentFieldValue.objects \
+            .filter(field=self) \
+            .exclude(value__in=self.get_choice_values())
 
     def set_choice_values(self, choices: List[str]):
         self.choices = '\n'.join(choices) if choices else None
@@ -353,11 +393,10 @@ class DocumentField(TimeStampedModel):
         self.hide_until_python = self.hide_until_python.strip() if self.hide_until_python else ''
         self.hide_until_js = jiphy.to.javascript(self.hide_until_python) if self.hide_until_python else ''
         with transaction.atomic():
-            if not self._state.adding:
-                for values in DocumentField.objects.filter(pk=self.pk).values('document_type__pk', 'type'):
-                    if values['document_type__pk'] != self.document_type.pk or values['type'] != self.type:
-                        DocumentFieldValue.objects.filter(field=self).delete()
-                        break
+            for values in DocumentField.objects.filter(pk=self.pk).values('document_type__pk', 'type'):
+                if values['document_type__pk'] != self.document_type.pk or values['type'] != self.type:
+                    DocumentFieldValue.objects.filter(field=self).delete()
+                    break
             document_type = None
             if self.document_type is not None:
                 document_type = DocumentType.objects.get(pk=self.document_type.pk)
@@ -511,19 +550,19 @@ class Document(models.Model):
     # apply custom objects manager
     objects = DocumentManager()
 
-    document_type = models.ForeignKey(DocumentType, blank=True, null=True, db_index=True)
+    document_type = models.ForeignKey(DocumentType, blank=True, null=True, db_index=True, on_delete=CASCADE)
 
-    project = models.ForeignKey('project.Project', blank=True, null=True, db_index=True)
+    project = models.ForeignKey('project.Project', blank=True, null=True, db_index=True, on_delete=CASCADE)
 
     status = models.ForeignKey('common.ReviewStatus', default=get_default_status,
-                               blank=True, null=True)
+                               blank=True, null=True, on_delete=CASCADE)
 
-    assignee = models.ForeignKey(User, blank=True, null=True, db_index=True)
+    assignee = models.ForeignKey(User, blank=True, null=True, db_index=True, on_delete=CASCADE)
 
     assign_date = models.DateTimeField(blank=True, null=True)
 
     upload_session = models.ForeignKey('project.UploadSession', blank=True, null=True,
-                                       db_index=True)
+                                       db_index=True, on_delete=CASCADE)
 
     class Meta:
         ordering = ('name',)
@@ -575,6 +614,22 @@ class Document(models.Model):
             return None
         return self.documentcluster_set.order_by('-pk').values_list('pk', flat=True).first()
 
+    def copy_to_target(self, target: 'Document') -> None:
+        # a 'copy' method that doesn't copy foreign keys
+        target.name = self.name
+        target.description = self.description
+        target.language = self.language
+        target.source = self.source
+        target.source_type = self.source_type
+        target.source_path = self.source_path
+        target.file_size = self.file_size
+        target.full_text = self.full_text
+        target.paragraphs = self.paragraphs
+        target.sentences = self.sentences
+        target.title = self.title
+        target.status = self.status
+        target.assignee = self.assignee
+
 
 @receiver(models.signals.post_delete, sender=Document)
 def full_delete(sender, instance, **kwargs):
@@ -583,7 +638,7 @@ def full_delete(sender, instance, **kwargs):
     # delete file
     file_path = os.path.join(
         settings.MEDIA_ROOT,
-        settings.FILEBROWSER_DIRECTORY,
+        settings.FILEBROWSER_DOCUMENTS_DIRECTORY,
         instance.source_path)
     try:
         os.remove(file_path)
@@ -603,10 +658,10 @@ class DocumentTag(models.Model):
     as reporting.
     """
 
-    document = models.ForeignKey(Document, db_index=True)
+    document = models.ForeignKey(Document, db_index=True, on_delete=CASCADE)
     tag = models.CharField(max_length=1024, db_index=True)
     timestamp = models.DateTimeField(default=now, db_index=True)
-    user = models.ForeignKey(User, db_index=True, null=True)
+    user = models.ForeignKey(User, db_index=True, null=True, on_delete=CASCADE)
 
     class Meta:
         unique_together = (("document", "tag"),)
@@ -635,7 +690,7 @@ class DocumentProperty(TimeStampedModel):
     """
 
     # Document
-    document = models.ForeignKey(Document, db_index=True)
+    document = models.ForeignKey(Document, db_index=True, on_delete=CASCADE)
 
     # Key - string with maximum length 1024
     key = models.CharField(max_length=1024, db_index=True)
@@ -673,10 +728,10 @@ class DocumentRelation(models.Model):
     """
 
     # "Left" or "source" document
-    document_a = models.ForeignKey(Document, db_index=True, related_name="document_a_set")
+    document_a = models.ForeignKey(Document, db_index=True, related_name="document_a_set", on_delete=CASCADE)
 
     # "Right" or "target" document
-    document_b = models.ForeignKey(Document, db_index=True, related_name="document_b_set")
+    document_b = models.ForeignKey(Document, db_index=True, related_name="document_b_set", on_delete=CASCADE)
 
     # Relation type, e.g., amendment or negotiated_copy
     relation_type = models.CharField(max_length=128)
@@ -702,13 +757,14 @@ class DocumentNote(models.Model):
     """
 
     # Document
-    document = models.ForeignKey(Document, db_index=True)
+    document = models.ForeignKey(Document, db_index=True, on_delete=CASCADE)
 
     # Document Field Value
-    field_value = models.ForeignKey('document.DocumentFieldValue', blank=True, null=True, db_index=True)
+    field_value = models.ForeignKey('document.DocumentFieldValue', blank=True,
+                                    null=True, db_index=True, on_delete=CASCADE)
 
     # Document Field Value
-    field = models.ForeignKey('document.DocumentField', blank=True, null=True, db_index=True)
+    field = models.ForeignKey('document.DocumentField', blank=True, null=True, db_index=True, on_delete=CASCADE)
 
     # Document timestamp
     timestamp = models.DateTimeField(default=now, db_index=True)
@@ -751,7 +807,7 @@ class TextUnit(models.Model):
     """
 
     # Document
-    document = models.ForeignKey(Document, db_index=True)
+    document = models.ForeignKey(Document, db_index=True, on_delete=CASCADE)
 
     # Text unit type, e.g., sentence, paragraph, section
     unit_type = models.CharField(max_length=128, db_index=True)
@@ -795,7 +851,7 @@ class TextUnitTag(models.Model):
     """
 
     # Text unit
-    text_unit = models.ForeignKey(TextUnit, db_index=True)
+    text_unit = models.ForeignKey(TextUnit, db_index=True, on_delete=CASCADE)
 
     # Tag
     tag = models.CharField(max_length=1024, db_index=True)
@@ -804,7 +860,7 @@ class TextUnitTag(models.Model):
     timestamp = models.DateTimeField(default=now, db_index=True)
 
     # User
-    user = models.ForeignKey(User, db_index=True, null=True)
+    user = models.ForeignKey(User, db_index=True, null=True, on_delete=CASCADE)
 
     class Meta:
         unique_together = (("text_unit", "tag"),)
@@ -827,7 +883,7 @@ class TextUnitProperty(TimeStampedModel):
     annotations, or subsequently to store relevant information.
     """
     # Text unit
-    text_unit = models.ForeignKey(TextUnit, db_index=True)
+    text_unit = models.ForeignKey(TextUnit, db_index=True, on_delete=CASCADE)
 
     # Key - string with maximum length 1024
     key = models.CharField(max_length=1024, db_index=True)
@@ -864,10 +920,12 @@ class TextUnitRelation(models.Model):
     """
 
     # Left or "source" text unit
-    text_unit_a = models.ForeignKey(TextUnit, db_index=True, related_name="text_unit_a_set")
+    text_unit_a = models.ForeignKey(TextUnit, db_index=True,
+                                    related_name="text_unit_a_set", on_delete=CASCADE)
 
     # Right or "target" text unit
-    text_unit_b = models.ForeignKey(TextUnit, db_index=True, related_name="text_unit_b_set")
+    text_unit_b = models.ForeignKey(TextUnit, db_index=True,
+                                    related_name="text_unit_b_set", on_delete=CASCADE)
 
     # Relation type
     relation_type = models.CharField(max_length=128)
@@ -892,7 +950,7 @@ class TextUnitNote(models.Model):
     manager embedded.
     """
     # Text unit
-    text_unit = models.ForeignKey(TextUnit, db_index=True)
+    text_unit = models.ForeignKey(TextUnit, db_index=True, on_delete=CASCADE)
 
     # Timestamp
     timestamp = models.DateTimeField(default=now, db_index=True)
@@ -926,10 +984,10 @@ class DocumentFieldValue(TimeStampedModel):
     DocumentFieldValue contains value for custom document field.
     """
     # related Document.
-    document = models.ForeignKey(Document, db_index=True)
+    document = models.ForeignKey(Document, db_index=True, on_delete=CASCADE)
 
     # related DocumentField
-    field = models.ForeignKey(DocumentField, db_index=True)
+    field = models.ForeignKey(DocumentField, db_index=True, on_delete=CASCADE)
 
     # Datastore for extracted value
     # Value should be stored in sortable DB-aware format. See field_types.py
@@ -949,7 +1007,7 @@ class DocumentFieldValue(TimeStampedModel):
     # For user entered values - fields location_start, location_end, location_text
     # can contain more detailed position inside sentences - while we train models on sentence level.
     text_unit = models.ForeignKey(TextUnit, blank=True, null=True,
-                                  related_name='related_field_values')
+                                  related_name='related_field_values', on_delete=CASCADE)
 
     # Extraction hint detected at the moment of storing - used for further model training
     extraction_hint = models.CharField(max_length=30, choices=EXTRACTION_HINT_CHOICES,
@@ -989,6 +1047,10 @@ class DocumentFieldValue(TimeStampedModel):
 
     def is_user_value(self):
         return self.created_by is not None or self.modified_by is not None or self.removed_by_user
+
+    @classmethod
+    def filter_user_values(cls, qs):
+        return qs.filter(Q(created_by__isnull=False) | Q(modified_by__isnull=False) | Q(removed_by_user=True))
 
 
 class ExternalFieldValue(TimeStampedModel):
@@ -1043,12 +1105,12 @@ class DocumentFieldDetector(models.Model):
     uid = StringUUIDField(primary_key=True, default=uuid.uuid4, editable=False)
 
     field = models.ForeignKey(DocumentField, blank=False, null=False,
-                              related_name='field_detectors')
+                              related_name='field_detectors', on_delete=CASCADE)
 
     CAT_SIMPLE_CONFIG = 'simple_config'
 
     CATEGORY_CHOICES = [(CAT_SIMPLE_CONFIG, 'Simple field detectors loaded and managed via '
-                                            '"Documents: Import Simple Field Detection Config" admin task.')]
+                                            '"Documents: Import CSV Field Detection Config" admin task.')]
 
     # Field detector category which can be used for finding some special field detectors
     # from the set of all available.
@@ -1229,7 +1291,8 @@ text part = BEFORE_REGEXP then "2019-01-23 " will be passed to get_dates().''')
     def get_validated_detected_value(self, field=None) -> str:
         field = field or self.field
         try:
-            self.detected_value and self.validate_detected_value(field.type, self.detected_value)
+            if self.detected_value:
+                self.validate_detected_value(field.type, self.detected_value)
             return self.detected_value
         except Exception as exc:
             msg = 'Field detector #{0} (field: {1}) has incorrect detected value. {2}'.format(self.pk, field.code, exc)
@@ -1252,7 +1315,8 @@ class DocumentFieldDetectingConfig(models.Model):
 
 
 class ClassifierModel(models.Model):
-    document_field = models.ForeignKey(DocumentField, db_index=True, null=False, blank=True, default=None)
+    document_field = models.ForeignKey(DocumentField, db_index=True, null=False,
+                                       blank=True, default=None, on_delete=CASCADE)
 
     trained_model = models.BinaryField(null=True, blank=True)
 

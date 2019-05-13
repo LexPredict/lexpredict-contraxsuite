@@ -4,6 +4,7 @@ from typing import Dict, List, Optional, Tuple, Any, Set
 from django.contrib.postgres.fields import JSONField
 from django.core.serializers.json import DjangoJSONEncoder
 from django.db import models
+from django.db.models.deletion import CASCADE
 
 from apps.common.sql_commons import SQLClause
 from apps.document.models import DocumentType, DocumentField
@@ -35,8 +36,8 @@ class DocFilterUncompletedDocuments(DocFilter):
     title = 'Uncompleted documents of the destination user'
     period_aware = False
     subject = 'Contraxsuite: digest of uncompleted documents'
-    header = 'The following uncompleted documents are assigned on you ({{ to_user.get_full_name() }}):'
-    message_if_no_docs = '''There are no uncompleted documents assigned on you ({{ to_user.get_full_name() }}).'''
+    header = 'The following uncompleted documents are assigned to you ({{ to_user.get_full_name() }}):'
+    message_if_no_docs = '''There are no uncompleted documents assigned to you ({{ to_user.get_full_name() }}).'''
 
     def prepare_documents(self,
                           document_type: DocumentType,
@@ -61,8 +62,8 @@ class DocFilterNonReviewedDocuments(DocFilter):
     title = 'Non-reviewed documents of the destination user'
     period_aware = False
     subject = 'Contraxsuite: digest of non-reviewed documents'
-    header = 'The following non-reviewed documents are assigned on you ({{ to_user.get_full_name() }}):'
-    message_if_no_docs = '''There are no non-reviewed documents assigned on you ({{ to_user.get_full_name() }}).'''
+    header = 'The following non-reviewed documents are assigned to you ({{ to_user.get_full_name() }}):'
+    message_if_no_docs = '''There are no non-reviewed documents assigned to you ({{ to_user.get_full_name() }}).'''
 
     def prepare_documents(self,
                           document_type: DocumentType,
@@ -86,9 +87,9 @@ class DocFilterAssignedDocuments(DocFilter):
     code = 'new_assigned_documents'
     title = 'Documents assigned to the destination user during the period'
     period_aware = True
-    subject = '''{% if documents.documents|length == 1 %}Contraxsuite: document assigned on you: {{ documents.documents[0].document_name }}{% else %}Contraxsuite: {{documents.documents|length}} documents assigned on you{% endif %}'''
-    header = 'The following documents have been assigned on you ({{ to_user.get_full_name() }}):'
-    message_if_no_docs = '''There are no new documents assigned on you ({{ to_user.get_full_name() }}) during the digest period.'''
+    subject = '''{% if documents.documents|length == 1 %}Contraxsuite: document assigned to you: {{ documents.documents[0].document_name }}{% else %}Contraxsuite: {{documents.documents|length}} documents assigned to you{% endif %}'''
+    header = 'The following documents have been assigned to you ({{ to_user.get_full_name() }}):'
+    message_if_no_docs = '''There are no new documents assigned to you ({{ to_user.get_full_name() }}) during the digest period.'''
 
     def prepare_documents(self,
                           document_type: DocumentType,
@@ -222,8 +223,12 @@ TEMPLATE_CONTEXT_HINT = '''to_user: User, event_initiator: User, documents: List
     period_start: datetime, period_end: datetime'''
 
 
+def document_digest_config_generic_fields_default():
+    return ['status_name']
+
+
 class DocumentDigestConfig(models.Model):
-    template_name = 'document_list'
+    template_name = 'document_digest'
 
     DAY_OF_WEEK_CHOICES = (
         (1, 'Monday'),
@@ -237,7 +242,7 @@ class DocumentDigestConfig(models.Model):
 
     enabled = models.BooleanField(null=False, blank=False, default=False)
 
-    document_type = models.ForeignKey(DocumentType, blank=False, null=False)
+    document_type = models.ForeignKey(DocumentType, blank=False, null=False, on_delete=CASCADE)
 
     documents_filter = models.CharField(max_length=100, blank=False, null=False, choices=DOC_FILTER_CHOICES)
 
@@ -250,9 +255,9 @@ class DocumentDigestConfig(models.Model):
 
     period = models.CharField(max_length=100, blank=True, null=True, choices=DIGEST_PERIOD_CHOICES)
 
-    for_role = models.ForeignKey(Role, null=True, blank=True)
+    for_role = models.ForeignKey(Role, null=True, blank=True, on_delete=CASCADE)
 
-    for_user = models.ForeignKey(User, null=True, blank=True)
+    for_user = models.ForeignKey(User, null=True, blank=True, on_delete=CASCADE)
 
     subject = models.CharField(max_length=1024, null=True, blank=True, help_text='''Template of the email subject in 
     Jinja2 syntax. Leave empty for using the default. Example: {0}'''.format(DocFilterLoadedDocuments.subject))
@@ -260,7 +265,7 @@ class DocumentDigestConfig(models.Model):
     header = models.CharField(max_length=2048, null=True, blank=True, help_text='''Template of the header
     in Jinja2 syntax. Leave empty for using the default. Example: {0}'''.format(DocFilterLoadedDocuments.header))
 
-    generic_fields = JSONField(encoder=DjangoJSONEncoder, default=['status_name'])
+    generic_fields = JSONField(encoder=DjangoJSONEncoder, default=document_digest_config_generic_fields_default)
 
     user_fields = models.ManyToManyField(DocumentField, blank=True, help_text='''Fields of the documents to 
     render in the email. Should match the specified document type. Leave empty for rendering all fields.
@@ -300,9 +305,9 @@ class DocumentDigestConfig(models.Model):
 
 
 class DocumentDigestSendDate(models.Model):
-    config = models.ForeignKey(DocumentDigestConfig, null=False, blank=False, db_index=True)
+    config = models.ForeignKey(DocumentDigestConfig, null=False, blank=False, db_index=True, on_delete=CASCADE)
 
-    to = models.ForeignKey(User, null=False, blank=False, db_index=True)
+    to = models.ForeignKey(User, null=False, blank=False, db_index=True, on_delete=CASCADE)
 
     date = models.DateTimeField(blank=False, null=False, db_index=True)
 
@@ -404,20 +409,27 @@ DOCUMENT_EVENTS_BY_CODE = {e.code: e for e in DOCUMENT_EVENTS}
 DOCUMENT_EVENTS_CHOICES = ((e.code, e.title) for e in DOCUMENT_EVENTS)
 
 
+def document_notification_subscription_generic_fields_default():
+    return ['status_name']
+
+
 class DocumentNotificationSubscription(models.Model):
-    template_name = 'document_changed'
+    template_name = 'document_notification'
 
     enabled = models.BooleanField(null=False, blank=False, default=False)
 
-    document_type = models.ForeignKey(DocumentType, blank=False, null=False)
+    document_type = models.ForeignKey(DocumentType, blank=False, null=False, on_delete=CASCADE)
 
     event = models.CharField(max_length=100, blank=False, null=False, choices=DOCUMENT_EVENTS_CHOICES)
 
     recipients = models.CharField(max_length=100, blank=False, null=False, choices=NOTIFICATION_RECIPIENTS_CHOICES)
 
-    specified_role = models.ForeignKey(Role, blank=True, null=True)
+    specified_role = models.ForeignKey(Role, blank=True, null=True, on_delete=CASCADE)
 
-    specified_user = models.ForeignKey(User, blank=True, null=True)
+    specified_user = models.ForeignKey(User, blank=True, null=True, on_delete=CASCADE)
+
+    recipients_cc = models.CharField(max_length=1024, blank=True, null=True, help_text='''Semi-colon separated list of 
+    emails to add as CC to each notification email.''')
 
     subject = models.CharField(max_length=1024, null=True, blank=True, help_text='''Template of the email subject in 
         Jinja2 syntax. Leave empty for using the default. Example: {0}'''.format(DocumentLoadedEvent.default_subject))
@@ -426,7 +438,8 @@ class DocumentNotificationSubscription(models.Model):
                               help_text='''Template of the header in Jinja2 syntax. Leave empty for using the default. 
                               Example: {0}'''.format(DocumentLoadedEvent.default_header))
 
-    generic_fields = JSONField(encoder=DjangoJSONEncoder, default=['status_name'])
+    generic_fields = JSONField(encoder=DjangoJSONEncoder,
+                               default=document_notification_subscription_generic_fields_default)
 
     user_fields = models.ManyToManyField(DocumentField, blank=True, help_text='''Fields of the documents to 
         render in the email. Should match the specified document type. Leave empty for rendering all fields.
@@ -444,6 +457,15 @@ class DocumentNotificationSubscription(models.Model):
             return None
 
         return recipients_info.resolve(self, document_fields)
+
+    @classmethod
+    def get_addrs(cls, semicolon_separated) -> Optional[Set[str]]:
+        if not semicolon_separated:
+            return None
+        return {addr.strip() for addr in semicolon_separated.split(';')}
+
+    def get_cc_addrs(self):
+        return self.get_addrs(self.recipients_cc)
 
     def get_event_info(self) -> Optional[DocumentEvent]:
         if not self.event:

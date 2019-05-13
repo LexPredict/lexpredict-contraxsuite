@@ -31,14 +31,13 @@ from rest_framework import serializers, routers, viewsets
 from django.conf.urls import url
 
 # Project imports
-from apps.common.mixins import JqListAPIView, JqListAPIMixin,\
-    SimpleRelationSerializer, TypeaheadAPIView
+import apps.common.mixins
 from apps.analyze.models import *
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.0/LICENSE"
-__version__ = "1.2.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.1/LICENSE"
+__version__ = "1.2.1"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -47,7 +46,7 @@ __email__ = "support@contraxsuite.com"
 # TextUnitClassification Views
 # --------------------------------------------------------
 
-class TextUnitClassificationSerializer(SimpleRelationSerializer):
+class TextUnitClassificationSerializer(apps.common.mixins.SimpleRelationSerializer):
     class Meta:
         model = TextUnitClassification
         fields = ['pk', 'text_unit__document__pk', 'text_unit__document__name',
@@ -69,7 +68,7 @@ class TextUnitClassificationCreateSerializer(serializers.ModelSerializer):
         return self.context['request'].user.pk
 
 
-class TextUnitClassificationViewSet(JqListAPIMixin, viewsets.ModelViewSet):
+class TextUnitClassificationViewSet(apps.common.mixins.JqListAPIMixin, viewsets.ModelViewSet):
     """
     list: Text Unit Classification List
     retrieve: Retrieve Text Unit Classification
@@ -95,7 +94,7 @@ class TextUnitClassificationViewSet(JqListAPIMixin, viewsets.ModelViewSet):
 # TextUnitClassifier Views
 # --------------------------------------------------------
 
-class TextUnitClassifierSerializer(SimpleRelationSerializer):
+class TextUnitClassifierSerializer(apps.common.mixins.SimpleRelationSerializer):
     suggestions = serializers.SerializerMethodField()
 
     class Meta:
@@ -106,7 +105,7 @@ class TextUnitClassifierSerializer(SimpleRelationSerializer):
         return obj.textunitclassifiersuggestion_set.count()
 
 
-class TextUnitClassifierViewSet(JqListAPIMixin, viewsets.ModelViewSet):
+class TextUnitClassifierViewSet(apps.common.mixins.JqListAPIMixin, viewsets.ModelViewSet):
     """
     list: Text Unit Classifier List
     delete: Delete Text Unit Classifier
@@ -130,7 +129,7 @@ class TextUnitClassifierSuggestionSerializer(TextUnitClassificationSerializer):
                   'classifier_run', 'classifier_confidence']
 
 
-class TextUnitClassifierSuggestionViewSet(JqListAPIMixin, viewsets.ModelViewSet):
+class TextUnitClassifierSuggestionViewSet(apps.common.mixins.JqListAPIMixin, viewsets.ModelViewSet):
     """
     list: Text Unit Classifier Suggestion List
     delete: Delete Text Unit Classifier Suggestion
@@ -145,13 +144,13 @@ class TextUnitClassifierSuggestionViewSet(JqListAPIMixin, viewsets.ModelViewSet)
 # --------------------------------------------------------
 
 
-class DocumentSerializer(SimpleRelationSerializer):
+class DocumentSerializer(apps.common.mixins.SimpleRelationSerializer):
     class Meta:
         model = Document
         fields = ['pk', 'name', 'document_type']
 
 
-class DocumentClusterSerializer(SimpleRelationSerializer):
+class DocumentClusterSerializer(apps.common.mixins.SimpleRelationSerializer):
     documents_count = serializers.SerializerMethodField()
     document_data = DocumentSerializer(
         source='documents', many=True, read_only=True)
@@ -166,14 +165,14 @@ class DocumentClusterSerializer(SimpleRelationSerializer):
         return obj.documents.count()
 
 
-class DocumentClusterUpdateSerializer(SimpleRelationSerializer):
+class DocumentClusterUpdateSerializer(apps.common.mixins.SimpleRelationSerializer):
 
     class Meta:
         model = DocumentCluster
         fields = ['pk', 'name']
 
 
-class DocumentClusterAPIView(JqListAPIView, viewsets.ModelViewSet):
+class DocumentClusterAPIView(apps.common.mixins.JqListAPIView, viewsets.ModelViewSet):
     """
     list: Document Cluster List
     retrieve: Retrieve Document Cluster
@@ -200,7 +199,7 @@ class DocumentClusterAPIView(JqListAPIView, viewsets.ModelViewSet):
 # TextUnitCluster Views
 # --------------------------------------------------------
 
-class TextUnitClusterSerializer(SimpleRelationSerializer):
+class TextUnitClusterSerializer(apps.common.mixins.SimpleRelationSerializer):
     text_unit_count = serializers.SerializerMethodField()
     text_unit_data = serializers.SerializerMethodField()
 
@@ -222,7 +221,7 @@ class TextUnitClusterSerializer(SimpleRelationSerializer):
         return list(text_units)
 
 
-class TextUnitClusterListAPIView(JqListAPIView):
+class TextUnitClusterListAPIView(apps.common.mixins.JqListAPIView):
     """
     Text Unit Cluster List
     """
@@ -243,7 +242,7 @@ class TextUnitClusterListAPIView(JqListAPIView):
 # DocumentSimilarity Views
 # --------------------------------------------------------
 
-class DocumentSimilaritySerializer(SimpleRelationSerializer):
+class DocumentSimilaritySerializer(apps.common.mixins.SimpleRelationSerializer):
     class Meta:
         model = DocumentSimilarity
         fields = ['pk', 'document_a__name', 'document_a__description',
@@ -253,7 +252,7 @@ class DocumentSimilaritySerializer(SimpleRelationSerializer):
                   'similarity']
 
 
-class DocumentSimilarityListAPIView(JqListAPIView):
+class DocumentSimilarityListAPIView(apps.common.mixins.JqListAPIView):
     """
     Document Similarity List
     """
@@ -272,7 +271,7 @@ class DocumentSimilarityListAPIView(JqListAPIView):
 # TextUnitSimilarity Views
 # --------------------------------------------------------
 
-class TextUnitSimilaritySerializer(SimpleRelationSerializer):
+class TextUnitSimilaritySerializer(apps.common.mixins.SimpleRelationSerializer):
     class Meta:
         model = TextUnitSimilarity
         fields = ['pk', 'text_unit_a__pk', 'text_unit_a__unit_type',
@@ -284,7 +283,7 @@ class TextUnitSimilaritySerializer(SimpleRelationSerializer):
                   'similarity']
 
 
-class TextUnitSimilarityListAPIView(JqListAPIView):
+class TextUnitSimilarityListAPIView(apps.common.mixins.JqListAPIView):
     """
     Text Unit Similarity List
     """
@@ -303,7 +302,7 @@ class TextUnitSimilarityListAPIView(JqListAPIView):
 # PartySimilarity Views
 # --------------------------------------------------------
 
-class PartySimilaritySerializer(SimpleRelationSerializer):
+class PartySimilaritySerializer(apps.common.mixins.SimpleRelationSerializer):
     class Meta:
         model = PartySimilarity
         fields = ['pk', 'party_a__name', 'party_a__description',
@@ -313,7 +312,7 @@ class PartySimilaritySerializer(SimpleRelationSerializer):
                   'similarity']
 
 
-class PartySimilarityListAPIView(JqListAPIView):
+class PartySimilarityListAPIView(apps.common.mixins.JqListAPIView):
     """
     Party Similarity List
     """
@@ -332,7 +331,7 @@ class PartySimilarityListAPIView(JqListAPIView):
 # Typeahead Views
 # --------------------------------------------------------
 
-class TypeaheadTextUnitClassification(TypeaheadAPIView):
+class TypeaheadTextUnitClassification(apps.common.mixins.TypeaheadAPIView):
     """
     Typeahead TextUnitClassification\n
         Kwargs: field_name: [class_name, class_value]

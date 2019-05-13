@@ -1,4 +1,4 @@
-from typing import Optional, List, Dict, Tuple, Any
+from typing import Optional, List, Dict, Tuple, Iterable
 
 import pandas as pd
 from django.conf import settings
@@ -16,12 +16,12 @@ from apps.document.fields_detection import field_detection_utils
 from apps.document.fields_detection.fields_detection_abstractions import FieldDetectionStrategy, DetectedFieldValue, \
     ProcessLogger
 from apps.document.fields_detection.regexps_field_detection import RegexpsOnlyFieldDetectionStrategy
+from apps.document.fields_detection.stop_words import detect_with_stop_words_by_field_and_full_text
 from apps.document.fields_detection.text_based_ml import SkLearnClassifierModel, encode_category, \
     parse_category, word_position_tokenizer
 from apps.document.models import ClassifierModel, DocumentFieldValue, ExternalFieldValue, TextUnit, \
     DocumentField, DocumentType
 from apps.document.models import Document
-from apps.document.fields_detection.stop_words import detect_with_stop_words_by_field_and_full_text
 
 
 def get_user_data(field: DocumentField,
@@ -144,11 +144,18 @@ class TextBasedMLFieldDetectionStrategy(FieldDetectionStrategy):
                                             log: ProcessLogger,
                                             field: DocumentField,
                                             train_data_project_ids: Optional[List],
-                                            use_only_confirmed_field_values: bool = False) -> Optional[ClassifierModel]:
+                                            use_only_confirmed_field_values: bool = False,
+                                            train_documents: Iterable[Document] = None) -> Optional[ClassifierModel]:
         log.info('Training model for field #{0} ({1})...'
                  .format(field.pk, field.code))
 
-        if train_data_project_ids and not use_only_confirmed_field_values:
+        if train_documents:
+            doc_ids = list(train_documents.values_list('id', flat=True)) if hasattr(train_documents, 'values_list') \
+                else [doc.id for doc in train_documents]
+            train_data = DocumentFieldValue.objects.filter(document_id__in=doc_ids, removed_by_user=False)\
+                .values('created_by', 'text_unit__text', 'value', 'extraction_hint')
+            train_data_sets = [list(train_data)]
+        elif train_data_project_ids and not use_only_confirmed_field_values:
             train_data = DocumentFieldValue.objects \
                 .filter(field_id=field.pk,
                         document__project_id__in=train_data_project_ids,
@@ -249,12 +256,14 @@ class RegexpsAndTextBasedMLFieldDetectionStrategy(TextBasedMLFieldDetectionStrat
                                             log: ProcessLogger,
                                             field: DocumentField,
                                             train_data_project_ids: Optional[List],
-                                            use_only_confirmed_field_values: bool = False) -> Optional[ClassifierModel]:
+                                            use_only_confirmed_field_values: bool = False,
+                                            train_documents: Iterable[Document] = None) -> Optional[ClassifierModel]:
         try:
             return super().train_document_field_detector_model(log,
                                                                field,
                                                                train_data_project_ids,
-                                                               use_only_confirmed_field_values)
+                                                               use_only_confirmed_field_values,
+                                                               train_documents)
         except RuntimeError as e:
             return None
 

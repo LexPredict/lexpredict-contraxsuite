@@ -63,14 +63,14 @@ class LocationResults:
                 count = 0
                 for entity_class, entities in self.located_usage_entities.items():  # type: Type[Usage], List[Usage]
                     if entities:
-                        entity_class.objects.bulk_create(entities)
+                        entity_class.objects.bulk_create(entities, ignore_conflicts=True)
                         count += len(entities)
 
                 tag_models = list()
                 for text_unit_id, tags in self.tags.items():
                     for tag in tags:
                         tag_models.append(TextUnitTag(user_id=user_id, text_unit_id=text_unit_id, tag=tag))
-                TextUnitTag.objects.bulk_create(tag_models)
+                TextUnitTag.objects.bulk_create(tag_models, ignore_conflicts=True)
                 log.info(
                     'Stored {0} usage entities and {1} tags for {2} text units'
                         .format(count, len(tag_models), len(self.processed_text_unit_ids)))

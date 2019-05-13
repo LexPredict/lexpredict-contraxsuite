@@ -1,6 +1,6 @@
 import sys
 import traceback
-from typing import Optional, List, Dict, Any
+from typing import Optional, List, Dict, Any, Iterable
 
 from django.conf import settings
 
@@ -40,7 +40,8 @@ class FormulaBasedFieldDetectionStrategy(FieldDetectionStrategy):
                                             log: ProcessLogger,
                                             field: DocumentField,
                                             train_data_project_ids: Optional[List],
-                                            use_only_confirmed_field_values: bool = False) -> Optional[ClassifierModel]:
+                                            use_only_confirmed_field_values: bool = False,
+                                            train_documents: Iterable[Document] = None) -> Optional[ClassifierModel]:
         return None
 
     @classmethod

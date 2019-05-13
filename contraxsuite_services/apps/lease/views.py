@@ -27,29 +27,26 @@ import json
 import urllib
 
 import pycountry
-from django.core.urlresolvers import reverse
+from django.urls import reverse
 from django.db import models
 from django.shortcuts import redirect
 from django.views.generic import DetailView
 from django.views.generic import TemplateView
 
-from apps.common.mixins import (JSONResponseView)
-from apps.common.mixins import (
-    JqPaginatedListView)
+import apps.common.mixins
 from apps.document.views import DocumentDetailView
 from apps.document.views import TextUnitListView
 from apps.extract.models import (
     PartyUsage)
 from apps.extract.models import TermUsage
-from apps.lease import document_fields
 from apps.lease.forms import ProcessLeaseDocumentsForm
 from apps.lease.models import LeaseDocument
 from apps.task.views import BaseAjaxTaskView
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.0/LICENSE"
-__version__ = "1.2.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.1/LICENSE"
+__version__ = "1.2.1"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -81,7 +78,7 @@ def _country_short(country_long):
                 return country_long
 
 
-class LeaseMapDataView(JSONResponseView):
+class LeaseMapDataView(apps.common.mixins.JSONResponseView):
     def get_json_data(self, request, *args, **kwargs):
         country = kwargs.get('country')
         province = kwargs.get('province')
@@ -149,7 +146,7 @@ class LeaseDashboardView(TemplateView):
     template_name = 'lease/lease_dashboard.html'
 
 
-class LessorListView(JSONResponseView):
+class LessorListView(apps.common.mixins.JSONResponseView):
     def get_json_data(self, request, *args, **kwargs):
         q = LeaseDocument.objects \
             .values('lessor') \
@@ -184,7 +181,7 @@ class LessorDetailsView(DetailView):
         }
 
 
-class LeaseDocumentListView(JqPaginatedListView):
+class LeaseDocumentListView(apps.common.mixins.JqPaginatedListView):
     model = LeaseDocument
 
     json_fields = ['name', 'property_type', 'area_size_sq_ft', 'address', 'lessor', 'lessee',

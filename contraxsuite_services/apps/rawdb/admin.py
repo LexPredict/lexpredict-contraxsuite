@@ -22,26 +22,44 @@
     provider, processing documents on the fly in a web application,
     or shipping ContraxSuite within a closed source product.
 """
+# -*- coding: utf-8 -*-
+
+# Standard imports
+import json
+
+# Django imports
 from django.contrib import admin
 from django.forms import ModelForm
 
+# Project imports
 from apps.document.models import DocumentType
 from apps.project.models import Project
-# Project imports
 from .models import SavedFilter
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.0/LICENSE"
-__version__ = "1.2.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.1/LICENSE"
+__version__ = "1.2.1"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
 
 class SavedFiltersAdminForm(ModelForm):
+
+    def validate_json_field(self, field_name: str) -> None:
+        json_value = self.data.get(field_name)
+        try:
+            json.loads(json_value)
+        except Exception as exc:
+            self.add_error(field_name, exc)
+
     def clean(self):
         project = self.cleaned_data['project']  # type: Project
         document_type = self.cleaned_data['document_type']  # type: DocumentType
+
+        self.validate_json_field('columns')
+        self.validate_json_field('column_filters')
+        self.validate_json_field('order_by')
 
         if project and project.type != document_type:
             self.add_error('project', 'Specified project has different document type.')

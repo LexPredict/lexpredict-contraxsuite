@@ -2,18 +2,22 @@ from django.contrib import admin
 from django.forms import ModelForm, PasswordInput
 from django.forms.utils import ErrorList
 
+from apps.common.log_utils import ProcessLogger, ErrorCollectingLogger
 from apps.common.script_utils import exec_script
 from apps.project.models import Project
 from apps.users.models import User
 from .models import IManageConfig, IManageDocument
+from apps.common.forms import FriendlyPasswordField
 
 
 class IManageConfigForm(ModelForm):
+    auth_password = FriendlyPasswordField(required=False)
+
     def __init__(self, data=None, files=None, auto_id='id_%s', prefix=None, initial=None, error_class=ErrorList,
                  label_suffix=None, empty_permitted=False, instance=None, use_required_attribute=None):
         super().__init__(data, files, auto_id, prefix, initial, error_class, label_suffix, empty_permitted, instance,
                          use_required_attribute)
-        eval_locals = IManageConfig.prepare_eval_locals({})
+        eval_locals = IManageConfig.prepare_eval_locals({}, log=ErrorCollectingLogger())
         self.fields['project_resolving_code'].help_text = '''Python code returning correct Project to put the imported 
         document. Executed with Python exec. Should set "result" variable to the value it returns 
         (e.g. contain "result = 123" as its last line). 
@@ -28,15 +32,26 @@ class IManageConfigForm(ModelForm):
             'id': '12345',
             'document_number': '67890'
         }
-        eval_locals = IManageConfig.prepare_eval_locals(example_doc)
+        eval_locals = IManageConfig.prepare_eval_locals(example_doc, log=ErrorCollectingLogger())
         password = self.cleaned_data.get('auth_password')
-        if not password and self.instance and self.instance.pk:
+        if password is False and self.instance and self.instance.pk:
             conf = IManageConfig.objects.filter(pk=self.instance.pk).first()  # type: IManageConfig
             if conf:
                 self.cleaned_data['auth_password'] = conf.auth_password
 
+        assignee = self.cleaned_data['assignee']
+        project = self.cleaned_data['project']
         assignee_code = self.cleaned_data['assignee_resolving_code']
         project_code = self.cleaned_data['project_resolving_code']
+
+        if project and project_code:
+            self.add_error('project', 'Both project and project resolving code specified. '
+                                      'Please use only one of the options.')
+
+        if assignee and assignee_code:
+            self.add_error('assignee', 'Both assignee and assignee resolving code specified.'
+                                       'Please use only one of the options.')
+
         if assignee_code:
             try:
                 test_value = exec_script('assignee resolving on a test document', assignee_code, eval_locals)
@@ -52,13 +67,6 @@ class IManageConfigForm(ModelForm):
                     raise RuntimeError('Project resolving script must return either a Project.')
             except RuntimeError as err:
                 self.add_error('project_resolving_code', str(err).split('\n'))
-
-    class Meta:
-        model = IManageConfig
-        fields = '__all__'
-        widgets = {
-            'auth_password': PasswordInput(),
-        }
 
 
 class IManageConfigAdmin(admin.ModelAdmin):

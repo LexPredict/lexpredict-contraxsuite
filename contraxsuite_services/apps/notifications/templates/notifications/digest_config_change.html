@@ -1,28 +1,37 @@
 {% extends "admin/change_form.html" %}
 
 {% block content %}
-    {% if adminform.form.instance.pk %}
-        <div class="alert alert-block alert-warning">
+    <div class="alert alert-block alert-warning">
+        {% if adminform.form.instance.pk %}
             <b>To test the digest rendering leave it disabled
                 and open one of the following links in separate browser tabs:</b>
             <ul>
-                <li><a href="{% url 'notifications:render-digest' adminform.form.instance.pk 'html' %}?dst_user={{adminform.form.instance.for_user.username}}">HTML version with documents</a></li>
-                <li><a href="{% url 'notifications:render-digest' adminform.form.instance.pk 'txt' %}?dst_user={{adminform.form.instance.for_user.username}}">text version with documents</a></li>
-                <li><a href="{% url 'notifications:render-digest' adminform.form.instance.pk 'html' %}?dst_user={{adminform.form.instance.for_user.username}}&emulate_no_docs=true">HTML version with no documents found</a></li>
-                <li><a href="{% url 'notifications:render-digest' adminform.form.instance.pk 'txt' %}?dst_user={{adminform.form.instance.for_user.username}}&emulate_no_docs=true">text version with no documents found</a></li>
+                <li>
+                    <a href="{% url 'notifications:render-digest' adminform.form.instance.pk 'html' %}?dst_user={{ adminform.form.instance.for_user.username }}">HTML
+                        version with documents</a></li>
+                <li>
+                    <a href="{% url 'notifications:render-digest' adminform.form.instance.pk 'txt' %}?dst_user={{ adminform.form.instance.for_user.username }}">text
+                        version with documents</a></li>
+                <li>
+                    <a href="{% url 'notifications:render-digest' adminform.form.instance.pk 'html' %}?dst_user={{ adminform.form.instance.for_user.username }}&emulate_no_docs=true">HTML
+                        version with no documents found</a></li>
+                <li>
+                    <a href="{% url 'notifications:render-digest' adminform.form.instance.pk 'txt' %}?dst_user={{ adminform.form.instance.for_user.username }}&emulate_no_docs=true">text
+                        version with no documents found</a></li>
             </ul>
 
-        </div>
-    {% else %}
-        <div class="alert alert-block alert-warning">
+
+        {% else %}
             <b>To generate links for testing the digest rendering uncheck "enabled" and click "Save and continue".
             </b>
-        </div>
-    {% endif %}
+        {% endif %}
+        <br/><b>Email templates and images are customizable via file-browser. See: <a href="{% url 'filebrowser:fb_browse' %}?dir=notification_templates">Tasks / Browse/Upload Documents /
+        notification_templates</a></b>
+    </div>
     {{ block.super }}
 {% endblock %}
 
 
 {% block extrajs %}
-	{{ block.super }}
+    {{ block.super }}
 {% endblock %}

@@ -23,17 +23,19 @@
     or shipping ContraxSuite within a closed source product.
 """
 # -*- coding: utf-8 -*-
-
+from django.db.models.deletion import CASCADE
+from django.forms import CharField
 # Django imports
 from django.utils.translation import ugettext_lazy as _
 
 # Project imports
 from apps.common.widgets import LTRCheckboxField, LTRCheckboxWidget
+from .widgets import FriendlyPasswordInput
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.0/LICENSE"
-__version__ = "1.2.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.1/LICENSE"
+__version__ = "1.2.1"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -64,3 +66,17 @@ def checkbox_field(label,
             widget_attrs['label_class'] = label_class
         defaults['widget'] = LTRCheckboxWidget(attrs=widget_attrs)
     return LTRCheckboxField(**defaults)
+
+
+class FriendlyPasswordField(CharField):
+    def __init__(self, max_length=None, min_length=None, *args, **kwargs):
+        super().__init__(max_length=max_length, min_length=min_length, strip=True, empty_value=None,
+                         widget=FriendlyPasswordInput,
+                         *args,
+                         **kwargs)
+
+    def clean(self, value):
+        if value and not value.strip():
+            return False
+        else:
+            return super().clean(value)

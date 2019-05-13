@@ -24,10 +24,12 @@
 """
 import os
 from contextlib import contextmanager
+from typing import Optional
+
+from .file_access import FileAccessHandler
 
 
-class LocalFileAccess:
-
+class LocalFileAccess(FileAccessHandler):
     def __init__(self, root_dir: str):
         self.root_dir = root_dir
 
@@ -45,9 +47,15 @@ class LocalFileAccess:
         return file_list
 
     @contextmanager
-    def get_local_fn(self, rel_file_path):
+    def get_as_local_fn(self, rel_file_path):
         yield os.path.join(self.root_dir, rel_file_path), rel_file_path
+
+    def read(self, rel_file_path: str) -> Optional[bytes]:
+        fn = os.path.join(self.root_dir, rel_file_path)
+        if not os.path.isfile(fn):
+            return None
+        with open(fn, 'rb') as f:
+            return f.read()
 
     def __str__(self):
         return 'LocalFileAccess: {0}'.format(self.root_dir)
-

@@ -1,28 +1,4 @@
-"""
-    Copyright (C) 2017, ContraxSuite, LLC
-
-    This program is free software: you can redistribute it and/or modify
-    it under the terms of the GNU Affero General Public License as
-    published by the Free Software Foundation, either version 3 of the
-    License, or (at your option) any later version.
-
-    This program is distributed in the hope that it will be useful,
-    but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-    GNU Affero General Public License for more details.
-
-    You should have received a copy of the GNU Affero General Public License
-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
-    You can also be released from the requirements of the license by purchasing
-    a commercial license from ContraxSuite, LLC. Buying such a license is
-    mandatory as soon as you develop commercial activities involving ContraxSuite
-    software without disclosing the source code of your own applications.  These
-    activities include: offering paid services to customers as an ASP or "cloud"
-    provider, processing documents on the fly in a web application,
-    or shipping ContraxSuite within a closed source product.
-"""
-from typing import Set, Generator, List
+from typing import Set, Generator, List, Any
 
 from celery import shared_task
 from celery.exceptions import SoftTimeLimitExceeded
@@ -35,14 +11,6 @@ from apps.document.models import Document, DocumentType
 from apps.rawdb.field_value_tables import cache_document_fields, adapt_table_structure, doc_fields_table_name
 from apps.task.tasks import ExtendedTask, CeleryTaskLogger, Task, purge_task, call_task_func
 from apps.rawdb.app_vars import APP_VAR_DISABLE_RAW_DB_CACHING
-
-__author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.0/LICENSE"
-__version__ = "1.2.0"
-__maintainer__ = "LexPredict, LLC"
-__email__ = "support@contraxsuite.com"
-
 
 this_module_name = __name__
 
@@ -93,7 +61,8 @@ def get_all_doc_ids(document_type_id, pack_size: int = 100) -> Generator[List[in
             rows = cursor.fetchmany(pack_size)
 
 
-def get_all_doc_ids_not_planned_to_index(document_type_id, pack_size: int = 100) -> Generator[List[int], None, None]:
+def _get_all_doc_ids_not_planned_to_index(query_filter: str, params: list, pack_size: int)\
+        -> Generator[List[int], None, None]:
     with connection.cursor() as cursor:
         cursor.execute('select d.id from document_document d \n'
                        'left outer join lateral (select jsonb_array_elements(args->0) doc_id \n'
@@ -101,13 +70,33 @@ def get_all_doc_ids_not_planned_to_index(document_type_id, pack_size: int = 100)
                        '                         where name = %s \n'
                        '                         and own_status = %s\n'
                        '                         and date_work_start is null) tt on tt.doc_id = to_jsonb(d.id) \n'
-                       'where d.document_type_id = %s and tt.doc_id is null',
-                       [_get_reindex_task_name(), 'PENDING', document_type_id])
+                       'where {0} and tt.doc_id is null'.format(query_filter),
+                       [_get_reindex_task_name(), 'PENDING'] + params)
 
         rows = cursor.fetchmany(pack_size)
         while rows:
             yield [row[0] for row in rows]
             rows = cursor.fetchmany(pack_size)
+
+
+def get_all_doc_ids_not_planned_to_index_by_doc_type(document_type_id: Any, pack_size: int = 100) \
+        -> Generator[List[int], None, None]:
+    return _get_all_doc_ids_not_planned_to_index('d.document_type_id = %s', [document_type_id], pack_size)
+
+
+def get_all_doc_ids_not_planned_to_index_by_project_pk(project_pk: Any, pack_size: int = 100) \
+        -> Generator[List[int], None, None]:
+    return _get_all_doc_ids_not_planned_to_index('d.project_id = %s', [project_pk], pack_size)
+
+
+def get_all_doc_ids_not_planned_to_index_by_assignee_pk(assignee_pk: Any, pack_size: int = 100) \
+        -> Generator[List[int], None, None]:
+    return _get_all_doc_ids_not_planned_to_index('d.assignee_id = %s', [assignee_pk], pack_size)
+
+
+def get_all_doc_ids_not_planned_to_index_by_status_pk(status_pk: Any, pack_size: int = 100) \
+        -> Generator[List[int], None, None]:
+    return _get_all_doc_ids_not_planned_to_index('d.status_id = %s', [status_pk], pack_size)
 
 
 @shared_task(base=ExtendedTask,
@@ -123,6 +112,62 @@ def manual_reindex(task: ExtendedTask, document_type_code: str = None, force: bo
         task.log_info('Document caching to raw tables is disabled in Commons / App Vars')
         return
     adapt_tables_and_reindex(task, document_type_code, force, True)
+
+
+def _reindex_document_ids_packets(task: ExtendedTask, ids_packets: Generator[List[int], None, None]) -> None:
+    reindex_task_name = 'Reindex set of documents'
+    args = []
+    for ids in ids_packets:
+        args.append((ids,))
+        if len(args) >= 100:
+            task.run_sub_tasks(reindex_task_name, cache_document_fields_for_doc_ids_tracked, args)
+            args = []
+    task.run_sub_tasks(reindex_task_name, cache_document_fields_for_doc_ids_tracked, args)
+
+
+@shared_task(base=ExtendedTask,
+             name=settings.TASK_NAME_UPDATE_PROJECT_DOCUMENTS,
+             bind=True,
+             soft_time_limit=6000,
+             default_retry_delay=10,
+             retry_backoff=True,
+             autoretry_for=(SoftTimeLimitExceeded, InterfaceError, OperationalError,),
+             max_retries=3)
+def update_project_documents(task: ExtendedTask, project_pk: Any) -> None:
+    if APP_VAR_DISABLE_RAW_DB_CACHING.val:
+        task.log_info('Document caching to raw tables is disabled in Commons / App Vars')
+        return
+    _reindex_document_ids_packets(task, get_all_doc_ids_not_planned_to_index_by_project_pk(project_pk, 20))
+
+
+@shared_task(base=ExtendedTask,
+             name=settings.TASK_NAME_UPDATE_ASSIGNEE_FOR_DOCUMENTS,
+             bind=True,
+             soft_time_limit=6000,
+             default_retry_delay=10,
+             retry_backoff=True,
+             autoretry_for=(SoftTimeLimitExceeded, InterfaceError, OperationalError,),
+             max_retries=3)
+def update_assignee_for_documents(task: ExtendedTask, assignee_pk: Any) -> None:
+    if APP_VAR_DISABLE_RAW_DB_CACHING.val:
+        task.log_info('Document caching to raw tables is disabled in Commons / App Vars')
+        return
+    _reindex_document_ids_packets(task, get_all_doc_ids_not_planned_to_index_by_assignee_pk(assignee_pk, 20))
+
+
+@shared_task(base=ExtendedTask,
+             name=settings.TASK_NAME_UPDATE_STATUS_NAME_FOR_DOCUMENTS,
+             bind=True,
+             soft_time_limit=6000,
+             default_retry_delay=10,
+             retry_backoff=True,
+             autoretry_for=(SoftTimeLimitExceeded, InterfaceError, OperationalError,),
+             max_retries=3)
+def update_status_name_for_documents(task: ExtendedTask, status_pk: Any) -> None:
+    if APP_VAR_DISABLE_RAW_DB_CACHING.val:
+        task.log_info('Document caching to raw tables is disabled in Commons / App Vars')
+        return
+    _reindex_document_ids_packets(task, get_all_doc_ids_not_planned_to_index_by_status_pk(status_pk, 20))
 
 
 def any_other_reindex_task(self_task_id, document_type_code: str):
@@ -195,7 +240,7 @@ def adapt_tables_and_reindex(task: ExtendedTask, document_type_code: str = None,
             # If we altered the field structure then we need to re-index all docs of this type.
             # If no need to force - we plan re-index tasks only
             # for those documents for which they are not planned yet
-            args = [(ids,) for ids in get_all_doc_ids_not_planned_to_index(document_type.uid, 20)]
+            args = [(ids,) for ids in get_all_doc_ids_not_planned_to_index_by_doc_type(document_type.uid, 20)]
             task.run_sub_tasks('Reindex set of documents', cache_document_fields_for_doc_ids_tracked, args)
         else:
             # If we did not alter the table but there are non-indexed docs fo this type

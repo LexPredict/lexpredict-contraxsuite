@@ -97,8 +97,11 @@ class SendDigest(BaseTask):
         log = CeleryTaskLogger(self)
         for user in users_qr:  # type: User
             if config.for_user_id != user.id and (config.for_role_id is None or config.for_role_id != user.role_id):
-                self.log_error('{what} is not applicable for user {user_name} (#{user_id})'
-                               .format(what=DocumentDigestConfig.__name__, user_name=user.name, user_id=user.pk))
+                self.log_error('{what} #{what_id} is not applicable for user {user_name} (#{user_id})'
+                               .format(what=DocumentDigestConfig.__name__,
+                                       what_id=config.pk,
+                                       user_name=user.get_full_name(),
+                                       user_id=user.pk))
                 continue
 
             try:
@@ -255,6 +258,8 @@ def process_notifications_on_document_change(task: ExtendedTask,
     field_handlers_by_field_code = {h.field_code: h for h in field_handlers}  # Dict[str, FieldHandler]
     already_sent_user_ids = set()
 
+    log_msgs = []
+
     if document_event == DocumentEvent.CREATED.value:
         if fields_after.get(FIELD_CODE_ASSIGNEE_ID) is not None:
             send_notification(event=DocumentAssignedEvent.code,
@@ -287,11 +292,18 @@ def process_notifications_on_document_change(task: ExtendedTask,
                     or field_handlers_by_field_code[field_code].is_suggested:
                 continue
             new_value = fields_after.get(field_code)
-            if old_value != new_value:
+            if not values_look_equal(old_value, new_value):
                 changes[field_code] = (old_value, new_value)
+                log_msgs.append(format_values_difference(field_code, old_value, new_value))
 
         if not changes:
             return
+
+        if len(log_msgs) > 0:
+            msgs_str = 'Following fields are different:\n    ' + '\n    '.join(log_msgs)
+            log = CeleryTaskLogger(task)
+            log.info(msgs_str)
+
 
         if FIELD_CODE_ASSIGNEE_ID in changes:
             send_notification(event=DocumentAssignedEvent.code,
@@ -314,3 +326,36 @@ def process_notifications_on_document_change(task: ExtendedTask,
 
 
 app.register_task(SendDigest())
+
+
+def format_values_difference(field_code: str, old_value, new_value) -> str:
+    tp = old_value.__class__.__name__ if old_value is not None \
+        else new_value.__class__.__name__ if new_value is not None \
+        else 'None'
+    return '%s (%s): [%s], [%s]' % (field_code, tp, str(old_value), str(new_value))
+
+
+def values_look_equal(a, b) -> bool:
+    if a == b:
+        return True
+
+    if (isinstance(a, str) and not a and not b) or (isinstance(b, str) and not b and not a):
+        return True
+
+    import numbers
+    if isinstance(a, numbers.Number) and isinstance(b, numbers.Number):
+        delta = abs(a - b)
+        da = 0 if a == 0 else 100 * delta / abs(a)
+        db = 0 if b == 0 else 100 * delta / abs(b)
+        dmax = max(da, db)
+        # delta less than 0.001%
+        return dmax < 0.001
+
+    try:
+        sa = str(a)
+        sb = str(b)
+        if sa == sb:
+            return True
+    except:
+        pass
+    return False

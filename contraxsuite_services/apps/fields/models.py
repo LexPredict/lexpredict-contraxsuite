@@ -27,6 +27,7 @@
 import pickle
 
 from django.db import models
+from django.db.models.deletion import CASCADE
 
 from apps.document.models import Document, TextUnit
 from apps.extract.models import Party
@@ -35,8 +36,8 @@ from apps.users.models import User
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.0/LICENSE"
-__version__ = "1.2.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.1/LICENSE"
+__version__ = "1.2.1"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -54,7 +55,7 @@ class ClassifierModel(models.Model):
 
     kind = models.CharField(max_length=256, db_index=True, null=True, blank=True)
     document_class = models.CharField(max_length=256, db_index=True, null=True, blank=True)
-    document_field = models.ForeignKey(DocumentField, db_index=True, null=True, blank=True)
+    document_field = models.ForeignKey(DocumentField, db_index=True, null=True, blank=True, on_delete=CASCADE)
     trained_model = models.BinaryField(null=True, blank=True)
 
     def get_trained_model_obj(self) -> SkLearnClassifierModel:
@@ -68,14 +69,14 @@ class ClassifierModel(models.Model):
 
 class ClassifierDataSetEntry(models.Model):
     field_detection_model = models.ForeignKey(ClassifierModel, db_index=True, null=False,
-                                              blank=False)
-    document = models.ForeignKey(Document, db_index=True)
+                                              blank=False, on_delete=CASCADE)
+    document = models.ForeignKey(Document, db_index=True, on_delete=CASCADE)
     category = models.CharField(max_length=256, db_index=True, null=True, blank=True)
     text = models.TextField(null=False)
 
 
 class DocumentAnnotation(models.Model):
-    document = models.ForeignKey(Document, db_index=True)
+    document = models.ForeignKey(Document, db_index=True, on_delete=CASCADE)
     start = models.CharField(max_length=256)
     end = models.CharField(max_length=256)
     start_offset = models.IntegerField(null=False, blank=False)
@@ -83,8 +84,9 @@ class DocumentAnnotation(models.Model):
     quote = models.TextField(null=False, blank=False)
     comment = models.CharField(max_length=1024, null=True, blank=True)
     tags = models.ManyToManyField(DocumentAnnotationTag)
-    document_field = models.ForeignKey(DocumentField, db_index=True, null=True, blank=True)
-    user = models.ForeignKey(User, db_index=True, null=True, blank=True)
+    document_field = models.ForeignKey(DocumentField,
+                                       db_index=True, null=True, blank=True, on_delete=CASCADE)
+    user = models.ForeignKey(User, db_index=True, null=True, blank=True, on_delete=CASCADE)
 
     @staticmethod
     def build_auto_annotation(doc: Document, field: str, start_offset: int, end_offset: int,

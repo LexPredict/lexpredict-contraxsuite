@@ -31,24 +31,24 @@ from constance.admin import ConstanceForm, get_values
 from rest_framework import serializers, routers, viewsets
 from rest_framework.exceptions import APIException
 from rest_framework.response import Response
-from rest_framework.views import APIView
+import rest_framework.views
 
 # Django imports
 from django.conf.urls import url
 from apps.common.models import Action, AppVar, ReviewStatusGroup, ReviewStatus
-from apps.common.mixins import JqListAPIMixin
+import apps.common.mixins
 from apps.common.api.permissions import ReviewerReadOnlyPermission
 from apps.users.api.v1 import UserSerializer
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.0/LICENSE"
-__version__ = "1.2.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.1/LICENSE"
+__version__ = "1.2.1"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
 
-class AppConfigAPIView(APIView):
+class AppConfigAPIView(rest_framework.views.APIView):
     """
     API for Settings Based on "constance" third-party application
     """
@@ -84,7 +84,7 @@ class AppConfigAPIView(APIView):
             return Response(form.errors, status=500)
 
 
-class AppConfigDataAPIView(APIView):
+class AppConfigDataAPIView(rest_framework.views.APIView):
     """
     API for Settings Based on "constance" third-party application
     for specific key-value actions
@@ -162,7 +162,7 @@ class AppVarSerializer(serializers.ModelSerializer):
         fields = ('name',)
 
 
-class AppVarAPIView(APIView):
+class AppVarAPIView(rest_framework.views.APIView):
     """
     Based on custom AppVar model storage
     """
@@ -259,7 +259,7 @@ class ReviewStatusGroupSerializer(serializers.ModelSerializer):
         fields = ['pk', 'name', 'code', 'order', 'is_active']
 
 
-class ReviewStatusGroupViewSet(JqListAPIMixin, viewsets.ModelViewSet):
+class ReviewStatusGroupViewSet(apps.common.mixins.JqListAPIMixin, viewsets.ModelViewSet):
     """
     list: ReviewStatusGroup List
     retrieve: Retrieve ReviewStatusGroup
@@ -285,7 +285,7 @@ class ReviewStatusSerializer(serializers.ModelSerializer):
         fields = ['pk', 'name', 'code', 'order', 'group', 'group_data', 'is_active']
 
 
-class ReviewStatusViewSet(JqListAPIMixin, viewsets.ModelViewSet):
+class ReviewStatusViewSet(apps.common.mixins.JqListAPIMixin, viewsets.ModelViewSet):
     """
     list: ReviewStatus List
     retrieve: Retrieve ReviewStatus
@@ -312,7 +312,7 @@ class ActionSerializer(serializers.ModelSerializer):
                   'app_label', 'model_name', 'object_str']
 
 
-class ActionViewSet(JqListAPIMixin, viewsets.ModelViewSet):
+class ActionViewSet(apps.common.mixins.JqListAPIMixin, viewsets.ModelViewSet):
     """
     list: Action List
     retrieve: Retrieve Action

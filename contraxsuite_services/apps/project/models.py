@@ -40,9 +40,11 @@ from django.contrib.postgres.fields import JSONField
 from django.core.mail import send_mail
 from django.db import models
 from django.db.models import Count, Max, QuerySet, Q
+from django.db.models.deletion import CASCADE
 from django.db.models.signals import m2m_changed, post_save
 from django.dispatch import receiver
 from django.template.loader import render_to_string
+from django.db import transaction
 
 # Project imports
 from apps.common.models import get_default_status
@@ -50,11 +52,12 @@ from apps.common.fields import StringUUIDField
 from apps.document.models import DocumentType
 from apps.task.models import Task
 from apps.users.models import User
+from apps.project import signals
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.0/LICENSE"
-__version__ = "1.2.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.1/LICENSE"
+__version__ = "1.2.1"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -155,7 +158,7 @@ class TaskQueueHistory(models.Model):
     a task queue, including document completion.
     """
     # Task queue
-    task_queue = models.ForeignKey(TaskQueue, db_index=True)
+    task_queue = models.ForeignKey(TaskQueue, db_index=True, on_delete=CASCADE)
 
     # Affected documents
     documents = models.ManyToManyField('document.Document', blank=True)
@@ -164,7 +167,7 @@ class TaskQueueHistory(models.Model):
     date = models.DateTimeField(auto_now_add=True)
 
     # User
-    user = models.ForeignKey(User, db_index=True)
+    user = models.ForeignKey(User, db_index=True, on_delete=CASCADE)
 
     # Action
     action = models.CharField(max_length=30, db_index=True, blank=True, null=True)
@@ -241,7 +244,7 @@ class Project(models.Model):
 
     # Status
     status = models.ForeignKey('common.ReviewStatus', default=get_default_status,
-                               blank=True, null=True)
+                               blank=True, null=True, on_delete=CASCADE)
 
     # Whether send or not email notification when upload is started
     send_email_notification = models.BooleanField(default=False, db_index=True)
@@ -250,7 +253,7 @@ class Project(models.Model):
     type = models.ForeignKey(
         'document.DocumentType',
         default=DocumentType.generic_pk,
-        null=True, blank=True, db_index=True)
+        null=True, blank=True, db_index=True, on_delete=CASCADE)
 
     class Meta(object):
         ordering = ['name']
@@ -262,10 +265,18 @@ class Project(models.Model):
         return "Project (pk={0}, name={1})" \
             .format(self.pk, self.name)
 
+    def _fire_saved(self, old_instance=None):
+        signals.project_saved.send(self.__class__, user=None, instance=self, old_instance=old_instance)
+
     def save(self, **kwargs):
         if not self.type:
             self.type = DocumentType.generic()
-        return super().save(**kwargs)
+        old_instance = Project.objects.filter(pk=self.pk).first()
+        res = super().save(**kwargs)
+        self._fire_saved()
+        with transaction.atomic():
+            transaction.on_commit(lambda: self._fire_saved(old_instance))
+        return res
 
     def progress(self, as_dict=False):
         """
@@ -409,12 +420,13 @@ class UploadSession(models.Model):
     uid = StringUUIDField(primary_key=True, default=uuid.uuid4, editable=False)
 
     # Project
-    project = models.ForeignKey(Project, null=True, blank=True, db_index=True)
+    project = models.ForeignKey(Project, null=True, blank=True, db_index=True, on_delete=CASCADE)
 
     created_date = models.DateTimeField(auto_now_add=True, db_index=True)
 
     created_by = models.ForeignKey(
-        User, related_name="created_%(class)s_set", null=True, blank=True, db_index=True)
+        User, related_name="created_%(class)s_set",
+        null=True, blank=True, db_index=True, on_delete=CASCADE)
 
     completed = models.NullBooleanField(null=True, blank=True, db_index=True)
 
@@ -573,13 +585,13 @@ def save_upload(sender, instance, created, **kwargs):
 
 class ProjectClustering(models.Model):
 
-    project = models.ForeignKey(Project)
+    project = models.ForeignKey(Project, on_delete=CASCADE)
 
     document_clusters = models.ManyToManyField('analyze.DocumentCluster', blank=True)
 
-    task = models.ForeignKey('task.Task', blank=True, null=True)
+    task = models.ForeignKey('task.Task', blank=True, null=True, on_delete=CASCADE)
 
-    metadata = JSONField(default={}, blank=True, null=True)
+    metadata = JSONField(default=dict, blank=True, null=True)
 
     created_date = models.DateTimeField(auto_now_add=True, db_index=True)
 
@@ -598,11 +610,11 @@ class ProjectClustering(models.Model):
 
 
 class ProjectDocumentsFilter(models.Model):
-    project = models.ForeignKey('project.Project', null=True, blank=True, db_index=True)
+    project = models.ForeignKey('project.Project', null=True, blank=True, db_index=True, on_delete=CASCADE)
 
     filter_query = models.TextField(blank=False, null=False)
 
-    created_by = models.ForeignKey('users.User', blank=True, null=True, db_index=True)
+    created_by = models.ForeignKey('users.User', blank=True, null=True, db_index=True, on_delete=CASCADE)
 
     class Meta:
         unique_together = ('project', 'created_by')
@@ -617,15 +629,16 @@ class DocumentFilter(models.Model):
 
     order = models.PositiveSmallIntegerField(default=0)
 
-    project = models.ForeignKey('project.Project', null=True, blank=True, db_index=True)
+    project = models.ForeignKey('project.Project', null=True, blank=True, db_index=True, on_delete=CASCADE)
 
-    document_type = models.ForeignKey('document.DocumentType', null=True, blank=True, db_index=True)
+    document_type = models.ForeignKey('document.DocumentType',
+                                      null=True, blank=True, db_index=True, on_delete=CASCADE)
 
     filter_query = models.TextField(blank=False, null=False)
 
     document_sort_order = models.CharField(max_length=1024, blank=False, null=False)
 
-    created_by = models.ForeignKey('users.User', blank=True, null=True, db_index=True)
+    created_by = models.ForeignKey('users.User', blank=True, null=True, db_index=True, on_delete=CASCADE)
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)

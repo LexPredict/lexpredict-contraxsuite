@@ -34,7 +34,7 @@ from constance import config
 from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth import authenticate, login
-from django.core.urlresolvers import reverse
+from django.urls import reverse
 from django.db.models import signals
 from django.http import HttpResponseNotAllowed, HttpResponseForbidden, JsonResponse
 from django.shortcuts import render, redirect
@@ -44,12 +44,12 @@ from django.utils.functional import curry
 
 # Project imports
 from apps.common.utils import get_test_user
-from auth import CookieAuthentication
+import auth
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.0/LICENSE"
-__version__ = "1.2.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.1/LICENSE"
+__version__ = "1.2.1"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -70,7 +70,7 @@ class LoginRequiredMiddleware(MiddlewareMixin):
     """
     def process_view(self, request, view_func, args, kwargs):
         assert hasattr(request, 'user')
-        if not request.user.is_authenticated() and not config.auto_login:
+        if not request.user.is_authenticated and not config.auto_login:
             path = request.path_info.lstrip('/')
             if not any(m.match(path) for m in EXEMPT_URLS):
                 return redirect(settings.LOGIN_URL)
@@ -96,7 +96,7 @@ class AutoLoginMiddleware(MiddlewareMixin):
             if path in settings.AUTOLOGIN_ALWAYS_OPEN_URLS:
                 return
 
-            if not request.user.is_authenticated():
+            if not request.user.is_authenticated:
                 get_test_user()
                 user = authenticate(username='test_user', password='test_user')
                 request.user = user
@@ -157,12 +157,12 @@ class RequestUserMiddleware(MiddlewareMixin):
     """
     def process_request(self, request):
         if request.method not in ('HEAD', 'OPTIONS', 'TRACE'):
-            if hasattr(request, 'user') and request.user.is_authenticated():
+            if hasattr(request, 'user') and request.user.is_authenticated:
                 user = request.user
             elif 'auth.CookieAuthentication' in settings.REST_FRAMEWORK.get('DEFAULT_AUTHENTICATION_CLASSES', []):
                 try:
-                    user = CookieAuthentication().authenticate(request)[0]
-                    if not user.is_authenticated():
+                    user = auth.CookieAuthentication().authenticate(request)[0]
+                    if not user.is_authenticated:
                         user = None
                 except:
                     user = None

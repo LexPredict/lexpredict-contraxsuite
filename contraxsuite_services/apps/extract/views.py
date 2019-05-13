@@ -38,7 +38,7 @@ from urllib.parse import quote as url_quote
 import icalendar
 
 # Django imports
-from django.core.urlresolvers import reverse
+from django.urls import reverse
 from django.contrib.auth import authenticate
 from django.db.models import Count, F, Max, Min, Sum, Q, Value, IntegerField
 from django.db.models.functions import TruncMonth
@@ -46,8 +46,7 @@ from django.http import Http404, HttpResponseForbidden, HttpResponse
 from django.views.generic import DetailView, TemplateView
 
 # Project imports
-from apps.common.mixins import (
-    AjaxResponseMixin, JqPaginatedListView, JSONResponseView, TypeaheadView)
+import apps.common.mixins
 from apps.document.models import Document
 from apps.extract.models import (
     AmountUsage, CitationUsage, CopyrightUsage, CourtUsage, CurrencyUsage,
@@ -57,13 +56,13 @@ from apps.extract.models import (
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.0/LICENSE"
-__version__ = "1.2.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.1/LICENSE"
+__version__ = "1.2.1"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
 
-class BaseUsageListView(JqPaginatedListView):
+class BaseUsageListView(apps.common.mixins.JqPaginatedListView):
     json_fields = ['text_unit__document__pk', 'text_unit__document__name',
                    'text_unit__document__description', 'text_unit__document__document_type__title',
                    'text_unit__text', 'text_unit__pk']
@@ -98,13 +97,13 @@ class BaseUsageListView(JqPaginatedListView):
         return ctx
 
 
-class BaseTopUsageListView(JqPaginatedListView):
+class BaseTopUsageListView(apps.common.mixins.JqPaginatedListView):
     deep_processing = False
     limit_reviewers_qs_by_field = 'text_unit__document'
     sort_by = None
 
-    def get_template_names(self):
-        return [super().get_template_names()[0].replace('extract/', 'extract/top_')]
+    #def get_template_names(self):
+    #    return [super().get_template_names()[0].replace('extract/', 'extract/top_')]
 
     def get_json_data(self, **kwargs):
         data = super().get_json_data(**kwargs)
@@ -131,6 +130,7 @@ class TermUsageListView(BaseUsageListView):
     extra_json_fields = ['term__term', 'count']
     highlight_field = 'term__term'
     search_field = 'term_search'
+    template_name = 'extract/term_usage_list.html'
 
     def get_queryset(self):
         qs = super().get_queryset()
@@ -151,6 +151,7 @@ class TopTermUsageListView(BaseTopUsageListView):
     sub_app = 'term'
     model = TermUsage
     parent_list_view = TermUsageListView
+    template_name = 'extract/top_term_usage_list.html'
 
     def get_item_data(self, item, parent_data=None):
         item['url'] = reverse('extract:term-usage-list') + '?term_search=' + item['term__term']
@@ -169,7 +170,8 @@ class TopTermUsageListView(BaseTopUsageListView):
         return qs
 
 
-class GeoEntityListView(JqPaginatedListView):
+class GeoEntityListView(apps.common.mixins.JqPaginatedListView):
+    template_name = 'extract/geo_entity_list.html'
     model = GeoEntity
 
     def get_json_data(self, **kwargs):
@@ -180,7 +182,7 @@ class GeoEntityListView(JqPaginatedListView):
         return data
 
 
-class GeoEntityPriorityUpdateView(JSONResponseView):
+class GeoEntityPriorityUpdateView(apps.common.mixins.JSONResponseView):
 
     def get_json_data(self, request, *args, **kwargs):
         pk = request.GET.get('pk')
@@ -197,6 +199,7 @@ class GeoEntityUsageListView(BaseUsageListView):
     extra_json_fields = ['entity__name', 'entity__category', 'count']
     highlight_field = 'entity__name'
     search_field = 'entity_search'
+    template_name = 'extract/geo_entity_usage_list.html'
 
     def get_json_data(self, **kwargs):
         entity_data = super().get_json_data()['data']
@@ -313,7 +316,7 @@ class GeoAliasUsageListView(BaseUsageListView):
         return qs
 
 
-class TypeaheadTermTerm(TypeaheadView):
+class TypeaheadTermTerm(apps.common.mixins.TypeaheadView):
 
     def get_json_data(self, request, *args, **kwargs):
         qs = TermUsage.objects.all()
@@ -327,7 +330,7 @@ class TypeaheadTermTerm(TypeaheadView):
         return results
 
 
-class TypeaheadGeoEntityName(TypeaheadView):
+class TypeaheadGeoEntityName(apps.common.mixins.TypeaheadView):
 
     def get_json_data(self, request, *args, **kwargs):
         qs = GeoEntityUsage.objects.all()
@@ -337,7 +340,7 @@ class TypeaheadGeoEntityName(TypeaheadView):
         return [{"value": i['entity__name']} for i in qs]
 
 
-class TypeaheadPartyName(TypeaheadView):
+class TypeaheadPartyName(apps.common.mixins.TypeaheadView):
 
     def get_json_data(self, request, *args, **kwargs):
         qs = PartyUsage.objects.all()
@@ -355,6 +358,7 @@ class PartyUsageListView(BaseUsageListView):
     extra_item_map = dict(
         party_summary_url=lambda x: reverse('extract:party-summary', args=[x['party__pk']]))
     search_field = 'party_search'
+    template_name = 'extract/party_usage_list.html'
 
     def get_queryset(self):
         qs = super().get_queryset()
@@ -373,6 +377,7 @@ class TopPartyUsageListView(BaseTopUsageListView):
     sub_app = 'party'
     model = PartyUsage
     parent_list_view = PartyUsageListView
+    template_name = 'extract/top_party_usage_list.html'
 
     def get_item_data(self, item, parent_data):
         item['url'] = reverse('extract:party-usage-list') + '?party_search=' + item['party__name']
@@ -395,6 +400,7 @@ class DateUsageListView(BaseUsageListView):
     sub_app = 'date'
     model = DateUsage
     extra_json_fields = ['date', 'count']
+    template_name = 'extract/date_usage_list.html'
 
     def get_queryset(self):
         qs = super().get_queryset()
@@ -410,6 +416,7 @@ class TopDateUsageListView(BaseTopUsageListView):
     sub_app = 'date'
     model = DateUsage
     parent_list_view = DateUsageListView
+    template_name = 'extract/top_date_usage_list.html'
 
     def get_item_data(self, item, parent_data):
         item['url'] = reverse('extract:date-usage-list') + '?date_search=' + item['date'].isoformat()
@@ -425,7 +432,7 @@ class TopDateUsageListView(BaseTopUsageListView):
         return qs
 
 
-class DateUsageTimelineView(JqPaginatedListView):
+class DateUsageTimelineView(apps.common.mixins.JqPaginatedListView):
     sub_app = 'date'
     model = DateUsage
     template_name = "extract/date_usage_timeline.html"
@@ -479,7 +486,7 @@ class DateUsageTimelineView(JqPaginatedListView):
                 'initial_end_date': initial_end_date}
 
 
-class DateUsageCalendarView(JqPaginatedListView):
+class DateUsageCalendarView(apps.common.mixins.JqPaginatedListView):
     sub_app = 'date'
     model = DateUsage
     template_name = "extract/date_usage_calendar.html"
@@ -527,6 +534,7 @@ class DateDurationUsageListView(BaseUsageListView):
     model = DateDurationUsage
     extra_json_fields = ['amount', 'amount_str', 'duration_type', 'duration_days', 'count']
     highlight_field = 'amount_str'
+    template_name = 'extract/date_duration_usage_list.html'
 
     def get_queryset(self):
         qs = super().get_queryset()
@@ -544,6 +552,7 @@ class TopDateDurationUsageListView(BaseTopUsageListView):
     model = DateDurationUsage
     # template_name = "extract/top_date_duration_usage_list.html"
     parent_list_view = DateDurationUsageListView
+    template_name = 'extract/top_date_duration_usage_list.html'
 
     @staticmethod
     def sort_by(i):
@@ -570,6 +579,7 @@ class DefinitionUsageListView(BaseUsageListView):
     model = DefinitionUsage
     extra_json_fields = ['definition', 'count']
     highlight_field = 'definition'
+    template_name = 'extract/definition_usage_list.html'
 
     def get_queryset(self):
         qs = super().get_queryset()
@@ -583,6 +593,7 @@ class TopDefinitionUsageListView(BaseTopUsageListView):
     sub_app = 'definition'
     model = DefinitionUsage
     parent_list_view = DefinitionUsageListView
+    template_name = 'extract/top_definition_usage_list.html'
 
     def get_item_data(self, item, parent_data):
         item['url'] = reverse('extract:definition-usage-list') + \
@@ -605,6 +616,7 @@ class CourtUsageListView(BaseUsageListView):
     model = CourtUsage
     extra_json_fields = ['court__name', 'court__alias', 'count']
     highlight_field = 'court__name'
+    template_name = 'extract/court_usage_list.html'
 
     def get_queryset(self):
         qs = super().get_queryset()
@@ -618,6 +630,7 @@ class TopCourtUsageListView(BaseTopUsageListView):
     sub_app = 'court'
     model = CourtUsage
     parent_list_view = CourtUsageListView
+    template_name = 'extract/top_court_usage_list.html'
 
     def get_item_data(self, item, parent_data):
         item['url'] = reverse('extract:court-usage-list') + \
@@ -640,6 +653,7 @@ class CurrencyUsageListView(BaseUsageListView):
     model = CurrencyUsage
     extra_json_fields = ['usage_type', 'currency', 'amount', 'amount_str']
     highlight_field = 'amount_str'
+    template_name = 'extract/currency_usage_list.html'
 
     def get_queryset(self):
         qs = super().get_queryset()
@@ -652,6 +666,7 @@ class TopCurrencyUsageListView(BaseTopUsageListView):
     sub_app = 'currency'
     model = CurrencyUsage
     parent_list_view = CurrencyUsageListView
+    template_name = 'extract/top_currency_usage_list.html'
 
     def get_item_data(self, item, parent_data):
         item['url'] = reverse('extract:currency-usage-list') + '?currency_search=' + item['currency']
@@ -671,6 +686,7 @@ class RegulationUsageListView(BaseUsageListView):
     sub_app = 'regulation'
     model = RegulationUsage
     extra_json_fields = ['regulation_type', 'regulation_name', 'entity__name', 'count']
+    template_name = 'extract/regulation_usage_list.html'
 
     def get_queryset(self):
         qs = super().get_queryset()
@@ -684,6 +700,7 @@ class TopRegulationUsageListView(BaseTopUsageListView):
     sub_app = 'regulation'
     model = RegulationUsage
     parent_list_view = RegulationUsageListView
+    template_name = 'extract/top_regulation_usage_list.html'
 
     def get_item_data(self, item, parent_data):
         item['url'] = reverse('extract:regulation-usage-list') + \
@@ -706,6 +723,7 @@ class AmountUsageListView(BaseUsageListView):
     model = AmountUsage
     extra_json_fields = ['amount', 'amount_str', 'count']
     highlight_field = 'amount_str'
+    template_name = 'extract/amount_usage_list.html'
 
     def get_queryset(self):
         qs = super().get_queryset()
@@ -719,6 +737,7 @@ class TopAmountUsageListView(BaseTopUsageListView):
     sub_app = 'amount'
     model = AmountUsage
     parent_list_view = AmountUsageListView
+    template_name = 'extract/top_amount_usage_list.html'
 
     def get_item_data(self, item, parent_data):
         item['url'] = reverse('extract:amount-usage-list') + \
@@ -739,6 +758,7 @@ class DistanceUsageListView(BaseUsageListView):
     sub_app = 'distance'
     model = DistanceUsage
     extra_json_fields = ['amount', 'distance_type', 'count']
+    template_name = 'extract/distance_usage_list.html'
 
     def get_queryset(self):
         qs = super().get_queryset()
@@ -753,6 +773,7 @@ class TopDistanceUsageListView(BaseTopUsageListView):
     sub_app = 'distance'
     model = DistanceUsage
     parent_list_view = DistanceUsageListView
+    template_name = 'extract/top_distance_usage_list.html'
 
     def get_item_data(self, item, parent_data):
         item['url'] = reverse('extract:distance-usage-list') + \
@@ -776,6 +797,7 @@ class PercentUsageListView(BaseUsageListView):
     sub_app = 'percent'
     model = PercentUsage
     extra_json_fields = ['amount', 'unit_type', 'total', 'count']
+    template_name = 'extract/percent_usage_list.html'
 
     def get_queryset(self):
         qs = super().get_queryset()
@@ -790,6 +812,7 @@ class TopPercentUsageListView(BaseTopUsageListView):
     sub_app = 'percent'
     model = PercentUsage
     parent_list_view = PercentUsageListView
+    template_name = 'extract/top_percent_usage_list.html'
 
     def get_item_data(self, item, parent_data):
         item['url'] = reverse('extract:percent-usage-list') + \
@@ -813,6 +836,7 @@ class RatioUsageListView(BaseUsageListView):
     sub_app = 'ratio'
     model = RatioUsage
     extra_json_fields = ['amount', 'amount2', 'total', 'count']
+    template_name = 'extract/ratio_usage_list.html'
 
     def get_queryset(self):
         qs = super().get_queryset()
@@ -828,6 +852,7 @@ class TopRatioUsageListView(BaseTopUsageListView):
     sub_app = 'ratio'
     model = RatioUsage
     parent_list_view = RatioUsageListView
+    template_name = 'extract/top_ratio_usage_list.html'
 
     def get_item_data(self, item, parent_data):
         item['url'] = reverse('extract:ratio-usage-list') + \
@@ -853,6 +878,7 @@ class CitationUsageListView(BaseUsageListView):
     extra_json_fields = ['volume', 'reporter', 'reporter_full_name', 'page', 'page2',
                          'court', 'year', 'citation_str', 'count']
     highlight_field = 'citation_str'
+    template_name = 'extract/citation_usage_list.html'
 
     def get_queryset(self):
         qs = super().get_queryset()
@@ -866,6 +892,7 @@ class TopCitationUsageListView(BaseTopUsageListView):
     sub_app = 'citation'
     model = CitationUsage
     parent_list_view = CitationUsageListView
+    template_name = 'extract/top_citation_usage_list.html'
 
     def get_item_data(self, item, parent_data):
         item['url'] = reverse('extract:citation-usage-list') + \
@@ -888,6 +915,7 @@ class CopyrightUsageListView(BaseUsageListView):
     model = CopyrightUsage
     extra_json_fields = ['copyright_str', 'count']
     highlight_field = 'copyright_str'
+    template_name = 'extract/copyright_usage_list.html'
 
     def get_queryset(self):
         qs = super().get_queryset()
@@ -901,6 +929,7 @@ class TopCopyrightUsageListView(BaseTopUsageListView):
     sub_app = 'copyright'
     model = CopyrightUsage
     parent_list_view = CopyrightUsageListView
+    template_name = 'extract/top_copyright_usage_list.html'
 
     def get_item_data(self, item, parent_data):
         item['url'] = reverse('extract:copyright-usage-list') + \
@@ -923,6 +952,7 @@ class TrademarkUsageListView(BaseUsageListView):
     model = TrademarkUsage
     extra_json_fields = ['trademark', 'count']
     highlight_field = 'trademark'
+    template_name = 'extract/trademark_usage_list.html'
 
     def get_queryset(self):
         qs = super().get_queryset()
@@ -936,6 +966,7 @@ class TopTrademarkUsageListView(BaseTopUsageListView):
     sub_app = 'trademark'
     model = TrademarkUsage
     parent_list_view = TrademarkUsageListView
+    template_name = 'extract/top_trademark_usage_list.html'
 
     def get_item_data(self, item, parent_data):
         item['url'] = reverse('extract:trademark-usage-list') + \
@@ -962,6 +993,7 @@ class UrlUsageListView(BaseUsageListView):
         goto_url=lambda i: i['source_url'] if i['source_url'].lower().startswith('http')
         else 'http://' + i['source_url']
     )
+    template_name = 'extract/url_usage_list.html'
 
     def get_queryset(self):
         qs = super().get_queryset()
@@ -975,6 +1007,7 @@ class TopUrlUsageListView(BaseTopUsageListView):
     sub_app = 'url'
     model = UrlUsage
     parent_list_view = UrlUsageListView
+    template_name = 'extract/top_url_usage_list.html'
 
     def get_item_data(self, item, parent_data):
         item['goto_url'] = item['source_url'] if item['source_url'].lower().startswith('http')\
@@ -1083,7 +1116,7 @@ class PartyNetworkChartView(PartyUsageListView):
         return {"nodes": chart_nodes, "links": chart_links}
 
 
-class TermSearchView(JSONResponseView):
+class TermSearchView(apps.common.mixins.JSONResponseView):
 
     def get(self, request, *args, **kwargs):
         return HttpResponseForbidden()
@@ -1119,7 +1152,7 @@ class TermSearchView(JSONResponseView):
         return ret
 
 
-class GeoEntityUsageGoogleMapView(AjaxResponseMixin, TemplateView):
+class GeoEntityUsageGoogleMapView(apps.common.mixins.AjaxResponseMixin, TemplateView):
     sub_app = 'geoentity'
     template_name = "extract/geo_entity_usage_map.html"
 

@@ -500,16 +500,15 @@ class TaskManager(models.Manager):
         opts = {'metadata__%s' % k: v for k, v in kwargs.items()}
         return self.main_tasks().filter(**opts)
 
-    def get_active_user_tasks(self, execution_delay: datetime.datetime = None) -> QuerySet:
+    def get_active_user_tasks(self) -> QuerySet:
+        execution_delay = now() - datetime.timedelta(seconds=settings.USER_TASK_EXECUTION_DELAY)
         start_date_limit = now() - datetime.timedelta(seconds=3 * 24 * 60 * 60)
-        qs = self\
-            .filter(Q(main_task__isnull=True) | Q(main_task_id=F('id')))\
-            .filter(status__in=UNREADY_STATES)\
+        return self \
+            .filter(Q(main_task__isnull=True) | Q(main_task_id=F('id'))) \
+            .filter(status__in=UNREADY_STATES) \
             .exclude(name__in=settings.EXCLUDE_FROM_TRACKING) \
-            .filter(Q(date_start__isnull=True) | Q(date_start__gt=start_date_limit))
-        if execution_delay:
-            qs = qs.filter(Q(date_work_start__isnull=True) | Q(date_work_start__gt=execution_delay))
-        return qs
+            .filter(Q(date_start__isnull=True) | Q(date_start__gt=start_date_limit)) \
+            .filter(Q(date_work_start__isnull=True) | Q(date_work_start__gt=execution_delay))
 
     def active_tasks_exist(self, task_name: str, execution_delay: datetime.datetime,
                            activity_filter: QuerySet = None) -> bool:

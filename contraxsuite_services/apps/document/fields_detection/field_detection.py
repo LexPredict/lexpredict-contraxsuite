@@ -1,29 +1,32 @@
-from typing import Optional, List, Dict, Any
+from typing import Optional, List, Dict, Any, Set, Iterable
 
 from django.db.models import Prefetch
 
 from apps.common.log_utils import ProcessLogger, ErrorCollectingLogger
+from apps.common.log_utils import render_error
 from apps.document.field_types import FIELD_TYPES_REGISTRY, FieldType
-from apps.document.fields_detection.fields_detection_abstractions import DisabledFieldDetectionStrategy, \
-    DetectedFieldValue, FieldDetectionStrategy
-from apps.document.fields_detection.formula_and_field_based_ml_field_detection import \
-    FieldBasedMLOnlyFieldDetectionStrategy, FormulaAndFieldBasedMLFieldDetectionStrategy
-from apps.document.fields_detection.formula_based_field_detection import FormulaBasedFieldDetectionStrategy
-from apps.document.fields_detection.python_coded_field_detection import PythonCodedFieldDetectionStrategy
-from apps.document.fields_detection.regexps_and_text_based_ml_field_detection import \
-    RegexpsAndTextBasedMLFieldDetectionStrategy, TextBasedMLFieldDetectionStrategy
-from apps.document.fields_detection.regexps_field_detection import RegexpsOnlyFieldDetectionStrategy, \
-    FieldBasedRegexpsDetectionStrategy
 from apps.document.fields_processing import field_value_cache
 from apps.document.fields_processing.field_processing_utils import merge_detected_field_values_to_python_value, \
     order_field_detection
 from apps.document.models import ClassifierModel, DocumentFieldValue
 from apps.document.models import Document, DocumentType, DocumentField
 from apps.users.models import User
+from .field_based_ml_field_detection import FieldBasedMLOnlyFieldDetectionStrategy, \
+    FieldBasedMLWithUnsureCatFieldDetectionStrategy
+from .fields_detection_abstractions import DisabledFieldDetectionStrategy, \
+    DetectedFieldValue, FieldDetectionStrategy
+from .formula_and_field_based_ml_field_detection import FormulaAndFieldBasedMLFieldDetectionStrategy
+from .formula_based_field_detection import FormulaBasedFieldDetectionStrategy
+from .python_coded_field_detection import PythonCodedFieldDetectionStrategy
+from .regexps_and_text_based_ml_field_detection import \
+    RegexpsAndTextBasedMLFieldDetectionStrategy, TextBasedMLFieldDetectionStrategy
+from .regexps_field_detection import RegexpsOnlyFieldDetectionStrategy, \
+    FieldBasedRegexpsDetectionStrategy
 
 STRATEGY_DISABLED = DisabledFieldDetectionStrategy()
 
 _FIELD_DETECTION_STRATEGIES = [FieldBasedMLOnlyFieldDetectionStrategy(),
+                               FieldBasedMLWithUnsureCatFieldDetectionStrategy(),
                                FormulaAndFieldBasedMLFieldDetectionStrategy(),
                                FormulaBasedFieldDetectionStrategy(),
                                RegexpsOnlyFieldDetectionStrategy(),
@@ -39,7 +42,8 @@ FIELD_DETECTION_STRATEGY_REGISTRY = {st.code: st for st in _FIELD_DETECTION_STRA
 def train_document_field_detector_model(log: ProcessLogger,
                                         field: DocumentField,
                                         train_data_project_ids: Optional[List],
-                                        use_only_confirmed_field_values: bool = False) -> Optional[ClassifierModel]:
+                                        use_only_confirmed_field_values: bool = False,
+                                        train_documents: Iterable[Document] = None) -> Optional[ClassifierModel]:
     strategy = FIELD_DETECTION_STRATEGY_REGISTRY[
         field.value_detection_strategy] \
         if field.value_detection_strategy else STRATEGY_DISABLED
@@ -47,7 +51,8 @@ def train_document_field_detector_model(log: ProcessLogger,
     return strategy.train_document_field_detector_model(log,
                                                         field,
                                                         train_data_project_ids,
-                                                        use_only_confirmed_field_values)
+                                                        use_only_confirmed_field_values,
+                                                        train_documents)
 
 
 def detect_and_cache_field_values(log: ProcessLogger,
@@ -115,7 +120,8 @@ def detect_and_cache_field_values_for_document(log: ProcessLogger,
                                                changed_by_user: User = None,
                                                system_fields_changed: bool = False,
                                                generic_fields_changed: bool = False,
-                                               document_initial_load: bool = False):
+                                               document_initial_load: bool = False,
+                                               ignore_field_codes: Set[str] = None):
     """
     Detects field values for a document and stores their DocumentFieldValue objects as well as Document.field_value.
     These two should always be consistent.
@@ -153,6 +159,9 @@ def detect_and_cache_field_values_for_document(log: ProcessLogger,
 
     res = list()
     for field_code in sorted_codes:
+        if ignore_field_codes and field_code in ignore_field_codes:
+            continue
+
         field = all_fields_code_to_field[field_code]  # type: DocumentField
         field_detection_strategy = FIELD_DETECTION_STRATEGY_REGISTRY[
             field.value_detection_strategy]  # type: FieldDetectionStrategy
@@ -162,9 +171,17 @@ def detect_and_cache_field_values_for_document(log: ProcessLogger,
             document.field_values = field_value_cache.cache_field_values(document, None, save=False)
             field_values_pre_cached = True
 
-        detected_values = field_detection_strategy.detect_field_values(log,
-                                                                       document,
-                                                                       field)  # type: List[DetectedFieldValue]
+        try:
+            detected_values = field_detection_strategy.detect_field_values(log,
+                                                                           document,
+                                                                           field)  # type: List[DetectedFieldValue]
+        except Exception as e:
+            msg = '''Unable to detect field value. 
+            Document type: {0} 
+            Document: {1} 
+            Field: {2}'''.format(document_type.code, document.pk, field.code)
+            log.error(render_error(msg, e))
+            raise e
 
         if save_detected and clear_old_values:
             # Delete previously detected values

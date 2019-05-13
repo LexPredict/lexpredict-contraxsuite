@@ -23,28 +23,21 @@
     or shipping ContraxSuite within a closed source product.
 """
 # -*- coding: utf-8 -*-
-import io
-
-import pandas as pd
-
-from django.http import HttpResponse
+# import io
+# import pandas as pd
+# from django.http import HttpResponse
 
 from rest_framework import exceptions
 from rest_framework.authentication import SessionAuthentication
 from rest_framework.permissions import AllowAny
 from rest_framework.renderers import CoreJSONRenderer
 from rest_framework.response import Response
-from rest_framework.schemas import SchemaGenerator
-from rest_framework.views import APIView
-from rest_framework_swagger import renderers
-
-from apps.common.utils import download_xls
 
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.0/LICENSE"
-__version__ = "1.2.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.1/LICENSE"
+__version__ = "1.2.1"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -53,7 +46,39 @@ def get_swagger_view():
     """
     Returns schema view which renders Swagger/OpenAPI.
     """
+    from rest_framework.views import APIView
+    from rest_framework.schemas import SchemaGenerator
+
+    class CustomSchemaGenerator(SchemaGenerator):
+        def get_simple_links(self, request):
+            links = []
+            for path, method, callback in self.endpoints:
+                view = self.create_view(callback, method, request)
+                link = view.schema.get_link(path, method, base_url=self.url)
+                api_version = group_name = None
+                if link.url.startswith('/api'):
+                    url_parts = link.url.split('/', 5)[1:5]
+                    source, api_version, app_name, group_name = url_parts
+                else:
+                    url_parts = link.url.split('/', 3)[1:3]
+                    source, app_name = url_parts
+                links.append(
+                    dict(
+                        url=link.url,
+                        source=source,
+                        api_version=api_version,
+                        app_name=app_name,
+                        group_name=group_name,
+                        method=link.action.upper(),
+                        description=link.description,
+                        title=link.description.split('\n')[0]
+                        if link.description else view.__class__.__name__,
+                    )
+                )
+            return links
+
     class SwaggerSchemaView(APIView):
+        from rest_framework_swagger import renderers
         _ignore_model_permissions = True
         exclude_from_schema = True
         permission_classes = [AllowAny]
@@ -84,6 +109,7 @@ def get_swagger_view():
                 _data.pop('api', None)
                 schema._data = _data
 
+            from apps.common.utils import download_xls
             if 'download' in request.GET:
                 return download_xls(generator.get_simple_links(request),
                                     file_name='contraxsuite-api',
@@ -92,33 +118,3 @@ def get_swagger_view():
             return Response(schema)
 
     return SwaggerSchemaView.as_view()
-
-
-class CustomSchemaGenerator(SchemaGenerator):
-
-    def get_simple_links(self, request):
-        links = []
-        for path, method, callback in self.endpoints:
-            view = self.create_view(callback, method, request)
-            link = view.schema.get_link(path, method, base_url=self.url)
-            api_version = group_name = None
-            if link.url.startswith('/api'):
-                url_parts = link.url.split('/', 5)[1:5]
-                source, api_version, app_name, group_name = url_parts
-            else:
-                url_parts = link.url.split('/', 3)[1:3]
-                source, app_name = url_parts
-            links.append(
-                dict(
-                    url=link.url,
-                    source=source,
-                    api_version=api_version,
-                    app_name=app_name,
-                    group_name=group_name,
-                    method=link.action.upper(),
-                    description=link.description,
-                    title=link.description.split('\n')[0]
-                    if link.description else view.__class__.__name__,
-                )
-            )
-        return links

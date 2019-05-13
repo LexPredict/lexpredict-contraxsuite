@@ -30,15 +30,20 @@ import json
 import operator
 import os
 import re
+from collections import OrderedDict
 from functools import reduce
 
 # Third-party imports
 import pandas as pd
-from rest_framework import serializers
-from rest_framework.filters import BaseFilterBackend
-from rest_framework.generics import ListAPIView
-from rest_framework.response import Response
+import rest_framework
+import rest_framework.filters
+import rest_framework.response
+import rest_framework.generics
 from django.http.response import StreamingHttpResponse
+from rest_framework import serializers
+from rest_framework.decorators import action
+from rest_framework.fields import empty
+from rest_framework.response import Response
 from rest_framework_tracking.mixins import LoggingMixin
 
 # Django imports
@@ -49,7 +54,7 @@ from django.contrib.postgres.fields.jsonb import KeyTextTransform
 from django.core.exceptions import FieldError
 from django.core.paginator import Paginator, EmptyPage
 from django.core.serializers.json import DjangoJSONEncoder
-from django.core.urlresolvers import reverse
+from django.urls import reverse
 from django.db import connection
 from django.db.models import Q, fields as django_fields
 from django.db.models.expressions import OrderBy, Random, RawSQL, Ref
@@ -69,8 +74,8 @@ from apps.common.utils import cap_words, export_qs_to_file, download
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.0/LICENSE"
-__version__ = "1.2.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.1/LICENSE"
+__version__ = "1.2.1"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -379,20 +384,21 @@ class AjaxListView(ReviewerQSMixin, AjaxResponseMixin, BaseCustomListView):
     # TODO: remove duplication with BaseCustomListView
     # handle "export" requests
     def get(self, request, *args, **kwargs):
+        qs = self.get_queryset()
         if 'export' in self.request.GET:
             return export_qs_to_file(
-                request, qs=self.get_queryset(), **self.export_params)
+                request, qs=qs, **self.export_params)
         if request.GET.get('export_to') in ['csv', 'xlsx', 'pdf']:
             data = self.get_json_data()
             if isinstance(data, dict) and 'data' in data:
                 data = data['data']
             return self.export(data,
                                source_name=self.get_export_file_name() or
-                                           self.get_queryset().model.__name__.lower(),
+                                           qs.model.__name__.lower(),
                                fmt=request.GET.get('export_to'))
 
         if not request.is_ajax():
-            self.object_list = []
+            self.object_list = qs
             context = self.get_context_data()
             return self.render_to_response(context)
         return self.render_to_response()
@@ -593,7 +599,7 @@ class JqPaginatedListView(AjaxListView):
         return ret_value
 
 
-class SimpleRelationSerializer(serializers.ModelSerializer):
+class SimpleRelationSerializer(rest_framework.serializers.ModelSerializer):
     """
     Serializer that extracts nested relations as char field
     """
@@ -601,13 +607,13 @@ class SimpleRelationSerializer(serializers.ModelSerializer):
     def get_fields(self):
         for field in self.Meta.fields:
             if '__' in field:
-                self._declared_fields[field] = serializers.CharField(
+                self._declared_fields[field] = rest_framework.serializers.CharField(
                     source='.'.join(field.split('__')),
                     read_only=True)
         return super().get_fields()
 
 
-class JqFilterBackend(BaseFilterBackend):
+class JqFilterBackend(rest_framework.filters.BaseFilterBackend):
 
     def filter_queryset(self, request, queryset, *args):
         jq_view = JqPaginatedListView(request=request)
@@ -619,7 +625,7 @@ class JqFilterBackend(BaseFilterBackend):
         return queryset
 
 
-class ModelFieldFilterBackend(BaseFilterBackend):
+class ModelFieldFilterBackend(rest_framework.filters.BaseFilterBackend):
 
     def filter_queryset(self, request, queryset, *args):
         for param_name, param_value in request.GET.items():
@@ -630,6 +636,28 @@ class ModelFieldFilterBackend(BaseFilterBackend):
             except FieldError:
                 continue
         return queryset
+
+
+class APIFormFieldsMixin(object):
+    @action(detail=False, methods=['get'], url_path='form-fields')
+    def form_fields(self, request, *args, **kwargs):
+        default_field_attrs = ['field_name', 'label', 'help_text', 'required', 'default',
+                               'choices', 'read_only', 'allow_null']
+        fields = OrderedDict()
+        for field_code, field_class in self.options_serializer().get_fields().items():
+            fields[field_code] = {'field_type': str(getattr(field_class, 'root')).split('(')[0]}
+            for field_attr_name in default_field_attrs:
+                field_attr_value = getattr(field_class, field_attr_name, None)
+                if callable(field_attr_value):
+                    if field_attr_value == empty:
+                        field_attr_value = ''
+                    else:
+                        try:
+                            field_attr_value = str(field_attr_value())
+                        except:
+                            field_attr_value = str(field_attr_value)
+                fields[field_code][field_attr_name] = field_attr_value
+        return Response(fields)
 
 
 class JqListAPIMixin(object):
@@ -689,8 +717,8 @@ class JqListAPIMixin(object):
                    'total_records': total_records}
             if extra_data:
                 ret.update(extra_data)
-            return Response(ret)
-        return Response(data)
+            return rest_framework.response.Response(ret)
+        return rest_framework.response.Response(data)
 
     def get_extra_data(self, queryset):
         return self.extra_data or {}
@@ -707,14 +735,14 @@ class JqListAPIMixin(object):
         return data
 
 
-class JqListAPIView(JqListAPIMixin, ListAPIView):
+class JqListAPIView(JqListAPIMixin, rest_framework.generics.ListAPIView):
     """
     Filter, sort and paginate queryset using jqWidgets' grid GET params
     """
     pass
 
 
-class TypeaheadAPIView(ReviewerQSMixin, ListAPIView):
+class TypeaheadAPIView(ReviewerQSMixin, rest_framework.generics.ListAPIView):
 
     def get(self, request, *args, **kwargs):
         field_name = self.kwargs.get('field_name')

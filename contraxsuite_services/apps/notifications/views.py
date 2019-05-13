@@ -1,9 +1,9 @@
+import mimetypes
 import os
 import random
 from datetime import datetime
 
-from django.http import HttpResponse, HttpResponseBadRequest, FileResponse, HttpResponseNotFound, \
-    HttpResponseServerError
+from django.http import HttpResponse, HttpResponseBadRequest, HttpResponseNotFound, HttpResponseServerError
 from django.views.generic.base import View
 from tzlocal import get_localzone
 
@@ -16,8 +16,7 @@ from apps.task.views import BaseAjaxTaskView
 from apps.users.models import User
 from .forms import SendDigestForm
 from .models import DocumentDigestConfig, DocumentNotificationSubscription, DocumentChangedEvent, DocumentAssignedEvent
-from .notifications import render_digest, get_template_image_dir, get_digest_template_dir, ensure_no_dir_change, \
-    get_notification_template_dir, render_notification
+from .notifications import render_digest, render_notification, get_notification_template_resource
 from .tasks import SendDigest
 
 
@@ -70,14 +69,11 @@ class RenderDigestView(View):
 
 class DigestImageView(View):
     def get(self, request, config_id, image_fn, **kwargs):
-        ensure_no_dir_change(image_fn)
         config = DocumentDigestConfig.objects.get(pk=config_id)
-        template_dir = get_digest_template_dir(config)
-        image_dir = get_template_image_dir(template_dir)
-        image_fn = os.path.join(image_dir, image_fn)
-        if not os.path.isfile(image_fn):
+        image = get_notification_template_resource(os.path.join(config.template_name, 'images', image_fn))
+        if not image:
             return HttpResponseNotFound('Attachment not found: ' + image_fn)
-        return FileResponse(open(image_fn, 'rb'))
+        return HttpResponse(content_type=mimetypes.guess_type(image_fn)[0], content=image)
 
 
 class RenderNotificationView(View):
@@ -149,14 +145,11 @@ class RenderNotificationView(View):
 
 class NotificationImageView(View):
     def get(self, request, subscription_id, image_fn, **kwargs):
-        ensure_no_dir_change(image_fn)
         config = DocumentNotificationSubscription.objects.get(pk=subscription_id)
-        template_dir = get_notification_template_dir(config)
-        image_dir = get_template_image_dir(template_dir)
-        image_fn = os.path.join(image_dir, image_fn)
-        if not os.path.isfile(image_fn):
+        image = get_notification_template_resource(os.path.join(config.template_name, 'images', image_fn))
+        if not image:
             return HttpResponseNotFound('Attachment not found: ' + image_fn)
-        return FileResponse(open(image_fn, 'rb'))
+        return HttpResponse(content_type=mimetypes.guess_type(image_fn)[0], content=image)
 
 
 class SendDigestTaskView(BaseAjaxTaskView):

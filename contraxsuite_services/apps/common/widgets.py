@@ -28,13 +28,14 @@
 from django import forms
 from django.forms.fields import BooleanField, ChoiceField
 from django.forms.utils import flatatt
+from django.forms.widgets import PasswordInput
 from django.utils.encoding import force_text
 from django.utils.html import format_html
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.0/LICENSE"
-__version__ = "1.2.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.1/LICENSE"
+__version__ = "1.2.1"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -97,3 +98,12 @@ class LTRRadioField(ChoiceField):
         kwargs['widget'].attrs['initial'] = kwargs['initial']
         kwargs['label'] = ''
         super(LTRRadioField, self).__init__(*args, **kwargs)
+
+
+class FriendlyPasswordInput(PasswordInput):
+    empty_password_value = '        '
+
+    def get_context(self, name, value, attrs):
+        if not self.render_value:
+            value = self.empty_password_value
+        return super(PasswordInput, self).get_context(name, value, attrs)

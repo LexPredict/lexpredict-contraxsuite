@@ -27,18 +27,25 @@
 # Future imports
 from __future__ import unicode_literals, absolute_import
 
+# Standard imports
+from django.db.models.deletion import CASCADE
+from timezone_field import TimeZoneField
 import tzlocal
+
 # Django imports
 from django.contrib.auth.models import AbstractUser
 from django.db import models
 from django.utils.encoding import python_2_unicode_compatible
 from django.utils.translation import ugettext_lazy as _
-from timezone_field import TimeZoneField
+from django.db import transaction
+
+# Project imports
+from apps.users import signals
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.0/LICENSE"
-__version__ = "1.2.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.1/LICENSE"
+__version__ = "1.2.1"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -80,7 +87,7 @@ class User(AbstractUser):
     # First Name and Last Name do not cover name patterns
     # around the globe.
     name = models.CharField(_('Name of User'), blank=True, max_length=255)
-    role = models.ForeignKey(Role, blank=True, null=True)
+    role = models.ForeignKey(Role, blank=True, null=True, on_delete=CASCADE)
     organization = models.CharField(_('Organization'), max_length=100, blank=True, null=True)
     timezone = TimeZoneField(blank=True, null=True)
     photo = models.ImageField(upload_to='photos/', max_length=100, blank=True, null=True)
@@ -103,11 +110,18 @@ class User(AbstractUser):
     def is_reviewer(self):
         return self.role.is_reviewer
 
+    def _fire_saved(self, old_instance=None):
+        signals.user_saved.send(self.__class__, user=None, instance=self, old_instance=old_instance)
+
     def save(self, *args, **kwargs):
         if self.role is None:
             self.role = Role.objects.filter(is_admin=False, is_manager=False).last()\
                         or Role.objects.first()
-        super().save(*args, **kwargs)
+        old_instance = User.objects.filter(pk=self.pk).first()
+        res = super().save(*args, **kwargs)
+        with transaction.atomic():
+            transaction.on_commit(lambda: self._fire_saved(old_instance))
+        return res
 
     def can_view_document(self, document):
         return self.is_superuser or self.is_manager or self.taskqueue_set. \

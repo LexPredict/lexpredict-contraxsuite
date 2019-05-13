@@ -1,3 +1,5 @@
+from email.utils import parseaddr
+
 from django import forms
 from django.contrib import admin
 from django.contrib.admin.widgets import FilteredSelectMultiple
@@ -45,16 +47,27 @@ class DocumentDigestConfigForm(ModelForm):
         if errors:
             self.add_error(field, errors)
 
+    USER_FIELDS = 'user_fields'
+    FOR_USER = 'for_user'
+    FOR_ROLE = 'for_role'
+    DOCUMENT_TYPE = 'document_type'
+
     def clean(self):
-        dt = self.cleaned_data['document_type']
-        fields = self.cleaned_data['user_fields']
+        for_user = self.cleaned_data.get(self.FOR_USER)
+        for_role = self.cleaned_data.get(self.FOR_ROLE)
+        if not for_user and not for_role:
+            self.add_error(self.FOR_USER, 'Either "For user" or "For role" must be specified.')
+            self.add_error(self.FOR_ROLE, 'Either "For user" or "For role" must be specified.')
+
+        dt = self.cleaned_data[self.DOCUMENT_TYPE]
+        fields = self.cleaned_data[self.USER_FIELDS]
         wrong_fields = list()
         for field in fields.all():  # type: DocumentField
             if field.document_type_id != dt.pk:
                 wrong_fields.append(field)
 
         if wrong_fields:
-            self.add_error('document_fields',
+            self.add_error(self.USER_FIELDS,
                            'Document fields should be owned by the specified document type.\n'
                            'The following fields do not match:\n'
                            '{wrong_fields}'.format(wrong_fields=';\n'.join([f.long_code for f in wrong_fields])))
@@ -80,6 +93,13 @@ class DocumentNotificationSubscriptionForm(ModelForm):
     def clean(self):
         dt = self.cleaned_data['document_type']
         fields = self.cleaned_data['user_fields']
+        cc = DocumentNotificationSubscription.get_addrs(self.cleaned_data.get('recipients_cc'))
+
+        if cc:
+            bad_addrrs = {addr for addr in cc if parseaddr(addr)[1] != addr}
+            if bad_addrrs:
+                self.add_error('recipients_cc', 'Invalid emails in CC: {0}'.format(bad_addrrs))
+
         wrong_fields = list()
         for field in fields.all():  # type: DocumentField
             if field.document_type_id != dt.pk:

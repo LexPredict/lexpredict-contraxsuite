@@ -29,7 +29,7 @@ import datetime
 
 # Third-party imports
 from rest_framework import serializers, routers, viewsets
-from rest_framework.views import APIView
+import rest_framework.views
 
 # Django imports
 from django.conf.urls import url
@@ -38,14 +38,14 @@ from django.db.models import Count, F
 from django.urls import reverse
 
 # Project imports
-from apps.common.mixins import JqListAPIView, JqListAPIMixin, SimpleRelationSerializer
+import apps.common.mixins
 from apps.employee.models import *
 from apps.employee.views import LocateEmployeesView
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.0/LICENSE"
-__version__ = "1.2.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.1/LICENSE"
+__version__ = "1.2.1"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -54,7 +54,7 @@ __email__ = "support@contraxsuite.com"
 # Employee Views
 # --------------------------------------------------------
 
-class EmployeeSerializer(SimpleRelationSerializer):
+class EmployeeSerializer(apps.common.mixins.SimpleRelationSerializer):
     class Meta:
         model = Employee
         fields = ['pk', 'document__pk', 'document__name', 'document__description',
@@ -64,7 +64,7 @@ class EmployeeSerializer(SimpleRelationSerializer):
                   'has_severance', 'vacation_yearly', 'governing_geo']
 
 
-class EmployeeViewSet(JqListAPIMixin, viewsets.ReadOnlyModelViewSet):
+class EmployeeViewSet(apps.common.mixins.JqListAPIMixin, viewsets.ReadOnlyModelViewSet):
     """
     list: Employee List\n
         GET params:
@@ -84,7 +84,7 @@ class EmployeeViewSet(JqListAPIMixin, viewsets.ReadOnlyModelViewSet):
 # Employer Views
 # --------------------------------------------------------
 
-class EmployerSerializer(SimpleRelationSerializer):
+class EmployerSerializer(apps.common.mixins.SimpleRelationSerializer):
     total_contracts = serializers.SerializerMethodField()
     total_employees = serializers.SerializerMethodField()
 
@@ -99,7 +99,7 @@ class EmployerSerializer(SimpleRelationSerializer):
         return obj.employee_set.values('name').annotate(Count('name')).count()
 
 
-class EmployerViewSet(JqListAPIMixin, viewsets.ReadOnlyModelViewSet):
+class EmployerViewSet(apps.common.mixins.JqListAPIMixin, viewsets.ReadOnlyModelViewSet):
     """
     list: Employer List\n
         GET params:
@@ -115,14 +115,14 @@ class EmployerViewSet(JqListAPIMixin, viewsets.ReadOnlyModelViewSet):
 # Provision Views
 # --------------------------------------------------------
 
-class ProvisionSerializer(SimpleRelationSerializer):
+class ProvisionSerializer(apps.common.mixins.SimpleRelationSerializer):
     class Meta:
         model = Provision
         fields = ['pk', 'text_unit__text', 'text_unit__pk', 'similarity', 'type',
                   'employee__name', 'employee__pk', 'document__pk', 'document__name']
 
 
-class ProvisionListAPIView(JqListAPIView):
+class ProvisionListAPIView(apps.common.mixins.JqListAPIView):
     """
     Provision List\n
     GET params:
@@ -134,7 +134,7 @@ class ProvisionListAPIView(JqListAPIView):
     serializer_class = ProvisionSerializer
 
 
-class EmployeeGeoChartView(APIView):
+class EmployeeGeoChartView(rest_framework.views.APIView):
     """
     Employee Geo Chart List\n
     GET params:
@@ -150,7 +150,7 @@ class EmployeeGeoChartView(APIView):
         return JsonResponse(data, safe=False)
 
 
-class EmployeeTimelineChartView(APIView):
+class EmployeeTimelineChartView(rest_framework.views.APIView):
     """
     Employee Timeline Chart List\n
     GET params:
@@ -179,7 +179,7 @@ class EmployeeTimelineChartView(APIView):
         return JsonResponse(ret)
 
 
-class LocateEmployeesAPIView(APIView, LocateEmployeesView):
+class LocateEmployeesAPIView(rest_framework.views.APIView, LocateEmployeesView):
     """
     "Locate Employees" admin task\n
     POST params:

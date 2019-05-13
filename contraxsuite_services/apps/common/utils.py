@@ -36,14 +36,13 @@ import uuid
 import django_excel as excel
 import pandas as pd
 import pdfkit as pdf
-from allauth.account.models import EmailAddress
 from jinja2 import Environment, FileSystemLoader
 from weasyprint import HTML
 
 # Django imports
 from django.conf import settings
 from django.conf.urls import url
-from django.core.urlresolvers import reverse
+from django.urls import reverse
 from django.core.serializers.json import DjangoJSONEncoder
 from django.http import HttpResponse
 from django.utils.text import slugify
@@ -55,8 +54,8 @@ from apps.users.models import User, Role
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.0/LICENSE"
-__version__ = "1.2.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.1/LICENSE"
+__version__ = "1.2.1"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -351,6 +350,7 @@ def download(data: [list, pd.DataFrame], fmt='csv', file_name='output'):
 
 
 def get_test_user():
+    from allauth.account.models import EmailAddress
     test_user, created = User.objects.update_or_create(
         username='test_user',
         defaults=dict(

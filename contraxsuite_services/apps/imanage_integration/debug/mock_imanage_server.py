@@ -26,7 +26,7 @@ class MockServerRequestHandler(BaseHTTPRequestHandler):
     def do_search(self):
         data = []
         for f in os.listdir('./data'):
-            data.append({'id': f, 'document_number': f[:-4]})
+            data.append({'id': f, 'document_number': f[:-4], 'custom1': f[:4], 'custom2': f[5:8]})
         self.resp(requests.codes.ok, None, {'data': data})
 
     def do_download(self, doc_id: str):

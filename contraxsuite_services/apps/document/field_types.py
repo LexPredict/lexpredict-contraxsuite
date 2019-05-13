@@ -25,8 +25,8 @@
 # -*- coding: utf-8 -*-
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.0/LICENSE"
-__version__ = "1.2.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.1/LICENSE"
+__version__ = "1.2.1"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -248,7 +248,7 @@ class FieldType:
     def _extract_variants_from_text(self, field, text: str, **kwargs):
         return None
 
-    def _extract_from_possible_value(self, field, possible_value):
+    def extract_from_possible_value(self, field, possible_value):
         return possible_value
 
     def extract_from_possible_value_text(self, field, possible_value_or_text):
@@ -261,7 +261,7 @@ class FieldType:
         :param possible_value_or_text:
         :return:
         """
-        maybe_value = self._extract_from_possible_value(field, possible_value_or_text)
+        maybe_value = self.extract_from_possible_value(field, possible_value_or_text)
         if maybe_value:
             return maybe_value
         variants = self._extract_variants_from_text(field, possible_value_or_text)
@@ -295,7 +295,7 @@ class FieldType:
         # If we have some value provided, then try using it and picking hint for it
         # by simply finding this value in all values extracted from this text
         if possible_value is not None:
-            value = self._extract_from_possible_value(field, possible_value)
+            value = self.extract_from_possible_value(field, possible_value)
 
             if value is not None:
                 if self.value_extracting:
@@ -506,14 +506,19 @@ class StringField(FieldType):
         if regexp:
             extracted = regexp.findall(text)
             for index, value in enumerate(extracted):
+                if isinstance(value, tuple):
+                    value = str(value[0])
                 extracted[index] = value.strip()
 
         return extracted or None
 
 
-class StringFieldWholeValueAsAToken(FieldType):
+class StringFieldWholeValueAsAToken(StringField):
     code = 'string_no_word_wrap'
     title = 'String (vectorizer uses whole value as a token)'
+    requires_value = True
+    allows_value = True
+    value_extracting = True
 
     def build_vectorization_pipeline(self) -> Tuple[List[Tuple[str, Any]], Callable[[], List[str]]]:
         vect = CountVectorizer(strip_accents='unicode', analyzer='word',
@@ -543,6 +548,8 @@ class LongTextField(FieldType):
         if regexp:
             extracted = regexp.findall(text)
             for index, value in enumerate(extracted):
+                if isinstance(value, tuple):
+                    value = str(value[0])
                 extracted[index] = value.strip()
 
         return extracted or None
@@ -564,7 +571,7 @@ class ChoiceField(FieldType):
     def get_postgres_transform_map(self):
         return django_models.TextField
 
-    def _extract_from_possible_value(self, field, possible_value):
+    def extract_from_possible_value(self, field, possible_value):
         if field.is_choice_value(possible_value):
             return possible_value
         else:
@@ -602,7 +609,7 @@ class BooleanField(FieldType):
     def get_postgres_transform_map(self):
         return django_models.BooleanField
 
-    def _extract_from_possible_value(self, field, possible_value):
+    def extract_from_possible_value(self, field, possible_value):
         if not possible_value:
             return False
         if type(possible_value) is bool:
@@ -701,7 +708,7 @@ class DateTimeField(FieldType):
     def get_postgres_transform_map(self):
         return django_models.DateTimeField
 
-    def _extract_from_possible_value(self, field, possible_value):
+    def extract_from_possible_value(self, field, possible_value):
         if isinstance(possible_value, datetime) or isinstance(possible_value, date):
             return possible_value
         else:
@@ -756,7 +763,7 @@ class DateField(FieldType):
     def get_postgres_transform_map(self):
         return django_models.DateField
 
-    def _extract_from_possible_value(self, field, possible_value):
+    def extract_from_possible_value(self, field, possible_value):
         if isinstance(possible_value, datetime):
             return possible_value.date()
         elif isinstance(possible_value, date):
@@ -807,7 +814,7 @@ class FloatField(FieldType):
     def get_postgres_transform_map(self):
         return RoundedFloatField
 
-    def _extract_from_possible_value(self, field, possible_value):
+    def extract_from_possible_value(self, field, possible_value):
         return to_float(possible_value)
 
     def _extract_variants_from_text(self, field, text: str, **kwargs):
@@ -839,7 +846,7 @@ class IntField(FieldType):
     def get_postgres_transform_map(self):
         return django_models.IntegerField
 
-    def _extract_from_possible_value(self, field, possible_value):
+    def extract_from_possible_value(self, field, possible_value):
         return to_int(possible_value)
 
     def _extract_variants_from_text(self, field, text: str, **kwargs):
@@ -888,7 +895,7 @@ class AddressField(FieldType):
             'city': None
         }
 
-    def _extract_from_possible_value(self, field, possible_value):
+    def extract_from_possible_value(self, field, possible_value):
         if possible_value is None:
             return None
 
@@ -949,7 +956,7 @@ class CompanyField(FieldType):
     def get_postgres_transform_map(self):
         return django_models.TextField
 
-    def _extract_from_possible_value(self, field, possible_value):
+    def extract_from_possible_value(self, field, possible_value):
         if possible_value is not None:
             return str(possible_value)
         else:
@@ -992,7 +999,7 @@ class DurationField(FieldType):
     def get_postgres_transform_map(self):
         return RoundedFloatField
 
-    def _extract_from_possible_value(self, field, possible_value):
+    def extract_from_possible_value(self, field, possible_value):
         return to_float(possible_value)
 
     def _extract_variants_from_text(self, field, text: str, **kwargs):
@@ -1059,7 +1066,7 @@ class PersonField(FieldType):
     def get_postgres_transform_map(self):
         return django_models.TextField
 
-    def _extract_from_possible_value(self, field, possible_value):
+    def extract_from_possible_value(self, field, possible_value):
         if possible_value is not None:
             return str(possible_value)
         else:
@@ -1146,7 +1153,7 @@ class MoneyField(FloatField):
     def get_postgres_transform_map(self):
         return django_models.TextField
 
-    def _extract_from_possible_value(self, field, possible_value):
+    def extract_from_possible_value(self, field, possible_value):
         if not possible_value:
             return None
 

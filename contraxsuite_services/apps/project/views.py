@@ -27,16 +27,18 @@
 # Django imports
 from django.contrib import messages
 from django.core.serializers.json import DjangoJSONEncoder
-from django.core.urlresolvers import reverse
+from django.urls import reverse
 from django.db.models import Count
 from django.http import HttpResponseForbidden, JsonResponse
 from django.views.generic import TemplateView
 from django.shortcuts import redirect
 
 # Project imports
-from apps.common.mixins import (
-    JSONResponseView, AdminRequiredMixin,
-    JqPaginatedListView, CustomCreateView, CustomUpdateView)
+# from apps.common.app_mixins import (
+#   JSONResponseView, AdminRequiredMixin,
+#    JqPaginatedListView, CustomCreateView, CustomUpdateView)
+import apps.common.mixins
+
 from apps.analyze.models import DocumentCluster
 from apps.common.utils import cap_words
 from apps.project.models import Project, TaskQueue
@@ -45,13 +47,13 @@ from apps.project.forms import (
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.0/LICENSE"
-__version__ = "1.2.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.1/LICENSE"
+__version__ = "1.2.1"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
 
-class ProjectListView(JqPaginatedListView):
+class ProjectListView(apps.common.mixins.JqPaginatedListView):
     model = Project
     json_fields = ['name', 'description']
     annotate = {'task_queues_count': Count('task_queues')}
@@ -86,7 +88,7 @@ class DashboardView(TemplateView):
     template_name = 'project/dashboard.html'
 
 
-class ProjectCreateView(CustomCreateView):
+class ProjectCreateView(apps.common.mixins.CustomCreateView):
     model = Project
     fields = ('name', 'description', 'task_queues')
 
@@ -94,14 +96,15 @@ class ProjectCreateView(CustomCreateView):
         return reverse('project:project-list')
 
 
-class ProjectUpdateView(ProjectCreateView, CustomUpdateView):
+class ProjectUpdateView(ProjectCreateView, apps.common.mixins.CustomUpdateView):
     pass
 
 
-class TaskQueueListView(JqPaginatedListView):
+class TaskQueueListView(apps.common.mixins.JqPaginatedListView):
     model = TaskQueue
     json_fields = ['description', 'project__pk']
     annotate = {'reviewers_count': Count('reviewers', distinct=True)}
+    template_name = 'project/task_queue_list.html'
 
     def get_json_data(self, **kwargs):
         only_completed = self.request.GET.get('only_completed')
@@ -169,7 +172,7 @@ class TaskQueueListView(JqPaginatedListView):
         return qs
 
 
-class TaskQueueCreateView(CustomCreateView):
+class TaskQueueCreateView(apps.common.mixins.CustomCreateView):
     model = TaskQueue
     fields = ('description', 'documents', 'reviewers')
 
@@ -181,7 +184,7 @@ class TaskQueueCreateView(CustomCreateView):
         return reverse('project:task-queue-list')
 
 
-class TaskQueueUpdateView(TaskQueueCreateView, CustomUpdateView):
+class TaskQueueUpdateView(TaskQueueCreateView, apps.common.mixins.CustomUpdateView):
     pass
 
 
@@ -228,7 +231,7 @@ def mark_document_completed(request, task_queue_pk, document_pk):
     return redirect(reverse('document:document-detail', args=[document_pk]))
 
 
-class TaskQueueAddClusterDocuments(AdminRequiredMixin, JSONResponseView):
+class TaskQueueAddClusterDocuments(apps.common.mixins.AdminRequiredMixin, apps.common.mixins.JSONResponseView):
     def get(self, request, *args, **kwargs):
         return JsonResponse({'task_queue_choice_form': TaskQueueChoiceForm().as_p(),
                              'task_queue_create_form': TaskQueueForm().as_p(),

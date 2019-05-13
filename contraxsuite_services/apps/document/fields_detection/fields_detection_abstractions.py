@@ -1,8 +1,8 @@
-from typing import Optional, List, Any
+from typing import Optional, List, Any, Iterable
 
 from apps.common.log_utils import ProcessLogger
 from apps.document.models import ClassifierModel, TextUnit
-from apps.document.models import DocumentType, DocumentField, Document
+from apps.document.models import DocumentField, Document
 from apps.users.models import User
 
 
@@ -86,7 +86,8 @@ class DisabledFieldDetectionStrategy(FieldDetectionStrategy):
                                             log: ProcessLogger,
                                             field: DocumentField,
                                             train_data_project_ids: Optional[List],
-                                            use_only_confirmed_field_values: bool = False) -> Optional[ClassifierModel]:
+                                            use_only_confirmed_field_values: bool = False,
+                                            train_documents: Iterable[Document] = None) -> Optional[ClassifierModel]:
         return None
 
     @classmethod
