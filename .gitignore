@@ -110,3 +110,8 @@ log.txt
 
 # docker
 docker/deploy/dependencies/*.zip*
+
+
+.DS_Store
+
+
