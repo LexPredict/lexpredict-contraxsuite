@@ -41,7 +41,7 @@ icalendar==3.11.7
 ipdb==0.10.3
 ipython==5.3.0
 iso639==0.1.4
-Jinja2==2.9.6
+Jinja2==2.10.1
 JSON-log-formatter==0.2.0
 jupyter==1.0.0
 kombu==4.2.1
