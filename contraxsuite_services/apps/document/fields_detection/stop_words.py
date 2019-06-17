@@ -1,7 +1,7 @@
 import re
 from typing import Dict, Any, Tuple, Optional, List
 
-from apps.document.field_types import FIELD_TYPES_REGISTRY, FieldType
+from apps.document.field_types import FieldType
 from apps.document.fields_detection.fields_detection_abstractions import DetectedFieldValue
 from apps.document.models import DocumentField
 
@@ -70,7 +70,7 @@ def detect_with_stop_words_by_field_and_full_text(field: DocumentField, full_tex
     stop_words = compile_stop_words(field.stop_words)
     if not stop_words:
         return False, None
-    field_type_adapter = FIELD_TYPES_REGISTRY.get(field.type)  # type: FieldType
+    field_type_adapter = field.get_field_type()  # type: FieldType
     detected, possible_value = detect_value_with_stop_words(stop_words, full_text)
     if not detected:
         return False, None

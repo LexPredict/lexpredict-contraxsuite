@@ -29,17 +29,18 @@ import json
 # Standard imports
 import re
 import traceback
-from typing import List
+from typing import List, Dict, Any
 
 # Django imports
 from django import forms
+from django.urls import reverse
 from django.contrib import admin
 from django.contrib.admin.actions import delete_selected
 from django.contrib.admin.options import TO_FIELD_VAR
 from django.contrib.admin.utils import get_deleted_objects, unquote
 from django.contrib.admin.widgets import FilteredSelectMultiple
 from django.contrib.postgres import fields
-from django.db import transaction, router
+from django.db import transaction
 from django.db.models import Q
 from django.template.response import TemplateResponse
 from django.utils.html import format_html_join
@@ -49,8 +50,10 @@ from simple_history.admin import SimpleHistoryAdmin
 
 # Project imports
 from apps.common.script_utils import ScriptError
+from apps.common.url_utils import as_bool
 from apps.document import signals
-from apps.document.field_types import FIELD_TYPES_REGISTRY, RelatedInfoField
+from apps.document.field_types import RelatedInfoField
+from apps.document.field_type_registry import FIELD_TYPE_REGISTRY
 from apps.document.fields_detection.field_based_ml_field_detection import init_classifier_impl
 from apps.document.fields_detection.formula_based_field_detection import FormulaBasedFieldDetectionStrategy, \
     DocumentFieldFormulaError
@@ -64,11 +67,15 @@ from apps.document.models import (
     DocumentFieldCategory)
 from apps.document.python_coded_fields_registry import PYTHON_CODED_FIELDS_REGISTRY
 from apps.task.models import Task
+from django.contrib.admin import SimpleListFilter
+from django.utils.translation import ugettext_lazy as _
+from apps.common.model_utils.model_class_dictionary import ModelClassDictionary
+
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.1/LICENSE"
-__version__ = "1.2.1"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.2/LICENSE"
+__version__ = "1.2.2"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -95,6 +102,160 @@ class DocumentAdmin(ModelAdminWithPrettyJsonField, SimpleHistoryAdmin):
     list_display = ('name', 'document_type', 'source_type', 'paragraphs', 'sentences')
     search_fields = ['document_type__code', 'name']
 
+    def get_queryset(self, request):
+        return Document.all_objects
+
+    def get_actions(self, request):
+        actions = super().get_actions(request)
+        if 'delete_selected' in actions:
+            del actions['delete_selected']
+        return actions
+
+    def has_delete_permission(self, request, obj=None):
+        return False
+
+
+class SoftDeleteDocument(Document):
+    class Meta:
+        proxy = True
+
+
+class DeletePendingFilter(SimpleListFilter):
+    title = _('Status')
+
+    parameter_name = 'delete_pending'
+
+    def lookups(self, request, model_admin):
+        return (
+            ('deleting', _('Deleting')),
+            ('all', _('All')),
+        )
+
+    def queryset(self, request, queryset):
+        queryset = Document.all_objects
+        val = self.value().lower() if self.value() else ''
+        if val == 'all':
+            return queryset
+        return queryset.filter(delete_pending=True)
+
+
+def set_soft_delete(document_ids:List[int], delete_not_undelete:bool, request):
+    from apps.document.sync_tasks.soft_delete_document_task import SoftDeleteDocumentsSyncTask
+    SoftDeleteDocumentsSyncTask().process(
+        document_ids=document_ids,
+        delete_not_undelete=delete_not_undelete)
+
+
+def mark_deleting(modeladmin, request, queryset):
+    # queryset.update(delete_pending=True)
+    document_ids = list(queryset.values_list('pk', flat=True))
+    set_soft_delete(document_ids, True, request)
+
+
+mark_deleting.short_description = "Mark selected documents for deleting"
+
+
+def unmark_deleting(_, request, queryset):
+    document_ids = list(queryset.values_list('pk', flat=True))
+    set_soft_delete(document_ids, False, request)
+
+
+unmark_deleting.short_description = "Uncheck selected documents for deleting"
+
+
+def delete_checked_documents(_, request, queryset):
+    ids = [d.pk for d in queryset]
+    request.session['_doc_ids'] = ids
+    from django.http import HttpResponseRedirect
+    return HttpResponseRedirect("./confirm_delete_view/")
+
+
+delete_checked_documents.short_description = "Delete checked documents"
+
+
+class SoftDeleteDocumentAdmin(DocumentAdmin):
+    list_filter = [DeletePendingFilter]
+    list_display = ('get_name', 'get_project', 'document_type', 'paragraphs', 'sentences', 'delete_pending')
+    search_fields = ['name', 'document_type__code']
+    actions = [mark_deleting, unmark_deleting, delete_checked_documents]
+    change_list_template = 'admin/document/softdeletedocument/change_list.html'
+
+    def get_project(self, obj):
+        return obj.project.name if obj.project else ''
+
+    get_project.short_description = 'Project'
+    get_project.admin_order_field = 'project__name'
+
+    def get_name(self, obj):
+        display_text = "<a href={}>{}</a>".format(
+                reverse('admin:{}_{}_change'.format(obj._meta.app_label,
+                                                    obj._meta.model_name),
+                        args=(obj.pk,)),
+                obj.name)
+        return mark_safe(display_text)
+
+    get_name.short_description = 'Document'
+    get_name.admin_order_field = 'name'
+
+    def get_actions(self, request):
+        actions = super().get_actions(request)
+        if 'delete_selected' in actions:
+            del actions['delete_selected']
+        return actions
+
+    def has_add_permission(self, request, obj=None):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False
+
+    def delete_all_checked(self, request):
+        self.message_user(request, "Started deleting for all checked documents")
+        ids = [d.pk for d in Document.all_objects.filter(delete_pending=True)]
+        request.session['_doc_ids'] = ids
+        from django.http import HttpResponseRedirect
+        return HttpResponseRedirect("../confirm_delete_view/")
+
+    def confirm_delete_view(self, request):
+        from apps.document.repository.document_bulk_delete \
+            import get_document_bulk_delete
+        doc_ids = request.session.get('_doc_ids')
+
+        if request.method == 'GET':
+            items_by_table = get_document_bulk_delete().calculate_deleting_count(doc_ids)
+            mdc = ModelClassDictionary()
+            del_count_hash = {mdc.get_model_class_name_hr(t):items_by_table[t]
+                         for t in items_by_table if t in mdc.model_by_table}
+            del_count = [(d, del_count_hash[d], False) for d in del_count_hash]
+            del_count = sorted(del_count, key=lambda x: x[0])
+            del_count.insert(0, ('Documents', len(doc_ids), True))
+
+            context = {
+                'deleting_count': del_count,
+                'return_url': 'admin:document_softdeletedocument_changelist'
+            }
+            from django.shortcuts import render
+            return render(request, "admin/common/confirm_delete_view.html", context)
+
+        # POST: actual delete
+        from apps.task.tasks import call_task
+        call_task(
+            task_name='DeleteDocuments',
+            module_name='apps.document.tasks',
+            _document_ids=doc_ids,
+            user_id=request.user.id)
+        from django.http import HttpResponseRedirect
+        return HttpResponseRedirect("../")
+
+    def get_urls(self):
+        urls = super().get_urls()
+        from django.urls import path
+        my_urls = [
+            path('delete_all_checked/', self.delete_all_checked),
+            path('confirm_delete_view/', self.confirm_delete_view),
+        ]
+        return my_urls + urls
+
 
 class UsersTasksValidationAdmin(admin.ModelAdmin):
     save_warning_template = 'admin/document/users_tasks_warning_save_form.html'
@@ -105,6 +266,8 @@ class UsersTasksValidationAdmin(admin.ModelAdmin):
         def __init__(self, qs):
             super().__init__(qs)
             self.qs = qs
+            self.verbose_name = qs.model._meta.verbose_name
+            self.verbose_name_plural = qs.model._meta.verbose_name_plural
 
         def count(self, **kwargs):
             return len(self)
@@ -119,7 +282,7 @@ class UsersTasksValidationAdmin(admin.ModelAdmin):
         return not APP_VAR_DISABLE_RAW_DB_CACHING.val and ADMIN_RUNNING_TASKS_VALIDATION_ENABLED.val
 
     @classmethod
-    def get_user_tasks_names(cls):
+    def get_user_task_names(cls):
         if cls.users_tasks_validation_enabled():
             tasks = Task.objects \
                 .get_active_user_tasks() \
@@ -130,13 +293,27 @@ class UsersTasksValidationAdmin(admin.ModelAdmin):
         else:
             return None
 
+    PARAM_OVERRIDE_WARNINGS = 'override_warnings'
+    WARN_CODE_TASKS_RUNNING = 'warning:tasks_running'
+
+    @classmethod
+    def validate_running_tasks(cls, request, dst_errors_dict: Dict[str, Any]):
+        if not cls.users_tasks_validation_enabled():
+            return
+
+        if not as_bool(request.GET, cls.PARAM_OVERRIDE_WARNINGS):
+            user_tasks = UsersTasksValidationAdmin.get_user_task_names()
+            if user_tasks:
+                user_tasks = '; <br />'.join(user_tasks)
+                dst_errors_dict[cls.WARN_CODE_TASKS_RUNNING] = f'''The following background tasks are running at 
+                the current moment:\n<br />{user_tasks}.\n<br />
+                The Save operation can cause their crashing because of the document type / field structure changes.'''
+
     def delete_selected_action(self, model_admin, request, qs):
         objects = UsersTasksValidationAdmin.QSList(qs)
         if request.POST.get('post'):
-            using = router.db_for_write(model_admin.model)
-            opts = model_admin.model._meta
             deletable_objects, model_count, perms_needed, protected = get_deleted_objects(
-                objects, opts, request.user, model_admin.admin_site, using)
+                objects, request, model_admin.admin_site)
             if not protected:
                 res = delete_selected(model_admin, request, objects)
                 for obj in objects:
@@ -144,7 +321,7 @@ class UsersTasksValidationAdmin(admin.ModelAdmin):
                 return res
         response = delete_selected(model_admin, request, objects)
         context = response.context_data
-        context['running_tasks'] = self.get_user_tasks_names() or None
+        context['running_tasks'] = self.get_user_task_names() or None
         return TemplateResponse(request, model_admin.delete_selected_confirmation_template, context)
 
     def get_actions(self, request):
@@ -166,7 +343,7 @@ class UsersTasksValidationAdmin(admin.ModelAdmin):
 
     def build_warning_context(self, object_id, form) -> dict:
         warning_context = {}
-        user_tasks = self.get_user_tasks_names()
+        user_tasks = self.get_user_task_names()
         if user_tasks:
             warning_context['running_tasks'] = user_tasks
         return warning_context
@@ -209,7 +386,7 @@ class UsersTasksValidationAdmin(admin.ModelAdmin):
 
     def render_delete_form(self, request, context):
         context = context or {}
-        context['running_tasks'] = self.get_user_tasks_names() or None
+        context['running_tasks'] = self.get_user_task_names() or None
         return super().render_delete_form(request, context)
 
     @classmethod
@@ -226,7 +403,6 @@ class UsersTasksValidationAdmin(admin.ModelAdmin):
         if self.change_form_template == self.save_warning_template:
             form_class = self.get_confirmation_form(form_class)
         return form_class
-
 
 class FieldValuesValidationAdmin(UsersTasksValidationAdmin):
     save_warning_template = 'admin/document/field_values_warning_save_form.html'
@@ -302,6 +478,14 @@ class DocumentFieldForm(forms.ModelForm):
         fields = '__all__'
         exclude = ('long_code',)
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['type'].required = True
+        self.fields['order'].required = False
+        self.fields['text_unit_type'].required = False
+        self.fields['value_detection_strategy'].required = False
+        self.fields['trained_after_documents_number'].required = False
+
     @classmethod
     def _extract_field_and_deps(cls, base_fields: List[DocumentField], fields_buffer: dict) -> dict:
         for field in base_fields:
@@ -337,7 +521,7 @@ class DocumentFieldForm(forms.ModelForm):
 
     def validate_field_code(self):
 
-        field_code = self.cleaned_data.get(self.PARAM_CODE)
+        field_code = self.cleaned_data.get(self.PARAM_CODE) or ''
 
         if not self.R_FIELD_CODE.match(field_code):
             self.add_error('code', '''Field codes must be lowercase, should start with a latin letter and contain 
@@ -356,14 +540,17 @@ class DocumentFieldForm(forms.ModelForm):
         document_type = self.cleaned_data.get('document_type')
         depends_on_fields = list(depends_on_fields)
         classifier_init_script = self.cleaned_data['classifier_init_script']
-        stop_words = self.cleaned_data['stop_words']
+        stop_words = self.cleaned_data.get('stop_words')
         hide_until_python = self.cleaned_data['hide_until_python']
         default_value = self.cleaned_data.get('default_value')
         unsure_choice_value = self.cleaned_data[self.UNSURE_CHOICE_VALUE]
         choice_values = DocumentField.parse_choice_values(self.cleaned_data['choices'])
         unsure_thresholds_by_value = self.cleaned_data.get(self.UNSURE_THRESHOLDS)
 
-        field_type = FIELD_TYPES_REGISTRY[type_code]
+        try:
+            field_type = FIELD_TYPE_REGISTRY[type_code]
+        except KeyError:
+            self.add_error('type', 'Unknown field type "{}".'.format(type_code))
 
         if unsure_choice_value and (not choice_values or unsure_choice_value not in choice_values):
             self.add_error(self.UNSURE_CHOICE_VALUE, '"Unsure choice value" must be listed in the choice values.')
@@ -408,7 +595,7 @@ class DocumentFieldForm(forms.ModelForm):
         except ValueError as ve:
             self.add_error(None, str(ve))
 
-        fields_to_values = {field.code: FIELD_TYPES_REGISTRY[field.type].example_python_value(field)
+        fields_to_values = {field.code: FIELD_TYPE_REGISTRY[field.type].example_python_value(field)
                             for field in depends_on_fields}
 
         python_coded_field_code = self.cleaned_data.get('python_coded_field')
@@ -428,12 +615,12 @@ class DocumentFieldForm(forms.ModelForm):
 
         hide_until_python = hide_until_python.strip() if hide_until_python else None
         if hide_until_python:
-            fields_to_values = {field.code: FIELD_TYPES_REGISTRY[field.type].example_python_value(field)
+            fields_to_values = {field.code: FIELD_TYPE_REGISTRY[field.type].example_python_value(field)
                                 for field in list(document_type.fields.all())}
             if field_code and field_code in fields_to_values:
                 del fields_to_values[field_code]
             if type_code:
-                fields_to_values[field_code] = FIELD_TYPES_REGISTRY[type_code] \
+                fields_to_values[field_code] = FIELD_TYPE_REGISTRY[type_code] \
                     .example_python_value(self.instance)
 
             self.calc_formula(field_code,
@@ -554,7 +741,8 @@ class DocumentFieldDetectorForm(forms.ModelForm):
 class DocumentFieldDetectorAdmin(admin.ModelAdmin):
     form = DocumentFieldDetectorForm
     list_display = (
-        'field', 'detected_value', 'extraction_hint', 'include', 'regexps_pre_process_lower')
+        'field', 'detected_value', 'extraction_hint', 'text_part', 'definition_words_',
+        'exclude_regexps_', 'include_regexps_', 'regexps_pre_process_lower')
     search_fields = ['field__long_code', 'field__title', 'detected_value', 'extraction_hint', 'include_regexps']
 
     @staticmethod
@@ -570,11 +758,23 @@ class DocumentFieldDetectorAdmin(admin.ModelAdmin):
     field_code.admin_order_field = 'field'
 
     @staticmethod
-    def include(obj):
+    def include_regexps_(obj):
         return format_html_join('\n', '<pre>{}</pre>',
                                 ((r,) for r in
-                                 obj.include_regexps.split('\n'))) if obj.field else None
+                                 obj.include_regexps.split('\n'))) if obj.field and obj.include_regexps else None
 
+    @staticmethod
+    def exclude_regexps_(obj: DocumentFieldDetector):
+        return format_html_join('\n', '<pre>{}</pre>',
+                                ((r,) for r in
+                                 obj.exclude_regexps.split('\n'))) if obj.field and obj.exclude_regexps else None
+
+
+    @staticmethod
+    def definition_words_(obj: DocumentFieldDetector):
+        return format_html_join('\n', '<pre>{}</pre>',
+                                ((r,) for r in
+                                 obj.definition_words.split('\n'))) if obj.field and obj.definition_words else None
 
 class DocumentFieldValueAdmin(admin.ModelAdmin):
     raw_id_fields = ('document', 'text_unit',)
@@ -801,6 +1001,7 @@ class DocumentFieldCategoryAdmin(admin.ModelAdmin):
 
 
 admin.site.register(Document, DocumentAdmin)
+admin.site.register(SoftDeleteDocument, SoftDeleteDocumentAdmin)
 admin.site.register(DocumentField, DocumentFieldAdmin)
 admin.site.register(DocumentFieldDetector, DocumentFieldDetectorAdmin)
 admin.site.register(DocumentFieldValue, DocumentFieldValueAdmin)

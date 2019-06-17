@@ -44,8 +44,8 @@ import apps.common.mixins
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.1/LICENSE"
-__version__ = "1.2.1"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.2/LICENSE"
+__version__ = "1.2.2"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -121,11 +121,10 @@ class TextUnitClassifierListView(apps.common.mixins.JqPaginatedListView):
     def get_json_data(self, **kwargs):
         data = super().get_json_data()
         for item in data['data']:
-            item['suggestions_url'] = reverse('analyze:text-unit-classifier-suggestion-list') + \
-                                      '?class_name=' + item['class_name']
+            item['suggestions_url'] = '{}?class_name={}'.format(
+                reverse('analyze:text-unit-classifier-suggestion-list'), item['class_name'])
             item['retrain_url'] = '#'
-            item['delete_url'] = reverse('analyze:text-unit-classifier-delete',
-                                         args=[item['pk']])
+            item['delete_url'] = reverse('analyze:text-unit-classifier-delete', args=[item['pk']])
         return data
 
 
@@ -137,8 +136,8 @@ class TextUnitClassifierDeleteView(apps.common.mixins.AdminRequiredMixin, apps.c
 
     model = TextUnitClassifier
 
-    #TODO: Mainline granular deletion permissions.
-    #TODO: Mainline delete or de-activate for audit trail
+    # TODO: Mainline granular deletion permissions.
+    # TODO: Mainline delete or de-activate for audit trail
     def get_success_url(self):
         return reverse('analyze:text-unit-classifier-list')
 
@@ -381,7 +380,7 @@ class SubmitTextUnitClassificationView(SubmitTextUnitTagView):
             self.request.POST['class_value'],
             str(self.owner))
 
-    #TODO: Allow granular update permissions.
+    # TODO: Allow granular update permissions.
     def process(self, request):
         if self.owner is None:
             return self.failure()

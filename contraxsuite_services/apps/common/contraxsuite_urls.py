@@ -13,9 +13,8 @@ def root_url():
     frontend_root_url = settings.FRONTEND_ROOT_URL  # type: str
     if frontend_root_url:
         return attach_proto(frontend_root_url)
-    else:
-        backend_root_url = settings.HOST_NAME.strip('/') + '/' + settings.BASE_URL.strip('/')
-        return attach_proto(backend_root_url)
+    backend_root_url = settings.HOST_NAME.strip('/') + '/' + settings.BASE_URL.strip('/')
+    return attach_proto(backend_root_url)
 
 
 def doc_editor_url(document_type_code, project_id, document_id) -> str:
@@ -27,7 +26,6 @@ def doc_editor_url(document_type_code, project_id, document_id) -> str:
         else:
             return '{root_url}/#/contract_analysis/{project_id}/annotator/{document_id}' \
                 .format(root_url=attach_proto(frontend_root_url), project_id=project_id, document_id=document_id)
-    else:
-        backend_root_url = settings.HOST_NAME.strip('/') + '/' + settings.BASE_URL.strip('/')
-        return '{root_url}/admin/document/document/{document_id}/change/' \
-            .format(root_url=attach_proto(backend_root_url), document_id=document_id)
+    backend_root_url = settings.HOST_NAME.strip('/') + '/' + settings.BASE_URL.strip('/')
+    return '{root_url}/admin/document/document/{document_id}/change/' \
+        .format(root_url=attach_proto(backend_root_url), document_id=document_id)

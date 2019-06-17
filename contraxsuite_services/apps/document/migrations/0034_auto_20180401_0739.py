@@ -15,7 +15,7 @@ def create_generic_document_type(apps, schema_editor):
                 'code': DocumentTypeClass.GENERIC_TYPE_CODE,
                 'title': 'Generic Document'})
     Project.objects.filter(type__isnull=True).update(type=obj)
-    Document.objects.filter(document_type__isnull=True).update(document_type=obj)
+    Document.all_objects.filter(document_type__isnull=True).update(document_type=obj)
 
 
 class Migration(migrations.Migration):

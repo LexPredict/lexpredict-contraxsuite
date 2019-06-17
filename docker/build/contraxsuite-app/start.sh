@@ -249,7 +249,7 @@ elif [ $1 == "celery-master" ]; then
     su - ${SHARED_USER_NAME} -c "${ACTIVATE_VENV} && \
         ulimit -n 1000000 && \
         celery -A apps worker -Q default,high_priority --concurrency=2 -Ofair -n master@%h --statedb=/data/celery_worker_state/worker.state"
-else
+elif [ $1 == "celery-single" ]; then
     echo "Sleeping 30 seconds to let Postgres start and Django migrate"
     sleep 30
     echo "Starting Celery Default Priority Tasks Worker..."
@@ -258,5 +258,15 @@ else
         ulimit -n 1000000 && \
         python manage.py check && \
         celery -A apps worker -Q default,high_priority --concurrency=${DOCKER_CELERY_CONCURRENCY} -Ofair -n default_priority@%h --statedb=/data/celery_worker_state/worker.state"
+    sleep 20
+else
+    echo "Sleeping 30 seconds to let Postgres start and Django migrate"
+    sleep 30
+    echo "Starting Celery Default Priority Tasks Worker..."
+
+    su - ${SHARED_USER_NAME} -c "${ACTIVATE_VENV} && \
+        ulimit -n 1000000 && \
+        python manage.py check && \
+        celery -A apps worker -Q default --concurrency=${DOCKER_CELERY_CONCURRENCY} -Ofair -n default_priority@%h --statedb=/data/celery_worker_state/worker.state"
     sleep 20
 fi

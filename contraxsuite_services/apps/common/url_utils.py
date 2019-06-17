@@ -10,14 +10,13 @@ def as_bool(url_params: Dict[str, Any], name: str, default_value: Optional[bool]
     if url_param is None:
         return default_value
     url_param = url_param.strip().lower()
-    if 'true' == url_param:
+    if url_param == 'true':
         return True
-    elif 'false' == url_param:
+    elif url_param == 'false':
         return False
-    else:
-        raise URLParamFormatException('Unable to parse URL parameter {0}'
-                                      '\nExpected: true or false'
-                                      '\nGot: {1}'.format(name, url_param))
+    raise URLParamFormatException('Unable to parse URL parameter {0}'
+                                  '\nExpected: true or false'
+                                  '\nGot: {1}'.format(name, url_param))
 
 
 def as_int(url_params: Dict[str, Any], name: str, default_value: Optional[int] = None) -> Optional[int]:

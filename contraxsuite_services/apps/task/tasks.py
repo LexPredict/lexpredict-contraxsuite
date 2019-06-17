@@ -29,7 +29,6 @@ import datetime
 import hashlib
 import importlib
 import json
-import math
 import mimetypes
 import os
 import pickle
@@ -37,12 +36,12 @@ import re
 import string
 import sys
 import traceback
+from inspect import isclass
+from subprocess import CalledProcessError
 from traceback import format_exc
 from typing import List, Dict, Tuple, Any, Callable
-from inspect import isclass
 
 # Additional libraries
-import fuzzywuzzy.fuzz
 import magic
 import nltk
 import numpy as np
@@ -71,9 +70,8 @@ from psycopg2 import InterfaceError, OperationalError
 # Scikit-learn imports
 from sklearn.cluster import Birch, DBSCAN, KMeans, MiniBatchKMeans
 from sklearn.ensemble import ExtraTreesClassifier, RandomForestClassifier
-from sklearn.feature_extraction.text import TfidfVectorizer, TfidfTransformer
+from sklearn.feature_extraction.text import TfidfTransformer
 from sklearn.linear_model import LogisticRegressionCV
-from sklearn.metrics.pairwise import cosine_similarity
 from sklearn.naive_bayes import MultinomialNB
 from sklearn.semi_supervised import LabelSpreading
 from sklearn.svm import SVC
@@ -84,7 +82,6 @@ from tika import parser
 import settings
 from apps.analyze.models import (
     DocumentCluster, TextUnitCluster,
-    DocumentSimilarity, TextUnitSimilarity, PartySimilarity as PartySimilarityModel,
     TextUnitClassification, TextUnitClassifier, TextUnitClassifierSuggestion)
 from apps.celery import app
 from apps.common.advancedcelery.fileaccess import prepare_file_access_handler
@@ -115,8 +112,8 @@ from apps.users.models import User
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.1/LICENSE"
-__version__ = "1.2.1"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.2/LICENSE"
+__version__ = "1.2.2"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -125,11 +122,6 @@ file_access_handler = prepare_file_access_handler()
 # Logger setup
 this_module = sys.modules[__name__]
 logger = get_task_logger(__name__)
-
-# TODO: Configuration-based and language-based stemmer.
-
-# Create global stemmer
-stemmer = nltk.stem.porter.PorterStemmer()
 
 # singularizer
 wnl = nltk.stem.WordNetLemmatizer()
@@ -147,6 +139,17 @@ def _get_or_create_task_config(celery_task) -> TaskConfig:
         'name': celery_task.name,
         'soft_time_limit': celery_task.soft_time_limit
     }, name=celery_task.name)[0]
+
+
+def get_task_priority(callable_or_class) -> int:
+    priority = app.conf.task_default_priority
+    if hasattr(callable_or_class, 'priority'):
+        priority = callable_or_class.priority
+    return priority
+
+
+def get_queue_by_task_priority(priority: int) -> str:
+    return 'high_priority' if priority > 7 else 'default'
 
 
 class ExtendedTask(app.Task):
@@ -253,7 +256,8 @@ class ExtendedTask(app.Task):
         self.log_info(
             '{0}: starting {1} sub-tasks...'.format(self.task_name, len(sub_tasks)))
         for ss in sub_tasks:
-            ss.apply_async()
+            priority = get_task_priority(ss)
+            ss.apply_async(priority=priority, queue=get_queue_by_task_priority(priority))
 
     def run_after_sub_tasks_finished(self,
                                      tasks_group_title: str,
@@ -262,6 +266,8 @@ class ExtendedTask(app.Task):
                                      source_data: List[str] = None):
         task_config = _get_or_create_task_config(sub_task_function)
         tasks = []
+        priority = get_task_priority(sub_task_function)
+
         for index, args in enumerate(args_list):
             tasks.append(Task(
                 name=sub_task_function.name,
@@ -275,7 +281,8 @@ class ExtendedTask(app.Task):
                         'soft_time_limit': task_config.soft_time_limit,
                         'root_id': self.main_task_id
                     }
-                }
+                },
+                priority=priority
             ))
         Task.objects.bulk_create(tasks)
 
@@ -297,6 +304,7 @@ class ExtendedTask(app.Task):
         """
         if not args_list:
             return
+        priority = get_task_priority(sub_task_function)
         sub_tasks = []
         task_config = _get_or_create_task_config(sub_task_function)
         for index, args in enumerate(args_list):
@@ -307,13 +315,15 @@ class ExtendedTask(app.Task):
                 root_id=self.main_task_id,
                 main_task_id=self.main_task_id,
                 parent_id=self.request.id,
-                title=sub_tasks_group_title)
+                title=sub_tasks_group_title,
+                priority=priority)
             sub_tasks.append(sub_task_signature)
 
         self.log_info(
             '{0}: {1} starting {2} sub-tasks...'.format(self.task_name, sub_tasks_group_title, len(sub_tasks)))
         for ss in sub_tasks:
-            ss.apply_async(countdown=countdown)
+            ss.apply_async(countdown=countdown, priority=priority,
+                           queue=get_queue_by_task_priority(priority))
 
     def run_sub_tasks_class_based(self,
                                   sub_tasks_group_title: str,
@@ -330,6 +340,7 @@ class ExtendedTask(app.Task):
         :return:
         """
         sub_tasks = []
+        priority = get_task_priority(sub_task_class)
         task_config = _get_or_create_task_config(sub_task_class)
         for index, args in enumerate(kwargs_list):
             sub_task_signature = sub_task_class().subtask(
@@ -339,7 +350,8 @@ class ExtendedTask(app.Task):
                 root_id=self.main_task_id,
                 main_task_id=self.main_task_id,
                 parent_id=self.request.id,
-                title=sub_tasks_group_title)
+                title=sub_tasks_group_title,
+                priority=priority)
             sub_tasks.append(sub_task_signature)
 
         self.chord(sub_tasks)
@@ -415,6 +427,7 @@ def call_task_func(task_func: Callable, task_args: Tuple,
                    run_after_sub_tasks_finished: bool = False,
                    main_task_id: str = None):
     celery_task_id = str(fast_uuid())
+    priority = get_task_priority(task_func)
 
     task = Task.objects.create(
         id=celery_task_id,
@@ -424,15 +437,19 @@ def call_task_func(task_func: Callable, task_args: Tuple,
         metadata=metadata,
         visible=visible if visible is not None else True,
         run_after_sub_tasks_finished=run_after_sub_tasks_finished,
-        main_task_id=main_task_id
+        main_task_id=main_task_id,
+        priority=priority
     )
 
     task.write_log('Celery task id: {}\n'.format(celery_task_id))
     task_config = _get_or_create_task_config(task_func)
+    if not queue:
+        queue = get_queue_by_task_priority(priority)
     task_func.apply_async(queue=queue,
                           args=task_args,
                           task_id=celery_task_id,
-                          soft_time_limit=task_config.soft_time_limit)
+                          soft_time_limit=task_config.soft_time_limit,
+                          priority=priority)
     return task.pk
 
 
@@ -452,6 +469,8 @@ def call_task(task_name, **options):
         _this_module = importlib.import_module(this_module_name)
         task_class_resolved = getattr(_this_module, task_name_resolved.replace(' ', ''))
 
+    priority = get_task_priority(task_class_resolved)
+
     if task_name_resolved == 'LoadDocuments' \
             and 'metadata' in options and 'session_id' in options['metadata']:
         options['propagate_exception'] = True
@@ -464,18 +483,22 @@ def call_task(task_name, **options):
     countdown = options.get('countdown')
     eta = options.get('eta')
 
+    # metadata should not be stored in kwargs, because kwargs is indexed
+    # and can not be a large field
+    options_wo_metadata = {o:options[o] for o in options if o != 'metadata'}
     task = Task.objects.create(
         id=celery_task_id,
         name=task_name_resolved,
         user_id=options.get('user_id'),
         metadata=options.get('metadata', {}),
-        kwargs=pre_serialize(celery_task_id, None, options),
+        kwargs=pre_serialize(celery_task_id, None, options_wo_metadata),
         source_data=options.get('source_data'),
         sequential_tasks=options.get('sequential_tasks'),
         group_id=options.get('group_id'),
         visible=options.get('visible', True),
-        project=Project.objects.get(pk=project_id) if project_id else None,
-        upload_session=UploadSession.objects.get(pk=session_id) if session_id else None
+        project=Project.all_objects.get(pk=project_id) if project_id else None,
+        upload_session=UploadSession.objects.get(pk=session_id) if session_id else None,
+        priority=priority
     )
 
     task.write_log('Celery task id: {}\n'.format(celery_task_id))
@@ -483,11 +506,14 @@ def call_task(task_name, **options):
     async = options.pop('async', True)
     task_config = _get_or_create_task_config(task_class_resolved)
     if async:
-        task_class_resolved().apply_async(kwargs=options,
-                                 task_id=celery_task_id,
-                                 soft_time_limit=task_config.soft_time_limit,
-                                 countdown=countdown,
-                                 eta=eta)
+        task_class_resolved().apply_async(
+            kwargs=options,
+            task_id=celery_task_id,
+            soft_time_limit=task_config.soft_time_limit,
+            countdown=countdown,
+            eta=eta,
+            priority=priority,
+            queue=get_queue_by_task_priority(priority))
     else:
         task_class_resolved()(**options)
     return task.pk
@@ -508,7 +534,7 @@ class BaseTask(ExtendedTask):
         try:
             ret = self.process(**kwargs)
         finally:
-            self.log_info('End of main task "{0}", id={1}. '
+            self.log_info(f'End of main task "{0}", id={1}. '
                           'Sub-tasks may be still running.'.format(self.task_name,
                                                                    self.main_task_id))
         return ret or self.main_task_id
@@ -549,7 +575,7 @@ class LoadDocuments(BaseTask):
                                .format(path))
 
         if kwargs.get('delete'):
-            Document.objects.all().delete()
+            Document.all_objects.all().delete()
 
         # prevent transferring document type objects to sub-tasks
         document_type_dict = kwargs.get('document_type')  # type: Dict[str, Any]
@@ -698,6 +724,11 @@ class LoadDocuments(BaseTask):
 
         if metadata is None:
             metadata = {}
+        else:
+            # INFO: postgresql crashes to store \x00 (\u0000) in json with message:
+            # DataError: unsupported Unicode escape sequence
+            # DETAIL:  \u0000 cannot be converted to text.
+            metadata = json.loads(json.dumps(metadata).replace('\\u0000', ''))
 
         metadata['parsed_by'] = parser_name
 
@@ -713,16 +744,20 @@ class LoadDocuments(BaseTask):
         # detect tables
         # if kwargs.get('detect_tables') and ext == '.pdf':
         if ext == '.pdf':
-            document_tables = tabula.read_pdf(
-                file_path,
-                multiple_tables=True,
-                pages='all')
-            metadata['tables'] = [
-                [list(j) for j in list(i.fillna('').to_records(index=False)) if not i.empty]
-                for i in document_tables if not i.empty]
+            try:
+                document_tables = tabula.read_pdf(
+                    file_path,
+                    multiple_tables=True,
+                    pages='all')
+                metadata['tables'] = [
+                    [list(j) for j in list(i.fillna('').to_records(index=False)) if not i.empty]
+                    for i in document_tables if not i.empty]
+            except CalledProcessError:
+                pass
 
         # remove extra line breaks
         corrector = ParsedTextCorrector()
+        # TODO: aren't removing line breaks any longer, see CS-3459
         text = corrector.correct_if_corrupted(text)
 
         # Language identification
@@ -1071,6 +1106,7 @@ class LoadCourts(BaseTask):
     Load Courts data from a file OR github repo
     """
     name = 'Load Courts'
+    priority = 9
 
     def load_courts_from_path(self, path: str, real_fn: str):
         self.log_info('Parse "%s"' % real_fn or path)
@@ -1119,7 +1155,7 @@ class Locate(BaseTask):
     CACHE_KEY_COURT_CONFIG = 'court_config'
     CACHE_KEY_TERM_STEMS = 'term_stems'
 
-    def delete_existing_usages(self, locator_names, document_id):
+    def delete_existing_usages(self, locator_names, document_id, project_id):
         # delete ThingUsage and TextUnitTag(tag=thing)
         for locator_name in locator_names:
             usage_model_names = self.usage_model_map.get(
@@ -1131,6 +1167,10 @@ class Locate(BaseTask):
                 if document_id:
                     usage_model_objects = usage_model_objects.filter(
                         text_unit__document_id=document_id)
+                elif project_id:
+                    usage_model_objects = usage_model_objects.filter(
+                        text_unit__document__project_id=project_id)
+
                 deleted = usage_model_objects.delete()
                 self.log_info('Deleted {} {} objects'.format(
                     deleted[0], usage_model_name))
@@ -1173,7 +1213,7 @@ class Locate(BaseTask):
         do_delete = [i for i in do_delete if i in available_locators]
 
         # delete ThingUsage and TextUnitTag(tag=thing)
-        self.delete_existing_usages(do_delete, document_id)
+        self.delete_existing_usages(do_delete, document_id, project_id)
 
         # interrupt if no items to locate
         if not locate:
@@ -1220,10 +1260,19 @@ class Locate(BaseTask):
         self.run_sub_tasks('Locate Data In Each Text Unit', Locate.parse_text_units,
                            locate_args)
 
-        self.run_after_sub_tasks_finished('Cache Generic Document Data',
-                                          Locate.on_locate_finished,
-                                          [(document_id, doc_loaded_by_user_id, document_initial_load,
-                                            predefined_field_codes_to_python_values)])
+        if document_id:
+            document_ids = [document_id]
+        elif project_id:
+            document_ids = Document.objects.filter(
+                project_id=project_id).values_list('pk', flat=True)
+        else:
+            return
+        for document_id in document_ids:
+            self.run_after_sub_tasks_finished(
+                'Cache Generic Document Data',
+                Locate.on_locate_finished,
+                [(document_id, doc_loaded_by_user_id, document_initial_load,
+                  predefined_field_codes_to_python_values)])
 
     @staticmethod
     def store_pre_defined_doc_fields(log: ProcessLogger,
@@ -1260,36 +1309,68 @@ class Locate(BaseTask):
                  default_retry_delay=10,
                  retry_backoff=True,
                  autoretry_for=(SoftTimeLimitExceeded, InterfaceError, OperationalError,),
-                 max_retries=3
-                 )
+                 max_retries=3,
+                 priority=9)
     def on_locate_finished(_self: ExtendedTask, doc_id, doc_loaded_by_user_id, document_initial_load,
                            predefined_field_codes_to_python_values: Dict[str, Any] = None):
-        if not doc_id:
-            return
-        doc = Document.objects.get(pk=doc_id)
-        if doc:
-            log = CeleryTaskLogger(_self)
-            user = User.objects.get(pk=doc_loaded_by_user_id) if doc_loaded_by_user_id is not None \
-                else User.objects.filter(id=1).first()  # type: User
+        try:
+            doc = Document.all_objects.filter(pk=doc_id).last()
+        except Exception as e:
+            raise RuntimeError(f'on_locate_finished(doc_id={doc_id}): ' +
+                               f'error obtaining document.\n{str(e)}')
 
-            if not user or not user.is_admin:
-                raise Exception('User who is loading the document is unspecified and the first user in '
-                                'the system is not admin. Something is wrong.')
+        if doc:
+            try:
+                log = CeleryTaskLogger(_self)
+            except Exception as e:
+                er_msg = f'on_locate_finished(): ' +\
+                         f'error obtaining CeleryTaskLogger.\n{str(e)}'
+                raise RuntimeError(er_msg)
+            try:
+                user = User.objects.get(pk=doc_loaded_by_user_id) \
+                    if doc_loaded_by_user_id is not None \
+                    else User.objects.filter(id=1).first()  # type: User
+            except Exception as e:
+                er_msg = f'on_locate_finished(user_id={doc_loaded_by_user_id}): ' +\
+                         f'error obtaining user.\n{str(e)}'
+                raise RuntimeError(er_msg)
+
+            # INFO: see CS-3420: FE team has implemented uploading documents as non-admin (CS-3361)
+            # if not user or not user.is_admin:
+            #     raise Exception('User who is loading the document is unspecified and the first user in '
+            #                     'the system is not admin. Something is wrong.')
             if predefined_field_codes_to_python_values:
-                Locate.store_pre_defined_doc_fields(log=log,
-                                                    doc=doc,
-                                                    user=user,
-                                                    fields_code_to_python_val=predefined_field_codes_to_python_values)
-                ignore_field_codes = predefined_field_codes_to_python_values.keys()
+                try:
+                    Locate.store_pre_defined_doc_fields(log=log,
+                                                        doc=doc,
+                                                        user=user,
+                                                        fields_code_to_python_val=predefined_field_codes_to_python_values)
+                except Exception as e:
+                    er_msg = f'on_locate_finished(doc_id={doc_id}): ' + \
+                             f'error storing doc fields.\n{str(e)}'
+                    raise RuntimeError(er_msg)
+                try:
+                    ignore_field_codes = predefined_field_codes_to_python_values.keys()
+                except Exception as e:
+                    er_msg = f'on_locate_finished(doc_id={doc_id}): ' + \
+                             f'error accessing predefined_field_codes_to_python_values keys().\n{str(e)}'
+                    raise RuntimeError(er_msg)
             else:
                 ignore_field_codes = None
 
-            field_value_cache.cache_generic_values(doc, log=log, save=True, fire_doc_changed_event=False)
-            detect_and_cache_field_values_for_document(log=log, document=doc, save=True, clear_old_values=True,
-                                                       changed_by_user=user, system_fields_changed=True,
-                                                       generic_fields_changed=True,
-                                                       document_initial_load=document_initial_load,
-                                                       ignore_field_codes=ignore_field_codes)
+            try:
+                field_value_cache.cache_generic_values(doc, log=log, save=True, fire_doc_changed_event=False)
+            except Exception as e:
+                er_msg = f'on_locate_finished(doc_id={doc_id}): ' + \
+                         f'error caching generic values.\n{str(e)}'
+                raise RuntimeError(er_msg)
+            try:
+                detect_and_cache_field_values_for_document(log=log, document=doc, save=True, clear_old_values=True,
+                                                           ignore_field_codes=ignore_field_codes)
+            except Exception as e:
+                er_msg = f'on_locate_finished(doc_id={doc_id}): ' + \
+                         f'error detecting field values.\n{str(e)}'
+                raise RuntimeError(er_msg)
 
     @staticmethod
     @shared_task(base=ExtendedTask,
@@ -1597,6 +1678,7 @@ class Cluster(BaseTask):
                 document_type='document_type',
                 metadata='metadata',
                 date='textunit__dateusage__date',
+                definition='textunit__definitionusage__definition',
                 duration='textunit__datedurationusage__duration_days',
                 court='textunit__courtusage__court__name',
                 currency_name='textunit__currencyusage__currency',
@@ -1612,6 +1694,7 @@ class Cluster(BaseTask):
                 currency_name='textunit__currencyusage__isnull',
                 currency_value='textunit__currencyusage__isnull',
                 date='textunit__dateusage__isnull',
+                definition='textunit__definitionusage__isnull',
                 duration='textunit__datedurationusage__isnull',
                 term='textunit__termusage__isnull',
                 party='textunit__partyusage__isnull',
@@ -1629,6 +1712,7 @@ class Cluster(BaseTask):
                 currency_name='currencyusage__currency',
                 currency_value='currencyusage__amount',
                 date='dateusage__date',
+                definition='definitionusage__definition',
                 duration='datedurationusage__duration_days',
                 terms='termusage__term__term',
                 party='partyusage__party__name',
@@ -1641,6 +1725,7 @@ class Cluster(BaseTask):
                 currency_name='currencyusage__isnull',
                 currency_value='currencyusage__isnull',
                 date='dateusage__isnull',
+                definition='definitionusage__isnull',
                 duration='datedurationusage__isnull',
                 term='termusage__isnull',
                 party='partyusage__isnull',
@@ -1870,188 +1955,6 @@ class Cluster(BaseTask):
             self.cluster('text_units', kwargs)
 
 
-def stem_tokens(tokens):
-    """
-    Simple token stemmer.
-    :param tokens:
-    :return:
-    """
-    res = []
-    for item in tokens:
-        try:
-            res.append(stemmer.stem(item))
-        except IndexError:
-            pass
-    return res
-
-
-def normalize(text):
-    """
-    Simple text normalizer returning stemmed, lowercased tokens.
-    :param text:
-    :return:
-    """
-    return stem_tokens(nltk.word_tokenize(text.lower().translate(remove_punctuation_map)))
-
-
-class PartySimilarity(BaseTask):
-    """
-    Task for the identification of similar party names.
-    """
-    name = 'Party Similarity'
-
-    def process(self, **kwargs):
-        """
-        Task process method.
-        :param kwargs: dict, form data
-        """
-        parties = Party.objects.values_list('pk', 'name')
-        self.set_push_steps(len(parties) + 1)
-
-        # 1. Delete if requested
-        if kwargs['delete']:
-            PartySimilarityModel.objects.all().delete()
-
-        # 2. Select scorer
-        scorer = getattr(fuzzywuzzy.fuzz, kwargs['similarity_type'])
-
-        # 3. Iterate through all pairs
-        similar_results = []
-        for party_a_pk, party_a_name in parties:
-            for party_b_pk, party_b_name in parties:
-                if party_a_pk == party_b_pk:
-                    continue
-
-                # Calculate similarity
-                if not kwargs['case_sensitive']:
-                    party_a_name = party_a_name.upper()
-                    party_b_name = party_b_name.upper()
-
-                score = scorer(party_a_name, party_b_name)
-                if score >= kwargs['similarity_threshold']:
-                    similar_results.append(
-                        PartySimilarityModel(
-                            party_a_id=party_a_pk,
-                            party_b_id=party_b_pk,
-                            similarity=score))
-            self.push()
-
-        # 4. Bulk create similarity objects
-        PartySimilarityModel.objects.bulk_create(similar_results)
-        self.push()
-
-
-class Similarity(BaseTask):
-    """
-    Find Similar Documents, Text Units
-    """
-    name = 'Similarity'
-    verbose = True
-    n_features = 100
-    self_name_len = 3
-    step = 2000
-
-    def process(self, **kwargs):
-        """
-
-        :param kwargs:
-        :return:
-        """
-
-        search_similar_documents = kwargs['search_similar_documents']
-        search_similar_text_units = kwargs['search_similar_text_units']
-        similarity_threshold = kwargs['similarity_threshold']
-        self.log_info('Min similarity: %d' % similarity_threshold)
-
-        # get text units with min length 100 signs
-        text_units = TextUnit.objects.filter(unit_type='paragraph',
-                                             text__regex=r'.{100}.*')
-        len_tu_set = text_units.count()
-
-        push_steps = 0
-        if search_similar_documents:
-            push_steps += 4
-        if search_similar_text_units:
-            push_steps += math.ceil(len_tu_set / self.step) ** 2 + 3
-        self.set_push_steps(push_steps)
-
-        # similar Documents
-        if search_similar_documents:
-
-            # step #1 - delete
-            if kwargs['delete']:
-                DocumentSimilarity.objects.all().delete()
-            self.push()
-
-            # step #2 - prepare data
-            texts_set = ['\n'.join(d.textunit_set.values_list('text', flat=True))
-                         for d in Document.objects.all()]
-            self.push()
-
-            # step #3
-            vectorizer = TfidfVectorizer(max_df=0.5, max_features=self.n_features,
-                                         min_df=2, stop_words='english',
-                                         use_idf=kwargs['use_idf'])
-            X = vectorizer.fit_transform(texts_set)
-            self.push()
-
-            # step #4
-            similarity_matrix = cosine_similarity(X) * 100
-            pks = Document.objects.values_list('pk', flat=True)
-            for x, document_a in enumerate(pks):
-                # use it to search for unique a<>b relations
-                # for y, document_b in enumerate(Document.objects.all()[x + 1:], start=x + 1):
-                for y, document_b in enumerate(pks):
-                    if document_a == document_b:
-                        continue
-                    similarity = similarity_matrix[x, y]
-                    if similarity < similarity_threshold:
-                        continue
-                    DocumentSimilarity.objects.create(
-                        document_a_id=document_a,
-                        document_b_id=document_b,
-                        similarity=similarity)
-            self.push()
-
-        # similar Text Units
-        if search_similar_text_units:
-
-            # step #1 - delete
-            if kwargs['delete']:
-                TextUnitSimilarity.objects.all().delete()
-            self.push()
-
-            # step #2 - prepare data
-            texts_set, pks = zip(*text_units.values_list('text', 'pk'))
-            self.push()
-
-            # step #3
-            vectorizer = TfidfVectorizer(tokenizer=normalize,
-                                         max_df=0.5, max_features=self.n_features,
-                                         min_df=2, stop_words='english',
-                                         use_idf=kwargs['use_idf'])
-            X = vectorizer.fit_transform(texts_set)
-            self.push()
-
-            # step #4
-            for i in range(0, len_tu_set, self.step):
-                for j in range(0, len_tu_set, self.step):
-                    similarity_matrix = cosine_similarity(
-                        X[i:min([i + self.step, len_tu_set])],
-                        X[j:min([j + self.step, len_tu_set])]) * 100
-                    for g in range(similarity_matrix.shape[0]):
-                        tu_sim = [
-                            TextUnitSimilarity(
-                                text_unit_a_id=pks[i + g],
-                                text_unit_b_id=pks[j + h],
-                                similarity=similarity_matrix[g, h])
-                            for h in range(similarity_matrix.shape[1]) if i + g != j + h and
-                                                                          similarity_matrix[
-                                                                              g, h] >= similarity_threshold]
-                        TextUnitSimilarity.objects.bulk_create(tu_sim)
-                    self.push()
-
-
 @shared_task(name='advanced_celery.clean_tasks')
 def clean_tasks(delta_days=2):
     """
@@ -2217,5 +2120,4 @@ app.register_task(UpdateElasticsearchIndex())
 app.register_task(TotalCleanup())
 app.register_task(Classify())
 app.register_task(Cluster())
-app.register_task(Similarity())
-app.register_task(PartySimilarity())
+

@@ -4,7 +4,7 @@ from django.db.models import Prefetch
 
 from apps.common.log_utils import ProcessLogger, ErrorCollectingLogger
 from apps.common.log_utils import render_error
-from apps.document.field_types import FIELD_TYPES_REGISTRY, FieldType
+from apps.document.field_types import FieldType
 from apps.document.fields_processing import field_value_cache
 from apps.document.fields_processing.field_processing_utils import merge_detected_field_values_to_python_value, \
     order_field_detection
@@ -62,15 +62,16 @@ def detect_and_cache_field_values(log: ProcessLogger,
     strategy = FIELD_DETECTION_STRATEGY_REGISTRY[
         field.value_detection_strategy] \
         if field.value_detection_strategy else STRATEGY_DISABLED
+
+    doc_field_values = None
     if strategy.uses_cached_document_field_values(field):
-        # Pre-cache Document.field_values structure for the usage in field detection strategies
-        doc.field_values = field_value_cache.cache_field_values(doc, None, save=False)
-    detected_values = strategy.detect_field_values(log, doc, field)
+        doc_field_values = field_value_cache.cache_field_values(doc, None, save=False)
+    detected_values = strategy.detect_field_values(log, doc, field, doc_field_values)
     if save:
-        save_detected_values(doc, field, detected_values)
         field_value_cache.cache_field_values(doc, detected_values,
                                              save=True,
                                              log=log)
+        save_detected_values(doc, field, detected_values)
     return detected_values
 
 
@@ -80,7 +81,7 @@ def save_detected_values(document: Document,
     if len(detected_values) == 0:
         return 0
 
-    field_type_adapter = FIELD_TYPES_REGISTRY[field.type]  # type: FieldType
+    field_type_adapter = field.get_field_type() # type: FieldType
 
     if field.is_choice_field() and not field_type_adapter.multi_value:
         values_order = field.get_choice_values()
@@ -165,16 +166,13 @@ def detect_and_cache_field_values_for_document(log: ProcessLogger,
         field = all_fields_code_to_field[field_code]  # type: DocumentField
         field_detection_strategy = FIELD_DETECTION_STRATEGY_REGISTRY[
             field.value_detection_strategy]  # type: FieldDetectionStrategy
-        if not field_values_pre_cached \
-                and field_detection_strategy.uses_cached_document_field_values(field):
-            # Pre-cache Document.field_values structure for the usage in field detection strategies
-            document.field_values = field_value_cache.cache_field_values(document, None, save=False)
-            field_values_pre_cached = True
 
         try:
+            field_vals = field_value_cache.cache_field_values(document, None, save=False)
             detected_values = field_detection_strategy.detect_field_values(log,
                                                                            document,
-                                                                           field)  # type: List[DetectedFieldValue]
+                                                                           field,
+                                                                           field_vals)  # type: List[DetectedFieldValue]
         except Exception as e:
             msg = '''Unable to detect field value. 
             Document type: {0} 
@@ -192,6 +190,7 @@ def detect_and_cache_field_values_for_document(log: ProcessLogger,
                         removed_by_user=False,
                         created_by__isnull=True,
                         modified_by__isnull=True) \
+                .exclude(field__value_detection_strategy=DocumentField.VD_DISABLED) \
                 .delete()
 
         if detected_values:
@@ -200,7 +199,8 @@ def detect_and_cache_field_values_for_document(log: ProcessLogger,
                 save_detected_values(document, field, detected_values)
 
     if save_cache:
-        field_value_cache.cache_field_values(document, suggested_field_values=res, save=True, log=log,
+        field_value_cache.cache_field_values(document, suggested_field_values=res,
+                                             save=True, log=log,
                                              changed_by_user=changed_by_user,
                                              system_fields_changed=system_fields_changed,
                                              generic_fields_changed=generic_fields_changed,

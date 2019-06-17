@@ -38,18 +38,25 @@ from .models import SavedFilter
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.1/LICENSE"
-__version__ = "1.2.1"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.2/LICENSE"
+__version__ = "1.2.2"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
 
+none_type = type(None)
+
+
 class SavedFiltersAdminForm(ModelForm):
 
-    def validate_json_field(self, field_name: str) -> None:
+    def validate_json_field(self, field_name: str, assert_types=None) -> None:
         json_value = self.data.get(field_name)
         try:
-            json.loads(json_value)
+            value = json.loads(json_value)
+            if assert_types is not None:
+                assert(isinstance(value, assert_types) is True)
+        except AssertionError:
+            self.add_error(field_name, 'This field accepts {} data types only'.format(str(assert_types)))
         except Exception as exc:
             self.add_error(field_name, exc)
 
@@ -57,8 +64,8 @@ class SavedFiltersAdminForm(ModelForm):
         project = self.cleaned_data['project']  # type: Project
         document_type = self.cleaned_data['document_type']  # type: DocumentType
 
-        self.validate_json_field('columns')
-        self.validate_json_field('column_filters')
+        self.validate_json_field('columns', assert_types=(list, none_type))
+        self.validate_json_field('column_filters', assert_types=(dict, none_type))
         self.validate_json_field('order_by')
 
         if project and project.type != document_type:

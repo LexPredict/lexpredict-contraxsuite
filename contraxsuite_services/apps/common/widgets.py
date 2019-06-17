@@ -34,8 +34,8 @@ from django.utils.html import format_html
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.1/LICENSE"
-__version__ = "1.2.1"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.2/LICENSE"
+__version__ = "1.2.2"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -64,7 +64,7 @@ class LTRCheckboxField(BooleanField):
         kwargs['widget'] = kwargs.get('widget', LTRCheckboxWidget())
         kwargs['widget'].attrs['label'] = kwargs['label']
         kwargs['label'] = ''
-        super(LTRCheckboxField, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
 
 
 class LTRRadioWidget(forms.widgets.RadioSelect):
@@ -97,7 +97,7 @@ class LTRRadioField(ChoiceField):
         kwargs['widget'].attrs['choices'] = kwargs['choices']
         kwargs['widget'].attrs['initial'] = kwargs['initial']
         kwargs['label'] = ''
-        super(LTRRadioField, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
 
 
 class FriendlyPasswordInput(PasswordInput):

@@ -49,11 +49,12 @@ from swagger_view import get_swagger_view
 from apps.project.views import DashboardView
 from apps.common.app_vars import init_app_vars
 from apps.document.python_coded_fields_registry import init_field_registry
+from apps.document.field_type_registry import init_field_type_registry
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.1/LICENSE"
-__version__ = "1.2.1"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.2/LICENSE"
+__version__ = "1.2.2"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -170,5 +171,6 @@ if settings.DEBUG:
         ]
 
 
+init_field_type_registry()
 init_field_registry()
 init_app_vars()

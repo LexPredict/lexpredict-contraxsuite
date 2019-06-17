@@ -1,4 +1,4 @@
-from typing import Optional, List, Any, Iterable
+from typing import Optional, List, Any, Iterable, Dict
 
 from apps.common.log_utils import ProcessLogger
 from apps.document.models import ClassifierModel, TextUnit
@@ -73,7 +73,8 @@ class FieldDetectionStrategy:
     def detect_field_values(cls,
                             log: ProcessLogger,
                             doc: Document,
-                            field: DocumentField) \
+                            field: DocumentField,
+                            cached_fields: Dict[str, Any]) \
             -> Optional[List[DetectedFieldValue]]:
         raise NotImplemented()
 
@@ -94,6 +95,7 @@ class DisabledFieldDetectionStrategy(FieldDetectionStrategy):
     def detect_field_values(cls,
                             log: ProcessLogger,
                             doc: Document,
-                            field: DocumentField) -> \
+                            field: DocumentField,
+                            cached_fields: Dict[str, Any]) -> \
             Optional[List[DetectedFieldValue]]:
         return None

@@ -1,8 +1,35 @@
+"""
+    Copyright (C) 2017, ContraxSuite, LLC
+
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU Affero General Public License as
+    published by the Free Software Foundation, either version 3 of the
+    License, or (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU Affero General Public License for more details.
+
+    You should have received a copy of the GNU Affero General Public License
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+    You can also be released from the requirements of the license by purchasing
+    a commercial license from ContraxSuite, LLC. Buying such a license is
+    mandatory as soon as you develop commercial activities involving ContraxSuite
+    software without disclosing the source code of your own applications.  These
+    activities include: offering paid services to customers as an ASP or "cloud"
+    provider, processing documents on the fly in a web application,
+    or shipping ContraxSuite within a closed source product.
+"""
+# -*- coding: utf-8 -*-
+
 import hashlib
+import traceback
 from typing import List, Dict, Optional, Tuple, Any, Generator, Set
 
 from django.conf import settings
-from django.db import connection, transaction
+from django.db import connection, transaction, IntegrityError
 from django.db.models import Q
 
 from apps.common.log_utils import ProcessLogger, render_error
@@ -16,9 +43,18 @@ from apps.rawdb.models import SavedFilter
 from apps.rawdb.rawdb import field_handlers
 from apps.rawdb.rawdb.errors import Forbidden, UnknownColumnError
 from apps.rawdb.rawdb.query_parsing import SortDirection, parse_column_filters
+from apps.task.utils.logger import get_django_logger
 from apps.users.models import User
 from .rawdb.query_parsing import parse_order_by
 from .signals import fire_document_fields_changed, DocumentEvent
+
+__author__ = "ContraxSuite, LLC; LexPredict, LLC"
+__copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.2/LICENSE"
+__version__ = "1.2.2"
+__maintainer__ = "LexPredict, LLC"
+__email__ = "support@contraxsuite.com"
+
 
 TABLE_NAME_PREFIX = 'doc_fields_'
 
@@ -116,6 +152,7 @@ FIELD_DB_SUPPORT_REGISTRY = {
     field_types.RecurringDateField.code: field_handlers.DateFieldHandler,
     field_types.CompanyField.code: field_handlers.StringFieldHandler,
     field_types.DurationField.code: field_handlers.FloatFieldHandler,
+    field_types.PercentField.code: field_handlers.FloatFieldHandler,
     field_types.AddressField.code: field_handlers.AddressFieldHandler,
     field_types.RelatedInfoField.code: field_handlers.RelatedInfoFieldHandler,
     field_types.ChoiceField.code: field_handlers.StringFieldHandler,
@@ -123,8 +160,10 @@ FIELD_DB_SUPPORT_REGISTRY = {
     field_types.PersonField.code: field_handlers.StringFieldHandler,
     field_types.AmountField.code: field_handlers.FloatFieldHandler,
     field_types.MoneyField.code: field_handlers.MoneyFieldHandler,
+    field_types.RatioField.code: field_handlers.RatioFieldHandler,
     field_types.GeographyField.code: field_handlers.StringFieldHandler,
-    field_types.BooleanField.code: field_handlers.BooleanFieldHandler
+    field_types.BooleanField.code: field_handlers.BooleanFieldHandler,
+    field_types.LinkedDocumentsField.code: field_handlers.LinkedDocumentsFieldHandler
 }
 
 FIELD_CODE_DOC_NAME = 'document_name'
@@ -141,6 +180,7 @@ FIELD_CODE_ASSIGNEE_ID = 'assignee_id'
 FIELD_CODE_ASSIGNEE_NAME = 'assignee_name'
 FIELD_CODE_ASSIGN_DATE = 'assign_date'
 FIELD_CODE_STATUS_NAME = 'status_name'
+FIELD_CODE_DELETE_PENDING = 'delete_pending'
 
 # Generic Fields - should match keys from the output of field_value_cache.get_generic_values(doc)
 _FIELD_CODE_CLUSTER_ID = 'cluster_id'
@@ -154,13 +194,13 @@ FIELD_CODES_SYSTEM = {FIELD_CODE_PROJECT_ID, FIELD_CODE_PROJECT_NAME,
                       FIELD_CODE_DOC_FULL_TEXT_LENGTH, FIELD_CODE_DOC_TITLE,
                       FIELD_CODE_DOC_FULL_TEXT, FIELD_CODE_IS_REVIEWED, FIELD_CODE_IS_COMPLETED,
                       FIELD_CODE_ASSIGNEE_ID, FIELD_CODE_ASSIGNEE_NAME, FIELD_CODE_ASSIGN_DATE,
-                      FIELD_CODE_STATUS_NAME}
+                      FIELD_CODE_STATUS_NAME, FIELD_CODE_DELETE_PENDING}
 
 _FIELD_CODE_ALL_DOC_TYPES = {FIELD_CODE_PROJECT_ID, FIELD_CODE_DOC_ID, FIELD_CODE_CREATE_DATE, FIELD_CODE_DOC_NAME,
                              FIELD_CODE_DOC_FULL_TEXT_LENGTH, FIELD_CODE_DOC_TITLE,
                              FIELD_CODE_DOC_FULL_TEXT, FIELD_CODE_IS_REVIEWED, FIELD_CODE_IS_COMPLETED,
                              FIELD_CODE_ASSIGNEE_ID, FIELD_CODE_ASSIGNEE_NAME, FIELD_CODE_ASSIGN_DATE,
-                             FIELD_CODE_STATUS_NAME}
+                             FIELD_CODE_STATUS_NAME, FIELD_CODE_DELETE_PENDING}
 
 _FIELD_CODES_GENERIC = {_FIELD_CODE_CLUSTER_ID, _FIELD_CODE_PARTIES,
                         _FIELD_CODE_LARGEST_CURRENCY, _FIELD_CODE_EARLIEST_DATE, _FIELD_CODE_LATEST_DATE}
@@ -175,12 +215,12 @@ FIELD_CODES_SHOW_BY_DEFAULT_GENERIC = {
 }
 
 FIELD_CODES_HIDE_BY_DEFAULT = {
-    FIELD_CODE_ASSIGNEE_ID, FIELD_CODE_PROJECT_ID
+    FIELD_CODE_ASSIGNEE_ID, FIELD_CODE_PROJECT_ID, FIELD_CODE_DELETE_PENDING
 }
 
 FIELD_CODES_RETURN_ALWAYS = {FIELD_CODE_DOC_ID, FIELD_CODE_DOC_NAME}
 
-FIELD_CODES_HIDE_FROM_CONFIG_API = {FIELD_CODE_ASSIGNEE_ID, FIELD_CODE_ASSIGN_DATE}
+FIELD_CODES_HIDE_FROM_CONFIG_API = {FIELD_CODE_ASSIGNEE_ID, FIELD_CODE_ASSIGN_DATE, FIELD_CODE_DELETE_PENDING}
 
 
 def _build_system_field_handlers(table_name: str) -> List[field_handlers.FieldHandler]:
@@ -193,7 +233,8 @@ def _build_system_field_handlers(table_name: str) -> List[field_handlers.FieldHa
     res.append(field_handlers.StringFieldHandler(FIELD_CODE_DOC_TITLE, field_types.StringField.code,
                                                  'Title', table_name))
     res.append(field_handlers.StringWithTextSearchFieldHandler(FIELD_CODE_DOC_FULL_TEXT, field_types.StringField.code,
-                                                               'Text', table_name))
+                                                               'Text', table_name,
+                                                               output_column_char_limit=200))
     res.append(field_handlers.IntFieldHandler(FIELD_CODE_DOC_FULL_TEXT_LENGTH, field_types.IntField.code,
                                               'Text Length', table_name))
     res.append(field_handlers.BooleanFieldHandler(FIELD_CODE_IS_REVIEWED, field_types.BooleanField.code,
@@ -214,6 +255,8 @@ def _build_system_field_handlers(table_name: str) -> List[field_handlers.FieldHa
                                                    'Load Date', table_name))
     res.append(field_handlers.StringFieldHandler(FIELD_CODE_STATUS_NAME, field_types.StringFieldWholeValueAsAToken.code,
                                                  'Status', table_name))
+    res.append(field_handlers.BooleanFieldHandler(FIELD_CODE_DELETE_PENDING, field_types.BooleanField.code,
+                                                  'Delete Pending', table_name))
     return res
 
 
@@ -273,9 +316,11 @@ def build_field_handlers(document_type: DocumentType, table_name: str = None,
                 counter_str = str(field_code_use_count)
 
                 # make next repeated column name to be column1, column2, ...
-                # make it fitting into N chars by cutting the field code on the required number of chars to fit the num
-                field_code_escaped = field_code_escaped[:DOCUMENT_FIELD_CODE_MAX_LEN - len(counter_str) - 1] \
-                                     + '_' + counter_str
+                # make it fitting into N chars by cutting the field code
+                # on the required number of chars to fit the num
+                field_code_escaped = '{}_{}'.format(
+                    field_code_escaped[:DOCUMENT_FIELD_CODE_MAX_LEN - len(counter_str) - 1],
+                    counter_str)
             else:
                 field_code_use_counts[field_code_escaped] = 1
 
@@ -305,7 +350,7 @@ def build_field_handlers(document_type: DocumentType, table_name: str = None,
 def table_exists(table_name: str) -> bool:
     sql = '''SELECT EXISTS (
                SELECT 1
-               FROM   information_schema.tables 
+               FROM   information_schema.tables
                WHERE  table_name = %s
                )'''
     with connection.cursor() as cursor:
@@ -399,8 +444,10 @@ def cleanup_saved_filters(document_type: DocumentType, should_be_column_names: S
             f.save()
 
 
-def adapt_table_structure(log: ProcessLogger, document_type: DocumentType,
-                          force: bool = False, check_only: bool = False) -> bool:
+def adapt_table_structure(log: ProcessLogger,
+                          document_type: DocumentType,
+                          force: bool = False,
+                          check_only: bool = False) -> bool:
     """
     Create or alter raw db table for it to match the field structure of the specified document type.
     :param log:
@@ -422,11 +469,11 @@ def adapt_table_structure(log: ProcessLogger, document_type: DocumentType,
             should_be_indexes.update({build_index_name(table_name, index_def): index_def for index_def in index_defs})
 
     if not check_only and (force or not table_exists(table_name)):
+        log_msg = 'force' if force else f'table "{table_name}" does not exist'
+        log.info(f'adapt_table_structure({document_type.title}): {log_msg}')
         _recreate_document_fields_table(log, table_name, should_be_columns, should_be_indexes)
         cleanup_saved_filters(document_type, set(should_be_columns.keys()))
         return True
-
-    reindex_needed = False
 
     dropped_columns = list()  # type: List[Tuple[str, str]]
     added_columns = list()  # type: List[Tuple[str, str]]
@@ -463,8 +510,9 @@ def adapt_table_structure(log: ProcessLogger, document_type: DocumentType,
                                      '\n'.join([c + ': ' + t for c, t in dropped_columns]),
                                      '\n'.join([c + ': ' + t for c, t in added_columns])))
                     cleanup_saved_filters(document_type, set(should_be_columns.keys()))
-                reindex_needed = True
 
+        # actions of alter_table_actions that failed to execute
+        actions_failed = 0
         if not check_only:
             # Changes in indexes do not require document re-indexing - the values will already be in the columns.
             existing_indexes = get_table_index_names_from_pg(cursor, table_name)  # type: Set[str]
@@ -476,9 +524,23 @@ def adapt_table_structure(log: ProcessLogger, document_type: DocumentType,
                 if should_be_index_name not in existing_indexes:
                     create_index_sql = _build_create_index_statement(table_name, should_be_index_name,
                                                                      should_be_index_def)
-                    cursor.execute(create_index_sql, [])
+                    try:
+                        cursor.execute(create_index_sql, [])
+                    except Exception:
+                        actions_failed += 1
+                        src_error_txt = traceback.format_exc()
+                        msg = f'adapt_table_structure: error creating index' + \
+                              f' for {table_name}:{should_be_index_name},\n' + \
+                              f'{should_be_index_def}.\nOriginal error: {src_error_txt}.'
 
-    return reindex_needed
+                        if '"gin_trgm_ops"' in src_error_txt:
+                            # not all the fields can be included in Trigram index
+                            log.error(msg)
+                        else:
+                            raise RuntimeError(msg)
+
+    actions_succeeded = len(alter_table_actions) - actions_failed
+    return actions_succeeded > 0
 
 
 def _recreate_document_fields_table(log: ProcessLogger, table_name: str, column_defs: Dict[str, str],
@@ -523,9 +585,12 @@ def _fill_system_fields_to_python_values(document: Document,
     field_to_python_values[FIELD_CODE_PROJECT_NAME] = project.name if project is not None else None
     field_to_python_values[FIELD_CODE_ASSIGNEE_ID] = document.assignee_id
     field_to_python_values[FIELD_CODE_ASSIGNEE_NAME] = document.assignee.get_full_name() if document.assignee else None
-    field_to_python_values[FIELD_CODE_CREATE_DATE] = document.history.last().history_date
+    field_to_python_values[FIELD_CODE_CREATE_DATE] = document.history.last().history_date \
+        if document.history.exists() else document.upload_session.created_date \
+        if document.upload_session else None
     field_to_python_values[FIELD_CODE_ASSIGN_DATE] = document.assign_date
     field_to_python_values[FIELD_CODE_STATUS_NAME] = document.status.name if document.status else None
+    field_to_python_values[FIELD_CODE_DELETE_PENDING] = document.delete_pending
 
 
 def _fill_generic_fields_to_python_values(document: Document,
@@ -605,19 +670,22 @@ def delete_document_from_cache(user: User, document: Document):
 def get_document_field_values(document_type: DocumentType,
                               document_id,
                               table_name: str = None,
-                              handlers: List[field_handlers.FieldHandler] = None) -> Optional[Dict[str, Any]]:
+                              handlers: List[field_handlers.FieldHandler] = None,
+                              none_on_errors: bool = True) -> Optional[Dict[str, Any]]:
     with connection.cursor() as cursor:
         if not table_name:
             table_name = doc_fields_table_name(document_type.code)
         if not handlers:
             handlers = build_field_handlers(document_type, table_name)
-        return _get_document_fields(document_id, cursor=cursor, table_name=table_name, handlers=handlers)
+        return _get_document_fields(document_id, cursor=cursor, table_name=table_name, handlers=handlers,
+                                    none_on_errors=none_on_errors)
 
 
 def _get_document_fields(document_id,
                          cursor,
                          table_name: str,
-                         handlers: List[field_handlers.FieldHandler]) -> Optional[Dict[str, Any]]:
+                         handlers: List[field_handlers.FieldHandler],
+                         none_on_errors: bool = True) -> Optional[Dict[str, Any]]:
     column_names = list()  # type: List[str]
     for h in handlers:  # type: field_handlers.FieldHandler
         columns = h.get_client_column_descriptions()  # type: List[field_handlers.ColumnDesc]
@@ -630,7 +698,16 @@ def _get_document_fields(document_id,
                     .format(columns=sql_columns, table_name=table_name), [document_id])
 
     for d in fetch_dicts(cursor, sql, column_names):
-        return {h.field_code: h.columns_to_field_value(d) for h in handlers}
+        res = dict()
+        for h in handlers:
+            try:
+                fv = h.columns_to_field_value(d)
+            except Exception as e:
+                if not none_on_errors:
+                    raise e
+                fv = None
+            res[h.field_code] = fv
+        return res
 
     return None
 
@@ -685,8 +762,8 @@ def cache_document_fields(log: ProcessLogger,
                 .exclude(removed_by_user=True) \
                 .select_related('field')  # type: List[DocumentFieldValue]
 
-            for dfv in real_document_field_values:
-                field_type = field_types.FIELD_TYPES_REGISTRY[dfv.field.type]
+            for dfv in real_document_field_values:  # type: DocumentFieldValue
+                field_type = dfv.field.get_field_type()
                 field_to_python_values[dfv.field.code] = field_type.merge_multi_python_values(
                     field_to_python_values.get(dfv.field.code), dfv.python_value)
 
@@ -704,18 +781,26 @@ def cache_document_fields(log: ProcessLogger,
                                                       handlers=handlers)
         try:
             cursor.execute(insert_clause.sql, insert_clause.params)
+        except IntegrityError:
+            # this error means that the document referred has been already deleted
+            # in primary table (document_document) - so we can skip it
+            er_str = f'is not present in table "{Document._meta.db_table}"'
+            ex_str = traceback.format_exc()
+            if er_str in ex_str:
+                log.error(f'Document {document.pk} of {document_type} is '
+                          f'deleted by the time it is being cached in cache_document_fields()')
+                pass
         except:
             import sys
             etype, evalue, _ = sys.exc_info()
-            log.error('Error {etype}: {evalue}\n' +
-                      'in cache_document_fields(doc_id={document_id})\nSQL: {sql}\nParams: {ptrs}.\n\n'.
-                      format(etype=etype, evalue=evalue, document_id=document.pk,
-                             sql=insert_clause.sql, ptrs=insert_clause.params))
+            log.error(f'Error {etype}: {evalue}\n'
+                      f'in cache_document_fields(doc_id={document.pk})\nSQL: '
+                      f'{insert_clause.sql}\nParams: {insert_clause.params}.\n\n')
             raise
 
-    inserted_document_fields = {h.field_code:
-                                    h.python_value_to_indexed_field_value(field_to_python_values.get(h.field_code))
-                                for h in insert_field_handlers}
+    inserted_document_fields = {
+        h.field_code: h.python_value_to_indexed_field_value(field_to_python_values.get(h.field_code))
+        for h in insert_field_handlers}
 
     document_fields_after = dict(document_fields_before) if document_fields_before else dict()
     document_fields_after.update(inserted_document_fields)
@@ -834,7 +919,7 @@ def query_documents(document_type: DocumentType,
                                     for column in
                                     existing_columns}  # type: Dict[str, field_handlers.ColumnDesc]
     existing_column_names = set(existing_column_name_to_desc.keys())
-    field_codes_to_desc = {d.field_code: d for d in existing_columns}
+    field_codes_to_desc = {d.field_code: d for d in existing_columns}  # type: Dict[str, field_handlers.ColumnDesc]
     if return_documents or saved_filter_ids or column_filters:
         # build column handlers only if there can be filters on columns (saved filters or filters specified in request)
         # or if we are returning data which requires column names
@@ -870,9 +955,15 @@ def query_documents(document_type: DocumentType,
         column_filters_clauses = []
         requested_columns = []
 
+    column_sql_specs = [existing_column_name_to_desc[column_name].get_output_column_sql_spec()
+                        for column_name in column_names]
+
     project_ids_clause = _prepare_project_ids_filter(requester, project_ids)  # type: Optional[SQLClause]
     if project_ids_clause:
         column_filters_clauses += [project_ids_clause]
+
+    soft_delete_clause = SQLClause('"{col_name}" = false'.format(col_name=FIELD_CODE_DELETE_PENDING))
+    column_filters_clauses.append(soft_delete_clause)
 
     where_clause = join_clauses('\nand ', column_filters_clauses)
 
@@ -897,7 +988,7 @@ def query_documents(document_type: DocumentType,
                                            where=where_clause)
 
     if return_documents:
-        sql_columns = ', \n'.join(['"{column}"'.format(column=column) for column in column_names])
+        sql_columns = ', \n'.join(column_sql_specs)
 
         correct_order_by = list()
         if order_by:
@@ -913,10 +1004,10 @@ def query_documents(document_type: DocumentType,
         order_by = correct_order_by if correct_order_by else [DEFAULT_ORDER_BY]
 
         order_by_clause = SQLClause('order by ' + ', '.join(
-            ['"{column}" {direction} nulls {nulls_prio}'
-                 .format(column=column,
-                         direction=direction.value,
-                         nulls_prio='first' if direction == SortDirection.ASC else 'last')
+            ['"{column}" {direction} nulls {nulls_prio}'.format(
+                column=column,
+                direction=direction.value,
+                nulls_prio='first' if direction == SortDirection.ASC else 'last')
              for column, direction in order_by]))
 
         offset_clause = SQLClause('offset %s', [int(offset)]) if offset else None
@@ -940,3 +1031,52 @@ def query_documents(document_type: DocumentType,
                                 reviewed_sql=count_reviewed_clause,
                                 columns=requested_columns,
                                 items_sql=data_clause)
+
+
+def set_documents_delete_status(document_ids: List[int],
+                                delete_pending: bool) -> None:
+    if len(document_ids) == 0:
+        return
+    doc_types = Document.all_objects.filter(id__in=document_ids).values_list(
+        'document_type__code', flat=True).distinct().order_by()
+    doc_id_str = ','.join([str(id) for id in document_ids])
+    total_checked = 0
+
+    try:
+        with connection.cursor() as cursor:
+            for doc_type in doc_types:
+                table_name = doc_fields_table_name(doc_type)
+                cmd = f'UPDATE "{table_name}" set "{FIELD_CODE_DELETE_PENDING}"' +\
+                      f'={delete_pending} where ' +\
+                      f'"{FIELD_CODE_DOC_ID}" in ({doc_id_str});'
+                cursor.execute(cmd)
+                total_checked += cursor.rowcount
+    except Exception as e:
+        er_msg = format_error_msg(document_ids, delete_pending, total_checked)
+        logger = get_django_logger()
+        logger.error(er_msg + '\n' + str(e))
+        raise e
+
+    # ensure all documents are processed
+    if total_checked != len(document_ids):
+        er_msg = format_error_msg(document_ids, delete_pending, total_checked)
+        logger = get_django_logger()
+        logger.error(er_msg)
+        raise RuntimeError(er_msg)
+
+
+def format_error_msg(doc_ids: List[int],
+                     delete_pending: bool,
+                     docs_checked: int) -> str:
+    docs_msg = format_docs_ids_str(doc_ids)
+    er_action = 'checked as deleted' if delete_pending \
+        else 'unchecked as deleted'
+    return f'set_documents_delete_status: only {docs_checked} of ' + \
+           f'{len(doc_ids)} ([{docs_msg}]) docs were {er_action}.'
+
+
+def format_docs_ids_str(doc_ids: List[int]) -> str:
+    return ','.join([str(i) for i in doc_ids]) \
+        if len(doc_ids) < 6 \
+        else ','.join([str(i) for i in doc_ids[:4]]) + \
+             f' ..., {doc_ids[:-1]}'

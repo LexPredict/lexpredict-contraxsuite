@@ -28,17 +28,16 @@
 import pickle
 import sys
 
-from django.db.models.deletion import CASCADE
 from rest_framework_tracking.models import APIRequestLog
 
 # Django imports
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
 from django.contrib.postgres.fields import JSONField
-from django.db import models
+from django.db import models, transaction
+from django.db.models.deletion import CASCADE
 from django.dispatch import receiver
 from django.utils.timezone import now
-from django.db import transaction
 
 # Project imports
 from apps.users.models import User
@@ -46,15 +45,15 @@ from apps.common import signals
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.1/LICENSE"
-__version__ = "1.2.1"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.2/LICENSE"
+__version__ = "1.2.2"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
 
 def is_migration_in_process() -> bool:
     for arg in sys.argv:
-        if arg == 'migrate' or arg == 'makemigrations':
+        if arg in ('migrate', 'makemigrations'):
             return True
     return False
 
@@ -149,7 +148,7 @@ class ReviewStatusGroup(models.Model):
 
     is_active = models.BooleanField(default=True, db_index=True)
 
-    class Meta(object):
+    class Meta:
         ordering = ['order', 'name', 'code']
 
     def __str__(self):
@@ -185,7 +184,7 @@ class ReviewStatus(models.Model):
     # flag to detect f.e. whether we should recalculate fields for a document
     is_active = models.BooleanField(default=True, db_index=True)
 
-    class Meta(object):
+    class Meta:
         ordering = ['order', 'name', 'code']
         verbose_name_plural = 'Review Statuses'
 

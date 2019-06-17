@@ -35,7 +35,7 @@ from constance.admin import ConstanceForm, get_values
 
 # Django imports
 from django.contrib import messages
-from django.http import HttpResponseRedirect, HttpResponseServerError
+from django.http import HttpResponseRedirect
 from django.views.generic.edit import FormView
 from django.utils.translation import ugettext_lazy as _
 
@@ -44,8 +44,8 @@ import apps.common.mixins
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.1/LICENSE"
-__version__ = "1.2.1"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.2/LICENSE"
+__version__ = "1.2.2"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 

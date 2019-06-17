@@ -56,15 +56,13 @@ from apps.common.managers import AdvancedManager
 from apps.common.models import get_default_status
 from apps.common.utils import CustomDjangoJSONEncoder
 from apps.document import constants
-from apps.document.field_types import FieldType, FIELD_TYPES_REGISTRY, FIELD_TYPES_CHOICE, ValueExtractionHint, \
-    ORDINAL_EXTRACTION_HINTS, RelatedInfoField, StringField, StringFieldWholeValueAsAToken, LongTextField, ChoiceField, \
-    MultiChoiceField
 from apps.users.models import User
+from .value_extraction_hints import ValueExtractionHint, ORDINAL_EXTRACTION_HINTS
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.1/LICENSE"
-__version__ = "1.2.1"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.2/LICENSE"
+__version__ = "1.2.2"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -148,7 +146,6 @@ class DocumentField(TimeStampedModel):
 
     DocumentField describes manually created custom field for a document.
     """
-    DOCUMENT_FIELD_TYPES = ((i, FIELD_TYPES_REGISTRY[i].title or i) for i in sorted(FIELD_TYPES_REGISTRY))
     UNIT_TYPES = ((i, i) for i in ('sentence', 'paragraph', 'section'))
     CONFIDENCE = ('High', 'Medium', 'Low')
     CONFIDENCE_CHOICES = ((i, i) for i in CONFIDENCE)
@@ -176,8 +173,8 @@ class DocumentField(TimeStampedModel):
     description = models.TextField(null=True, blank=True)
 
     # Type of the field.
-    type = models.CharField(max_length=30, choices=DOCUMENT_FIELD_TYPES,
-                            default='string', db_index=True)
+    # Choices are lazy-set on app init. See field_type_registry.py
+    type = models.CharField(max_length=30, default='string', db_index=True)
 
     # Type of the text unit to parse.
     text_unit_type = models.CharField(max_length=10, choices=UNIT_TYPES, default='sentence', db_index=True)
@@ -314,8 +311,14 @@ class DocumentField(TimeStampedModel):
     def is_detectable(self):
         return self.value_detection_strategy and self.value_detection_strategy != self.VD_DISABLED
 
-    def get_field_type(self) -> FieldType:
-        return FIELD_TYPES_REGISTRY[self.type]
+    def get_field_type(self):
+        """
+        Get field type object representing the field type of this field.
+        :return: FieldType
+        """
+        # avoiding cyclic imports on init
+        from .field_type_registry import FIELD_TYPE_REGISTRY
+        return FIELD_TYPE_REGISTRY[self.type]
 
     def is_value_aware(self):
         return self.get_field_type().requires_value
@@ -348,13 +351,15 @@ class DocumentField(TimeStampedModel):
         return "{1} (#{0})".format(self.pk, self.code)
 
     def is_choice_field(self):
-        return self.type in FIELD_TYPES_CHOICE
+        return self.get_field_type().is_choice_field
 
     def is_related_info_field(self):
+        # avoiding cyclic imports on init
+        from .field_types import RelatedInfoField
         return self.type == RelatedInfoField.code
 
     def is_value_extracting_field(self):
-        return self.type and FIELD_TYPES_REGISTRY[self.type].value_extracting
+        return self.get_field_type().value_extracting
 
     @classmethod
     def parse_choice_values(cls, choices: str) -> List[str]:
@@ -491,8 +496,11 @@ class DocumentType(TimeStampedModel):
 
 
 class DocumentManager(models.Manager):
+    def get_queryset(self):
+        return super(DocumentManager, self).get_queryset().filter(delete_pending=False)
+
     def active(self):
-        return self.filter(status__is_active=True)
+        return self.filter(status__is_active=True, delete_pending=False)
 
 
 class Document(models.Model):
@@ -534,21 +542,19 @@ class Document(models.Model):
     # Document metadata from original file
     metadata = JSONField(blank=True, encoder=CustomDjangoJSONEncoder)
 
-    # Cache of document field values for document in the format of dict: { field_uid: field_value }
-    # For calculated fields this dict additionally contains: { field_uid_suggested: calculated_field_value }
-    field_values = JSONField(blank=True, null=True, encoder=CustomDjangoJSONEncoder)
-
-    # Cache of generic document values like: max_currency_amount, cluster id e.t.c. for showing in batch project grids
-    generic_data = JSONField(blank=True, null=True, encoder=CustomDjangoJSONEncoder)
-
     # Document title
     title = models.CharField(max_length=1024, db_index=True, null=True)
 
     # Document history
     history = HistoricalRecords(excluded_fields=['full_text'])
 
+    # selected for Delete admin task
+    delete_pending = models.BooleanField(default=False, null=False)
+
     # apply custom objects manager
     objects = DocumentManager()
+
+    all_objects = models.Manager()
 
     document_type = models.ForeignKey(DocumentType, blank=True, null=True, db_index=True, on_delete=CASCADE)
 
@@ -1087,20 +1093,18 @@ class TextParts(Enum):
     FULL = "FULL"
     BEFORE_REGEXP = "BEFORE_REGEXP"
     AFTER_REGEXP = "AFTER_REGEXP"
+    INSIDE_REGEXP = "INSIDE_REGEXP"
 
 
 class DocumentFieldDetector(models.Model):
     DEF_RE_FLAGS = re.DOTALL
 
-    TEXT_PARTS = tuple((text_part.value, text_part.value) for text_part in TextParts)
-
-    FIELD_TYPES_ALLOWED_FOR_DETECTED_VALUE = {
-        StringField.code,
-        StringFieldWholeValueAsAToken.code,
-        LongTextField.code,
-        ChoiceField.code,
-        MultiChoiceField.code,
-    }
+    TEXT_PARTS = (
+        (TextParts.FULL.value, 'Whole text'),
+        (TextParts.BEFORE_REGEXP.value, 'Before matching substring'),
+        (TextParts.AFTER_REGEXP.value, 'After matching substring'),
+        (TextParts.INSIDE_REGEXP.value, 'Inside matching substring'),
+    )
 
     uid = StringUUIDField(primary_key=True, default=uuid.uuid4, editable=False)
 
@@ -1164,7 +1168,7 @@ text part = BEFORE_REGEXP then "2019-01-23 " will be passed to get_dates().''')
     def clean_fields(self, exclude=('uid', 'field', 'document_type', 'exclude_regexps',
                                     'include_regexps', 'regexps_pre_process_lower',
                                     'detected_value')):
-        field_type = FIELD_TYPES_REGISTRY[self.field.type]
+        field_type = self.field.get_field_type()
 
         if not field_type.ordinal \
                 and self.extraction_hint in ORDINAL_EXTRACTION_HINTS:
@@ -1278,14 +1282,18 @@ text part = BEFORE_REGEXP then "2019-01-23 " will be passed to get_dates().''')
                 return matching_string[:begin]
             elif self.text_part == TextParts.AFTER_REGEXP.value:
                 return matching_string[end:]
+            elif self.text_part == TextParts.INSIDE_REGEXP.value:
+                return matching_string[begin:end]
             else:
                 return text
         return None
 
     @classmethod
     def validate_detected_value(cls, field_type: str, detected_value: str) -> None:
-        if detected_value and field_type not in cls.FIELD_TYPES_ALLOWED_FOR_DETECTED_VALUE:
-            field_types = [FIELD_TYPES_REGISTRY[ft].title for ft in cls.FIELD_TYPES_ALLOWED_FOR_DETECTED_VALUE]
+        from .field_types import FIELD_TYPES_ALLOWED_FOR_DETECTED_VALUE
+        from .field_type_registry import FIELD_TYPE_REGISTRY
+        if detected_value and field_type not in FIELD_TYPES_ALLOWED_FOR_DETECTED_VALUE:
+            field_types = [FIELD_TYPE_REGISTRY[ft].title for ft in FIELD_TYPES_ALLOWED_FOR_DETECTED_VALUE]
             raise RuntimeError('Detected value is allowed only for {0} fields'.format(', '.join(field_types)))
 
     def get_validated_detected_value(self, field=None) -> str:

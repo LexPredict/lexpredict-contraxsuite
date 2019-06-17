@@ -3,7 +3,7 @@ from typing import Optional, List, Dict, Tuple
 
 from lexnlp.nlp.en.segments.sentences import get_sentence_span_list
 
-from apps.document.field_types import ValueExtractionHint
+from ..value_extraction_hints import ValueExtractionHint
 
 _TOKEN_PATTERN = re.compile(r'(?u)\b\w\w+\b')
 _TOKEN_POSITIONS_SPLIT = 5

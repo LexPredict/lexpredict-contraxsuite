@@ -24,12 +24,12 @@
 """
 from django.core.management import BaseCommand
 
-from apps.dump.app_dump import write_full_dump
+from apps.dump.app_dump import write_full_dump, register_pluggable_app_dump_models
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.1/LICENSE"
-__version__ = "1.2.1"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.2/LICENSE"
+__version__ = "1.2.2"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -47,4 +47,5 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         dst_file = options['dst_file']
         print('Dump important data to: {0}'.format(dst_file))
+        register_pluggable_app_dump_models()
         write_full_dump(dst_file)

@@ -26,28 +26,17 @@
 
 from allauth.account.forms import LoginForm
 from rest_auth.models import TokenModel
-from rest_framework import serializers
-from rest_framework.authentication import TokenAuthentication, exceptions
 
-from django.urls import reverse
 from django.contrib.auth.forms import password_validation
 from django import forms
-from django.conf import settings
-from django.utils import timezone
 from django.utils.translation import ugettext as _
-
-from apps.common.utils import get_api_module, get_test_user
-from apps.common.models import AppVar
-from apps.common.app_vars import ENABLE_AUTH_TOKEN_IN_QUERY_STRING
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.1/LICENSE"
-__version__ = "1.2.1"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.2/LICENSE"
+__version__ = "1.2.2"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
-
-
 
 
 class CustomSetPasswordForm(forms.Form):

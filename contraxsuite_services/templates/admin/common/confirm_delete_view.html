@@ -1,0 +1,25 @@
+{% extends 'admin/app_index.html' %}
+
+{% block content-center %}
+    <form action="" method="post">{% csrf_token %}
+        <div class="info-block">
+            <h4 class="alert-heading">The following data will be deleted. Continue?</h4>
+             <ul>
+             {% for model, count, stressed in deleting_count %}
+                 {% if stressed %}
+                 <li><b>{{model}}: {{count}}</b></li>
+                 {% else %}
+                 <li>{{model}}: {{count}}</li>
+                 {% endif %}
+             {% endfor %}
+             </ul>
+
+            <div style="padding: 20px">
+                <input type="submit" value="Yes, I'm sure" class="btn btn-danger"/>
+                &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;
+                <a href="{% url return_url %}">go back</a>
+            </div>
+        </div>
+    </form>
+
+{% endblock %}

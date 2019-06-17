@@ -8,14 +8,17 @@ from sklearn.metrics import classification_report
 from sklearn.pipeline import Pipeline, FeatureUnion
 
 from apps.common.script_utils import eval_script
-from apps.document.field_types import FIELD_TYPES_REGISTRY, FieldType, ChoiceField
+from apps.document.field_type_registry import FIELD_TYPE_REGISTRY
+from apps.document.field_types import FieldType, ChoiceField
 from apps.document.fields_detection import field_detection_utils
 from apps.document.fields_detection.fields_detection_abstractions import FieldDetectionStrategy, DetectedFieldValue, \
     ProcessLogger
 from apps.document.fields_detection.stop_words import detect_with_stop_words_by_field_and_full_text
-from apps.document.fields_detection.vectorizers import VectorizerStep
+from apps.document.fields_processing.document_vectorizers import FieldValueExtractor, \
+    wrap_feature_names_with_field_code
 from apps.document.models import ClassifierModel
 from apps.document.models import DocumentField, Document
+from apps.rawdb.repository.raw_db_repository import RawDbRepository
 
 
 def init_classifier_impl(field_code: str, init_script: str):
@@ -52,22 +55,9 @@ def init_classifier_impl(field_code: str, init_script: str):
     return eval_script('classifier init script of field {0}'.format(field_code), init_script, eval_locals)
 
 
-class FieldValueExtractor(VectorizerStep):
-    def __init__(self, field_uid, field_type: FieldType) -> None:
-        super().__init__()
-        self.field_uid = field_uid
-        self.field_type = field_type
-
-    def transform(self, field_values_dicts: List, *args, **kwargs):
-        return [self.field_type.merged_db_value_to_python(fv.get(self.field_uid) if fv else None) for fv in
-                field_values_dicts]
-
-    def get_feature_names(self) -> List[str]:
-        return ['']
-
-
 class FieldBasedMLOnlyFieldDetectionStrategy(FieldDetectionStrategy):
     code = DocumentField.VD_FIELD_BASED_ML_ONLY
+    FIELD_REPOSITORY = RawDbRepository()
 
     @classmethod
     def uses_cached_document_field_values(cls, field):
@@ -91,10 +81,6 @@ class FieldBasedMLOnlyFieldDetectionStrategy(FieldDetectionStrategy):
 
         return init_classifier_impl(field.code, init_script)
 
-    @staticmethod
-    def wrap_feature_names_with_field_code(feature_names_func: Callable, field_code: str) -> Callable:
-        return lambda: ['{0}__{1}'.format(field_code, feature_name) for feature_name in feature_names_func()]
-
     @classmethod
     def build_pipeline(cls, field: DocumentField, depends_on_fields: List[Tuple[str, str, str]]) -> Tuple[
         Pipeline, List[str]]:
@@ -102,7 +88,7 @@ class FieldBasedMLOnlyFieldDetectionStrategy(FieldDetectionStrategy):
         transformer_list = []
         feature_names_funcs = []
         for field_uid, field_code, field_type in sorted(depends_on_fields, key=lambda t: t[1]):
-            field_type = FIELD_TYPES_REGISTRY[field_type]  # type: FieldType
+            field_type = FIELD_TYPE_REGISTRY[field_type]  # type: FieldType
 
             field_vect_steps = [('sel', FieldValueExtractor(field_uid, field_type))]
 
@@ -112,7 +98,7 @@ class FieldBasedMLOnlyFieldDetectionStrategy(FieldDetectionStrategy):
 
             transformer_list.append((field_code, Pipeline(field_vect_steps)))
 
-            feature_names_funcs.append(cls.wrap_feature_names_with_field_code(field_feature_names_func, field_code))
+            feature_names_funcs.append(wrap_feature_names_with_field_code(field_feature_names_func, field_code))
 
         classifier = cls.init_classifier(field)
 
@@ -150,7 +136,7 @@ class FieldBasedMLOnlyFieldDetectionStrategy(FieldDetectionStrategy):
                                             train_documents: Iterable[Document] = None) \
             -> Optional[ClassifierModel]:
 
-        field_type_adapter = FIELD_TYPES_REGISTRY[field.type]  # type: FieldType
+        field_type_adapter = field.get_field_type()  # type: FieldType
 
         log.set_progress_steps_number(7)
         log.info('Training model for field #{0} ({1})...'.format(field.pk, field.code))
@@ -162,17 +148,8 @@ class FieldBasedMLOnlyFieldDetectionStrategy(FieldDetectionStrategy):
                              .format(field.code, field.uid, field_type_adapter.code))
         # Lets find good values of depends-on fields suitable for using as train data.
 
-        if train_documents:
-            train_data = list(train_documents.values_list('field_values', flat=True)) \
-                if hasattr(train_documents, 'values_list') \
-                else [doc.field_values for doc in train_documents]
-        elif train_data_project_ids and not use_only_confirmed_field_values:
-            train_data = list(Document.objects
-                              .filter(project_id__in=train_data_project_ids)
-                              .order_by('id')
-                              .values_list('field_values', flat=True)[:settings.ML_TRAIN_DATA_SET_GROUP_LEN])
-        else:
-            train_data = list(cls.get_user_data(field, train_data_project_ids))
+        train_data = cls.get_train_values(field, train_data_project_ids, train_documents,
+                                          use_only_confirmed_field_values)
 
         if not train_data:
             raise RuntimeError('Not enough train data for field {0} (#{1}). '
@@ -258,17 +235,35 @@ class FieldBasedMLOnlyFieldDetectionStrategy(FieldDetectionStrategy):
         return cm
 
     @classmethod
+    def get_train_values(cls,
+                         field: DocumentField,
+                         train_data_project_ids: Optional[List],
+                         train_documents: Iterable[Document],
+                         use_only_confirmed_field_values: bool) -> List[Dict[str, Any]]:
+        repo = FieldBasedMLOnlyFieldDetectionStrategy.FIELD_REPOSITORY
+        if train_documents:
+            return list(repo.get_documents_field_values_by_uid(train_documents))
+
+        if train_data_project_ids and not use_only_confirmed_field_values:
+            return list(repo.get_project_documents_field_values_by_uid(train_data_project_ids,
+                                                                settings.ML_TRAIN_DATA_SET_GROUP_LEN,
+                                                                field.document_type))
+        return list(cls.get_user_data(field, train_data_project_ids))
+
+    @classmethod
     def maybe_detect_with_stop_words(cls,
-                                     log: ProcessLogger,
-                                     doc: Document,
-                                     field: DocumentField) -> Optional[List[DetectedFieldValue]]:
+                                     field: DocumentField,
+                                     cached_fields: Dict[str, Any]) -> Optional[List[DetectedFieldValue]]:
         if field.stop_words:
             depends_on_fields = list(field.depends_on_fields.all())
             depends_on_full_text = []
 
+            if not any(cached_fields):
+                return None
+
             for df in depends_on_fields:  # type: DocumentField
-                field_type_adapter = FIELD_TYPES_REGISTRY[df.type]  # type: FieldType
-                v = field_type_adapter.merged_db_value_to_python(doc.field_values.get(df.uid))
+                field_type_adapter = FIELD_TYPE_REGISTRY[df.type]  # type: FieldType
+                v = field_type_adapter.merged_db_value_to_python(cached_fields.get(df.uid))
                 if v:
                     depends_on_full_text.append(str(v))
 
@@ -282,8 +277,9 @@ class FieldBasedMLOnlyFieldDetectionStrategy(FieldDetectionStrategy):
     def detect_field_values(cls,
                             log: ProcessLogger,
                             doc: Document,
-                            field: DocumentField) -> List[DetectedFieldValue]:
-        detected_values = cls.maybe_detect_with_stop_words(log, doc, field)
+                            field: DocumentField,
+                            cached_fields: Dict[str, Any]) -> List[DetectedFieldValue]:
+        detected_values = cls.maybe_detect_with_stop_words(field, cached_fields)
         if detected_values is not None:
             return detected_values
 
@@ -294,7 +290,8 @@ class FieldBasedMLOnlyFieldDetectionStrategy(FieldDetectionStrategy):
             model = obj['model']
             categories = obj['categories']
 
-            predicted = model.predict([doc.field_values])
+            doc_field_vals = cached_fields
+            predicted = model.predict([doc_field_vals])
 
             target_index = predicted[0]
 
@@ -321,11 +318,12 @@ class FieldBasedMLWithUnsureCatFieldDetectionStrategy(FieldBasedMLOnlyFieldDetec
     def detect_field_values(cls,
                             log: ProcessLogger,
                             doc: Document,
-                            field: DocumentField) -> List[DetectedFieldValue]:
+                            field: DocumentField,
+                            cached_fields: Dict[str, Any]) -> List[DetectedFieldValue]:
 
         # If changing this code make sure you update similar code in notebooks/demo/Train and Debug Decision Tree...
 
-        detected_values = cls.maybe_detect_with_stop_words(log, doc, field)
+        detected_values = cls.maybe_detect_with_stop_words(field, cached_fields)
         if detected_values is not None:
             return detected_values
 
@@ -336,7 +334,7 @@ class FieldBasedMLWithUnsureCatFieldDetectionStrategy(FieldBasedMLOnlyFieldDetec
             model = obj['model']
             categories = obj['categories']
 
-            category_probabilities = model.predict_proba([doc.field_values])[0]
+            category_probabilities = model.predict_proba([cached_fields])[0]
 
             target_index = max(range(len(category_probabilities)), key=category_probabilities.__getitem__)
             target_probability = category_probabilities[target_index]

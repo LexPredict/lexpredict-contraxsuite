@@ -40,18 +40,18 @@ from django.db.models import Q, Subquery
 from django.urls import reverse
 from django.utils.timezone import now
 from psycopg2 import InterfaceError, OperationalError
-
 from apps.celery import app
 from apps.common.advancedcelery.db_cache import DbCache
 from apps.common.log_utils import render_error
 from apps.common.sql_commons import escape_column_name
-from apps.document.field_types import FIELD_TYPES_REGISTRY, FieldType
+from apps.document.field_types import FieldType
 from apps.document.fields_detection import field_detection, field_detection_utils
 from apps.document.fields_detection.fields_detection_abstractions import DetectedFieldValue
 from apps.document.fields_detection.regexps_field_detection import apply_simple_config
 from apps.document.fields_processing import field_value_cache
 from apps.document.fields_processing.field_processing_utils import merge_document_field_values_to_python_value
 from apps.document.models import DocumentType, Document, ClassifierModel, DocumentFieldValue, TextUnit, DocumentField
+from apps.document.repository.document_bulk_delete import get_document_bulk_delete
 from apps.dump.document_type_import import import_document_type
 from apps.project.models import Project
 from apps.rawdb.field_value_tables import adapt_table_structure
@@ -62,8 +62,8 @@ from .constants import DOCUMENT_FIELD_CODE_MAX_LEN
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.1/LICENSE"
-__version__ = "1.2.1"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.2/LICENSE"
+__version__ = "1.2.2"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -173,7 +173,7 @@ class DetectFieldValues(BaseTask):
                                           document_id,
                                           do_not_write,
                                           clear_old_values=True):
-        doc = Document.objects.get(pk=document_id)
+        doc = Document.all_objects.get(pk=document_id)
 
         log = CeleryTaskLogger(task)
 
@@ -191,6 +191,7 @@ class DetectFieldValues(BaseTask):
 
 class TrainDocumentFieldDetectorModel(BaseTask):
     name = 'Train Document Field Detector Model'
+    priority = 9
 
     def process(self, **kwargs):
         self.log_info(
@@ -262,7 +263,8 @@ class TrainDirtyDocumentFieldDetectorModel(BaseTask):
                  default_retry_delay=10,
                  retry_backoff=True,
                  autoretry_for=(SoftTimeLimitExceeded, InterfaceError, OperationalError,),
-                 max_retries=3)
+                 max_retries=3,
+                 priority=9)
     def train_model_for_dirty_field(task: ExtendedTask, dirty_field_id: Any) -> None:
         dirty_field = DocumentField.objects.get(pk=dirty_field_id)
         if dirty_field.can_retrain():
@@ -444,7 +446,8 @@ class TrainAndTest(BaseTask):
                  default_retry_delay=10,
                  retry_backoff=True,
                  autoretry_for=(SoftTimeLimitExceeded, InterfaceError, OperationalError,),
-                 max_retries=3)
+                 max_retries=3,
+                 priority=9)
     def join_field_detector_model_tests(task: ExtendedTask,
                                         field_uid,
                                         classifier_model_id):
@@ -519,7 +522,7 @@ class CacheDocumentFields(BaseTask):
                  max_retries=3
                  )
     def cache_document_fields_for_doc_ids(_task: ExtendedTask, doc_ids: Set):
-        for doc in Document.objects.filter(pk__in=doc_ids):
+        for doc in Document.all_objects.filter(pk__in=doc_ids):
             log = CeleryTaskLogger(_task)
             field_value_cache.cache_generic_values(doc, log=log)
             suggested_values = field_detection.detect_and_cache_field_values_for_document(log, doc, False,
@@ -556,6 +559,7 @@ class LoadDocumentWithFields(BaseTask):
     retry_backoff = True
     autoretry_for = (SoftTimeLimitExceeded, InterfaceError, OperationalError,)
     max_retries = 3
+    priority = 9
 
     @staticmethod
     def load_field_values(task: ExtendedTask, document: Document, document_fields: dict, field_owners: dict) -> Dict:
@@ -588,12 +592,12 @@ class LoadDocumentWithFields(BaseTask):
             if field_value_text is None:
                 continue
 
-            field = field_codes_to_fields.get(field_alias.lower())
+            field = field_codes_to_fields.get(field_alias.lower())  # type: DocumentField
             if not field:
                 task.log_warn(
                     'Field alias "{0}" not found for document type {1}'.format(field_alias, document_type.code))
                 continue
-            field_type_adapter = FIELD_TYPES_REGISTRY.get(field.type)  # type: FieldType
+            field_type_adapter = field.get_field_type()  # type: FieldType
             field_owner = field_owners.get(field_alias)
 
             if type(field_value_text) is list:
@@ -693,8 +697,12 @@ class LoadDocumentWithFields(BaseTask):
                                                                                   clear_old_values=False)
                 field_value_cache.cache_field_values(document, dfvs, save=True, log=log)
 
-        task.log_info('Loaded {0} field values for document #{1} ({2})'
-                      .format(len(fields_to_values), document.pk, document.name))
+        task.log_info('Loaded {0} field values for document #{1} ({2}): {3}'
+                      .format(len(fields_to_values),
+                              document.pk,
+                              document.name,
+                              ';\n'.join('{0}: {1}'.format(f.code, ', '.join([str(v.value) for v in l]) if l else '')
+                                         for f, l in fields_to_values.items())))
 
 
 class ImportCSVFieldDetectionConfig(BaseTask):
@@ -847,13 +855,14 @@ class ImportDocumentType(BaseTask):
             if not APP_VAR_DISABLE_RAW_DB_CACHING.val:
                 self.log_info('Adapting RawDB table structure after import ...')
                 adapt_table_structure(CeleryTaskLogger(self), document_type, force=False)
-            ids = Document.objects.filter(document_type=document_type).values_list('pk', flat=True)
+            ids = Document.all_objects.filter(document_type=document_type).values_list('pk', flat=True)
             self.log_info('Caching document field values ...')
             CacheDocumentFields.start_cache_document_fields_for_doc_ids(self, ids)
 
 
 class FixDocumentFieldCodes(BaseTask):
     name = 'Fix Document Field Codes'
+    priority = 9
 
     RE_FIELD_CODE_NUM = re.compile(r'(.*)_(\d+)')
 
@@ -940,6 +949,41 @@ class FixDocumentFieldCodes(BaseTask):
                       'Changed fields csv:\n' + output.getvalue() + '\n------------------')
 
 
+class DeleteDocuments(BaseTask):
+    name = 'Delete Documents'
+    priority = 3
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        from apps.document.repository.document_repository import default_document_repository
+        self.document_repository = default_document_repository
+
+    def process(self, **kwargs):
+        doc_ids = kwargs.get('_document_ids')
+        file_paths = self.document_repository.get_all_document_source_paths(doc_ids)
+        get_document_bulk_delete().delete_documents(doc_ids)
+        call_task(DeleteDocumentFiles, metadata=file_paths)
+
+
+class DeleteDocumentFiles(BaseTask):
+    name = 'Delete Document Files'
+    priority = 3
+    queue = 'serial'
+
+    def process(self, **kwargs):
+        paths = kwargs.get('metadata')
+        import os
+        for path in paths:
+            file_path = os.path.join(
+                settings.MEDIA_ROOT,
+                settings.FILEBROWSER_DOCUMENTS_DIRECTORY,
+                path)
+            try:
+                os.remove(file_path)
+            except OSError:
+                pass
+
+
 app.register_task(DetectFieldValues())
 app.register_task(TrainDocumentFieldDetectorModel())
 app.register_task(TrainDirtyDocumentFieldDetectorModel())
@@ -950,3 +994,5 @@ app.register_task(ImportCSVFieldDetectionConfig())
 app.register_task(FindBrokenDocumentFieldValues())
 app.register_task(ImportDocumentType())
 app.register_task(FixDocumentFieldCodes())
+app.register_task(DeleteDocuments())
+app.register_task(DeleteDocumentFiles())

@@ -70,12 +70,11 @@ class ErrorCollectingLogger(ProcessLogger):
             return None
 
     def raise_if_error(self):
-        if not self.common_problems and not self.field_problems:
-            return
-        else:
+        if self.common_problems or  self.field_problems:
             messages = list()  # type: List[str]
             if self.common_problems:
                 messages.extend(self.common_problems)
             if self.field_problems:
-                messages.extend(['Field: {0}. Error: {1}'.format(field_code, field_error) for field_code, field_error in self.field_problems.items()])
+                messages.extend(['Field: {0}. Error: {1}'.format(field_code, field_error)
+                                 for field_code, field_error in self.field_problems.items()])
             raise Exception('\n'.join(messages))

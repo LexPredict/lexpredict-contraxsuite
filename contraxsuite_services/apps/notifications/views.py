@@ -8,8 +8,9 @@ from django.views.generic.base import View
 from tzlocal import get_localzone
 
 from apps.common.log_utils import ErrorCollectingLogger
+from apps.common.errors import render_error
 from apps.common.url_utils import as_bool, as_int
-from apps.document.field_types import FIELD_TYPES_REGISTRY, FieldType
+from apps.document.field_types import FieldType
 from apps.document.models import Document, DocumentField
 from apps.rawdb.field_value_tables import build_field_handlers, get_document_field_values
 from apps.task.views import BaseAjaxTaskView
@@ -45,10 +46,15 @@ class RenderDigestView(View):
 
         run_date = datetime.now(tz=dst_user.timezone or get_localzone())
 
-        digest = render_digest(config=config,
-                               dst_user=dst_user,
-                               run_date=run_date,
-                               emulate_no_docs=emulate_no_docs)
+        try:
+            digest = render_digest(config=config,
+                                   dst_user=dst_user,
+                                   run_date=run_date,
+                                   emulate_no_docs=emulate_no_docs)
+        except Exception as e:
+            return HttpResponse(render_error('Exception caught while trying to render digest', e),
+                                status=500, content_type='text/plain')
+
         if not digest:
             return HttpResponse('Notification contains no data.', status=200)
 
@@ -108,21 +114,25 @@ class RenderNotificationView(View):
             for h in field_handlers:
                 if random.random() > 0.3:
                     continue
-                field_type = FIELD_TYPES_REGISTRY.get(h.field_type)  # type: FieldType
+                field_type = h.get_field_type()  # type: FieldType
                 field = DocumentField.objects.filter(code=h.field_code).first()
                 if not field:
                     continue
                 example_value = field_type.example_python_value(field=field)
                 example_changes[h.field_code] = (example_value, field_values.get(h.field_code))
 
-        notification = render_notification(already_sent_user_ids=set(),
-                                           subscription=subscription,
-                                           document=document,
-                                           field_handlers=field_handlers,
-                                           field_values=field_values,
-                                           changes=example_changes,
-                                           changed_by_user=request.user
-                                           )
+        try:
+            notification = render_notification(already_sent_user_ids=set(),
+                                               subscription=subscription,
+                                               document=document,
+                                               field_handlers=field_handlers,
+                                               field_values=field_values,
+                                               changes=example_changes,
+                                               changed_by_user=request.user
+                                               )
+        except Exception as e:
+            return HttpResponse(render_error('Exception caught while trying to render notification', e),
+                                status=500, content_type='text/plain')
         if not notification:
             return HttpResponse('Notification contains no data.', status=200)
 

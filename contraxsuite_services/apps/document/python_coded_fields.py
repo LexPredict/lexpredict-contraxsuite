@@ -5,6 +5,7 @@ from django.contrib.postgres.aggregates.general import StringAgg
 from apps.document import field_types
 from apps.document.models import DocumentField, ClassifierModel, Document
 from apps.extract.models import CurrencyUsage, DateUsage, PartyUsage
+from apps.common.log_utils import ProcessLogger
 
 
 class PythonCodedField:
@@ -27,10 +28,13 @@ class PythonCodedField:
                                             train_documents: Iterable[Document] = None) -> Optional[ClassifierModel]:
         return None
 
-    def get_values(self, doc: Document, text: str) -> List[Tuple[Any, Optional[int], Optional[int]]]:
+    def get_values(self, log: ProcessLogger, field: DocumentField, doc: Document, text: str) \
+            -> List[Tuple[Any, Optional[int], Optional[int]]]:
         """
         Locates field values in text - either in a sentence or in a whole document text
         (depending on 'by_sentence' flag).
+        :param log
+        :param field Configured document field
         :param doc: Document in which the location is done
         :param text: Sentence or whole document text.
         :return: List of tuples: (value, location_start, location_end)
@@ -44,7 +48,8 @@ class PartiesField(PythonCodedField):
     type = field_types.StringField.code
     detect_per_text_unit = False
 
-    def get_values(self, doc: Document, text: str) -> List[Tuple[Any, Optional[int], Optional[int]]]:
+    def get_values(self, log, field: DocumentField, doc: Document, text: str) \
+            -> List[Tuple[Any, Optional[int], Optional[int]]]:
         v = PartyUsage.objects.filter(text_unit__document_id=doc.id) \
             .aggregate(value=StringAgg('party__name', delimiter=', ', distinct=True))
         if v:
@@ -59,7 +64,8 @@ class MaxCurrencyField(PythonCodedField):
     type = field_types.MoneyField.code
     detect_per_text_unit = False
 
-    def get_values(self, doc: Document, text: str) -> List[Tuple[Any, Optional[int], Optional[int]]]:
+    def get_values(self, log, field: DocumentField, doc: Document, text: str) \
+            -> List[Tuple[Any, Optional[int], Optional[int]]]:
         for v in CurrencyUsage.objects.filter(text_unit__document_id=doc.id) \
                 .order_by('-amount') \
                 .values('currency', 'amount'):
@@ -73,7 +79,8 @@ class MinDateField(PythonCodedField):
     type = field_types.DateField.code
     detect_per_text_unit = False
 
-    def get_values(self, doc: Document, text: str) -> List[Tuple[Any, Optional[int], Optional[int]]]:
+    def get_values(self, log, field: DocumentField, doc: Document, text: str) \
+            -> List[Tuple[Any, Optional[int], Optional[int]]]:
         for v in DateUsage.objects.filter(text_unit__document_id=doc.id) \
                 .order_by('date') \
                 .values_list('date', flat=True):
@@ -86,7 +93,8 @@ class MaxDateField(PythonCodedField):
     type = field_types.DateField.code
     detect_per_text_unit = False
 
-    def get_values(self, doc: Document, text: str) -> List[Tuple[Any, Optional[int], Optional[int]]]:
+    def get_values(self, log, field: DocumentField, doc: Document, text: str) \
+            -> List[Tuple[Any, Optional[int], Optional[int]]]:
         for v in DateUsage.objects.filter(text_unit__document_id=doc.id) \
                 .order_by('-date') \
                 .values_list('date', flat=True):

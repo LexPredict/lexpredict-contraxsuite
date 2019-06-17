@@ -111,6 +111,10 @@
         { name: 'created_date', type: 'date' },
         { name: 'documents' }
       ];
+      var documents_count_renderer = function(index, columnfield, value, defaulthtml, columnproperties, row){
+        var new_value = row.documents.length;
+        return renderCell(defaulthtml, new_value);
+      };
       var menu_renderer = function(row_number, event) {
         var grid = $(event.currentTarget).parents('.jqxgrid');
         var row = grid.jqxGrid('getrowdata', row_number);
@@ -149,7 +153,8 @@
           align: 'center', cellsalign: 'center', columngroup: 'Clustering info' },
         { text: 'Using', datafield: 'using', width: 120,
           align: 'center', cellsalign: 'center', columngroup: 'Clustering info' },
-        { text: 'Documents', datafield: 'count', width: 80,
+        { text: 'Documents', datafield: 'documents', width: 80,
+          cellsrenderer: documents_count_renderer,
           align: 'center', cellsalign: 'center' },
         { text: 'Date', datafield: 'created_date', width: 120,
           filtertype: 'date', cellsformat: 'MM-dd-yyyy HH:mm',
@@ -229,7 +234,7 @@
           { text: 'Clustering info', name: 'Clustering info', align: 'center' }
         ]
       };
-      draw_grid(".jqxgrid", datafields, columns, true, null, custom_grid_options);
+      draw_grid(".jqxgrid", datafields, columns, false, null, custom_grid_options);
     });
   </script>
 {% endblock %}

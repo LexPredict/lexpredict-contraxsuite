@@ -1,8 +1,7 @@
-import importlib
 import logging
-from typing import Dict
+from typing import Dict, List
 
-from django.conf import settings
+from apps.common.plugins import collect_plugins_in_apps
 from apps.document.python_coded_fields import PythonCodedField
 
 # Registry of Python-coded fields in the form of: code -> PythonCodedField descendant instance.
@@ -21,30 +20,24 @@ def init_field_registry():
     :return:
     """
     logging.info('Going to register Python-coded document fields from all Django apps...')
-    custom_apps = [i for i in settings.INSTALLED_APPS if i.startswith('apps.')]
-    for app_name in custom_apps:
-        module_str = '%s.python_coded_fields' % app_name
+
+    plugins = collect_plugins_in_apps('python_coded_fields',
+                                      'PYTHON_CODED_FIELDS')  # type: Dict[str, List[PythonCodedField]]
+    for app_name, fields in plugins.items():
         try:
-            fields_module = importlib.import_module(module_str)
-            if hasattr(fields_module, 'PYTHON_CODED_FIELDS'):
-                fields = fields_module.PYTHON_CODED_FIELDS
+            fields = list(fields)
+        except TypeError:
+            raise TypeError('{0}.python_coded_fields.PYTHON_CODED_FIELDS is not iterable'.format(app_name))
 
-                try:
-                    fields = list(fields)
-                except TypeError:
-                    raise TypeError('{0}.PYTHON_CODED_FIELDS is not iterable'.format(module_str))
-
-                i = -1
-                for field in fields:
-                    i += 1
-                    try:
-                        PYTHON_CODED_FIELDS_REGISTRY[field.code] = field
-                    except AttributeError:
-                        raise AttributeError('{0}.PYTHON_CODED_FIELDS[{1}] is something wrong'.format(module_str, i))
-                    print('Registered python-coded document field: {0} ({1})'.format(field.title, field.code))
-
-        except ImportError:
-            continue
+        i = -1
+        for field in fields:
+            i += 1
+            try:
+                PYTHON_CODED_FIELDS_REGISTRY[field.code] = field
+            except AttributeError:
+                raise AttributeError('{0}.python_coded_fields.PYTHON_CODED_FIELDS[{1}] is something wrong'
+                                     .format(app_name, i))
+            print('Registered python-coded document field: {0} ({1})'.format(field.title, field.code))
 
     from apps.document.models import DocumentField
     for f in DocumentField._meta.fields:

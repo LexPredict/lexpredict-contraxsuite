@@ -210,20 +210,6 @@
               <i class="fa fa-object-group"></i>
               Classify Text Units (Create New Classifier)</a>
           </li>
-          <li class="dropdown-item">
-            <a class="task" href="#"
-               data-href="{% url "task:similarity" %}"
-               data-btn-text="Search">
-              <i class="fa fa-copy"></i>
-              Identify Similar Documents/Text Units</a>
-          </li>
-          <li class="dropdown-item">
-            <a class="task" href="#"
-               data-href="{% url "task:party-similarity" %}"
-               data-btn-text="Search">
-              <i class="fa fa-copy"></i>
-              Identify Similar Parties</a>
-          </li>
         </ul>
       </li>
       <li class="divider"></li>
@@ -322,6 +308,7 @@
       <label for="_id_cluster_by">Cluster by:</label>
       <select name="cluster_by" id="_id_cluster_by" multiple="multiple" class="chosen" required="">
         <option value="date">Dates</option>
+        <option value="definition">Definitions</option>
         <option value="duration">Date Durations</option>
         <option value="term">Terms</option>
         <option value="party">Parties</option>

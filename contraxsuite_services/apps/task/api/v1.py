@@ -24,21 +24,20 @@
 """
 # -*- coding: utf-8 -*-
 
-# Third-party imports
-from rest_framework import routers, serializers, viewsets
 import rest_framework.views
-
 # Django imports
 from django.conf.urls import url
+# Third-party imports
+from rest_framework import routers, serializers, viewsets
 
+import apps.common.mixins
 # Project imports
 from apps.task.views import *
-import apps.common.mixins
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.1/LICENSE"
-__version__ = "1.2.1"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.2/LICENSE"
+__version__ = "1.2.2"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -249,31 +248,6 @@ class ClusterAPIView(rest_framework.views.APIView, ClusterView):
     http_method_names = ["get", "post"]
 
 
-class SimilarityAPIView(rest_framework.views.APIView, SimilarityView):
-    """
-    "Similarity" admin task\n
-    POST params:
-        - search_similar_documents: bool
-        - search_similar_text_units: bool
-        - similarity_threshold: int
-        - use_idf: bool
-        - delete: bool
-    """
-    http_method_names = ["get", "post"]
-
-
-class PartySimilarityAPIView(rest_framework.views.APIView, PartySimilarityView):
-    """
-    "Party Similarity" admin task\n
-    POST params:
-        - case_sensitive: bool
-        - similarity_type: str[]
-        - similarity_threshold: int
-        - delete: bool
-    """
-    http_method_names = ["get", "post"]
-
-
 class CleanTasksAPIView(rest_framework.views.APIView, CleanTasksView):
     """
     "Clean Tasks" admin task\n
@@ -296,6 +270,7 @@ class TaskStatusAPIView(rest_framework.views.APIView):
     GET params:
         - task_id: int
     """
+
     def get(self, request, *args, **kwargs):
         task_id = request.GET.get('task_id')
         try:
@@ -306,7 +281,7 @@ class TaskStatusAPIView(rest_framework.views.APIView):
                        'time': task.time,
                        'date_start': task.date_start,
                        'user': task.user.username,
-                       'result':task.result}
+                       'result': task.result}
         except Task.DoesNotExist:
             message = "Task is not found"
         return JsonResponse(message, safe=False)
@@ -330,10 +305,6 @@ urlpatterns = [
         name='update-elastic-index'),
     url(r'^cluster/$', ClusterAPIView.as_view(),
         name='cluster'),
-    url(r'^similarity/$', SimilarityAPIView.as_view(),
-        name='similarity'),
-    url(r'^party-similarity/$', PartySimilarityAPIView.as_view(),
-        name='party-similarity'),
     url(r'^clean-tasks/$', CleanTasksAPIView.as_view(),
         name='clean-tasks'),
     url(r'^purge-task/$', PurgeTaskAPIView.as_view(),

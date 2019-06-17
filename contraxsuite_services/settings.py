@@ -489,7 +489,7 @@ CELERY_TASK_SERIALIZER = 'pickle'
 CELERY_ACCEPT_CONTENT = ['json', 'pickle']
 
 CELERY_TASK_QUEUES = (
-    Queue('default', routing_key='task_default.#'),
+    Queue('default', routing_key='task_default.#', queue_arguments={'max-priority': 10}),
     Queue('high_priority', routing_key='task_high_priority.#'),
     Queue('serial', routing_key='task_serial.#'),
     Queue('beat-db', routing_key='task_beat_db.#'),
@@ -794,7 +794,7 @@ NOTEBOOK_ARGUMENTS = [
 # CORS_ALLOW_CREDENTIALS = False
 # CORS_URLS_REGEX = r'^.*$'
 
-VERSION_NUMBER = '1.2.1'
+VERSION_NUMBER = '1.2.2'
 VERSION_COMMIT = 'cdd28414'
 
 NOTIFICATION_EMBEDDED_TEMPLATES_PATH = 'apps/notifications/notification_templates'

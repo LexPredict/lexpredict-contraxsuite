@@ -1,6 +1,8 @@
 import sys
 from datetime import datetime, date
-from typing import List, Union, Callable, Dict
+from typing import List, Union, Callable, Dict, Set
+
+from sklearn.feature_extraction.text import strip_accents_unicode
 
 
 class VectorizerStep:
@@ -18,12 +20,30 @@ class VectorizerStep:
         pass
 
 
+class TupleItemSelector(VectorizerStep):
+    def __init__(self, item_index: int) -> None:
+        super().__init__()
+        self.item_index = item_index
+
+    def transform(self, tuples: List, *args, **kwargs):
+        return [tpl[self.item_index] for tpl in tuples]
+
+    def get_feature_names(self) -> List[str]:
+        return ['']
+
+
 def whole_value_as_token(value: str) -> List[str]:
     return [str(value)]
 
 
-def list_items_as_tokens(value: List) -> List[str]:
-    return [str(i) for i in value]
+def set_items_as_tokens(value: Union[str, Set, List]) -> List[str]:
+    return [str(i) for i in sorted(value)] if isinstance(value, set) or isinstance(value, list) else [str(value)]
+
+
+def set_items_as_tokens_preprocessor(value: Union[str, Set, List]):
+    return [strip_accents_unicode(str(i).lower()) for i in value] \
+        if isinstance(value, set) or isinstance(value, list) \
+        else [strip_accents_unicode(str(value).lower())]
 
 
 class ReplaceNoneTransformer(VectorizerStep):

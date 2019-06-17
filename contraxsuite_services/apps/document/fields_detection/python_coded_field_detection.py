@@ -1,6 +1,5 @@
-from typing import Optional, List, Iterable
+from typing import Optional, List, Iterable, Dict, Any
 
-from apps.document.field_types import FIELD_TYPES_REGISTRY
 from apps.document.field_types import FieldType
 from apps.document.fields_detection.fields_detection_abstractions import FieldDetectionStrategy, DetectedFieldValue, \
     ProcessLogger
@@ -41,11 +40,12 @@ class PythonCodedFieldDetectionStrategy(FieldDetectionStrategy):
     def detect_field_values(cls,
                             log: ProcessLogger,
                             doc: Document,
-                            field: DocumentField) -> List[DetectedFieldValue]:
+                            field: DocumentField,
+                            cached_fields: Dict[str, Any]) -> List[DetectedFieldValue]:
         python_coded_field = PYTHON_CODED_FIELDS_REGISTRY.get(field.python_coded_field)  # type: PythonCodedField
         if not python_coded_field:
             raise RuntimeError('Unknown python-coded field: {0}'.format(field.python_coded_field))
-        field_type_adapter = FIELD_TYPES_REGISTRY[field.type]  # type: FieldType
+        field_type_adapter = field.get_field_type()  # type: FieldType
 
         detected_values = list()  # type: List[DetectedFieldValue]
         if python_coded_field.detect_per_text_unit:
@@ -55,13 +55,15 @@ class PythonCodedFieldDetectionStrategy(FieldDetectionStrategy):
                 .order_by('location_start', 'pk')
 
             for text_unit in qs_text_units.iterator():
-                for value, location_start, location_end in python_coded_field.get_values(doc, text_unit.text) or []:
+                for value, location_start, location_end \
+                        in python_coded_field.get_values(log, field, doc, text_unit.text) or []:
                     detected_values.append(
                         DetectedFieldValue(field, value, text_unit, None, location_start, location_end))
                     if not (field_type_adapter.multi_value or field.is_choice_field()):
                         return detected_values
         else:
-            for value, location_start, location_end in python_coded_field.get_values(doc, doc.full_text) or []:
+            for value, location_start, location_end \
+                    in python_coded_field.get_values(log, field, doc, doc.full_text) or []:
                 if field.requires_text_annotations and (location_start is None or location_end is None):
                     raise RuntimeError('Python coded field {0} detected a value in document {1} at '
                                        'undefined location but the field requires text annotation (and location).\n'

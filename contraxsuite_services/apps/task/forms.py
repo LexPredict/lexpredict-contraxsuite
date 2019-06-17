@@ -32,7 +32,6 @@ from constance import config
 # Django imports
 from django import forms
 from django.conf import settings
-from django.utils.translation import ugettext_lazy as _
 
 from apps.analyze.models import TextUnitClassification, TextUnitClassifier
 from apps.common.forms import checkbox_field
@@ -44,8 +43,8 @@ from apps.task.models import Task
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.1/LICENSE"
-__version__ = "1.2.1"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.2/LICENSE"
+__version__ = "1.2.2"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -362,6 +361,7 @@ class ClusterForm(forms.Form):
     cluster_by = forms.MultipleChoiceField(
         widget=forms.SelectMultiple(attrs={'class': 'chosen'}),
         choices=[('date', 'Dates'),
+                 ('definition', 'Definitions'),
                  ('duration', 'Date Durations'),
                  ('term', 'Terms'),
                  ('party', 'Parties'),
@@ -503,43 +503,6 @@ class ClusterForm(forms.Form):
         if not any([do_cluster_documents, do_cluster_text_units]):
             self.add_error('do_cluster_documents', 'Please choose either Documents or Text Units')
             self.add_error('do_cluster_text_units', 'Please choose either Documents or Text Units')
-
-
-class SimilarityForm(forms.Form):
-    header = 'Identify similar Documents and/or Text Units.'
-    search_similar_documents = checkbox_field(
-        "Identify similar Documents.",
-        input_class='min-one-of',
-        initial=True)
-    search_similar_text_units = checkbox_field(
-        "Identify similar Text Units.",
-        input_class='min-one-of')
-    similarity_threshold = forms.IntegerField(
-        min_value=50,
-        max_value=100,
-        initial=75,
-        required=True,
-        help_text=_("Min. Similarity Value 50-100%")
-    )
-    use_idf = checkbox_field("Use TF-IDF to normalize data")
-    delete = checkbox_field("Delete existing Similarity objects.", initial=True)
-
-
-class PartySimilarityForm(forms.Form):
-    header = 'Identify similar Parties.'
-    case_sensitive = checkbox_field('Case Sensitive', initial=True)
-    similarity_type = forms.ChoiceField(
-        choices=[('token_set_ratio', 'token_set_ratio'),
-                 ('token_sort_ratio', 'token_sort_ratio')],
-        required=True,
-        initial='token_set_ratio')
-    similarity_threshold = forms.IntegerField(
-        min_value=0,
-        max_value=100,
-        initial=90,
-        required=True,
-        help_text=_("Min. Similarity Value 0-100%."))
-    delete = checkbox_field("Delete existing PartySimilarity objects.", initial=True)
 
 
 class UpdateElasticSearchForm(forms.Form):

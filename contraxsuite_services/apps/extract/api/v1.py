@@ -54,8 +54,8 @@ import apps.common.mixins
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.1/LICENSE"
-__version__ = "1.2.1"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.2/LICENSE"
+__version__ = "1.2.2"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -64,7 +64,6 @@ class BaseUsageSerializer(apps.common.mixins.SimpleRelationSerializer):
     class Meta:
         fields = []
         base_fields = ['pk',
-                       # 'text_unit__text',
                        'text_unit__pk',
                        'text_unit__location_start',
                        'text_unit__location_end']
@@ -170,8 +169,8 @@ class BaseTopUsageSerializer(object):
             if callable(self.update_item):
                 item = self.update_item(item)
             if self.url_args:
-                item['url'] = reverse(self.url_args[0]) + \
-                              '?{}={}'.format(self.url_args[1], str(item[self.url_args[2]]))
+                item['url'] = '{}?{}={}'.format(
+                    reverse(self.url_args[0]), self.url_args[1], str(item[self.url_args[2]]))
             if self.detail_data:
                 item['data'] = self.get_detail_data(item)
         return list(self.queryset)
@@ -253,7 +252,7 @@ class GeoEntityListSerializer(serializers.ModelSerializer):
 
     def get_alias(self, obj):
         return ', '.join(
-                GeoAlias.objects.filter(entity_id=obj.pk).values_list('alias', flat=True))
+            GeoAlias.objects.filter(entity_id=obj.pk).values_list('alias', flat=True))
 
 
 class GeoEntityUpdateSerializer(serializers.ModelSerializer):
@@ -555,10 +554,10 @@ class PartyNetworkChartView(PartyUsageListAPIView):
             party_name = self.request.GET.get('party_name_iexact', chart_nodes[0]['id'])
             members = {party_name}
             while 1:
-                members1 = {i["source"] for i in chart_links if i["target"] in members
-                           and i["source"] not in members}
-                members2 = {i["target"] for i in chart_links if i["source"] in members
-                           and i["target"] not in members}
+                members1 = {i["source"] for i in chart_links
+                            if i["target"] in members and i["source"] not in members}
+                members2 = {i["target"] for i in chart_links
+                            if i["source"] in members and i["target"] not in members}
                 if not members1 and not members2:
                     break
                 members = members | members1 | members2
@@ -664,13 +663,13 @@ class DateUsageTimelineView(ListAPIView):
         for item in data:
             item['weight'] = (item['count'] - min_value) / range_value
             if per_month:
-                item['url'] = reverse('extract:date-usage-list') + \
-                              '?month_search=' + item['start'].isoformat()
+                item['url'] = '{}?month_search={}'.format(
+                    reverse('extract:date-usage-list'), item['start'].isoformat())
                 item['content'] = '{}, {}: {}'.format(item['start'].strftime('%B'),
                                                       item['start'].year, item['count'])
             else:
-                item['url'] = reverse('extract:date-usage-list') + \
-                              '?date_search=' + item['start'].isoformat()
+                item['url'] = '{}?date_search={}'.format(
+                    reverse('extract:date-usage-list'), item['start'].isoformat())
                 item['content'] = '{}: {}'.format(item['start'].isoformat(), item['count'])
                 item['date_data'] = [i for i in date_data if i['date'] == item['start']]
 
@@ -724,8 +723,8 @@ class DateUsageCalendarView(ListAPIView):
         for item in data:
             item['weight'] = item['count'] / max_value
             # TODO: update url
-            item['url'] = reverse('extract:date-usage-list') + \
-                          '?date_search=' + item['date'].isoformat()
+            item['url'] = '{}?date_search={}'.format(
+                reverse('extract:date-usage-list'), item['date'].isoformat())
 
         ret = {'data': data,
                'min_year': min_date.year,
@@ -1056,9 +1055,8 @@ class TopDistanceUsageListAPIView(BaseTopUsageListAPIView):
                 i['distance_type'] == item['distance_type'] and i['amount'] == item['amount']]
 
     def update_item(self, item):
-        item['url'] = reverse('v1:distance-usage') + \
-                      '?distance_type_search={}&distance_amount_search={}'.format(
-                          item['distance_type'], item['amount'])
+        item['url'] = '{}?distance_type_search={}&distance_amount_search={}'.format(
+            reverse('v1:distance-usage'), item['distance_type'], item['amount'])
         return item
 
 
@@ -1104,9 +1102,8 @@ class TopPercentUsageListAPIView(BaseTopUsageListAPIView):
                 i['unit_type'] == item['unit_type'] and i['amount'] == item['amount']]
 
     def update_item(self, item):
-        item['url'] = reverse('v1:percent-usage') + \
-                      '?percent_type_search={}&percent_amount_search={}'.format(
-                          item['unit_type'], item['amount'])
+        item['url'] = '{}?percent_type_search={}&percent_amount_search={}'.format(
+            reverse('v1:percent-usage'), item['unit_type'], item['amount'])
         return item
 
 
@@ -1154,9 +1151,8 @@ class TopRatioUsageListAPIView(BaseTopUsageListAPIView):
                 i['amount'] == item['amount'] and i['amount2'] == item['amount2']]
 
     def update_item(self, item):
-        item['url'] = reverse('v1:ratio-usage') + \
-                      '?ratio_amount_search={}&ratio_amount2_search={}'.format(
-                          item['amount'], item['amount2'])
+        item['url'] = '{}?ratio_amount_search={}&ratio_amount2_search={}'.format(
+            reverse('v1:ratio-usage'), item['amount'], item['amount2'])
         return item
 
 

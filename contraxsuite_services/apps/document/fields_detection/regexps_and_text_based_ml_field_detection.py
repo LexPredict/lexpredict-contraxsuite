@@ -1,4 +1,4 @@
-from typing import Optional, List, Dict, Tuple, Iterable
+from typing import Optional, List, Dict, Tuple, Iterable, Any
 
 import pandas as pd
 from django.conf import settings
@@ -11,7 +11,7 @@ from sklearn.model_selection import train_test_split
 from sklearn.pipeline import Pipeline
 from sklearn.utils import shuffle
 
-from apps.document.field_types import FIELD_TYPES_REGISTRY, ValueExtractionHint, FieldType
+from apps.document.field_types import FieldType
 from apps.document.fields_detection import field_detection_utils
 from apps.document.fields_detection.fields_detection_abstractions import FieldDetectionStrategy, DetectedFieldValue, \
     ProcessLogger
@@ -22,6 +22,7 @@ from apps.document.fields_detection.text_based_ml import SkLearnClassifierModel,
 from apps.document.models import ClassifierModel, DocumentFieldValue, ExternalFieldValue, TextUnit, \
     DocumentField, DocumentType
 from apps.document.models import Document
+from ..value_extraction_hints import ValueExtractionHint
 
 
 def get_user_data(field: DocumentField,
@@ -206,7 +207,8 @@ class TextBasedMLFieldDetectionStrategy(FieldDetectionStrategy):
     def detect_field_values(cls,
                             log: ProcessLogger,
                             doc: Document,
-                            field: DocumentField) -> List[DetectedFieldValue]:
+                            field: DocumentField,
+                            cached_fields: Dict[str, Any]) -> List[DetectedFieldValue]:
 
         depends_on_full_text = doc.full_text
         detected_with_stop_words, detected_values = detect_with_stop_words_by_field_and_full_text(field,
@@ -217,7 +219,7 @@ class TextBasedMLFieldDetectionStrategy(FieldDetectionStrategy):
         try:
             classifier_model = ClassifierModel.objects.get(document_field=field)
             sklearn_model = classifier_model.get_trained_model_obj()
-            field_type_adapter = FIELD_TYPES_REGISTRY[field.type]
+            field_type_adapter = field.get_field_type()
 
             detected_values = list()  # type: List[DetectedFieldValue]
 
@@ -271,8 +273,9 @@ class RegexpsAndTextBasedMLFieldDetectionStrategy(TextBasedMLFieldDetectionStrat
     def detect_field_values(cls,
                             log: ProcessLogger,
                             doc: Document,
-                            field: DocumentField) -> List[DetectedFieldValue]:
+                            field: DocumentField,
+                            cached_fields: Dict[str, Any]) -> List[DetectedFieldValue]:
         try:
-            return super().detect_field_values(log, doc, field)
+            return super().detect_field_values(log, doc, field, cached_fields)
         except ClassifierModel.DoesNotExist:
-            return RegexpsOnlyFieldDetectionStrategy.detect_field_values(log, doc, field)
+            return RegexpsOnlyFieldDetectionStrategy.detect_field_values(log, doc, field, cached_fields)

@@ -29,7 +29,7 @@ URL: {{ doc_url }}
         {%- elif column_type == 'boolean' or column_type == 'related_info' %}
 {{ column.title }}: {{ 'Yes' if value else 'No' }}
         {%- elif column_type == 'date' %}
-{{ column.title }}: {{ value.astimezone(to_user.get_time_zone()).strftime('%m/%d/%Y') if value is not none else '' }}
+{{ column.title }}: {{ value.strftime('%m/%d/%Y') if value is not none else '' }}
         {%- elif column_type == 'datetime' %}
 {{ column.title }}: {{ value.astimezone(to_user.get_time_zone()).strftime('%m/%d/%Y %I:%M %p (%Z)') if value is not none else '' }}
         {%- else %}

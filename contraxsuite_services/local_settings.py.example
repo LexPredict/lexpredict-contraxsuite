@@ -1,0 +1,204 @@
+# SECURITY WARNING: keep the secret key used in production secret!
+SECRET_KEY = 'Welcome1'
+
+AUTOLOGIN = False
+
+HOST_NAME = 'localhost'
+DEBUG = False
+DEBUG_SQL = False
+DEBUG_TEMPLATE = False
+
+# email backend
+#EMAIL_BACKEND = 'smtp.CustomEmailBackend'
+#EMAIL_USE_TLS = True
+#EMAIL_HOST = 'smtp.sendgrid.net'
+#EMAIL_HOST_USER = 'your-user'
+#EMAIL_HOST_PASSWORD = 'your-password'
+#EMAIL_PORT = 587
+
+EMAIL_PORT = 1025
+EMAIL_HOST = 'localhost'
+EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+EMAIL_PORT = 587
+
+ADMINS = (
+    ('Someone Else', 'someone-else@local'),
+)
+
+DATABASES = {
+    'default': {
+        'ENGINE': 'django.db.backends.postgresql_psycopg2',
+        'NAME': 'contrax1',
+        'USER': 'contrax1',
+        'PASSWORD': 'contrax1',
+        'HOST': 'localhost',
+        'PORT': '54320'
+    },
+}
+
+ALLOWED_HOSTS = (
+    '127.0.0.1',
+    'localhost',
+    'localhost'
+)
+
+INTERNAL_IPS = (
+    '127.0.0.1',
+    'localhost'
+)
+
+DEBUG = True
+PIPELINE_ENABLED = False
+
+ACCOUNT_EMAIL_VERIFICATION=False
+
+import os
+os.environ["GOOGLE_API_KEY"] = "AIzaSyDR38mlfWlSGq9q4Y0yfsJaGqFxlNTCXHM"
+
+FIELDS_RETRAIN_MODEL_ON_ANNOTATIONS_CHANGE = True
+
+TIKA_DISABLE = False
+TIKA_SERVER_ENDPOINT = 'http://localhost:9998'
+
+BASE_URL = '/advanced'
+
+ELASTICSEARCH_CONFIG = {
+    'hosts': [{'host': '127.0.0.1', 'port': 19200}],
+    'index': 'contraxsuite'
+}
+
+CELERY_BROKER_URL = 'amqp://contrax1:contrax1@127.0.0.1:56720/contrax1_vhost'
+CELERY_CACHE_REDIS_URL = 'redis://127.0.0.1:63790/0'
+
+
+import platform
+import sys
+
+from contraxsuite_logging import ContraxsuiteJSONFormatter
+
+# writing logs to docker volume where filebeat will be able to read it
+LOG_DIR='/var/lib/docker/volumes/contraxsuite_contraxsuite_logs/_data'
+
+CELERY_LOG_FILE_PATH = LOG_DIR + '/celery-{0}.log'.format(platform.node())
+LOG_FILE_PATH = LOG_DIR + '/django-{0}.log'.format(platform.node())
+DB_LOG_FILE_PATH = LOG_DIR + '/db-{0}.log'.format(platform.node())
+FRONT_LOG_FILE_PATH = LOG_DIR + '/frontend-{0}.log'.format(platform.node())
+
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'verbose': {
+            'format': '%(levelname)-7s %(asctime)s | %(message)s'
+        },
+        'json': {
+            '()': 'contraxsuite_logging.ContraxsuiteJSONFormatter'
+        }
+    },
+    'handlers': {
+        'text_django': {
+            'level': 'DEBUG',
+            'class': 'logging.handlers.RotatingFileHandler',
+            'maxBytes': 1024 * 1024 * 10,
+            'backupCount': 5,
+            'filename': LOG_FILE_PATH,
+            'formatter': 'verbose',
+        },
+        'text_celery': {
+            'level': 'DEBUG',
+            'class': 'logging.handlers.RotatingFileHandler',
+            'maxBytes': 1024 * 1024 * 100,
+            'backupCount': 5,
+            'filename': CELERY_LOG_FILE_PATH,
+            'formatter': 'verbose',
+        },
+        'text_db': {
+            'level': 'DEBUG',
+            'class': 'logging.handlers.RotatingFileHandler',
+            'maxBytes': 1024 * 1024 * 10,
+            'backupCount': 5,
+            'filename': DB_LOG_FILE_PATH,
+            'formatter': 'verbose',
+        },
+        'console': {
+            'level': 'DEBUG',
+            'filters': [],
+            'class': 'logging.StreamHandler',
+            'formatter': 'verbose',
+            'stream': sys.stdout,
+        },
+        'mail_admins': {
+            'level': 'ERROR',
+            'class': 'django.utils.log.AdminEmailHandler',
+        },
+        'json_django': {
+            'level': 'DEBUG',
+            'class': 'logging.handlers.RotatingFileHandler',
+            'maxBytes': 1024 * 1024 * 10,
+            'backupCount': 5,
+            'filename': LOG_FILE_PATH + '_json',
+            'formatter': 'json',
+        },
+        'json_frontend': {
+            'level': 'DEBUG',
+            'class': 'logging.handlers.RotatingFileHandler',
+            'maxBytes': 1024 * 1024 * 10,
+            'backupCount': 5,
+            'filename': FRONT_LOG_FILE_PATH + '_json',
+            'formatter': 'json',
+        },
+        'json_celery': {
+            'level': 'DEBUG',
+            'class': 'logging.handlers.RotatingFileHandler',
+            'maxBytes': 1024 * 1024 * 10,
+            'backupCount': 5,
+            'filename': CELERY_LOG_FILE_PATH + '_json',
+            'formatter': 'json',
+        },
+        'json_db': {
+            'level': 'DEBUG',
+            'class': 'logging.handlers.RotatingFileHandler',
+            'maxBytes': 1024 * 1024 * 10,
+            'backupCount': 5,
+            'filename': DB_LOG_FILE_PATH + '_json',
+            'formatter': 'json',
+        },
+    },
+    'loggers': {
+        'apps.task.models': {
+            'handlers': ['json_celery', 'text_celery'],
+            'level': 'INFO',
+            'propagate': True,
+        },
+        'apps.task.tasks': {
+            'handlers': ['json_celery', 'text_celery'],
+            'level': 'INFO',
+            'propagate': True,
+        },
+        'django': {
+            'handlers': ['json_django', 'text_django'],
+            'level': 'INFO',
+            'propagate': True,
+        },
+        'frontend': {
+            'handlers': ['json_frontend'],
+            'level': 'DEBUG',
+            'propagate': True,
+        },
+        'django.db.backends': {
+            'handlers': ['text_db', 'json_db'],  # Quiet by default!
+            'propagate': False,
+            'level': 'ERROR',
+        },
+    },
+}
+
+# django-cors-headers settings
+# https://github.com/ottoyiu/django-cors-headers/
+# CORS_ORIGIN_ALLOW_ALL = True
+# CORS_ALLOW_CREDENTIALS = False
+# CORS_URLS_REGEX = r'^.*$'
+
+FRONTEND_ROOT_URL = 'http://localhost:8080'
+
+

@@ -69,7 +69,8 @@ class FormulaBasedFieldDetectionStrategy(FieldDetectionStrategy):
     def detect_field_values(cls,
                             log: ProcessLogger,
                             doc: Document,
-                            field: DocumentField) -> List[DetectedFieldValue]:
+                            field: DocumentField,
+                            cached_fields: Dict[str, Any]) -> List[DetectedFieldValue]:
         # This method assumes that field detection already goes in the required order and dependencies of this
         # field are already calculated / detected.
 

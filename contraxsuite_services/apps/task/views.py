@@ -46,7 +46,7 @@ from apps.document.models import DocumentProperty, TextUnitProperty
 from apps.task.forms import (
     LoadDocumentsForm, LocateTermsForm, LocateForm,
     ExistedClassifierClassifyForm, CreateClassifierClassifyForm,
-    ClusterForm, SimilarityForm, PartySimilarityForm, CleanProjectForm,
+    ClusterForm, CleanProjectForm,
     UpdateElasticSearchForm, TaskDetailForm, TotalCleanupForm,
     LoadFixtureForm, DumpFixtureForm)
 from apps.task.models import Task
@@ -58,8 +58,8 @@ project_api_module = get_api_module('project')
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.1/LICENSE"
-__version__ = "1.2.1"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.2/LICENSE"
+__version__ = "1.2.2"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -354,39 +354,6 @@ class ClusterView(BaseAjaxTaskView):
             result_links=result_links)
 
 
-class SimilarityView(BaseAjaxTaskView):
-    task_name = 'Similarity'
-    form_class = SimilarityForm
-
-    def get_metadata(self):
-        similarity_items = []
-        result_links = []
-        if self.request.POST.get('search_similar_documents'):
-            similarity_items.append('documents')
-            result_links.append({'name': 'View Document Similarity List',
-                                 'link': 'analyze:document-similarity-list'})
-        if self.request.POST.get('search_similar_text_units'):
-            similarity_items.append('text units')
-            result_links.append({'name': 'View Text Unit Similarity List',
-                                 'link': 'analyze:text-unit-similarity-list'})
-        return dict(
-            description='similarity for:{}; threshold:{}'.format(
-                ', '.join(similarity_items),
-                self.request.POST.get('similarity_threshold')),
-            result_links=result_links)
-
-
-class PartySimilarityView(BaseAjaxTaskView):
-    task_name = 'Party Similarity'
-    form_class = PartySimilarityForm
-
-    def get_metadata(self):
-        return dict(
-            description='similarity type:{}, threshold:{}'.format(
-                self.request.POST.get('similarity_type'),
-                self.request.POST.get('similarity_threshold')),
-            result_links=[{'name': 'View Party Usage List',
-                           'link': 'extract:party-usage-list'}])
 
 
 class TaskDetailView(apps.common.mixins.CustomDetailView):
@@ -431,15 +398,16 @@ class TaskListView(apps.common.mixins.AdminRequiredMixin, apps.common.mixins.JqP
         for item in data['data']:
             item['url'] = reverse('task:task-detail', args=[item['pk']])
             item['purge_url'] = reverse('task:purge-task')
+            item['result_links'] = []
             if item['metadata']:
-                metadata = item['metadata']
-                item['description'] = metadata.get('description')
-                result_links = metadata.get('result_links', [])
-                for link_data in result_links:
-                    link_data['link'] = reverse(link_data['link'])
-                item['result_links'] = result_links
-            else:
-                item['result_links'] = []
+                if isinstance(item['metadata'], dict):
+                    metadata = item['metadata']
+                    item['description'] = metadata.get('description')
+                    result_links = metadata.get('result_links', [])
+                    for link_data in result_links:
+                        link_data['link'] = reverse(link_data['link'])
+                    item['result_links'] = result_links
+
         return data
 
     def get_context_data(self, **kwargs):

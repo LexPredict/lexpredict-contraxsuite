@@ -5,22 +5,18 @@ from typing import List, Set, Dict, Type, Optional
 from django.db import transaction
 from lexnlp.extract.en import (
     amounts, citations, copyright, courts, dates, distances, definitions,
-    durations, geoentities, money, percents, ratios, regulations, trademarks, urls,
-    dict_entities)
+    durations, geoentities, money, percents, ratios, regulations, trademarks, urls, dict_entities)
 from lexnlp.extract.en.entities.nltk_maxent import get_companies
 from lexnlp.nlp.en.tokens import get_stems, get_token_list
 
 from apps.common.log_utils import ProcessLogger, render_error
-from apps.document.models import (
-    TextUnitTag)
+from apps.document.models import TextUnitTag
 from apps.extract import dict_data_cache
 from apps.extract.models import (
-    AmountUsage, CitationUsage, CopyrightUsage,
-    CourtUsage, CurrencyUsage,
+    AmountUsage, CitationUsage, CopyrightUsage, CourtUsage, CurrencyUsage,
     DateDurationUsage, DateUsage, DefinitionUsage, DistanceUsage,
     GeoAliasUsage, GeoEntityUsage, PercentUsage, RatioUsage, RegulationUsage,
-    Party, PartyUsage, TermUsage, TrademarkUsage, UrlUsage)
-from apps.extract.models import Usage
+    Party, PartyUsage, TermUsage, TrademarkUsage, UrlUsage, Usage)
 
 
 class ParseResults:
@@ -69,17 +65,20 @@ class LocationResults:
                 tag_models = list()
                 for text_unit_id, tags in self.tags.items():
                     for tag in tags:
-                        tag_models.append(TextUnitTag(user_id=user_id, text_unit_id=text_unit_id, tag=tag))
+                        tag_models.append(TextUnitTag(user_id=user_id,
+                                                      text_unit_id=text_unit_id,
+                                                      tag=tag))
                 TextUnitTag.objects.bulk_create(tag_models, ignore_conflicts=True)
                 log.info(
-                    'Stored {0} usage entities and {1} tags for {2} text units'
-                        .format(count, len(tag_models), len(self.processed_text_unit_ids)))
+                    'Stored {0} usage entities and {1} tags for {2} text units'.format(
+                        count, len(tag_models), len(self.processed_text_unit_ids)))
         except:
-            msg = render_error('Unable to store location results.\n'
-                               'Text unit ids: {text_unit_ids}\n'
-                               'Usage models caused the problem:\n{entities}'
-                               .format(text_unit_ids=self.processed_text_unit_ids,
-                                       entities='\n'.join([str(e) for e in self.processed_usage_entity_classes])))
+            msg = render_error(
+                'Unable to store location results.\n'
+                'Text unit ids: {text_unit_ids}\n'
+                'Usage models caused the problem:\n{entities}'.format(
+                    text_unit_ids=self.processed_text_unit_ids,
+                    entities='\n'.join([str(e) for e in self.processed_usage_entity_classes])))
             log.error(msg)
 
 
@@ -91,21 +90,22 @@ class Locator:
     def parse(self, text: str, text_unit_id: int, text_unit_lang: str, **kwargs) -> ParseResults:
         pass
 
-    def try_parsing(self, log: ProcessLogger, locate_results: LocationResults, text: str, text_unit_id: int,
-                    text_unit_lang: str,
-                    **kwargs):
+    def try_parsing(self, log: ProcessLogger, locate_results: LocationResults, text: str,
+                    text_unit_id: int, text_unit_lang: str, **kwargs):
         try:
             parse_results = self.parse(text, text_unit_id, text_unit_lang, **kwargs)  # type: ParseResults
             locate_results.collect(self, text_unit_id, parse_results)
         except:
-            msg = render_error('Exception caught while trying to run locator on a text unit.\n'
-                               'Locator: {locator}\n'
-                               'Text unit id: {text_unit_id}\n'
-                               'Text: {text}\n'
-                               'Text unit language: {text_unit_lang}\n'.format(locator=self.__class__.__name__,
-                                                                               text_unit_id=text_unit_id,
-                                                                               text=text[:1024],
-                                                                               text_unit_lang=text_unit_lang))
+            msg = render_error(
+                'Exception caught while trying to run locator on a text unit.\n'
+                'Locator: {locator}\n'
+                'Text unit id: {text_unit_id}\n'
+                'Text: {text}\n'
+                'Text unit language: {text_unit_lang}\n'.format(
+                    locator=self.__class__.__name__,
+                    text_unit_id=text_unit_id,
+                    text=text[:1024],
+                    text_unit_lang=text_unit_lang))
             log.error(msg)
 
 

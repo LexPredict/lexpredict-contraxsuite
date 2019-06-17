@@ -3,6 +3,7 @@
 from __future__ import unicode_literals
 
 import apps.document.field_types
+from apps.document.value_extraction_hints import ValueExtractionHint
 from django.db import migrations, models
 import django.db.models.deletion
 
@@ -31,12 +32,12 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='documentfieldvalue',
             name='extraction_hint',
-            field=models.CharField(blank=True, choices=[(apps.document.field_types.ValueExtractionHint('TAKE_FIRST'), apps.document.field_types.ValueExtractionHint('TAKE_FIRST')), (apps.document.field_types.ValueExtractionHint('TAKE_SECOND'), apps.document.field_types.ValueExtractionHint('TAKE_SECOND')), (apps.document.field_types.ValueExtractionHint('TAKE_LAST'), apps.document.field_types.ValueExtractionHint('TAKE_LAST'))], db_index=True, default='TAKE_FIRST', max_length=30, null=True),
+            field=models.CharField(blank=True, choices=[(ValueExtractionHint('TAKE_FIRST'), ValueExtractionHint('TAKE_FIRST')), (ValueExtractionHint('TAKE_SECOND'), ValueExtractionHint('TAKE_SECOND')), (ValueExtractionHint('TAKE_LAST'), ValueExtractionHint('TAKE_LAST'))], db_index=True, default='TAKE_FIRST', max_length=30, null=True),
         ),
         migrations.AddField(
             model_name='historicaldocumentfieldvalue',
             name='extraction_hint',
-            field=models.CharField(blank=True, choices=[(apps.document.field_types.ValueExtractionHint('TAKE_FIRST'), apps.document.field_types.ValueExtractionHint('TAKE_FIRST')), (apps.document.field_types.ValueExtractionHint('TAKE_SECOND'), apps.document.field_types.ValueExtractionHint('TAKE_SECOND')), (apps.document.field_types.ValueExtractionHint('TAKE_LAST'), apps.document.field_types.ValueExtractionHint('TAKE_LAST'))], db_index=True, default='TAKE_FIRST', max_length=30, null=True),
+            field=models.CharField(blank=True, choices=[(ValueExtractionHint('TAKE_FIRST'), ValueExtractionHint('TAKE_FIRST')), (ValueExtractionHint('TAKE_SECOND'), ValueExtractionHint('TAKE_SECOND')), (ValueExtractionHint('TAKE_LAST'), ValueExtractionHint('TAKE_LAST'))], db_index=True, default='TAKE_FIRST', max_length=30, null=True),
         ),
         migrations.AlterField(
             model_name='documentfielddetector',

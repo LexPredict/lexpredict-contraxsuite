@@ -1,15 +1,15 @@
 import io
-from typing import Optional, List, Iterable
+from typing import Optional, List, Iterable, Dict, Any
 
 import pandas as pd
 
-from apps.document.field_types import FIELD_TYPES_REGISTRY, ValueExtractionHint, FieldType
+from apps.document.field_types import FieldType
 from apps.document.fields_detection.fields_detection_abstractions import FieldDetectionStrategy, DetectedFieldValue, \
     ProcessLogger
 from apps.document.fields_detection.stop_words import detect_with_stop_words_by_field_and_full_text
 from apps.document.fields_processing.field_processing_utils import merge_document_field_values_to_python_value
-from apps.document.models import ClassifierModel, TextUnit, DocumentFieldDetector
-from apps.document.models import DocumentField, Document
+from apps.document.models import ClassifierModel, TextUnit, DocumentFieldDetector, DocumentField, Document
+from ..value_extraction_hints import ValueExtractionHint
 
 
 class RegexpsOnlyFieldDetectionStrategy(FieldDetectionStrategy):
@@ -29,7 +29,8 @@ class RegexpsOnlyFieldDetectionStrategy(FieldDetectionStrategy):
     def detect_field_values(cls,
                             log: ProcessLogger,
                             doc: Document,
-                            field: DocumentField) -> List[DetectedFieldValue]:
+                            field: DocumentField,
+                            cached_fields: Dict[str, Any]) -> List[DetectedFieldValue]:
 
         depends_on_full_text = doc.full_text
         detected_with_stop_words, detected_values = detect_with_stop_words_by_field_and_full_text(field,
@@ -44,7 +45,7 @@ class RegexpsOnlyFieldDetectionStrategy(FieldDetectionStrategy):
 
         field_detectors = DocumentFieldDetector.objects.filter(field=field)
 
-        field_type_adapter = FIELD_TYPES_REGISTRY.get(field.type)  # type: FieldType
+        field_type_adapter = field.get_field_type()  # type: FieldType
 
         detected_values = list()  # type: List[DetectedFieldValue]
 
@@ -98,7 +99,8 @@ class FieldBasedRegexpsDetectionStrategy(FieldDetectionStrategy):
     def detect_field_values(cls,
                             log: ProcessLogger,
                             doc: Document,
-                            field: DocumentField) -> List[DetectedFieldValue]:
+                            field: DocumentField,
+                            cached_fields: Dict[str, Any]) -> List[DetectedFieldValue]:
 
         depends_on_fields = list(field.depends_on_fields.all())
 
@@ -118,7 +120,7 @@ class FieldBasedRegexpsDetectionStrategy(FieldDetectionStrategy):
                 return detected_values or list()
 
         field_detectors = DocumentFieldDetector.objects.filter(field=field)
-        field_type_adapter = FIELD_TYPES_REGISTRY.get(field.type)  # type: FieldType
+        field_type_adapter = field.get_field_type()  # type: FieldType
 
         detected_values = list()  # type: List[DetectedFieldValue]
 

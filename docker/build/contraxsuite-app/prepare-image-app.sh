@@ -31,7 +31,6 @@ mkdir -p ../../../additionals
 echo "Contraxsuite additional files" > ../../../additionals/additionals
 rsync ../../../additionals/ ./temp/additionals/ -a --copy-links -v
 
-echo "Contraxsuite additional files" > ../../../additionals/additionals
 rsync ../../../contraxsuite_services/ ./temp/contraxsuite_services/ -a --copy-links -v
 rsync ../../../static/ ./temp/static/ -a --copy-links -v
 

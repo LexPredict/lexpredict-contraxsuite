@@ -36,8 +36,8 @@ from .tasks import ImportCSVFieldDetectionConfig
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.1/LICENSE"
-__version__ = "1.2.1"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.2/LICENSE"
+__version__ = "1.2.2"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -52,7 +52,13 @@ class ProjectModelMultipleChoiceField(forms.ModelMultipleChoiceField):
         return [json.loads(value.replace('\'', '"'))[0] for value in values]
 
 
-class DetectFieldValuesForm(forms.Form):
+class PatchedForm(forms.Form):
+    def _post_clean(self):
+        super()._post_clean()
+        self.cleaned_data['module_name'] = MODULE_NAME
+
+
+class DetectFieldValuesForm(PatchedForm):
     header = 'Detect Field Values'
 
     document_type = forms.ModelChoiceField(queryset=DocumentType.objects.all(), required=False)
@@ -73,49 +79,29 @@ class DetectFieldValuesForm(forms.Form):
     do_not_write = forms.BooleanField(label='Do not write detected values to DB (only log)',
                                       required=False)
 
-    def _post_clean(self):
-        super()._post_clean()
-        self.cleaned_data['module_name'] = MODULE_NAME
 
-
-class TrainDocumentFieldDetectorModelForm(forms.Form):
+class TrainDocumentFieldDetectorModelForm(PatchedForm):
     header = 'Train Document Field Detector Model'
 
     document_type = forms.ModelChoiceField(queryset=DocumentType.objects.all(), required=False)
 
-    def _post_clean(self):
-        super()._post_clean()
-        self.cleaned_data['module_name'] = MODULE_NAME
 
-
-class CacheDocumentFieldsForm(forms.Form):
+class CacheDocumentFieldsForm(PatchedForm):
     header = 'Cache Document Fields'
 
     project = forms.ModelChoiceField(queryset=Project.objects.all(), required=False)
 
-    def _post_clean(self):
-        super()._post_clean()
-        self.cleaned_data['module_name'] = MODULE_NAME
 
-
-class FindBrokenDocumentFieldValuesForm(forms.Form):
+class FindBrokenDocumentFieldValuesForm(PatchedForm):
     header = FindBrokenDocumentFieldValues.name
 
     document_field = forms.ModelChoiceField(queryset=DocumentField.objects.all(), required=False)
 
     delete_broken = forms.BooleanField(required=False)
 
-    def _post_clean(self):
-        super()._post_clean()
-        self.cleaned_data['module_name'] = MODULE_NAME
 
-
-class FixDocumentFieldCodesForm(forms.Form):
+class FixDocumentFieldCodesForm(PatchedForm):
     header = FixDocumentFieldCodes.name
-
-    def _post_clean(self):
-        super()._post_clean()
-        self.cleaned_data['module_name'] = MODULE_NAME
 
 
 class TrainAndTestForm(forms.Form):
@@ -174,7 +160,7 @@ class LoadDocumentWithFieldsForm(forms.Form):
     run_detect_field_values = forms.BooleanField(required=False)
 
 
-class ImportCSVFieldDetectionConfigForm(forms.Form):
+class ImportCSVFieldDetectionConfigForm(PatchedForm):
     header = ImportCSVFieldDetectionConfig.name
 
     enctype = 'multipart/form-data'
@@ -199,10 +185,6 @@ class ImportCSVFieldDetectionConfigForm(forms.Form):
     aliases/substrings to search for. Otherwise the aliases will be treated as simply substrings to search for,
     spaces in them will be converted to \\s and maybe similar other conversions will be applied to bring them 
     to the regexp form usable in field detectors.''')
-
-    def _post_clean(self):
-        super()._post_clean()
-        self.cleaned_data['module_name'] = MODULE_NAME
 
 
 class ExportDocumentTypeForm(forms.Form):

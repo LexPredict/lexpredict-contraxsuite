@@ -275,8 +275,11 @@ class TaskManager(models.Manager):
             options['parent_id'] = task.main_task_id
             options['title'] = task.title
             options['run_after_sub_tasks_finished'] = False
+            priority = task.priority
+            from apps.task.tasks import get_queue_by_task_priority
+            queue = get_queue_by_task_priority(task.priority)
             task = signature(task.name, args=task.metadata['args'], **options)
-            task.apply_async()
+            task.apply_async(priority=priority, queue=queue)
 
     def update_main_task(self, main_task_id: str):
         all_task_info_rows = self.filter(

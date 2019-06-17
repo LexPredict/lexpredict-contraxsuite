@@ -24,7 +24,9 @@
         { text: 'Count', datafield: 'count', width: '33%',
           align: 'center', cellsalign: 'center' }
       ];
-      draw_grid(".jqxgrid", datafields, columns, true);
+      // DISABLED server-side pagination because filtering/sorting on server-side
+      // IS NOT IMPLEMENTED
+      draw_grid(".jqxgrid", datafields, columns, false);
     });
   </script>
 {% endblock %}

@@ -1,4 +1,4 @@
-from typing import Optional, List, Iterable
+from typing import Optional, List, Iterable, Dict, Any
 
 from apps.document.fields_detection.fields_detection_abstractions import DetectedFieldValue, \
     ProcessLogger
@@ -35,7 +35,8 @@ class FormulaAndFieldBasedMLFieldDetectionStrategy(FieldBasedMLOnlyFieldDetectio
     def detect_field_values(cls,
                             log: ProcessLogger,
                             doc: Document,
-                            field: DocumentField) -> List[DetectedFieldValue]:
+                            field: DocumentField,
+                            cached_fields: Dict[str, Any]) -> List[DetectedFieldValue]:
         try:
             return super().detect_field_values(log, doc, field)
         except ClassifierModel.DoesNotExist:

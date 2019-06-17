@@ -51,8 +51,8 @@ from apps.users.models import User
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.1/LICENSE"
-__version__ = "1.2.1"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.2/LICENSE"
+__version__ = "1.2.2"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -98,6 +98,7 @@ class Task(models.Model):
     visible = models.BooleanField(default=True)
     run_count = models.IntegerField(blank=False, null=False, default=0)
     worker = models.CharField(max_length=1024, db_index=True, null=True, blank=True)
+    priority = models.IntegerField(blank=False, null=False, default=0)
 
     own_date_done = models.DateTimeField(blank=True, null=True)
     own_status = models.CharField(

@@ -30,6 +30,7 @@ import json
 import operator
 import os
 import re
+import traceback
 from collections import OrderedDict
 from functools import reduce
 
@@ -41,8 +42,9 @@ import rest_framework.response
 import rest_framework.generics
 from django.http.response import StreamingHttpResponse
 from rest_framework import serializers
+from rest_framework import status
 from rest_framework.decorators import action
-from rest_framework.fields import empty
+from rest_framework.fields import empty as EMPTY
 from rest_framework.response import Response
 from rest_framework_tracking.mixins import LoggingMixin
 
@@ -56,7 +58,7 @@ from django.core.paginator import Paginator, EmptyPage
 from django.core.serializers.json import DjangoJSONEncoder
 from django.urls import reverse
 from django.db import connection
-from django.db.models import Q, fields as django_fields
+from django.db.models import Q, fields as django_fields, NOT_PROVIDED
 from django.db.models.expressions import OrderBy, Random, RawSQL, Ref
 from django.db.models.sql.constants import ORDER_DIR
 from django.db.models.sql.query import get_order_dir
@@ -74,8 +76,8 @@ from apps.common.utils import cap_words, export_qs_to_file, download
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.1/LICENSE"
-__version__ = "1.2.1"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.2/LICENSE"
+__version__ = "1.2.2"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -131,7 +133,7 @@ class AddModelNameMixin(LoginRequiredMixin):
         return res
 
 
-class MessageMixin(object):
+class MessageMixin:
     """
     Pass custom success message in messages
     """
@@ -149,7 +151,7 @@ class MessageMixin(object):
         return response
 
 
-class TemplateNamesMixin(object):
+class TemplateNamesMixin:
     """
     Add "model_name_suffix.html" template name format (extra "_")
     """
@@ -304,7 +306,7 @@ class CustomDeleteView(AddModelNameMixin, PermissionRequiredMixin, DeleteView):
         return super().post(request, *args, **kwargs)
 
 
-class AjaxResponseMixin(object):
+class AjaxResponseMixin:
 
     def render_to_response(self, *args, **kwargs):
         if self.request.is_ajax():
@@ -491,13 +493,16 @@ class JqPaginatedListView(AjaxListView):
                 filters[field].append(
                     dict(value=value, condition=condition, operator=op)
                 )
+            q_all = Q()
+            q_all.op = 1    # 0 - AND, 1 - OR
             for field in filters:
-                q_prev = q_curr = Q()
-                op = None
                 for field_condition in filters[field]:
+
                     cond = field_condition['condition']
                     val = field_condition['value']
-                    op = field_condition['operator']
+                    op = field_condition['operator']    # 0 - AND, 1 - OR
+
+                    q_curr = Q()
 
                     # TODO: check if bool/null filter improved in new jqWidgets grid
                     # if vale is False filter None and False
@@ -520,11 +525,11 @@ class JqPaginatedListView(AjaxListView):
                     # filter out empty and None values as well
                     elif cond == 'NOT_EMPTY':
                         q_curr = ~Q(**{field: ''}) & Q(**{'%s__isnull' % field: False})
-                    # one field can have 2 conditions maximum
-                    if not q_prev:
-                        q_prev = q_curr
-                        q_curr = Q()
-                qs = qs.filter(q_prev | q_curr) if op else qs.filter(q_prev & q_curr)
+
+                    q_all = q_all | q_curr if q_all.op else q_all & q_curr
+                    q_all.op = op
+
+            qs = qs.filter(q_all)
         return qs
 
     def sort(self, qs):
@@ -638,29 +643,160 @@ class ModelFieldFilterBackend(rest_framework.filters.BaseFilterBackend):
         return queryset
 
 
-class APIFormFieldsMixin(object):
-    @action(detail=False, methods=['get'], url_path='form-fields')
-    def form_fields(self, request, *args, **kwargs):
-        default_field_attrs = ['field_name', 'label', 'help_text', 'required', 'default',
-                               'choices', 'read_only', 'allow_null']
+class APIResponseMixin:
+    response_unifier_serializer = None
+    new_instance = None
+
+    def handle_exception(self, exc):
+        try:
+            return super().handle_exception(exc)
+        except Exception as e:
+            return Response({'status': 'error',
+                             'reason': str(e),
+                             'traceback': traceback.format_exc()})
+
+    def destroy(self, request, *args, **kwargs):
+        _ = super().destroy(request, *args, **kwargs)
+        return Response('OK', status=status.HTTP_200_OK)
+
+    def perform_create(self, serializer):
+        self.new_instance = serializer.save()
+
+    def finalize_response(self, request, response, *args, **kwargs):
+        if self.response_unifier_serializer and\
+                response.status_code not in (400, 500) and \
+                self.get_serializer_class() != self.response_unifier_serializer:
+            try:
+                if self.new_instance:
+                    instance = self.new_instance
+                else:
+                    instance = self.get_object()
+                response.data = self.response_unifier_serializer(instance, many=False).data
+            except:
+                pass
+        return super().finalize_response(request, response, *args, **kwargs)
+
+
+class APIFormFieldsMixin:
+    """
+    Mixin to provide info about instance or model fields defined in "options_serializer",
+    delivers data like field type, name, choices and other attributes listed in default_field_attrs.
+    Provides unified UI field type like input/select/checkbox, see "ui_elements_map".
+
+    """
+    default_field_attrs = ['field_name', 'label', 'help_text', 'required',
+                           'choices', 'read_only', 'allow_null']
+    options_serializer = None
+    ui_elements_map = {
+        "UUIDField": {'type': None, 'data_type': 'uid'},
+        "JSONField": {'type': 'input', 'data_type': 'json'},
+        "CharField": {'type': 'input', 'data_type': 'string'},
+        "ManyRelatedField": {'type': 'select', 'multichoice': True, 'data_type': 'array'},
+        "ChoiceField": {'type': 'select', 'multichoice': False, 'data_type': 'string'},
+        "PrimaryKeyRelatedField": {'type': 'select', 'multichoice': False, 'data_type': 'id'},
+        "DateField": {'type': 'input', 'data_type': 'date'},
+        "DateTimeField": {'type': 'input', 'data_type': 'datetime'},
+        "BooleanField": {'type': 'checkbox', 'data_type': 'boolean'},
+        "IntegerField": {'type': 'input', 'data_type': 'integer'},
+    }
+    default_ui_element = {'type': 'input', 'data_type': 'string'}
+    complex_ui_element = {'type': 'complex', 'data_type': 'array'}
+    optional_ui_attrs = ('max_length', 'max_value', 'min_value')
+    default_always_null_fields = ('UUIDField',)
+
+    def get_ui_element(self, field_code, field_class):
+        field_class_name = field_class.__class__.__name__
+        if "Serializer" in field_class_name:
+            ui_element_data = dict(self.complex_ui_element)
+        else:
+            ui_element_data = dict(self.ui_elements_map.get(
+                field_class_name, self.default_ui_element))
+            for ui_attr in self.optional_ui_attrs:
+                if hasattr(field_class, ui_attr):
+                    ui_element_data[ui_attr] = getattr(field_class, ui_attr)
+        return ui_element_data
+
+    def get_fields_data(self):
         fields = OrderedDict()
-        for field_code, field_class in self.options_serializer().get_fields().items():
-            fields[field_code] = {'field_type': str(getattr(field_class, 'root')).split('(')[0]}
-            for field_attr_name in default_field_attrs:
+        serializer = self.options_serializer or self.get_serializer()
+        model = serializer.Meta.model
+
+        for field_code, field_class in serializer().get_fields().items():
+            field_type = field_class.__class__.__name__
+            fields[field_code] = {'field_type': field_type,
+                                  'ui_element': self.get_ui_element(field_code, field_class)}
+            for field_attr_name in self.default_field_attrs:
                 field_attr_value = getattr(field_class, field_attr_name, None)
                 if callable(field_attr_value):
-                    if field_attr_value == empty:
+                    if field_attr_value == EMPTY:
                         field_attr_value = ''
                     else:
                         try:
-                            field_attr_value = str(field_attr_value())
+                            # try to get value from callable, without args/kwargs
+                            field_attr_value = field_attr_value()
                         except:
                             field_attr_value = str(field_attr_value)
                 fields[field_code][field_attr_name] = field_attr_value
+            # set default values from a model data
+            fields[field_code]['default'] = None
+            if field_type not in self.default_always_null_fields:
+                try:
+                    default_value = model._meta.get_field(field_code).default
+                    if default_value != NOT_PROVIDED:
+                        if callable(default_value):
+                            default_value = default_value()
+                        try:
+                            json.dumps(default_value)
+                        except:
+                            default_value = str(default_value)
+                        fields[field_code]['default'] = default_value
+                except:
+                    pass
+        return fields
+
+    @action(detail=False, methods=['get'], url_path='form-fields')
+    def new_object_fields(self, request, *args, **kwargs):
+        """
+        GET model form fields description to build UI form for an object:\n
+             - field_type: str - CharField, IntegerField, SomeSerializerField - i.e. fields from a serializer
+             - ui_element: dict - {type: ("input" | "select" | "checkbox" | ...), data_type: ("string", "integer", "date", ...), ...}
+             - label: str - field label declared in a serializer field (default NULL)
+             - field_name: str - field name declared in a serializer field (default NULL)
+             - help_text: str - field help text declared in a serializer field (default NULL)
+             - required: bool - whether field is required
+             - read_only: bool - whether field is read only
+             - allow_null: bool - whether field is may be null
+             - default: bool - default (initial) field value for a new object (default NULL)
+             - choices: array - choices to select from [{choice_id1: choice_verbose_name1, ....}] (default NULL)
+        """
+        return Response(self.get_fields_data())
+
+    @action(detail=True, methods=['get'], url_path='form-fields')
+    def existing_object_fields(self, request, *args, **kwargs):
+        """
+        GET model form fields description to build UI form for EXISTING object:\n
+             - value: any - object field value
+             - field_type: str - CharField, IntegerField, SomeSerializerField - i.e. fields from a serializer
+             - ui_element: dict - {type: ("input" | "select" | "checkbox" | ...), data_type: ("string", "integer", "date", ...), ...}
+             - label: str - field label declared in a serializer field (default NULL)
+             - field_name: str - field name declared in a serializer field (default NULL)
+             - help_text: str - field help text declared in a serializer field (default NULL)
+             - required: bool - whether field is required
+             - read_only: bool - whether field is read only
+             - allow_null: bool - whether field is may be null
+             - default: bool - default (initial) field value for a new object (default NULL)
+             - choices: array - choices to select from [{choice_id1: choice_verbose_name1, ....}] (default NULL)
+        """
+        fields = self.get_fields_data()
+        instance = self.get_object()
+        serializer = self.options_serializer or self.get_serializer()
+        instance_data = serializer(instance).data
+        for field_name, field_data in fields.items():
+            field_data['value'] = instance_data.get(field_name)
         return Response(fields)
 
 
-class JqListAPIMixin(object):
+class JqListAPIMixin:
     """
     Filter, sort and paginate queryset using jqWidgets' grid GET params
     return {'data': [.....], 'total_records': N}
@@ -786,7 +922,7 @@ class NestedKeyTextTransform(KeyTextTransform):
                [self.nested_key_names] + list(params)
 
 
-class APIActionMixin(object):
+class APIActionMixin:
     """
     Mixin class to track user activity in Action model
     """

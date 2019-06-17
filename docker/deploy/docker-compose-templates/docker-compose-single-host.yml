@@ -193,7 +193,7 @@ services:
     image: ${DOLLAR}{CONTRAXSUITE_IMAGE_FULL_NAME}:${DOLLAR}{CONTRAXSUITE_IMAGE_VERSION}
     networks:
       - contrax_net
-    command: ["/start.sh",  "celery"]
+    command: ["/start.sh",  "celery-single"]
     environment:
       - "DOCKER_CELERY_CONCURRENCY=${DOLLAR}{CPU_HALF_CORES}"
       - "SHARED_USER_NAME=${DOLLAR}{SHARED_USER_NAME}"

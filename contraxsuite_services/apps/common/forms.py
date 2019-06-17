@@ -23,7 +23,6 @@
     or shipping ContraxSuite within a closed source product.
 """
 # -*- coding: utf-8 -*-
-from django.db.models.deletion import CASCADE
 from django.forms import CharField
 # Django imports
 from django.utils.translation import ugettext_lazy as _
@@ -34,8 +33,8 @@ from .widgets import FriendlyPasswordInput
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.1/LICENSE"
-__version__ = "1.2.1"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.2/LICENSE"
+__version__ = "1.2.2"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -78,5 +77,4 @@ class FriendlyPasswordField(CharField):
     def clean(self, value):
         if value and not value.strip():
             return False
-        else:
-            return super().clean(value)
+        return super().clean(value)

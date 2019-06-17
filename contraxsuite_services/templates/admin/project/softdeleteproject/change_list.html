@@ -1,0 +1,17 @@
+{% extends 'admin/change_list.html' %}
+{% load admin_urls %}
+
+{% block object-tools %}
+    <div style="display: inline-block">
+        <form action="delete_all_checked/" method="POST">
+            {% csrf_token %}
+            <button type="submit">Delete all marked</button>
+        </form>
+    </div>
+    <div style="display: inline-block; padding-left: 50px">
+        <a href="{% url 'admin:document_softdeletedocument_changelist' %}">switch to documents marked for deleting</a>
+    </div>
+
+    <br />
+    {{ block.super }}
+{% endblock %}

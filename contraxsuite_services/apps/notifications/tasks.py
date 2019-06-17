@@ -38,6 +38,7 @@ class SendDigest(BaseTask):
     retry_backoff = True
     autoretry_for = (SoftTimeLimitExceeded, InterfaceError, OperationalError,)
     max_retries = 3
+    priority = 9
 
     PARAM_CONFIG = 'config'
     PARAM_CONFIG_ID = 'config_id'
@@ -242,7 +243,8 @@ def send_notification(log: ProcessLogger,
              default_retry_delay=10,
              retry_backoff=True,
              autoretry_for=(SoftTimeLimitExceeded, InterfaceError, OperationalError),
-             max_retries=0)
+             max_retries=0,
+             priority=9)
 def process_notifications_on_document_change(task: ExtendedTask,
                                              document_event: str,
                                              document_id,
@@ -251,7 +253,7 @@ def process_notifications_on_document_change(task: ExtendedTask,
                                              changed_by_user_id):
     log = CeleryTaskLogger(task)
 
-    document = Document.objects.filter(pk=document_id).select_related('document_type').first()  # type: Document
+    document = Document.all_objects.filter(pk=document_id).select_related('document_type').first()  # type: Document
     document_type = document.document_type
     changed_by_user = User.objects.get(pk=changed_by_user_id)
     field_handlers = build_field_handlers(document_type, include_suggested_fields=False)

@@ -36,8 +36,8 @@ from celery.app import trace
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.1/LICENSE"
-__version__ = "1.2.1"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.2/LICENSE"
+__version__ = "1.2.2"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -50,9 +50,9 @@ try:
     django.setup()
 except RuntimeError:
     WAS_INIT = True
-    pass
 
-if True: # not WAS_INIT:
+
+if True:    # not WAS_INIT:
     # advanced_celery adds workarounds for celery issue which requires specific import order
     from apps.task.celery_backend.advanced_celery import AdvancedCelery  # noqa
 
@@ -60,9 +60,9 @@ if True: # not WAS_INIT:
 
     app.config_from_object('django.conf:settings', namespace='CELERY')
     app.autodiscover_tasks(force=True)
+    app.conf.task_default_priority = 5
 
     old_build_tracer = trace.build_tracer
-
 
     def build_tracer_patched(name, task, loader=None, hostname=None, *args, **kwargs):
         old_trace_task = old_build_tracer(name, task, loader, hostname, *args, **kwargs)
@@ -79,9 +79,7 @@ if True: # not WAS_INIT:
 
         return trace_task_patched
 
-
     trace.build_tracer = build_tracer_patched
-
 
     # Bind debug task
     @app.task(bind=True)

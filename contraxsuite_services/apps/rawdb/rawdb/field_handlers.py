@@ -1,3 +1,29 @@
+"""
+    Copyright (C) 2017, ContraxSuite, LLC
+
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU Affero General Public License as
+    published by the Free Software Foundation, either version 3 of the
+    License, or (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU Affero General Public License for more details.
+
+    You should have received a copy of the GNU Affero General Public License
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+    You can also be released from the requirements of the license by purchasing
+    a commercial license from ContraxSuite, LLC. Buying such a license is
+    mandatory as soon as you develop commercial activities involving ContraxSuite
+    software without disclosing the source code of your own applications.  These
+    activities include: offering paid services to customers as an ASP or "cloud"
+    provider, processing documents on the fly in a web application,
+    or shipping ContraxSuite within a closed source product.
+"""
+# -*- coding: utf-8 -*-
+
 import re
 from datetime import datetime, date
 from enum import Enum
@@ -5,8 +31,20 @@ from typing import List, Optional, Any, Tuple, Dict, Set
 
 import dateparser
 
-from apps.common.sql_commons import escape_column_name, first_or_none, SQLClause, SQLInsertClause
+from apps.common.contraxsuite_urls import doc_editor_url
+from apps.common.sql_commons import escape_column_name, SQLClause, SQLInsertClause
+from apps.document.field_type_registry import FIELD_TYPE_REGISTRY
+from apps.document.field_types import FieldType
+from apps.document.models import Document
 from apps.rawdb.rawdb.errors import FilterSyntaxError, FilterValueParsingError
+
+__author__ = "ContraxSuite, LLC; LexPredict, LLC"
+__copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.2/LICENSE"
+__version__ = "1.2.2"
+__maintainer__ = "LexPredict, LLC"
+__email__ = "support@contraxsuite.com"
+
 
 PG_DEFAULT_LANGUAGE = 'english'
 
@@ -53,6 +91,9 @@ class ColumnDesc:
         self.value_type = value_type
         self.choices = choices
 
+    def get_output_column_sql_spec(self) -> str:
+        return '"' + self.name + '"'
+
     def get_where_sql_clause(self, field_filter: str) -> Optional[SQLClause]:
         return None
 
@@ -61,12 +102,19 @@ class ColumnDesc:
 
 
 class TextSearchColumnDesc(ColumnDesc):
-    __slots__ = ['field_code', 'name', 'title', 'value_type', 'choices', 'tsvector_column']
+    __slots__ = ['field_code', 'name', 'title', 'value_type', 'choices', 'tsvector_column', 'limit_output_char_num']
 
     def __init__(self, field_code: str, name: str, title: str, value_type: ValueType, tsvector_column: str,
-                 choices: Optional[List] = None) -> None:
+                 choices: Optional[List] = None,
+                 limit_output_char_num: int = None) -> None:
         super().__init__(field_code, name, title, value_type, choices)
         self.tsvector_column = tsvector_column
+        self.limit_output_char_num = limit_output_char_num
+
+    def get_output_column_sql_spec(self) -> str:
+        return '(case when length("{col}") > {len} then substring("{col}" for {len}) || \'...\' else "{col}" end)' \
+            .format(col=self.name, len=self.limit_output_char_num) \
+            if self.limit_output_char_num else '"{col}"'.format(col=self.name)
 
     def get_where_sql_clause(self, field_filter: str) -> Optional[SQLClause]:
         if not field_filter:
@@ -114,6 +162,19 @@ class RelatedInfoColumnDesc(ColumnDesc):
 
 
 class StringColumnDesc(ColumnDesc):
+    __slots__ = ['field_code', 'name', 'title', 'value_type', 'choices', 'limit_output_char_num']
+
+    def __init__(self, field_code: str, name: str, title: str, value_type: ValueType,
+                 choices: Optional[List] = None,
+                 limit_output_char_num: int = None) -> None:
+        super().__init__(field_code, name, title, value_type, choices)
+        self.limit_output_char_num = limit_output_char_num
+
+    def get_output_column_sql_spec(self) -> str:
+        return '(case when length("{col}") > {len} then substring("{col}" for {len}) || \'...\' else "{col}" end)' \
+            .format(col=self.name, len=self.limit_output_char_num) \
+            if self.limit_output_char_num else '"{col}"'.format(col=self.name)
+
     def get_where_sql_clause(self, field_filter: str) -> Optional[SQLClause]:
         if not field_filter:
             return SQLClause('"{column}" is Null'.format(column=self.name), [])
@@ -291,6 +352,9 @@ class FieldHandler:
         self.default_value = default_value
         self.is_suggested = is_suggested
 
+    def get_field_type(self) -> FieldType:
+        return FIELD_TYPE_REGISTRY[self.field_type]
+
     def __str__(self) -> str:
         return '{table_name}.{field_code}: {field_type}' \
             .format(table_name=self.table_name, field_code=self.field_code, field_type=self.field_type)
@@ -313,6 +377,9 @@ class FieldHandler:
     def columns_to_field_value(self, columns: Dict[str, Any]) -> Any:
         pass
 
+    def column_names_for_field_values(self) -> Set[str]:
+        pass
+
 
 class StringWithTextSearchFieldHandler(FieldHandler):
     def __init__(self,
@@ -322,37 +389,34 @@ class StringWithTextSearchFieldHandler(FieldHandler):
                  table_name: str,
                  default_value: str = None,
                  field_column_name_base: str = None,
-                 is_suggested: bool = False) -> None:
+                 is_suggested: bool = False,
+                 output_column_char_limit: int = None) -> None:
         super().__init__(field_code, field_type, field_title, table_name, default_value, field_column_name_base,
                          is_suggested)
         self.output_column = escape_column_name(self.field_column_name_base)
         self.text_search_column = escape_column_name(self.field_column_name_base + '_text_search')
+        self.output_column_char_limit = output_column_char_limit
 
     def python_value_to_single_db_value_for_text_search(self, python_value) -> Optional[str]:
         return python_value or self.default_value
 
     def python_value_to_indexed_field_value(self, python_value) -> Optional[str]:
-        text = self.python_value_to_single_db_value_for_text_search(python_value)
-
-        if not text:
-            return None
-
-        text = text.strip()
-        if len(text) > 200:
-            return text[:200] + '...'
-        else:
-            return text
+        return self.python_value_to_single_db_value_for_text_search(python_value)
 
     def get_client_column_descriptions(self) -> List[ColumnDesc]:
         return [TextSearchColumnDesc(self.field_code,
                                      self.output_column,
                                      self.field_title,
                                      ValueType.STRING,
-                                     self.text_search_column)]
+                                     self.text_search_column,
+                                     limit_output_char_num=self.output_column_char_limit)]
 
     def get_pg_index_definitions(self) -> Optional[List[str]]:
         return ['using GIN ("{column}" tsvector_ops)'
-                    .format(table_name=self.table_name, column=self.text_search_column)]
+                    .format(table_name=self.table_name, column=self.text_search_column),
+                'using GIN ("{column}" gin_trgm_ops)'
+                    .format(table_name=self.table_name, column=self.output_column)
+                ]
 
     def get_pg_column_definitions(self) -> Dict[str, PgTypes]:
         return {
@@ -372,6 +436,9 @@ class StringWithTextSearchFieldHandler(FieldHandler):
     def columns_to_field_value(self, columns: Dict[str, Any]) -> Any:
         return columns.get(self.output_column)
 
+    def column_names_for_field_values(self) -> Set[str]:
+        return {self.output_column}
+
 
 class StringFieldHandler(FieldHandler):
     def __init__(self,
@@ -381,10 +448,12 @@ class StringFieldHandler(FieldHandler):
                  table_name: str,
                  default_value: str = None,
                  field_column_name_base: str = None,
-                 is_suggested: bool = False) -> None:
+                 is_suggested: bool = False,
+                 column_output_char_limit: int = None) -> None:
         super().__init__(field_code, field_type, field_title, table_name, default_value, field_column_name_base,
                          is_suggested)
         self.column = escape_column_name(self.field_column_name_base)
+        self.column_output_char_limit = column_output_char_limit
 
     def python_value_to_indexed_field_value(self, python_value) -> Optional[str]:
         return python_value or self.default_value
@@ -392,7 +461,8 @@ class StringFieldHandler(FieldHandler):
     def get_client_column_descriptions(self) -> List[ColumnDesc]:
         return [StringColumnDesc(self.field_code,
                                  self.column,
-                                 self.field_title, ValueType.STRING)]
+                                 self.field_title, ValueType.STRING,
+                                 limit_output_char_num=self.column_output_char_limit)]
 
     def get_pg_index_definitions(self) -> Optional[List[str]]:
         return ['using GIN ("{column}" gin_trgm_ops)'
@@ -409,6 +479,9 @@ class StringFieldHandler(FieldHandler):
 
     def columns_to_field_value(self, columns: Dict[str, Any]) -> Any:
         return columns.get(self.column)
+
+    def column_names_for_field_values(self) -> Set[str]:
+        return {self.column}
 
 
 class ComparableFieldHandler(FieldHandler):
@@ -446,6 +519,9 @@ class ComparableFieldHandler(FieldHandler):
 
     def columns_to_field_value(self, columns: Dict[str, Any]) -> Any:
         return columns.get(self.column)
+
+    def column_names_for_field_values(self) -> Set[str]:
+        return {self.column}
 
 
 class IntFieldHandler(ComparableFieldHandler):
@@ -566,9 +642,66 @@ class MoneyFieldHandler(FieldHandler):
                 'amount': amount
             }
 
+    def column_names_for_field_values(self) -> Set[str]:
+        return {self.currency_column, self.amount_column}
+
     def get_pg_index_definitions(self) -> Optional[List[str]]:
-        return ['using GIN ("{column}" gin_trgm_ops)'
-                    .format(table_name=self.table_name, column=self.currency_column)]
+        return []
+
+
+class RatioFieldHandler(FieldHandler):
+    def __init__(self,
+                 field_code: str,
+                 field_type: str,
+                 field_title: str,
+                 table_name: str,
+                 default_value=None,
+                 field_column_name_base: str = None,
+                 is_suggested: bool = False) -> None:
+        super().__init__(field_code, field_type, field_title, table_name, default_value, field_column_name_base,
+                         is_suggested)
+        self.numerator = escape_column_name(self.field_column_name_base + '_num')
+        self.consequent = escape_column_name(self.field_column_name_base + '_con')
+
+    def get_client_column_descriptions(self) -> List[ColumnDesc]:
+        return [
+            FloatColumnDesc(self.field_code, self.numerator, self.field_title + ': Numerator'),
+            FloatColumnDesc(self.field_code, self.consequent, self.field_title + ': Consequent')]
+
+    def get_pg_column_definitions(self) -> Dict[str, PgTypes]:
+        return {
+            self.numerator: PgTypes.NUMERIC_50_4,
+            self.consequent: PgTypes.NUMERIC_50_4
+        }
+
+    def python_value_to_indexed_field_value(self, dfv_python_value) -> Any:
+        return dfv_python_value or self.default_value
+
+    def get_pg_sql_insert_clause(self, document_language: str, python_value: List) -> SQLInsertClause:
+        res = self.python_value_to_indexed_field_value(python_value)  # Dict
+        numerator = res.get('numerator') if res else None
+        consequent = res.get('consequent') if res else None
+        return SQLInsertClause('"{numerator_column}", '
+                               '"{consequent_column}"'.format(numerator_column=self.numerator,
+                                                              consequent_column=self.consequent), [],
+                               '%s, %s', [numerator, consequent])
+
+    def columns_to_field_value(self, columns: Dict[str, Any]) -> Any:
+        numerator = columns.get(self.numerator)
+        consequent = columns.get(self.consequent)
+        if consequent is None and numerator is None:
+            return None
+        else:
+            return {
+                'numerator': numerator,
+                'consequent': consequent
+            }
+
+    def column_names_for_field_values(self) -> Set[str]:
+        return {self.numerator, self.consequent}
+
+    def get_pg_index_definitions(self) -> Optional[List[str]]:
+        return []
 
 
 class AddressFieldHandler(StringFieldHandler):
@@ -626,6 +759,9 @@ class RelatedInfoFieldHandler(FieldHandler):
     def columns_to_field_value(self, columns: Dict[str, Any]) -> Any:
         return columns.get(self.column)
 
+    def column_names_for_field_values(self) -> Set[str]:
+        return {self.column}
+
 
 class BooleanFieldHandler(FieldHandler):
     pg_type = PgTypes.BOOLEAN
@@ -664,6 +800,9 @@ class BooleanFieldHandler(FieldHandler):
     def columns_to_field_value(self, columns: Dict[str, Any]) -> Any:
         return columns.get(self.column)
 
+    def column_names_for_field_values(self) -> Set[str]:
+        return {self.column}
+
 
 class MultichoiceFieldHandler(StringFieldHandler):
     def python_value_to_indexed_field_value(self, python_value) -> Any:
@@ -682,3 +821,78 @@ class MultichoiceFieldHandler(StringFieldHandler):
         if not v:
             return None
         return set({vv.strip() for vv in v.split(',')})
+
+    def column_names_for_field_values(self) -> Set[str]:
+        return {self.column}
+
+
+class LinkedDocumentsFieldHandler(FieldHandler):
+    def __init__(self,
+                 field_code: str,
+                 field_type: str,
+                 field_title: str,
+                 table_name: str,
+                 default_value=None,
+                 field_column_name_base: str = None,
+                 is_suggested: bool = False) -> None:
+        super().__init__(field_code, field_type, field_title, table_name, default_value, field_column_name_base,
+                         is_suggested)
+        self.document_ids_column = escape_column_name(self.field_column_name_base + '_ids')
+        self.document_links_column = escape_column_name(self.field_column_name_base + '_lnks')
+
+    def get_client_column_descriptions(self) -> List[ColumnDesc]:
+        return [
+            StringColumnDesc(self.field_code, self.document_ids_column,
+                             self.field_title + ': Ids', ValueType.STRING),
+            StringColumnDesc(self.field_code, self.document_links_column, self.field_title + ': Links',
+                             ValueType.STRING)]
+
+    def get_pg_column_definitions(self) -> Dict[str, PgTypes]:
+        return {
+            self.document_ids_column: PgTypes.VARCHAR,
+            self.document_links_column: PgTypes.VARCHAR,
+        }
+
+    def python_value_to_indexed_field_value(self, python_value) -> Any:
+        if not python_value:
+            return self.default_value
+
+        return set(python_value)
+
+    def get_pg_sql_insert_clause(self, document_language: str, document_ids: List) -> SQLInsertClause:
+        document_ids = self.python_value_to_indexed_field_value(document_ids)  # type: Set[int]
+
+        links = list()  # List[Tuple[str, str]]
+
+        if document_ids:
+            for document_id, document_name, document_type_code, project_id \
+                    in Document.all_objects \
+                    .filter(pk__in=document_ids) \
+                    .values_list('id', 'name', 'document_type__code', 'project_id') \
+                    .order_by('id'):
+                links.append((document_name, doc_editor_url(document_type_code, project_id, document_id)))
+
+            links = ['<a href="{1}">{0}</a>'.format(doc_name, doc_id) for doc_name, doc_id in links]
+            document_ids = [str(doc_id) for doc_id in document_ids]
+
+        return SQLInsertClause('"{ids_column}", '
+                               '"{links_column}"'.format(ids_column=self.document_ids_column,
+                                                         links_column=self.document_links_column), [],
+                               '%s, %s', [', '.join(document_ids) if document_ids else None,
+                                          '\n'.join(links) if links else None])
+
+    def columns_to_field_value(self, columns: Dict[str, Any]) -> Any:
+        v = columns.get(self.document_ids_column)  # type: str
+        if not v:
+            return None
+        return set({int(vv.strip()) for vv in v.split(',')})
+
+    def get_pg_index_definitions(self) -> Optional[List[str]]:
+        return ['using GIN ("{column}" gin_trgm_ops)'
+                    .format(table_name=self.table_name, column=self.document_ids_column),
+                'using GIN ("{column}" gin_trgm_ops)'
+                    .format(table_name=self.table_name, column=self.document_links_column)
+                ]
+
+    def column_names_for_field_values(self) -> Set[str]:
+        return {self.document_ids_column}

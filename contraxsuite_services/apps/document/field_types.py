@@ -25,15 +25,14 @@
 # -*- coding: utf-8 -*-
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.1/LICENSE"
-__version__ = "1.2.1"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.2/LICENSE"
+__version__ = "1.2.2"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
 from datetime import datetime, date
-from enum import Enum, unique
 from random import randint, random
-from typing import List, Tuple, Optional, Any, Callable, Dict
+from typing import List, Tuple, Optional, Any, Callable, Set
 
 import dateparser
 import pyap
@@ -47,47 +46,17 @@ from lexnlp.extract.en.durations import get_durations
 from lexnlp.extract.en.entities.nltk_maxent import get_companies, get_persons
 from lexnlp.extract.en.geoentities import get_geoentities
 from lexnlp.extract.en.money import get_money
+from lexnlp.extract.en.percents import get_percents
+from lexnlp.extract.en.ratios import get_ratios
 from sklearn.feature_extraction.text import CountVectorizer, TfidfTransformer
 from sklearn.pipeline import FeatureUnion
 from sklearn.pipeline import Pipeline
 
 from apps.common.fields import RoundedFloatField
 from apps.document import models
-from apps.document.fields_detection import vectorizers
+from apps.document.fields_processing import vectorizers
 from apps.extract import models as extract_models
-
-ORDINAL_EXTRACTION_HINTS = ['TAKE_MIN', 'TAKE_MAX']
-
-
-@unique
-class ValueExtractionHint(Enum):
-    TAKE_FIRST = "TAKE_FIRST"
-    TAKE_SECOND = "TAKE_SECOND"
-    TAKE_LAST = "TAKE_LAST"
-    TAKE_MIN = "TAKE_MIN"
-    TAKE_MAX = "TAKE_MAX"
-
-    @staticmethod
-    def _is_money(v) -> bool:
-        return type(v) is dict and 'amount' in v and 'currency' in v
-
-    @staticmethod
-    def get_value(l: Optional[List], hint: str):
-        if not l:
-            return None
-
-        if str(hint) == ValueExtractionHint.TAKE_LAST.name:
-            return l[-1]
-        elif str(hint) == ValueExtractionHint.TAKE_SECOND.name and len(l) > 1:
-            return l[1]
-        elif str(hint) == ValueExtractionHint.TAKE_FIRST.name and len(l) > 0:
-            return l[0]
-        elif str(hint) == ValueExtractionHint.TAKE_MIN.name:
-            return min(l, key=lambda dd: dd['amount']) if ValueExtractionHint._is_money(l[0]) else min(l)
-        elif str(hint) == ValueExtractionHint.TAKE_MAX.name:
-            return max(l, key=lambda dd: dd['amount']) if ValueExtractionHint._is_money(l[0]) else max(l)
-        else:
-            return None
+from .value_extraction_hints import ValueExtractionHint
 
 
 def to_float(v) -> Optional[float]:
@@ -129,17 +98,19 @@ class FieldType:
 
     ordinal = False
 
+    is_choice_field = False
+
     default_hint = ValueExtractionHint.TAKE_FIRST.name
 
-    def merge_multi_python_values(self, previous_merge_result, value_to_merge_in):
+    def merge_multi_python_values(self, previous_merge_result: Set[str], value_to_merge_in: str):
         """
         Merges a single value into the combined value.
         Annotated field values are stored in DocumentFieldValue models.
         For multi-value fields there can be multiple DocumentFieldValue per document+field but they
-        need to be combined into a single value to cache in Document.field_values.
+        need to be combined into a single value to cache in Document.f i eld_values.
 
         Different field types can support different variants of combining multiple DocumentFieldValues.
-        For example for related_info fields we store the number of entries in Document.field_values.
+        For example for related_info fields we store the number of entries in Document.f i eld_values.
 
         But for most cases it will be enough to only combine the values into a set.
         :param previous_merge_result:
@@ -156,9 +127,34 @@ class FieldType:
         else:
             return value_to_merge_in
 
+    def merge_lists_of_python_values(self, previous_merge_result: List[str], value_to_merge_in: str):
+        """
+        Merges a single value into the combined value.
+        Annotated field values are stored in DocumentFieldValue models.
+        For multi-value fields there can be multiple DocumentFieldValue per document+field but they
+        need to be combined into a single value to cache in Document.f i eld_values.
+
+        Different field types can support different variants of combining multiple DocumentFieldValues.
+        For example for related_info fields we store the number of entries in Document.f i eld_values.
+
+        But for most cases it will be enough to only combine the values into a set.
+        :param previous_merge_result:
+        :param value_to_merge_in:
+        :return:
+        """
+        if self.multi_value:
+            if not previous_merge_result:
+                return [value_to_merge_in] if value_to_merge_in is not None else None
+            else:
+                if value_to_merge_in is not None:
+                    previous_merge_result.append(value_to_merge_in)
+                return previous_merge_result
+        else:
+            return value_to_merge_in
+
     def merged_python_value_to_db(self, merged_python_value):
         """
-        Convert python value of the field into a DB-aware sortable form to save to Document.field_values.
+        Convert python value of the field into a DB-aware sortable form to save to Document.f i eld_values.
 
         That's what it needed for:
             There are simple atomic field types like float, string, date e.t.c.
@@ -183,20 +179,20 @@ class FieldType:
             Field values are stored in DB in two forms:
             - detailed annotated form: DocumentFieldValue (contains text annotation per each value),
                 there can be multiple DocumentFieldValues per field+document if the field type is multi-value;
-            - short cached variant for querying and sorting: Document.field_values
+            - short cached variant for querying and sorting: Document.f i eld_values
             The engine maintains these two forms in the consistent state.
 
             DocumentFieldValue contains the original full json structure (e.g. { "currency": "USD", "amount": 5 }
-            Document.field_values is a jsonb field of uids -> pre-formatted sortable values (e.g. "USD|0000000005.0000")
+            Document.f i eld_values is a jsonb field of uids -> pre-formatted sortable values (e.g. "USD|0000000005.0000")
 
             This way we can query DB from Django with any sorting/pagination or >=< filtering by
-            writing queries which access components of the Document.field_values jsonb field.
+            writing queries which access components of the Document. f i eld_values jsonb field.
 
             Next to return to the frontend the original simple structure we should decode the sortable format
             back to the original JSON-ready form.
 
             This looks complicated but at the moment we don't have better solution. We need both text annotated
-            detailed DocumentFieldValues for text-based machine learning and short sortable Document.field_values
+            detailed DocumentFieldValues for text-based machine learning and short sortable Document. f i eld_values
             for easy DB querying.
 
             To allow the above we use the set of methods per each FieldType:
@@ -561,6 +557,7 @@ class ChoiceField(FieldType):
     requires_value = True
     allows_value = True
     value_extracting = False
+    is_choice_field = True
 
     def merged_python_value_to_db(self, merged_python_value):
         return str(merged_python_value) if merged_python_value else None
@@ -637,6 +634,7 @@ class MultiChoiceField(ChoiceField):
     requires_value = True
     allows_value = True
     value_extracting = False
+    is_choice_field = True
 
     def merged_python_value_to_db(self, merged_python_value):
         if merged_python_value is None or type(merged_python_value) is not set:
@@ -673,7 +671,73 @@ class MultiChoiceField(ChoiceField):
     def build_vectorization_pipeline(self) -> Tuple[List[Tuple[str, Any]], Callable[[], List[str]]]:
         count_vectorizer = CountVectorizer(strip_accents='unicode', analyzer='word',
                                            stop_words='english',
-                                           tokenizer=vectorizers.list_items_as_tokens)
+                                           preprocessor=vectorizers.set_items_as_tokens_preprocessor,
+                                           tokenizer=vectorizers.set_items_as_tokens)
+        return [('clean', vectorizers.ReplaceNoneTransformer('')),
+                ('vect', count_vectorizer),
+                ('tfidf', TfidfTransformer())], self._wrap_get_feature_names(count_vectorizer)
+
+
+class LinkedDocumentsField(FieldType):
+    code = 'linked_documents'
+    title = 'Linked Documents'
+    multi_value = True
+    requires_value = True
+    allows_value = True
+    value_extracting = True
+
+    def extract_from_possible_value(self, field, possible_value):
+        if not isinstance(possible_value, int) and not isinstance(possible_value, str):
+            return None
+
+        if isinstance(possible_value, str):
+            try:
+                possible_value = int(possible_value)
+            except ValueError:
+                return None
+
+        if not models.Document.objects.filter(pk=possible_value).exists():
+            return None
+
+        return possible_value
+
+    def _extract_variants_from_text(self, field, text: str, **kwargs):
+        return None
+
+    def merged_python_value_to_db(self, merged_python_value):
+        if merged_python_value is None or type(merged_python_value) is not set:
+            return None
+
+        value_set = set(merged_python_value)
+        return ', '.join(sorted([str(v) for v in value_set]))
+
+    def merged_db_value_to_python(self, db_value: str):
+        if not db_value:
+            return None
+        return {int(p.strip()) for p in str(db_value).split(',')}
+
+    def single_python_value_to_db(self, python_single_value):
+        return int(python_single_value)
+
+    def single_db_value_to_python(self, db_value):
+        if not isinstance(db_value, int):
+            raise RuntimeError('Non-int value found for a document id in Linked Documents field. Please run cleanup.')
+        return db_value
+
+    def get_postgres_transform_map(self):
+        return django_models.TextField
+
+    def example_python_value(self, field):
+        res = set()
+        for i in range(randint(0, 10)):
+            res.add(randint(0, 12345))
+        return res
+
+    def build_vectorization_pipeline(self) -> Tuple[List[Tuple[str, Any]], Callable[[], List[str]]]:
+        count_vectorizer = CountVectorizer(strip_accents='unicode', analyzer='word',
+                                           stop_words='english',
+                                           preprocessor=vectorizers.set_items_as_tokens_preprocessor,
+                                           tokenizer=vectorizers.set_items_as_tokens)
         return [('clean', vectorizers.ReplaceNoneTransformer('')),
                 ('vect', count_vectorizer),
                 ('tfidf', TfidfTransformer())], self._wrap_get_feature_names(count_vectorizer)
@@ -1006,7 +1070,7 @@ class DurationField(FieldType):
         durations = get_durations(text)
         if not durations:
             return None
-        return [duration[2] for duration in durations if duration[2] < DurationField.MAX_DURATION]
+        return [duration[2] for duration in durations if duration[2] < self.MAX_DURATION]
 
     def example_python_value(self, field):
         return random() * 365 * 5
@@ -1014,6 +1078,107 @@ class DurationField(FieldType):
     def build_vectorization_pipeline(self) -> Tuple[List[Tuple[str, Any]], Callable[[], List[str]]]:
         vect = vectorizers.NumberVectorizer(to_float_converter=lambda d: d.total_seconds() if d else 0 if d else 0)
         return [('vect', vect)], self._wrap_get_feature_names(vect)
+
+
+class PercentField(FieldType):
+    code = 'percent'
+    title = 'Percent'
+    requires_value = True
+    allows_value = True
+    value_extracting = True
+    ordinal = True
+    MAX_PERCENT = 1
+
+    def merged_python_value_to_db(self, merged_python_value):
+        return to_float(merged_python_value)
+
+    def merged_db_value_to_python(self, db_value):
+        return to_float(db_value)
+
+    def get_postgres_transform_map(self):
+        return RoundedFloatField
+
+    def extract_from_possible_value(self, field, possible_value):
+        return to_float(possible_value)
+
+    def _extract_variants_from_text(self, field, text: str, **kwargs):
+        percents = list(get_percents(text))
+        if not percents:
+            return None
+        return [percent[2] for percent in percents if percent[2] < self.MAX_PERCENT]
+
+    def example_python_value(self, field):
+        return round(randint(1, 100) / 100, 2)
+
+    def build_vectorization_pipeline(self) -> Tuple[List[Tuple[str, Any]], Callable[[], List[str]]]:
+        vect = vectorizers.NumberVectorizer()
+        return [('vect', vect)], self._wrap_get_feature_names(vect)
+
+
+class RatioField(FieldType):
+    code = 'ratio'
+    title = 'Ratio'
+    requires_value = True
+    allows_value = True
+    value_extracting = True
+    ordinal = True
+
+    def merged_python_value_to_db(self, merged_python_value):
+        if not merged_python_value:
+            return None
+        if isinstance(merged_python_value, list):
+            merged_python_value = merged_python_value[0]
+        numerator = to_float(merged_python_value['numerator'])
+        consequent = to_float(merged_python_value['consequent'])
+        return '{}|{}'.format(numerator, consequent)
+
+    def merged_db_value_to_python(self, db_value):
+        if isinstance(db_value, dict):
+            return db_value
+        elif isinstance(db_value, str) and '|' in db_value:
+            ar = db_value.split('|')
+            numerator_str = ar[0]
+            consequent_str = ar[1]
+            return {
+                'numerator': to_float(numerator_str),
+                'consequent': to_float(consequent_str)}
+
+    def get_postgres_transform_map(self):
+        return django_models.TextField
+
+    def _extract_variants_from_text(self, field, text: str, **kwargs):
+        ratios = list(get_ratios(text))
+        if not ratios:
+            return None
+        return [{'numerator': i[0],
+                 'consequent': i[1]} for i in ratios]
+
+    def example_python_value(self, field):
+        return {'numerator': randint(1, 10), 'consequent': randint(1, 10)}
+
+    def build_vectorization_pipeline(self) -> Tuple[List[Tuple[str, Any]], Callable[[], List[str]]]:
+        vect_numerator = vectorizers.NumberVectorizer()
+        vect_consequent = vectorizers.NumberVectorizer()
+
+        def get_feature_names_(vect_numerator, vect_consequent):
+            def res():
+                return ['numerator_' + str(c) for c in vect_numerator.get_feature_names()] \
+                       + ['consequent_' + str(c) for c in vect_consequent.get_feature_names()]
+
+            return res
+
+        return [
+                   ('vect', FeatureUnion(transformer_list=[
+                       ('numerator', Pipeline([
+                           ('selector', vectorizers.DictItemSelector(item='numerator')),
+                           ('vect', vect_numerator),
+                       ])),
+                       ('consequent', Pipeline([
+                           ('selector', vectorizers.DictItemSelector(item='consequent')),
+                           ('vect', vect_consequent),
+                       ]))
+                   ]))
+               ], get_feature_names_(vect_numerator, vect_consequent)
 
 
 class RelatedInfoField(FieldType):
@@ -1069,8 +1234,7 @@ class PersonField(FieldType):
     def extract_from_possible_value(self, field, possible_value):
         if possible_value is not None:
             return str(possible_value)
-        else:
-            return None
+        return None
 
     def _extract_variants_from_text(self, field, text: str, **kwargs):
         persons = get_persons(text, return_source=False)
@@ -1134,21 +1298,19 @@ class MoneyField(FloatField):
         return '{}|{:020.4f}'.format(currency, amount)
 
     def merged_db_value_to_python(self, db_value):
-        if db_value is None:
-            return None
         if isinstance(db_value, dict):
             return {
                 'currency': db_value.get('currency'),
-                'amount': float(db_value.get('amount')) if 'amount' in db_value else None
+                'amount': to_float(db_value.get('amount'))
             }
-
-        ar = db_value.split('|')
-        currency = ar[0]
-        amount_str = ar[1]  # type: str
-        return {
-            'currency': currency,
-            'amount': to_float(amount_str)
-        }
+        elif isinstance(db_value, str) and '|' in db_value:
+            ar = db_value.split('|')
+            currency = ar[0]
+            amount_str = ar[1]  # type: str
+            return {
+                'currency': currency,
+                'amount': to_float(amount_str)
+            }
 
     def get_postgres_transform_map(self):
         return django_models.TextField
@@ -1157,7 +1319,7 @@ class MoneyField(FloatField):
         if not possible_value:
             return None
 
-        if type(possible_value) is dict \
+        if isinstance(possible_value, dict) \
                 and possible_value.get('currency') \
                 and possible_value.get('amount') is not None:
             return {
@@ -1267,26 +1429,33 @@ class GeographyField(FieldType):
                 ('tfidf', TfidfTransformer())], self._wrap_get_feature_names(vect)
 
 
-FIELD_TYPES_CHOICE = {ChoiceField.code, MultiChoiceField.code}
+FIELD_TYPES_ALLOWED_FOR_DETECTED_VALUE = {
+    StringField.code,
+    StringFieldWholeValueAsAToken.code,
+    LongTextField.code,
+    ChoiceField.code,
+    MultiChoiceField.code,
+}
 
-_FIELD_TYPES = (StringField,
-                StringFieldWholeValueAsAToken,
-                LongTextField,
-                IntField,
-                BooleanField,
-                FloatField,
-                DateTimeField,
-                DateField,
-                RecurringDateField,
-                CompanyField,
-                DurationField,
-                AddressField,
-                RelatedInfoField,
-                ChoiceField,
-                MultiChoiceField,
-                PersonField,
-                AmountField,
-                MoneyField,
-                GeographyField)
-
-FIELD_TYPES_REGISTRY = {field_type.code: field_type() for field_type in _FIELD_TYPES}  # type: Dict[str, FieldType]
+FIELD_TYPES = (StringField(),
+               StringFieldWholeValueAsAToken(),
+               LongTextField(),
+               IntField(),
+               BooleanField(),
+               FloatField(),
+               DateTimeField(),
+               DateField(),
+               RecurringDateField(),
+               CompanyField(),
+               DurationField(),
+               PercentField(),
+               RatioField(),
+               AddressField(),
+               RelatedInfoField(),
+               ChoiceField(),
+               MultiChoiceField(),
+               PersonField(),
+               AmountField(),
+               MoneyField(),
+               GeographyField(),
+               LinkedDocumentsField())

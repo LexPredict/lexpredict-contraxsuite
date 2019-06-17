@@ -15,7 +15,13 @@ source volumes.sh
 popd
 
 echo "Dumping data to json fixture..."
-sudo ./docker-exec.sh contraxsuite_contrax-uwsgi 1 ./dump.sh
+uwsgi_container_id=$(sudo docker container ls | grep uwsgi | awk '{print $1}')
+if [ "" == "${uwsgi_container_id}" ]; then
+    echo "No UWSGI container found on this machine."
+    exit 1
+fi
+
+sudo docker exec ${uwsgi_container_id} bash -c "cd contraxsuite_services && ./dump.sh"
 
 echo "Stopping Docker..."
 sudo service docker stop

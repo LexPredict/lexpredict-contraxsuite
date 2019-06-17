@@ -38,8 +38,8 @@ from apps.task.views import BaseAjaxTaskView
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.1/LICENSE"
-__version__ = "1.2.1"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.2/LICENSE"
+__version__ = "1.2.2"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -132,7 +132,7 @@ class DocumentAnnotationStorageView(apps.common.mixins.JSONResponseView):
 
     @staticmethod
     def replace_annotation_suggested_by_system(request, data):
-        doc = Document.objects.get(pk=data['document_id'])
+        doc = Document.all_objects.get(pk=data['document_id'])
         user = request.user
         document_field = DocumentField.objects.get_or_create(pk='')
         selection_range = data['ranges'][0]
@@ -154,7 +154,7 @@ class DocumentAnnotationStorageView(apps.common.mixins.JSONResponseView):
 
         if request.method == 'POST':
             data = json.loads(request.body.decode('utf-8'))
-            doc = Document.objects.get(pk=data['document_id'])
+            doc = Document.all_objects.get(pk=data['document_id'])
             user = request.user
             selection_range = data['ranges'][0]
 
@@ -202,7 +202,7 @@ class DocumentAnnotationStorageView(apps.common.mixins.JSONResponseView):
                         pk=document_field_id)
 
                 a = DocumentAnnotation.objects.get(pk=data['id'])
-                a.document = Document.objects.get(pk=data['document_id'])
+                a.document = Document.all_objects.get(pk=data['document_id'])
                 a.user = request.user
                 selection_range = data['ranges'][0]
                 a.start = selection_range['start']

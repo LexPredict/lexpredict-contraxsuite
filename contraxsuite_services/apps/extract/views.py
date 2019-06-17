@@ -56,8 +56,8 @@ from apps.extract.models import (
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.1/LICENSE"
-__version__ = "1.2.1"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.2/LICENSE"
+__version__ = "1.2.2"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -101,9 +101,6 @@ class BaseTopUsageListView(apps.common.mixins.JqPaginatedListView):
     deep_processing = False
     limit_reviewers_qs_by_field = 'text_unit__document'
     sort_by = None
-
-    #def get_template_names(self):
-    #    return [super().get_template_names()[0].replace('extract/', 'extract/top_')]
 
     def get_json_data(self, **kwargs):
         data = super().get_json_data(**kwargs)
@@ -165,8 +162,8 @@ class TopTermUsageListView(BaseTopUsageListView):
             .annotate(count=Sum('count')) \
             .values('term__term', 'count') \
             .order_by('-count')
-        qs = sorted([dict(j) for j in set([tuple(i.items()) for i in qs])],
-                    key=lambda i: i['count'], reverse=True)
+        # qs = sorted([dict(j) for j in set([tuple(i.items()) for i in qs])],
+        #             key=lambda i: i['count'], reverse=True)
         return qs
 
 
@@ -219,9 +216,9 @@ class GeoEntityUsageListView(BaseUsageListView):
                     alias['entity__category'] = alias['alias__entity__category']
                     alias['url'] = reverse('document:document-detail',
                                            args=[alias['text_unit__document__pk']])
-                    alias['detail_url'] = reverse('document:text-unit-detail',
-                                                  args=[alias['text_unit__pk']]) + \
-                                          '?highlight=' + alias['alias__alias']
+                    alias['detail_url'] = '{}?highlight={}'.format(
+                        reverse('document:text-unit-detail', args=[alias['text_unit__pk']]),
+                        alias['alias__alias'])
                     entity_data.append(alias)
         else:
             for alias in alias_data:
@@ -271,7 +268,7 @@ class TopGeoEntityUsageListView(GeoEntityUsageListView):
         entities_data = list(GeoEntity.objects
                              .filter(**entites_filter_opts)
                              .values('name', 'category')
-                             .annotate(count=Sum('geoentityusage__count', distinct=True)))
+                             .annotate(count=Sum('geoentityusage__count')))
         aliases_data = list(GeoEntity.objects
                             .filter(**aliases_filter_opts)
                             .values('name', 'category')
@@ -290,8 +287,8 @@ class TopGeoEntityUsageListView(GeoEntityUsageListView):
 
         entities = sorted([i for i in entities.values() if i['count']], key=lambda i: -i['count'])
         for i in entities:
-            i['url'] = reverse('extract:geo-entity-usage-list') + \
-                       '?entity_search=' + i['name']
+            i['url'] = '{}?entity_search={}'.format(
+                reverse('extract:geo-entity-usage-list'), i['name'])
 
         return {'data': entities, 'total_records': len(entities)}
 
@@ -468,13 +465,13 @@ class DateUsageTimelineView(apps.common.mixins.JqPaginatedListView):
         for item in data:
             item['weight'] = (item['count'] - min_value) / range_value
             if per_month:
-                item['url'] = reverse('extract:date-usage-list') + \
-                              '?month_search=' + item['start'].isoformat()
+                item['url'] = '{}?month_search={}'.format(
+                    reverse('extract:date-usage-list'), item['start'].isoformat())
                 item['content'] = '{}, {}: {}'.format(item['start'].strftime('%B'),
                                                       item['start'].year, item['count'])
             else:
-                item['url'] = reverse('extract:date-usage-list') + \
-                              '?date_search=' + item['start'].isoformat()
+                item['url'] = '{}?date_search={}'.format(
+                    reverse('extract:date-usage-list'), item['start'].isoformat())
                 item['content'] = '{}: {}'.format(item['start'].isoformat(), item['count'])
                 item['date_data'] = [i for i in date_data if i['date'] == item['start']]
 
@@ -504,7 +501,7 @@ class DateUsageCalendarView(apps.common.mixins.JqPaginatedListView):
 
     def get_json_data(self, **kwargs):
         qs = super().get_queryset()
-        qs = qs.filter(date__lte=datetime.date.today() + datetime.timedelta(365*100))
+        qs = qs.filter(date__lte=datetime.date.today() + datetime.timedelta(365 * 100))
 
         if self.request.GET.get("document_id"):
             qs = qs.filter(text_unit__document__pk=self.request.GET['document_id'])
@@ -521,8 +518,8 @@ class DateUsageCalendarView(apps.common.mixins.JqPaginatedListView):
 
         for item in data:
             item['weight'] = item['count'] / max_value
-            item['url'] = reverse('extract:date-usage-list') + \
-                          '?date_search=' + item['date'].isoformat()
+            item['url'] = '{}?date_search={}'.format(
+                reverse('extract:date-usage-list'), item['date'].isoformat())
 
         return {'data': data,
                 'min_year': min_date.year,
@@ -559,8 +556,8 @@ class TopDateDurationUsageListView(BaseTopUsageListView):
         return -i['duration_days']
 
     def get_item_data(self, item, parent_data):
-        item['url'] = reverse('extract:date-duration-usage-list') + \
-                      '?duration_search=' + str(item['duration_days'])
+        item['url'] = '{}?duration_search={}'.format(
+            reverse('extract:date-duration-usage-list'), str(item['duration_days']))
         if "document_pk" in self.request.GET:
             item['duration_data'] = [i for i in parent_data
                                      if i['duration_days'] == item['duration_days']]
@@ -596,8 +593,8 @@ class TopDefinitionUsageListView(BaseTopUsageListView):
     template_name = 'extract/top_definition_usage_list.html'
 
     def get_item_data(self, item, parent_data):
-        item['url'] = reverse('extract:definition-usage-list') + \
-                      '?definition_search=' + item['definition']
+        item['url'] = '{}?definition_search={}'.format(
+            reverse('extract:definition-usage-list'), item['definition'])
         if "document_pk" in self.request.GET:
             item['definition_data'] = [i for i in parent_data
                                        if i['definition'] == item['definition']]
@@ -633,8 +630,8 @@ class TopCourtUsageListView(BaseTopUsageListView):
     template_name = 'extract/top_court_usage_list.html'
 
     def get_item_data(self, item, parent_data):
-        item['url'] = reverse('extract:court-usage-list') + \
-                      '?court_search=' + item['court__name']
+        item['url'] = '{}?court_search={}'.format(
+            reverse('extract:court-usage-list'), item['court__name'])
         if "document_pk" in self.request.GET:
             item['court_data'] = [i for i in parent_data
                                   if i['court__name'] == item['court__name']]
@@ -703,8 +700,8 @@ class TopRegulationUsageListView(BaseTopUsageListView):
     template_name = 'extract/top_regulation_usage_list.html'
 
     def get_item_data(self, item, parent_data):
-        item['url'] = reverse('extract:regulation-usage-list') + \
-                      '?regulation_search=' + item['regulation_name']
+        item['url'] = '{}?regulation_search={}'.format(
+            reverse('extract:regulation-usage-list'), item['regulation_name'])
         if "document_pk" in self.request.GET:
             item['regulation_data'] = [i for i in parent_data
                                        if i['regulation_name'] == item['regulation_name']]
@@ -740,8 +737,8 @@ class TopAmountUsageListView(BaseTopUsageListView):
     template_name = 'extract/top_amount_usage_list.html'
 
     def get_item_data(self, item, parent_data):
-        item['url'] = reverse('extract:amount-usage-list') + \
-                      '?amount_search={}'.format(item['amount'])
+        item['url'] = '{}?amount_search={}'.format(
+            reverse('extract:amount-usage-list'), item['amount'])
         if "document_pk" in self.request.GET:
             item['amount_data'] = [i for i in parent_data if i['amount'] == item['amount']]
         return item
@@ -776,9 +773,8 @@ class TopDistanceUsageListView(BaseTopUsageListView):
     template_name = 'extract/top_distance_usage_list.html'
 
     def get_item_data(self, item, parent_data):
-        item['url'] = reverse('extract:distance-usage-list') + \
-                      '?distance_type_search={}&distance_amount_search={}'.format(
-                          item['distance_type'], item['amount'])
+        item['url'] = '{}?distance_type_search={}&distance_amount_search={}'.format(
+            reverse('extract:distance-usage-list'), item['distance_type'], item['amount'])
         if "document_pk" in self.request.GET:
             item['distance_data'] = [i for i in parent_data
                                      if i['distance_type'] == item['distance_type']
@@ -815,9 +811,8 @@ class TopPercentUsageListView(BaseTopUsageListView):
     template_name = 'extract/top_percent_usage_list.html'
 
     def get_item_data(self, item, parent_data):
-        item['url'] = reverse('extract:percent-usage-list') + \
-                      '?percent_type_search={}&percent_amount_search={}'.format(
-                          item['unit_type'], item['amount'])
+        item['url'] = '{}?percent_type_search={}&percent_amount_search={}'.format(
+            reverse('extract:percent-usage-list'), item['unit_type'], item['amount'])
         if "document_pk" in self.request.GET:
             item['percent_data'] = [i for i in parent_data
                                     if i['unit_type'] == item['unit_type']
@@ -855,9 +850,8 @@ class TopRatioUsageListView(BaseTopUsageListView):
     template_name = 'extract/top_ratio_usage_list.html'
 
     def get_item_data(self, item, parent_data):
-        item['url'] = reverse('extract:ratio-usage-list') + \
-                      '?ratio_amount_search={}&ratio_amount2_search={}'.format(
-                          item['amount'], item['amount2'])
+        item['url'] = '{}?ratio_amount_search={}&ratio_amount2_search={}'.format(
+            reverse('extract:ratio-usage-list'), item['amount'], item['amount2'])
         if "document_pk" in self.request.GET:
             item['ratio_data'] = [i for i in parent_data
                                   if i['amount'] == item['amount']
@@ -895,8 +889,8 @@ class TopCitationUsageListView(BaseTopUsageListView):
     template_name = 'extract/top_citation_usage_list.html'
 
     def get_item_data(self, item, parent_data):
-        item['url'] = reverse('extract:citation-usage-list') + \
-                      '?citation_search={}'.format(item['citation_str'])
+        item['url'] = '{}?citation_search={}'.format(
+            reverse('extract:citation-usage-list'), item['citation_str'])
         if "document_pk" in self.request.GET:
             item['citation_data'] = [i for i in parent_data
                                      if i['citation_str'] == item['citation_str']]
@@ -932,8 +926,8 @@ class TopCopyrightUsageListView(BaseTopUsageListView):
     template_name = 'extract/top_copyright_usage_list.html'
 
     def get_item_data(self, item, parent_data):
-        item['url'] = reverse('extract:copyright-usage-list') + \
-                      '?copyright_search={}'.format(url_quote(item['copyright_str']))
+        item['url'] = '{}?copyright_search={}'.format(
+            reverse('extract:copyright-usage-list'), url_quote(item['copyright_str']))
         if "document_pk" in self.request.GET:
             item['copyright_data'] = [i for i in parent_data
                                       if i['copyright_str'] == item['copyright_str']]
@@ -969,8 +963,8 @@ class TopTrademarkUsageListView(BaseTopUsageListView):
     template_name = 'extract/top_trademark_usage_list.html'
 
     def get_item_data(self, item, parent_data):
-        item['url'] = reverse('extract:trademark-usage-list') + \
-                      '?trademark_search={}'.format(url_quote(item['trademark']))
+        item['url'] = '{}?trademark_search={}'.format(
+            reverse('extract:trademark-usage-list'), url_quote(item['trademark']))
         if "document_pk" in self.request.GET:
             item['trademark_data'] = [i for i in parent_data
                                       if i['trademark'] == item['trademark']]
@@ -1012,8 +1006,8 @@ class TopUrlUsageListView(BaseTopUsageListView):
     def get_item_data(self, item, parent_data):
         item['goto_url'] = item['source_url'] if item['source_url'].lower().startswith('http')\
             else 'http://' + item['source_url']
-        item['url'] = reverse('extract:url-usage-list') + \
-                      '?url_search={}'.format(url_quote(item['source_url']))
+        item['url'] = '{}?url_search={}'.format(
+            reverse('extract:url-usage-list'), url_quote(item['source_url']))
         if "document_pk" in self.request.GET:
             item['url_data'] = [i for i in parent_data if i['source_url'] == item['source_url']]
         return item
@@ -1103,16 +1097,17 @@ class PartyNetworkChartView(PartyUsageListView):
             party_name = self.request.GET.get('party_name_iexact', chart_nodes[0]['id'])
             members = {party_name}
             while 1:
-                members1 = {i["source"] for i in chart_links if i["target"] in members
-                           and i["source"] not in members}
-                members2 = {i["target"] for i in chart_links if i["source"] in members
-                           and i["target"] not in members}
+                members1 = {i["source"] for i in chart_links
+                            if i["target"] in members and i["source"] not in members}
+                members2 = {i["target"] for i in chart_links
+                            if i["source"] in members and i["target"] not in members}
                 if not members1 and not members2:
                     break
                 members = members | members1 | members2
 
             chart_nodes = [i for i in chart_nodes if i['id'] in members]
-            chart_links = [i for i in chart_links if i['source'] in members or i['target'] in members]
+            chart_links = [i for i in chart_links
+                           if i['source'] in members or i['target'] in members]
         return {"nodes": chart_nodes, "links": chart_links}
 
 
@@ -1139,10 +1134,10 @@ class TermSearchView(apps.common.mixins.JSONResponseView):
         data = TermUsageListView(request=request).get_json_data()
         if request.POST.get('as_dict') in [None, 'false']:
             ret = [dict(
-                    document_id=item['text_unit__document__pk'],
-                    term=item['term__term'],
-                    count=item['count'],
-                    text_unit_id=item['text_unit__pk']) for item in data['data']]
+                document_id=item['text_unit__document__pk'],
+                term=item['term__term'],
+                count=item['count'],
+                text_unit_id=item['text_unit__pk']) for item in data['data']]
         else:
             ret = [(item['text_unit__document__pk'],
                     item['count'],

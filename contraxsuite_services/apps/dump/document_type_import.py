@@ -36,7 +36,7 @@ from django.core import serializers
 
 # Project imports
 from apps.common.log_utils import ProcessLogger
-from apps.document.field_types import FIELD_TYPES_REGISTRY
+from apps.document.field_type_registry import FIELD_TYPE_REGISTRY
 from apps.document.models import DocumentType, DocumentFieldDetector, DocumentField, DocumentFieldValue, \
     DocumentFieldCategory
 from apps.task.models import Task
@@ -321,7 +321,7 @@ class DeserializedDocumentField(DeserializedObjectController):
     def _get_field_type_title(cls, field_type_code: str) -> str:
         field_type_title = field_type_code
         if field_type_code is not None:
-            field_type = FIELD_TYPES_REGISTRY[field_type_code]
+            field_type = FIELD_TYPE_REGISTRY[field_type_code]
             field_type_title = field_type.title if field_type is not None else field_type_code
         return field_type_title
 
@@ -357,13 +357,13 @@ class DeserializedDocumentField(DeserializedObjectController):
             raise ValidationError(err_msg)
 
     def _get_invalid_choices(self, saved_field: DocumentField) -> set:
-        old_choices = set()
-        if not saved_field.allow_values_not_specified_in_choices and \
-                not self.object.allow_values_not_specified_in_choices:
-            old_choices = set(saved_field.get_choice_values())
-            for choice_value in self.object.get_choice_values():
-                if choice_value in old_choices:
-                    old_choices.remove(choice_value)
+        # old_choices = set()
+        # if not saved_field.allow_values_not_specified_in_choices and \
+        #         not self.object.allow_values_not_specified_in_choices:
+        old_choices = set(saved_field.get_choice_values())
+        for choice_value in self.object.get_choice_values():
+            if choice_value in old_choices:
+                old_choices.remove(choice_value)
         return old_choices
 
     def _is_allow_values_not_specified_in_choices_was_unset(self, saved_field: DocumentField) -> bool:

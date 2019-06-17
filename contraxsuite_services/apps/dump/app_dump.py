@@ -20,23 +20,24 @@
 """
 # -*- coding: utf-8 -*-
 
+import logging
 import sys
 import traceback
 from io import StringIO
 from tempfile import NamedTemporaryFile
+# Project imports
+from typing import Any, Dict, Set, Type, Callable
 
 from allauth.account.models import EmailAddress, EmailConfirmation
-
 from django.core import serializers as core_serializers
 from django.core.management import call_command
 from django.db.models import F, Subquery
+from django.db.models import Model, QuerySet
 from django.http import HttpResponse
 
-
-# Project imports
-from typing import Any
-
+from apps.common.log_utils import render_error
 from apps.common.models import ReviewStatus, ReviewStatusGroup, AppVar
+from apps.common.plugins import collect_plugins_in_apps
 from apps.deployment.models import Deployment
 from apps.document.models import (
     DocumentField, DocumentType, DocumentFieldDetector, DocumentFieldValue, ExternalFieldValue,
@@ -45,43 +46,42 @@ from apps.extract.models import Court, GeoAlias, GeoEntity, GeoRelation, Party, 
 from apps.task.models import TaskConfig
 from apps.users.models import User, Role
 
-APP_CONFIG_MODELS = [
-    DocumentType,
-    DocumentField,
-    DocumentFieldDetector,
-    DocumentFieldCategory,
-]
+APP_CONFIG_MODELS = {
+    DocumentType: None,
+    DocumentField: None,
+    DocumentFieldDetector: None,
+    DocumentFieldCategory: None,
+}  # type: Dict[Type[Model], Callable[[QuerySet], QuerySet]]
 
-FULL_DUMP_MODELS = [User,
-                    Role,
-                    EmailAddress,
-                    EmailConfirmation,
-                    ReviewStatus,
-                    ReviewStatusGroup,
-                    AppVar,
-                    Deployment,
-                    TaskConfig,
-                    Court,
-                    GeoAlias,
-                    GeoEntity,
-                    GeoRelation,
-                    Party,
-                    Term]
+FULL_DUMP_MODELS = {User: None,
+                    Role: None,
+                    EmailAddress: None,
+                    EmailConfirmation: None,
+                    ReviewStatus: None,
+                    ReviewStatusGroup: None,
+                    AppVar: None,
+                    Deployment: None,
+                    TaskConfig: None,
+                    Court: None,
+                    GeoAlias: None,
+                    GeoEntity: None,
+                    GeoRelation: None,
+                    Party: None,
+                    Term: None}  # type: Dict[Type[Model], Callable[[QuerySet], QuerySet]]
 
-FULL_DUMP_MODELS += APP_CONFIG_MODELS
+FULL_DUMP_MODELS.update(APP_CONFIG_MODELS)
 
 
 def default_object_handler(obj: Any) -> Any:
     return obj
 
 
-def get_dump(models: list, filter_by_model: dict = None, object_handler_by_model: dict = None) -> str:
-    filter_by_model = filter_by_model if filter_by_model is not None else {}
+def get_dump(filter_by_model: Dict[Type[Model], Callable] = None,
+             object_handler_by_model: dict = None) -> str:
     object_handler_by_model = object_handler_by_model if object_handler_by_model is not None else {}
     objects = []
-    for model in models:
+    for model, qs_filter in filter_by_model.items():
         handler = object_handler_by_model.get(model) or default_object_handler
-        qs_filter = filter_by_model.get(model)
         query_set = qs_filter(model.objects.get_queryset()) if qs_filter else model.objects.all()
         objects += [handler(obj) for obj in query_set]
     return core_serializers.serialize('json', objects)
@@ -120,13 +120,15 @@ def get_app_config_dump(document_type_codes=None) -> str:
             .distinct('category__pk') \
             .order_by('category__pk')
 
-        filter_by_model = {
+        filter_by_model = dict(APP_CONFIG_MODELS)
+
+        filter_by_model.update({
             DocumentType: lambda qs: qs.filter(code__in=document_type_codes),
             DocumentField: document_field_filter,
             DocumentFieldDetector: lambda qs: qs.filter(field__document_type__code__in=document_type_codes),
             DocumentFieldCategory: lambda qs: qs.filter(pk__in=Subquery(category_document_type_field)),
-        }
-    return get_dump(APP_CONFIG_MODELS, filter_by_model, object_handler_by_model)
+        })
+    return get_dump(filter_by_model, object_handler_by_model)
 
 
 def get_field_values_dump() -> str:
@@ -154,8 +156,8 @@ def get_model_fixture_dump(app_name, model_name, filter_options=None):
     :param filter_options:
     :return:
     """
-    module = sys.modules['apps.{}.models'.format(app_name)]
-    model = getattr(module, model_name)
+    app_module = sys.modules['apps.{}.models'.format(app_name)]
+    model = getattr(app_module, model_name)
     queryset = model.objects.all()
     if filter_options:
         queryset = queryset.filter(**filter_options)
@@ -209,3 +211,30 @@ def load_fixture_from_dump(data, mode='default'):
                'log': str(e),
                'exception': tb}
     return ret
+
+
+STR_APP_DUMP_MODELS = 'app_dump_models'
+STR_APP_CONFIG_MODELS = 'APP_CONFIG_MODELS'
+STR_FULL_DUMP_MODELS = 'FULL_DUMP_MODELS'
+
+
+def _register_app_dump_models(plugin_attr_name: str, dst_collection: Dict[Type[Model], Callable]):
+    app_dump_models = collect_plugins_in_apps(STR_APP_DUMP_MODELS, plugin_attr_name)
+    for app_name, models in app_dump_models.items():
+        try:
+            models = dict(models)
+            dst_collection.update(models)
+        except Exception as e:
+            logging.error(render_error('Unable to register app dump models from app {0}.\n'
+                                       'Check {0}.app_dump_models.{1}'
+                                       .format(app_name, plugin_attr_name), caused_by=e))
+
+
+def register_pluggable_app_dump_models():
+    _register_app_dump_models(STR_APP_CONFIG_MODELS, APP_CONFIG_MODELS)
+    _register_app_dump_models(STR_FULL_DUMP_MODELS, FULL_DUMP_MODELS)
+
+    logging.info('The following models will be exported in app config dumps:\n{0}'
+                 .format('\n'.join(sorted({m.__name__ for m in APP_CONFIG_MODELS}))))
+    logging.info('The following models will be exported in full app dumps (total cleanup dumps):\n{0}'
+                 .format('\n'.join(sorted({m.__name__ for m in FULL_DUMP_MODELS}))))

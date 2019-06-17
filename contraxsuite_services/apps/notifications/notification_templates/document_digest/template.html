@@ -157,7 +157,7 @@
                             </td>
                         {% elif column_type == 'date' %}
                             <td style="text-align: center">
-                                <nobr>{{ value.astimezone(to_user.get_time_zone()).strftime('%m/%d/%Y') if value is not none else '' }}</nobr>
+                                <nobr>{{ value.strftime('%m/%d/%Y') if value is not none else '' }}</nobr>
                             </td>
                         {% elif column_type == 'datetime' %}
                             <td style="text-align: center">

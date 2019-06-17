@@ -121,7 +121,7 @@ They can be manually copied from one machine to another, backed up, restored.
     * or 32GB disk at / for the OS and an additional 100GB disk at /data for Docker and Contraxsuite (safer). Note: Creating, mounting and formatting the disk is outside of the scope of this readme, but detailed instructions can easily be found online.
 
 ## Installation
-**We make simplifying assumptions throughout this installation to work for most initial use cases. Deviations from this setup guide will require you to be proficient in a wide range of applications, including those described above. **
+**We make simplifying assumptions throughought this installation to work for most initial use cases. Deviations from this setup guide will require you to be proficient in a wide range of applications, including those described above. **
 * Obtain a VM with Ubuntu 16.04 or 18.04.
     * Open ports 80 (HTTP) and 443 (HTTPS).
     * Ensure you have access to the shell of the VM. 
@@ -197,7 +197,7 @@ and going to setup HTTPS certificates.
     If you are going to access Contraxsuite via the Internet it is better to use HTTPS instead of HTTP.
     If you agree to setup the certificates the script will install "certbot" from Letsencrypt, prepare
     the certificates and configure Contraxsuite to use them.
-    Take into account that "certbot" will ask few more questions like: overall confirmation, email address,
+    Take into account that "certbot" will ask few more questions like: overall cofirmation, email address,
     allow sharing the email address on the Letsencrypt side e.t.c.
     5. Internal IP address for Docker Swarm cluster.  
     This IP address will be used for advertising in Docker Swarm. 
@@ -282,7 +282,7 @@ sudo tail -f /var/log/syslog
 
   **Admin login/pass: Administrator/Administrator**
   
-* To prepare text processing system and to additionally ensure that Celery works:
+* To prepare text processing system and to additionnally ensure that Celery works:
     * Login to https://your.domain.com/advanced/ as Administrator
     **Web app will continue responding with 502 error until the UWSGI service is fully loaded.
     Wait few minutes till it start showing the login screen.**

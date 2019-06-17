@@ -15,11 +15,11 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
     You can also be released from the requirements of the license by purchasing
-    a commercial license from ContraxSuite, LLC. Buying such a license is 
-    mandatory as soon as you develop commercial activities involving ContraxSuite 
-    software without disclosing the source code of your own applications.  These 
-    activities include: offering paid services to customers as an ASP or "cloud"
-    provider, processing documents on the fly in a web application, 
+    a commercial license from ContraxSuite, LLC. Buying such a license is
+    mandatory as soon as you develop commercial activities involving ContraxSuite
+    software without disclosing the source code of your own applications.  These
+    activities include: offering paid services to customers as an ASP or "cloudЭ"
+    provider, processing documents on the fly in a web application,
     or shipping ContraxSuite within a closed source product.
 """
 
@@ -40,14 +40,16 @@ from apps.document import signals
 from apps.document.fields_detection.field_detection_celery_api import run_detect_field_values_as_sub_tasks
 from apps.document.fields_processing import field_value_cache
 from apps.document.models import Document
+from apps.document.repository.base_document_repository import BaseDocumentRepository
+from apps.document.repository.document_repository import DocumentRepository
 from apps.project.models import Project, ProjectClustering, UploadSession
-from apps.task.tasks import BaseTask, CeleryTaskLogger
+from apps.task.tasks import BaseTask, CeleryTaskLogger, call_task
 from apps.task.utils.task_utils import TaskUtils
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.1/LICENSE"
-__version__ = "1.2.1"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.2/LICENSE"
+__version__ = "1.2.2"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -301,12 +303,29 @@ class CleanProject(BaseTask):
     """
     name = 'Clean Project'
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.document_repository = kwargs['repository'] \
+            if 'repository' in kwargs \
+            else DocumentRepository()  # type:BaseDocumentRepository
+
     def process(self, **kwargs):
         project_id = kwargs.get('_project_id')
         delete = bool(kwargs.get('delete'))
-        project = Project.objects.get(pk=project_id)
+        project = Project.all_objects.get(pk=project_id)
 
-        # delete project and related objects
+        # get doc ids and remove docs' source files
+        proj_doc_ids = self.document_repository.get_project_document_ids(project_id)
+        file_paths = self.document_repository.get_all_document_source_paths(proj_doc_ids)
+        from apps.document.tasks import DeleteDocumentFiles
+        call_task(DeleteDocumentFiles, metadata=file_paths)
+
+        # delete documents
+        from apps.document.repository.document_bulk_delete \
+            import get_document_bulk_delete
+        get_document_bulk_delete().delete_documents(proj_doc_ids)
+
+        # delete project itself
         project.cleanup(delete=delete)
 
         # store data about cleanup in ProjectCleanup Task
@@ -316,6 +335,23 @@ class CleanProject(BaseTask):
             '_project_id': project_id  # added "_" to avoid detecting task as project task
         }
         task_model.save()
+
+
+class CleanProjects(BaseTask):
+    """
+    Run Cleanup Project for all the projects, passed by ids in arguments
+    """
+    name = 'Clean Projects'
+
+    def process(self, **kwargs):
+        project_ids = kwargs.get('_project_ids')
+        delete = bool(kwargs.get('delete'))
+
+        clean_args = [{'_project_id': i, 'delete': delete} for i in project_ids]
+
+        self.run_sub_tasks_class_based('Clean Project',
+                                       CleanProject,
+                                       clean_args)
 
 
 @app.task(name='advanced_celery.track_session_completed', bind=True)
@@ -339,3 +375,4 @@ def track_session_completed(*args, **kwargs):
 app.register_task(ClusterProjectDocuments())
 app.register_task(ReassignProjectClusterDocuments())
 app.register_task(CleanProject())
+app.register_task(CleanProjects())

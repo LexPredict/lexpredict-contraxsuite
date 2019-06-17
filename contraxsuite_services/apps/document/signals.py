@@ -1,4 +1,4 @@
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, List
 
 import django.dispatch
 
@@ -16,6 +16,8 @@ document_field_deleted = django.dispatch.Signal(providing_args=['user', 'documen
 
 document_type_changed = django.dispatch.Signal(providing_args=['user', 'document_type'])
 document_type_deleted = django.dispatch.Signal(providing_args=['user', 'document_type'])
+
+doc_soft_delete = django.dispatch.Signal(providing_args=['document_ids', 'delete_pending'])
 
 
 def fire_document_changed(sender,
@@ -55,3 +57,19 @@ def fire_documents_changed(sender,
                               system_fields_changed=system_fields_changed,
                               generic_fields_changed=generic_fields_changed,
                               user_fields_changed=user_fields_changed)
+
+
+def fire_document_deleted(sender,
+                          document: Document,
+                          user: User):
+    document_deleted.send(sender,
+                          user=user,
+                          document=document)
+
+
+def fire_doc_soft_delete(sender,
+                         document_ids: List[int],
+                         delete_pending: bool):
+    doc_soft_delete.send(sender,
+                         document_ids=document_ids,
+                         delete_pending=delete_pending)

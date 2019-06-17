@@ -1,3 +1,30 @@
+"""
+    Copyright (C) 2017, ContraxSuite, LLC
+
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU Affero General Public License as
+    published by the Free Software Foundation, either version 3 of the
+    License, or (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU Affero General Public License for more details.
+
+    You should have received a copy of the GNU Affero General Public License
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+    You can also be released from the requirements of the license by purchasing
+    a commercial license from ContraxSuite, LLC. Buying such a license is
+    mandatory as soon as you develop commercial activities involving ContraxSuite
+    software without disclosing the source code of your own applications.  These
+    activities include: offering paid services to customers as an ASP or "cloud"
+    provider, processing documents on the fly in a web application,
+    or shipping ContraxSuite within a closed source product.
+"""
+# -*- coding: utf-8 -*-
+
+import traceback
 from typing import Set, Generator, List, Any
 
 from celery import shared_task
@@ -7,10 +34,20 @@ from django.db import connection
 from django.db.models import Q
 from psycopg2 import InterfaceError, OperationalError
 
+from apps.common.log_utils import ProcessLogger
 from apps.document.models import Document, DocumentType
-from apps.rawdb.field_value_tables import cache_document_fields, adapt_table_structure, doc_fields_table_name
+from apps.rawdb.field_value_tables import (
+    cache_document_fields, adapt_table_structure, doc_fields_table_name)
 from apps.task.tasks import ExtendedTask, CeleryTaskLogger, Task, purge_task, call_task_func
 from apps.rawdb.app_vars import APP_VAR_DISABLE_RAW_DB_CACHING
+
+__author__ = "ContraxSuite, LLC; LexPredict, LLC"
+__copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.2/LICENSE"
+__version__ = "1.2.2"
+__maintainer__ = "LexPredict, LLC"
+__email__ = "support@contraxsuite.com"
+
 
 this_module_name = __name__
 
@@ -19,15 +56,23 @@ def _get_reindex_task_name():
     return this_module_name + '.' + cache_document_fields_for_doc_ids_tracked.__name__
 
 
-def there_are_non_indexed_docs_not_planned_to_index(document_type: DocumentType) -> bool:
+def there_are_non_indexed_docs_not_planned_to_index(
+        document_type: DocumentType,
+        log: ProcessLogger) -> bool:
     for doc_id in non_indexed_doc_ids_not_planned_to_index(document_type, 1):
         if doc_id:
+            task_name = _get_reindex_task_name()
+            fields_table = doc_fields_table_name(document_type.code)
+            log.info(f'there_are_non_indexed_docs_not_planned_to_index: '
+                     f'found document id={doc_id} of type {document_type.code}, '
+                     f'task {task_name}. Fields table: {fields_table}')
             return True
     return False
 
 
-def non_indexed_doc_ids_not_planned_to_index(document_type: DocumentType, pack_size: int = 100) -> Generator[
-    List[int], None, None]:
+def non_indexed_doc_ids_not_planned_to_index(
+        document_type: DocumentType, pack_size: int = 100) -> Generator[List[int], None, None]:
+
     table_name = doc_fields_table_name(document_type.code)
 
     with connection.cursor() as cursor:
@@ -107,10 +152,16 @@ def get_all_doc_ids_not_planned_to_index_by_status_pk(status_pk: Any, pack_size:
              retry_backoff=True,
              autoretry_for=(SoftTimeLimitExceeded, InterfaceError, OperationalError,),
              max_retries=3)
-def manual_reindex(task: ExtendedTask, document_type_code: str = None, force: bool = False):
+def manual_reindex(task: ExtendedTask,
+                   document_type_code: str = None,
+                   force: bool = False):
     if APP_VAR_DISABLE_RAW_DB_CACHING.val:
         task.log_info('Document caching to raw tables is disabled in Commons / App Vars')
         return
+    msg = f'manual_reindex called for {document_type_code}. ' \
+          f'Task: {task.task_name}, main id: {task.main_task_id}'
+    log = CeleryTaskLogger(task)
+    log.info(msg)
     adapt_tables_and_reindex(task, document_type_code, force, True)
 
 
@@ -186,7 +237,9 @@ def any_other_reindex_task(self_task_id, document_type_code: str):
              retry_backoff=True,
              autoretry_for=(SoftTimeLimitExceeded, InterfaceError, OperationalError,),
              max_retries=3)
-def auto_reindex_not_tracked(task: ExtendedTask, document_type_code: str = None, force: bool = False):
+def auto_reindex_not_tracked(task: ExtendedTask,
+                             document_type_code: str = None,
+                             force: bool = False):
     if APP_VAR_DISABLE_RAW_DB_CACHING.val:
         return
     document_types = [DocumentType.objects.get(code=document_type_code)] \
@@ -198,16 +251,26 @@ def auto_reindex_not_tracked(task: ExtendedTask, document_type_code: str = None,
     for document_type in document_types:
         reindex_needed = adapt_table_structure(log, document_type, force=force)
         if reindex_needed:
+            force_fmt = ', forced' if force else ''
+            task.log_info(f'Re-index from auto_reindex_not_tracked, {task.name}, '
+                          f'for {document_type}{force_fmt}')
             call_task_func(manual_reindex, (document_type.code, False), task_model.user_id)
         else:
-            if there_are_non_indexed_docs_not_planned_to_index(document_type) \
+            if there_are_non_indexed_docs_not_planned_to_index(document_type, log) \
                     and not any_other_reindex_task(task.request.id, document_type.code).exists():
-                call_task_func(manual_reindex, (document_type.code, False), task_model.user_id)
+                task.log_info(f'auto_reindex_not_tracked({document_type.code}): '
+                              f'there_are_non_indexed_docs_not_planned_to_index')
+                call_task_func(manual_reindex,
+                               (document_type.code, False),
+                               task_model.user_id)
 
 
-def adapt_tables_and_reindex(task: ExtendedTask, document_type_code: str = None, force_recreate_tables: bool = False,
+def adapt_tables_and_reindex(task: ExtendedTask,
+                             document_type_code: str = None,
+                             force_recreate_tables: bool = False,
                              force_reindex: bool = False):
     """
+    "RawDB: Reindex" task
     Checks if raw table with field values of doc type needs to be altered according to the changed
     field structure and triggers document reindexing if needed.
 
@@ -225,7 +288,9 @@ def adapt_tables_and_reindex(task: ExtendedTask, document_type_code: str = None,
     log = CeleryTaskLogger(task)
 
     for document_type in document_types:
-        reindex_needed = adapt_table_structure(log, document_type, force=force_recreate_tables)
+        reindex_needed = adapt_table_structure(log,
+                                               document_type,
+                                               force=force_recreate_tables)
 
         if force_recreate_tables:
             # If "force" is requested - we cancel all currently planned re-index tasks
@@ -233,15 +298,22 @@ def adapt_tables_and_reindex(task: ExtendedTask, document_type_code: str = None,
             for prev_task in any_other_reindex_task(task.request.id, document_type.code):
                 purge_task(prev_task)
             args = [(ids,) for ids in get_all_doc_ids(document_type.uid, 20)]
-            task.run_sub_tasks('Reindex set of documents', cache_document_fields_for_doc_ids_tracked, args)
+            task.log_info(f'Initiating re-index for all documents of {document_type.code} ' +
+                          f' - forced tables recreating.')
+            task.run_sub_tasks('Reindex set of documents',
+                               cache_document_fields_for_doc_ids_tracked,
+                               args)
         elif reindex_needed or force_reindex:
-            task.log_info('Raw DB table for document type {0} has been altered. '
-                          'Initiating re-index for all documents of this document type.'.format(document_type.code))
+            comment = 'forced' if force_reindex else 'reindex needed'
+            task.log_info(f'Raw DB table for document type {document_type.code} ' +
+                          f'has been altered ({comment}), task "{task.task_name}".\n' +
+                          f'Initiating re-index for all documents of this document type.')
             # If we altered the field structure then we need to re-index all docs of this type.
             # If no need to force - we plan re-index tasks only
             # for those documents for which they are not planned yet
             args = [(ids,) for ids in get_all_doc_ids_not_planned_to_index_by_doc_type(document_type.uid, 20)]
-            task.run_sub_tasks('Reindex set of documents', cache_document_fields_for_doc_ids_tracked, args)
+            task.run_sub_tasks('Reindex set of documents',
+                               cache_document_fields_for_doc_ids_tracked, args)
         else:
             # If we did not alter the table but there are non-indexed docs fo this type
             # then we trigger the re-index task making it index non-indexed docs only.
@@ -251,6 +323,8 @@ def adapt_tables_and_reindex(task: ExtendedTask, document_type_code: str = None,
             # It makes sense to only plan re-indexing for those docs which are:
             # - not indexed
             # - have no re-index planned for them
+            task.log_info(f'Initiating re-index for all documents of {document_type.code} ' +
+                          f' - index not planned.')
             args = [(ids,) for ids in non_indexed_doc_ids_not_planned_to_index(document_type, 20)]
             task.run_sub_tasks('Reindex set of documents', cache_document_fields_for_doc_ids_tracked, args)
 
@@ -259,7 +333,7 @@ def cache_document_fields_for_doc_ids(task: ExtendedTask, doc_ids: Set):
     # This task is added to exclude-from-tracking list and is not seen in task list at /advanced
     # Also if running it as a aub-task it will not participate in the parent task's progress.
     log = CeleryTaskLogger(task)
-    for doc in Document.objects.filter(pk__in=doc_ids) \
+    for doc in Document.all_objects.filter(pk__in=doc_ids) \
             .select_related('document_type', 'assignee', 'status'):  # type: Document
         cache_document_fields(log, doc)
 
@@ -284,3 +358,11 @@ def cache_document_fields_for_doc_ids_not_tracked(task: ExtendedTask, doc_ids: S
              max_retries=3)
 def cache_document_fields_for_doc_ids_tracked(task: ExtendedTask, doc_ids: Set):
     cache_document_fields_for_doc_ids(task, doc_ids)
+
+
+def get_brief_call_stack() -> str:
+    lines = []  # type: List[str]
+    for line in traceback.format_stack():
+        if 'site-packages' not in line:
+            lines.append(line.strip())
+    return '\n'.join(lines)
