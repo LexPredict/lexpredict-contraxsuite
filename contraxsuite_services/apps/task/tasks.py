@@ -491,7 +491,7 @@ def call_task(task_name, **options):
         name=task_name_resolved,
         user_id=options.get('user_id'),
         metadata=options.get('metadata', {}),
-        kwargs=pre_serialize(celery_task_id, None, options_wo_metadata),
+        kwargs=pre_serialize(celery_task_id, None, options_wo_metadata),  # this changes the options_wo_metadata !
         source_data=options.get('source_data'),
         sequential_tasks=options.get('sequential_tasks'),
         group_id=options.get('group_id'),
@@ -500,6 +500,9 @@ def call_task(task_name, **options):
         upload_session=UploadSession.objects.get(pk=session_id) if session_id else None,
         priority=priority
     )
+
+    # updating options with the changes made in options_wo_metadata by pre_serialize()
+    options.update(options_wo_metadata)
 
     task.write_log('Celery task id: {}\n'.format(celery_task_id))
     options['task_id'] = task.id
@@ -1365,8 +1368,13 @@ class Locate(BaseTask):
                          f'error caching generic values.\n{str(e)}'
                 raise RuntimeError(er_msg)
             try:
-                detect_and_cache_field_values_for_document(log=log, document=doc, save=True, clear_old_values=True,
-                                                           ignore_field_codes=ignore_field_codes)
+                detect_and_cache_field_values_for_document(log=log,
+                                                           document=doc,
+                                                           save=True,
+                                                           clear_old_values=True,
+                                                           ignore_field_codes=ignore_field_codes,
+                                                           changed_by_user=user,
+                                                           document_initial_load=document_initial_load)
             except Exception as e:
                 er_msg = f'on_locate_finished(doc_id={doc_id}): ' + \
                          f'error detecting field values.\n{str(e)}'
