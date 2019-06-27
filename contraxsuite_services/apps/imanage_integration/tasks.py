@@ -10,7 +10,6 @@ from django.utils import timezone
 from psycopg2 import InterfaceError, OperationalError
 
 from apps.celery import app
-from apps.task.tasks import CeleryTaskLogger
 from apps.common.collection_utils import chunks
 from apps.common.log_utils import render_error
 from apps.common.sql_commons import fetch_int, SQLClause
@@ -18,6 +17,8 @@ from apps.common.streaming_utils import buffer_contents_into_file
 from apps.imanage_integration.models import IManageConfig, IManageDocument
 from apps.task.models import Task
 from apps.task.tasks import BaseTask, ExtendedTask, LoadDocuments, call_task
+from apps.task.tasks import CeleryTaskLogger
+from apps.users.user_utils import get_main_admin_user
 
 
 class IManageSynchronization(BaseTask):
@@ -59,6 +60,7 @@ class IManageSynchronization(BaseTask):
                     'document_type_id': imanage_config.document_type_id,
                     'project_id': project_id,
                     'assignee_id': assignee_id,
+                    'user_id': get_main_admin_user().pk,
                     'propagate_exception': True,
                     'run_standard_locators': True,
                     'metadata': {},

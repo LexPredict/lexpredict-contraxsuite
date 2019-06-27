@@ -357,13 +357,13 @@ class DeserializedDocumentField(DeserializedObjectController):
             raise ValidationError(err_msg)
 
     def _get_invalid_choices(self, saved_field: DocumentField) -> set:
-        old_choices = set()
-        if not saved_field.allow_values_not_specified_in_choices and \
-                not self.object.allow_values_not_specified_in_choices:
-            old_choices = set(saved_field.get_choice_values())
-            for choice_value in self.object.get_choice_values():
-                if choice_value in old_choices:
-                    old_choices.remove(choice_value)
+        # old_choices = set()
+        # if not saved_field.allow_values_not_specified_in_choices and \
+        #         not self.object.allow_values_not_specified_in_choices:
+        old_choices = set(saved_field.get_choice_values())
+        for choice_value in self.object.get_choice_values():
+            if choice_value in old_choices:
+                old_choices.remove(choice_value)
         return old_choices
 
     def _is_allow_values_not_specified_in_choices_was_unset(self, saved_field: DocumentField) -> bool:

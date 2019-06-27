@@ -375,9 +375,11 @@ class DocumentField(TimeStampedModel):
         return self.allow_values_not_specified_in_choices or possible_value in self.get_choice_values()
 
     def get_invalid_choice_values(self):
-        return DocumentFieldValue.objects \
-            .filter(field=self) \
-            .exclude(value__in=self.get_choice_values())
+        if not self.allow_values_not_specified_in_choices:
+            return DocumentFieldValue.objects \
+                .filter(field=self) \
+                .exclude(value__in=self.get_choice_values())
+        return DocumentFieldValue.objects.none()
 
     def set_choice_values(self, choices: List[str]):
         self.choices = '\n'.join(choices) if choices else None
