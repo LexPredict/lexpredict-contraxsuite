@@ -262,7 +262,7 @@ def process_notifications_on_document_change(task: ExtendedTask,
 
     log_msgs = []
 
-    if document_event == DocumentEvent.CREATED.value:
+    if document_event == DocumentEvent.CREATED.value or fields_before is None:
         if fields_after.get(FIELD_CODE_ASSIGNEE_ID) is not None:
             send_notification(event=DocumentAssignedEvent.code,
                               log=log,
