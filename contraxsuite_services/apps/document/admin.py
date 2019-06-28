@@ -256,6 +256,7 @@ class SoftDeleteDocumentAdmin(DocumentAdmin):
         ]
         return my_urls + urls
 
+PARAM_OVERRIDE_WARNINGS = 'override_warnings'
 
 class UsersTasksValidationAdmin(admin.ModelAdmin):
     save_warning_template = 'admin/document/users_tasks_warning_save_form.html'
@@ -293,7 +294,6 @@ class UsersTasksValidationAdmin(admin.ModelAdmin):
         else:
             return None
 
-    PARAM_OVERRIDE_WARNINGS = 'override_warnings'
     WARN_CODE_TASKS_RUNNING = 'warning:tasks_running'
 
     @classmethod
@@ -301,7 +301,7 @@ class UsersTasksValidationAdmin(admin.ModelAdmin):
         if not cls.users_tasks_validation_enabled():
             return
 
-        if not as_bool(request.GET, cls.PARAM_OVERRIDE_WARNINGS):
+        if not as_bool(request.GET, PARAM_OVERRIDE_WARNINGS):
             user_tasks = UsersTasksValidationAdmin.get_user_task_names()
             if user_tasks:
                 user_tasks = '; <br />'.join(user_tasks)
@@ -837,7 +837,8 @@ class DocumentFieldInlineFormset(forms.models.BaseInlineFormSet):
 class DocumentFieldFormInline(forms.ModelForm):
     field = forms.ModelChoiceField(
         queryset=DocumentField.objects.all(),
-        required=False)
+        required=False,
+        empty_label=None)
 
     def __init__(self, *args, **kwargs):
         prefix = kwargs.get('prefix')
@@ -847,9 +848,13 @@ class DocumentFieldFormInline(forms.ModelForm):
                 kwargs['instance'] = DocumentField.objects.get(pk=uid)
         super().__init__(*args, **kwargs)
         self.base_instance = kwargs.get('instance')
+
+        if self.base_instance:
+            self.fields['field'].queryset = DocumentField.objects\
+                .filter(document_type=self.base_instance.document_type)\
+                .order_by('long_code')
+
         self._filter_tree = None
-        for _, field in self.fields.items():
-            print(field.widget.template_name)
         if self.base_instance:
             self.fields['field'].initial = self.base_instance
             self.fields['field'].widget.template_name = 'documentfield_admin_select.html'
@@ -858,12 +863,12 @@ class DocumentFieldFormInline(forms.ModelForm):
         form_instance = self.cleaned_data['field']
         with transaction.atomic():
             if form_instance != self.instance:
-                self.instance.document_type = None
-                self.instance.save()
+                # self.instance.document_type = None
+                # self.instance.save()
                 self.instance = form_instance
                 self.instance.category = self.cleaned_data['category']
                 self.instance.order = self.cleaned_data['order']
-                self.instance.document_type = self.cleaned_data['document_type']
+                # self.instance.document_type = self.cleaned_data['document_type']
             return super().save(*args, **kwargs)
 
 
@@ -876,6 +881,28 @@ class DocumentFieldInlineAdmin(admin.TabularInline):
 
     form = DocumentFieldFormInline
     model = DocumentField
+
+    # We were going this inline table to only show the existing fields of this doc type but do not allow
+    # adding them or deleting because adding in the current model actually means taking a field from another
+    # doc type and putting it into this one. Changing doc type of a field makes all its existing values invalid
+    # and they will be deleted.
+    #
+    # To disable add/delete django has the methods: has_add_permission(), has_delete_permission().
+    # But when has_add_permission() returns False the table does not show the last row for some reason.
+    #
+    # Here is the workaround which makes the table showing only the existing items and no controls for adding:
+    # - has_add_permission() returns True;
+    # - number of extra rows is set to 0.
+    #
+
+    extra = 0
+    max_num = 0
+
+    def has_add_permission(self, request, obj=None):
+        return True
+
+    def has_delete_permission(self, request, obj=None):
+        return False
 
 
 class DocumentTypeForm(forms.ModelForm):

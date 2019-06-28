@@ -56,7 +56,7 @@ from apps.common.models import ReviewStatus
 from apps.common.url_utils import as_bool
 from apps.common.utils import get_api_module
 from apps.document import signals
-from apps.document.admin import DocumentFieldForm, UsersTasksValidationAdmin
+from apps.document.admin import DocumentFieldForm, UsersTasksValidationAdmin, PARAM_OVERRIDE_WARNINGS
 from apps.document.field_type_registry import FIELD_TYPE_REGISTRY
 from apps.document.field_types import FieldType
 from apps.document.fields_detection import field_detection
@@ -407,7 +407,7 @@ class DocumentPermissions(BasePermission):
 
         # TODO: find better way to validate user permission for those endpoints,
         # because we check multiple projects at once, but need only one containing its documents
-        if request.method == 'POST' and view.action in ['mark_delete', 'unmark_delete']\
+        if request.method == 'POST' and view.action in ['mark_delete', 'unmark_delete'] \
                 and request.user.is_reviewer:
             document_ids = request.data.get('document_ids', [])
             projects = project_api_module.Project.objects.filter(
@@ -1171,6 +1171,16 @@ class DocumentFieldCreateSerializer(serializers.ModelSerializer):
         req = self.context['request']
         form_data = req.data
         if req.method == 'PATCH':
+            if 'document_type' in form_data:
+                raise DRFValidationError({
+                    'document_type': 'Document type can not be changed on existing fields because '
+                                     'it can lead to data corruption.',
+                })
+            if 'type' in form_data:
+                raise DRFValidationError({
+                    'type': 'Data type can not be changed on existing fields because '
+                            'it can lead to data corruption.',
+                })
             _form_data = self.to_representation(self.instance)
             _form_data.update(form_data)
             form_data = _form_data
@@ -1179,7 +1189,8 @@ class DocumentFieldCreateSerializer(serializers.ModelSerializer):
             form_errors = model_form.errors
         super().is_valid(raise_exception=False)
 
-        UsersTasksValidationAdmin.validate_running_tasks(req, form_errors)
+        if not (self.errors or form_errors):
+            UsersTasksValidationAdmin.validate_running_tasks(req, form_errors)
 
         if self.errors or form_errors:
             form_errors.update(self.errors)
@@ -1413,18 +1424,19 @@ class DocumentTypeCreateSerializer(serializers.ModelSerializer):
         fields = ['uid', 'code', 'title', 'fields', 'search_fields', 'editor_type',
                   'field_code_aliases', 'metadata']
 
-    def set_fields(self, instance):
-        instance.fields.clear()
+    def set_fields(self, instance: DocumentType):
         fields_data = self.context['request'].data.get('fields')
-        if fields_data:
-            for field_data in fields_data:
-                field_id = field_data.pop('id')
-                field_obj = DocumentField.objects.get(pk=field_id)
-                if field_obj:
-                    field_obj.document_type = instance
-                    field_obj.order = field_data.get('order', 0)
-                    field_obj.category_id = field_data.get('category')
-                    field_obj.save()
+        if fields_data is not None and instance is not None and instance.pk:
+            fields_data = {f['id']: f for f in fields_data}
+            for field in list(instance.fields.all()):  # type: DocumentField
+                field_patch = fields_data.get(field.uid)
+                if not field_patch:
+                    field.delete()
+                else:
+                    field.category_id = field_patch.get('category')
+                    field.order = field_patch.get('order', 0)
+                    field.save(update_fields=['category', 'order'])
+
         return instance
 
     def create(self, validated_data):
@@ -1437,12 +1449,33 @@ class DocumentTypeCreateSerializer(serializers.ModelSerializer):
             return instance
         return self.set_fields(instance)
 
+    def validate_may_delete_data(self, errors_dst: dict):
+        request = self.context['request']
+        if as_bool(request.GET, PARAM_OVERRIDE_WARNINGS):
+            return
+
+        fields_data = request.data.get('fields')
+        if fields_data is not None and self.instance is not None and self.instance.pk:
+            field_values_to_delete = dict()
+            fields_data = {f['id']: f for f in fields_data}
+            for field in list(self.instance.fields.all()):  # type: DocumentField
+                field_patch = fields_data.get(field.uid)
+                if not field_patch:
+                    field_values_to_delete[field.code] = DocumentFieldValue.objects.filter(field=field).count()
+            if field_values_to_delete:
+                field_values_to_delete = ';<br />\n'.join([f'{field}: {n} values'
+                                                           for field, n in field_values_to_delete.items()])
+                errors_dst['warning:will_delete_values'] = f'You are going to delete document fields. ' \
+                    f'This will cause deleting all their stored field values:<br/>\n{field_values_to_delete}.'
+
     def is_valid(self, raise_exception=False):
         form_errors = dict()
         req = self.context['request']
         super().is_valid(raise_exception=False)
 
-        UsersTasksValidationAdmin.validate_running_tasks(req, form_errors)
+        if not (self.errors or form_errors):
+            UsersTasksValidationAdmin.validate_running_tasks(req, form_errors)
+            self.validate_may_delete_data(form_errors)
 
         if self.errors or form_errors:
             form_errors.update(self.errors)
