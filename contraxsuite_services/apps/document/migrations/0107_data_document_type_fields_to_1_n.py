@@ -18,6 +18,11 @@ def assign_document_type_field_values(field, document_type_field):
     return field
 
 
+def copy_depends_on_fields(old_field, new_field):
+    depends_on_fields = [field for field in old_field.depends_on_fields.all()]
+    new_field.depends_on_fields.set(depends_on_fields)
+
+
 def clone_field(apps, field, new_document_type):
     DocumentField = apps.get_model('document', 'DocumentField')
     # Lets clone field manually to exclude bugs in future
@@ -33,7 +38,6 @@ def clone_field(apps, field, new_document_type):
         classifier_init_script=field.classifier_init_script,
         formula=field.formula,
         value_regexp=field.value_regexp,
-        depends_on_fields=[field for field in field.depends_on_fields.all()],
         confidence=field.confidence,
         requires_text_annotations=field.requires_text_annotations,
         read_only=field.read_only,
@@ -67,6 +71,7 @@ def clone_target_field(apps, document_type_field):
     new_field = assign_document_type_field_values(new_field, document_type_field)
     document_type_field.document_field = new_field
     new_field.save()
+    copy_depends_on_fields(old_field=old_field, new_field=new_field)
     document_type_field.save()
 
     set_field_for_values(apps, document_type, old_field, new_field)
@@ -103,6 +108,7 @@ def fix_document_type_conflicts(apps):
             if new_field is None:
                 new_field = clone_field(apps, old_field, None)
                 new_field.save()
+                copy_depends_on_fields(old_field=old_field, new_field=new_field)
 
             document_field_detector.field = new_field
             document_field_detector.save()
@@ -123,6 +129,7 @@ def fix_document_type_conflicts(apps):
             if new_field is None:
                 new_field = clone_field(apps, old_field, None)
                 new_field.save()
+                copy_depends_on_fields(old_field=old_field, new_field=new_field)
 
             model.document_field = new_field
             model.save()
