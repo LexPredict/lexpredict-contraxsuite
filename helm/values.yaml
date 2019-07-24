@@ -1,0 +1,10 @@
+lexpredict:
+  version: 1.1.8.2
+storage:
+  postgres: 1
+  elastic: 1
+  redis: 1
+  rabbitmq: 1
+  contraxsuite: 2
+  metricbeat: 1
+storageclass: rc-storage

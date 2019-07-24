@@ -1,0 +1,42 @@
+apiVersion: apps/v1beta1
+kind: Deployment
+metadata:
+  name: contrax-tika
+  deletionGracePeriodSeconds: 120
+  labels:
+    app: contrax-tika
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: contrax-tika
+  strategy:
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        app: contrax-tika
+    spec:
+      hostname: contrax-tika
+      containers:
+        - name: contrax-tika
+          image: lexpredict/tika-server:1.7
+          ports:
+            - name: contrax-tika
+              containerPort: 9998
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: "contrax-tika"
+  labels:
+    service: "contrax-tika"
+spec:
+  type: ClusterIP
+  selector:
+    app: contrax-tika
+  ports:
+    - port: 9998
+      targetPort: contrax-tika
+      name: contrax-tika

@@ -1,0 +1,35 @@
+---
+apiVersion: apps/v1beta1
+kind: Deployment
+metadata:
+  name: curator-filebeat
+  deletionGracePeriodSeconds: 120
+  labels:
+    app: curator-filebeat
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: curator-filebeat
+  strategy:
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        app: curator-filebeat
+    spec:
+      containers:
+        - name: curator-filebeat
+          image: "stefanprodan/es-curator-cron:latest"
+          env:
+            - name: PERIOD
+              value: "15min"
+            - name: KEEP_DAYS
+              value: "30"
+            - name: INDEX_PREFIX
+              value: "filebeat-"
+          args:
+            - "--host"
+            - "contrax-elasticsearch-service"
+            - "--port"
+            - "9200"

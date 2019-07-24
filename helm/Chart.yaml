@@ -1,0 +1,14 @@
+apiVersion: v1
+name: lexpredict-contraxsuite
+version: 1.0.7
+appVersion: 1.1.8
+description: lexpredict-contraxsuite helm chart
+icon: https://www.lexpredict.com/wp-content/uploads/2014/08/lexpredict_logo_horizontal_1.png
+keywords:
+  - lex-predict
+  - legaltech
+sources:
+  - https://github.com/LexPredict/lexpredict-contraxsuite-deploy
+maintainers:
+  - name: Debarshi Basak
+    email: debarshi@reynencourt.com

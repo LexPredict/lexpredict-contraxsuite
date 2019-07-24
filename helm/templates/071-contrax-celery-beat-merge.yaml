@@ -1,0 +1,113 @@
+#---
+#apiVersion: apps/v1beta1
+#kind: Deployment
+#metadata:
+#  name: contrax-celery-beat
+#  deletionGracePeriodSeconds: 120
+#  labels:
+#    app: contrax-celery-beat
+#spec:
+#  replicas: 1
+#  selector:
+#    matchLabels:
+#      app: contrax-celery-beat
+#  strategy:
+#    type: RollingUpdate
+#  template:
+#    metadata:
+#      labels:
+#        app: contrax-celery-beat
+#    spec:
+#      hostname: contrax-celery-beat
+#      volumes:
+#        - name: contraxsuite-logs
+#          persistentVolumeClaim:
+#            claimName: lexpredict-storage
+#        - name: celery-worker-state
+#          persistentVolumeClaim:
+#            claimName: lexpredict-storage
+#        - name: contraxsuite-ssl-certs
+#          persistentVolumeClaim:
+#            claimName: nfs
+#      containers:
+#        - image: "lexpredict/lexpredict-contraxsuite:{{.Values.lexpredict.version}}"
+#          name: contrax-celery-beat
+#          command:
+#            - "/start.sh"
+#            - "celery-beat"
+#          env:
+#            - name: DOCKER_CELERY_CONCURRENCY
+#              value: "1"
+#            - name: SHARED_USER_NAME
+#              value: "contrax"
+#            - name: SHARED_USER_ID
+#              value: "65432"
+#            - name: DOCKER_HOST_NAME_PG
+#              value: "postgres-service"
+#            - name: DOCKER_HOST_NAME_REDIS
+#              value: "contrax-redis-service"
+#            - name: DOCKER_HOST_NAME_RABBITMQ
+#              value: "rabbitmq-service"
+#            - name: DOCKER_HOST_NAME_ELASTICSEARCH
+#              value: "contrax-elasticsearch-service"
+#            - name: DOCKER_HOST_NAME_UWSGI
+#              value: "contrax-uwsgi-service"
+#            - name: DOCKER_HOST_NAME_KIBANA
+#              value: "contrax-kibana-service"
+#            - name: DOCKER_PG_USER
+#              value: "admin"
+#            - name: DOCKER_PG_PASSWORD
+#              value: "admin"
+#            - name: DOCKER_PG_DB_NAME
+#              value: "contrax"
+#            - name: DOCKER_RABBITMQ_VHOST
+#              value: "rabbitmq-service"
+#            - name: DOCKER_RABBITMQ_USER
+#              value: "admin"
+#            - name: DOCKER_RABBITMQ_PASSWORD
+#              value: "admin"
+#            - name: DOCKER_DJANGO_HOST_NAME
+#              value: "localhost"
+#            - name: DOCKER_DJANGO_EMAIL_BACKEND
+#              value: "django.core.mail.backends.console.EmailBackend"
+#            - name: DOCKER_DJANGO_EMAIL_HOST
+#              value: "localhost"
+#            - name: DOCKER_DJANGO_EMAIL_PORT
+#              value: "587"
+#            - name: DOCKER_DJANGO_EMAIL_USE_TLS
+#              value: "False"
+#            - name: DOCKER_DJANGO_EMAIL_HOST_USER
+#              value: "admin"
+#            - name: DOCKER_DJANGO_EMAIL_HOST_PASSWORD
+#              value: "admin"
+#            - name: DOCKER_DJANGO_ADMIN_NAME
+#              value: "admin"
+#            - name: DOCKER_DJANGO_ADMIN_PASSWORD
+#              value: "admin"
+#            - name: DOCKER_DJANGO_ADMIN_EMAIL
+#              value: "admin@rc.com"
+#            - name: DOCKER_DJANGO_DEBUG
+#              value: "True"
+#            - name: DOCKER_DJANGO_DEBUG_SQL
+#              value: "True"
+#            - name: DOCKER_DJANGO_SECRET_KEY
+#              value: "verysecretkey"
+#            - name: DOCKER_DJANGO_ACCOUNT_EMAIL_VERIFICATION
+#              value: "optional"
+#            - name: DOCKER_JUPYTER_BASE_URL
+#              value: "/jupyter"
+#            - name: DOCKER_NGINX_SERVER_NAME
+#              value: "contrax-nginx"
+#            - name: DOCKER_JUPYTER_PORT
+#              value: "8888"
+#            - name: DOCKER_DJANGO_BASE_PATH
+#              value: "/"
+#            - name: DOCKER_FLOWER_BASE_PATH
+#              value: "flower"
+#          volumeMounts:
+#            - name: contraxsuite-logs
+#              mountPath: "/data/logs"
+#            - name: celery-worker-state
+#              mountPath: "/data/celery_worker_state"
+#            - name: contraxsuite-ssl-certs
+#              mountPath: "/ssl_certs"

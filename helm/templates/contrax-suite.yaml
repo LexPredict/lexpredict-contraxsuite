@@ -1,0 +1,580 @@
+apiVersion: apps/v1beta1
+kind: Deployment
+metadata:
+  name: contrax-suite
+  deletionGracePeriodSeconds: 120
+  labels:
+    app: contrax-suite
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: contrax-suite
+  strategy:
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        app: contrax-suite
+    spec:
+      hostname: contrax-suite
+      volumes:
+        - name: contraxsuite-storage
+          persistentVolumeClaim:
+            claimName: contraxsuite-storage
+        - name: nginx-conf
+          configMap:
+            name: "nginx-config"
+        - name: nginx-mime
+          configMap:
+            name: "nginx-mime"
+        #        - name: metricbeat-config
+        #          configMap:
+        #            name: "metricbeat-config"
+        #        - name: filebeat-data
+        #          persistentVolumeClaim:
+        #            claimName: lexpredict-storage
+        - name: filebeat-config
+          configMap:
+            name: "filebeat-conf"
+        #        - name: contraxsuite-logrotate
+        #          persistentVolumeClaim:
+        #            claimName: lexpredict-storage
+        #        - name: logrotate-config
+        #          configMap:
+        #            name: "logrotate-config"
+        - name: helper-script
+          configMap:
+            name: init-config
+      #        - name: contraxsuite-jupyter-add-req
+      #          persistentVolumeClaim:
+      #            claimName: lexpredict-storage
+      #        - name: backup
+      #          persistentVolumeClaim:
+      #            claimName: lexpredict-storage
+      #        - name: postgres-config
+      #          configMap:
+      #            name: postgres-config
+      #        - name: postgres-backup
+      #          configMap:
+      #            name: postgres-backup
+      #        - name: contraxsuite-additional-fixtures
+      #          persistentVolumeClaim:
+      #            claimName: lexpredict-storage
+      #        - name: contraxsuite-data-update
+      #          persistentVolumeClaim:
+      #            claimName: lexpredict-storage
+      initContainers:
+        - name: helper
+          image: "alpine:latest"
+          command:
+            - "sh"
+            - "/init.sh"
+          volumeMounts:
+            - name: helper-script
+              mountPath: "/init.sh"
+              subPath: "init.sh"
+            - name: contraxsuite-storage
+              mountPath: "/third_party_dependencies/"
+      containers:
+        - image: "lexpredict/lexpredict-contraxsuite:{{.Values.lexpredict.version}}"
+          name: contrax-uwsgi
+          ports:
+            - name: uwsgi
+              containerPort: 3031
+          command:
+            - "/start.sh"
+            - "uwsgi"
+          env:
+            - name: DOCKER_CELERY_CONCURRENCY
+              value: "1"
+            - name: SHARED_USER_NAME
+              value: "contrax"
+            - name: SHARED_USER_ID
+              value: "65432"
+            - name: DOCKER_HOST_NAME_PG
+              value: "postgres-service"
+            - name: DOCKER_HOST_NAME_REDIS
+              value: "contrax-redis-service"
+            - name: DOCKER_HOST_NAME_RABBITMQ
+              value: "rabbitmq-service"
+            - name: DOCKER_HOST_NAME_ELASTICSEARCH
+              value: "contrax-elasticsearch-service"
+            - name: DOCKER_HOST_NAME_UWSGI
+              value: "localhost"
+            - name: DOCKER_HOST_NAME_KIBANA
+              value: "contrax-kibana-service"
+            - name: DOCKER_PG_USER
+              value: "admin"
+            - name: DOCKER_PG_PASSWORD
+              value: "admin"
+            - name: DOCKER_PG_DB_NAME
+              value: "contrax"
+            - name: DOCKER_RABBITMQ_VHOST
+              value: "contrax-rabbitmq"
+            - name: DOCKER_RABBITMQ_USER
+              value: "admin"
+            - name: DOCKER_RABBITMQ_PASSWORD
+              value: "admin"
+            - name: DOCKER_DJANGO_HOST_NAME
+              value: "localhost"
+            - name: DOCKER_DJANGO_EMAIL_BACKEND
+              value: "django.core.mail.backends.console.EmailBackend"
+            - name: DOCKER_DJANGO_EMAIL_HOST
+              value: "localhost"
+            - name: DOCKER_DJANGO_EMAIL_PORT
+              value: "587"
+            - name: DOCKER_DJANGO_EMAIL_USE_TLS
+              value: "False"
+            - name: DOCKER_DJANGO_EMAIL_HOST_USER
+              value: "admin"
+            - name: DOCKER_DJANGO_EMAIL_HOST_PASSWORD
+              value: "admin"
+            - name: DOCKER_DJANGO_ADMIN_NAME
+              value: "admin"
+            - name: DOCKER_DJANGO_ADMIN_PASSWORD
+              value: "admin"
+            - name: DOCKER_DJANGO_ADMIN_EMAIL
+              value: "admin@rc.com"
+            - name: DOCKER_DJANGO_DEBUG
+              value: "True"
+            - name: DOCKER_DJANGO_DEBUG_SQL
+              value: "True"
+            - name: DOCKER_DJANGO_SECRET_KEY
+              value: "verysecretkey"
+            - name: DOCKER_DJANGO_ACCOUNT_EMAIL_VERIFICATION
+              value: "optional"
+            - name: DOCKER_JUPYTER_BASE_URL
+              value: "/jupyter"
+            - name: DOCKER_NGINX_SERVER_NAME
+              value: "localhost"
+            - name: DOCKER_JUPYTER_PORT
+              value: "8888"
+            - name: DOCKER_DJANGO_BASE_PATH
+              value: "/"
+            - name: DOCKER_FLOWER_BASE_PATH
+              value: "flower"
+            - name: DOCKER_DJANGO_THEME_ARCHIVE
+              value: "/third_party_dependencies/theme.zip"
+            - name: DOCKER_DJANGO_JQWIDGETS_ARCHIVE
+              value: "/third_party_dependencies/jqwidgets.zip"
+          volumeMounts:
+            - name: contraxsuite-storage
+              mountPath: "/data/logs"
+            - name: contraxsuite-storage
+              mountPath: "/ssl_certs"
+            - name: contraxsuite-storage
+              mountPath: "/data/data_update"
+            - name: contraxsuite-storage
+              mountPath: "/data/media"
+            - name: contraxsuite-storage
+              mountPath: "/third_party_dependencies/"
+            - name: contraxsuite-storage
+              mountPath: "/contraxsuite_services/fixtures/additional"
+            - name: contraxsuite-storage
+              mountPath: "/contraxsuite_services/staticfiles"
+            - name: contraxsuite-storage
+              mountPath: "/deployment_uuid"
+        - image: "lexpredict/lexpredict-contraxsuite:{{.Values.lexpredict.version}}"
+          name: contrax-celery
+          command:
+            - "/start.sh"
+            - "celery"
+          env:
+            - name: DOCKER_CELERY_CONCURRENCY
+              value: "1"
+            - name: SHARED_USER_NAME
+              value: "contrax"
+            - name: SHARED_USER_ID
+              value: "65432"
+            - name: DOCKER_HOST_NAME_PG
+              value: "postgres-service"
+            - name: DOCKER_HOST_NAME_REDIS
+              value: "contrax-redis-service"
+            - name: DOCKER_HOST_NAME_RABBITMQ
+              value: "rabbitmq-service"
+            - name: DOCKER_HOST_NAME_ELASTICSEARCH
+              value: "contrax-elasticsearch-service"
+            - name: DOCKER_HOST_NAME_UWSGI
+              value: "localhost"
+            - name: DOCKER_HOST_NAME_KIBANA
+              value: "contrax-kibana-service"
+            - name: DOCKER_PG_USER
+              value: "admin"
+            - name: DOCKER_PG_PASSWORD
+              value: "admin"
+            - name: DOCKER_PG_DB_NAME
+              value: "contrax"
+            - name: DOCKER_RABBITMQ_VHOST
+              value: "rabbitmq-service"
+            - name: DOCKER_RABBITMQ_USER
+              value: "admin"
+            - name: DOCKER_RABBITMQ_PASSWORD
+              value: "admin"
+            - name: DOCKER_DJANGO_HOST_NAME
+              value: "localhost"
+            - name: DOCKER_DJANGO_EMAIL_BACKEND
+              value: "django.core.mail.backends.console.EmailBackend"
+            - name: DOCKER_DJANGO_EMAIL_HOST
+              value: "localhost"
+            - name: DOCKER_DJANGO_EMAIL_PORT
+              value: "587"
+            - name: DOCKER_DJANGO_EMAIL_USE_TLS
+              value: "False"
+            - name: DOCKER_DJANGO_EMAIL_HOST_USER
+              value: "admin"
+            - name: DOCKER_DJANGO_EMAIL_HOST_PASSWORD
+              value: "admin"
+            - name: DOCKER_DJANGO_ADMIN_NAME
+              value: "admin"
+            - name: DOCKER_DJANGO_ADMIN_PASSWORD
+              value: "admin"
+            - name: DOCKER_DJANGO_ADMIN_EMAIL
+              value: "admin@rc.com"
+            - name: DOCKER_DJANGO_DEBUG
+              value: "True"
+            - name: DOCKER_DJANGO_DEBUG_SQL
+              value: "True"
+            - name: DOCKER_DJANGO_SECRET_KEY
+              value: "verysecretkey"
+            - name: DOCKER_DJANGO_ACCOUNT_EMAIL_VERIFICATION
+              value: "optional"
+            - name: DOCKER_JUPYTER_BASE_URL
+              value: "/jupyter"
+            - name: DOCKER_NGINX_SERVER_NAME
+              value: "localhost"
+            - name: DOCKER_JUPYTER_PORT
+              value: "8888"
+            - name: DOCKER_DJANGO_BASE_PATH
+              value: "/"
+            - name: DOCKER_FLOWER_BASE_PATH
+              value: "flower"
+          volumeMounts:
+            - name: contraxsuite-storage
+              mountPath: "/data/logs"
+            - name: contraxsuite-storage
+              mountPath: "/data/celery_worker_state"
+            - name: contraxsuite-storage
+              mountPath: "/ssl_certs"
+        - image: "lexpredict/lexpredict-contraxsuite:{{.Values.lexpredict.version}}"
+          name: contrax-celery-beat
+          command:
+            - "/start.sh"
+            - "celery-beat"
+          env:
+            - name: DOCKER_CELERY_CONCURRENCY
+              value: "1"
+            - name: SHARED_USER_NAME
+              value: "contrax"
+            - name: SHARED_USER_ID
+              value: "65432"
+            - name: DOCKER_HOST_NAME_PG
+              value: "postgres-service"
+            - name: DOCKER_HOST_NAME_REDIS
+              value: "contrax-redis-service"
+            - name: DOCKER_HOST_NAME_RABBITMQ
+              value: "rabbitmq-service"
+            - name: DOCKER_HOST_NAME_ELASTICSEARCH
+              value: "contrax-elasticsearch-service"
+            - name: DOCKER_HOST_NAME_UWSGI
+              value: "localhost"
+            - name: DOCKER_HOST_NAME_KIBANA
+              value: "contrax-kibana-service"
+            - name: DOCKER_PG_USER
+              value: "admin"
+            - name: DOCKER_PG_PASSWORD
+              value: "admin"
+            - name: DOCKER_PG_DB_NAME
+              value: "contrax"
+            - name: DOCKER_RABBITMQ_VHOST
+              value: "rabbitmq-service"
+            - name: DOCKER_RABBITMQ_USER
+              value: "admin"
+            - name: DOCKER_RABBITMQ_PASSWORD
+              value: "admin"
+            - name: DOCKER_DJANGO_HOST_NAME
+              value: "localhost"
+            - name: DOCKER_DJANGO_EMAIL_BACKEND
+              value: "django.core.mail.backends.console.EmailBackend"
+            - name: DOCKER_DJANGO_EMAIL_HOST
+              value: "localhost"
+            - name: DOCKER_DJANGO_EMAIL_PORT
+              value: "587"
+            - name: DOCKER_DJANGO_EMAIL_USE_TLS
+              value: "False"
+            - name: DOCKER_DJANGO_EMAIL_HOST_USER
+              value: "admin"
+            - name: DOCKER_DJANGO_EMAIL_HOST_PASSWORD
+              value: "admin"
+            - name: DOCKER_DJANGO_ADMIN_NAME
+              value: "admin"
+            - name: DOCKER_DJANGO_ADMIN_PASSWORD
+              value: "admin"
+            - name: DOCKER_DJANGO_ADMIN_EMAIL
+              value: "admin@rc.com"
+            - name: DOCKER_DJANGO_DEBUG
+              value: "True"
+            - name: DOCKER_DJANGO_DEBUG_SQL
+              value: "True"
+            - name: DOCKER_DJANGO_SECRET_KEY
+              value: "verysecretkey"
+            - name: DOCKER_DJANGO_ACCOUNT_EMAIL_VERIFICATION
+              value: "optional"
+            - name: DOCKER_JUPYTER_BASE_URL
+              value: "/jupyter"
+            - name: DOCKER_NGINX_SERVER_NAME
+              value: "localhost"
+            - name: DOCKER_JUPYTER_PORT
+              value: "8888"
+            - name: DOCKER_DJANGO_BASE_PATH
+              value: "/"
+            - name: DOCKER_FLOWER_BASE_PATH
+              value: "flower"
+          volumeMounts:
+            - name: contraxsuite-storage
+              mountPath: "/data/logs"
+            - name: contraxsuite-storage
+              mountPath: "/data/celery_worker_state"
+            - name: contraxsuite-storage
+              mountPath: "/ssl_certs"
+        - image: "lexpredict/lexpredict-contraxsuite:{{.Values.lexpredict.version}}"
+          name: contrax-jupyter
+          command:
+            - "/start.sh"
+            - "jupyter"
+          ports:
+            - name: contrax-jypyter
+              containerPort: 8888
+          env:
+            - name: SHARED_USER_NAME
+              value: "contrax"
+            - name: SHARED_USER_ID
+              value: "65432"
+            - name: DOCKER_HOST_NAME_PG
+              value: "postgres-service"
+            - name: DOCKER_HOST_NAME_REDIS
+              value: "contrax-redis-service"
+            - name: DOCKER_HOST_NAME_RABBITMQ
+              value: "rabbitmq-service"
+            - name: DOCKER_HOST_NAME_ELASTICSEARCH
+              value: "contrax-elasticsearch-service"
+            - name: DOCKER_HOST_NAME_UWSGI
+              value: "localhost"
+            - name: DOCKER_HOST_NAME_KIBANA
+              value: "contrax-kibana-service"
+            - name: DOCKER_PG_USER
+              value: "admin"
+            - name: DOCKER_PG_PASSWORD
+              value: "admin"
+            - name: DOCKER_PG_DB_NAME
+              value: "contrax"
+            - name: DOCKER_RABBITMQ_VHOST
+              value: "rabbitmq-service"
+            - name: DOCKER_RABBITMQ_USER
+              value: "admin"
+            - name: DOCKER_RABBITMQ_PASSWORD
+              value: "admin"
+            - name: DOCKER_DJANGO_HOST_NAME
+              value: "localhost"
+            - name: DOCKER_DJANGO_EMAIL_BACKEND
+              value: "django.core.mail.backends.console.EmailBackend"
+            - name: DOCKER_DJANGO_EMAIL_HOST
+              value: "localhost"
+            - name: DOCKER_DJANGO_EMAIL_PORT
+              value: "587"
+            - name: DOCKER_DJANGO_EMAIL_USE_TLS
+              value: "False"
+            - name: DOCKER_DJANGO_EMAIL_HOST_USER
+              value: "admin"
+            - name: DOCKER_DJANGO_EMAIL_HOST_PASSWORD
+              value: "admin"
+            - name: DOCKER_DJANGO_ADMIN_NAME
+              value: "admin"
+            - name: DOCKER_DJANGO_ADMIN_PASSWORD
+              value: "admin"
+            - name: DOCKER_DJANGO_ADMIN_EMAIL
+              value: "admin@rc.com"
+            - name: DOCKER_DJANGO_DEBUG
+              value: "True"
+            - name: DOCKER_DJANGO_DEBUG_SQL
+              value: "True"
+            - name: DOCKER_DJANGO_SECRET_KEY
+              value: "verysecretkey"
+            - name: DOCKER_DJANGO_ACCOUNT_EMAIL_VERIFICATION
+              value: "optional"
+            - name: DOCKER_JUPYTER_BASE_URL
+              value: "/jupyter"
+            - name: DOCKER_NGINX_SERVER_NAME
+              value: "localhost"
+            - name: DOCKER_JUPYTER_PORT
+              value: "8888"
+            - name: DOCKER_DJANGO_BASE_PATH
+              value: "/"
+            - name: DOCKER_FLOWER_BASE_PATH
+              value: "flower"
+          volumeMounts:
+            - name: contraxsuite-storage
+              mountPath: "/deployment_uuid"
+            - name: contraxsuite-storage
+              mountPath: "/etc/nginx/certificates"
+            - name: contraxsuite-storage
+              mountPath: "/data/media"
+            - name: contraxsuite-storage
+              mountPath: "/contraxsuite_services/staticfiles"
+            - name: contraxsuite-storage
+              mountPath: "/third_party_dependencies/"
+            - name: contraxsuite-storage
+              mountPath: "/data/logs"
+            - name: contraxsuite-storage
+              mountPath: "/var/log/nginx"
+            - name: contraxsuite-storage
+              mountPath: "/contraxsuite_services/notebooks/persistent_volume"
+            - name: contraxsuite-storage
+              mountPath: "/contraxsuite_services/jupyter_add_req"
+            - name: contraxsuite-storage
+              mountPath: "/ssl_certs"
+        - image: "lexpredict/lexpredict-contraxsuite:{{.Values.lexpredict.version}}"
+          name: contrax-flower
+          ports:
+            - name: "flower"
+              containerPort: 5555
+          command:
+            - "/start.sh"
+            - "flower"
+          env:
+            - name: SHARED_USER_NAME
+              value: "contrax"
+            - name: SHARED_USER_ID
+              value: "65432"
+            - name: DOCKER_HOST_NAME_PG
+              value: "postgres-service"
+            - name: DOCKER_HOST_NAME_REDIS
+              value: "contrax-redis-service"
+            - name: DOCKER_HOST_NAME_RABBITMQ
+              value: "rabbitmq-service"
+            - name: DOCKER_HOST_NAME_ELASTICSEARCH
+              value: "contrax-elasticsearch-service"
+            - name: DOCKER_HOST_NAME_UWSGI
+              value: "localhost"
+            - name: DOCKER_HOST_NAME_KIBANA
+              value: "contrax-kibana-service"
+            - name: DOCKER_PG_USER
+              value: "admin"
+            - name: DOCKER_PG_PASSWORD
+              value: "admin"
+            - name: DOCKER_PG_DB_NAME
+              value: "contrax"
+            - name: DOCKER_RABBITMQ_VHOST
+              value: "rabbitmq-service"
+            - name: DOCKER_RABBITMQ_USER
+              value: "admin"
+            - name: DOCKER_RABBITMQ_PASSWORD
+              value: "admin"
+            - name: DOCKER_DJANGO_HOST_NAME
+              value: "localhost"
+            - name: DOCKER_DJANGO_EMAIL_BACKEND
+              value: "django.core.mail.backends.console.EmailBackend"
+            - name: DOCKER_DJANGO_EMAIL_HOST
+              value: "localhost"
+            - name: DOCKER_DJANGO_EMAIL_PORT
+              value: "587"
+            - name: DOCKER_DJANGO_EMAIL_USE_TLS
+              value: "False"
+            - name: DOCKER_DJANGO_EMAIL_HOST_USER
+              value: "admin"
+            - name: DOCKER_DJANGO_EMAIL_HOST_PASSWORD
+              value: "admin"
+            - name: DOCKER_DJANGO_ADMIN_NAME
+              value: "admin"
+            - name: DOCKER_DJANGO_ADMIN_PASSWORD
+              value: "admin"
+            - name: DOCKER_DJANGO_ADMIN_EMAIL
+              value: "admin@rc.com"
+            - name: DOCKER_DJANGO_DEBUG
+              value: "True"
+            - name: DOCKER_DJANGO_DEBUG_SQL
+              value: "True"
+            - name: DOCKER_DJANGO_SECRET_KEY
+              value: "verysecretkey"
+            - name: DOCKER_DJANGO_ACCOUNT_EMAIL_VERIFICATION
+              value: "optional"
+            - name: DOCKER_JUPYTER_BASE_URL
+              value: "/jupyter"
+            - name: DOCKER_NGINX_SERVER_NAME
+              value: "localhost"
+            - name: DOCKER_JUPYTER_PORT
+              value: "8888"
+            - name: DOCKER_DJANGO_BASE_PATH
+              value: "/"
+            - name: DOCKER_FLOWER_BASE_PATH
+              value: "flower"
+          volumeMounts:
+            - name: contraxsuite-storage
+              mountPath: "/deployment_uuid"
+            - name: contraxsuite-storage
+              mountPath: "/etc/nginx/certificates"
+            - name: contraxsuite-storage
+              mountPath: "/data/media"
+            - name: contraxsuite-storage
+              mountPath: "/contraxsuite_services/staticfiles"
+            - name: contraxsuite-storage
+              mountPath: "/third_party_dependencies/"
+            - name: contraxsuite-storage
+              mountPath: "/data/logs"
+            - name: contraxsuite-storage
+              mountPath: "/var/log/nginx"
+            - name: contraxsuite-storage
+              mountPath: "/contraxsuite_services/notebooks"
+        - name: contrax-nginx
+          image: "nginx:stable"
+          volumeMounts:
+            - name: contraxsuite-storage
+              mountPath: "/etc/nginx"
+            - name: contraxsuite-storage
+              mountPath: "/etc/nginx/certificates"
+            - name: contraxsuite-storage
+              mountPath: "/contraxsuite_frontend"
+            - name: contraxsuite-storage
+              mountPath: "/contraxsuite_services/staticfiles"
+            - name: contraxsuite-storage
+              mountPath: "/data/media"
+            - name: contraxsuite-storage
+              mountPath: "/var/log/nginx"
+            - name: contraxsuite-storage
+              mountPath: "/etc/nginx/server_include"
+            - name: nginx-conf
+              mountPath: "/etc/nginx/nginx.conf"
+              subPath: "nginx.conf"
+            - name: nginx-conf
+              mountPath: "/etc/nginx/.kibana_htpasswd"
+              subPath: "kibanapwd"
+            - name: nginx-conf
+              mountPath: "/etc/nginx/uwsgi_params"
+              subPath: "uwsgi_params"
+            - name: nginx-conf
+              mountPath: "/etc/nginx/cors_disable"
+              subPath: "cors_disable"
+            - name: nginx-conf
+              mountPath: "/etc/nginx/cors_enable"
+              subPath: "cors_enable"
+            - name: nginx-mime
+              mountPath: "/etc/nginx/mime.types"
+              subPath: "mime.types"
+          ports:
+            - name: http
+              containerPort: 80
+            - name: https
+              containerPort: 443
+#        - name: contrax-filebeat
+#          image: "docker.elastic.co/beats/filebeat:6.5.4"
+#          imagePullPolicy: IfNotPresent
+#          volumeMounts:
+#            - name: filebeat-config
+#              mountPath: "/usr/share/filebeat/filebeat.yml"
+#              subPath: "filebeat.yml"
+#            - name: contraxsuite-storage
+#              mountPath: "/data/logs"
+#            - name: contraxsuite-storage
+#              mountPath: "/usr/share/filebeat/data"
+#            - name: contraxsuite-storage
+#              mountPath: "/var/log/nginx"

@@ -1,0 +1,168 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: "contrax-elasticsearch-configuration"
+data:
+  elasticsearch.yml: |
+    #elastic search config
+    cluster.name: "contrax-cluster"
+    network.host: 0.0.0.0
+
+    # minimum_master_nodes need to be explicitly set when bound on a public IP
+    # set to 1 to allow single node clusters
+    # Details: https://github.com/elastic/elasticsearch/pull/17288
+    discovery.zen.minimum_master_nodes: 1
+
+    thread_pool:
+      search:
+        size: 25
+        queue_size: 6000
+        min_queue_size: 4000
+        max_queue_size: 6000
+        target_response_time: 1s
+  jvm.options: "-Xmx1g -Xms1g"
+---
+kind: Service
+apiVersion: v1
+metadata:
+  name: "contrax-elasticsearch-service"
+spec:
+  selector:
+    app: "contrax-elasticsearch"
+  ports:
+    - name: http
+      protocol: TCP
+      port: 9200
+    - name: transport
+      protocol: TCP
+      port: 9300
+---
+kind: Service
+apiVersion: v1
+metadata:
+  name: "contrax-elasticsearch-service-headless"
+  labels:
+    app: "contrax-elasticsearch"
+  annotations:
+    # Create endpoints also if the related pod isn't ready
+    service.alpha.kubernetes.io/tolerate-unready-endpoints: "true"
+spec:
+  clusterIP: None # This is needed for statefulset hostnames like elasticsearch-0 to resolve
+  selector:
+    app: "contrax-elasticsearch"
+  ports:
+    - name: http
+      port: 9200
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: "contrax-elasticsearch"
+  labels:
+    app: "contrax-elasticsearch"
+spec:
+  serviceName: "contrax-elasticsearch-service"
+  selector:
+    matchLabels:
+      app: "contrax-elasticsearch"
+  replicas: 1
+  podManagementPolicy: "Parallel" #OrderedReady
+  updateStrategy:
+    type: "RollingUpdate"
+  template:
+    metadata:
+      name: "contrax-elasticsearch"
+      labels:
+        app: "contrax-elasticsearch"
+    spec:
+      hostname: "contrax-elasticsearch"
+      securityContext:
+        fsGroup: 1000
+      terminationGracePeriodSeconds: 120
+      volumes:
+        - name: esconfig
+          configMap:
+            name: "contrax-elasticsearch-configuration"
+        - name: elasticsearchdata
+          persistentVolumeClaim:
+            claimName: elastic-storage
+      initContainers:
+        - name: configure-sysctl
+          securityContext:
+            runAsUser: 0
+            privileged: true
+          image: "docker.elastic.co/elasticsearch/elasticsearch-oss:6.5.4"
+          imagePullPolicy: "IfNotPresent"
+          command: ["sysctl", "-w", "vm.max_map_count=262144"]
+        - name: volume-mount-hack
+          image: busybox
+          imagePullPolicy: IfNotPresent
+          command: ["sh", "-c", "chown -R 1000:100 /es/usr/share/elasticsearch/data/"]
+          volumeMounts:
+            - name: elasticsearchdata
+              mountPath: "/es/usr/share/elasticsearch/data/"
+        - name: volume-mount-hack2
+          image: busybox
+          imagePullPolicy: IfNotPresent
+          command: ["sh", "-c", "chown -R 1000:100 /es/usr/share/elasticsearch/config/"]
+          volumeMounts:
+            - name: elasticsearchdata
+              mountPath: "/es/usr/share/elasticsearch/config/"
+      containers:
+        - name: "contrax-elasticsearch"
+          image: "docker.elastic.co/elasticsearch/elasticsearch:6.6.0"
+          imagePullPolicy: "IfNotPresent"
+          readinessProbe:
+            failureThreshold: 3
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            successThreshold: 3
+            timeoutSeconds: 5
+            exec:
+              command:
+                - sh
+                - -c
+                - |
+                  #!/usr/bin/env bash -e
+                  # If the node is starting up wait for the cluster to be green
+                  # Once it has started only check that the node itself is responding
+                  START_FILE=/tmp/.es_start_file
+
+                  http () {
+                      local path="${1}"
+                      if [ -n "${ELASTIC_USERNAME}" ] && [ -n "${ELASTIC_PASSWORD}" ]; then
+                        BASIC_AUTH="-u ${ELASTIC_USERNAME}:${ELASTIC_PASSWORD}"
+                      else
+                        BASIC_AUTH=''
+                      fi
+                      curl -XGET -s -k --fail ${BASIC_AUTH} http://127.0.0.1:9200${path}
+                  }
+
+                  if [ -f "${START_FILE}" ]; then
+                      echo 'Elasticsearch is already running, lets check the node is healthy'
+                      http "/"
+                  else
+                      echo 'Waiting for elasticsearch cluster to become green'
+                      if http "/_cluster/health?wait_for_status=green&timeout=1s" ; then
+                          touch ${START_FILE}
+                          exit 0
+                      else
+                          echo 'Cluster is not yet green'
+                          exit 1
+                      fi
+                  fi
+          ports:
+            - name: http
+              containerPort: 9200
+            - name: transport
+              containerPort: 9300
+          volumeMounts:
+            - name: esconfig
+              mountPath: "/es/usr/share/elasticsearch/config/elasticsearch.yml"
+              subPath: elasticsearch.yml
+              readOnly: false
+            - name: elasticsearchdata
+              mountPath: "/es/usr/share/elasticsearch/data/"
+              readOnly: false
+
+

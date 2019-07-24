@@ -1,0 +1,71 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: postgres-data
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: {{ .Values.storageclass }}
+  resources:
+    requests:
+      storage: "{{ .Values.storage.postgres }}Gi"
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: elastic-storage
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: {{ .Values.storageclass }}
+  resources:
+    requests:
+      storage: "{{ .Values.storage.elastic }}Gi"
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: redis-storage
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: {{ .Values.storageclass }}
+  resources:
+    requests:
+      storage: "{{ .Values.storage.redis }}Gi"
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: rabbitmq-storage
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: {{ .Values.storageclass }}
+  resources:
+    requests:
+      storage: "{{ .Values.storage.rabbitmq }}Gi"
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: contraxsuite-storage
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: {{ .Values.storageclass }}
+  resources:
+    requests:
+      storage: "{{ .Values.storage.contraxsuite }}Gi"
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: metricbeat-storage
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: {{ .Values.storageclass }}
+  resources:
+    requests:
+      storage: "{{ .Values.storage.metricbeat }}Gi"

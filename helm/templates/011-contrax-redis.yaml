@@ -1,0 +1,49 @@
+---
+kind: Service
+apiVersion: v1
+metadata:
+  name: contrax-redis-service
+  labels:
+    service: contrax-redis-service
+spec:
+  selector:
+    app: contrax-redis
+  ports:
+    - name: redis
+      port: 6379
+      targetPort: redis
+---
+apiVersion: apps/v1beta1
+kind: Deployment
+metadata:
+  name: contrax-redis
+  deletionGracePeriodSeconds: 120
+  labels:
+    app: contrax-redis
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: contrax-redis
+  strategy:
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        app: contrax-redis
+    spec:
+      hostname: contrax-redis
+      volumes:
+        - name: redis-data
+          persistentVolumeClaim:
+            claimName: redis-storage
+      containers:
+        - name: contrax-redis
+          image: "redis:latest"
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: redis
+              containerPort: 6379
+          volumeMounts:
+            - name: redis-data
+              mountPath: "/data"

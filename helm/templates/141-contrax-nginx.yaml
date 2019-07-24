@@ -1,0 +1,396 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: "nginx-config"
+data:
+  nginx.conf: |
+    worker_processes auto;
+    pid /run/nginx.pid;
+
+    events {
+      worker_connections 768;
+      # multi_accept on;
+    }
+
+    http {
+
+      ##
+      # Basic Settings
+      ##
+
+      sendfile on;
+      tcp_nopush on;
+      tcp_nodelay on;
+      keepalive_timeout 65;
+      types_hash_max_size 2048;
+      # server_tokens off;
+
+      # server_names_hash_bucket_size 64;
+      # server_name_in_redirect off;
+
+      include /etc/nginx/mime.types;
+      default_type application/octet-stream;
+
+      ##
+      # SSL Settings
+      ##
+
+      ssl_protocols TLSv1 TLSv1.1 TLSv1.2; # Dropping SSLv3, ref: POODLE
+      ssl_prefer_server_ciphers on;
+
+      ##
+      # Logging Settings
+      ##
+
+      log_format with_real_ip  '$http_x_real_ip - $remote_user [$time_local] '
+                                '"$request" $status $body_bytes_sent '
+                                '"$http_referer" "$http_user_agent"';
+
+      access_log /var/log/nginx/access.log with_real_ip;
+      error_log /var/log/nginx/error.log;
+
+      ##
+      # Gzip Settings
+      ##
+
+      gzip on;
+      gzip_disable "msie6";
+
+      gzip_vary on;
+      gzip_proxied any;
+      gzip_comp_level 6;
+      gzip_buffers 16 8k;
+      gzip_http_version 1.1;
+      gzip_min_length 256;
+
+      gzip_types text/plain text/css application/json application/javascript text/xml application/xml application/xml+rss text/javascript;
+
+      server {
+
+        server_name contrax-nginx;
+
+        listen 80;
+
+        charset     utf-8;
+        client_max_body_size 1024M;
+        sendfile on;
+        keepalive_timeout 0;
+
+        add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
+        proxy_cookie_path / "/; HTTPOnly; Secure";
+
+        include /etc/nginx/cors_disable;
+
+        location / {
+            uwsgi_pass  localhost:3031;
+            uwsgi_read_timeout 300;
+            include /etc/nginx/uwsgi_params;
+        }
+
+        location /api {
+            uwsgi_pass  localhost:3031;
+            uwsgi_read_timeout 300;
+            include /etc/nginx/uwsgi_params;
+        }
+
+        location /rest-auth {
+            uwsgi_pass  localhost:3031;
+            uwsgi_read_timeout 300;
+            include /etc/nginx/uwsgi_params;
+        }
+
+        location /static/ {
+            rewrite  ^/static/(.*) /$1 break;
+            root /contraxsuite_services/staticfiles/;
+        }
+
+        location /media {
+            root /data;
+            auth_basic "Contraxsuite";
+            auth_basic_user_file /etc/nginx/.kibana_htpasswd;
+        }
+
+        location /jupyter {
+            # workaround to start nginx, if host is unreachable
+            proxy_pass http://contrax-jupyter-service:8888;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header Host $http_host;
+            proxy_http_version 1.1;
+            proxy_redirect off;
+            proxy_buffering off;
+            proxy_set_header Upgrade $http_upgrade;
+            proxy_set_header Connection "upgrade";
+            proxy_read_timeout 86400;
+            auth_basic "Contraxsuite";
+            auth_basic_user_file /etc/nginx/.kibana_htpasswd;
+        }
+
+        location ~ ^/kibana/(.*)$ {
+            # workaround to start nginx, if host is unreachable
+            set $target http://contrax-kibana-service:5601;
+            error_page 502 /404.html;
+
+            rewrite /kibana/(.*) /$1 break;
+            proxy_pass $target;
+            proxy_http_version 1.1;
+            proxy_set_header Upgrade $http_upgrade;
+            proxy_set_header Connection 'upgrade';
+            proxy_set_header Host $host;
+            proxy_cache_bypass $http_upgrade;
+            auth_basic "Contraxsuite Kibana";
+            auth_basic_user_file /etc/nginx/.kibana_htpasswd;
+        }
+
+        location /flower {
+            # workaround to start nginx, if host is unreachable
+            set $target http://contrax-flower-service:5555;
+            error_page 502 /404.html;
+
+            proxy_pass $target;
+            rewrite ^/flower/(.*)$ /$1 break;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header Host $http_host;
+            proxy_http_version 1.1;
+            proxy_redirect off;
+            proxy_buffering off;
+            proxy_set_header Upgrade $http_upgrade;
+            proxy_set_header Connection "upgrade";
+            proxy_read_timeout 86400;
+            auth_basic "Contraxsuite";
+            auth_basic_user_file /etc/nginx/.kibana_htpasswd;
+          }
+        }
+      }
+  kibanapwd: "admin:$apr1$qNi1UPvo$xRWB9jY7M7Og/d6V0LIkC0"
+  uwsgi_params: |
+    uwsgi_param  QUERY_STRING       $query_string;
+    uwsgi_param  REQUEST_METHOD     $request_method;
+    uwsgi_param  CONTENT_TYPE       $content_type;
+    uwsgi_param  CONTENT_LENGTH     $content_length;
+
+    uwsgi_param  REQUEST_URI        $request_uri;
+    uwsgi_param  PATH_INFO          $document_uri;
+    uwsgi_param  DOCUMENT_ROOT      $document_root;
+    uwsgi_param  SERVER_PROTOCOL    $server_protocol;
+    uwsgi_param  REQUEST_SCHEME     $scheme;
+    uwsgi_param  HTTPS              $https if_not_empty;
+
+    uwsgi_param  REMOTE_ADDR        $remote_addr;
+    uwsgi_param  REMOTE_PORT        $remote_port;
+    uwsgi_param  SERVER_PORT        $server_port;
+    uwsgi_param  SERVER_NAME        $server_name;
+  cors_enable: |
+    add_header 'Access-Control-Allow-Origin' "$http_origin" always;
+    add_header 'Access-Control-Allow-Credentials' 'true' always;
+    add_header 'Access-Control-Allow-Methods' 'GET, POST, PUT, DELETE, OPTIONS' always;
+    add_header 'Access-Control-Allow-Headers' 'Accept,Authorization,Cache-Control,Content-Type,DNT,If-Modified-Since,Keep-Alive,Origin,User-Agent,X-Requested-With' always;
+    # required to be able to read Authorization header in frontend
+    #add_header 'Access-Control-Expose-Headers' 'Authorization' always;
+  cors_disable: |
+    if ($request_method = OPTIONS ) {
+        return 405;
+    }
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: "nginx-mime"
+data:
+  mime.types: |
+    types {
+        text/html                             html htm shtml;
+        text/css                              css;
+        text/xml                              xml;
+        image/gif                             gif;
+        image/jpeg                            jpeg jpg;
+        application/javascript                js;
+        application/atom+xml                  atom;
+        application/rss+xml                   rss;
+
+        text/mathml                           mml;
+        text/plain                            txt;
+        text/vnd.sun.j2me.app-descriptor      jad;
+        text/vnd.wap.wml                      wml;
+        text/x-component                      htc;
+
+        image/png                             png;
+        image/tiff                            tif tiff;
+        image/vnd.wap.wbmp                    wbmp;
+        image/x-icon                          ico;
+        image/x-jng                           jng;
+        image/x-ms-bmp                        bmp;
+        image/svg+xml                         svg svgz;
+        image/webp                            webp;
+
+        application/font-woff                 woff;
+        application/java-archive              jar war ear;
+        application/json                      json;
+        application/mac-binhex40              hqx;
+        application/msword                    doc;
+        application/pdf                       pdf;
+        application/postscript                ps eps ai;
+        application/rtf                       rtf;
+        application/vnd.apple.mpegurl         m3u8;
+        application/vnd.ms-excel              xls;
+        application/vnd.ms-fontobject         eot;
+        application/vnd.ms-powerpoint         ppt;
+        application/vnd.wap.wmlc              wmlc;
+        application/vnd.google-earth.kml+xml  kml;
+        application/vnd.google-earth.kmz      kmz;
+        application/x-7z-compressed           7z;
+        application/x-cocoa                   cco;
+        application/x-java-archive-diff       jardiff;
+        application/x-java-jnlp-file          jnlp;
+        application/x-makeself                run;
+        application/x-perl                    pl pm;
+        application/x-pilot                   prc pdb;
+        application/x-rar-compressed          rar;
+        application/x-redhat-package-manager  rpm;
+        application/x-sea                     sea;
+        application/x-shockwave-flash         swf;
+        application/x-stuffit                 sit;
+        application/x-tcl                     tcl tk;
+        application/x-x509-ca-cert            der pem crt;
+        application/x-xpinstall               xpi;
+        application/xhtml+xml                 xhtml;
+        application/xspf+xml                  xspf;
+        application/zip                       zip;
+
+        application/octet-stream              bin exe dll;
+        application/octet-stream              deb;
+        application/octet-stream              dmg;
+        application/octet-stream              iso img;
+        application/octet-stream              msi msp msm;
+
+        application/vnd.openxmlformats-officedocument.wordprocessingml.document    docx;
+        application/vnd.openxmlformats-officedocument.spreadsheetml.sheet          xlsx;
+        application/vnd.openxmlformats-officedocument.presentationml.presentation  pptx;
+
+        audio/midi                            mid midi kar;
+        audio/mpeg                            mp3;
+        audio/ogg                             ogg;
+        audio/x-m4a                           m4a;
+        audio/x-realaudio                     ra;
+
+        video/3gpp                            3gpp 3gp;
+        video/mp2t                            ts;
+        video/mp4                             mp4;
+        video/mpeg                            mpeg mpg;
+        video/quicktime                       mov;
+        video/webm                            webm;
+        video/x-flv                           flv;
+        video/x-m4v                           m4v;
+        video/x-mng                           mng;
+        video/x-ms-asf                        asx asf;
+        video/x-ms-wmv                        wmv;
+        video/x-msvideo                       avi;
+    }
+
+#---
+#apiVersion: apps/v1beta1
+#kind: Deployment
+#metadata:
+#  name: contrax-nginx
+#  deletionGracePeriodSeconds: 120
+#  labels:
+#    app: contrax-nginx
+#spec:
+#  replicas: 1
+#  selector:
+#    matchLabels:
+#      app: contrax-nginx
+#  strategy:
+#    type: RollingUpdate
+#  template:
+#    metadata:
+#      labels:
+#        app: contrax-nginx
+#    spec:
+#      volumes:
+#        - name: contraxsuite-nginx-conf
+#          persistentVolumeClaim:
+#            claimName: lexpredict-storage
+#        - name: contraxsuite-nginx-certs
+#          persistentVolumeClaim:
+#            claimName: lexpredict-storage
+#        - name: contraxsuite-frontend
+#          emptyDir: {}
+#        - name: contraxsuite-static-files
+#          persistentVolumeClaim:
+#            claimName: lexpredict-storage
+#        - name: contraxsuite-data-media
+#          persistentVolumeClaim:
+#            claimName: lexpredict-storage
+#        - name: contraxsuite-internal-nginx-logs
+#          persistentVolumeClaim:
+#            claimName: lexpredict-storage
+#        - name: contraxsuite-nginx-server-include
+#          emptyDir: {}
+#        - name: nginx-conf
+#          configMap:
+#            name: "nginx-config"
+#        - name: nginx-mime
+#          configMap:
+#            name: "nginx-mime"
+#      containers:
+#        - name: contrax-nginx
+#          image: "nginx:stable"
+#          volumeMounts:
+#            - name: contraxsuite-nginx-conf
+#              mountPath: "/etc/nginx"
+#            - name: contraxsuite-nginx-certs
+#              mountPath: "/etc/nginx/certificates"
+#            - name: contraxsuite-frontend
+#              mountPath: "/contraxsuite_frontend"
+#            - name: contraxsuite-static-files
+#              mountPath: "/contraxsuite_services/staticfiles"
+#            - name: contraxsuite-data-media
+#              mountPath: "/data/media"
+#            - name: contraxsuite-internal-nginx-logs
+#              mountPath: "/var/log/nginx"
+#            - name: contraxsuite-nginx-server-include
+#              mountPath: "/etc/nginx/server_include"
+#            - name: nginx-conf
+#              mountPath: "/etc/nginx/nginx.conf"
+#              subPath: "nginx.conf"
+#            - name: nginx-conf
+#              mountPath: "/etc/nginx/.kibana_htpasswd"
+#              subPath: "kibanapwd"
+#            - name: nginx-conf
+#              mountPath: "/etc/nginx/uwsgi_params"
+#              subPath: "uwsgi_params"
+#            - name: nginx-conf
+#              mountPath: "/etc/nginx/cors_disable"
+#              subPath: "cors_disable"
+#            - name: nginx-conf
+#              mountPath: "/etc/nginx/cors_enable"
+#              subPath: "cors_enable"
+#            - name: nginx-mime
+#              mountPath: "/etc/nginx/mime.types"
+#              subPath: "mime.types"
+#          ports:
+#            - name: http
+#              containerPort: 80
+#            - name: https
+#              containerPort: 443
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: "lexpredict-contraxsuite"
+  labels:
+    service: "lexpredict-contraxsuite"
+spec:
+  type: ClusterIP
+  ports:
+    - name: http
+      port: 80
+      targetPort: http
+    - name: https
+      port: 443
+      targetPort: https
+  selector:
+    app: contrax-suite

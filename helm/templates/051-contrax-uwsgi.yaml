@@ -1,0 +1,185 @@
+---
+kind: Service
+apiVersion: v1
+metadata:
+  name: contrax-uwsgi-service
+  labels:
+    service: contrax-uwsgi-service
+spec:
+  selector:
+    app: contrax-uwsgi
+  ports:
+    - name: uwsgi
+      port: 3031
+      targetPort: uwsgi
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: "init-config"
+data:
+  init.sh: |
+    wget https://s3.us-east-2.amazonaws.com/lex-predict-dep/jqwidgets-ver7.1.0.zip
+    mv jqwidgets-ver7.1.0.zip jqwidgets.zip
+    wget https://s3.us-east-2.amazonaws.com/lex-predict-dep/theme.zip
+
+    cp /theme.zip /third_party_dependencies/
+    cp /jqwidgets.zip /third_party_dependencies/
+#---
+#apiVersion: apps/v1beta1
+#kind: Deployment
+#metadata:
+#  name: contrax-uwsgi
+#  deletionGracePeriodSeconds: 120
+#  labels:
+#    app: contrax-uwsgi
+#spec:
+#  replicas: 1
+#  selector:
+#    matchLabels:
+#      app: contrax-uwsgi
+#  strategy:
+#    type: RollingUpdate
+#  template:
+#    metadata:
+#      labels:
+#        app: contrax-uwsgi
+#    spec:
+#      hostname: contrax-uwsgi
+#      volumes:
+#        - name: contraxsuite-logs
+#          persistentVolumeClaim:
+#            claimName: lexpredict-storage
+#        - name: contraxsuite-ssl-certs
+#          persistentVolumeClaim:
+#            claimName: lexpredict-storage
+#        - name: contraxsuite-deployment-uuid
+#          persistentVolumeClaim:
+#            claimName: lexpredict-storage
+#        - name: contraxsuite-static-files
+#          persistentVolumeClaim:
+#            claimName: lexpredict-storage
+#        - name: contraxsuite-additional-fixtures
+#          emptyDir: {}
+#        - name: contraxsuite-third-party-dependencies
+#          persistentVolumeClaim:
+#            claimName: lexpredict-storage
+#        - name: contraxsuite-data-media
+#          persistentVolumeClaim:
+#            claimName: lexpredict-storage
+#        - name: contraxsuite-data-update
+#          emptyDir: {}
+#        - name: helper-script
+#          configMap:
+#            name: init-config
+#      initContainers:
+#        - name: helper
+#          image: "alpine:latest"
+#          command:
+#            - "sh"
+#            - "/init.sh"
+#          volumeMounts:
+#            - name: helper-script
+#              mountPath: "/init.sh"
+#              subPath: "init.sh"
+#            - name: contraxsuite-third-party-dependencies
+#              mountPath: "/third_party_dependencies/"
+#      containers:
+#        - image: "lexpredict/lexpredict-contraxsuite:{{.Values.lexpredict.version}}"
+#          name: contrax-uwsgi
+#          ports:
+#            - name: uwsgi
+#              containerPort: 3031
+#          command:
+#            - "/start.sh"
+#            - "uwsgi"
+#          env:
+#            - name: DOCKER_CELERY_CONCURRENCY
+#              value: "1"
+#            - name: SHARED_USER_NAME
+#              value: "contrax"
+#            - name: SHARED_USER_ID
+#              value: "65432"
+#            - name: DOCKER_HOST_NAME_PG
+#              value: "postgres-service"
+#            - name: DOCKER_HOST_NAME_REDIS
+#              value: "contrax-redis-service"
+#            - name: DOCKER_HOST_NAME_RABBITMQ
+#              value: "rabbitmq-service"
+#            - name: DOCKER_HOST_NAME_ELASTICSEARCH
+#              value: "contrax-elasticsearch-service"
+#            - name: DOCKER_HOST_NAME_UWSGI
+#              value: "contrax-uwsgi-service"
+#            - name: DOCKER_HOST_NAME_KIBANA
+#              value: "contrax-kibana-service"
+#            - name: DOCKER_PG_USER
+#              value: "admin"
+#            - name: DOCKER_PG_PASSWORD
+#              value: "admin"
+#            - name: DOCKER_PG_DB_NAME
+#              value: "contrax"
+#            - name: DOCKER_RABBITMQ_VHOST
+#              value: "contrax-rabbitmq"
+#            - name: DOCKER_RABBITMQ_USER
+#              value: "admin"
+#            - name: DOCKER_RABBITMQ_PASSWORD
+#              value: "admin"
+#            - name: DOCKER_DJANGO_HOST_NAME
+#              value: "localhost"
+#            - name: DOCKER_DJANGO_EMAIL_BACKEND
+#              value: "django.core.mail.backends.console.EmailBackend"
+#            - name: DOCKER_DJANGO_EMAIL_HOST
+#              value: "localhost"
+#            - name: DOCKER_DJANGO_EMAIL_PORT
+#              value: "587"
+#            - name: DOCKER_DJANGO_EMAIL_USE_TLS
+#              value: "False"
+#            - name: DOCKER_DJANGO_EMAIL_HOST_USER
+#              value: "admin"
+#            - name: DOCKER_DJANGO_EMAIL_HOST_PASSWORD
+#              value: "admin"
+#            - name: DOCKER_DJANGO_ADMIN_NAME
+#              value: "admin"
+#            - name: DOCKER_DJANGO_ADMIN_PASSWORD
+#              value: "admin"
+#            - name: DOCKER_DJANGO_ADMIN_EMAIL
+#              value: "admin@rc.com"
+#            - name: DOCKER_DJANGO_DEBUG
+#              value: "True"
+#            - name: DOCKER_DJANGO_DEBUG_SQL
+#              value: "True"
+#            - name: DOCKER_DJANGO_SECRET_KEY
+#              value: "verysecretkey"
+#            - name: DOCKER_DJANGO_ACCOUNT_EMAIL_VERIFICATION
+#              value: "optional"
+#            - name: DOCKER_JUPYTER_BASE_URL
+#              value: "/jupyter"
+#            - name: DOCKER_NGINX_SERVER_NAME
+#              value: "contrax-nginx"
+#            - name: DOCKER_JUPYTER_PORT
+#              value: "8888"
+#            - name: DOCKER_DJANGO_BASE_PATH
+#              value: "/"
+#            - name: DOCKER_FLOWER_BASE_PATH
+#              value: "flower"
+#            - name: DOCKER_DJANGO_THEME_ARCHIVE
+#              value: "/third_party_dependencies/theme.zip"
+#            - name: DOCKER_DJANGO_JQWIDGETS_ARCHIVE
+#              value: "/third_party_dependencies/jqwidgets.zip"
+#          volumeMounts:
+#            - name: contraxsuite-logs
+#              mountPath: "/data/logs"
+#            - name: contraxsuite-ssl-certs
+#              mountPath: "/ssl_certs"
+#            - name: contraxsuite-data-update
+#              mountPath: "/data/data_update"
+#            - name: contraxsuite-data-media
+#              mountPath: "/data/media"
+#            - name: contraxsuite-third-party-dependencies
+#              mountPath: "/third_party_dependencies"
+#            - name: contraxsuite-additional-fixtures
+#              mountPath: "/contraxsuite_services/fixtures/additional"
+#            - name: contraxsuite-static-files
+#              mountPath: "/contraxsuite_services/staticfiles"
+#            - name: contraxsuite-deployment-uuid
+#              mountPath: "/deployment_uuid"

@@ -1,0 +1,125 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: "metricbeat-config"
+data:
+  metricbeat.yml: |
+    metricbeat.modules:
+      - module: system
+        metricsets:
+          - cpu
+          - filesystem
+          - memory
+          - network
+          - process
+        enabled: true
+        period: 10s
+        processes: ['.*']
+        cpu_ticks: false
+      - module: docker
+        metricsets: ["container", "cpu", "diskio", "healthcheck", "info", "memory", "network"]
+        hosts: ["unix:///var/run/docker.sock"]
+        period: 10s
+      - module: postgresql
+        metricsets:
+          - database
+          - bgwriter
+          - activity
+        period: 10s
+        hosts: ["postgres://postgres-service:5432"]
+        username: admin
+        password: admin
+      - module: redis
+        metricsets: ["info", "keyspace"]
+        period: 10s
+        hosts: ["contrax-redis-service:6379"]
+      - module: elasticsearch
+        metricsets: ["node", "node_stats"]
+        period: 10s
+        hosts: ["http://contrax-redis-service:9200"]
+      - module: rabbitmq
+        metricsets: ["node", "queue"]
+        period: 10s
+        hosts: ["rabbitmq-service:15672"]
+        username: admin
+        password: admin
+
+    output.elasticsearch:
+      hosts: ["http://contrax-elasticsearch-service:9200"]
+      index: "metricbeat-%{[beat.version]}-%{+yyyy.MM.dd}"
+
+    setup.template.name: "metricbeat"
+    setup.template.pattern: "metricbeat-*"
+    setup.dashboards.index: "metricbeat-*"
+    setup.template.overwrite: true
+
+    setup.dashboards.enabled: true
+
+    setup.kibana.host: "contrax-kibana-service"
+    setup.kibana.protocol: "http"
+
+---
+apiVersion: apps/v1beta1
+kind: Deployment
+metadata:
+  name: contrax-metricbeat
+  deletionGracePeriodSeconds: 120
+  labels:
+    app: contrax-metricbeat
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: contrax-metricbeat
+  strategy:
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        app: contrax-metricbeat
+    spec:
+      volumes:
+        - name: metricbeat-config
+          configMap:
+            name: "metricbeat-config"
+        - name: metricbeat-data
+          persistentVolumeClaim:
+            claimName: metricbeat-storage
+        - name: host-docker-sock
+          hostPath:
+            path: "/var/run/docker.sock"
+        - name: hostproc
+          hostPath:
+            path: "/proc"
+        - name: hostcgroup
+          hostPath:
+            path: "/sys/fs/cgroup"
+        - name: hostroot
+          hostPath:
+            path: "/"
+      containers:
+        - name: contrax-metricbeat
+          image: "docker.elastic.co/beats/metricbeat:6.5.4"
+          imagePullPolicy: IfNotPresent
+          args:
+            - "-e"
+            - "-system.hostfs=/hostfs"
+          volumeMounts:
+            - name: metricbeat-config
+              mountPath: "/usr/share/metricbeat/metricbeat.yml"
+              subPath: "metricbeat.yml"
+            - name: metricbeat-data
+              mountPath: "/metricbeat/usr/share/metricbeat/data"
+            - name: host-docker-sock
+              mountPath: "/hostfs/var/run/docker.sock"
+            - name: hostproc
+              mountPath: "/hostfs/proc"
+              readOnly: true
+            - name: hostcgroup
+              mountPath: "/hostfs/sys/fs/cgroup"
+              readOnly: true
+            - name: hostroot
+              mountPath: "/hostfs"
+              readOnly: true
+

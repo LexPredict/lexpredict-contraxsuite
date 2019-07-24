@@ -1,0 +1,35 @@
+---
+apiVersion: apps/v1beta1
+kind: Deployment
+metadata:
+  name: curator-metricbeat
+  deletionGracePeriodSeconds: 120
+  labels:
+    app: curator-metricbeat
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: curator-metricbeat
+  strategy:
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        app: curator-metricbeat
+    spec:
+      containers:
+        - name: curator-metricbeat
+          image: "stefanprodan/es-curator-cron:latest"
+          env:
+            - name: PERIOD
+              value: "15min"
+            - name: KEEP_DAYS
+              value: "30"
+            - name: INDEX_PREFIX
+              value: "metricbeat-"
+          args:
+            - "--host"
+            - "contrax-elasticsearch-service"
+            - "--port"
+            - "9200"
