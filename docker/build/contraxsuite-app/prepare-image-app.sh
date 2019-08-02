@@ -28,6 +28,15 @@ mkdir -p ./temp/additionals
 
 mkdir -p ../../../additionals
 
+# Build tika jars into contraxsuite_services/tika_jars
+# Next they will be copied into the image together with contraxsuite_services folder
+pushd ../../../scripts
+rm -f ../contraxsuite_services/tika_jars/*
+./obtain_tika_jars.sh
+popd
+
+
+
 echo "Contraxsuite additional files" > ../../../additionals/additionals
 rsync ../../../additionals/ ./temp/additionals/ -a --copy-links -v
 
@@ -46,7 +55,6 @@ echo "Build date: $(date -u +"%Y-%m-%dT%H:%M:%SZ")" >> ./temp/build.info
 
 # Generate build uid used for understanding if the persistent static files need to be updated
 uuidgen>./temp/build.uuid
-
 
 sudo docker build ${DOCKER_BUILD_FLAGS} --no-cache -t ${CONTRAXSUITE_IMAGE} .
 # sudo docker build --no-cache -t contraxsuite-app .

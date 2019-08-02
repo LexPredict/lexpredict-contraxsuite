@@ -43,10 +43,11 @@ from apps.task.models import Task
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.2/LICENSE"
-__version__ = "1.2.2"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.3/LICENSE"
+__version__ = "1.2.3"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
+
 
 path_help_text_sample = '''
 Relative path to a file with {}. A file should be in "&lt;ROOT_DIR&gt;/data/"
@@ -567,6 +568,10 @@ class DumpFixtureForm(forms.Form):
         required=False,
         help_text='E.g. django queryset filter options for a given model: '
                   '{"name__contains": "Agreement", "pk__gte": 123}')
+    indent = forms.IntegerField(
+        label='Indent',
+        initial=4,
+        required=False)
 
     def clean_filter_options(self):
         filter_options = self.cleaned_data['filter_options']

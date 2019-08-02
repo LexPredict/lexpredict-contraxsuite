@@ -51,11 +51,10 @@ from django.utils import numberformat
 # App imports
 from apps.users.models import User, Role
 
-
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.2/LICENSE"
-__version__ = "1.2.2"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.3/LICENSE"
+__version__ = "1.2.3"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -381,3 +380,40 @@ def format_number(num):
                                decimal_sep='.',
                                thousand_sep=',',
                                force_grouping=True)
+
+
+class Serializable(dict):
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # hack to fix _json.so make_encoder serialize properly
+        self.__setitem__('dummy', 1)
+
+    def _myattrs(self):
+        return [
+            (x, self._repr(getattr(self, x)))
+            for x in self.__dir__()
+            if x not in Serializable().__dir__()
+        ]
+
+    def _repr(self, value):
+        if isinstance(value, (str, int, float, list, tuple, dict)):
+            return value
+        else:
+            return repr(value)
+
+    def __repr__(self):
+        return '<%s.%s object at %s>' % (
+            self.__class__.__module__,
+            self.__class__.__name__,
+            hex(id(self))
+        )
+
+    def keys(self):
+        return iter([x[0] for x in self._myattrs()])
+
+    def values(self):
+        return iter([x[1] for x in self._myattrs()])
+
+    def items(self):
+        return iter(self._myattrs())

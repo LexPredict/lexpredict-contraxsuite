@@ -32,29 +32,29 @@ from traceback import format_exc
 # Third-party imports
 from celery import states
 from dateutil import parser as date_parser
-from django.db.models.deletion import CASCADE
-from elasticsearch import Elasticsearch
-
 # Django imports
 from django.conf import settings
 from django.contrib.postgres.fields import JSONField
 from django.core.serializers.json import DjangoJSONEncoder
 from django.db import models
+from django.db.models.deletion import CASCADE
 from django.utils.translation import ugettext_lazy as _
+from elasticsearch import Elasticsearch
 
+from apps.common.fields import StringUUIDField
 # Project imports
 from apps.common.utils import fast_uuid
-from apps.common.fields import StringUUIDField
 from apps.task.celery_backend.managers import TaskManager
 from apps.task.celery_backend.utils import now
 from apps.users.models import User
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.2/LICENSE"
-__version__ = "1.2.2"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.3/LICENSE"
+__version__ = "1.2.3"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
+
 
 logger = logging.getLogger(__name__)
 es = Elasticsearch(hosts=settings.ELASTICSEARCH_CONFIG['hosts'])
@@ -172,27 +172,27 @@ class Task(models.Model):
         opts = {'metadata__%s' % k: v for k, v in filter_opts.items()}
         return cls.objects.main_tasks().filter(**opts)
 
-    def write_log(self, message, level='info', **kwargs):
+    @staticmethod
+    def write_task_log(task_id, message, level='info',
+                       main_task_id=None, task_name: str = None, user_id=None, user_login: str = None,
+                       log_extra: dict = None):
         message = str(message)
         extra = {
-            'log_task_id': self.id,
-            'log_main_task_id': self.main_task_id or self.id,
-            'log_task_name': self.name,
-            'log_user_id': self.user.id if self.user else None,
-            'log_user_login': self.user.username if self.user else None
+            'log_task_id': task_id,
+            'log_main_task_id': main_task_id,
+            'log_task_name': task_name,
+            'log_user_id': user_id,
+            'log_user_login': user_login
         }
 
-        if self.log_extra:
-            extra.update(dict(self.log_extra))
-
-        if kwargs:
-            extra.update(kwargs)
+        if log_extra:
+            extra.update(log_extra)
 
         try:
             getattr(logger, level)(message, extra=extra)
 
             return True
-        except Exception as exception:
+        except Exception:
             trace = format_exc()
             exc_class, exception, _ = sys.exc_info()
             exception_str = '%s: %s' % (exc_class.__name__, str(exception))
@@ -202,6 +202,24 @@ class Task(models.Model):
                                                                                    trace),
                 extra=extra)
             pass
+
+    def write_log(self, message, level='info', **kwargs):
+        message = str(message)
+
+        extra = dict()
+
+        if self.log_extra:
+            extra.update(dict(self.log_extra))
+
+        if kwargs:
+            extra.update(kwargs)
+
+        self.write_task_log(self.id, message, level,
+                            main_task_id=self.main_task_id or self.id,
+                            task_name=self.name,
+                            user_id=self.user.id if self.user else None,
+                            user_login=self.user.username if self.user else None,
+                            log_extra=extra)
 
     def get_task_log_from_elasticsearch(self):
         try:

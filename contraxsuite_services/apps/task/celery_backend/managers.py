@@ -1,6 +1,31 @@
-"""Model managers."""
+"""
+    Copyright (C) 2017, ContraxSuite, LLC
+
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU Affero General Public License as
+    published by the Free Software Foundation, either version 3 of the
+    License, or (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU Affero General Public License for more details.
+
+    You should have received a copy of the GNU Affero General Public License
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+    You can also be released from the requirements of the license by purchasing
+    a commercial license from ContraxSuite, LLC. Buying such a license is
+    mandatory as soon as you develop commercial activities involving ContraxSuite
+    software without disclosing the source code of your own applications.  These
+    activities include: offering paid services to customers as an ASP or "cloud"
+    provider, processing documents on the fly in a web application,
+    or shipping ContraxSuite within a closed source product.
+"""
+# -*- coding: utf-8 -*-
+
 from __future__ import absolute_import, unicode_literals
-from django.db.utils import IntegrityError
+
 import copy
 import datetime
 import warnings
@@ -16,15 +41,25 @@ from django.conf import settings
 from django.db import connections, router, transaction
 from django.db import models
 from django.db.models import F, Q, Value
+from django.db.utils import IntegrityError
 
-from .task_utils import precedence_propagating_exceptions, precedence_non_propagating_exceptions, \
-    revoke_task
-from .utils import now
+from apps.task.celery_backend.task_utils import precedence_propagating_exceptions, \
+    precedence_non_propagating_exceptions, revoke_task
+from apps.task.celery_backend.utils import now
+
+__author__ = "ContraxSuite, LLC; LexPredict, LLC"
+__copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.3/LICENSE"
+__version__ = "1.2.3"
+__maintainer__ = "LexPredict, LLC"
+__email__ = "support@contraxsuite.com"
+
 
 try:
     from celery.utils.time import maybe_timedelta
 except ImportError:  # pragma: no cover
     from celery.utils.timeutils import maybe_timedelta  # noqa
+
 
 W_ISOLATION_REP = """
 Polling results with transaction isolation level 'repeatable-read'

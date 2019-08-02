@@ -54,14 +54,15 @@ from apps.task.tasks import call_task, clean_tasks, purge_task
 from apps.dump.app_dump import get_model_fixture_dump, load_fixture_from_dump, download
 from apps.imanage_integration.tasks import IManageSynchronization
 
-project_api_module = get_api_module('project')
-
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.2/LICENSE"
-__version__ = "1.2.2"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.3/LICENSE"
+__version__ = "1.2.3"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
+
+
+project_api_module = get_api_module('project')
 
 
 class BaseTaskView(apps.common.mixins.AdminRequiredMixin, FormView):
@@ -354,8 +355,6 @@ class ClusterView(BaseAjaxTaskView):
             result_links=result_links)
 
 
-
-
 class TaskDetailView(apps.common.mixins.CustomDetailView):
     model = Task
 
@@ -471,4 +470,3 @@ class DumpFixturesView(LoadFixturesView):
                     '<br/>{}<br/>{}'.format(str(e), tb)
             return self.json_response({'app_name': [error]}, status=400)
         return download(json_data, file_name)
-

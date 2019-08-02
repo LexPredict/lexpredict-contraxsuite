@@ -26,14 +26,52 @@
 
 # Project imports
 from apps.common.models import AppVar
+from django.conf import settings
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.2/LICENSE"
-__version__ = "1.2.2"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.3/LICENSE"
+__version__ = "1.2.3"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
+
 
 ADMIN_RUNNING_TASKS_VALIDATION_ENABLED = AppVar.set(
     'admin_running_tasks_validation_enabled', True,
     'Prevents critical changes if user tasks running')
+
+TIKA_SERVER_ENDPOINT = AppVar.set(
+    'tika_remote_server_endpoint', None,
+    'TIKA server endpoint. Example: http://contrax-tika:9998')
+
+TIKA_TIMEOUT = AppVar.set(
+    'tika_timeout', settings.TIKA_TIMEOUT,
+    'TIKA timeout (default = 3600 s)')
+
+MAX_DOCUMENT_SIZE = AppVar.set(
+    'max_document_size', 50,
+    'Enables maximum document file size for uploading, Mb')
+
+PREPROCESS_DOCTEXT_LINEBREAKS = AppVar.set(
+    'preprocess_doctext_linebreaks', True,
+    'Enables / disables removing extra line breaks in uploaded document')
+
+PREPROCESS_DOCTEXT_PUNCT = AppVar.set(
+    'preprocess_doctext_punct', False,
+    'Fix anomalies in quotes and spaces in uploaded document')
+
+LOCATE_TEXTUNITTAGS = AppVar.set(
+    'locate_text_unit_tags', False,
+    'Enables storing text unit tags during parsing a document')
+
+LOCATE_TEXTUNITPROPERTIES = AppVar.set(
+    'locate_text_unit_properties', False,
+    'Enables storing text unit properties during parsing a document')
+
+OCR_ENABLE = AppVar.set(
+    'ocr_enable', True,
+    'Enables / disables documents OCR by Tika os Textract')
+
+OCR_FILE_SIZE_LIMIT = AppVar.set(
+    'ocr_file_size_limit', 100,
+    'Max file size enabled (MB) for OCR')

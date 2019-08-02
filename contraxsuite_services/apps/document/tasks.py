@@ -22,6 +22,7 @@
     provider, processing documents on the fly in a web application,
     or shipping ContraxSuite within a closed source product.
 """
+# -*- coding: utf-8 -*-
 
 import csv
 import datetime
@@ -36,14 +37,16 @@ from celery.exceptions import SoftTimeLimitExceeded
 from django.conf import settings
 from django.contrib.contenttypes.models import ContentType
 from django.db import transaction
-from django.db.models import Q, Subquery
 from django.urls import reverse
 from django.utils.timezone import now
 from psycopg2 import InterfaceError, OperationalError
+
 from apps.celery import app
-from apps.common.advancedcelery.db_cache import DbCache
+from apps.common.db_cache.db_cache import DbCache
+from apps.common.file_storage import get_file_storage
 from apps.common.log_utils import render_error
 from apps.common.sql_commons import escape_column_name
+from apps.document.async_tasks.detect_field_values_task import DetectFieldValues
 from apps.document.field_types import FieldType
 from apps.document.fields_detection import field_detection, field_detection_utils
 from apps.document.fields_detection.fields_detection_abstractions import DetectedFieldValue
@@ -52,141 +55,24 @@ from apps.document.fields_processing import field_value_cache
 from apps.document.fields_processing.field_processing_utils import merge_document_field_values_to_python_value
 from apps.document.models import DocumentType, Document, ClassifierModel, DocumentFieldValue, TextUnit, DocumentField
 from apps.document.repository.document_bulk_delete import get_document_bulk_delete
+from apps.document.sync_tasks.document_files_cleaner import DocumentFilesCleaner
 from apps.dump.document_type_import import import_document_type
 from apps.project.models import Project
 from apps.rawdb.field_value_tables import adapt_table_structure
 from apps.task.models import Task
-from apps.task.tasks import BaseTask, ExtendedTask, CeleryTaskLogger, call_task, file_access_handler, call_task_func
+from apps.task.tasks import BaseTask, ExtendedTask, CeleryTaskLogger, call_task
 from apps.task.utils.task_utils import TaskUtils
 from .constants import DOCUMENT_FIELD_CODE_MAX_LEN
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.2/LICENSE"
-__version__ = "1.2.2"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.3/LICENSE"
+__version__ = "1.2.3"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
+
 MODULE_NAME = __name__
-
-
-class DetectFieldValues(BaseTask):
-    name = 'Detect Field Values'
-
-    def process(self,
-                document_type: DocumentType = None,
-                project_ids=list,
-                document_name: str = None,
-                do_not_run_for_modified_documents=True,
-                do_not_write=False,
-                **kwargs):
-        self.log_info("Going to detect document field values based on "
-                      "the pre-coded regexps and field values entered by users...")
-
-        if isinstance(document_type, dict):
-            document_type = DocumentType.objects.get(pk=document_type['pk'])
-
-        # reindex document grid fields cache after detecting fields
-        from apps.rawdb.tasks import auto_reindex_not_tracked
-        doc_type_code = document_type.code \
-            if document_type and hasattr(document_type, 'code') else None
-        call_task_func(auto_reindex_not_tracked, (doc_type_code,), None,
-                       queue=settings.CELERY_QUEUE_SERIAL,
-                       run_after_sub_tasks_finished=True,
-                       main_task_id=self.request.id)
-
-        document_id = kwargs.get('document_id')
-        if document_id:
-            self.set_push_steps(1)
-
-            self.run_sub_tasks('Detect Field Values For Single Document',
-                               DetectFieldValues.detect_field_values_for_document,
-                               [(document_id, False, True)])
-            self.push()
-            return
-
-        task_count = 0
-        document_types = [document_type] if document_type else DocumentType.objects.all()
-        document_type_pks = []
-        for document_type in document_types:
-            if document_type.pk and document_type.fields.exists():
-                document_type_pks.append(document_type.pk)
-            else:
-                self.log_info('Can not find any fields assigned to document type: {0}'.format(document_type))
-
-        detect_field_values_for_document_args = []
-        source_data = []
-
-        qs = Document.objects.filter(status__is_active=True)
-        if document_name:
-            qs = qs.filter(name=document_name)
-        elif document_id:
-            qs = qs.filter(pk=document_id)
-        elif project_ids:
-            qs = qs.filter(project_id__in=project_ids)
-        elif document_type_pks:
-            qs = qs.filter(document_type_id__in=document_type_pks)
-
-        # filter out modified documents
-        if do_not_run_for_modified_documents:
-            modified_document_ids = DocumentFieldValue.objects \
-                .filter(Q(created_by__isnull=False) | Q(removed_by_user=True)) \
-                .distinct('document_id') \
-                .values_list('document_id')
-            qs = qs.exclude(pk__in=Subquery(modified_document_ids))
-
-        for doc_id, source, name in qs.values_list('id', 'source', 'name'):
-            detect_field_values_for_document_args.append((doc_id, do_not_write, True))
-            if source:
-                source_data.append('{0}/{1}'.format(source, name))
-            else:
-                source_data.append(name)
-            task_count += 1
-
-        self.run_sub_tasks('Detect Field Values For Each Document',
-                           DetectFieldValues.detect_field_values_for_document,
-                           detect_field_values_for_document_args, source_data)
-        if task_count > 0:
-            self.log_info('Found {0} documents'.format(task_count))
-        else:
-            self.log_info('No documents found')
-
-    @staticmethod
-    @shared_task(base=ExtendedTask,
-                 bind=True,
-                 soft_time_limit=6000,
-                 default_retry_delay=10,
-                 retry_backoff=True,
-                 autoretry_for=(SoftTimeLimitExceeded, InterfaceError, OperationalError,),
-                 max_retries=3)
-    def detect_field_values_for_document(task: ExtendedTask,
-                                         document_id,
-                                         do_not_write,
-                                         clear_old_values):
-        DetectFieldValues._detect_field_values_for_document(task,
-                                                            document_id,
-                                                            do_not_write,
-                                                            clear_old_values=clear_old_values)
-
-    @staticmethod
-    def _detect_field_values_for_document(task: ExtendedTask,
-                                          document_id,
-                                          do_not_write,
-                                          clear_old_values=True):
-        doc = Document.all_objects.get(pk=document_id)
-
-        log = CeleryTaskLogger(task)
-
-        # If the document is in one of completed statuses then
-        # the detected values wont be stored even if do_not_write = False.
-        # But caching should go as usual.
-        dfvs = field_detection \
-            .detect_and_cache_field_values_for_document(log, doc,
-                                                        save=not do_not_write,
-                                                        clear_old_values=clear_old_values)
-
-        task.log_info('Detected {0} field values for document #{1} ({2})'.format(
-            len(dfvs), document_id, doc.name))
 
 
 class TrainDocumentFieldDetectorModel(BaseTask):
@@ -618,6 +504,9 @@ class LoadDocumentWithFields(BaseTask):
         run_detect_field_values = bool(kwargs.get('run_detect_field_values'))
 
         document_fields = kwargs.get('document_fields') or {}  # type: Dict
+
+        file_storage = get_file_storage()
+
         if document_fields:
             document = Document(
                 name=document_name,
@@ -630,8 +519,8 @@ class LoadDocumentWithFields(BaseTask):
         path = kwargs['source_data']
 
         if path:
-            self.log_info('Parse {0} at {1}'.format(path, file_access_handler))
-            file_list = file_access_handler.list_documents(path)
+            self.log_info('Parse {0} at {1}'.format(path, file_storage))
+            file_list = file_storage.list_documents(path)
 
             self.log_info("Detected {0} files. Added {0} subtasks.".format(len(file_list)))
 
@@ -653,7 +542,8 @@ class LoadDocumentWithFields(BaseTask):
                  autoretry_for=(SoftTimeLimitExceeded, InterfaceError, OperationalError),
                  max_retries=3)
     def create_document(task: ExtendedTask, uri: str, project_id, run_detect_field_values):
-        with file_access_handler.get_document_as_local_fn(uri) as (fn, file_name):
+        file_storage = get_file_storage()
+        with file_storage.get_document_as_local_fn(uri) as (fn, file_name):
             task.task.title = 'Load Document: {0}'.format(uri)
             task.log_extra = {'log_document_name': uri}
 
@@ -962,26 +852,10 @@ class DeleteDocuments(BaseTask):
         doc_ids = kwargs.get('_document_ids')
         file_paths = self.document_repository.get_all_document_source_paths(doc_ids)
         get_document_bulk_delete().delete_documents(doc_ids)
-        call_task(DeleteDocumentFiles, metadata=file_paths)
-
-
-class DeleteDocumentFiles(BaseTask):
-    name = 'Delete Document Files'
-    priority = 3
-    queue = 'serial'
-
-    def process(self, **kwargs):
-        paths = kwargs.get('metadata')
-        import os
-        for path in paths:
-            file_path = os.path.join(
-                settings.MEDIA_ROOT,
-                settings.FILEBROWSER_DOCUMENTS_DIRECTORY,
-                path)
-            try:
-                os.remove(file_path)
-            except OSError:
-                pass
+        try:
+            DocumentFilesCleaner.delete_documents_files(file_paths)
+        except Exception as e:
+            self.log_error(e)
 
 
 app.register_task(DetectFieldValues())
@@ -995,4 +869,3 @@ app.register_task(FindBrokenDocumentFieldValues())
 app.register_task(ImportDocumentType())
 app.register_task(FixDocumentFieldCodes())
 app.register_task(DeleteDocuments())
-app.register_task(DeleteDocumentFiles())

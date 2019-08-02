@@ -51,26 +51,28 @@ import rest_framework.views
 # Project imports
 import apps.common.mixins
 from apps.analyze.models import DocumentCluster
-from apps.common.log_utils import ErrorCollectingLogger
 from apps.common.models import ReviewStatus
 from apps.common.utils import get_api_module
+from apps.document.app_vars import MAX_DOCUMENT_SIZE
 from apps.document.constants import DOCUMENT_TYPE_PK_GENERIC_DOCUMENT
-from apps.document import signals
 from apps.document.models import Document, DocumentType, DocumentFieldValue, DocumentField
+from apps.document.signals import fire_doc_update_documents_assignees, fire_cache_doc_fields_task
 from apps.document.sync_tasks.soft_delete_document_task import SoftDeleteDocumentsSyncTask
 from apps.project.models import Project, TaskQueue, UploadSession, ProjectClustering
 from apps.project.sync_tasks.soft_delete_project_task import SoftDeleteProjectSyncTask
 from apps.task.models import Task
-from apps.task.tasks import call_task, purge_task, file_access_handler
+from apps.task.tasks import call_task, purge_task
 from apps.task.utils.logger import get_django_logger
 from apps.users.models import User
+from apps.common.file_storage import get_file_storage
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.2/LICENSE"
-__version__ = "1.2.2"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.3/LICENSE"
+__version__ = "1.2.3"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
+
 
 common_api_module = get_api_module('common')
 users_api_module = get_api_module('users')
@@ -324,6 +326,21 @@ class ProjectListSerializer(ProjectDetailSerializer):
         fields = ['pk', 'name', 'status', 'status_data', 'type', 'type_data']
 
 
+class ProjectStatserializer(ProjectDetailSerializer):
+    total_documents_count = serializers.SerializerMethodField()
+    reviewed_documents_count = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Project
+        fields = ['pk', 'name', 'status', 'total_documents_count', 'reviewed_documents_count']
+
+    def get_total_documents_count(self, obj):
+        return obj.document_set.count()
+
+    def get_reviewed_documents_count(self, obj):
+        return obj.document_set.filter(status__group__is_active=False).count()
+
+
 def require_generic_contract_type(func):
     def decorator(cls, *args, **kwargs):
         project = cls.get_object()
@@ -389,6 +406,8 @@ class ProjectViewSet(apps.common.mixins.APILoggingMixin,
             return ProjectUpdateSerializer
         elif self.action == 'list':
             return ProjectListSerializer
+        elif self.action == 'stats':
+            return ProjectStatserializer
         return ProjectDetailSerializer
 
     def get_queryset(self):
@@ -626,16 +645,13 @@ class ProjectViewSet(apps.common.mixins.APILoggingMixin,
             document_ids = request.data.get('document_ids')
             documents = Document.objects \
                 .filter(project=project, pk__in=document_ids)
+
+        fire_doc_update_documents_assignees(self.__class__,
+                                            documents,
+                                            assignee_id,
+                                            request.user)
         ret = documents.update(assignee=assignee_id, assign_date=now())
-
-        self._fire_documents_changed(documents, user=request.user)
-
         return Response({'success': ret})
-
-    def _fire_documents_changed(self, doc_qr, user: User):
-        log = ErrorCollectingLogger()
-        signals.fire_documents_changed(self.__class__, log, doc_qr, changed_by_user=user)
-        log.raise_if_error()
 
     @action(detail=True, methods=['post'])
     def set_status(self, request, **kwargs):
@@ -673,7 +689,9 @@ class ProjectViewSet(apps.common.mixins.APILoggingMixin,
             DocumentField.objects.filter(pk__in=Subquery(modified_fields)).update(dirty=True)
             ret = documents.update(status=status_id)
 
-        self._fire_documents_changed(documents, user=request.user)
+        status_name = ReviewStatus.objects.get(pk=status_id).name
+        fire_cache_doc_fields_task(self.__class__, documents, status_name,
+                                   request.user)
 
         return Response({'success': ret})
 
@@ -688,7 +706,7 @@ class ProjectViewSet(apps.common.mixins.APILoggingMixin,
         content_type_id = ContentType.objects.get_for_model(Project).id
         user_id = request.user.pk
 
-        sql = f'''
+        sql = '''
             SELECT
               p1.id project_id,
               p1.name project_name,
@@ -703,12 +721,28 @@ class ProjectViewSet(apps.common.mixins.APILoggingMixin,
                                         FROM common_reviewstatus rs INNER JOIN common_reviewstatusgroup rsg
                                             ON rs.group_id = rsg.id
                                         WHERE rsg.is_active = FALSE)) reviewed_doc_count
-            FROM project_project p1 INNER JOIN common_action ca
+            FROM project_project p1
+            INNER JOIN common_action ca
                 ON NOT p1.delete_pending AND ca.content_type_id = %s AND ca.user_id = %s AND ca.object_pk = p1.id :: VARCHAR
+            {}
             GROUP BY p1.id
             ORDER BY max(ca.date) DESC
             LIMIT %s
         '''
+
+        # limit query for reviewers - only if a reviewer is in project user groups
+        # (owners, super_reviewers or reviewers)
+        reviewer_subquery = '''
+            LEFT JOIN project_project_reviewers ppr
+                ON p1.id = ppr.project_id
+            LEFT JOIN project_project_super_reviewers ppsr
+                ON p1.id = ppsr.project_id
+            LEFT JOIN project_project_owners ppo
+                ON p1.id = ppo.project_id
+            WHERE ppr.user_id = {user_id} OR ppsr.user_id = {user_id} OR ppo.user_id = {user_id}
+        '''.format(user_id=user_id)
+        sql = sql.format(reviewer_subquery if request.user.is_reviewer else '')
+
         result = list()
         with connection.cursor() as cursor:
             cursor.execute(sql, [DOCUMENT_TYPE_PK_GENERIC_DOCUMENT, content_type_id, user_id, last_n])
@@ -914,6 +948,8 @@ class UploadSessionViewSet(UploadSessionPermissionViewMixin,
         file_ = request.FILES.dict().get('file')
         if not file_:
             raise APIException('File not found.')
+        if file_.size > MAX_DOCUMENT_SIZE.val * 1024 * 1024:
+            raise APIException(f'File size is greater than allowed max {MAX_DOCUMENT_SIZE.val} Mb')
 
         session_id = kwargs.get('pk')
         try:
@@ -966,8 +1002,8 @@ class UploadSessionViewSet(UploadSessionPermissionViewMixin,
         if not session_id or not folder_name:
             raise ValidationError('Provide session id and folder name.')
 
-        file_list = file_access_handler.list_documents(folder_name)
-
+        file_list = get_file_storage().list_documents(folder_name)
+        # TODO: limit file size - see def upload()
         for file_path in file_list:
             file_name = os.path.basename(file_path)
 
@@ -1002,6 +1038,7 @@ class UploadSessionViewSet(UploadSessionPermissionViewMixin,
         # permissions check
         _ = self.get_object()
 
+        # TODO: limit file size - see def upload()
         folder_name = request.POST.get('folder') or request.POST.get('source_path')
         kwargs['folder'] = folder_name
         if folder_name:

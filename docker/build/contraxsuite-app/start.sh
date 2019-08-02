@@ -183,6 +183,31 @@ usage_stats.apply()
                     --buffer-size 65535 \
                     --wsgi wsgi:application"
     fi
+
+elif [ "$1" == "daphne" ]; then
+    # Put this build uuid to a persistent storage to avoid running preparation procedures again
+    # (see start of this script)
+    cat ${IMAGE_UUID_FILE} > ${DEPLOYMENT_UUID_FILE}
+
+    echo "Sleeping 5 seconds to let Postgres start"
+    sleep 5
+
+    while ! curl http://${DOCKER_HOST_NAME_PG}:5432/ 2>&1 | grep '52'
+    do
+      echo "Sleeping 5 seconds to let Postgres start"
+      sleep 5
+    done
+
+    echo ""
+    echo ""
+    echo "Starting Daphne at host ${DOCKER_DJANGO_HOST_NAME}..."
+    echo ""
+    echo ""
+
+    su - ${SHARED_USER_NAME} -c "${ACTIVATE_VENV} && \
+        ulimit -n 1000000 && \
+        python manage.py check && \
+        daphne -b 0.0.0.0 -p 3355 asgi:application"
 elif [ "$1" == "jupyter" ]; then
     echo "Sleeping 30 seconds to let Postgres start and Django migrate"
     sleep 30
@@ -241,6 +266,16 @@ elif [ $1 == "celery-high-prio" ]; then
     su - ${SHARED_USER_NAME} -c "${ACTIVATE_VENV} && \
         ulimit -n 1000000 && \
         celery -A apps worker -Q high_priority --concurrency=4 -Ofair -n high_priority@%h --statedb=/data/celery_worker_state/worker.state"
+
+elif [ $1 == "celery-load" ]; then
+    echo "Sleeping 30 seconds to let Postgres start and Django migrate"
+    sleep 30
+    echo "Starting Celery Load Documents Tasks Worker..."
+
+    su - ${SHARED_USER_NAME} -c "${ACTIVATE_VENV} && \
+        ulimit -n 1000000 && \
+        celery -A apps worker -Q doc_load --concurrency=1 -Ofair -n default_priority@%h --statedb=/data/celery_worker_state/worker.state"
+
 elif [ $1 == "celery-master" ]; then
     echo "Sleeping 30 seconds to let Postgres start and Django migrate"
     sleep 30

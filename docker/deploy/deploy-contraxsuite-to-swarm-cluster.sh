@@ -13,6 +13,7 @@ then
 fi
 source volumes.sh
 
+source util/fix_nginx_logs.sh
 source util/configure_host.sh
 
 sudo cp ${DOCKER_DJANGO_THEME_ARCHIVE} ${VOLUME_THIRD_PARTY}
@@ -93,6 +94,15 @@ export PG_BACKUP_CRON_CONFIG_VERSION=`md5sum ./temp/backup-cron.conf | awk '{ pr
 export PG_INIT_SQL_CONFIG_VERSION=`md5sum ./temp/postgres_init.sql | awk '{ print $1 }'`
 
 envsubst < ./docker-compose-templates/${DOCKER_COMPOSE_FILE} > ./temp/${DOCKER_COMPOSE_FILE}
+
+echo "Updating hosts file"
+export DOCKER_NODE_ID=$(sudo docker node ls | grep $HOSTNAME | awk '{print $1}')
+export DOCKER_NODE_IP=$(sudo docker node inspect --format '{{.Status.Addr}}' $DOCKER_NODE_ID)
+grep -qxF "$DOCKER_NODE_IP $DOCKER_DJANGO_HOST_NAME" /etc/hosts || sudo bash -c "echo $DOCKER_NODE_IP $DOCKER_DJANGO_HOST_NAME >> /etc/hosts"
+
+echo "Updating notification webhooks url"
+
+sudo crontab -l > crontemp && cat crontemp | sed -r "s|[^ ]*https:\/\/hooks\.slack\.com\/[^ ]*|$SLACK_WEBHOOK_URL|g" > hooktemp && cat hooktemp | sudo crontab - && rm crontemp && rm hooktemp
 
 echo "Refreshing scheduled Cron tasks"
 

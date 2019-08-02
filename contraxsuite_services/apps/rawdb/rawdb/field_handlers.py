@@ -40,8 +40,8 @@ from apps.rawdb.rawdb.errors import FilterSyntaxError, FilterValueParsingError
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.2/LICENSE"
-__version__ = "1.2.2"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.3/LICENSE"
+__version__ = "1.2.3"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -53,7 +53,7 @@ class PgTypes(Enum):
     """PostgreSQL data type written exactly in the form pg_catalog.format_type() returns them."""
     INTEGER_PRIMARY_KEY = 'integer primary key'
     DOUBLE = 'double precision'
-    INTEGER = 'integer'
+    INTEGER = 'bigint'
     BOOLEAN = 'boolean'
     VARCHAR = 'character varying'
     TSVECTOR = 'tsvector'
@@ -61,6 +61,8 @@ class PgTypes(Enum):
     TIMESTAMP_WITH_TIMEZONE = 'timestamp with time zone'
     DATE = 'date'
     NUMERIC_50_4 = 'numeric(50,4)'
+    NUMERIC_50_6 = 'numeric(50,6)'
+    NUMERIC_50_8 = 'numeric(50,8)'
     TEXT = 'text'
 
 
@@ -351,6 +353,7 @@ class FieldHandler:
         self.table_name = table_name
         self.default_value = default_value
         self.is_suggested = is_suggested
+        self.is_annotation = False
 
     def get_field_type(self) -> FieldType:
         return FIELD_TYPE_REGISTRY[self.field_type]
@@ -546,6 +549,10 @@ class FloatFieldHandler(ComparableFieldHandler):
         return [FloatColumnDesc(self.field_code, self.column, self.field_title)]
 
 
+class PercentFieldHandler(FloatFieldHandler):
+    pg_type = PgTypes.NUMERIC_50_8
+
+
 class DateFieldHandler(ComparableFieldHandler):
     pg_type = PgTypes.DATE
 
@@ -616,7 +623,7 @@ class MoneyFieldHandler(FieldHandler):
     def get_pg_column_definitions(self) -> Dict[str, PgTypes]:
         return {
             self.currency_column: PgTypes.VARCHAR,
-            self.amount_column: PgTypes.NUMERIC_50_4
+            self.amount_column: PgTypes.NUMERIC_50_6
         }
 
     def python_value_to_indexed_field_value(self, dfv_python_value) -> Any:
@@ -761,6 +768,30 @@ class RelatedInfoFieldHandler(FieldHandler):
 
     def column_names_for_field_values(self) -> Set[str]:
         return {self.column}
+
+
+class AnnotationTextFieldHandler(StringFieldHandler):
+
+    def __init__(self,
+                 field_code: str,
+                 field_type: str,
+                 field_title: str,
+                 table_name: str,
+                 default_value=None,
+                 field_column_name_base: str = None,
+                 is_suggested: bool = False) -> None:
+        super().__init__(field_code, field_type, field_title, table_name, default_value, field_column_name_base,
+                         is_suggested)
+        self.column = escape_column_name(self.field_column_name_base)
+        self.is_annotation = True
+
+    def get_pg_column_definitions(self) -> Dict[str, PgTypes]:
+        return {self.column: PgTypes.TEXT}
+
+    def get_pg_sql_insert_clause(self, document_language: str, python_value: List) -> SQLInsertClause:
+        values = [i for i in python_value if i] if python_value else None
+        db_value = '\n{}\n'.format('_'*20).join(values) if values else None
+        return SQLInsertClause('"{column}"'.format(column=self.column), [], '%s', [db_value])
 
 
 class BooleanFieldHandler(FieldHandler):

@@ -1,3 +1,29 @@
+"""
+    Copyright (C) 2017, ContraxSuite, LLC
+
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU Affero General Public License as
+    published by the Free Software Foundation, either version 3 of the
+    License, or (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU Affero General Public License for more details.
+
+    You should have received a copy of the GNU Affero General Public License
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+    You can also be released from the requirements of the license by purchasing
+    a commercial license from ContraxSuite, LLC. Buying such a license is
+    mandatory as soon as you develop commercial activities involving ContraxSuite
+    software without disclosing the source code of your own applications.  These
+    activities include: offering paid services to customers as an ASP or "cloud"
+    provider, processing documents on the fly in a web application,
+    or shipping ContraxSuite within a closed source product.
+"""
+# -*- coding: utf-8 -*-
+
 import datetime
 from typing import Dict, List, Optional, Tuple, Any, Set
 
@@ -8,10 +34,19 @@ from django.db.models.deletion import CASCADE
 
 from apps.common.sql_commons import SQLClause
 from apps.document.models import DocumentType, DocumentField
-from apps.rawdb.field_value_tables import query_documents, FIELD_CODE_ASSIGN_DATE, FIELD_CODE_CREATE_DATE, \
-    FIELD_CODE_IS_COMPLETED, FIELD_CODE_IS_REVIEWED, FIELD_CODE_ASSIGNEE_ID, DocumentQueryResults
+from apps.rawdb.field_value_tables import query_documents, \
+    FIELD_CODE_ASSIGN_DATE, FIELD_CODE_CREATE_DATE, \
+    FIELD_CODE_IS_COMPLETED, FIELD_CODE_IS_REVIEWED, \
+    FIELD_CODE_ASSIGNEE_ID, DocumentQueryResults
 from apps.rawdb.rawdb.query_parsing import SortDirection
 from apps.users.models import User, Role
+
+__author__ = "ContraxSuite, LLC; LexPredict, LLC"
+__copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.3/LICENSE"
+__version__ = "1.2.3"
+__maintainer__ = "LexPredict, LLC"
+__email__ = "support@contraxsuite.com"
 
 
 class DocFilter:
@@ -404,7 +439,7 @@ NOTIFICATION_RECIPIENTS_BY_CODE = {d.code: d
                                    for d in NOTIFICATION_RECIPIENTS}  # type: Dict[str, NotificationRecipients]
 NOTIFICATION_RECIPIENTS_CHOICES = ((d.code, d.title) for d in NOTIFICATION_RECIPIENTS)
 
-DOCUMENT_EVENTS = [DocumentLoadedEvent(), DocumentDeletedEvent(), DocumentChangedEvent(), DocumentAssignedEvent()]
+DOCUMENT_EVENTS = [DocumentLoadedEvent(), DocumentChangedEvent(), DocumentAssignedEvent()]
 DOCUMENT_EVENTS_BY_CODE = {e.code: e for e in DOCUMENT_EVENTS}
 DOCUMENT_EVENTS_CHOICES = ((e.code, e.title) for e in DOCUMENT_EVENTS)
 

@@ -62,6 +62,7 @@ from django.db.models import Count, Q, Case, Value, When, IntegerField
 from django.utils.timezone import now
 from elasticsearch import Elasticsearch
 from elasticsearch.exceptions import RequestError
+from lexnlp.extract.common.text_beautifier import TextBeautifier
 from lexnlp.extract.en.contracts.detector import is_contract
 from lexnlp.nlp.en.segments.paragraphs import get_paragraphs
 from lexnlp.nlp.en.segments.sentences import get_sentence_span_list, pre_process_document
@@ -76,7 +77,6 @@ from sklearn.naive_bayes import MultinomialNB
 from sklearn.semi_supervised import LabelSpreading
 from sklearn.svm import SVC
 from textblob import TextBlob
-from tika import parser
 
 # Project imports
 import settings
@@ -84,7 +84,7 @@ from apps.analyze.models import (
     DocumentCluster, TextUnitCluster,
     TextUnitClassification, TextUnitClassifier, TextUnitClassifierSuggestion)
 from apps.celery import app
-from apps.common.advancedcelery.fileaccess import prepare_file_access_handler
+from apps.common.file_storage import get_file_storage
 from apps.common.log_utils import ProcessLogger
 from apps.common.utils import fast_uuid
 from apps.deployment.app_data import load_geo_entities, load_terms, load_courts
@@ -112,12 +112,13 @@ from apps.users.models import User
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.2/LICENSE"
-__version__ = "1.2.2"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.3/LICENSE"
+__version__ = "1.2.3"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
-file_access_handler = prepare_file_access_handler()
+
+file_storage = get_file_storage()
 
 # Logger setup
 this_module = sys.modules[__name__]
@@ -184,17 +185,23 @@ class ExtendedTask(app.Task):
         this_task.log_extra = v
         this_task.save(update_fields=['log_extra'])
 
+    def write_log(self, message, level='info', **kwargs):
+        try:
+            self.task.write_log(message, level, **kwargs)
+        except Task.DoesNotExist:
+            Task.write_task_log(self.request.id, message, level, task_name=self.request.task, log_extra=kwargs)
+
     def log_info(self, message, **kwargs):
-        self.task.write_log(message, level='info', **kwargs)
+        self.write_log(message, level='info', **kwargs)
 
     def log_error(self, message, **kwargs):
-        self.task.write_log(message, level='error', **kwargs)
+        self.write_log(message, level='error', **kwargs)
 
     def log_debug(self, message, **kwargs):
-        self.task.write_log(message, level='debug', **kwargs)
+        self.write_log(message, level='debug', **kwargs)
 
     def log_warn(self, message, **kwargs):
-        self.task.write_log(message, level='warn', **kwargs)
+        self.write_log(message, level='warn', **kwargs)
 
     def init_cache(self):
         if not self._cached_data:
@@ -244,13 +251,16 @@ class ExtendedTask(app.Task):
         else:
             problem_str = '{0}\n{1}'.format(exc, traceback.format_exc())
 
-        return 'Task has been failed{4}:\n' \
-               '{0}\n' \
-               'Args: {1}\n' \
-               'Kwargs: {2}\n' \
-               'Reason: {3}'.format(self.name, str(args), str(kwargs), problem_str,
-                                    ' (retry {0})'.format(
-                                        self.request.retries) if self.request.retries else '')
+        retry_msg = f'({self.request.retries} times retried)' \
+            if self.request.retries else ''
+        msg = f'Task has been failed{retry_msg}:\n' + \
+              f'{self.name}\n' + \
+              f'Args: {args}\n' + \
+              f'Kwargs: {str(kwargs)}\n' + \
+              f'Reason: {problem_str}'
+        if hasattr(exc, 'detailed_error'):
+            msg += f'\nDetail: {exc.detailed_error}'
+        return msg
 
     def chord(self, sub_tasks):
         self.log_info(
@@ -319,11 +329,15 @@ class ExtendedTask(app.Task):
                 priority=priority)
             sub_tasks.append(sub_task_signature)
 
+        queue = sub_task_function.queue if hasattr(sub_task_function, 'queue') \
+            else get_queue_by_task_priority(priority)
+
         self.log_info(
             '{0}: {1} starting {2} sub-tasks...'.format(self.task_name, sub_tasks_group_title, len(sub_tasks)))
         for ss in sub_tasks:
-            ss.apply_async(countdown=countdown, priority=priority,
-                           queue=get_queue_by_task_priority(priority))
+            ss.apply_async(countdown=countdown,
+                           priority=priority,
+                           queue=queue)
 
     def run_sub_tasks_class_based(self,
                                   sub_tasks_group_title: str,
@@ -421,9 +435,13 @@ def end_chord(task: ExtendedTask, *args, **kwargs):
             logger.error('{0}: sub-tasks processing crashed'.format(title))
 
 
-def call_task_func(task_func: Callable, task_args: Tuple,
-                   user_id, source_data=None, metadata: Dict = None,
-                   visible: bool = True, queue: str = None,
+def call_task_func(task_func: Callable,
+                   task_args: Tuple,
+                   user_id,
+                   source_data=None,
+                   metadata: Dict = None,
+                   visible: bool = True,
+                   queue: str = None,
                    run_after_sub_tasks_finished: bool = False,
                    main_task_id: str = None):
     celery_task_id = str(fast_uuid())
@@ -485,7 +503,7 @@ def call_task(task_name, **options):
 
     # metadata should not be stored in kwargs, because kwargs is indexed
     # and can not be a large field
-    options_wo_metadata = {o:options[o] for o in options if o != 'metadata'}
+    options_wo_metadata = {o: options[o] for o in options if o != 'metadata'}
     task = Task.objects.create(
         id=celery_task_id,
         name=task_name_resolved,
@@ -509,6 +527,10 @@ def call_task(task_name, **options):
     async = options.pop('async', True)
     task_config = _get_or_create_task_config(task_class_resolved)
     if async:
+        queue = task_class_resolved.queue \
+            if hasattr(task_class_resolved, 'queue') \
+            else get_queue_by_task_priority(priority)
+
         task_class_resolved().apply_async(
             kwargs=options,
             task_id=celery_task_id,
@@ -516,7 +538,7 @@ def call_task(task_name, **options):
             countdown=countdown,
             eta=eta,
             priority=priority,
-            queue=get_queue_by_task_priority(priority))
+            queue=queue)
     else:
         task_class_resolved()(**options)
     return task.pk
@@ -565,11 +587,13 @@ class LoadDocuments(BaseTask):
                          'definition',
                          'duration']
 
+    queue = 'doc_load'
+
     def process(self, **kwargs):
 
         path = kwargs['source_data']
-        self.log_info('Parse {0} at {1}'.format(path, file_access_handler))
-        file_list = file_access_handler.list_documents(path)
+        self.log_info('Parse {0} at {1}'.format(path, file_storage))
+        file_list = file_storage.list_documents(path)
 
         self.log_info("Detected {0} files. Added {0} subtasks.".format(len(file_list)))
 
@@ -604,9 +628,10 @@ class LoadDocuments(BaseTask):
                  default_retry_delay=10,
                  retry_backoff=True,
                  autoretry_for=(SoftTimeLimitExceeded, InterfaceError, OperationalError),
-                 max_retries=3)
+                 max_retries=3,
+                 queue='doc_load')
     def create_document(task: ExtendedTask, uri: str, kwargs):
-        with file_access_handler.get_document_as_local_fn(uri) as (fn, file_name):
+        with file_storage.get_document_as_local_fn(uri) as (fn, file_name):
             return LoadDocuments.create_document_local(task, fn, uri, kwargs)
 
     # FIXME: this becomes unuseful as we CANNOT subclass from LoadDocument now - it hasn't self in methods!!!
@@ -615,17 +640,42 @@ class LoadDocuments(BaseTask):
         pass
 
     @staticmethod
-    def try_parsing_with_tika(task: ExtendedTask, file_path, ext, original_file_name,
-                              propagate_exceptions: bool = True):
+    def try_parsing_with_tika(task: ExtendedTask,
+                              file_path: str,
+                              original_file_name: str,
+                              propagate_exceptions: bool = True,
+                              enable_ocr: bool = True):
+
+        # set OCR strategy (environment var)
         task.log_info('Trying TIKA for file: ' + original_file_name)
         if settings.TIKA_DISABLE:
             task.log_info('TIKA is disabled in config')
             return None, None, None
+
+        from apps.document.app_vars import TIKA_TIMEOUT
+        timeout = TIKA_TIMEOUT.val
         try:
             # here we command Tika to use OCR for image-based PDFs
             # or switch to 'native' call parser.from_file(file_path, settings. ...)
-            data = parametrized_tika_parser.parse_default_pdf_ocr('all', file_path, settings.TIKA_SERVER_ENDPOINT) \
-                if settings.TIKA_SERVER_ENDPOINT else parser.from_file(file_path)
+
+            # this app var is imported here in lazy manner to prevent
+            # issues when tasks.py is imported in migrations before the tables for app vars are created
+            from apps.document.app_vars import TIKA_SERVER_ENDPOINT
+            tika_server_endpoint = TIKA_SERVER_ENDPOINT.val
+            if tika_server_endpoint:
+                task.log_info(f'TIKA server endpoint: {tika_server_endpoint}')
+                # call Tika as server
+                data = parametrized_tika_parser.parse_file_on_server(
+                    'all', file_path, tika_server_endpoint,
+                    enable_ocr=enable_ocr)
+            else:
+                # or execute Tika jar
+                data = parametrized_tika_parser.parse_file_local(
+                    file_path,
+                    timeout=timeout,
+                    logger=CeleryTaskLogger(task),
+                    enable_ocr=enable_ocr)
+
             parsed = data.get('content')
             metadata = data['metadata']
             if parsed and len(parsed) >= 100:
@@ -634,8 +684,9 @@ class LoadDocuments(BaseTask):
                 task.log_error('TIKA returned too small text for file: ' + original_file_name)
                 return None, None, None
         except Exception as ex:
-            task.log_error('Caught exception while trying to parse file with Tika:{0}\n{1}'
-                           .format(original_file_name, format_exc()))
+            task.log_error('Caught exception while trying to parse file with' +
+                           f'Tika: {original_file_name}\n{format_exc()}, ' +
+                           f'timeout is: {timeout}')
             if propagate_exceptions:
                 raise ex
             return None, None, None
@@ -690,34 +741,11 @@ class LoadDocuments(BaseTask):
                 task.log_info('SKIP (EXISTS): ' + file_name)
                 return document_id if return_doc_id else {'document_id': document_id}
 
-        text = None  # type: str
-        metadata = {}
+        # get plain text and metadata from file
         propagate_exceptions = kwargs.get('propagate_exception')
-
-        _fn, ext = os.path.splitext(file_name)
-        if not ext:
-            mt = python_magic.from_file(file_path)
-            ext = mimetypes.guess_extension(mt)
-
-        ext = ext or ''
-
-        if ext in settings.TEXTRACT_FIRST_FOR_EXTENSIONS:
-            text, parser_name = LoadDocuments.try_parsing_with_textract(task, file_path, ext,
-                                                                        file_name)
-            if not text:
-                text, parser_name, metadata = LoadDocuments.try_parsing_with_tika(
-                    task, file_path, ext, file_name)
-        else:
-            text, parser_name, metadata = LoadDocuments.try_parsing_with_tika(
-                task, file_path, ext, file_name, propagate_exceptions=propagate_exceptions)
-            if not text:
-                text, parser_name = LoadDocuments.try_parsing_with_textract(task, file_path,
-                                                                            ext, file_name,
-                                                                            propagate_exceptions=propagate_exceptions)
-        if text is not None:
-            text = pre_process_document(text)
-            # TODO: migrate it in lexnlp if it works good
-            text = re.sub(r'<[\s/]*(?:[A-Za-z]+|[Hh]\d)[\s/]*>', '', text)
+        ext, metadata, parser_name, propagate_exceptions, text = \
+            LoadDocuments.get_text_from_file(file_name, file_path,
+                                             propagate_exceptions, task)
 
         if not text:
             if propagate_exceptions:
@@ -759,9 +787,7 @@ class LoadDocuments(BaseTask):
                 pass
 
         # remove extra line breaks
-        corrector = ParsedTextCorrector()
-        # TODO: aren't removing line breaks any longer, see CS-3459
-        text = corrector.correct_if_corrupted(text)
+        text = LoadDocuments.preprocess_parsed_text(text)
 
         # Language identification
         language, lang_detector = get_language(text, get_parser=True)
@@ -880,23 +906,25 @@ class LoadDocuments(BaseTask):
                 document.set_language_from_text_units()
 
             # create Text Unit Properties
-            text_unit_properties = []
-            for pk, text in document.textunit_set.values_list('pk', 'text'):
-                try:
-                    polarity, subjectivity = TextBlob(text).sentiment
-                    text_unit_properties += [
-                        TextUnitProperty(
-                            text_unit_id=pk,
-                            key='polarity',
-                            value=str(round(polarity))),
-                        TextUnitProperty(
-                            text_unit_id=pk,
-                            key='subjectivity',
-                            value=str(round(subjectivity)))]
-                except AttributeError:
-                    continue
-            if text_unit_properties:
-                TextUnitProperty.objects.bulk_create(text_unit_properties)
+            from apps.document.app_vars import LOCATE_TEXTUNITPROPERTIES
+            if LOCATE_TEXTUNITPROPERTIES.val:
+                text_unit_properties = []
+                for pk, text in document.textunit_set.values_list('pk', 'text'):
+                    try:
+                        polarity, subjectivity = TextBlob(text).sentiment
+                        text_unit_properties += [
+                            TextUnitProperty(
+                                text_unit_id=pk,
+                                key='polarity',
+                                value=str(round(polarity))),
+                            TextUnitProperty(
+                                text_unit_id=pk,
+                                key='subjectivity',
+                                value=str(round(subjectivity)))]
+                    except AttributeError:
+                        continue
+                if text_unit_properties:
+                    TextUnitProperty.objects.bulk_create(text_unit_properties)
 
             # save extra document info
             kwargs['document'] = document
@@ -942,6 +970,72 @@ class LoadDocuments(BaseTask):
             return document.pk
         else:
             return json.dumps(ret) if ret else None
+
+    @staticmethod
+    def get_text_from_file(file_name: str,
+                           file_path: str,
+                           propagate_exceptions: bool,
+                           task: ExtendedTask):
+        """
+        extract text from file using either Tika or Textract
+        """
+        from apps.document.app_vars import OCR_ENABLE, OCR_FILE_SIZE_LIMIT
+        ocr_enabled = OCR_ENABLE.val
+
+        # disable OCR anyway if file size exceeds limit
+        if ocr_enabled:
+            fsize_limit = OCR_FILE_SIZE_LIMIT.val
+            fsize = os.path.getsize(file_path)
+            fsize /= 1024 * 1024
+            ocr_enabled = ocr_enabled and fsize <= fsize_limit
+
+        metadata = {}
+        _fn, ext = os.path.splitext(file_name)
+        if not ext:
+            mt = python_magic.from_file(file_path)
+            ext = mimetypes.guess_extension(mt)
+        ext = ext or ''
+
+        # decide can we parse the file with Textract
+        textract_enabled = ocr_enabled or \
+                           ext in settings.TEXTRACT_NON_OCR_EXTENSIONS
+        first_try_textract = textract_enabled and \
+                             ext in settings.TEXTRACT_FIRST_FOR_EXTENSIONS
+
+        if first_try_textract:
+            text, parser_name = LoadDocuments.try_parsing_with_textract(
+                task, file_path, ext, file_name)
+            if not text:
+                text, parser_name, metadata = LoadDocuments.try_parsing_with_tika(
+                    task, file_path, file_name,
+                    enable_ocr=ocr_enabled)
+        else:
+            text, parser_name, metadata = LoadDocuments.try_parsing_with_tika(
+                task, file_path, file_name,
+                propagate_exceptions=propagate_exceptions,
+                enable_ocr=ocr_enabled)
+            if not text and textract_enabled:
+                text, parser_name = LoadDocuments.try_parsing_with_textract(
+                    task, file_path, ext, file_name,
+                    propagate_exceptions=propagate_exceptions)
+
+        if text is not None:
+            text = pre_process_document(text)
+            # TODO: migrate it in lexnlp if it works good
+            text = re.sub(r'<[\s/]*(?:[A-Za-z]+|[Hh]\d)[\s/]*>', '', text)
+            text = text.replace('\r\n', '\n')
+        return ext, metadata, parser_name, propagate_exceptions, text
+
+    @staticmethod
+    def preprocess_parsed_text(text: str):
+        from apps.document.app_vars import PREPROCESS_DOCTEXT_LINEBREAKS, PREPROCESS_DOCTEXT_PUNCT
+        if PREPROCESS_DOCTEXT_LINEBREAKS.val:
+            # fix extra line breaks
+            corrector = ParsedTextCorrector()
+            text = corrector.correct_if_corrupted(text)
+        if PREPROCESS_DOCTEXT_PUNCT.val:
+            text = TextBeautifier.unify_quotes_braces(text)
+        return text
 
     @staticmethod
     def safely_get_paragraphs(text: str) -> List[Tuple[str, int, int]]:
@@ -1025,7 +1119,7 @@ class LoadTerms(BaseTask):
             terms_df = self.load_terms_from_path(path, None, terms_df)
 
         if file_path:
-            with file_access_handler.get_as_local_fn(file_path) as (fn, file_name):
+            with file_storage.get_as_local_fn(file_path) as (fn, file_name):
                 terms_df = self.load_terms_from_path(fn, file_name, terms_df)
 
         self.push()
@@ -1085,7 +1179,7 @@ class LoadGeoEntities(BaseTask):
             entities_df = self.load_geo_entities_from_path(path, None, entities_df)
 
         if file_path:
-            with file_access_handler.get_as_local_fn(file_path) as (fn, file_name):
+            with file_storage.get_as_local_fn(file_path) as (fn, file_name):
                 entities_df = self.load_geo_entities_from_path(fn, file_name, entities_df)
 
         if entities_df.empty:
@@ -1135,7 +1229,7 @@ class LoadCourts(BaseTask):
         for path in repo_paths:
             self.load_courts_from_path(path, None)
         if file_path:
-            with file_access_handler.get_as_local_fn(file_path) as (fn, file_name):
+            with file_storage.get_as_local_fn(file_path) as (fn, file_name):
                 self.load_courts_from_path(fn, file_name)
         self.push()
 
@@ -1326,7 +1420,7 @@ class Locate(BaseTask):
             try:
                 log = CeleryTaskLogger(_self)
             except Exception as e:
-                er_msg = f'on_locate_finished(): ' +\
+                er_msg = f'on_locate_finished(): ' + \
                          f'error obtaining CeleryTaskLogger.\n{str(e)}'
                 raise RuntimeError(er_msg)
             try:
@@ -1334,7 +1428,7 @@ class Locate(BaseTask):
                     if doc_loaded_by_user_id is not None \
                     else User.objects.filter(id=1).first()  # type: User
             except Exception as e:
-                er_msg = f'on_locate_finished(user_id={doc_loaded_by_user_id}): ' +\
+                er_msg = f'on_locate_finished(user_id={doc_loaded_by_user_id}): ' + \
                          f'error obtaining user.\n{str(e)}'
                 raise RuntimeError(er_msg)
 
@@ -2128,4 +2222,3 @@ app.register_task(UpdateElasticsearchIndex())
 app.register_task(TotalCleanup())
 app.register_task(Classify())
 app.register_task(Cluster())
-

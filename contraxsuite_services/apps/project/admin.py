@@ -24,17 +24,19 @@
 """
 # -*- coding: utf-8 -*-
 
+from typing import List
+
 # Django imports
 from django.contrib import admin
 from django.contrib.admin import SimpleListFilter
 from django.contrib.admin.utils import NestedObjects
 from django.db import router
+from django.db.models import F
 from django.urls import reverse
 from django.utils.safestring import mark_safe
 from django.utils.translation import ugettext_lazy as _
 
 # Project imports
-from typing import List
 from apps.common.utils import cap_words
 from apps.document.models import Document
 from apps.project.models import Project, TaskQueue, TaskQueueHistory, ProjectClustering, UploadSession
@@ -42,8 +44,8 @@ from apps.common.model_utils.model_class_dictionary import ModelClassDictionary
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.2/LICENSE"
-__version__ = "1.2.2"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.3/LICENSE"
+__version__ = "1.2.3"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -91,12 +93,16 @@ def get_deleted_objects(objs, request, admin_site):
 
 
 class ProjectAdmin(admin.ModelAdmin):
-    list_display = ('name', 'description', 'documents_num', 'documents_to_delete')
+    list_display = ('name', 'type', 'status_name', 'description', 'documents_num', 'documents_to_delete')
     search_fields = ('name', 'description')
     filter_horizontal = ('task_queues',)
 
     def get_queryset(self, request):
         return Project.all_objects
+
+    @staticmethod
+    def status_name(obj):
+        return obj.status.name
 
     @staticmethod
     def documents_num(obj):

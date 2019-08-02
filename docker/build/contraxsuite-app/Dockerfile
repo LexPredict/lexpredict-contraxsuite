@@ -43,6 +43,7 @@ RUN echo "deb mirror://mirrors.ubuntu.com/mirrors.txt bionic main restricted uni
     . /contraxsuite_services/venv/bin/activate && python -m nltk.downloader averaged_perceptron_tagger punkt stopwords words maxent_ne_chunker wordnet && deactivate && \
     apt-get install -y curl && \
     cat /build.info && cat /build.uuid && ls /static -l && \
+    apt-get install -y tesseract-ocr tesseract-ocr-eng tesseract-ocr-ita tesseract-ocr-fra tesseract-ocr-spa tesseract-ocr-deu tesseract-ocr-rus && \
     apt-get purge -y gcc-5 build-essential linux-headers* && \
 	apt-get clean autoclean && \
     apt-get autoremove -y && \
@@ -52,5 +53,7 @@ RUN echo "deb mirror://mirrors.ubuntu.com/mirrors.txt bionic main restricted uni
     rm -rf /var/lib/apt/lists && \
 	wget https://github.com/krallin/tini/releases/download/v0.6.0/tini -O /usr/bin/tini && \
 	chmod +x /usr/bin/tini
- 
+
+RUN echo $(date) > /build.date
+
 ENTRYPOINT ["/usr/bin/tini", "--"]

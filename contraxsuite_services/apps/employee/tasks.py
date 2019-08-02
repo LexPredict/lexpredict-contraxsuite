@@ -15,13 +15,14 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
     You can also be released from the requirements of the license by purchasing
-    a commercial license from ContraxSuite, LLC. Buying such a license is 
-    mandatory as soon as you develop commercial activities involving ContraxSuite 
-    software without disclosing the source code of your own applications.  These 
+    a commercial license from ContraxSuite, LLC. Buying such a license is
+    mandatory as soon as you develop commercial activities involving ContraxSuite
+    software without disclosing the source code of your own applications.  These
     activities include: offering paid services to customers as an ASP or "cloud"
-    provider, processing documents on the fly in a web application, 
+    provider, processing documents on the fly in a web application,
     or shipping ContraxSuite within a closed source product.
 """
+# -*- coding: utf-8 -*-
 
 # Celery imports
 from celery import shared_task
@@ -39,8 +40,8 @@ from apps.task.utils.text.segment import segment_sentences
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.2/LICENSE"
-__version__ = "1.2.2"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.3/LICENSE"
+__version__ = "1.2.3"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 

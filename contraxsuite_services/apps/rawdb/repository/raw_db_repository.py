@@ -27,24 +27,30 @@
 from typing import Dict, List, Any, Generator, Iterable, Set, Union, Optional
 import regex as re
 from django.db import connection
+from django.utils.timezone import now
 
 from apps.common.sql_commons import fetch_int, SQLClause, format_clause
 from apps.document.models import Document, DocumentField, DocumentType
 from apps.document.repository.document_field_repository import DocumentFieldRepository
-from apps.rawdb.field_value_tables import FIELD_CODE_PROJECT_ID, FIELD_CODE_DOC_ID, FIELD_CODE_DOC_FULL_TEXT
+from apps.rawdb.field_value_tables import \
+    FIELD_CODE_PROJECT_ID, FIELD_CODE_DOC_ID, \
+    FIELD_CODE_DOC_FULL_TEXT, FIELD_CODE_ASSIGNEE_ID, \
+    FIELD_CODE_ASSIGN_DATE, FIELD_CODE_ASSIGNEE_NAME, \
+    FIELD_CODE_STATUS_NAME
 from apps.rawdb.field_value_tables import doc_fields_table_name, build_field_handlers
 from apps.rawdb.rawdb.field_handlers import FieldHandler
+from apps.rawdb.repository.base_raw_db_repository import BaseRawDbRepository
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.2/LICENSE"
-__version__ = "1.2.2"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.3/LICENSE"
+__version__ = "1.2.3"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
 
 # TODO: check exclude_hidden_always_fields in build_field_handlers()
-class RawDbRepository(DocumentFieldRepository):
+class RawDbRepository(DocumentFieldRepository, BaseRawDbRepository):
     REG_FIELD_NAME_SUG = re.compile(r'_suggested$')
     DEFAULT_FIELD_CODE_FILTER = {FIELD_CODE_DOC_ID, FIELD_CODE_DOC_FULL_TEXT}
 
@@ -55,6 +61,7 @@ class RawDbRepository(DocumentFieldRepository):
                                               table_name=table_name,
                                               include_generic_fields=False,
                                               include_suggested_fields=False,
+                                              include_annotation_fields=False,
                                               include_user_fields=True,
                                               exclude_hidden_always_fields=True)
         field_handlers = self.filter_field_handlers(field_handlers)
@@ -80,8 +87,8 @@ class RawDbRepository(DocumentFieldRepository):
 
         field_handlers = build_field_handlers(document_type=doc_type,
                                               table_name=table_name,
+                                              include_annotation_fields=False,
                                               exclude_hidden_always_fields=True)
-        columns = self.build_columns_sql(field_handlers)
         columns = self.build_columns_sql(field_handlers)
         query_select = f'SELECT {columns} FROM "{table_name}"'
         query_where = f'WHERE "{FIELD_CODE_PROJECT_ID}" IN ({proj_ids_str})'
@@ -103,6 +110,7 @@ class RawDbRepository(DocumentFieldRepository):
         table_name = doc_fields_table_name(doc_type.code)
         field_handlers = build_field_handlers(document_type=doc_type,
                                               table_name=table_name,
+                                              include_annotation_fields=False,
                                               exclude_hidden_always_fields=True)
         columns = self.build_columns_sql(field_handlers)
 
@@ -111,6 +119,50 @@ class RawDbRepository(DocumentFieldRepository):
         query = f'{query_select}\n{query_where}'
         rows = self.parse_raw_db_into_fields(query, field_handlers)
         return self.map_field_names_on_uids(rows, doc_type)
+
+    def update_documents_assignees(self,
+                                   doc_ids: List[int],
+                                   assignee_id: int) -> int:
+        from apps.users.models import User
+        if not doc_ids:
+            return 0
+        assignee_name = User.objects.get(pk=assignee_id).get_full_name() \
+            if assignee_id else None
+        col_values = {FIELD_CODE_ASSIGNEE_ID: assignee_id,
+                      FIELD_CODE_ASSIGN_DATE: now(),
+                      FIELD_CODE_ASSIGNEE_NAME: assignee_name}
+
+        return self.update_rawdb_column_values(doc_ids, col_values)
+
+    def update_documents_status(self,
+                                doc_ids: List[int],
+                                status_name: str) -> int:
+        if not doc_ids:
+            return 0
+        col_values = {FIELD_CODE_STATUS_NAME: status_name}
+
+        return self.update_rawdb_column_values(doc_ids, col_values)
+
+    def update_rawdb_column_values(self,
+                                   doc_ids: List[int],
+                                   col_values: Dict[str, Any]) -> int:
+        if not doc_ids:
+            return 0
+        # documents are supposed to be of the same type
+        doc_type = Document.all_objects.filter(pk__in=doc_ids).values_list(
+            'document_type__code', flat=True)[:1].get()  # type: str
+        table_name = doc_fields_table_name(doc_type)
+
+        doc_ids_str = ','.join([str(i) for i in doc_ids])
+        start_clause = f'UPDATE "{table_name}" SET'
+        up_clause = ', '.join([f'"{col}"=%s' for col in col_values])
+        where_clause = f'WHERE "{FIELD_CODE_DOC_ID}" IN ({doc_ids_str})'
+        query_text = f'{start_clause}\n{up_clause}\n{where_clause};'
+        param_values = [col_values[c] for c in col_values]
+
+        with connection.cursor() as cursor:
+            cursor.execute(query_text, param_values)
+            return cursor.rowcount
 
     def map_field_names_on_uids(self, rows: Iterable[Dict[str, Any]],
                                 document_type: DocumentType) -> Generator[Dict[str, Any], None, None]:
@@ -192,6 +244,7 @@ class RawDbRepository(DocumentFieldRepository):
                                               table_name=table_name,
                                               include_generic_fields=True,
                                               include_suggested_fields=False,
+                                              include_annotation_fields=False,
                                               exclude_hidden_always_fields=True,
                                               include_user_fields=True)
 

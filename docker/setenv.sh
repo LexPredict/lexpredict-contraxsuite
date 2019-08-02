@@ -47,6 +47,10 @@ export DOCKER_DJANGO_ADMIN_PASSWORD=Administrator
 export DOCKER_DJANGO_ADMIN_EMAIL=admin@localhost
 export DOCKER_DJANGO_DEBUG=False
 export DOCKER_DJANGO_DEBUG_SQL=False
+
+# use django's builtin method to create a key eithe any random string
+# >>> from django.core.management.utils import get_random_secret_key
+# >>> get_random_secret_key()
 export DOCKER_DJANGO_SECRET_KEY=Welcome1
 export DOCKER_DJANGO_ACCOUNT_EMAIL_VERIFICATION=optional
 export DOCKER_DJANGO_THEME_ARCHIVE=./deploy/dependencies/theme.zip
@@ -59,6 +63,10 @@ export DOCKER_NGINX_CERTIFICATE_KEY=
 export DOCKER_NGINX_CORS_CONFIG=cors_disable
 export DOCKER_NGINX_CPU_RESERVATIONS=0.5
 export DOCKER_NGINX_MEMORY_RESERVATIONS=512M
+
+export DOCKER_WEBDAV_SERVER_NAME=contrax-webdav
+export DOCKER_WEBDAV_AUTH_USER=user
+export DOCKER_WEBDAV_AUTH_PASSWORD=password
 
 export DOCKER_FLOWER_BASE_PATH=flower
 export DOCKER_HOST_NAME_FLOWER=contrax-flower
@@ -117,6 +125,8 @@ export DOCKER_COMPOSE_FILE=docker-compose-single-host.yml
 export DOCKER_SWARM_ADVERTISE_ADDR=
 
 export CONTRAXSUITE_IMAGE_VERSION=latest
+
+export LEXNLP_TIKA_PARSER_MODE=pdf_ocr
 
 
 if [ -f setenv_distr.sh ]

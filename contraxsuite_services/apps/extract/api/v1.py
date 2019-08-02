@@ -54,8 +54,8 @@ import apps.common.mixins
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.2/LICENSE"
-__version__ = "1.2.2"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.3/LICENSE"
+__version__ = "1.2.3"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -486,12 +486,12 @@ class TopPartyUsageListAPIView(BaseTopUsageListAPIView):
     grouping_item = 'party__name'
     data_view = PartyUsageListAPIView
     filters = [('party_id', 'party_id', str)]
-    qs_values = ["party__name", "party__type_abbr", "party__pk"]
+    qs_values = ['party__name']
     url_args = ('v1:party-usage', 'party_search', 'party__name')
 
-    def update_item(self, item):
-        item['party_summary_url'] = reverse('extract:party-summary', args=[item['party__pk']])
-        return item
+    # def update_item(self, item):
+    #     item['party_summary_url'] = reverse('extract:party-summary', args=[item['party__pk']])
+    #     return item
 
 
 class PartySerializer(serializers.ModelSerializer):
@@ -805,7 +805,7 @@ class TopDateDurationUsageListAPIView(BaseTopUsageListAPIView):
     model = DateDurationUsage
     grouping_item = 'duration_days'
     data_view = DateDurationUsageListAPIView
-    qs_values = ['amount', 'duration_type', 'duration_days']
+    qs_values = ['duration_days']
     qs_order_by = ['-duration_days', '-count']
     url_args = ('v1:date-duration-usage', 'duration_search', 'duration_days')
 
@@ -925,7 +925,7 @@ class TopCurrencyUsageListAPIView(BaseTopUsageListAPIView):
     model = CurrencyUsage
     grouping_item = 'amount'
     data_view = CurrencyUsageListAPIView
-    qs_values = ['amount', 'currency', 'usage_type']
+    qs_values = ['amount', 'currency']
     qs_order_by = ['-amount', '-count']
     url_args = ('v1:currency-usage', 'currency_search', 'currency')
 

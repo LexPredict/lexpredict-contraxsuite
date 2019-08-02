@@ -31,7 +31,7 @@ import pickle
 import re
 import uuid
 from enum import Enum
-from typing import List, Optional, Tuple
+from typing import List
 
 import jiphy
 # Django imports
@@ -47,7 +47,6 @@ from django.db.models.deletion import CASCADE
 from django.db.models.functions import Concat
 from django.dispatch import receiver
 from django.utils.timezone import now
-from lexnlp.extract.en.definitions import get_definitions_in_sentence, get_definitions
 from simple_history.models import HistoricalRecords
 
 # Project imports
@@ -61,8 +60,8 @@ from .value_extraction_hints import ValueExtractionHint, ORDINAL_EXTRACTION_HINT
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.2/LICENSE"
-__version__ = "1.2.2"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.3/LICENSE"
+__version__ = "1.2.3"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -798,11 +797,31 @@ class DocumentNote(models.Model):
         return "DocumentNote (document={0}, note={1})" \
             .format(self.document.id, self.id)
 
+    def update_document_cache(self):
+        from apps.document.signals import fire_document_changed
+        user = getattr(self, 'request_user', self.history.last().history_user if self.history.exists() else None)
+        fire_document_changed(DocumentNote,
+                              log=None,
+                              document=self.document,
+                              system_fields_changed=True,
+                              generic_fields_changed=False,
+                              user_fields_changed=False,
+                              pre_detected_field_values=None,
+                              changed_by_user=user)
+
+
+@receiver(models.signals.post_save, sender=DocumentNote)
+def save_document_note(sender, instance, **kwargs):
+    # update document cache
+    instance.update_document_cache()
+
 
 @receiver(models.signals.post_delete, sender=DocumentNote)
-def delete_note(sender, instance, **kwargs):
+def delete_document_note(sender, instance, **kwargs):
     # delete history
     instance.history.all().delete()
+    # update document cache
+    instance.update_document_cache()
 
 
 class TextUnit(models.Model):
@@ -831,7 +850,7 @@ class TextUnit(models.Model):
     location_end = models.IntegerField(null=True, blank=True)
 
     # Cryptographic hash of raw text for identical de-duplication
-    text_hash = models.CharField(max_length=1024, db_index=True, null=True)
+    text_hash = models.CharField(max_length=1024, null=True)
 
     metadata = CustomJSONField(blank=True, null=True, encoder=DjangoJSONEncoder)
 
@@ -890,6 +909,13 @@ class TextUnitProperty(TimeStampedModel):
     which may be used either at document ingestion to store metadata, such as Track Changes or
     annotations, or subsequently to store relevant information.
     """
+    created_date = models.DateTimeField(auto_now_add=True)
+    modified_date = models.DateTimeField(auto_now=True)
+    created_by = models.ForeignKey(
+        User, related_name="created_%(class)s_set", null=True, blank=True, db_index=False, on_delete=CASCADE)
+    modified_by = models.ForeignKey(
+        User, related_name="modified_%(class)s_set", null=True, blank=True, db_index=False, on_delete=CASCADE)
+
     # Text unit
     text_unit = models.ForeignKey(TextUnit, db_index=True, on_delete=CASCADE)
 
@@ -981,7 +1007,7 @@ class TextUnitNote(models.Model):
 
 
 @receiver(models.signals.post_delete, sender=TextUnitNote)
-def delete_note(sender, instance, **kwargs):
+def delete_text_unit_note(sender, instance, **kwargs):
     # delete history
     instance.history.all().delete()
 
@@ -1144,7 +1170,7 @@ the sentence. Example: "house" - will match any sentence containing this word. P
 unlimited multipliers. They can cause catastrophic backtracking and slowdown or crash the whole system. 
 Use ".{0,100}" or similar instead.''')
 
-    regexps_pre_process_lower = models.BooleanField(blank=False, null=False, default=False,
+    regexps_pre_process_lower = models.BooleanField(blank=False, null=False, default=True,
                                                     help_text='Bring sentence/paragraph to lower case before processing'
                                                               ' with this field detector.')
 
@@ -1164,7 +1190,19 @@ of them should be taken.''')
                                  blank=False, null=False, help_text='''Defines which part of the matching 
 sentence / paragraph should be passed to the extraction function of the corresponding field type. 
 Example: "2019-01-23 is the Start date and 2019-01-24 is the end date." If include regexp is "is.{0,100}Start" and 
-text part = BEFORE_REGEXP then "2019-01-23 " will be passed to get_dates().''')
+text part = "Before matching substring" then "2019-01-23 " will be passed to get_dates().''')
+
+    @property
+    def include_matchers(self):
+        return self._include_matchers
+
+    @property
+    def exclude_matchers(self):
+        return self._exclude_matchers
+
+    @property
+    def detector_definition_words(self):
+        return self._definition_words
 
     # Validator. If field is not of an ordinal type and TAKE_MIN/MAX are selected, throw error
     def clean_fields(self, exclude=('uid', 'field', 'document_type', 'exclude_regexps',
@@ -1226,87 +1264,9 @@ text part = BEFORE_REGEXP then "2019-01-23 " will be passed to get_dates().''')
                     return True
         return False
 
-    def _match_include_regexp_or_none(self, sentence: str, sentence_before_lower: str) -> Optional[
-        Tuple[str, int, int]]:
-        if self._include_matchers:
-            for matcher_re in self._include_matchers:
-                for match in matcher_re.finditer(sentence):
-                    return sentence_before_lower, match.start(), match.end()
-        return None
-
     def _clean_def_words(self, s: str):
         res = ''.join(filter(lambda ss: ss.isalpha() or ss.isnumeric() or ss.isspace(), s))
         return ' '.join(res.split()).lower()
-
-    def _matches_definition_words(self, text: str, text_is_sentence: bool) -> bool:
-        if self._definition_words:
-            terms = get_definitions_in_sentence(text) if text_is_sentence else get_definitions(text)
-            if not terms:
-                return False
-            terms = set([self._clean_def_words(t) for t in terms])
-
-            for w in self._definition_words:
-                if w in terms:
-                    return True
-        return False
-
-    def matches(self, text: str, text_is_sentence: bool = True) -> Optional[Tuple[str, int, int]]:
-        if self._include_matchers is None or self._exclude_matchers is None:
-            self.compile_regexps()
-
-        if not text:
-            return None
-
-        text = text.replace('\n', ' ').replace('\t', ' ')
-
-        sentence_without_lower = text
-        if self.regexps_pre_process_lower:
-            text = text.lower()
-
-        if self._matches_exclude_regexp(text):
-            return None
-        else:
-            if self._definition_words:
-                if not self._matches_definition_words(text, text_is_sentence):
-                    return None
-                elif not self._include_matchers:
-                    return sentence_without_lower, 0, len(sentence_without_lower)
-                else:
-                    return self._match_include_regexp_or_none(text, sentence_without_lower)
-            else:
-                return self._match_include_regexp_or_none(text, sentence_without_lower)
-
-    def matching_string(self, text: str, text_is_sentence: bool = True) -> Optional[str]:
-        match = self.matches(text, text_is_sentence)
-        if match:
-            matching_string, begin, end = match
-            if self.text_part == TextParts.BEFORE_REGEXP.value:
-                return matching_string[:begin]
-            elif self.text_part == TextParts.AFTER_REGEXP.value:
-                return matching_string[end:]
-            elif self.text_part == TextParts.INSIDE_REGEXP.value:
-                return matching_string[begin:end]
-            else:
-                return text
-        return None
-
-    @classmethod
-    def validate_detected_value(cls, field_type: str, detected_value: str) -> None:
-        from .field_types import FIELD_TYPES_ALLOWED_FOR_DETECTED_VALUE
-        from .field_type_registry import FIELD_TYPE_REGISTRY
-        if detected_value and field_type not in FIELD_TYPES_ALLOWED_FOR_DETECTED_VALUE:
-            field_types = [FIELD_TYPE_REGISTRY[ft].title for ft in FIELD_TYPES_ALLOWED_FOR_DETECTED_VALUE]
-            raise RuntimeError('Detected value is allowed only for {0} fields'.format(', '.join(field_types)))
-
-    def get_validated_detected_value(self, field=None) -> str:
-        field = field or self.field
-        try:
-            if self.detected_value:
-                self.validate_detected_value(field.type, self.detected_value)
-            return self.detected_value
-        except Exception as exc:
-            msg = 'Field detector #{0} (field: {1}) has incorrect detected value. {2}'.format(self.pk, field.code, exc)
-            raise RuntimeError(msg)
 
     class Meta:
         ordering = ('uid',)

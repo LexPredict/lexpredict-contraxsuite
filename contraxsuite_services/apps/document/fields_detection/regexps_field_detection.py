@@ -1,19 +1,60 @@
+"""
+    Copyright (C) 2017, ContraxSuite, LLC
+
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU Affero General Public License as
+    published by the Free Software Foundation, either version 3 of the
+    License, or (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU Affero General Public License for more details.
+
+    You should have received a copy of the GNU Affero General Public License
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+    You can also be released from the requirements of the license by purchasing
+    a commercial license from ContraxSuite, LLC. Buying such a license is
+    mandatory as soon as you develop commercial activities involving ContraxSuite
+    software without disclosing the source code of your own applications.  These
+    activities include: offering paid services to customers as an ASP or "cloud"
+    provider, processing documents on the fly in a web application,
+    or shipping ContraxSuite within a closed source product.
+"""
+# -*- coding: utf-8 -*-
+
 import io
 from typing import Optional, List, Iterable, Dict, Any
 
 import pandas as pd
 
 from apps.document.field_types import FieldType
+from apps.document.fields_detection.detector_field_matcher import DetectorFieldMatcher
 from apps.document.fields_detection.fields_detection_abstractions import FieldDetectionStrategy, DetectedFieldValue, \
     ProcessLogger
 from apps.document.fields_detection.stop_words import detect_with_stop_words_by_field_and_full_text
 from apps.document.fields_processing.field_processing_utils import merge_document_field_values_to_python_value
 from apps.document.models import ClassifierModel, TextUnit, DocumentFieldDetector, DocumentField, Document
+from apps.document.repository.base_field_detector_repository import BaseFieldDetectorRepository
+from apps.document.repository.base_text_unit_repository import BaseTextUnitRepository
+from apps.document.repository.field_detector_repository import FieldDetectorRepository
+from apps.document.repository.text_unit_repository import TextUnitRepository
 from ..value_extraction_hints import ValueExtractionHint
+
+__author__ = "ContraxSuite, LLC; LexPredict, LLC"
+__copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.3/LICENSE"
+__version__ = "1.2.3"
+__maintainer__ = "LexPredict, LLC"
+__email__ = "support@contraxsuite.com"
 
 
 class RegexpsOnlyFieldDetectionStrategy(FieldDetectionStrategy):
     code = DocumentField.VD_USE_REGEXPS_ONLY
+
+    text_unit_repo = TextUnitRepository()  # type:BaseTextUnitRepository
+    field_detector_repo = FieldDetectorRepository()  # type: BaseFieldDetectorRepository
 
     @classmethod
     def train_document_field_detector_model(cls,
@@ -38,20 +79,21 @@ class RegexpsOnlyFieldDetectionStrategy(FieldDetectionStrategy):
         if detected_with_stop_words:
             return detected_values or list()
 
-        qs_text_units = TextUnit.objects \
-            .filter(document=doc) \
-            .filter(unit_type=field.text_unit_type) \
-            .order_by('location_start', 'pk')
+        qs_text_units = RegexpsOnlyFieldDetectionStrategy.\
+            text_unit_repo.get_doc_text_units(doc, field.text_unit_type)
 
-        field_detectors = DocumentFieldDetector.objects.filter(field=field)
+        field_detectors = RegexpsOnlyFieldDetectionStrategy.\
+            field_detector_repo.get_field_detectors(field)
+        detectors = [DetectorFieldMatcher(d) for d in field_detectors]
 
         field_type_adapter = field.get_field_type()  # type: FieldType
 
         detected_values = list()  # type: List[DetectedFieldValue]
 
-        for text_unit in qs_text_units.iterator():  # type: TextUnit
 
-            for field_detector in field_detectors:
+        for text_unit in qs_text_units:  # type: TextUnit
+
+            for field_detector in detectors:
                 matching_string = field_detector.matching_string(text_unit.text,
                                                                  text_is_sentence=text_unit.is_sentence())
                 if matching_string is not None:
@@ -120,6 +162,7 @@ class FieldBasedRegexpsDetectionStrategy(FieldDetectionStrategy):
                 return detected_values or list()
 
         field_detectors = DocumentFieldDetector.objects.filter(field=field)
+        detectors = [DetectorFieldMatcher(d) for d in field_detectors]
         field_type_adapter = field.get_field_type()  # type: FieldType
 
         detected_values = list()  # type: List[DetectedFieldValue]
@@ -128,7 +171,7 @@ class FieldBasedRegexpsDetectionStrategy(FieldDetectionStrategy):
             if not depends_on_value:
                 continue
             depends_on_value = str(depends_on_value)
-            for field_detector in field_detectors:  # type: DocumentFieldDetector
+            for field_detector in detectors:  # type: DetectorFieldMatcher
                 matching_string = field_detector.matching_string(depends_on_value, text_is_sentence=False)
                 if matching_string is not None:
                     value = field_detector.get_validated_detected_value(field)
