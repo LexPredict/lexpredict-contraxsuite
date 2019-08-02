@@ -79,10 +79,11 @@ from apps.users.models import User
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.2/LICENSE"
-__version__ = "1.2.2"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.3/LICENSE"
+__version__ = "1.2.3"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
+
 
 python_magic = magic.Magic(mime=True)
 
@@ -347,10 +348,12 @@ def show_document(request, pk):
     document = Document.objects.get(pk=pk)
     file_name = document.name
     file_source = document.source
-    file_path = os.path.join(settings.MEDIA_ROOT,
-                             settings.FILEBROWSER_DOCUMENTS_DIRECTORY.lstrip('/'),
-                             file_source,
-                             file_name)
+    file_path = os.path.join(settings.MEDIA_ROOT.rstrip('/'),
+                             settings.FILEBROWSER_DOCUMENTS_DIRECTORY.strip('/'),
+                             file_source.strip('/'),
+                             file_name.strip('/'))
+    # if not stripping '/' os.path.join() may return some '/child' in reaction to joining 'parent/dir/' with '/child'
+
     mimetype = python_magic.from_file(file_path)
     response = FileResponse(open(file_path, 'rb'), content_type=mimetype)
     response['Content-Disposition'] = 'inline; filename="{}"'.format(file_name)
@@ -464,7 +467,8 @@ class TextUnitDetailView(apps.common.mixins.PermissionRequiredMixin, DetailView)
 
 class TextUnitListView(apps.common.mixins.JqPaginatedListView):
     model = TextUnit
-    json_fields = ['unit_type', 'language', 'text', 'text_hash',
+    json_fields = ['unit_type', 'language', 'text',
+                   # 'text_hash',
                    'document__pk', 'document__name',
                    'document__document_type__title', 'document__description']
     limit_reviewers_qs_by_field = 'document'
@@ -502,10 +506,10 @@ class TextUnitListView(apps.common.mixins.JqPaginatedListView):
             qs = qs.filter(partyusage__party__pk=self.request.GET['party_pk'])
         elif "language" in self.request.GET:
             qs = qs.filter(language=self.request.GET['language'])
-        elif "text_unit_hash" in self.request.GET:
-            # Text Unit Detail identical text units tab
-            qs = qs.filter(text_hash=self.request.GET['text_unit_hash']) \
-                .exclude(pk=self.request.GET['text_unit_pk'])
+        # elif "text_unit_hash" in self.request.GET:
+        #     # Text Unit Detail identical text units tab
+        #     qs = qs.filter(text_hash=self.request.GET['text_unit_hash']) \
+        #         .exclude(pk=self.request.GET['text_unit_pk'])
         else:
             qs = qs.filter(unit_type='paragraph')
         return qs
@@ -543,7 +547,7 @@ class TextUnitPropertyListView(apps.common.mixins.JqPaginatedListView):
     model = TextUnitProperty
     limit_reviewers_qs_by_field = 'text_unit__document'
     json_fields = ['key', 'value',
-                   'created_date', 'created_by__username', 'modified_date', 'modified_by__username',
+                   # 'created_date', 'created_by__username', 'modified_date', 'modified_by__username',
                    'text_unit__document__pk', 'text_unit__document__name',
                    'text_unit__document__document_type__title', 'text_unit__document__description',
                    'text_unit__unit_type', 'text_unit__language',

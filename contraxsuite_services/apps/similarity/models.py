@@ -24,11 +24,11 @@
 """
 # -*- coding: utf-8 -*-
 
-# Additional libraries
-
+# Standard imports
 from datetime import datetime, date
 from typing import List, Tuple
 
+# Django imports
 from django.core.validators import MinValueValidator
 from django.db import models
 from django.utils.safestring import mark_safe
@@ -37,13 +37,13 @@ from apps.document.field_type_registry import FIELD_TYPE_REGISTRY
 from apps.document.field_types import LinkedDocumentsField, FieldType
 from apps.document.models import DocumentField
 
-# Django imports
-
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__version__ = "1.2.2"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.3/LICENSE"
+__version__ = "1.2.3"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
+
 
 DST_FIELD_SIMILARITY_CONFIG_ATTR = 'similar_documents_field_config'
 ATTR_DST_FIELD = 'dst_field'

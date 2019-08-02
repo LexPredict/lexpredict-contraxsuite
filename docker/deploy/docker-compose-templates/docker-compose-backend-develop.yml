@@ -4,6 +4,23 @@ services:
 # under these domain names inside the cluster virtual network.
 # (Service names should not contain underscores.)
 
+  contrax-webdav:
+    image: bytemark/webdav:2.4
+    volumes:
+      - contraxsuite_data_media:/var/lib/dav
+    networks:
+      - contrax_net
+    environment:   # No need for auth - in prod envs the server is not accessible from outside of our network
+      AUTH_TYPE: Basic
+      USERNAME: ${DOCKER_WEBDAV_AUTH_USER}
+      PASSWORD: ${DOCKER_WEBDAV_AUTH_PASSWORD}
+    deploy:
+      replicas: 1
+      placement:
+        constraints: [node.role == manager]
+    ports:
+      - 8090:80
+
   contrax-redis:
     image: redis
     volumes:
@@ -146,19 +163,6 @@ services:
         constraints: [node.role == manager]
     ports: #
       - 127.0.0.1:54320:5432 #
-
-  contrax-tika:
-    image: lexpredict/tika-server:1.9
-    networks:
-      - contrax_net
-    deploy:
-      replicas: 3
-      resources:
-        limits:
-          cpus: '${DOLLAR}{DOCKER_TIKA_CPUS}'
-          memory: ${DOLLAR}{DOCKER_TIKA_MEMORY}
-    ports: #
-      - 127.0.0.1:9998:9998 #
 
 volumes:
   contraxsuite_deployment_uuid:

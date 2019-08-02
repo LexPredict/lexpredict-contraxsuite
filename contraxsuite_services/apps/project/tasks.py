@@ -18,10 +18,11 @@
     a commercial license from ContraxSuite, LLC. Buying such a license is
     mandatory as soon as you develop commercial activities involving ContraxSuite
     software without disclosing the source code of your own applications.  These
-    activities include: offering paid services to customers as an ASP or "cloudЭ"
+    activities include: offering paid services to customers as an ASP or "cloud"
     provider, processing documents on the fly in a web application,
     or shipping ContraxSuite within a closed source product.
 """
+# -*- coding: utf-8 -*-
 
 # Third-party imports
 import numpy as np
@@ -48,10 +49,11 @@ from apps.task.utils.task_utils import TaskUtils
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.2/LICENSE"
-__version__ = "1.2.2"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.3/LICENSE"
+__version__ = "1.2.3"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
+
 
 THIS_MODULE = __name__
 
@@ -317,8 +319,11 @@ class CleanProject(BaseTask):
         # get doc ids and remove docs' source files
         proj_doc_ids = self.document_repository.get_project_document_ids(project_id)
         file_paths = self.document_repository.get_all_document_source_paths(proj_doc_ids)
-        from apps.document.tasks import DeleteDocumentFiles
-        call_task(DeleteDocumentFiles, metadata=file_paths)
+        try:
+            from apps.document.sync_tasks.document_files_cleaner import DocumentFilesCleaner
+            DocumentFilesCleaner.delete_documents_files(file_paths)
+        except Exception as e:
+            self.log_error(e)
 
         # delete documents
         from apps.document.repository.document_bulk_delete \

@@ -1,4 +1,32 @@
+"""
+    Copyright (C) 2017, ContraxSuite, LLC
+
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU Affero General Public License as
+    published by the Free Software Foundation, either version 3 of the
+    License, or (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU Affero General Public License for more details.
+
+    You should have received a copy of the GNU Affero General Public License
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+    You can also be released from the requirements of the license by purchasing
+    a commercial license from ContraxSuite, LLC. Buying such a license is
+    mandatory as soon as you develop commercial activities involving ContraxSuite
+    software without disclosing the source code of your own applications.  These
+    activities include: offering paid services to customers as an ASP or "cloud"
+    provider, processing documents on the fly in a web application,
+    or shipping ContraxSuite within a closed source product.
+"""
+# -*- coding: utf-8 -*-
+
 import json
+import os
+import uuid
 from itertools import chain
 from typing import List, Dict
 
@@ -7,18 +35,27 @@ from celery import shared_task
 from celery.states import UNREADY_STATES
 from django.db import connection
 from django.utils import timezone
+from django.utils.text import get_valid_filename
 from psycopg2 import InterfaceError, OperationalError
 
 from apps.celery import app
 from apps.common.collection_utils import chunks
-from apps.common.log_utils import render_error
+from apps.common.errors import render_error
+from apps.common.file_storage import get_file_storage
 from apps.common.sql_commons import fetch_int, SQLClause
-from apps.common.streaming_utils import buffer_contents_into_file
+from apps.common.streaming_utils import buffer_contents_into_temp_file
 from apps.imanage_integration.models import IManageConfig, IManageDocument
 from apps.task.models import Task
 from apps.task.tasks import BaseTask, ExtendedTask, LoadDocuments, call_task
 from apps.task.tasks import CeleryTaskLogger
 from apps.users.user_utils import get_main_admin_user
+
+__author__ = "ContraxSuite, LLC; LexPredict, LLC"
+__copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.3/LICENSE"
+__version__ = "1.2.3"
+__maintainer__ = "LexPredict, LLC"
+__email__ = "support@contraxsuite.com"
 
 
 class IManageSynchronization(BaseTask):
@@ -42,6 +79,7 @@ class IManageSynchronization(BaseTask):
         imanage_doc = IManageDocument.objects \
             .filter(imanage_config_id=imanage_config_id, imanage_doc_id=imanage_doc_id) \
             .select_related('imanage_config').get()
+        file_storage = get_file_storage()
         try:
             imanage_config = imanage_doc.imanage_config
             log = CeleryTaskLogger(task)
@@ -55,7 +93,19 @@ class IManageSynchronization(BaseTask):
             task.log_info('Downloading iManage document contents into a temp file...')
             auth_token = imanage_config.login()
             filename, response = imanage_config.load_document(auth_token, imanage_doc_id)
-            with buffer_contents_into_file(filename, response) as temp_fn:
+
+            upload_session_id = str(uuid.uuid4())
+            filename = get_valid_filename(filename)
+            rel_filepath = os.path.join(upload_session_id, filename)
+
+            _, ext = os.path.splitext(filename) if filename else None
+            with buffer_contents_into_temp_file(response, ext) as temp_fn:
+
+                # upload file to file storage
+                with open(temp_fn, 'rb') as f:
+                    file_storage.mk_doc_dir(upload_session_id)
+                    file_storage.write_document(rel_filepath, f)
+
                 kwargs = {
                     'document_type_id': imanage_config.document_type_id,
                     'project_id': project_id,
@@ -84,7 +134,7 @@ class IManageSynchronization(BaseTask):
                     task.log_info('No binding of iManage fields to Contraxsuite fields.')
 
                 document_id = LoadDocuments \
-                    .create_document_local(task, temp_fn, filename, kwargs,
+                    .create_document_local(task, temp_fn, rel_filepath, kwargs,
                                            return_doc_id=True,
                                            pre_defined_doc_fields_code_to_python_val=pre_defined_fields)
 
@@ -98,10 +148,10 @@ class IManageSynchronization(BaseTask):
                                    'iManage document #{0}'.format(imanage_doc_id))
                     raise RuntimeError('No document loaded.')
         except Exception as ex:
-            task.log_error('Unable to synchronize iManage document #{0}'.format(imanage_doc_id))
+            msg = render_error('Unable to synchronize iManage document #{0}'.format(imanage_doc_id), ex)
+            task.log_error(msg)
             imanage_doc.import_problem = True
             imanage_doc.save(update_fields=['import_problem'])
-            raise ex
 
     def sync_imanage_config(self, imanage_config: IManageConfig):
         auth_token = imanage_config.login()

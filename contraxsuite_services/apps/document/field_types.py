@@ -23,14 +23,18 @@
     or shipping ContraxSuite within a closed source product.
 """
 # -*- coding: utf-8 -*-
+
+
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.2/LICENSE"
-__version__ = "1.2.2"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.3/LICENSE"
+__version__ = "1.2.3"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
+
 from datetime import datetime, date
+from decimal import Decimal
 from random import randint, random
 from typing import List, Tuple, Optional, Any, Callable, Set
 
@@ -59,9 +63,22 @@ from apps.extract import models as extract_models
 from .value_extraction_hints import ValueExtractionHint
 
 
-def to_float(v) -> Optional[float]:
+def to_float(v, decimal_places=None) -> Optional[float]:
+    """
+    Take care about proper rounding for floats:
+    round(float('123.5555555'), 6)
+    Out[1]: 123.555555
+    vs
+    to_float('123.5555555', 6)
+    Out[2]: 123.555556
+    """
+    if v is None:
+        return None
     try:
-        return float(v) if v is not None else None
+        v = Decimal(v)
+        if isinstance(decimal_places, int):
+            v = round(v, decimal_places).normalize()
+        return float(v)
     except ValueError:
         return None
 
@@ -154,7 +171,7 @@ class FieldType:
 
     def merged_python_value_to_db(self, merged_python_value):
         """
-        Convert python value of the field into a DB-aware sortable form to save to Document.f i eld_values.
+        Convert python value of the field into a DB-aware sortable form to save to Document.field_values.
 
         That's what it needed for:
             There are simple atomic field types like float, string, date e.t.c.
@@ -1090,25 +1107,28 @@ class PercentField(FieldType):
     MAX_PERCENT = 1
 
     def merged_python_value_to_db(self, merged_python_value):
-        return to_float(merged_python_value)
+        # round to 6 decimal places of PERCENTAGE value - i.e. to 8 decimal places of ABSOLUTE value
+        return to_float(merged_python_value / 100, decimal_places=8) if merged_python_value is not None else None
 
     def merged_db_value_to_python(self, db_value):
-        return to_float(db_value)
+        # round to 6 decimal places of PERCENTAGE value
+        return to_float(db_value * 100, decimal_places=6) if db_value is not None else None
 
     def get_postgres_transform_map(self):
         return RoundedFloatField
 
     def extract_from_possible_value(self, field, possible_value):
-        return to_float(possible_value)
+        return to_float(possible_value, decimal_places=6)
 
     def _extract_variants_from_text(self, field, text: str, **kwargs):
-        percents = list(get_percents(text))
+        percents = list(get_percents(text, float_digits=8))
         if not percents:
             return None
-        return [percent[2] for percent in percents if percent[2] < self.MAX_PERCENT]
+        return [percent[2] * 100 for percent in percents]
+        # return [percent[2] for percent in percents if percent[2] < self.MAX_PERCENT]
 
     def example_python_value(self, field):
-        return round(randint(1, 100) / 100, 2)
+        return round(random(), 6)
 
     def build_vectorization_pipeline(self) -> Tuple[List[Tuple[str, Any]], Callable[[], List[str]]]:
         vect = vectorizers.NumberVectorizer()
@@ -1130,6 +1150,8 @@ class RatioField(FieldType):
             merged_python_value = merged_python_value[0]
         numerator = to_float(merged_python_value['numerator'])
         consequent = to_float(merged_python_value['consequent'])
+        if numerator is None or consequent is None:
+            return None
         return '{}|{}'.format(numerator, consequent)
 
     def merged_db_value_to_python(self, db_value):
@@ -1295,7 +1317,7 @@ class MoneyField(FloatField):
             merged_python_value = merged_python_value[0]
         amount = to_float(merged_python_value.get('amount')) or 0
         currency = merged_python_value.get('currency') or ''
-        return '{}|{:020.4f}'.format(currency, amount)
+        return '{}|{:020.6f}'.format(currency, amount)
 
     def merged_db_value_to_python(self, db_value):
         if isinstance(db_value, dict):
@@ -1337,7 +1359,7 @@ class MoneyField(FloatField):
             return None
 
     def _extract_variants_from_text(self, field, text: str, **kwargs):
-        money = get_money(text, return_sources=False)
+        money = get_money(text, return_sources=False, float_digits=6)
         if not money:
             return None
         return [{'currency': m[1],

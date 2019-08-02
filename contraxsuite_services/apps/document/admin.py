@@ -24,9 +24,9 @@
 """
 # -*- coding: utf-8 -*-
 
+# Standard imports
 import inspect
 import json
-# Standard imports
 import re
 import traceback
 from typing import List, Dict, Any
@@ -45,15 +45,20 @@ from django.db.models import Q
 from django.template.response import TemplateResponse
 from django.utils.html import format_html_join
 from django.utils.safestring import mark_safe
+from django.utils.translation import ugettext_lazy as _
+
+# Third-party imports
 from django_json_widget.widgets import JSONEditorWidget
 from simple_history.admin import SimpleHistoryAdmin
 
 # Project imports
 from apps.common.script_utils import ScriptError
+from apps.common.model_utils.model_class_dictionary import ModelClassDictionary
 from apps.common.url_utils import as_bool
 from apps.document import signals
 from apps.document.field_types import RelatedInfoField
 from apps.document.field_type_registry import FIELD_TYPE_REGISTRY
+from apps.document.fields_detection.detector_field_matcher import DetectorFieldMatcher
 from apps.document.fields_detection.field_based_ml_field_detection import init_classifier_impl
 from apps.document.fields_detection.formula_based_field_detection import FormulaBasedFieldDetectionStrategy, \
     DocumentFieldFormulaError
@@ -66,16 +71,13 @@ from apps.document.models import (
     ClassifierModel, TextUnit, TextUnitProperty, TextUnitNote, TextUnitTag,
     DocumentFieldCategory)
 from apps.document.python_coded_fields_registry import PYTHON_CODED_FIELDS_REGISTRY
+from apps.rawdb.field_value_tables import FIELD_CODE_ANNOTATION_SUFFIX
 from apps.task.models import Task
-from django.contrib.admin import SimpleListFilter
-from django.utils.translation import ugettext_lazy as _
-from apps.common.model_utils.model_class_dictionary import ModelClassDictionary
-
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.2/LICENSE"
-__version__ = "1.2.2"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.3/LICENSE"
+__version__ = "1.2.3"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -99,7 +101,7 @@ class PrettyJsonFieldMixin(object):
 
 
 class DocumentAdmin(ModelAdminWithPrettyJsonField, SimpleHistoryAdmin):
-    list_display = ('name', 'document_type', 'source_type', 'paragraphs', 'sentences')
+    list_display = ('name', 'document_type', 'project', 'status_name', 'source_type', 'paragraphs', 'sentences')
     search_fields = ['document_type__code', 'name']
 
     def get_queryset(self, request):
@@ -111,6 +113,10 @@ class DocumentAdmin(ModelAdminWithPrettyJsonField, SimpleHistoryAdmin):
             del actions['delete_selected']
         return actions
 
+    @staticmethod
+    def status_name(obj):
+        return obj.status.name
+
     def has_delete_permission(self, request, obj=None):
         return False
 
@@ -120,7 +126,7 @@ class SoftDeleteDocument(Document):
         proxy = True
 
 
-class DeletePendingFilter(SimpleListFilter):
+class DeletePendingFilter(admin.SimpleListFilter):
     title = _('Status')
 
     parameter_name = 'delete_pending'
@@ -256,7 +262,9 @@ class SoftDeleteDocumentAdmin(DocumentAdmin):
         ]
         return my_urls + urls
 
+
 PARAM_OVERRIDE_WARNINGS = 'override_warnings'
+
 
 class UsersTasksValidationAdmin(admin.ModelAdmin):
     save_warning_template = 'admin/document/users_tasks_warning_save_form.html'
@@ -404,6 +412,7 @@ class UsersTasksValidationAdmin(admin.ModelAdmin):
             form_class = self.get_confirmation_form(form_class)
         return form_class
 
+
 class FieldValuesValidationAdmin(UsersTasksValidationAdmin):
     save_warning_template = 'admin/document/field_values_warning_save_form.html'
 
@@ -440,9 +449,44 @@ class FieldValuesValidationAdmin(UsersTasksValidationAdmin):
             return super().add_view(request, form_url, extra_context)
 
 
-class DocumentFieldForm(forms.ModelForm):
+class ModelFormWithUnchangeableFields(forms.ModelForm):
+    """
+    Mixin provides ability to freeze some fields of objects via form_field.disabled attribute -
+    i.e. it doesn't allow to modify fields declared in iterable UNCHANGEABLE_FIELDS.
+    Note that db object and form field should have the same name to make it working.
+    """
+    UNCHANGEABLE_FIELDS = ()
+
+    @property
+    def is_update(self):
+        """
+        Usually this check looks like `if self.instance.pk is not None` but
+        instances with uid instead of id initially has pk
+        """
+        return self.Meta.model.objects.filter(pk=self.instance.pk).exists()
+
+    def __init__(self, *args, **kwargs):
+        """
+        Set "form_field.disabled" attribute from UNCHANGEABLE_FIELDS
+        """
+        super().__init__(*args, **kwargs)
+        if self.is_update:
+            for field_name in self.UNCHANGEABLE_FIELDS:
+                if field_name in self.fields:
+                    self.fields[field_name].disabled = True
+        for field_name in getattr(self.Meta, 'readonly_fields', []):
+            if field_name in self.fields:
+                self.fields[field_name].disabled = True
+        for field in self.fields.values():
+            if field.disabled and not isinstance(field.widget, forms.widgets.CheckboxInput):
+                field.widget = forms.TextInput(attrs={'readonly': True})
+
+
+class DocumentFieldForm(ModelFormWithUnchangeableFields):
     MAX_ESCAPED_FIELD_CODE_LEN = 50
     R_FIELD_CODE = re.compile(r'^[a-z][a-z0-9_]*$')
+
+    UNCHANGEABLE_FIELDS = ('code', 'long_code', 'document_type', 'type', 'hide_until_js')
 
     depends_on_fields = forms.ModelMultipleChoiceField(
         queryset=DocumentField.objects.all(),
@@ -462,6 +506,11 @@ class DocumentFieldForm(forms.ModelForm):
         help_text='Target expression ("Hide until python" expression converted to JavaScript syntax for frontend). '
                   'Allowed operators: +, -, *, /, ===, !==, ==, !=, &&, ||, >, <, >=, <=, %')
 
+    long_code = forms.CharField(
+        # widget=forms.Textarea,
+        required=False,
+        disabled=True)
+
     display_yes_no = forms.BooleanField(
         required=False,
         help_text='Display Yes if Related Info Text Found, otherwise No')
@@ -476,7 +525,8 @@ class DocumentFieldForm(forms.ModelForm):
     class Meta:
         model = DocumentField
         fields = '__all__'
-        exclude = ('long_code',)
+        # exclude = ('long_code',)
+        readonly_fields = ('created_by', 'modified_by')
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -527,6 +577,13 @@ class DocumentFieldForm(forms.ModelForm):
             self.add_error('code', '''Field codes must be lowercase, should start with a latin letter and contain 
             only latin letters, digits, and underscores. You cannot use a field code you have already used for this 
             document type.'''.format(field_code))
+
+        reserved_suffixes = ('_sug', '_txt', FIELD_CODE_ANNOTATION_SUFFIX)
+        # TODO: define reserved suffixes/names in field_value_tables.py? collect/autodetect?
+        for suffix in reserved_suffixes:
+            if field_code.endswith(suffix):
+                self.add_error('code', '''"{}" suffix is reserved.
+                 You cannot use a field code which ends with this suffix.'''.format(suffix))
 
     UNSURE_CHOICE_VALUE = 'unsure_choice_value'
 
@@ -615,20 +672,23 @@ class DocumentFieldForm(forms.ModelForm):
 
         hide_until_python = hide_until_python.strip() if hide_until_python else None
         if hide_until_python:
-            fields_to_values = {field.code: FIELD_TYPE_REGISTRY[field.type].example_python_value(field)
-                                for field in list(document_type.fields.all())}
-            if field_code and field_code in fields_to_values:
-                del fields_to_values[field_code]
-            if type_code:
-                fields_to_values[field_code] = FIELD_TYPE_REGISTRY[type_code] \
-                    .example_python_value(self.instance)
-
-            self.calc_formula(field_code,
-                              None,
-                              hide_until_python,
-                              fields_to_values,
-                              'hide_until_python',
-                              formula_name='hide until python')
+            if not document_type:
+                self.add_error('hide_until_python', 'Document type is not defined.')
+            else:
+                fields_to_values = {field.code: FIELD_TYPE_REGISTRY[field.type].example_python_value(field)
+                                    for field in list(document_type.fields.all())}
+                if field_code and field_code in fields_to_values:
+                    del fields_to_values[field_code]
+                if type_code:
+                    fields_to_values[field_code] = FIELD_TYPE_REGISTRY[type_code] \
+                        .example_python_value(self.instance)
+    
+                self.calc_formula(field_code,
+                                  None,
+                                  hide_until_python,
+                                  fields_to_values,
+                                  'hide_until_python',
+                                  formula_name='hide until python')
 
         if default_value is not None:
             if type_code == RelatedInfoField.code:
@@ -648,7 +708,7 @@ class DocumentFieldForm(forms.ModelForm):
             wrong_field_detector_pks = []
             for field_detector in DocumentFieldDetector.objects.filter(field=self.instance):
                 try:
-                    DocumentFieldDetector.validate_detected_value(type_code, field_detector.detected_value)
+                    DetectorFieldMatcher.validate_detected_value(type_code, field_detector.detected_value)
                 except Exception:
                     wrong_field_detector_pks.append('#' + field_detector.pk)
             if wrong_field_detector_pks:
@@ -670,8 +730,8 @@ class DocumentFieldAdmin(FieldValuesValidationAdmin):
     fieldsets = [
         ('General', {
             'fields': (
-                'created_by', 'modified_by', 'code', 'title', 'type', 'document_type', 'category', 'order',
-                'description',
+                'created_by', 'modified_by', 'code', 'long_code',
+                'title', 'type', 'document_type', 'category', 'order', 'description',
                 'confidence', 'requires_text_annotations', 'read_only', 'default_value'),
         }),
         ('Choice / Multi-choice Fields', {
@@ -730,8 +790,8 @@ class DocumentFieldDetectorForm(forms.ModelForm):
             self.add_error('include_regexps', exc)
 
         try:
-            DocumentFieldDetector.validate_detected_value(self.cleaned_data['field'].type,
-                                                          self.cleaned_data['detected_value'])
+            DetectorFieldMatcher.validate_detected_value(self.cleaned_data['field'].type,
+                                                         self.cleaned_data['detected_value'])
         except Exception as exc:
             self.add_error('detected_value', exc)
 
@@ -775,6 +835,7 @@ class DocumentFieldDetectorAdmin(admin.ModelAdmin):
         return format_html_join('\n', '<pre>{}</pre>',
                                 ((r,) for r in
                                  obj.definition_words.split('\n'))) if obj.field and obj.definition_words else None
+
 
 class DocumentFieldValueAdmin(admin.ModelAdmin):
     raw_id_fields = ('document', 'text_unit',)
@@ -905,11 +966,19 @@ class DocumentFieldInlineAdmin(admin.TabularInline):
         return False
 
 
-class DocumentTypeForm(forms.ModelForm):
+class DocumentTypeForm(ModelFormWithUnchangeableFields):
+    UNCHANGEABLE_FIELDS = ('code',)
+
     search_fields = forms.ModelMultipleChoiceField(
+        label='Default Grid Column Headers',
         queryset=DocumentField.objects.all(),
         required=False,
-        widget=FilteredSelectMultiple('search_fields', False))
+        widget=FilteredSelectMultiple('Default Grid Column Headers', False))
+
+    class Meta:
+        model = DocumentType
+        fields = '__all__'
+        readonly_fields = ('created_by', 'modified_by')
 
 
 class DocumentTypeAdmin(ModelAdminWithPrettyJsonField, UsersTasksValidationAdmin):
@@ -934,7 +1003,6 @@ class DocumentTypeAdmin(ModelAdminWithPrettyJsonField, UsersTasksValidationAdmin
             'fields': (
                 'metadata',),
         }),
-
     ]
 
     @staticmethod
@@ -1006,7 +1074,7 @@ class DocumentFieldCategoryForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        if self.instance:
+        if self.instance.pk:
             self.fields['fields'].initial = self.instance.documentfield_set.all()
 
     def save(self, *args, **kwargs):

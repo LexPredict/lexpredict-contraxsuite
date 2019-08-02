@@ -42,8 +42,8 @@ from apps.users.models import User
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.2/LICENSE"
-__version__ = "1.2.2"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.3/LICENSE"
+__version__ = "1.2.3"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -148,7 +148,7 @@ def document_change_listener_impl(_sender,
     from apps.rawdb.app_vars import APP_VAR_DISABLE_RAW_DB_CACHING
     if APP_VAR_DISABLE_RAW_DB_CACHING.val:
         return
-    from .field_value_tables import cache_document_fields
+    from apps.rawdb.field_value_tables import cache_document_fields
     log = log or ProcessLogger()
     cache_document_fields(log=log,
                           document=document,
@@ -202,3 +202,53 @@ def doc_soft_delete_listener_impl(_sender,
 @receiver(signals.doc_soft_delete)
 def doc_soft_delete_listener(sender, **kwargs):
     doc_soft_delete_listener_impl(sender, **kwargs)
+
+
+def update_documents_assignees_impl(_sender,
+                                    signal,
+                                    documents,
+                                    assignee_id: int,
+                                    changed_by_user: User):
+    from apps.rawdb.repository.raw_db_repository import RawDbRepository
+    from apps.rawdb.tasks import cache_fields_for_docs_queryset
+    from apps.task.tasks import call_task_func
+    repo = RawDbRepository()
+    doc_ids = list(documents.values_list('pk', flat=True))
+
+    old_field_values = {d.pk: {'assignee_id': d.assignee_id,
+                               'assignee_name': d.assignee.username
+                                   if d.assignee else ''}
+                        for d in documents}
+    repo.update_documents_assignees(doc_ids, assignee_id)
+    task_ptrs = (documents, changed_by_user, False, True,
+                 True, None, old_field_values)
+    call_task_func(cache_fields_for_docs_queryset,
+                   task_ptrs,
+                   changed_by_user.pk)
+
+
+@receiver(signals.doc_update_documents_assignees)
+def update_documents_assignees_listener(sender, **kwargs):
+    update_documents_assignees_impl(sender, **kwargs)
+
+
+def cache_doc_fields_task_impl(_sender,
+                               signal,
+                               documents,
+                               status_name: str,
+                               changed_by_user: User):
+    from apps.rawdb.repository.raw_db_repository import RawDbRepository
+    from apps.rawdb.tasks import cache_fields_for_docs_queryset
+    from apps.task.tasks import call_task_func
+    repo = RawDbRepository()
+    doc_ids = list(documents.values_list('pk', flat=True))
+    repo.update_documents_status(doc_ids, status_name)
+
+    call_task_func(cache_fields_for_docs_queryset,
+                   (documents, changed_by_user, False, True, True, None),
+                   changed_by_user.pk)
+
+
+@receiver(signals.cache_doc_fields_task)
+def cache_doc_fields_task_listener(sender, **kwargs):
+    cache_doc_fields_task_impl(sender, **kwargs)

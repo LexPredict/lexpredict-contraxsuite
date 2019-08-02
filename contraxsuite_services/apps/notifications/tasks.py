@@ -1,3 +1,29 @@
+"""
+    Copyright (C) 2017, ContraxSuite, LLC
+
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU Affero General Public License as
+    published by the Free Software Foundation, either version 3 of the
+    License, or (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU Affero General Public License for more details.
+
+    You should have received a copy of the GNU Affero General Public License
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+    You can also be released from the requirements of the license by purchasing
+    a commercial license from ContraxSuite, LLC. Buying such a license is
+    mandatory as soon as you develop commercial activities involving ContraxSuite
+    software without disclosing the source code of your own applications.  These
+    activities include: offering paid services to customers as an ASP or "cloud"
+    provider, processing documents on the fly in a web application,
+    or shipping ContraxSuite within a closed source product.
+"""
+# -*- coding: utf-8 -*-
+
 import datetime
 from collections import defaultdict
 from typing import Optional, Any
@@ -27,6 +53,14 @@ from .models import DocumentDeletedEvent, DocumentLoadedEvent, DocumentChangedEv
     DocumentAssignedEvent, DocumentNotificationSubscription
 from .models import DocumentDigestConfig
 from .notifications import render_digest, RenderedDigest, render_notification
+
+__author__ = "ContraxSuite, LLC; LexPredict, LLC"
+__copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.3/LICENSE"
+__version__ = "1.2.3"
+__maintainer__ = "LexPredict, LLC"
+__email__ = "support@contraxsuite.com"
+
 
 MODULE_NAME = __name__
 
@@ -256,7 +290,9 @@ def process_notifications_on_document_change(task: ExtendedTask,
     document = Document.all_objects.filter(pk=document_id).select_related('document_type').first()  # type: Document
     document_type = document.document_type
     changed_by_user = User.objects.get(pk=changed_by_user_id)
-    field_handlers = build_field_handlers(document_type, include_suggested_fields=False)
+    field_handlers = build_field_handlers(document_type,
+                                          include_suggested_fields=False,
+                                          include_annotation_fields=False)
     field_handlers_by_field_code = {h.field_code: h for h in field_handlers}  # Dict[str, FieldHandler]
     already_sent_user_ids = set()
 
@@ -306,7 +342,6 @@ def process_notifications_on_document_change(task: ExtendedTask,
             log = CeleryTaskLogger(task)
             log.info(msgs_str)
 
-
         if FIELD_CODE_ASSIGNEE_ID in changes:
             send_notification(event=DocumentAssignedEvent.code,
                               log=log,
@@ -346,6 +381,9 @@ def values_look_equal(a, b) -> bool:
 
     import numbers
     if isinstance(a, numbers.Number) and isinstance(b, numbers.Number):
+        a = float(a)
+        b = float(b)
+
         delta = abs(a - b)
         da = 0 if a == 0 else 100 * delta / abs(a)
         db = 0 if b == 0 else 100 * delta / abs(b)

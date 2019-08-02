@@ -25,7 +25,7 @@
 # -*- coding: utf-8 -*-
 
 import traceback
-from typing import Set, Generator, List, Any
+from typing import Set, Generator, List, Any, Optional, Dict
 
 from celery import shared_task
 from celery.exceptions import SoftTimeLimitExceeded
@@ -37,14 +37,16 @@ from psycopg2 import InterfaceError, OperationalError
 from apps.common.log_utils import ProcessLogger
 from apps.document.models import Document, DocumentType
 from apps.rawdb.field_value_tables import (
-    cache_document_fields, adapt_table_structure, doc_fields_table_name)
+    adapt_table_structure, doc_fields_table_name)
 from apps.task.tasks import ExtendedTask, CeleryTaskLogger, Task, purge_task, call_task_func
 from apps.rawdb.app_vars import APP_VAR_DISABLE_RAW_DB_CACHING
+from apps.users.models import User
+from apps.rawdb.field_value_tables import cache_document_fields
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.2/LICENSE"
-__version__ = "1.2.2"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.3/LICENSE"
+__version__ = "1.2.3"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -358,6 +360,36 @@ def cache_document_fields_for_doc_ids_not_tracked(task: ExtendedTask, doc_ids: S
              max_retries=3)
 def cache_document_fields_for_doc_ids_tracked(task: ExtendedTask, doc_ids: Set):
     cache_document_fields_for_doc_ids(task, doc_ids)
+
+
+@shared_task(base=ExtendedTask,
+             bind=True,
+             soft_time_limit=6000,
+             default_retry_delay=10,
+             retry_backoff=True,
+             autoretry_for=(SoftTimeLimitExceeded, InterfaceError, OperationalError,),
+             max_retries=3)
+def cache_fields_for_docs_queryset(task: ExtendedTask,
+                                   doc_qr,
+                                   changed_by_user: User = None,
+                                   document_initial_load: bool = False,
+                                   generic_fields_changed: bool = True,
+                                   user_fields_changed: bool = True,
+                                   pre_detected_field_values: Optional[Dict[str, Any]] = None,
+                                   old_field_values: Dict[int, Dict[str, Any]] = None):
+    from apps.rawdb.field_value_tables import cache_document_fields
+    old_field_values = old_field_values or {}
+    for doc in doc_qr.select_related('document_type', 'project', 'status'):  # type: Document
+        log = CeleryTaskLogger(task)
+        cache_document_fields(
+            log=log,
+            document=doc,
+            cache_generic_fields=generic_fields_changed,
+            cache_user_fields=user_fields_changed,
+            pre_detected_field_codes_to_suggested_values=pre_detected_field_values,
+            changed_by_user=changed_by_user,
+            document_initial_load=document_initial_load,
+            old_field_values=old_field_values.get(doc.pk))
 
 
 def get_brief_call_stack() -> str:

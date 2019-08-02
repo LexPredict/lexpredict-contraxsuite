@@ -1,3 +1,29 @@
+"""
+    Copyright (C) 2017, ContraxSuite, LLC
+
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU Affero General Public License as
+    published by the Free Software Foundation, either version 3 of the
+    License, or (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU Affero General Public License for more details.
+
+    You should have received a copy of the GNU Affero General Public License
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+    You can also be released from the requirements of the license by purchasing
+    a commercial license from ContraxSuite, LLC. Buying such a license is
+    mandatory as soon as you develop commercial activities involving ContraxSuite
+    software without disclosing the source code of your own applications.  These
+    activities include: offering paid services to customers as an ASP or "cloud"
+    provider, processing documents on the fly in a web application,
+    or shipping ContraxSuite within a closed source product.
+"""
+# -*- coding: utf-8 -*-
+
 import datetime
 import os
 import re
@@ -10,16 +36,23 @@ from django.core.mail import EmailMultiAlternatives
 from jinja2 import Template
 
 from apps.common.contraxsuite_urls import doc_editor_url, root_url
+from apps.common.file_storage import get_file_storage
 from apps.common.log_utils import ProcessLogger, render_error
 from apps.document.models import Document
 from apps.rawdb.field_value_tables import FIELD_CODE_DOC_ID, FIELD_CODE_DOC_NAME, FIELD_CODE_PROJECT_ID, \
     FIELD_CODES_SHOW_BY_DEFAULT_NON_GENERIC, FIELD_CODES_SHOW_BY_DEFAULT_GENERIC, FIELD_CODES_HIDE_BY_DEFAULT, \
     EmptyDocumentQueryResults
 from apps.rawdb.rawdb.field_handlers import FieldHandler
-from apps.task.tasks import file_access_handler
 from apps.users.models import User
 from .models import DocumentDigestConfig, DocumentDigestSendDate, DIGEST_PERIODS_BY_CODE, \
     DOC_FILTERS_BY_CODE, DocumentNotificationSubscription
+
+__author__ = "ContraxSuite, LLC; LexPredict, LLC"
+__copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.3/LICENSE"
+__version__ = "1.2.3"
+__maintainer__ = "LexPredict, LLC"
+__email__ = "support@contraxsuite.com"
 
 
 def ensure_no_dir_change(fn: str):
@@ -32,7 +65,7 @@ def get_notification_template_resource(rfn: str) -> Optional[bytes]:
     if not fn.startswith(settings.NOTIFICATION_CUSTOM_TEMPLATES_PATH_IN_MEDIA):
         raise RuntimeError('File name should be inside its parent dir: {0}'.format(rfn))
 
-    res = file_access_handler.read(fn)
+    res = get_file_storage().read(fn)
     if res:
         return res
     fn = os.path.normpath(os.path.join(settings.NOTIFICATION_EMBEDDED_TEMPLATES_PATH, rfn))

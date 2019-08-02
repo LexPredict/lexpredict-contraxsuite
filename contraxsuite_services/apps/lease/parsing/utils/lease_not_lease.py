@@ -22,20 +22,24 @@
     provider, processing documents on the fly in a web application,
     or shipping ContraxSuite within a closed source product.
 """
+# -*- coding: utf-8 -*-
 
-"""
-    Arranges output of prepare_contracts_db.py to two folders: "lease" and "not_lease" depending on
-    the category name.
-"""
 import os
 import shutil
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.2/LICENSE"
-__version__ = "1.2.2"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.3/LICENSE"
+__version__ = "1.2.3"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
+
+
+"""
+    Arranges output of prepare_contracts_db.py to two folders: "lease" and "not_lease" depending on
+    the category name.
+"""
+
 
 if __name__ == '__main__':
     src = os.path.expanduser('~/lexpredict/misc/contracts_by_category')

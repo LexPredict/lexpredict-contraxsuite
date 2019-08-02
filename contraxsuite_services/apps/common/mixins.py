@@ -33,6 +33,7 @@ import re
 import traceback
 from collections import OrderedDict
 from functools import reduce
+from types import GeneratorType
 
 # Third-party imports
 import pandas as pd
@@ -70,14 +71,14 @@ from django.views.generic.edit import CreateView, DeleteView, UpdateView
 from django.views.generic.list import MultipleObjectMixin
 
 # Project imports
-from apps.common.app_vars import TRACK_API, TRACK_API_GREATER_THAN, TRACK_API_SAVE_SQL_LOG
 from apps.common.models import Action, CustomAPIRequestLog
+from apps.common.streaming_utils import csv_gen_from_dicts
 from apps.common.utils import cap_words, export_qs_to_file, download
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.2/LICENSE"
-__version__ = "1.2.2"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.3/LICENSE"
+__version__ = "1.2.3"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -718,10 +719,15 @@ class APIFormFieldsMixin:
 
     def get_fields_data(self):
         fields = OrderedDict()
-        serializer = self.options_serializer or self.get_serializer()
+        serializer_class = self.options_serializer or self.get_serializer()
+        try:
+            instance = self.get_object()
+        except:
+            instance = None
+        serializer = serializer_class(instance)
         model = serializer.Meta.model
 
-        for field_code, field_class in serializer().get_fields().items():
+        for field_code, field_class in serializer.get_fields().items():
             field_type = field_class.__class__.__name__
             fields[field_code] = {'field_type': field_type,
                                   'ui_element': self.get_ui_element(field_code, field_class)}
@@ -752,6 +758,12 @@ class APIFormFieldsMixin:
                         fields[field_code]['default'] = default_value
                 except:
                     pass
+
+        if instance:
+            instance_data = serializer_class(instance, many=False).data
+            for field_name, field_data in fields.items():
+                field_data['value'] = instance_data.get(field_name)
+
         return fields
 
     @action(detail=False, methods=['get'], url_path='form-fields')
@@ -787,13 +799,7 @@ class APIFormFieldsMixin:
              - default: bool - default (initial) field value for a new object (default NULL)
              - choices: array - choices to select from [{choice_id1: choice_verbose_name1, ....}] (default NULL)
         """
-        fields = self.get_fields_data()
-        instance = self.get_object()
-        serializer = self.options_serializer or self.get_serializer()
-        instance_data = serializer(instance).data
-        for field_name, field_data in fields.items():
-            field_data['value'] = instance_data.get(field_name)
-        return Response(fields)
+        return Response(self.get_fields_data())
 
 
 class JqListAPIMixin:
@@ -860,6 +866,13 @@ class JqListAPIMixin:
         return self.extra_data or {}
 
     def export(self, data, source_name, fmt='xlsx'):
+        # if generator, then export to csv using StreamingResponse
+        if isinstance(data, GeneratorType):
+            resp = StreamingHttpResponse(
+                csv_gen_from_dicts(data),
+                content_type='text/csv')
+            resp['Content-Disposition'] = 'attachment; filename="export.csv"'
+            return resp
         data = pd.DataFrame(data).fillna('')
         data = self.process_export_data(data)
         return download(data, fmt, file_name=source_name)
@@ -1136,14 +1149,17 @@ class APILoggingMixin(LoggingMixin):
         # do not log FileResponse and other possible large responses
         if isinstance(response, StreamingHttpResponse):
             return False
+        from apps.common.app_vars import TRACK_API
         return TRACK_API.val
 
     def handle_log(self):
         """
         Try to check if response time limit is enabled
         """
+        from apps.common.app_vars import TRACK_API_GREATER_THAN
         if self.log['response_ms'] <= TRACK_API_GREATER_THAN.val:
             return
+        from apps.common.app_vars import TRACK_API_SAVE_SQL_LOG
         if TRACK_API_SAVE_SQL_LOG.val:
             self.log['sql_log'] = '\n'.join(['({}) {}'.format(
                 q.get('time') or q.get('duration', 0)/1000, q.get('sql') or '')

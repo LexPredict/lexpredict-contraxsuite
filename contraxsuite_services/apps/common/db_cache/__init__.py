@@ -22,19 +22,12 @@
     provider, processing documents on the fly in a web application,
     or shipping ContraxSuite within a closed source product.
 """
-
-from django.conf import settings
-
-from apps.common.advancedcelery.fileaccess.file_access import FileAccessHandler
-from apps.common.advancedcelery.fileaccess.local_file_access import LocalFileAccess
-from apps.common.advancedcelery.fileaccess.nginx_http_file_access import NginxHttpFileAccess
+# -*- coding: utf-8 -*-
 
 
-def prepare_file_access_handler() -> FileAccessHandler:
-    access_type = settings.CELERY_FILE_ACCESS_TYPE
-    if access_type == 'Local':
-        return LocalFileAccess(settings.CELERY_FILE_ACCESS_LOCAL_ROOT_DIR)
-    elif access_type == 'Nginx':
-        return NginxHttpFileAccess(settings.CELERY_FILE_ACCESS_NGINX_ROOT_URL)
-    else:
-        return None
+__author__ = "ContraxSuite, LLC; LexPredict, LLC"
+__copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.3/LICENSE"
+__version__ = "1.2.3"
+__maintainer__ = "LexPredict, LLC"
+__email__ = "support@contraxsuite.com"

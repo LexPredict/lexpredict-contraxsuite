@@ -1,3 +1,29 @@
+"""
+    Copyright (C) 2017, ContraxSuite, LLC
+
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU Affero General Public License as
+    published by the Free Software Foundation, either version 3 of the
+    License, or (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU Affero General Public License for more details.
+
+    You should have received a copy of the GNU Affero General Public License
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+    You can also be released from the requirements of the license by purchasing
+    a commercial license from ContraxSuite, LLC. Buying such a license is
+    mandatory as soon as you develop commercial activities involving ContraxSuite
+    software without disclosing the source code of your own applications.  These
+    activities include: offering paid services to customers as an ASP or "cloud"
+    provider, processing documents on the fly in a web application,
+    or shipping ContraxSuite within a closed source product.
+"""
+# -*- coding: utf-8 -*-
+
 from django.conf import settings
 from django.contrib.auth.forms import password_validation
 from django.urls import reverse
@@ -6,9 +32,14 @@ from rest_auth.models import TokenModel
 from rest_framework import serializers
 from rest_framework.authentication import TokenAuthentication, exceptions
 from django.utils.translation import ugettext_lazy as _
-from apps.common.app_vars import ENABLE_AUTH_TOKEN_IN_QUERY_STRING
 from apps.common.models import AppVar
-from apps.users.models import User
+
+__author__ = "ContraxSuite, LLC; LexPredict, LLC"
+__copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.3/LICENSE"
+__version__ = "1.2.3"
+__maintainer__ = "LexPredict, LLC"
+__email__ = "support@contraxsuite.com"
 
 
 def token_creator(token_model, user, serializer):
@@ -46,6 +77,8 @@ class CookieAuthentication(TokenAuthentication):
         if not request.META.get('HTTP_AUTHORIZATION') and request.META['PATH_INFO'] not in token_exempt_urls:
             # second check to fetch auth_token from query string (GET params)
             # token should be just key without "Token "
+            from apps.common.app_vars import ENABLE_AUTH_TOKEN_IN_QUERY_STRING
+
             if ENABLE_AUTH_TOKEN_IN_QUERY_STRING.val and request.GET.get('auth_token'):
                 auth_token = request.GET.get('auth_token')
                 if auth_token:
@@ -70,13 +103,13 @@ class CookieAuthentication(TokenAuthentication):
         try:
             token = model.objects.select_related('user').get(key=key)
         except model.DoesNotExist:
-            raise exceptions.AuthenticationFailed(_('Invalid token.'))
+            raise exceptions.AuthenticationFailed(_('Your session has expired. Please login again.'))
 
         if not token.user.is_active:
             raise exceptions.AuthenticationFailed(_('User inactive or deleted.'))
 
         if self.is_token_expired(token):
-            raise exceptions.AuthenticationFailed('Token has expired')
+            raise exceptions.AuthenticationFailed('Your session has expired. Please login again')
 
         self.update_token_date(token)
 

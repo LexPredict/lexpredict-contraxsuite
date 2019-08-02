@@ -172,8 +172,10 @@ and going to setup HTTPS certificates.
     
     If you decide to create a separate disk then mount it at **/data** before running the
     setup script (next step).
-    For AWS use these instructions to make a separate disk available: https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ebs-using-volumes.html 
-          
+    For AWS use these instructions to make a separate disk available: https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ebs-using-volumes.html
+
+* Declare all required system or django variables (like DOCKER_DJANGO_SECRET_KEY) in setenv.sh or setenv_local.sh
+
 * Run script: **setup_local_contraxsuite_ubuntu_16_04.sh** and enter the information which it requests.
   
     The script will do the following:
@@ -255,8 +257,7 @@ poug8ydxkz26        contraxsuite_contrax-kibana               replicated        
 xseorkylt3p0        contraxsuite_contrax-logrotate            global              1/1                 tutum/logrotate:latest                                    
 1b451ku22b14        contraxsuite_contrax-metricbeat           replicated          0/0                 docker.elastic.co/beats/metricbeat:6.2.4                  
 quopp5ak19k3        contraxsuite_contrax-nginx                replicated          1/1                 nginx:stable                                              *:80->8080/tcp, *:443->4443/tcp
-ixkkplnixtmr        contraxsuite_contrax-rabbitmq             replicated          1/1                 rabbitmq:3-management                                     
-xc6axmngyygo        contraxsuite_contrax-tika                 global              1/1                 lexpredict/tika-server:latest                             
+ixkkplnixtmr        contraxsuite_contrax-rabbitmq             replicated          1/1                 rabbitmq:3-management                                                                 
 tl1iu3b8gj7f        contraxsuite_contrax-uwsgi                replicated          1/1                 lexpredict/lexpredict-contraxsuite:latest  
 
 ```

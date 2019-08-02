@@ -44,8 +44,8 @@ from apps.task.tasks import ExtendedTask, CeleryTaskLogger
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.1.9/LICENSE"
-__version__ = "1.1.9"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.3/LICENSE"
+__version__ = "1.2.3"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -85,6 +85,10 @@ class DeserializedObjectController:
         self._missed_object_validators = []
         self._logger = logger
         self._object_heap = None
+        self.do_basic_cleanup()
+
+    def do_basic_cleanup(self):
+        pass
 
     @property
     def object(self) -> Any:
@@ -282,6 +286,11 @@ class DeserializedDocumentField(DeserializedObjectController):
         self._add_object_validator(lambda context: self._validate_choice_values_removed(context))
         self._add_missed_object_validator(lambda context: self._clear_missed_field_detectors(save=False))
 
+    def do_basic_cleanup(self):
+        document_field = self._deserialized_object.object  # type: DocumentField
+        document_field.modified_by = None
+        document_field.created_by = None
+
     @property
     def object(self) -> DocumentField:
         return super().object
@@ -463,7 +472,7 @@ class DeserializedDocumentField(DeserializedObjectController):
 class DeserializedDocumentType(DeserializedObjectController):
 
     def __init__(self,
-                 deserialized_object,
+                 deserialized_object: DeserializedObject,
                  auto_fix_validation_errors: bool,
                  remove_missed_in_dump_objects: bool,
                  logger: ProcessLogger = None):
@@ -472,6 +481,11 @@ class DeserializedDocumentType(DeserializedObjectController):
         self._remove_missed_in_dump_objects = remove_missed_in_dump_objects
         self._set_save_order([DocumentFieldCategory, DocumentField])
         self._add_missed_object_validator(lambda context: self._clear_missed_fields(save=False))
+
+    def do_basic_cleanup(self):
+        document_type = self._deserialized_object.object  # type: DocumentType
+        document_type.modified_by = None
+        document_type.created_by = None
 
     @property
     def object(self) -> DocumentType:

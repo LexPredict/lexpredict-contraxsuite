@@ -22,6 +22,22 @@
     provider, processing documents on the fly in a web application,
     or shipping ContraxSuite within a closed source product.
 """
+# -*- coding: utf-8 -*-
+
+import json
+import os
+from concurrent.futures import ThreadPoolExecutor
+from subprocess import call
+
+import html2text
+
+__author__ = "ContraxSuite, LLC; LexPredict, LLC"
+__copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.3/LICENSE"
+__version__ = "1.2.3"
+__maintainer__ = "LexPredict, LLC"
+__email__ = "support@contraxsuite.com"
+
 
 """
 Prepares a dataset of examples of different types of contracts.
@@ -43,20 +59,6 @@ Output:
             fileMK.txt
 The output dir structure is ready for loading via sklearn load_files() function.
 """
-
-import json
-import os
-from concurrent.futures import ThreadPoolExecutor
-from subprocess import call
-
-import html2text
-
-__author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.2/LICENSE"
-__version__ = "1.2.2"
-__maintainer__ = "LexPredict, LLC"
-__email__ = "support@contraxsuite.com"
 
 
 def escape_fn(filename):

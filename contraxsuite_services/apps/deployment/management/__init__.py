@@ -22,46 +22,12 @@
     provider, processing documents on the fly in a web application,
     or shipping ContraxSuite within a closed source product.
 """
-from apps.common.advancedcelery.fileaccess.local_file_access import LocalFileAccess
-from nose.tools import assert_list_equal, assert_equal
-import os
-import tempfile
+# -*- coding: utf-8 -*-
+
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.2/LICENSE"
-__version__ = "1.2.2"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.3/LICENSE"
+__version__ = "1.2.3"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
-
-
-def test_local_file_access():
-    temp_dir = tempfile.mkdtemp()
-    sub_dir_rel = os.path.join('sub1', 'sub2')
-    os.makedirs(os.path.join(temp_dir, sub_dir_rel))
-
-    with open(os.path.join(temp_dir, 'sub1/sub2', 'file.txt'), 'w') as f:
-        f.write('Hello, World!')
-
-    with open(os.path.join(temp_dir, 'sub1', 'file2.txt'), 'w') as f:
-        f.write('Hello, World2!')
-
-    lfa = LocalFileAccess(root_dir=temp_dir)
-    assert_list_equal(lfa.list_documents('sub1/sub2'), ['sub1/sub2/file.txt'])
-    assert_list_equal(lfa.list_documents('sub1'), ['sub1/file2.txt', 'sub1/sub2/file.txt'])
-
-    with lfa.get_as_local_fn('sub1/sub2/file.txt') as (fn, _uri):
-        with open(fn, 'r') as f:
-            assert_equal(f.readline(), 'Hello, World!')
-
-
-#def test_nginx():
-#    from apps.common.advancedcelery.fileaccess.nginx_http_file_access import NginxHttpFileAccess
-#    root_uri = 'http://localhost:8888/media/data'
-#    fa = NginxHttpFileAccess(root_url=root_uri)
-#    print(fa.list(''))
-#    print(fa.list('documents'))
-#
-#    with fa.get_local_fn('documents/2.txt') as (fn, _uri):
-#        with open(fn, 'r') as f:
-#            print(f.readline())

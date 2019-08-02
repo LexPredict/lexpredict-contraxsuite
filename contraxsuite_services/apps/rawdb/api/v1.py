@@ -24,33 +24,36 @@
 """
 # -*- coding: utf-8 -*-
 
-from django.db.models import Q
 import time
 from collections import defaultdict
 from typing import Dict, List, Any, Set
 
+import rest_framework.views
 from django.conf.urls import url
+from django.db import transaction
+from django.db.models import Q, F
 from django.http import StreamingHttpResponse
 from rest_framework.response import Response
-import rest_framework.views
 
-from apps.common.errors import APIRequestError
 import apps.common.mixins
+from apps.common.errors import APIRequestError
 from apps.common.streaming_utils import csv_gen, GeneratorList
 from apps.common.url_utils import as_bool, as_int, as_int_list, as_str_list
 from apps.document.models import DocumentType
 from apps.project.models import Project
 from apps.rawdb.constants import FT_COMMON_FILTER, FT_USER_DOC_GRID_CONFIG
-from apps.rawdb.field_value_tables import get_columns, query_documents, DocumentQueryResults, \
-    FIELD_CODES_SHOW_BY_DEFAULT_GENERIC, FIELD_CODES_SHOW_BY_DEFAULT_NON_GENERIC, FIELD_CODES_HIDE_FROM_CONFIG_API
+from apps.rawdb.field_value_tables import get_columns, get_annotation_columns, \
+    query_documents, DocumentQueryResults, \
+    FIELD_CODES_SHOW_BY_DEFAULT_GENERIC, FIELD_CODES_SHOW_BY_DEFAULT_NON_GENERIC, \
+    FIELD_CODES_HIDE_FROM_CONFIG_API, FIELD_CODE_ANNOTATION_SUFFIX
 from apps.rawdb.models import SavedFilter
 from apps.rawdb.rawdb.field_handlers import ColumnDesc
 from apps.rawdb.rawdb.query_parsing import parse_order_by
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.2/LICENSE"
-__version__ = "1.2.2"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.3/LICENSE"
+__version__ = "1.2.3"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -151,12 +154,14 @@ class RawDBConfigAPIView(apps.common.mixins.APILoggingMixin, rest_framework.view
 
         for project_id, columns, column_filters, order_by in SavedFilter.objects \
                 .filter(user=request.user, project_id__isnull=False, filter_type=FT_USER_DOC_GRID_CONFIG) \
+                .filter(document_type_id=F('project__type_id')) \
+                .order_by('pk') \
                 .values_list('project_id', 'columns', 'column_filters', 'order_by'):
-            user_doc_grid_configs_by_project[project_id].append({
+            user_doc_grid_configs_by_project[project_id] = {
                 'columns': columns,
                 'column_filters': column_filters,
                 'order_by': order_by
-            })
+            }
 
         return Response({
             'document_type_schema': document_type_schema,
@@ -183,6 +188,12 @@ class DocumentsAPIView(rest_framework.views.APIView):
             project_ids = as_int_list(request.GET, 'project_ids')  # type: List[int]
 
             columns = as_str_list(request.GET, 'columns')
+
+            include_annotations = as_bool(request.GET, 'associated_text')
+            if include_annotations:
+                all_annotation_columns = get_annotation_columns(document_type)
+                columns += [i.field_code for i in all_annotation_columns
+                            if i.field_code.rstrip(FIELD_CODE_ANNOTATION_SUFFIX) in columns]
 
             fmt = request.GET.get('fmt') or self.FMT_JSON
 
@@ -219,22 +230,27 @@ class DocumentsAPIView(rest_framework.views.APIView):
             if project_ids and save_filter:
                 column_filters_dict = {c: f for c, f in column_filters}
                 for project_id in project_ids:
-                    SavedFilter.objects.update_or_create(user=request.user,
+                    with transaction.atomic():
+                        obj = SavedFilter.objects.create(user=request.user,
                                                          document_type=document_type,
                                                          filter_type=FT_USER_DOC_GRID_CONFIG,
                                                          project_id=project_id,
-                                                         defaults={
-                                                             'user': request.user,
-                                                             'document_type': document_type,
-                                                             'filter_type': FT_USER_DOC_GRID_CONFIG,
-                                                             'project_id': project_id,
-                                                             'columns': columns,
-                                                             'column_filters': column_filters_dict,
-                                                             'title': None,
-                                                             'order_by': [(column, direction.value) for
-                                                                          column, direction in
-                                                                          order_by] if order_by else None
-                                                         })
+                                                         columns=columns,
+                                                         column_filters=column_filters_dict,
+                                                         title=None,
+                                                         order_by=[(column, direction.value)
+                                                                   for
+                                                                   column, direction in
+                                                                   order_by] if order_by
+                                                         else None
+                                                         )
+                        SavedFilter.objects.filter(user=request.user,
+                                                   document_type=document_type,
+                                                   filter_type=FT_USER_DOC_GRID_CONFIG,
+                                                   project_id=project_id) \
+                            .exclude(pk=obj.pk) \
+                            .delete()
+
             query_results = query_documents(requester=request.user,
                                             document_type=document_type,
                                             project_ids=project_ids,
@@ -247,7 +263,8 @@ class DocumentsAPIView(rest_framework.views.APIView):
                                             return_documents=return_data,
                                             return_reviewed_count=return_reviewed,
                                             return_total_count=return_total,
-                                            ignore_errors=ignore_errors)  # type: DocumentQueryResults
+                                            ignore_errors=ignore_errors,
+                                            include_annotation_fields=True)  # type: DocumentQueryResults
 
             if fmt.lower() == 'csv':
                 if not return_data:
@@ -293,7 +310,8 @@ class ProjectStatsAPIView(rest_framework.views.APIView):
                                             saved_filter_ids=saved_filters,
                                             return_reviewed_count=True,
                                             return_documents=False,
-                                            return_total_count=True)  # type: DocumentQueryResults
+                                            return_total_count=True,
+                                            include_annotation_fields=True)  # type: DocumentQueryResults
             if not query_results:
                 return Response({'time': time.time() - start})
 

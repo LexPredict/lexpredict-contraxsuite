@@ -26,7 +26,7 @@
 
 # Standard imports
 import traceback
-from typing import Dict
+from typing import Dict, Tuple
 
 # Third-party imports
 import numpy as np
@@ -35,13 +35,14 @@ import rest_framework.views
 # Django imports
 from django.conf.urls import url
 from django.contrib.postgres.aggregates.general import StringAgg
-from django.db.models import Min, Max, Subquery, Prefetch
+from django.db.models import Min, Max, Subquery, Prefetch, QuerySet
+from django.db.models.functions import Concat
 from django.http import JsonResponse
 from django.urls import reverse
 from elasticsearch import Elasticsearch
 from rest_framework import serializers, routers, viewsets, status
 from rest_framework.decorators import action
-from rest_framework.exceptions import ValidationError as DRFValidationError
+from rest_framework.exceptions import APIException, ValidationError as DRFValidationError
 from rest_framework.generics import ListAPIView
 from rest_framework.permissions import BasePermission, IsAuthenticated
 from rest_framework.response import Response
@@ -56,10 +57,13 @@ from apps.common.models import ReviewStatus
 from apps.common.url_utils import as_bool
 from apps.common.utils import get_api_module
 from apps.document import signals
-from apps.document.admin import DocumentFieldForm, UsersTasksValidationAdmin, PARAM_OVERRIDE_WARNINGS
+from apps.document.admin import (
+    DocumentFieldForm, UsersTasksValidationAdmin, PARAM_OVERRIDE_WARNINGS, DocumentTypeForm)
+from apps.document.async_tasks.detect_field_values_task import DocDetectFieldValuesParams
 from apps.document.field_type_registry import FIELD_TYPE_REGISTRY
 from apps.document.field_types import FieldType
 from apps.document.fields_detection import field_detection
+from apps.document.fields_detection.detector_field_matcher import DetectorFieldMatcher
 from apps.document.fields_detection.field_detection_celery_api import run_detect_field_values_for_document
 from apps.document.fields_processing.field_processing_utils import build_field_value_by_id_hash
 from apps.document.fields_processing.field_value_cache import cache_field_values
@@ -70,10 +74,11 @@ from apps.users.models import User
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.2/LICENSE"
-__version__ = "1.2.2"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.3/LICENSE"
+__version__ = "1.2.3"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
+
 
 common_api_module = get_api_module('common')
 project_api_module = get_api_module('project')
@@ -257,6 +262,13 @@ class GenericDocumentSerializer(apps.common.mixins.SimpleRelationSerializer):
                   'max_currency_amount', 'max_currency_name']
 
 
+class FakeRequest:
+
+    def __init__(self):
+        self.GET = {'columns': 'document_id',
+                    'save_filter': 'false'}
+
+
 class DocumentWithFieldsDetailSerializer(BaseDocumentSerializer):
     """
     Serializer for document review page with detailed document field values
@@ -264,6 +276,8 @@ class DocumentWithFieldsDetailSerializer(BaseDocumentSerializer):
     field_value_objects = serializers.SerializerMethodField()
     field_values = serializers.SerializerMethodField()
     notes = DocumentNoteDetailSerializer(source='documentnote_set', many=True)
+    prev_id = serializers.SerializerMethodField()
+    next_id = serializers.SerializerMethodField()
 
     class Meta:
         model = Document
@@ -271,7 +285,60 @@ class DocumentWithFieldsDetailSerializer(BaseDocumentSerializer):
                   'status', 'status_data', 'available_statuses_data',
                   'assignee', 'assign_date', 'assignee_data', 'available_assignees_data',
                   'description', 'title', 'full_text',
-                  'notes', 'field_values', 'field_value_objects']
+                  'notes', 'field_values', 'field_value_objects',
+                  'prev_id', 'next_id']
+
+    def get_neighbours(self, document, use_saved_filter=True):
+        prev_id = next_id = order_by = filters = None
+        user = self.context['request'].user
+        project_id = document.project_id
+        from apps.rawdb.models import SavedFilter
+        from apps.rawdb.api.v1 import DocumentsAPIView
+
+        if use_saved_filter:
+            try:
+                saved_filter = SavedFilter.objects.get(project_id=project_id, user=user)
+                order_by = saved_filter.order_by
+                filters = saved_filter.column_filters
+            except:
+                pass
+
+        if order_by is None:
+            order_by = [['document_name', 'asc']]
+
+        # just use DocumentsAPIView and SavedFilter to fetch ids in right order
+        request = FakeRequest()
+        request.user = user
+        request.GET.update({
+            'project_ids': str(project_id),
+            'order_by': ','.join('{}:{}'.format(field, order) for field, order in order_by)})
+        if filters:
+            for field_name, condition in filters.items():
+                request.GET['where_{}'.format(field_name)] = condition
+
+        doc_type_code = document.project.type.code
+        view = DocumentsAPIView(request=request, format_kwarg=doc_type_code)
+        resp = view.get(request=request, document_type_code=doc_type_code).data['items']
+        ids = [i['document_id'] for i in resp]
+
+        if document.pk in ids:
+            pos = ids.index(document.pk)
+        else:
+            return self.get_neighbours(document, use_saved_filter=False)
+
+        prev_ids = ids[:pos]
+        if prev_ids:
+            prev_id = prev_ids[-1]
+        next_ids = ids[pos + 1:]
+        if next_ids:
+            next_id = next_ids[0]
+        return prev_id, next_id
+
+    def get_prev_id(self, obj):
+        return self.get_neighbours(obj)[0]
+
+    def get_next_id(self, obj):
+        return self.get_neighbours(obj)[1]
 
     def get_field_values(self, doc: Document):
         fvals = doc.documentfieldvalue_set.filter(removed_by_user=False)
@@ -341,7 +408,7 @@ class DocumentWithFieldsListSerializer(BaseDocumentSerializer):
         model = Document
         fields = ['pk', 'name', 'document_type',
                   'description', 'title', 'file_size',
-                  'status', 'status_data', 'status_name',
+                  'status', 'status_data', 'status_name', 'field_values',
                   'assignee', 'assign_date', 'assignee_data', 'assignee_name']
 
     def get_field_values(self, doc):
@@ -464,7 +531,7 @@ class DocumentViewSet(DocumentPermissionViewMixin, apps.common.mixins.APIActionM
     queryset = Document.objects.all()
 
     def get_queryset(self):
-        qs = super().get_queryset()
+        qs = Document.objects.filter(project__delete_pending=False)
 
         party_id = self.request.GET.get("party_id")
         if party_id:
@@ -619,23 +686,6 @@ class DocumentViewSet(DocumentPermissionViewMixin, apps.common.mixins.APIActionM
         return Response({"count_deleted": count_deleted}, status=200)
 
 
-def create_field_annotation(field_uid, field_type: str):
-    """
-    Create annotation for "metadata__field_values__uid__maybe" json field
-    """
-    _field_uid = field_uid.replace('-', '_')
-    output_field = FIELD_TYPE_REGISTRY[field_type].get_postgres_transform_map()
-
-    nested_route = [field_uid]
-    if isinstance(output_field, tuple):
-        nested_route.extend(output_field[1])
-        output_field = output_field[0]
-
-    transform = apps.common.mixins.NestedKeyTextTransform(nested_route, 'field_values', output_field=output_field())
-    transform.key_name = field_uid
-    return {_field_uid: transform}
-
-
 class ProjectDocumentsWithFieldsViewSet(apps.common.mixins.APILoggingMixin,
                                         DocumentPermissionViewMixin, apps.common.mixins.APIActionMixin,
                                         apps.common.mixins.JqListAPIMixin, viewsets.ReadOnlyModelViewSet):
@@ -650,7 +700,7 @@ class ProjectDocumentsWithFieldsViewSet(apps.common.mixins.APILoggingMixin,
     def get_object(self, *args, **kwargs):
         doc_pk = self.kwargs.get('pk')
         if not doc_pk:
-            return super(ProjectDocumentsWithFieldsViewSet, self).get_object()
+            return super().get_object()
 
         query_set = self.get_project_queryset()
         doc = query_set.get(*args, **{'pk': doc_pk})  # type: Document
@@ -1154,7 +1204,63 @@ class DocumentFieldListSerializer(DocumentFieldDetailSerializer):
     category = DocumentFieldCategorySerializer(many=False, read_only=True)
 
 
-class DocumentFieldCreateSerializer(serializers.ModelSerializer):
+class ModelFormBasedSerializer(serializers.ModelSerializer):
+    """
+    Model Serializer based on Model Form to validate input data using form fields
+    """
+    model_form_class = None
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if self.model_form_class is None:
+            raise APIException('ModelForm class is not defined')
+
+    def get_fields(self):
+        """
+        Set field readonly if form field is disabled
+        """
+        serializer_fields = super().get_fields()
+        try:
+            model_form = self.model_form_class(instance=self.instance)
+        except Exception as e:
+            raise APIException(str(e))
+        for field_name, form_field in model_form.fields.items():
+            if field_name in serializer_fields and form_field.disabled:
+                serializer_fields[field_name].read_only = True
+            if field_name in serializer_fields and form_field.help_text:
+                serializer_fields[field_name].help_text = form_field.help_text
+        return serializer_fields
+
+    def is_valid(self, raise_exception=False):
+        form_errors = {}
+        request = self.context['request']
+        form_data = request.data
+
+        # pass full data to model form
+        if request.method == 'PATCH':
+            _form_data = self.to_representation(self.instance)
+            _form_data.update(form_data)
+            form_data = _form_data
+
+        model_form = self.model_form_class(form_data, instance=self.instance)
+        if not model_form.is_valid():
+            form_errors = model_form.errors
+        super().is_valid(raise_exception=False)
+
+        all_errors = dict(self.errors)
+        all_errors.update(form_errors)
+        if all_errors:
+            raise DRFValidationError(all_errors)
+
+        # update validated data using form data in case if some values were changed in form clean()
+        self._validated_data = {k: model_form.cleaned_data[k]
+                                for k, _ in self._validated_data.items()}
+        return True
+
+
+class DocumentFieldCreateSerializer(ModelFormBasedSerializer):
+    model_form_class = DocumentFieldForm
+
     class Meta:
         model = DocumentField
         fields = ['document_type', 'code', 'long_code', 'title', 'description', 'type',
@@ -1167,34 +1273,8 @@ class DocumentFieldCreateSerializer(serializers.ModelSerializer):
                   'hide_until_js', 'display_yes_no']
 
     def is_valid(self, raise_exception=False):
-        form_errors = {}
-        req = self.context['request']
-        form_data = req.data
-        if req.method == 'PATCH':
-            if 'document_type' in form_data:
-                raise DRFValidationError({
-                    'document_type': 'Document type can not be changed on existing fields because '
-                                     'it can lead to data corruption.',
-                })
-            if 'type' in form_data:
-                raise DRFValidationError({
-                    'type': 'Data type can not be changed on existing fields because '
-                            'it can lead to data corruption.',
-                })
-            _form_data = self.to_representation(self.instance)
-            _form_data.update(form_data)
-            form_data = _form_data
-        model_form = DocumentFieldForm(form_data)
-        if not model_form.is_valid():
-            form_errors = model_form.errors
-        super().is_valid(raise_exception=False)
-
-        if not (self.errors or form_errors):
-            UsersTasksValidationAdmin.validate_running_tasks(req, form_errors)
-
-        if self.errors or form_errors:
-            form_errors.update(self.errors)
-            raise DRFValidationError(form_errors)
+        super().is_valid()
+        UsersTasksValidationAdmin.validate_running_tasks(self.context['request'], self.errors)
         return True
 
     def save(self, **kwargs):
@@ -1285,7 +1365,7 @@ class DocumentFieldDetectorDetailSerializer(apps.common.mixins.SimpleRelationSer
     class Meta:
         model = DocumentFieldDetector
         fields = ['uid', 'category', 'field',
-                  'field__code', 'field__title', 'field__uid',
+                  'field__code', 'field__title', 'field__uid', 'field__document_type__title',
                   'exclude_regexps', 'definition_words', 'include_regexps',
                   'regexps_pre_process_lower', 'detected_value', 'extraction_hint', 'text_part']
 
@@ -1326,8 +1406,8 @@ class DocumentFieldDetectorCreateSerializer(serializers.ModelSerializer):
     def validate(self, data):
         if self.context['request'].method == 'PATCH' and 'field' not in data:
             return
-        DocumentFieldDetector.validate_detected_value(data['field'].type,
-                                                      data.get('detected_value'))
+        DetectorFieldMatcher.validate_detected_value(data['field'].type,
+                                                     data.get('detected_value'))
 
 
 class DocumentFieldDetectorViewSet(apps.common.mixins.JqListAPIMixin,
@@ -1416,7 +1496,8 @@ class DocumentTypeDetailSerializer(apps.common.mixins.SimpleRelationSerializer):
         return ret
 
 
-class DocumentTypeCreateSerializer(serializers.ModelSerializer):
+class DocumentTypeCreateSerializer(ModelFormBasedSerializer):
+    model_form_class = DocumentTypeForm
     fields = FieldSerializer(many=True, read_only=True)
 
     class Meta:
@@ -1469,17 +1550,9 @@ class DocumentTypeCreateSerializer(serializers.ModelSerializer):
                     f'This will cause deleting all their stored field values:<br/>\n{field_values_to_delete}.'
 
     def is_valid(self, raise_exception=False):
-        form_errors = dict()
-        req = self.context['request']
-        super().is_valid(raise_exception=False)
-
-        if not (self.errors or form_errors):
-            UsersTasksValidationAdmin.validate_running_tasks(req, form_errors)
-            self.validate_may_delete_data(form_errors)
-
-        if self.errors or form_errors:
-            form_errors.update(self.errors)
-            raise DRFValidationError(form_errors)
+        super().is_valid()
+        UsersTasksValidationAdmin.validate_running_tasks(self.context['request'], self.errors)
+        self.validate_may_delete_data(self.errors)
         return True
 
     def save(self, **kwargs):
@@ -1488,21 +1561,17 @@ class DocumentTypeCreateSerializer(serializers.ModelSerializer):
         return instance
 
 
-class DocumentTypeOptionsSerializer(serializers.ModelSerializer):
+class DocumentTypeOptionsSerializer(DocumentTypeCreateSerializer):
     field_categories = serializers.PrimaryKeyRelatedField(
-        source='fields__category', queryset=DocumentFieldCategory.objects.all())
+        source='fields__category',
+        queryset=DocumentFieldCategory.objects.all(), allow_empty=True, allow_null=True)
     fields = FieldSerializer(many=True, required=False)
 
     class Meta:
         model = DocumentType
-        fields = ['uid', 'code', 'title', 'fields', 'search_fields', 'editor_type', 'field_categories',
+        fields = ['uid', 'code', 'title', 'fields', 'search_fields', 'editor_type',
+                  'field_categories',
                   'created_by', 'created_date', 'modified_by', 'modified_date']
-
-    def get_fields(self):
-        fields = super().get_fields()
-        if self.instance:
-            fields.pop('field_categories')
-        return fields
 
 
 class DocumentTypeViewSet(apps.common.mixins.JqListAPIMixin,
@@ -1564,7 +1633,7 @@ class DocumentTypeViewSet(apps.common.mixins.JqListAPIMixin,
         Patch for /form-field endpoint
         """
         fields = super().get_fields_data()
-        fields['fields']['field_categories'] = fields.pop('field_categories')
+        fields['fields']['field_categories'] = fields.pop('field_categories', None)
         fields['fields']['ui_element'] = fields['search_fields']['ui_element']
         fields['fields']['field_type'] = fields['search_fields']['field_type']
         fields['fields']['choices'] = fields['search_fields']['choices']
@@ -1576,19 +1645,72 @@ class DocumentTypeViewSet(apps.common.mixins.JqListAPIMixin,
 # Document Field Value Views
 # --------------------------------------------------------
 
+class GeneratorListSerializer(serializers.ListSerializer):
+    """
+    Return data as a generator instead of a list
+    """
+
+    def to_representation(self, data):
+        """
+        List of object instances -> List of dicts of primitive datatypes.
+        """
+        # Dealing with nested relationships, data can be a Manager,
+        # so, get a queryset from the Manager if needed
+        # Use an iterator on the queryset to allow large querysets to be
+        # exported without excessive memory usage
+        if isinstance(data, models.Manager):
+            iterable = data.all().iterator()
+        elif isinstance(data, models.QuerySet):
+            iterable = data.iterator()
+        else:
+            iterable = data
+        # Return a generator rather than a list so that streaming responses
+        # can be used
+        return (self.unify_representation(item) for item in iterable)
+
+    def unify_representation(self, item):
+        # if some nested field is not found i.e. document.project.name
+        # but document has no associated project
+        # this field will be missed in item data, so we need to override it
+        # in case if we need strong fields mapping
+        item_representation = self.child.to_representation(item)
+        for field in self.child.Meta.fields:
+            if field not in item_representation:
+                item_representation[field] = None
+        return item_representation
+
+    @property
+    def data(self):
+        # Note we deliberately return the super of ListSerializer to avoid
+        # instantiating a ReturnList, which would force evaluating the generator
+        return super(serializers.ListSerializer, self).data
+
+
 class DocumentFieldValueSerializer(serializers.ModelSerializer):
     adapter = None
 
     value = serializers.SerializerMethodField()
+    field_name = serializers.SerializerMethodField()
+    project = serializers.CharField(source='document.project.name', read_only=True)
+    document_name = serializers.CharField(source='document.name', read_only=True)
 
     class Meta:
         model = DocumentFieldValue
+        list_serializer_class = GeneratorListSerializer
         fields = ['pk',
                   'document',
+                  'document_name',
                   'field',
+                  'field_name',
+                  'project',
                   'location_start', 'location_end', 'location_text',
                   'value',
                   'created_by', 'created_date', 'modified_by', 'modified_date']
+
+    def get_field_name(self, obj: DocumentFieldValue):
+        return '{type}: {field}'.format(
+            type=obj.field.document_type.title if obj.field.document_type else 'NA',
+            field=obj.field.title)
 
     def get_value(self, obj: DocumentFieldValue):
         return obj.python_value
@@ -1626,6 +1748,14 @@ class DocumentFieldValueViewSet(apps.common.mixins.JqListAPIMixin, viewsets.Mode
         if value:
             qs = qs.filter(value__val=value)
 
+        include_removed_by_user = self.request.GET.get('include_removed_by_user')
+        if not include_removed_by_user == 'true':
+            qs = qs.filter(removed_by_user=False)
+
+        qs = qs.annotate(
+            document_name=F('document__name'),
+            project=F('document__project__name'),
+            field_name=Concat('field__document_type__title', Value(': '), 'field__title'))
         return qs.prefetch_related('field')
 
     def destroy(self, request, *args, **kwargs):
@@ -1754,14 +1884,17 @@ contained in the document but it is not specified where exactly it is contained.
     return doc, _to_dto(field_value)
 
 
-def cache_and_detect_field_values(doc: Document, user: User = None):
+def cache_and_detect_field_values(doc: Document,
+                                  user: User = None,
+                                  updated_field_codes: List[str] = None):
     # First pre-cache f i eld_values right in web-api thread to avoid missync between
     # just stored DocumentFieldValue-s
     cache_field_values(doc, None, save=True, changed_by_user=user)
 
     # Next start field re-detection and re-caching in Celery because there can be other fields
     # depending on the changed fields.
-    run_detect_field_values_for_document(doc.id)
+    dcptrs = DocDetectFieldValuesParams(doc.pk, updated_field_codes=updated_field_codes)
+    run_detect_field_values_for_document(dcptrs, user=user)
 
 
 def do_delete_document_field_value(pk) -> Tuple[Document, Dict]:
@@ -1821,7 +1954,14 @@ class AnnotationViewSet(viewsets.ModelViewSet):
     def update(self, request, *args, **kwargs):
         try:
             doc, res = do_save_document_field_value(request.data, request.user)
-            cache_and_detect_field_values(doc, user=request.user)
+
+            updated_field_codes = []
+            field_id = request.data.get('field')
+            if field_id:
+                updated_field_codes = [DocumentField.objects.get(uid=field_id).code]
+            cache_and_detect_field_values(doc,
+                                          user=request.user,
+                                          updated_field_codes=updated_field_codes)
         except Exception as e:
             res = render_error_json(None, e)
 
@@ -1972,26 +2112,24 @@ class StatsAPIView(rest_framework.views.APIView):
 
         # get admin tasks data
         task_api_module = get_api_module('task')
-        task_api_view = task_api_module.TaskViewSet(request=request)
+        task_api_view = task_api_module.TaskViewSet(request=request, action='stats')
         task_api_view.format_kwarg = {}
-        admin_task_df = pd.DataFrame(task_api_view.list_documents(request=request).data)
+        admin_task_df = pd.DataFrame(task_api_view.list(request=request).data)
         admin_task_total_count = admin_task_df.shape[0]
         admin_task_by_status_count = dict(admin_task_df.groupby(['status']).size()) \
             if not admin_task_df.empty else 0
 
         # get projects data
-        project_api_view = project_api_module.ProjectViewSet(request=request)
+        project_api_view = project_api_module.ProjectViewSet(request=request, action='stats')
         project_api_view.format_kwarg = {}
-        project_data = project_api_view.list_documents(request=request).data
+        project_data = project_api_view.list(request=request).data
         if not project_data:
             project_total_count = project_completed_count = project_completed_weight = \
-                project_progress_avg = project_documents_total_count = \
-                project_documents_unique_count = 0
+                project_progress_avg = project_documents_total_count = 0
         else:
-            for i in project_data:
-                progress_data = i.pop('progress')
-                i.update(progress_data)
             project_df = pd.DataFrame(project_data)
+            project_df['progress'] = project_df.apply(lambda row: (row['reviewed_documents_count'] / row['total_documents_count'] * 100)
+                if row['total_documents_count'] else 0, axis=1)
             project_df['completed'] = np.where(project_df['progress'] == 100, 1, 0)
             project_total_count = project_df.shape[0]
             project_df_sum = project_df.sum()
@@ -1999,35 +2137,6 @@ class StatsAPIView(rest_framework.views.APIView):
             project_completed_weight = round(project_completed_count / project_total_count * 100, 1)
             project_progress_avg = round(project_df.mean().progress, 1)
             project_documents_total_count = project_df_sum.total_documents_count
-            project_documents_unique_count = Document.objects.filter(
-                taskqueue__project__isnull=False) \
-                .distinct().count()
-
-        # get task queues data
-        task_queue_api_view = project_api_module.TaskQueueViewSet(request=request)
-        task_queue_api_view.format_kwarg = {}
-        task_queue_data = task_queue_api_view.list_documents(request=request).data
-        if not task_queue_data:
-            task_queue_total_count = task_queue_completed_count = task_queue_completed_weight = \
-                task_queue_progress_avg = task_queue_documents_total_count = \
-                task_queue_documents_unique_count = task_queue_reviewers_unique_count = 0
-        else:
-            for i in task_queue_data:
-                progress_data = i.pop('progress')
-                i.update(progress_data)
-            task_queue_df = pd.DataFrame(task_queue_data)
-            task_queue_df['completed'] = np.where(task_queue_df['progress'] == 100, 1, 0)
-            task_queue_total_count = task_queue_df.shape[0]
-            task_queue_df_sum = task_queue_df.sum()
-            task_queue_completed_count = task_queue_df_sum.completed
-            task_queue_completed_weight = round(
-                task_queue_completed_count / task_queue_total_count * 100, 1)
-            task_queue_progress_avg = round(task_queue_df.mean().progress, 1)
-            task_queue_documents_total_count = task_queue_df_sum.total_documents_count
-            task_queue_documents_unique_count = Document.objects.filter(taskqueue__isnull=False) \
-                .distinct().count()
-            task_queue_reviewers_unique_count = User.objects.filter(taskqueue__isnull=False) \
-                .distinct().count()
 
         # set counts depending on user role
         documents = Document.objects
@@ -2173,14 +2282,6 @@ class StatsAPIView(rest_framework.views.APIView):
             "project_completed_weight": project_completed_weight,
             "project_progress_avg": project_progress_avg,
             "project_documents_total_count": project_documents_total_count,
-            "project_documents_unique_count": project_documents_unique_count,
-            "task_queue_total_count": task_queue_total_count,
-            "task_queue_completed_count": task_queue_completed_count,
-            "task_queue_completed_weight": task_queue_completed_weight,
-            "task_queue_progress_avg": task_queue_progress_avg,
-            "task_queue_documents_total_count": task_queue_documents_total_count,
-            "task_queue_documents_unique_count": task_queue_documents_unique_count,
-            "task_queue_reviewers_unique_count": task_queue_reviewers_unique_count,
             "admin_task_total_count": admin_task_total_count,
             "admin_task_by_status_count": admin_task_by_status_count,
         }

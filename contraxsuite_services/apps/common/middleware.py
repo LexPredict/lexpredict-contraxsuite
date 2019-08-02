@@ -48,8 +48,8 @@ import auth
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.2/LICENSE"
-__version__ = "1.2.2"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.3/LICENSE"
+__version__ = "1.2.3"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -175,17 +175,25 @@ class RequestUserMiddleware(MiddlewareMixin):
                 update_save_info, dispatch_uid=(self.__class__, request,), weak=False)
             signals.m2m_changed.connect(
                 update_save_info, dispatch_uid=(self.__class__, request,), weak=False)
+            signals.pre_delete.connect(
+                update_save_info, dispatch_uid=(self.__class__, request,), weak=False)
+            signals.post_delete.connect(
+                update_save_info, dispatch_uid=(self.__class__, request,), weak=False)
 
     def process_response(self, request, response):
         signals.pre_save.disconnect(dispatch_uid=(self.__class__, request,))
         signals.post_save.disconnect(dispatch_uid=(self.__class__, request,))
         signals.m2m_changed.disconnect(dispatch_uid=(self.__class__, request,))
+        signals.pre_delete.disconnect(dispatch_uid=(self.__class__, request,))
+        signals.post_delete.disconnect(dispatch_uid=(self.__class__, request,))
         return response
 
     def process_exception(self, request, exception):
         signals.pre_save.disconnect(dispatch_uid=(self.__class__, request,))
         signals.post_save.disconnect(dispatch_uid=(self.__class__, request,))
         signals.m2m_changed.disconnect(dispatch_uid=(self.__class__, request,))
+        signals.pre_delete.disconnect(dispatch_uid=(self.__class__, request,))
+        signals.post_delete.disconnect(dispatch_uid=(self.__class__, request,))
 
     def insert_user(self, user, sender, instance, **kwargs):
         instance.request_user = user

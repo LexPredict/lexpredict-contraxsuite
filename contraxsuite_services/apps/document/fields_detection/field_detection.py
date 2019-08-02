@@ -1,3 +1,29 @@
+"""
+    Copyright (C) 2017, ContraxSuite, LLC
+
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU Affero General Public License as
+    published by the Free Software Foundation, either version 3 of the
+    License, or (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU Affero General Public License for more details.
+
+    You should have received a copy of the GNU Affero General Public License
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+    You can also be released from the requirements of the license by purchasing
+    a commercial license from ContraxSuite, LLC. Buying such a license is
+    mandatory as soon as you develop commercial activities involving ContraxSuite
+    software without disclosing the source code of your own applications.  These
+    activities include: offering paid services to customers as an ASP or "cloud"
+    provider, processing documents on the fly in a web application,
+    or shipping ContraxSuite within a closed source product.
+"""
+# -*- coding: utf-8 -*-
+
 from typing import Optional, List, Dict, Any, Set, Iterable
 
 from django.db.models import Prefetch
@@ -7,7 +33,7 @@ from apps.common.log_utils import render_error
 from apps.document.field_types import FieldType
 from apps.document.fields_processing import field_value_cache
 from apps.document.fields_processing.field_processing_utils import merge_detected_field_values_to_python_value, \
-    order_field_detection
+    order_field_detection, get_dependent_fields
 from apps.document.models import ClassifierModel, DocumentFieldValue
 from apps.document.models import Document, DocumentType, DocumentField
 from apps.users.models import User
@@ -22,6 +48,14 @@ from .regexps_and_text_based_ml_field_detection import \
     RegexpsAndTextBasedMLFieldDetectionStrategy, TextBasedMLFieldDetectionStrategy
 from .regexps_field_detection import RegexpsOnlyFieldDetectionStrategy, \
     FieldBasedRegexpsDetectionStrategy
+
+__author__ = "ContraxSuite, LLC; LexPredict, LLC"
+__copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.3/LICENSE"
+__version__ = "1.2.3"
+__maintainer__ = "LexPredict, LLC"
+__email__ = "support@contraxsuite.com"
+
 
 STRATEGY_DISABLED = DisabledFieldDetectionStrategy()
 
@@ -122,7 +156,8 @@ def detect_and_cache_field_values_for_document(log: ProcessLogger,
                                                system_fields_changed: bool = False,
                                                generic_fields_changed: bool = False,
                                                document_initial_load: bool = False,
-                                               ignore_field_codes: Set[str] = None):
+                                               ignore_field_codes: Set[str] = None,
+                                               updated_field_codes: List[str] = None):
     """
     Detects field values for a document and stores their DocumentFieldValue objects as well as Document.field_value.
     These two should always be consistent.
@@ -134,6 +169,7 @@ def detect_and_cache_field_values_for_document(log: ProcessLogger,
     :param system_fields_changed
     :param generic_fields_changed
     :param document_initial_load
+    :param updated_field_codes - if set, we search for changed and dependent fields only
     :return:
     """
 
@@ -153,14 +189,17 @@ def detect_and_cache_field_values_for_document(log: ProcessLogger,
     all_fields = list(all_fields)
 
     fields_and_deps = [(f.code, f.get_depends_on_codes() or set()) for f in all_fields]
+    required_fields = get_dependent_fields(fields_and_deps, set(updated_field_codes)) \
+        if updated_field_codes else None
+
     sorted_codes = order_field_detection(fields_and_deps)
     all_fields_code_to_field = {f.code: f for f in all_fields}  # type: Dict[str, DocumentField]
-
-    field_values_pre_cached = False
 
     res = list()
     for field_code in sorted_codes:
         if ignore_field_codes and field_code in ignore_field_codes:
+            continue
+        if required_fields and field_code not in required_fields:
             continue
 
         field = all_fields_code_to_field[field_code]  # type: DocumentField

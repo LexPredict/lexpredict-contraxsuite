@@ -4,6 +4,22 @@ services:
 # under these domain names inside the cluster virtual network.
 # (Service names should not contain underscores.)
 
+
+  contrax-webdav:
+    image: bytemark/webdav:2.4
+    volumes:
+      - contraxsuite_data_media:/var/lib/dav
+    networks:
+      - contrax_net
+    environment:   # No need for auth - in prod envs the server is not accessible from outside of our network
+      AUTH_TYPE: Basic
+      USERNAME: ${DOCKER_WEBDAV_AUTH_USER}
+      PASSWORD: ${DOCKER_WEBDAV_AUTH_PASSWORD}
+    deploy:
+      replicas: 1
+      placement:
+        constraints: [node.role == manager]
+
   contrax-elasticsearch:
     image: docker.elastic.co/elasticsearch/elasticsearch-oss:6.5.4
     volumes:
@@ -73,19 +89,6 @@ services:
     #ports: #
     #  - 127.0.0.1:54320:5432 #
 
-  contrax-tika:
-    image: lexpredict/tika-server:1.9
-    networks:
-      - contrax_net
-    deploy:
-      mode: global
-      placement:
-        constraints:
-          - node.labels.role != django
-          - node.labels.role != db
-#    ports: #
-#      - 127.0.0.1:9998:9998 #
-
   contrax-celery:
     image: ${DOLLAR}{CONTRAXSUITE_IMAGE_FULL_NAME}:${DOLLAR}{CONTRAXSUITE_IMAGE_VERSION}
     networks:
@@ -127,10 +130,13 @@ services:
       - "DOCKER_JUPYTER_PORT=${DOLLAR}{DOCKER_JUPYTER_PORT}"
       - "DOCKER_DJANGO_BASE_PATH=${DOLLAR}{DOCKER_DJANGO_BASE_PATH}"
       - "DOCKER_FLOWER_BASE_PATH=${DOLLAR}{DOCKER_FLOWER_BASE_PATH}"
+      - "DOCKER_WEBDAV_SERVER_NAME=${DOLLAR}{DOCKER_WEBDAV_SERVER_NAME}"
+      - "DOCKER_WEBDAV_AUTH_USER=${DOLLAR}{DOCKER_WEBDAV_AUTH_USER}"
+      - "DOCKER_WEBDAV_AUTH_PASSWORD=${DOLLAR}{DOCKER_WEBDAV_AUTH_PASSWORD}"
+      - "LEXNLP_TIKA_PARSER_MODE=${DOLLAR}{LEXNLP_TIKA_PARSER_MODE}"
     depends_on:
       - contrax-rabbitmq
       - contrax-db
-      - contrax-tika
       - contrax-redis
       - contrax-elasticsearch
       - contrax-uwsgi
@@ -144,6 +150,66 @@ services:
         constraints:
           - node.labels.role != django
           - node.labels.role != db
+
+  contrax-celery-doc-load:
+    image: ${DOLLAR}{CONTRAXSUITE_IMAGE_FULL_NAME}:${DOLLAR}{CONTRAXSUITE_IMAGE_VERSION}
+    networks:
+      - contrax_net
+    command: ["/start.sh",  "celery-load"]
+    environment:
+      - "DOCKER_CELERY_CONCURRENCY=1"
+      - "SHARED_USER_NAME=${DOLLAR}{SHARED_USER_NAME}"
+      - "SHARED_USER_ID=${DOLLAR}{SHARED_USER_ID}"
+      - "DOCKER_HOST_NAME_PG=${DOLLAR}{DOCKER_HOST_NAME_PG}"
+      - "DOCKER_HOST_NAME_REDIS=${DOLLAR}{DOCKER_HOST_NAME_REDIS}"
+      - "DOCKER_HOST_NAME_RABBITMQ=${DOLLAR}{DOCKER_HOST_NAME_RABBITMQ}"
+      - "DOCKER_HOST_NAME_ELASTICSEARCH=${DOLLAR}{DOCKER_HOST_NAME_ELASTICSEARCH}"
+      - "DOCKER_HOST_NAME_UWSGI=${DOLLAR}{DOCKER_HOST_NAME_UWSGI}"
+      - "DOCKER_HOST_NAME_KIBANA=${DOLLAR}{DOCKER_HOST_NAME_KIBANA}"
+      - "DOCKER_PG_USER=${DOLLAR}{DOCKER_PG_USER}"
+      - "DOCKER_PG_PASSWORD=${DOLLAR}{DOCKER_PG_PASSWORD}"
+      - "DOCKER_PG_DB_NAME=${DOLLAR}{DOCKER_PG_DB_NAME}"
+      - "DOCKER_RABBITMQ_VHOST=${DOLLAR}{DOCKER_RABBITMQ_VHOST}"
+      - "DOCKER_RABBITMQ_USER=${DOLLAR}{DOCKER_RABBITMQ_USER}"
+      - "DOCKER_RABBITMQ_PASSWORD=${DOLLAR}{DOCKER_RABBITMQ_PASSWORD}"
+      - "DOCKER_DJANGO_HOST_NAME=${DOLLAR}{DOCKER_DJANGO_HOST_NAME}"
+      - "DOCKER_FRONTEND_ROOT_URL=${DOLLAR}{DOCKER_FRONTEND_ROOT_URL}"
+      - "DOCKER_DJANGO_EMAIL_BACKEND=${DOLLAR}{DOCKER_DJANGO_EMAIL_BACKEND}"
+      - "DOCKER_DJANGO_EMAIL_HOST=${DOLLAR}{DOCKER_DJANGO_EMAIL_HOST}"
+      - "DOCKER_DJANGO_EMAIL_PORT=${DOLLAR}{DOCKER_DJANGO_EMAIL_PORT}"
+      - "DOCKER_DJANGO_EMAIL_USE_TLS=${DOLLAR}{DOCKER_DJANGO_EMAIL_USE_TLS}"
+      - "DOCKER_DJANGO_EMAIL_HOST_USER=${DOLLAR}{DOCKER_DJANGO_EMAIL_HOST_USER}"
+      - "DOCKER_DJANGO_EMAIL_HOST_PASSWORD=${DOLLAR}{DOCKER_DJANGO_EMAIL_HOST_PASSWORD}"
+      - "DOCKER_DJANGO_ADMIN_NAME=${DOLLAR}{DOCKER_DJANGO_ADMIN_NAME}"
+      - "DOCKER_DJANGO_ADMIN_PASSWORD=${DOLLAR}{DOCKER_DJANGO_ADMIN_PASSWORD}"
+      - "DOCKER_DJANGO_ADMIN_EMAIL=${DOLLAR}{DOCKER_DJANGO_ADMIN_EMAIL}"
+      - "DOCKER_DJANGO_DEBUG=${DOLLAR}{DOCKER_DJANGO_DEBUG}"
+      - "DOCKER_DJANGO_DEBUG_SQL=${DOLLAR}{DOCKER_DJANGO_DEBUG_SQL}"
+      - "DOCKER_DJANGO_SECRET_KEY=${DOLLAR}{DOCKER_DJANGO_SECRET_KEY}"
+      - "DOCKER_DJANGO_ACCOUNT_EMAIL_VERIFICATION=${DOLLAR}{DOCKER_DJANGO_ACCOUNT_EMAIL_VERIFICATION}"
+      - "DOCKER_NGINX_SERVER_NAME=${DOLLAR}{DOCKER_NGINX_SERVER_NAME}"
+      - "DOCKER_JUPYTER_BASE_URL=${DOLLAR}{DOCKER_JUPYTER_BASE_URL}"
+      - "DOCKER_JUPYTER_PORT=${DOLLAR}{DOCKER_JUPYTER_PORT}"
+      - "DOCKER_DJANGO_BASE_PATH=${DOLLAR}{DOCKER_DJANGO_BASE_PATH}"
+      - "DOCKER_FLOWER_BASE_PATH=${DOLLAR}{DOCKER_FLOWER_BASE_PATH}"
+      - "DOCKER_WEBDAV_SERVER_NAME=${DOLLAR}{DOCKER_WEBDAV_SERVER_NAME}"
+      - "DOCKER_WEBDAV_AUTH_USER=${DOLLAR}{DOCKER_WEBDAV_AUTH_USER}"
+      - "DOCKER_WEBDAV_AUTH_PASSWORD=${DOLLAR}{DOCKER_WEBDAV_AUTH_PASSWORD}"
+      - "LEXNLP_TIKA_PARSER_MODE=${DOLLAR}{LEXNLP_TIKA_PARSER_MODE}"
+    depends_on:
+      - contrax-rabbitmq
+      - contrax-db
+      - contrax-redis
+      - contrax-elasticsearch
+      - contrax-uwsgi
+    volumes:
+      - contraxsuite_logs:/data/logs
+      - celery_worker_state:/data/celery_worker_state
+      - contraxsuite_ssl_certs:/ssl_certs
+    deploy:
+      mode: global # Exactly one instance per node. Primitive AWS autoscaling solution.
+      placement:
+        constraints: [node.role != manager]
 
   contrax-celery-beat:
     image: ${DOLLAR}{CONTRAXSUITE_IMAGE_FULL_NAME}:${DOLLAR}{CONTRAXSUITE_IMAGE_VERSION}
@@ -187,10 +253,12 @@ services:
       - "DOCKER_JUPYTER_PORT=${DOLLAR}{DOCKER_JUPYTER_PORT}"
       - "DOCKER_DJANGO_BASE_PATH=${DOLLAR}{DOCKER_DJANGO_BASE_PATH}"
       - "DOCKER_FLOWER_BASE_PATH=${DOLLAR}{DOCKER_FLOWER_BASE_PATH}"
+      - "DOCKER_WEBDAV_SERVER_NAME=${DOLLAR}{DOCKER_WEBDAV_SERVER_NAME}"
+      - "DOCKER_WEBDAV_AUTH_USER=${DOLLAR}{DOCKER_WEBDAV_AUTH_USER}"
+      - "DOCKER_WEBDAV_AUTH_PASSWORD=${DOLLAR}{DOCKER_WEBDAV_AUTH_PASSWORD}"
     depends_on:
       - contrax-rabbitmq
       - contrax-db
-      - contrax-tika
       - contrax-redis
       - contrax-elasticsearch
       - contrax-uwsgi
@@ -199,6 +267,7 @@ services:
       - contraxsuite_logs:/data/logs
       - celery_worker_state:/data/celery_worker_state
       - contraxsuite_ssl_certs:/ssl_certs
+      - contraxsuite_data_media:/data/media
     deploy:
       replicas: 1
       placement:
@@ -249,6 +318,9 @@ services:
       - "DOCKER_JUPYTER_PORT=${DOLLAR}{DOCKER_JUPYTER_PORT}"
       - "DOCKER_DJANGO_BASE_PATH=${DOLLAR}{DOCKER_DJANGO_BASE_PATH}"
       - "DOCKER_FLOWER_BASE_PATH=${DOLLAR}{DOCKER_FLOWER_BASE_PATH}"
+      - "DOCKER_WEBDAV_SERVER_NAME=${DOLLAR}{DOCKER_WEBDAV_SERVER_NAME}"
+      - "DOCKER_WEBDAV_AUTH_USER=${DOLLAR}{DOCKER_WEBDAV_AUTH_USER}"
+      - "DOCKER_WEBDAV_AUTH_PASSWORD=${DOLLAR}{DOCKER_WEBDAV_AUTH_PASSWORD}"
     volumes:
       - contraxsuite_deployment_uuid:/deployment_uuid
       - contraxsuite_static_files:/contraxsuite_services/staticfiles
@@ -269,6 +341,69 @@ services:
         constraints:
           - node.role == manager
           - node.labels.role == django
+
+  contrax-daphne:
+    image: ${DOLLAR}{CONTRAXSUITE_IMAGE_FULL_NAME}:${DOLLAR}{CONTRAXSUITE_IMAGE_VERSION}
+    networks:
+      - contrax_net
+    command: ["/start.sh",  "daphne"]
+    environment:
+      - "SHARED_USER_NAME=${DOLLAR}{SHARED_USER_NAME}"
+      - "SHARED_USER_ID=${DOLLAR}{SHARED_USER_ID}"
+      - "DOCKER_HOST_NAME_PG=${DOLLAR}{DOCKER_HOST_NAME_PG}"
+      - "DOCKER_HOST_NAME_REDIS=${DOLLAR}{DOCKER_HOST_NAME_REDIS}"
+      - "DOCKER_HOST_NAME_RABBITMQ=${DOLLAR}{DOCKER_HOST_NAME_RABBITMQ}"
+      - "DOCKER_HOST_NAME_ELASTICSEARCH=${DOLLAR}{DOCKER_HOST_NAME_ELASTICSEARCH}"
+      - "DOCKER_HOST_NAME_UWSGI=${DOLLAR}{DOCKER_HOST_NAME_UWSGI}"
+      - "DOCKER_HOST_NAME_KIBANA=${DOLLAR}{DOCKER_HOST_NAME_KIBANA}"
+      - "DOCKER_PG_USER=${DOLLAR}{DOCKER_PG_USER}"
+      - "DOCKER_PG_PASSWORD=${DOLLAR}{DOCKER_PG_PASSWORD}"
+      - "DOCKER_PG_DB_NAME=${DOLLAR}{DOCKER_PG_DB_NAME}"
+      - "DOCKER_RABBITMQ_VHOST=${DOLLAR}{DOCKER_RABBITMQ_VHOST}"
+      - "DOCKER_RABBITMQ_USER=${DOLLAR}{DOCKER_RABBITMQ_USER}"
+      - "DOCKER_RABBITMQ_PASSWORD=${DOLLAR}{DOCKER_RABBITMQ_PASSWORD}"
+      - "DOCKER_DJANGO_HOST_NAME=${DOLLAR}{DOCKER_DJANGO_HOST_NAME}"
+      - "DOCKER_DJANGO_EMAIL_BACKEND=${DOLLAR}{DOCKER_DJANGO_EMAIL_BACKEND}"
+      - "DOCKER_DJANGO_EMAIL_HOST=${DOLLAR}{DOCKER_DJANGO_EMAIL_HOST}"
+      - "DOCKER_DJANGO_EMAIL_PORT=${DOLLAR}{DOCKER_DJANGO_EMAIL_PORT}"
+      - "DOCKER_DJANGO_EMAIL_USE_TLS=${DOLLAR}{DOCKER_DJANGO_EMAIL_USE_TLS}"
+      - "DOCKER_DJANGO_EMAIL_HOST_USER=${DOLLAR}{DOCKER_DJANGO_EMAIL_HOST_USER}"
+      - "DOCKER_DJANGO_EMAIL_HOST_PASSWORD=${DOLLAR}{DOCKER_DJANGO_EMAIL_HOST_PASSWORD}"
+      - "DOCKER_DJANGO_ADMIN_NAME=${DOLLAR}{DOCKER_DJANGO_ADMIN_NAME}"
+      - "DOCKER_DJANGO_ADMIN_PASSWORD=${DOLLAR}{DOCKER_DJANGO_ADMIN_PASSWORD}"
+      - "DOCKER_DJANGO_ADMIN_EMAIL=${DOLLAR}{DOCKER_DJANGO_ADMIN_EMAIL}"
+      - "DOCKER_DJANGO_DEBUG=${DOLLAR}{DOCKER_DJANGO_DEBUG}"
+      - "DOCKER_DJANGO_DEBUG_SQL=${DOLLAR}{DOCKER_DJANGO_DEBUG_SQL}"
+      - "DOCKER_DJANGO_SECRET_KEY=${DOLLAR}{DOCKER_DJANGO_SECRET_KEY}"
+      - "DOCKER_DJANGO_ACCOUNT_EMAIL_VERIFICATION=${DOLLAR}{DOCKER_DJANGO_ACCOUNT_EMAIL_VERIFICATION}"
+      - "DOCKER_NGINX_SERVER_NAME=${DOLLAR}{DOCKER_NGINX_SERVER_NAME}"
+      - "DOCKER_DJANGO_THEME_ARCHIVE=${DOLLAR}{DOCKER_DJANGO_THEME_ARCHIVE}"
+      - "DOCKER_DJANGO_JQWIDGETS_ARCHIVE=${DOLLAR}{DOCKER_DJANGO_JQWIDGETS_ARCHIVE}"
+      - "DOCKER_JUPYTER_BASE_URL=${DOLLAR}{DOCKER_JUPYTER_BASE_URL}"
+      - "DOCKER_JUPYTER_PORT=${DOLLAR}{DOCKER_JUPYTER_PORT}"
+      - "DOCKER_DJANGO_BASE_PATH=${DOLLAR}{DOCKER_DJANGO_BASE_PATH}"
+      - "DOCKER_FLOWER_BASE_PATH=${DOLLAR}{DOCKER_FLOWER_BASE_PATH}"
+      - "DOCKER_WEBDAV_SERVER_NAME=${DOLLAR}{DOCKER_WEBDAV_SERVER_NAME}"
+      - "DOCKER_WEBDAV_AUTH_USER=${DOLLAR}{DOCKER_WEBDAV_AUTH_USER}"
+      - "DOCKER_WEBDAV_AUTH_PASSWORD=${DOLLAR}{DOCKER_WEBDAV_AUTH_PASSWORD}"
+    volumes:
+      - contraxsuite_deployment_uuid:/deployment_uuid
+      - contraxsuite_static_files:/contraxsuite_services/staticfiles
+      - contraxsuite_additional_fixtures:/contraxsuite_services/fixtures/additional
+      - contraxsuite_third_party_dependencies:/third_party_dependencies
+      - contraxsuite_data_media:/data/media
+      - contraxsuite_data_update:/data/data_update
+      - contraxsuite_logs:/data/logs
+      - contraxsuite_ssl_certs:/ssl_certs
+    depends_on:
+      - contrax-db
+      - contrax-redis
+      - contrax-rabbitmq
+      - contrax-elasticsearch
+    deploy:
+      replicas: 1
+      placement:
+        constraints: [node.role == manager]
 
   contrax-nginx:
     image: nginx:stable
@@ -296,6 +431,21 @@ services:
         constraints:
           - node.role == manager
           - node.labels.role == django
+
+  contrax-redis:
+    image: redis
+    volumes:
+      - redis_data:/data
+    networks:
+      - contrax_net
+    deploy:
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+          - node.labels.role == django
+  #    ports: #
+  #      - 127.0.0.1:63790:6379 #
 
 volumes:
   contraxsuite_deployment_uuid:

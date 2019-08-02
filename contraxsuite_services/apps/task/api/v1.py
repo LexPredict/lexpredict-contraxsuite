@@ -36,8 +36,8 @@ from apps.task.views import *
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.2/LICENSE"
-__version__ = "1.2.2"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.3/LICENSE"
+__version__ = "1.2.3"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -47,31 +47,12 @@ class TaskSerializer(serializers.HyperlinkedModelSerializer):
     user__username = serializers.CharField(
         source='user.username',
         read_only=True)
-    url = serializers.SerializerMethodField()
-    purge_url = serializers.SerializerMethodField()
-    result_links = serializers.SerializerMethodField()
     description = serializers.SerializerMethodField()
 
     class Meta:
         model = Task
-        fields = ['pk', 'name', 'date_start', 'user__username',
-                  'date_done', 'progress', 'time', 'status', 'has_error',
-                  'url', 'purge_url', 'result_links', 'description']
-
-    def get_url(self, obj):
-        return reverse('task:task-detail', args=[obj.pk])
-
-    def get_purge_url(self, obj):
-        return reverse('task:purge-task') + '?task_pk={}'.format(obj.pk)
-
-    def get_result_links(self, obj):
-        result = []
-        if obj.metadata:
-            result_links = obj.metadata.get('result_links', [])
-            for link_data in result_links:
-                link_data['link'] = reverse(link_data['link'])
-            result = result_links
-        return result
+        fields = ['pk', 'name', 'date_start', 'date_work_start', 'user__username',
+                  'date_done', 'duration', 'progress', 'status', 'has_error', 'description']
 
     def get_description(self, obj):
         result = None
@@ -80,13 +61,24 @@ class TaskSerializer(serializers.HyperlinkedModelSerializer):
         return result
 
 
+class TaskStatsSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Task
+        fields = ['status']
+
+
 class TaskViewSet(apps.common.mixins.JqListAPIMixin, viewsets.ReadOnlyModelViewSet):
     """
     list: Task List
     retrieve: Retrieve Task
     """
-    queryset = Task.objects.all()
+    queryset = Task.objects.main_tasks().order_by('-date_start')
     serializer_class = TaskSerializer
+
+    def get_serializer_class(self):
+        if self.action == 'stats':
+            return TaskStatsSerializer
+        return TaskSerializer
 
 
 class LoadDictionariesAPIView(rest_framework.views.APIView, LoadTaskView):

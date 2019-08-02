@@ -52,7 +52,7 @@ from django.urls import reverse_lazy
 
 # App imports
 from contraxsuite_logging import prepare_log_dirs   # ContraxsuiteJSONFormatter
-# from apps.common.advancedcelery.fileaccess.local_file_access import LocalFileAccess
+# from apps.common.db_cache.file_storage.local_file_access import ContraxsuiteLocalFileStorage
 
 warnings.filterwarnings('ignore',
                         message='''Trying to unpickle estimator|The psycopg2 wheel package will be renamed|numpy.core.umath_tests''')
@@ -115,6 +115,8 @@ INSTALLED_APPS = (
     'rest_auth.registration',
     'rest_framework_swagger',
     'rest_framework_tracking',
+
+    'channels',
 
     # LOCAL_APPS
     # 'apps.common',
@@ -288,6 +290,7 @@ ROOT_URLCONF = 'urls'
 
 # See: https://docs.djangoproject.com/en/dev/ref/settings/#wsgi-application
 WSGI_APPLICATION = 'wsgi.application'
+ASGI_APPLICATION = 'routing.application'
 
 # django-pipeline settings
 # see: https://django-pipeline.readthedocs.io/en/latest/
@@ -493,6 +496,7 @@ CELERY_TASK_QUEUES = (
     Queue('high_priority', routing_key='task_high_priority.#'),
     Queue('serial', routing_key='task_serial.#'),
     Queue('beat-db', routing_key='task_beat_db.#'),
+    Queue('doc_load', routing_key='task_doc_load.#'),
 )
 
 CELERY_TASK_DEFAULT_QUEUE = 'default'
@@ -548,11 +552,13 @@ FILEBROWSER_DEFAULT_SORTING_BY = 'filename_lower'
 FILEBROWSER_SEARCH_TRAVERSE = True
 FILEBROWSER_LIST_PER_PAGE = 25
 
-CELERY_FILE_ACCESS_TYPE = 'Local'
-CELERY_FILE_ACCESS_LOCAL_ROOT_DIR = MEDIA_ROOT + '/' + FILEBROWSER_DIRECTORY
-# CELERY_FILE_ACCESS_TYPE = 'Nginx'
-# CELERY_FILE_ACCESS_NGINX_ROOT_URL = 'http://localhost:8888/media/'
-CELERY_FILE_ACCESS_DOCUMENTS_DIR = 'documents/'
+CONTRAX_FILE_STORAGE_TYPE = 'Local'
+CONTRAX_FILE_STORAGE_LOCAL_ROOT_DIR = MEDIA_ROOT + '/' + FILEBROWSER_DIRECTORY
+#CONTRAX_FILE_STORAGE_TYPE = 'WebDAV'
+#CONTRAX_FILE_STORAGE_WEBDAV_ROOT_URL = 'http://localhost:8090/'
+#CONTRAX_FILE_STORAGE_WEBDAV_USERNAME = 'user'
+#CONTRAX_FILE_STORAGE_WEBDAV_PASSWORD = 'pass'
+CONTRAX_FILE_STORAGE_DOCUMENTS_DIR = 'documents/'
 
 # django-constance settings
 # https://django-constance.readthedocs.io/en/latest/
@@ -642,7 +648,12 @@ SWAGGER_SETTINGS = {
 # TIKA_SERVER_JAR = ROOT_DIR('../libs/tika/tika-server-1.14.jar')
 TIKA_DISABLE = False
 TIKA_SERVER_ENDPOINT = None
+TIKA_JAR_BASE_PATH = PROJECT_DIR('tika_jars')
 TEXTRACT_FIRST_FOR_EXTENSIONS = []
+TIKA_TIMEOUT = 60 * 60
+
+TEXTRACT_NON_OCR_EXTENSIONS = ['txt', 'doc', 'docx', 'rtf',
+                               'md', 'odt', 'ott', 'odf']
 
 # use jqWidgets' export, e.g. send data to jq OR handle it on client side
 # FYI: http://www.jqwidgets.com/community/topic/jqxgrid-export-data/#}
@@ -794,7 +805,7 @@ NOTEBOOK_ARGUMENTS = [
 # CORS_ALLOW_CREDENTIALS = False
 # CORS_URLS_REGEX = r'^.*$'
 
-VERSION_NUMBER = '1.2.2'
+VERSION_NUMBER = '1.2.3'
 VERSION_COMMIT = 'cdd28414'
 
 NOTIFICATION_EMBEDDED_TEMPLATES_PATH = 'apps/notifications/notification_templates'
@@ -821,11 +832,13 @@ ML_TRAIN_DATA_SET_GROUP_LEN = 10000
 
 RAW_DB_FULL_TEXT_SEARCH_CUT_ABOVE_TEXT_LENGTH = 4 * 1024 * 1024
 
+DATA_UPLOAD_MAX_MEMORY_SIZE = 100*2621440
+
 # Debugging Docker Deployments:
 # CELERY_BROKER_URL = 'amqp://contrax1:contrax1@127.0.0.1:56720/contrax1_vhost'
 # CELERY_CACHE_REDIS_URL = 'redis://127.0.0.1:63790/0'
-# CELERY_FILE_ACCESS_TYPE = 'Nginx'
-# CELERY_FILE_ACCESS_NGINX_ROOT_URL = 'http://127.0.0.1:800/media/data/documents/'
+# CONTRAX_FILE_STORAGE_TYPE = 'Nginx'
+# CONTRAX_FILE_STORAGE_NGINX_ROOT_URL = 'http://127.0.0.1:800/media/data/documents/'
 # TIKA_FOR_EXTENSIONS = ['pdf']
 
 FRONTEND_ROOT_URL = None
@@ -920,3 +933,12 @@ AUTOLOGIN_ALWAYS_OPEN_URLS = [
 AUTOLOGIN_TEST_USER_FORBIDDEN_URLS = [
     'accounts/(?!login|logout)',
 ]
+
+CHANNEL_LAYERS = {
+    "default": {
+        "BACKEND": "channels_redis.core.RedisChannelLayer",
+        "CONFIG": {
+            "hosts": [CELERY_CACHE_REDIS_URL],
+        },
+    },
+}

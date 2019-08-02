@@ -3,10 +3,15 @@
 set -e
 
 GIT_DICT_DATA_REPO_ROOT='https://raw.githubusercontent.com/LexPredict/lexpredict-legal-dictionary/1.0.7'
-TERM_URLS=('accounting/ifrs_iasb.csv' 'accounting/uk_gaap.csv' 'accounting/us_fasb.csv'
-                  'accounting/us_gaap.csv' 'accounting/us_gasb.csv' 'financial/financial.csv'
-                  'legal/common_law.csv' 'legal/us_cfr.csv' 'legal/us_usc.csv' 'legal/common_US_terms_top1000.csv'
-                  'scientific/us_hazardous_waste.csv')
+
+# cut terms data CS-3206
+#TERM_URLS=('accounting/ifrs_iasb.csv' 'accounting/uk_gaap.csv' 'accounting/us_fasb.csv'
+#                  'accounting/us_gaap.csv' 'accounting/us_gasb.csv' 'financial/financial.csv'
+#                  'legal/common_law.csv' 'legal/us_cfr.csv' 'legal/us_usc.csv' 'legal/common_US_terms_top1000.csv'
+#                  'scientific/us_hazardous_waste.csv')
+
+TERM_URLS=('accounting/us_gaap.csv' 'financial/financial.csv'
+           'legal/common_top_law_terms.csv' 'legal/common_US_terms_top1000.csv')
 COURTS_URLS=('legal/ca_courts.csv' 'legal/us_courts.csv')
 GEOENTITIES_URLS=('geopolitical/geopolitical_divisions.csv')
 

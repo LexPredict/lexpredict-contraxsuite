@@ -39,19 +39,20 @@ from apps.document import field_types
 from apps.document.constants import DOCUMENT_FIELD_CODE_MAX_LEN
 from apps.document.fields_processing.field_value_cache import get_generic_values
 from apps.document.models import DocumentType, Document, DocumentField, DocumentFieldValue
+from apps.extract.models import DefinitionUsage
 from apps.rawdb.models import SavedFilter
+from apps.rawdb.notifications import UserNotifications
 from apps.rawdb.rawdb import field_handlers
 from apps.rawdb.rawdb.errors import Forbidden, UnknownColumnError
-from apps.rawdb.rawdb.query_parsing import SortDirection, parse_column_filters
+from apps.rawdb.rawdb.query_parsing import SortDirection, parse_column_filters, parse_order_by
+from apps.rawdb.signals import fire_document_fields_changed, DocumentEvent
 from apps.task.utils.logger import get_django_logger
 from apps.users.models import User
-from .rawdb.query_parsing import parse_order_by
-from .signals import fire_document_fields_changed, DocumentEvent
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.2/LICENSE"
-__version__ = "1.2.2"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.3/LICENSE"
+__version__ = "1.2.3"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -152,7 +153,7 @@ FIELD_DB_SUPPORT_REGISTRY = {
     field_types.RecurringDateField.code: field_handlers.DateFieldHandler,
     field_types.CompanyField.code: field_handlers.StringFieldHandler,
     field_types.DurationField.code: field_handlers.FloatFieldHandler,
-    field_types.PercentField.code: field_handlers.FloatFieldHandler,
+    field_types.PercentField.code: field_handlers.PercentFieldHandler,
     field_types.AddressField.code: field_handlers.AddressFieldHandler,
     field_types.RelatedInfoField.code: field_handlers.RelatedInfoFieldHandler,
     field_types.ChoiceField.code: field_handlers.StringFieldHandler,
@@ -181,6 +182,8 @@ FIELD_CODE_ASSIGNEE_NAME = 'assignee_name'
 FIELD_CODE_ASSIGN_DATE = 'assign_date'
 FIELD_CODE_STATUS_NAME = 'status_name'
 FIELD_CODE_DELETE_PENDING = 'delete_pending'
+FIELD_CODE_NOTES = 'notes'
+FIELD_CODE_DEFINITIONS = 'definitions'
 
 # Generic Fields - should match keys from the output of field_value_cache.get_generic_values(doc)
 _FIELD_CODE_CLUSTER_ID = 'cluster_id'
@@ -194,13 +197,15 @@ FIELD_CODES_SYSTEM = {FIELD_CODE_PROJECT_ID, FIELD_CODE_PROJECT_NAME,
                       FIELD_CODE_DOC_FULL_TEXT_LENGTH, FIELD_CODE_DOC_TITLE,
                       FIELD_CODE_DOC_FULL_TEXT, FIELD_CODE_IS_REVIEWED, FIELD_CODE_IS_COMPLETED,
                       FIELD_CODE_ASSIGNEE_ID, FIELD_CODE_ASSIGNEE_NAME, FIELD_CODE_ASSIGN_DATE,
-                      FIELD_CODE_STATUS_NAME, FIELD_CODE_DELETE_PENDING}
+                      FIELD_CODE_STATUS_NAME, FIELD_CODE_DELETE_PENDING,
+                      FIELD_CODE_NOTES, FIELD_CODE_DEFINITIONS}
 
 _FIELD_CODE_ALL_DOC_TYPES = {FIELD_CODE_PROJECT_ID, FIELD_CODE_DOC_ID, FIELD_CODE_CREATE_DATE, FIELD_CODE_DOC_NAME,
                              FIELD_CODE_DOC_FULL_TEXT_LENGTH, FIELD_CODE_DOC_TITLE,
                              FIELD_CODE_DOC_FULL_TEXT, FIELD_CODE_IS_REVIEWED, FIELD_CODE_IS_COMPLETED,
                              FIELD_CODE_ASSIGNEE_ID, FIELD_CODE_ASSIGNEE_NAME, FIELD_CODE_ASSIGN_DATE,
-                             FIELD_CODE_STATUS_NAME, FIELD_CODE_DELETE_PENDING}
+                             FIELD_CODE_STATUS_NAME, FIELD_CODE_DELETE_PENDING,
+                             FIELD_CODE_NOTES, FIELD_CODE_DEFINITIONS}
 
 _FIELD_CODES_GENERIC = {_FIELD_CODE_CLUSTER_ID, _FIELD_CODE_PARTIES,
                         _FIELD_CODE_LARGEST_CURRENCY, _FIELD_CODE_EARLIEST_DATE, _FIELD_CODE_LATEST_DATE}
@@ -215,12 +220,15 @@ FIELD_CODES_SHOW_BY_DEFAULT_GENERIC = {
 }
 
 FIELD_CODES_HIDE_BY_DEFAULT = {
-    FIELD_CODE_ASSIGNEE_ID, FIELD_CODE_PROJECT_ID, FIELD_CODE_DELETE_PENDING
+    FIELD_CODE_ASSIGNEE_ID, FIELD_CODE_PROJECT_ID, FIELD_CODE_DELETE_PENDING,
+    FIELD_CODE_NOTES, FIELD_CODE_DEFINITIONS
 }
 
 FIELD_CODES_RETURN_ALWAYS = {FIELD_CODE_DOC_ID, FIELD_CODE_DOC_NAME}
 
 FIELD_CODES_HIDE_FROM_CONFIG_API = {FIELD_CODE_ASSIGNEE_ID, FIELD_CODE_ASSIGN_DATE, FIELD_CODE_DELETE_PENDING}
+
+FIELD_CODE_ANNOTATION_SUFFIX = '_ann'
 
 
 def _build_system_field_handlers(table_name: str) -> List[field_handlers.FieldHandler]:
@@ -257,6 +265,10 @@ def _build_system_field_handlers(table_name: str) -> List[field_handlers.FieldHa
                                                  'Status', table_name))
     res.append(field_handlers.BooleanFieldHandler(FIELD_CODE_DELETE_PENDING, field_types.BooleanField.code,
                                                   'Delete Pending', table_name))
+    res.append(field_handlers.StringFieldHandler(FIELD_CODE_NOTES, field_types.StringField.code,
+                                                 'Notes', table_name))
+    res.append(field_handlers.StringFieldHandler(FIELD_CODE_DEFINITIONS, field_types.StringField.code,
+                                                 'Definitions', table_name))
     return res
 
 
@@ -279,6 +291,7 @@ def build_field_handlers(document_type: DocumentType, table_name: str = None,
                          include_generic_fields: bool = True,
                          include_user_fields: bool = True,
                          include_suggested_fields: bool = True,
+                         include_annotation_fields: bool = True,
                          exclude_hidden_always_fields: bool = False) \
         -> List[field_handlers.FieldHandler]:
     res = list()  # type: List[field_handlers.FieldHandler]
@@ -325,23 +338,36 @@ def build_field_handlers(document_type: DocumentType, table_name: str = None,
                 field_code_use_counts[field_code_escaped] = 1
 
             field_handler_class = FIELD_DB_SUPPORT_REGISTRY[field_type.code]
-            field_handler = field_handler_class(field.code,
-                                                field_type.code,
-                                                field.title,
-                                                table_name,
-                                                field.default_value,
-                                                field_column_name_base=field_code_escaped,
-                                                is_suggested=False)
+            field_handler = field_handler_class(
+                field.code,
+                field_type.code,
+                field.title,
+                table_name,
+                field.default_value,
+                field_column_name_base=field_code_escaped,
+                is_suggested=False)
             res.append(field_handler)
+            if include_annotation_fields:
+                field_code_ann = field.code + FIELD_CODE_ANNOTATION_SUFFIX
+                field_handler_ann = field_handlers.AnnotationTextFieldHandler(
+                    field_code_ann,
+                    field_type.code,
+                    field.title + ': Annotations',
+                    table_name,
+                    None,
+                    field_column_name_base=field_code_escaped + FIELD_CODE_ANNOTATION_SUFFIX,
+                    is_suggested=False)
+                res.append(field_handler_ann)
             if include_suggested_fields and field.is_detectable() and not field.read_only:
                 field_code_suggested = field.code + '_suggested'
-                field_handler_suggested = field_handler_class(field_code_suggested,
-                                                              field_type.code,
-                                                              field.title + ': Suggested',
-                                                              table_name,
-                                                              field.default_value,
-                                                              field_column_name_base=field_code_escaped + '_sug',
-                                                              is_suggested=True)
+                field_handler_suggested = field_handler_class(
+                    field_code_suggested,
+                    field_type.code,
+                    field.title + ': Suggested',
+                    table_name,
+                    field.default_value,
+                    field_column_name_base=field_code_escaped + '_sug',
+                    is_suggested=True)
                 res.append(field_handler_suggested)
 
     return res
@@ -591,6 +617,17 @@ def _fill_system_fields_to_python_values(document: Document,
     field_to_python_values[FIELD_CODE_ASSIGN_DATE] = document.assign_date
     field_to_python_values[FIELD_CODE_STATUS_NAME] = document.status.name if document.status else None
     field_to_python_values[FIELD_CODE_DELETE_PENDING] = document.delete_pending
+    field_to_python_values[FIELD_CODE_NOTES] = '\n{}\n'.format('_'*20).join(
+        ['{user} {date} - {target} Level Note\n{note}'.format(
+            user=n.history.last().history_user.get_full_name()
+                if n.history.exists() and n.history.last().history_user else None,
+            date=n.timestamp.strftime('%m-%d-%Y %I:%M %p %Z'),
+            target='Text' if n.location_start is not None and n.location_end is not None else 'Document',
+            note=n.note)
+            for n in document.documentnote_set.all()]) or None
+    field_to_python_values[FIELD_CODE_DEFINITIONS] = '; '.join(
+        DefinitionUsage.objects.filter(definition__isnull=False, text_unit__document=document)
+            .values_list('definition', flat=True)) or None
 
 
 def _fill_generic_fields_to_python_values(document: Document,
@@ -676,7 +713,7 @@ def get_document_field_values(document_type: DocumentType,
         if not table_name:
             table_name = doc_fields_table_name(document_type.code)
         if not handlers:
-            handlers = build_field_handlers(document_type, table_name)
+            handlers = build_field_handlers(document_type, table_name, include_annotation_fields=False)
         return _get_document_fields(document_id, cursor=cursor, table_name=table_name, handlers=handlers,
                                     none_on_errors=none_on_errors)
 
@@ -718,7 +755,8 @@ def cache_document_fields(log: ProcessLogger,
                           cache_user_fields: bool = True,
                           pre_detected_field_codes_to_suggested_values: Optional[Dict[str, Any]] = None,
                           document_initial_load: bool = False,
-                          changed_by_user: User = None):
+                          changed_by_user: User = None,
+                          old_field_values: Dict[str, Any] = None):
     document_type = document.document_type
     table_name = doc_fields_table_name(document_type.code)
 
@@ -728,11 +766,13 @@ def cache_document_fields(log: ProcessLogger,
                                     table_name,
                                     include_generic_fields=True,
                                     include_user_fields=True,
-                                    include_suggested_fields=True)
+                                    include_suggested_fields=True,
+                                    include_annotation_fields=True)
 
     system_field_handlers = list()  # type: List[field_handlers.FieldHandler]
     generic_field_handlers = list()  # type: List[field_handlers.FieldHandler]
-    user_field_handers = list()  # type: List[field_handlers.FieldHandler]
+    user_field_handlers = list()  # type: List[field_handlers.FieldHandler]
+    user_field_annotations_handlers = list()
     user_suggested_field_handlers = list()
 
     for h in handlers:
@@ -742,8 +782,10 @@ def cache_document_fields(log: ProcessLogger,
             generic_field_handlers.append(h)
         elif h.is_suggested:
             user_suggested_field_handlers.append(h)
+        elif h.field_code.endswith(FIELD_CODE_ANNOTATION_SUFFIX):
+            user_field_annotations_handlers.append(h)
         else:
-            user_field_handers.append(h)
+            user_field_handlers.append(h)
 
     insert_field_handlers = list()  # type: List[field_handlers.FieldHandler]
     field_to_python_values = dict()
@@ -755,10 +797,11 @@ def cache_document_fields(log: ProcessLogger,
         insert_field_handlers += generic_field_handlers
 
     if cache_user_fields:
-        if user_field_handers:
-            insert_field_handlers += user_field_handers
+        if user_field_handlers:
+            insert_field_handlers += user_field_handlers
+            insert_field_handlers += user_field_annotations_handlers
             real_document_field_values = DocumentFieldValue.objects \
-                .filter(document=document, field__code__in={h.field_code for h in user_field_handers}) \
+                .filter(document=document, field__code__in={h.field_code for h in user_field_handlers}) \
                 .exclude(removed_by_user=True) \
                 .select_related('field')  # type: List[DocumentFieldValue]
 
@@ -766,6 +809,10 @@ def cache_document_fields(log: ProcessLogger,
                 field_type = dfv.field.get_field_type()
                 field_to_python_values[dfv.field.code] = field_type.merge_multi_python_values(
                     field_to_python_values.get(dfv.field.code), dfv.python_value)
+
+            for dfv in real_document_field_values.filter(location_text__isnull=False).order_by('location_start'):  # type: DocumentFieldValue
+                field_code = dfv.field.code + FIELD_CODE_ANNOTATION_SUFFIX
+                field_to_python_values[field_code] = field_to_python_values.get(field_code, []) + [dfv.location_text]
 
             if cache_suggested_fields and pre_detected_field_codes_to_suggested_values is not None:
                 insert_field_handlers += user_suggested_field_handlers
@@ -779,6 +826,8 @@ def cache_document_fields(log: ProcessLogger,
                                                       document_id=document.pk,
                                                       table_name=table_name,
                                                       handlers=handlers)
+        if old_field_values:
+            document_fields_before.update(old_field_values)
         try:
             cursor.execute(insert_clause.sql, insert_clause.params)
         except IntegrityError:
@@ -804,6 +853,11 @@ def cache_document_fields(log: ProcessLogger,
 
     document_fields_after = dict(document_fields_before) if document_fields_before else dict()
     document_fields_after.update(inserted_document_fields)
+
+    UserNotifications.notify_user_on_document_values_changed(
+        document, document_fields_before, document_fields_after,
+        handlers, changed_by_user)
+
     fire_document_fields_changed(cache_document_fields,
                                  log=log,
                                  document_event=DocumentEvent.CREATED.value if document_initial_load
@@ -818,15 +872,24 @@ def _get_columns(handlers: List[field_handlers.FieldHandler]) -> List[field_hand
     return sum_list([h.get_client_column_descriptions() for h in handlers])
 
 
-def get_columns(document_type: DocumentType, include_suggested: bool = True, include_generic: bool = False) \
+def get_columns(document_type: DocumentType,
+                include_suggested: bool = True,
+                include_annotations: bool = True,
+                include_generic: bool = False) \
         -> List[field_handlers.ColumnDesc]:
     table_name = doc_fields_table_name(document_type.code)
     handlers = build_field_handlers(document_type,
                                     table_name,
                                     include_suggested_fields=include_suggested,
                                     include_generic_fields=include_generic,
+                                    include_annotation_fields=include_annotations,
                                     exclude_hidden_always_fields=True)
     return _get_columns(handlers)
+
+
+def get_annotation_columns(document_type: DocumentType):
+    return [i for i in get_columns(document_type, include_annotations=True)
+            if i.field_code.endswith(FIELD_CODE_ANNOTATION_SUFFIX)]
 
 
 def _prepare_project_ids_filter(requester: User, project_ids: List[int]) -> Optional[SQLClause]:
@@ -905,7 +968,8 @@ def query_documents(document_type: DocumentType,
                     return_documents: bool = True,
                     return_total_count: bool = True,
                     return_reviewed_count: bool = False,
-                    ignore_errors: bool = False
+                    ignore_errors: bool = False,
+                    include_annotation_fields: bool = False
                     ) -> Optional[DocumentQueryResults]:
     if not return_documents and not return_reviewed_count and not return_total_count:
         return None
@@ -913,6 +977,7 @@ def query_documents(document_type: DocumentType,
     table_name = doc_fields_table_name(document_type.code)
     handlers = build_field_handlers(document_type=document_type,
                                     table_name=table_name,
+                                    include_annotation_fields=include_annotation_fields,
                                     exclude_hidden_always_fields=True)  # type: List[field_handlers.FieldHandler]
     existing_columns = _get_columns(handlers)  # type: List[field_handlers.ColumnDesc]
     existing_column_name_to_desc = {column.name: column

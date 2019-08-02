@@ -1,4 +1,9 @@
+from settings import PROJECT_DIR
+
 # SECURITY WARNING: keep the secret key used in production secret!
+# use django's builtin method to create a key eithe any random string
+# >>> from django.core.management.utils import get_random_secret_key
+# >>> get_random_secret_key()
 SECRET_KEY = 'Welcome1'
 
 AUTOLOGIN = False
@@ -59,6 +64,7 @@ FIELDS_RETRAIN_MODEL_ON_ANNOTATIONS_CHANGE = True
 
 TIKA_DISABLE = False
 TIKA_SERVER_ENDPOINT = 'http://localhost:9998'
+TIKA_TIMEOUT = 60 * 60
 
 BASE_URL = '/advanced'
 
@@ -195,10 +201,15 @@ LOGGING = {
 
 # django-cors-headers settings
 # https://github.com/ottoyiu/django-cors-headers/
-# CORS_ORIGIN_ALLOW_ALL = True
-# CORS_ALLOW_CREDENTIALS = False
-# CORS_URLS_REGEX = r'^.*$'
+CORS_ORIGIN_ALLOW_ALL = True
+CORS_ALLOW_CREDENTIALS = False
+CORS_URLS_REGEX = r'^.*$'
 
 FRONTEND_ROOT_URL = 'http://localhost:8080'
 
-
+MEDIA_ROOT = '/var/lib/docker/volumes/contraxsuite_contraxsuite_data_media/_data/'
+CONTRAX_FILE_STORAGE_TYPE = 'WebDAV'
+CONTRAX_FILE_STORAGE_WEBDAV_ROOT_URL = 'http://localhost:8090/'
+CONTRAX_FILE_STORAGE_WEBDAV_USERNAME = 'user'
+CONTRAX_FILE_STORAGE_WEBDAV_PASSWORD = 'pass'
+DATA_UPLOAD_MAX_MEMORY_SIZE = 100*2621440
