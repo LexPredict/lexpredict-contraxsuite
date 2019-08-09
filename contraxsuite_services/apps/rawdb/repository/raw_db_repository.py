@@ -23,7 +23,6 @@
     or shipping ContraxSuite within a closed source product.
 """
 # -*- coding: utf-8 -*-
-
 from typing import Dict, List, Any, Generator, Iterable, Set, Union, Optional
 import regex as re
 from django.db import connection
@@ -42,7 +41,7 @@ from apps.rawdb.rawdb.field_handlers import FieldHandler
 from apps.rawdb.repository.base_raw_db_repository import BaseRawDbRepository
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
+__copyright__ = "Copyright 2015-2019, ContraxSuite, LLC"
 __license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.3/LICENSE"
 __version__ = "1.2.3"
 __maintainer__ = "LexPredict, LLC"
@@ -97,6 +96,37 @@ class RawDbRepository(DocumentFieldRepository, BaseRawDbRepository):
 
         rows = self.parse_raw_db_into_fields(query, field_handlers)
         return self.map_field_names_on_uids(rows, doc_type)
+
+    def get_documents_fields_by_doc_ids(self,
+                                        doc_ids: List[int],
+                                        max_count: int = 0) \
+            -> List[Dict[str, Any]]:
+        doc_type_code = Document.all_objects.filter(id__in=doc_ids).values_list(
+            'document_type__code', flat=True)[0]
+        if not doc_type_code:
+            return []
+
+        doc_type = DocumentType.objects.get(code=doc_type_code)
+
+        doc_ids_str = ','.join([str(id) for id in doc_ids])
+        table_name = doc_fields_table_name(doc_type_code)
+        field_handlers = build_field_handlers(document_type=doc_type,
+                                              table_name=table_name,
+                                              include_annotation_fields=False,
+                                              exclude_hidden_always_fields=True)
+        columns = self.build_columns_sql(field_handlers)
+
+        query_select = f'SELECT {columns} FROM "{table_name}"'
+        query_where = f'WHERE "{FIELD_CODE_DOC_ID}" IN ({doc_ids_str})'
+        query = f'{query_select}\n{query_where}'
+        rows = self.parse_raw_db_into_fields(query, field_handlers)
+
+        fvals = []
+        for fval in self.map_field_names_on_uids(rows, doc_type):
+            fvals.append(fval)
+            if len(fval) == max_count:
+                break
+        return fvals
 
     def get_documents_field_values_by_uid(self, documents: Iterable[Document]) \
             -> Generator[Dict[str, Any], None, None]:

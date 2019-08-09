@@ -74,8 +74,9 @@ from apps.document.python_coded_fields_registry import PYTHON_CODED_FIELDS_REGIS
 from apps.rawdb.field_value_tables import FIELD_CODE_ANNOTATION_SUFFIX
 from apps.task.models import Task
 
+
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
+__copyright__ = "Copyright 2015-2019, ContraxSuite, LLC"
 __license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.3/LICENSE"
 __version__ = "1.2.3"
 __maintainer__ = "LexPredict, LLC"
@@ -245,9 +246,9 @@ class SoftDeleteDocumentAdmin(DocumentAdmin):
 
         # POST: actual delete
         from apps.task.tasks import call_task
+        from apps.document.tasks import DeleteDocuments
         call_task(
-            task_name='DeleteDocuments',
-            module_name='apps.document.tasks',
+            DeleteDocuments,
             _document_ids=doc_ids,
             user_id=request.user.id)
         from django.http import HttpResponseRedirect
@@ -1076,6 +1077,8 @@ class DocumentFieldCategoryForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         if self.instance.pk:
             self.fields['fields'].initial = self.instance.documentfield_set.all()
+        else:
+            self.fields['fields'].initial = DocumentField.objects.none()
 
     def save(self, *args, **kwargs):
         # TODO: Wrap reassignments into transaction

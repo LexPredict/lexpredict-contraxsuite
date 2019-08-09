@@ -40,7 +40,7 @@ from apps.common.file_storage.file_storage import ContraxsuiteFileStorage, Unabl
 from apps.common.singleton import Singleton
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
+__copyright__ = "Copyright 2015-2019, ContraxSuite, LLC"
 __license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.3/LICENSE"
 __version__ = "1.2.3"
 __maintainer__ = "LexPredict, LLC"
@@ -49,6 +49,7 @@ __email__ = "support@contraxsuite.com"
 
 class WebDAVError(Exception):
     pass
+
 
 @Singleton
 class ContraxsuiteWebDAVFileStorage(ContraxsuiteFileStorage):
@@ -84,7 +85,8 @@ class ContraxsuiteWebDAVFileStorage(ContraxsuiteFileStorage):
             raise Exception(msg)
 
     @classmethod
-    def parse_propfind_response(cls, exclude_path: Optional[str], propfind_xml: str) -> Generator[Tuple[str, bool], None, None]:
+    def parse_propfind_response(cls, exclude_path: Optional[str], propfind_xml: str) -> Generator[
+        Tuple[str, bool], None, None]:
         # see tests/webdav_propfind_response_example.xml
         root = ElementTree.fromstring(propfind_xml)  # type: ElementTree.Element
         for response in root:  # type: ElementTree.Element
@@ -131,11 +133,11 @@ class ContraxsuiteWebDAVFileStorage(ContraxsuiteFileStorage):
         """
         url = self.sub_path_join(self.root_url, quote(rel_file_path))
         resp = requests.request('DELETE', url, auth=self.auth)
-        if resp.status_code not in {200, 201}:
+        if resp.status_code not in {200, 201, 204}:
             msg = f'Unable to delete file at WebDAV storage: {url}\n' \
-                  f'Http status: {resp.status_code}\n' \
-                  f'Response:\n' \
-                  f'{resp.text}'
+                f'Http status: {resp.status_code}\n' \
+                f'Response:\n' \
+                f'{resp.text}'
             raise Exception(msg)
 
     @contextmanager
@@ -166,7 +168,7 @@ class ContraxsuiteWebDAVFileStorage(ContraxsuiteFileStorage):
             return None
         elif r.status_code != 200:
             raise WebDAVError('Unable to read file: {0}. Http status code: {1}. Http message: {2}'
-                                   .format(url, r.status_code, r.text))
+                              .format(url, r.status_code, r.text))
         try:
             return r.content
         finally:

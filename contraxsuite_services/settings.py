@@ -648,7 +648,11 @@ SWAGGER_SETTINGS = {
 # TIKA_SERVER_JAR = ROOT_DIR('../libs/tika/tika-server-1.14.jar')
 TIKA_DISABLE = False
 TIKA_SERVER_ENDPOINT = None
-TIKA_JAR_BASE_PATH = PROJECT_DIR('tika_jars')
+JAR_BASE_PATH = PROJECT_DIR('jars')
+
+JAI_JARS = ['jai-imageio-core.jar', 'jai-imageio-jpeg2000.jar']
+TIKA_JARS = ['tika-app.jar', 'lexpredict-tika.jar'] + JAI_JARS
+
 TEXTRACT_FIRST_FOR_EXTENSIONS = []
 TIKA_TIMEOUT = 60 * 60
 

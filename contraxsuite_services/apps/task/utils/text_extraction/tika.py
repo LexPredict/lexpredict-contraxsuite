@@ -27,21 +27,24 @@
 # Tika imports
 import os
 import tempfile
-from subprocess import TimeoutExpired
-from django.conf import settings
+from typing import Dict
 
 from tika.parser import _parse
 from tika.tika import getRemoteFile, callServer
-from typing import Tuple, Dict, Any
+
+from apps.common.log_utils import ProcessLogger
+from apps.common.processes import read_output
+from apps.common.singleton import Singleton
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
+__copyright__ = "Copyright 2015-2019, ContraxSuite, LLC"
 __license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.3/LICENSE"
 __version__ = "1.2.3"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
 
+@Singleton
 class TikaParametrizedParser:
     # flag defines how Tika parses passed file
     TIKA_URL_FLAG_MODE = 'pdf-parse'
@@ -58,34 +61,36 @@ class TikaParametrizedParser:
     def __init__(self):
         self.tika_files_path = tempfile.gettempdir()
         self.tika_jar_path = tempfile.gettempdir()
-        self.logger = None
 
-        from settings import TIKA_JAR_BASE_PATH
-        jar_base_path = TIKA_JAR_BASE_PATH or '/tika_jars'
-        jar_libs = ['tika-app.jar', 'lexpredict-tika.jar',
-                    'jai-imageio-core.jar', 'jai-imageio-jpeg.jar']
-        all_jar_libs = ':'.join([os.path.join(jar_base_path, l) for l in jar_libs])
+        from django.conf import settings
+        jar_base_path = settings.JAR_BASE_PATH
 
-        tika_cls_lib = f"'{all_jar_libs}:libs/*'"
         tika_cls_name = 'org.apache.tika.cli.TikaCLI'
+        tika_cp = ':'.join([os.path.join(jar_base_path, jar) for jar in settings.TIKA_JARS])
+
         conf_full_path = os.path.join(jar_base_path, 'tika.config')
-        self.tika_start_command = f"java -cp {tika_cls_lib} {tika_cls_name} --config={conf_full_path} "
+        self.tika_start_command_list = ['java',
+                                        '-cp', tika_cp,
+                                        '-Dsun.java2d.cmm=sun.java2d.cmm.kcms.KcmsServiceProvider',
+                                        tika_cls_name,
+                                        f'--config={conf_full_path}']
 
     def parse_file_local(self,
-                         url_or_path: str,
+                         local_path: str,
+                         original_file_name: str,
                          timeout: int = 60,
                          encoding_name: str = 'utf-8',
-                         logger: Any = None,
+                         logger: ProcessLogger = None,
                          enable_ocr: bool = True) -> Dict:
-        self.logger = logger
         mode_flag = self.TIKA_MODE_OCR if enable_ocr else self.TIKA_MODE_PDF_ONLY
         os.environ[self.TIKA_ENV_VAR_FLAG_MODE] = mode_flag
-        
-        flags = f'-J -t -e{encoding_name} '
-        text, error = self.execute_tika_jar(url_or_path,
-                                            parse_flags=flags,
-                                            encoding_name=encoding_name,
-                                            timeout=timeout)
+
+        cmd = self.tika_start_command_list + ['-J', '-t', f'-e{encoding_name}', local_path]
+
+        def err(line):
+            logger.info(f'TIKA parsing {original_file_name}:\n{line}')
+
+        text = read_output(cmd, stderr_callback=err, encoding=encoding_name, timeout_sec=timeout)
 
         try:
             return _parse((200, text))
@@ -93,44 +98,6 @@ class TikaParametrizedParser:
             text_sample = text[:255] if text and isinstance(text, str) else str(text)
             raise Exception('Error in parse_default_pdf_ocr -> _parse(). Text:\n' +
                             text_sample) from ex
-
-    def execute_tika_jar(self,
-                         url_or_path: str,
-                         timeout: int = 60,
-                         parse_flags: str = '',
-                         encoding_name: str = 'utf-8') -> Tuple[str, Any]:
-        file_path, file_type = getRemoteFile(url_or_path,
-                                             self.tika_files_path)
-
-        if not timeout:
-            timeout = settings.TIKA_TIMEOUT or 60 * 60
-
-        import subprocess
-        cmd = self.tika_start_command
-        cmd += f'{parse_flags} '
-        cmd += f'"{file_path}"'
-
-        try:
-            ps = subprocess.Popen(cmd,
-                                  shell=True,
-                                  stdout=subprocess.PIPE,
-                                  stderr=subprocess.PIPE)
-            output, erdata = ps.communicate(timeout=timeout)
-            if erdata and self.logger:
-                erdata = erdata.decode(encoding_name)
-                self.logger.info(f'Errors while parsing "{file_path}":\n'
-                                 + erdata)
-            if output:
-                output = output.decode(encoding_name)
-            return output, None
-        except Exception as e:
-            if isinstance(e, TimeoutExpired):
-                err = TimeoutError('Tika app timeout while parsing ' +
-                                   f'"{file_path}", timeout={timeout}')
-            else:
-                err = e
-        if err:
-            raise err
 
     def parse_file_on_server(self,
                              option: str,
@@ -185,5 +152,6 @@ class TikaParametrizedParser:
 
     def make_content_disposition_header(self, fn):
         return 'attachment; filename=%s' % os.path.basename(fn)
+
 
 parametrized_tika_parser = TikaParametrizedParser()

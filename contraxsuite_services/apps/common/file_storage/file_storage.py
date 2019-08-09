@@ -32,7 +32,7 @@ from typing import Optional, BinaryIO
 from django.conf import settings
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
+__copyright__ = "Copyright 2015-2019, ContraxSuite, LLC"
 __license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.3/LICENSE"
 __version__ = "1.2.3"
 __maintainer__ = "LexPredict, LLC"
@@ -98,6 +98,12 @@ class ContraxsuiteFileStorage:
         relative_path = cls.RE_PATH_DOUBLE_SLASH.sub('/', relative_path)
 
         return parent_path.rstrip('/') + '/' + relative_path.strip('/')
+
+    @classmethod
+    def get_parent_path(cls, child_path: str):
+        ar = child_path.strip('/').split('/')
+        del ar[-1]
+        return '/'.join(ar) + '/'
 
     def list(self, rel_file_path: str):
         """
@@ -177,6 +183,13 @@ class ContraxsuiteFileStorage:
                 yield fn, rel_file_path
             finally:
                 pass
+
+    def delete_document(self, rel_file_path: str):
+        """
+        Delete document by path relative to the documents folder.
+        """
+        p = self.sub_path_join(self.documents_path, rel_file_path)
+        self.delete_file(p)
 
     def list_documents(self, rel_file_path: str = ''):
         """

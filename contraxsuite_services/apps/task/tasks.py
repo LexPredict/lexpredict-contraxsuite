@@ -46,7 +46,7 @@ import magic
 import nltk
 import numpy as np
 import pandas as pd
-import tabula
+from apps.task.utils.text_extraction import tabula
 from celery import app
 # Celery imports
 from celery import shared_task
@@ -105,13 +105,13 @@ from apps.task.celery_backend.task_utils import revoke_task
 from apps.task.models import Task, TaskConfig
 from apps.task.utils.nlp.lang import get_language
 from apps.task.utils.nlp.parsed_text_corrector import ParsedTextCorrector
-from apps.task.utils.ocr.textract import textract2text
-from apps.task.utils.ocr.tika import parametrized_tika_parser
+from apps.task.utils.text_extraction.textract import textract2text
+from apps.task.utils.text_extraction.tika import parametrized_tika_parser
 from apps.task.utils.task_utils import TaskUtils, pre_serialize
 from apps.users.models import User
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
+__copyright__ = "Copyright 2015-2019, ContraxSuite, LLC"
 __license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.3/LICENSE"
 __version__ = "1.2.3"
 __maintainer__ = "LexPredict, LLC"
@@ -672,6 +672,7 @@ class LoadDocuments(BaseTask):
                 # or execute Tika jar
                 data = parametrized_tika_parser.parse_file_local(
                     file_path,
+                    original_file_name=original_file_name,
                     timeout=timeout,
                     logger=CeleryTaskLogger(task),
                     enable_ocr=enable_ocr)

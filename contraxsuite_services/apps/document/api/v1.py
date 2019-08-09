@@ -29,14 +29,15 @@ import traceback
 from typing import Dict, Tuple
 
 # Third-party imports
+from celery.states import SUCCESS, FAILURE, PENDING, REVOKED
 import numpy as np
 import pandas as pd
 import rest_framework.views
+
 # Django imports
 from django.conf.urls import url
 from django.contrib.postgres.aggregates.general import StringAgg
-from django.db.models import Min, Max, Subquery, Prefetch, QuerySet
-from django.db.models.functions import Concat
+from django.db.models import Min, Max, Subquery, Prefetch
 from django.http import JsonResponse
 from django.urls import reverse
 from elasticsearch import Elasticsearch
@@ -73,7 +74,7 @@ from apps.extract.models import *
 from apps.users.models import User
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
+__copyright__ = "Copyright 2015-2019, ContraxSuite, LLC"
 __license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.3/LICENSE"
 __version__ = "1.2.3"
 __maintainer__ = "LexPredict, LLC"
@@ -2116,8 +2117,11 @@ class StatsAPIView(rest_framework.views.APIView):
         task_api_view.format_kwarg = {}
         admin_task_df = pd.DataFrame(task_api_view.list(request=request).data)
         admin_task_total_count = admin_task_df.shape[0]
-        admin_task_by_status_count = dict(admin_task_df.groupby(['status']).size()) \
+        admin_task_statuses = (SUCCESS, FAILURE, PENDING, REVOKED)
+        admin_task_by_status_count = {i: 0 for i in admin_task_statuses}
+        current_admin_task_by_status_count = dict(admin_task_df.groupby(['status']).size()) \
             if not admin_task_df.empty else 0
+        admin_task_by_status_count.update(current_admin_task_by_status_count)
 
         # get projects data
         project_api_view = project_api_module.ProjectViewSet(request=request, action='stats')
@@ -2284,6 +2288,8 @@ class StatsAPIView(rest_framework.views.APIView):
             "project_documents_total_count": project_documents_total_count,
             "admin_task_total_count": admin_task_total_count,
             "admin_task_by_status_count": admin_task_by_status_count,
+
+            "backend_version_number": settings.VERSION_NUMBER
         }
         return Response(data)
 

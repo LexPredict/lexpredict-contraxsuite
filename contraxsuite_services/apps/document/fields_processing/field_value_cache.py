@@ -43,7 +43,7 @@ from apps.extract.models import CurrencyUsage
 from apps.users.models import User
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
+__copyright__ = "Copyright 2015-2019, ContraxSuite, LLC"
 __license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.3/LICENSE"
 __version__ = "1.2.3"
 __maintainer__ = "LexPredict, LLC"
@@ -140,6 +140,11 @@ def get_generic_values(doc: Document) -> Dict[str, Any]:
                                     distinct=True),
                   min_date=Min('textunit__dateusage__date'),
                   max_date=Max('textunit__dateusage__date'))
+
+    # if a Document was suddenly removed to this time
+    if not document_qs.exists():
+        raise Document.DoesNotExist
+
     values = document_qs.values('cluster_id', 'parties', 'min_date',
                                 'max_date').first()  # type: Dict[str, Any]
 
