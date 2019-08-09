@@ -8,7 +8,7 @@ https://github.com/LexPredict/datefinder/archive/master.zip
 https://github.com/LexPredict/lexpredict-lexnlp/archive/master.zip
 daphne==2.3.0
 dateparser==0.7.0
-django==2.2.3
+django==2.2.4
 django-allauth==0.39.1
 django-allauth-2fa==0.6
 django-autocomplete-light==3.2.10

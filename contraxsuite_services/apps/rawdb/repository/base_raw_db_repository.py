@@ -24,10 +24,10 @@
 """
 # -*- coding: utf-8 -*-
 
-from typing import List
+from typing import List, Dict, Any
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
+__copyright__ = "Copyright 2015-2019, ContraxSuite, LLC"
 __license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.3/LICENSE"
 __version__ = "1.2.3"
 __maintainer__ = "LexPredict, LLC"
@@ -43,4 +43,10 @@ class BaseRawDbRepository:
     def update_documents_status(self,
                                 doc_ids: List[int],
                                 status_name: str) -> int:
+        raise NotImplementedError()
+
+    def get_documents_fields_by_doc_ids(self,
+                                        doc_ids: List[int],
+                                        max_count: int = 0) \
+            -> List[Dict[str, Any]]:
         raise NotImplementedError()

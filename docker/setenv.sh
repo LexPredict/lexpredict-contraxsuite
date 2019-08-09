@@ -71,7 +71,10 @@ export DOCKER_WEBDAV_AUTH_PASSWORD=password
 export DOCKER_FLOWER_BASE_PATH=flower
 export DOCKER_HOST_NAME_FLOWER=contrax-flower
 
-export SHARED_USER_ID=65432
+# This is required to be the same user id as WebDAV storage reads/writes with.
+# For bytemark/webdav:2.4 its id is 82
+export SHARED_USER_ID=82
+
 export SHARED_USER_NAME=contraxsuite_docker_user
 
 export SHARED_USER_LOG_READER_ID=65431

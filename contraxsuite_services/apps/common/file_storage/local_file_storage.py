@@ -36,7 +36,7 @@ from apps.common.singleton import Singleton
 from apps.common.streaming_utils import copy_data
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
+__copyright__ = "Copyright 2015-2019, ContraxSuite, LLC"
 __license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.3/LICENSE"
 __version__ = "1.2.3"
 __maintainer__ = "LexPredict, LLC"
@@ -64,6 +64,10 @@ class ContraxsuiteLocalFileStorage(ContraxsuiteFileStorage):
             return os.path.join(*res.split('/'))
         else:
             return res
+
+    @classmethod
+    def get_parent_path(cls, child_path: str):
+        return os.path.sep.join(child_path.strip(os.path.sep).split(os.path.sep)[:-1])
 
     def mkdir(self, rel_path: str):
         path = os.path.join(self.root_dir, rel_path)

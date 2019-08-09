@@ -46,7 +46,7 @@ from apps.document.models import ClassifierModel
 from apps.document.models import DocumentField, Document
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
+__copyright__ = "Copyright 2015-2019, ContraxSuite, LLC"
 __license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.3/LICENSE"
 __version__ = "1.2.3"
 __maintainer__ = "LexPredict, LLC"
@@ -103,10 +103,11 @@ class FieldBasedMLOnlyFieldDetectionStrategy(FieldDetectionStrategy):
         qs_modified_document_ids = field_detection_utils.get_qs_active_modified_document_ids(field,
                                                                                              project_ids)
         qs_finished_document_ids = field_detection_utils.get_qs_finished_document_ids(field.document_type, project_ids)
-
-        return list(Document.objects
-                    .filter(pk__in=Q(Subquery(qs_modified_document_ids)) | Q(Subquery(qs_finished_document_ids)))
-                    .values_list('field_values', flat=True)[:settings.ML_TRAIN_DATA_SET_GROUP_LEN])
+        all_ids = list(qs_modified_document_ids) + \
+                  list(qs_finished_document_ids)
+        all_ids = list(set(all_ids))
+        return cls.FIELD_REPOSITORY.get_documents_fields_by_doc_ids(
+            all_ids, settings.ML_TRAIN_DATA_SET_GROUP_LEN)
 
     @classmethod
     def init_classifier(cls, field: DocumentField):

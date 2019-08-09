@@ -48,7 +48,7 @@ from apps.task.tasks import BaseTask, CeleryTaskLogger, call_task
 from apps.task.utils.task_utils import TaskUtils
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
+__copyright__ = "Copyright 2015-2019, ContraxSuite, LLC"
 __license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.3/LICENSE"
 __version__ = "1.2.3"
 __maintainer__ = "LexPredict, LLC"
@@ -321,7 +321,7 @@ class CleanProject(BaseTask):
         file_paths = self.document_repository.get_all_document_source_paths(proj_doc_ids)
         try:
             from apps.document.sync_tasks.document_files_cleaner import DocumentFilesCleaner
-            DocumentFilesCleaner.delete_documents_files(file_paths)
+            DocumentFilesCleaner.delete_document_files(file_paths)
         except Exception as e:
             self.log_error(e)
 

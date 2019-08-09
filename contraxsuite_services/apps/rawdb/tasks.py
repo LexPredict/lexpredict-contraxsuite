@@ -44,7 +44,7 @@ from apps.users.models import User
 from apps.rawdb.field_value_tables import cache_document_fields
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2018, ContraxSuite, LLC"
+__copyright__ = "Copyright 2015-2019, ContraxSuite, LLC"
 __license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.3/LICENSE"
 __version__ = "1.2.3"
 __maintainer__ = "LexPredict, LLC"
@@ -337,7 +337,10 @@ def cache_document_fields_for_doc_ids(task: ExtendedTask, doc_ids: Set):
     log = CeleryTaskLogger(task)
     for doc in Document.all_objects.filter(pk__in=doc_ids) \
             .select_related('document_type', 'assignee', 'status'):  # type: Document
-        cache_document_fields(log, doc)
+        try:
+            cache_document_fields(log, doc)
+        except Document.DoesNotExist:
+            pass
 
 
 @shared_task(base=ExtendedTask,
