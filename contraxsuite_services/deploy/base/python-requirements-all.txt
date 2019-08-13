@@ -62,7 +62,7 @@ numpy==1.15.1
 pandas==0.23.4
 pdfkit==0.6.1
 pillow==4.0.0
-psycopg2-binary==2.8.2
+psycopg2-binary==2.8.3
 pyap==0.1
 pycountry==18.5.26
 pydash==4.7.4
