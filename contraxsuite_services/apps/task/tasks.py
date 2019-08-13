@@ -36,6 +36,8 @@ import re
 import string
 import sys
 import traceback
+import threading
+import time
 from inspect import isclass
 from subprocess import CalledProcessError
 from traceback import format_exc
@@ -57,7 +59,7 @@ from celery.states import SUCCESS
 from celery.utils.log import get_task_logger
 from constance import config
 from django.conf import settings
-from django.db import transaction
+from django.db import transaction, connection
 from django.db.models import Count, Q, Case, Value, When, IntegerField
 from django.utils.timezone import now
 from elasticsearch import Elasticsearch
@@ -117,7 +119,6 @@ __version__ = "1.2.3"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
-
 file_storage = get_file_storage()
 
 # Logger setup
@@ -165,6 +166,8 @@ class ExtendedTask(app.Task):
     WARNING:    Beware storing anything in the self fields of instances of this class.
                 Looks like they are reused and it is safer to store anything in self.request
     """
+
+    db_connection_ping = False
 
     @property
     def task(self) -> Task:
@@ -381,6 +384,20 @@ class ExtendedTask(app.Task):
     def __call__(self, *args: Any, **kwargs: Any) -> Any:
         self.prepare_task_execution()
         Task.objects.increase_run_count(self.request.id)
+
+        working = [True]
+        if self.db_connection_ping:
+            def func_closure(cl_task_id, cl_working):
+                def ping_db():
+                    while cl_working[0]:
+                        Task.objects.filter(pk=cl_task_id).values_list('status', flat=True)
+                        time.sleep(60)
+
+                return ping_db
+
+            self.working = True
+            threading.Thread(target=func_closure(self.request.id, working), daemon=True).start()
+
         try:
             return super().__call__(*args, **kwargs)
         except Exception as exc:
@@ -393,6 +410,8 @@ class ExtendedTask(app.Task):
                 self.log_error(self._render_task_failed(args, kwargs, exc, traceback.format_exc()))
             Task.objects.set_failure_processed(self.request.id, True)
             raise exc
+        finally:
+            working[0] = False
 
     def on_failure(self, exc, task_id, args, kwargs, exc_traceback):
         if not self.task.failure_processed:
@@ -623,6 +642,7 @@ class LoadDocuments(BaseTask):
 
     @staticmethod
     @shared_task(base=ExtendedTask,
+                 db_connection_ping=True,
                  bind=True,
                  soft_time_limit=3600,
                  default_retry_delay=10,
@@ -747,6 +767,9 @@ class LoadDocuments(BaseTask):
         ext, metadata, parser_name, propagate_exceptions, text = \
             LoadDocuments.get_text_from_file(file_name, file_path,
                                              propagate_exceptions, task)
+
+        # make it reconnect - postgres may have already closed the connection because of long-running OCR
+        connection.close()
 
         if not text:
             if propagate_exceptions:
