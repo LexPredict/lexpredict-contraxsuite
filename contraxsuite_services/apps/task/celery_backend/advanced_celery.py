@@ -32,8 +32,8 @@ from apps.task.utils.task_utils import TaskUtils  # noqa
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2019, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.3/LICENSE"
-__version__ = "1.2.3"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.3.0/LICENSE"
+__version__ = "1.3.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -51,7 +51,11 @@ class AdvancedCelery(Celery):
         TaskUtils.prepare_task_execution()
 
         main_task_id = main_task_id or parent_id or root_id
-        Task.objects.init_task(task_id, name, main_task_id, 'Args: {0}\nKwargs: {1}'.format(str(args), str(kwargs)),
+        args_str = ', '.join([str(arg) for arg in args]) if args else ''
+        kwargs_str = ', '.join([f'{f}={str(v)}' for f, v in kwargs.items()]) if kwargs else ''
+
+        Task.objects.init_task(task_id, name, main_task_id,
+                               f'Args: {args_str}\nKwargs: {kwargs_str}',
                                args, source_data, run_after_sub_tasks_finished)  # type: Task
 
         return super().send_task(name, args, kwargs, countdown, eta, task_id, producer, connection,

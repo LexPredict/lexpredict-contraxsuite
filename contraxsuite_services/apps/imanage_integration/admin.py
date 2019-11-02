@@ -25,20 +25,20 @@
 # -*- coding: utf-8 -*-
 
 from django.contrib import admin
-from django.forms import ModelForm, PasswordInput
+from django.forms import ModelForm
 from django.forms.utils import ErrorList
 
-from apps.common.log_utils import ProcessLogger, ErrorCollectingLogger
+from apps.common.forms import FriendlyPasswordField
+from apps.common.log_utils import ErrorCollectingLogger
 from apps.common.script_utils import exec_script
 from apps.project.models import Project
 from apps.users.models import User
-from .models import IManageConfig, IManageDocument
-from apps.common.forms import FriendlyPasswordField
+from apps.imanage_integration.models import IManageConfig, IManageDocument
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2019, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.3/LICENSE"
-__version__ = "1.2.3"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.3.0/LICENSE"
+__version__ = "1.3.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 

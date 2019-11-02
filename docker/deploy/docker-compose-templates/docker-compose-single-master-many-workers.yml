@@ -111,7 +111,7 @@ services:
     image: docker.elastic.co/beats/filebeat:6.5.4
     user: root
     volumes:
-      - postgres_data:/data/pg_data
+      - postgres_data_11:/data/pg_data
       - contraxsuite_logs:/data/logs
       - filebeat_data:/usr/share/filebeat/data
       - contraxsuite_internal_nginx_logs:/data/nginx_logs
@@ -175,16 +175,16 @@ services:
 #     - 127.0.0.1:56720:5672 #
 
   contrax-db:
-    image: postgres:9.6
+    image: postgres:11.5
     environment:
       - "PGDATA=/var/lib/contraxsuite-postgres"
       - "POSTGRES_USER=${DOLLAR}{DOCKER_PG_USER}"
       - "POSTGRES_PASSWORD=${DOLLAR}{DOCKER_PG_PASSWORD}"
       - "POSTGRES_DB=${DOLLAR}{DOCKER_PG_DB_NAME}"
       - "POSTGRES_MAX_BACKUP_NUMBER=${DOLLAR}{DOCKER_PG_MAX_BACKUP_NUMBER}"
-    command: bash -c "service cron start && /usr/local/bin/docker-entrypoint.sh postgres -c config_file=/contraxsuite/postgresql.conf"
+    command: bash -c "${POWA_INSTALL} service cron start && /usr/local/bin/docker-entrypoint.sh postgres -c config_file=/contraxsuite/postgresql.conf"
     volumes:
-      - postgres_data:/var/lib/contraxsuite-postgres
+      - postgres_data_11:/var/lib/contraxsuite-postgres
       - backup:/backup
     configs:
       - source: pg_${PG_CONFIG_VERSION}
@@ -199,10 +199,10 @@ services:
       - contrax_net
     deploy:
       replicas: 1
-      resources:
-        limits:
-          cpus: '${DOLLAR}{DOCKER_POSTGRES_CPUS}'
-          memory: ${DOLLAR}{DOCKER_POSTGRES_MEMORY}
+#     resources:
+#       limits:
+#         cpus: '${DOLLAR}{DOCKER_POSTGRES_CPUS}'
+#         memory: ${DOLLAR}{DOCKER_POSTGRES_MEMORY}
       placement:
         constraints: [node.role == manager]
     ports: #
@@ -266,12 +266,13 @@ services:
       - celery_worker_state:/data/celery_worker_state
       - contraxsuite_ssl_certs:/ssl_certs
     deploy:
+      mode: global # Exactly one instance per node. Primitive AWS autoscaling solution.
       # resources:
-        # limits:
-          # memory: ${DOLLAR}{DOCKER_UWSGI_MEMORY}
-      replicas: 1
+      #  limits:
+      #    cpus: '${DOLLAR}{DOCKER_CELERY_CPUS}'
+      #    memory: ${DOLLAR}{DOCKER_CELERY_MEMORY}
       placement:
-        constraints: [node.role == manager]
+        constraints: [node.role != manager]
 
   contrax-celery:
     image: ${DOLLAR}{CONTRAXSUITE_IMAGE_FULL_NAME}:${DOLLAR}{CONTRAXSUITE_IMAGE_VERSION}
@@ -612,6 +613,7 @@ services:
     ports:
       - 0.0.0.0:80:8080
       - 0.0.0.0:443:4443
+      - 0.0.0.0:444:4444
     depends_on:
       - contrax-uwsgi
       - contrax-jupyter
@@ -757,7 +759,7 @@ services:
       - contrax-rabbitmq
       - contrax-elasticsearch
     deploy:
-      replicas: 1
+      replicas: ${FLOWER_REPLICAS}
       resources:
         limits:
           cpus: '${DOLLAR}{DOCKER_FLOWER_CPUS}'
@@ -778,9 +780,20 @@ services:
       - contraxsuite_internal_nginx_logs:/logs/nginx
       - contraxsuite_logs:/logs/contraxsuite
       - contraxsuite_logrotate:/logrotate
-      - postgres_data:/logs/pg_data
+      - postgres_data_11:/logs/pg_data
     deploy:
       mode: global
+
+  contrax-powa-web:
+    image: powateam/powa-web
+    networks:
+      - contrax_net
+    configs:
+      - source: powa_web_${POWA_WEB_CONFIG_VERSION}
+        target: /etc/powa-web.conf
+    container_name: powa-web
+    deploy:
+      replicas: ${POWA_WEB_REPLICAS}
 
 volumes:
   contraxsuite_deployment_uuid:
@@ -795,7 +808,7 @@ volumes:
   contraxsuite_internal_nginx_logs:
   contraxsuite_logrotate:
   contraxsuite_data_update:
-  postgres_data:
+  postgres_data_11:
   rabbitmq_data:
   elasticsearch_data:
   redis_data:
@@ -832,3 +845,5 @@ configs:
     file: ./postgres_init.sql
   nginx_cust_${NGINX_CUSTOMER_CONF_VERSION}:
     file: ./nginx-customer.conf
+  powa_web_${POWA_WEB_CONFIG_VERSION}:
+    file: ./powa-web.conf

@@ -26,19 +26,23 @@
 
 from typing import Union, List
 from django.db.models import QuerySet
+from apps.common.singleton import Singleton
+
 from apps.document.models import Document, TextUnit
 from apps.document.repository.base_text_unit_repository import BaseTextUnitRepository
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2019, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.3/LICENSE"
-__version__ = "1.2.3"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.3.0/LICENSE"
+__version__ = "1.3.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
 
+@Singleton
 class TextUnitRepository(BaseTextUnitRepository):
 
+    # @collect_stats(name='TextUnitRepository', log_sql=False)
     def get_doc_text_units(self, doc: Document, text_unit_type: str) -> \
             Union[QuerySet, List[TextUnit]]:
         return TextUnit.objects \

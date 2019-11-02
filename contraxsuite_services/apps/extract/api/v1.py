@@ -54,8 +54,8 @@ import apps.common.mixins
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2019, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.3/LICENSE"
-__version__ = "1.2.3"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.3.0/LICENSE"
+__version__ = "1.3.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -65,6 +65,7 @@ class BaseUsageSerializer(apps.common.mixins.SimpleRelationSerializer):
         fields = []
         base_fields = ['pk',
                        'text_unit__pk',
+                       'text_unit__unit_type',
                        'text_unit__location_start',
                        'text_unit__location_end']
         document_fields = ['text_unit__document__pk',
@@ -97,7 +98,6 @@ class BaseUsageListAPIView(apps.common.mixins.JqListAPIView, ViewSetDataMixin):
 
     def get_queryset(self):
         qs = super().get_queryset()
-        qs = qs.filter(text_unit__unit_type='sentence')
         if self.filters:
             for field, key, _callable in self.filters:
                 try:
@@ -107,6 +107,11 @@ class BaseUsageListAPIView(apps.common.mixins.JqListAPIView, ViewSetDataMixin):
                 if value:
                     value = _callable(value)
                     qs = qs.filter(**{field: value})
+
+        text_unit_type = self.request.GET.get('text_unit_type') or getattr(self, 'text_unit_type', None)
+        if text_unit_type:
+            qs = qs.filter(text_unit__unit_type=text_unit_type)
+
         document_id = self.request.GET.get('document_id') or getattr(self, 'document_id', None)
         if document_id:
             qs = qs.filter(text_unit__document_id=document_id)
@@ -152,9 +157,12 @@ class BaseTopUsageSerializer(object):
         self.request = kwargs.get('context', {}).get('request')
         document_id = self.request.GET.get('document_id') or \
                       getattr(kwargs['context']['view'], 'document_id', None)
+        text_unit_type = self.request.GET.get('text_unit_type') or \
+                         getattr(kwargs['context']['view'], 'text_unit_type', None)
         if document_id and not self.request.GET.get('skip_details'):
             self.detail_data = self.data_view(
-                request=self.request, format_kwarg=None, document_id=document_id)\
+                request=self.request, format_kwarg=None,
+                document_id=document_id, text_unit_type=text_unit_type)\
                 .get(request=self.request).data
         else:
             self.detail_data = None

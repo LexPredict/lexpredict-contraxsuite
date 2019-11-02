@@ -1,3 +1,15 @@
 {% extends "base_detail.html" %}
 
+{% block css_extra %}
+  {{ block.super }}
+  <style>
+    .container {
+      min-width: 95%;
+    }
+    .table.details td:first-child {
+      width: auto;
+    }
+  </style>
+{% endblock %}
+
 {% block update_button %}{% endblock %}

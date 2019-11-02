@@ -27,8 +27,8 @@
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2019, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.3/LICENSE"
-__version__ = "1.2.3"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.3.0/LICENSE"
+__version__ = "1.3.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -71,6 +71,15 @@ middleware here, or combine a Django application with an application of another
 framework.
 
 """
+
+# print('Connecting to debugger')
+# import sys
+# sys.path.append('pycharm-debug-py3k.egg')  # replace by pycharm-debug.egg for Python 2.7
+# import pydevd
+# the following line can be copied from "Run/Debug Configurations" dialog
+# pydevd.settrace('localhost', port=4444, stdoutToServer=True, stderrToServer=True)
+# print('======================Debugging========================')
+
 import os
 import signal
 import sys

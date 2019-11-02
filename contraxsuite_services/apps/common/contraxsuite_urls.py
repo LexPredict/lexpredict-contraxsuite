@@ -30,8 +30,8 @@ from apps.document.constants import DOCUMENT_TYPE_CODE_GENERIC_DOCUMENT
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2019, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.3/LICENSE"
-__version__ = "1.2.3"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.3.0/LICENSE"
+__version__ = "1.3.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -50,7 +50,16 @@ def root_url():
     return attach_proto(backend_root_url)
 
 
-def doc_editor_url(document_type_code, project_id, document_id) -> str:
+def doc_editor_url(document_type_code: str, project_id: int, document_id: int) -> str:
+    """
+    Returns URL to document in frontend in annotation mode
+    if settings.FRONTEND_ROOT_URL is set up or an admin GUI
+    reference to the document
+    :param document_id: id of Document entity
+    :param document_type_code: like 'lease.LeaseDocument'
+    :param project_id: id or Project entity
+    :return: http://192.168.31.198:8080/#/contract_analysis/62/annotator/442
+    """
     frontend_root_url = settings.FRONTEND_ROOT_URL  # type: str
     if frontend_root_url:
         if document_type_code == DOCUMENT_TYPE_CODE_GENERIC_DOCUMENT:
@@ -62,3 +71,23 @@ def doc_editor_url(document_type_code, project_id, document_id) -> str:
     backend_root_url = settings.HOST_NAME.strip('/') + '/' + settings.BASE_URL.strip('/')
     return '{root_url}/admin/document/document/{document_id}/change/' \
         .format(root_url=attach_proto(backend_root_url), document_id=document_id)
+
+
+def project_documents_url(document_type_code: str, project_id: int) -> str:
+    """
+    Returns URL to project in frontend (a list of project's documents)
+    if settings.FRONTEND_ROOT_URL is set up
+    :param document_type_code: like 'lease.LeaseDocument'
+    :param project_id: id or Project entity
+    :return: http://192.168.31.198:8080/#/contract_analysis/62
+    """
+    frontend_root_url = settings.FRONTEND_ROOT_URL  # type: str
+    if frontend_root_url:
+        if document_type_code == DOCUMENT_TYPE_CODE_GENERIC_DOCUMENT:
+            return '{root_url}/#/batch_analysis/{project_id}/' \
+                .format(root_url=attach_proto(frontend_root_url), project_id=project_id)
+        else:
+            return '{root_url}/#/contract_analysis/{project_id}/' \
+                .format(root_url=attach_proto(frontend_root_url), project_id=project_id)
+    # backend URL doesnt make sense here
+    return '#'

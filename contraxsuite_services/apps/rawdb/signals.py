@@ -25,25 +25,28 @@
 # -*- coding: utf-8 -*-
 
 from enum import Enum
-from typing import Dict, Any, Optional, List
+from typing import Dict, Optional, List
 
 import django.dispatch
 from django.conf import settings
+from django.db.models import QuerySet
 from django.dispatch import receiver
 
+from apps.common import signals as common_signals
 from apps.common.log_utils import ProcessLogger
 from apps.document import signals
-from apps.project import signals as project_signals
-from apps.users import signals as user_signals
-from apps.common import signals as common_signals
+from apps.document.constants import DocumentSystemField, FieldSpec
 from apps.document.models import Document, DocumentType, DocumentField
-from apps.rawdb.rawdb.field_handlers import FieldHandler
+from apps.document.repository.document_field_repository import DocumentFieldRepository
+from apps.project import signals as project_signals
+from apps.rawdb.rawdb.rawdb_field_handlers import RawdbFieldHandler
+from apps.users import signals as user_signals
 from apps.users.models import User
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2019, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.3/LICENSE"
-__version__ = "1.2.3"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.3.0/LICENSE"
+__version__ = "1.3.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -110,8 +113,8 @@ def project_name_change_listener(sender, **kwargs):
     old_project = kwargs.get('old_instance')
     if old_project is not None and project.name != old_project.name:
         from apps.task.tasks import call_task_func
-        from apps.rawdb.tasks import update_project_documents
-        call_task_func(update_project_documents, (project.pk,), None)
+        from apps.rawdb.tasks import reindex_all_project_documents
+        call_task_func(reindex_all_project_documents, (project.pk,), None)
 
 
 @receiver(user_signals.user_saved)
@@ -120,8 +123,8 @@ def user_full_name_change_listener(sender, **kwargs):
     old_user = kwargs.get('old_instance')
     if old_user is not None and old_user.get_full_name() != user.get_full_name():
         from apps.task.tasks import call_task_func
-        from apps.rawdb.tasks import update_assignee_for_documents
-        call_task_func(update_assignee_for_documents, (user.pk,), None)
+        from apps.rawdb.tasks import reindex_assignee_for_all_documents_in_system
+        call_task_func(reindex_assignee_for_all_documents_in_system, (user.pk,), None)
 
 
 @receiver(common_signals.review_status_saved)
@@ -130,19 +133,17 @@ def review_status_save_listener(sender, **kwargs):
     old_review_status = kwargs.get('old_instance')
     if old_review_status is not None and review_status.name != old_review_status.name:
         from apps.task.tasks import call_task_func
-        from apps.rawdb.tasks import update_status_name_for_documents
-        call_task_func(update_status_name_for_documents, (review_status.pk,), None)
+        from apps.rawdb.tasks import reindex_status_name_for_all_documents_in_system
+        call_task_func(reindex_status_name_for_all_documents_in_system, (review_status.pk,), None)
 
 
-# noinspection PyUnusedLocal
-def document_change_listener_impl(_sender,
+def document_change_listener_impl(sender,
                                   signal,
                                   log: ProcessLogger,
                                   document: Document,
-                                  system_fields_changed: bool = True,
-                                  generic_fields_changed: bool = True,
+                                  system_fields_changed: FieldSpec = True,
+                                  generic_fields_changed: FieldSpec = True,
                                   user_fields_changed: bool = True,
-                                  pre_detected_field_values: Optional[Dict[str, Any]] = None,
                                   changed_by_user: User = None,
                                   document_initial_load: bool = False):
     from apps.rawdb.app_vars import APP_VAR_DISABLE_RAW_DB_CACHING
@@ -152,9 +153,9 @@ def document_change_listener_impl(_sender,
     log = log or ProcessLogger()
     cache_document_fields(log=log,
                           document=document,
+                          cache_system_fields=system_fields_changed,
                           cache_generic_fields=generic_fields_changed,
                           cache_user_fields=user_fields_changed,
-                          pre_detected_field_codes_to_suggested_values=pre_detected_field_values,
                           changed_by_user=changed_by_user,
                           document_initial_load=document_initial_load)
 
@@ -178,20 +179,20 @@ class DocumentEvent(Enum):
 def fire_document_fields_changed(sender,
                                  log: ProcessLogger,
                                  document_event: str,
-                                 document: Document,
-                                 field_handlers: Dict[str, FieldHandler],
+                                 document_pk: int,
+                                 field_handlers: Dict[str, RawdbFieldHandler],
                                  fields_before: Optional[Dict],
                                  fields_after: Optional[Dict],
                                  changed_by_user: User = None):
     document_fields_changed.send(sender,
                                  log=log, document_event=document_event,
-                                 document=document, field_handlers=field_handlers,
+                                 document_pk=document_pk, field_handlers=field_handlers,
                                  fields_before=fields_before,
                                  fields_after=fields_after, changed_by_user=changed_by_user)
 
 
 # noinspection PyUnusedLocal
-def doc_soft_delete_listener_impl(_sender,
+def doc_soft_delete_listener_impl(sender,
                                   signal,
                                   document_ids: List[int],
                                   delete_pending: bool):
@@ -204,51 +205,56 @@ def doc_soft_delete_listener(sender, **kwargs):
     doc_soft_delete_listener_impl(sender, **kwargs)
 
 
-def update_documents_assignees_impl(_sender,
-                                    signal,
-                                    documents,
-                                    assignee_id: int,
-                                    changed_by_user: User):
+# noinspection PyUnusedLocal
+def update_documents_assignee_impl(sender,
+                                   signal,
+                                   doc_ids: List[int],
+                                   new_assignee_id: int,
+                                   changed_by_user: User):
+    from apps.rawdb.tasks import plan_reindex_tasks_in_chunks
+
+    field_repo = DocumentFieldRepository()
+    field_repo.update_docs_assignee(doc_ids, new_assignee_id)
+
+    plan_reindex_tasks_in_chunks(doc_ids, changed_by_user.pk,
+                                 cache_system_fields=[DocumentSystemField.assignee.value],
+                                 cache_generic_fields=False,
+                                 cache_user_fields=False)
+
+
+@receiver(signals.documents_assignee_changed)
+def documents_assignee_changed_listener(sender, **kwargs):
+    update_documents_assignee_impl(sender, **kwargs)
+
+
+# noinspection PyUnusedLocal
+def update_documents_status_impl(sender,
+                                 signal,
+                                 documents: QuerySet,
+                                 new_status_id: int,
+                                 changed_by_user: User):
     from apps.rawdb.repository.raw_db_repository import RawDbRepository
-    from apps.rawdb.tasks import cache_fields_for_docs_queryset
-    from apps.task.tasks import call_task_func
+    from apps.rawdb.tasks import plan_reindex_tasks_in_chunks
     repo = RawDbRepository()
-    doc_ids = list(documents.values_list('pk', flat=True))
-
-    old_field_values = {d.pk: {'assignee_id': d.assignee_id,
-                               'assignee_name': d.assignee.username
-                                   if d.assignee else ''}
-                        for d in documents}
-    repo.update_documents_assignees(doc_ids, assignee_id)
-    task_ptrs = (documents, changed_by_user, False, True,
-                 True, None, old_field_values)
-    call_task_func(cache_fields_for_docs_queryset,
-                   task_ptrs,
-                   changed_by_user.pk)
+    doc_ids = set(documents.values_list('pk', flat=True))
+    repo.update_documents_status(doc_ids, new_status_id)
+    plan_reindex_tasks_in_chunks(doc_ids, changed_by_user.pk,
+                                 cache_system_fields=[DocumentSystemField.status.value],
+                                 cache_generic_fields=False,
+                                 cache_user_fields=False)
 
 
-@receiver(signals.doc_update_documents_assignees)
-def update_documents_assignees_listener(sender, **kwargs):
-    update_documents_assignees_impl(sender, **kwargs)
+@receiver(signals.documents_status_changed)
+def documents_status_changed_listener(sender, **kwargs):
+    update_documents_status_impl(sender, **kwargs)
 
 
-def cache_doc_fields_task_impl(_sender,
-                               signal,
-                               documents,
-                               status_name: str,
-                               changed_by_user: User):
-    from apps.rawdb.repository.raw_db_repository import RawDbRepository
-    from apps.rawdb.tasks import cache_fields_for_docs_queryset
-    from apps.task.tasks import call_task_func
-    repo = RawDbRepository()
-    doc_ids = list(documents.values_list('pk', flat=True))
-    repo.update_documents_status(doc_ids, status_name)
-
-    call_task_func(cache_fields_for_docs_queryset,
-                   (documents, changed_by_user, False, True, True, None),
-                   changed_by_user.pk)
+# noinspection PyUnusedLocal
+def clear_hidden_fields_impl(sender, signal, document: Document, field_codes: List[str]):
+    from apps.rawdb.field_value_tables import clear_user_fields_no_events
+    clear_user_fields_no_events(document=document, user_fields=field_codes)
 
 
-@receiver(signals.cache_doc_fields_task)
-def cache_doc_fields_task_listener(sender, **kwargs):
-    cache_doc_fields_task_impl(sender, **kwargs)
+@receiver(signals.hidden_fields_cleared)
+def hidden_fields_cleared_listener(sender, **kwargs):
+    clear_hidden_fields_impl(sender, **kwargs)

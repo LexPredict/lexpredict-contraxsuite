@@ -95,6 +95,7 @@ LOGGING = {
     'disable_existing_loggers': False,
     'formatters': {
         'verbose': {
+            '()': 'contraxsuite_logging.ContraxsuiteTextFormatter',
             'format': '%(levelname)-7s %(asctime)s | %(message)s'
         },
         'json': {
@@ -186,15 +187,20 @@ LOGGING = {
             'level': 'INFO',
             'propagate': True,
         },
+        'celery.app.trace': {
+            'handlers': ['json_celery', 'text_celery'],
+            'level': 'INFO',
+            'propagate': True,
+        },
         'frontend': {
             'handlers': ['json_frontend'],
             'level': 'DEBUG',
             'propagate': True,
         },
         'django.db.backends': {
-            'handlers': ['text_db', 'json_db'],  # Quiet by default!
+            'handlers': ['text_db', 'json_db'] + (['console'] if DEBUG_SQL else []),  # Quiet by default!
             'propagate': False,
-            'level': 'ERROR',
+            'level': 'DEBUG' if DEBUG_SQL else 'ERROR',
         },
     },
 }
@@ -207,9 +213,11 @@ CORS_URLS_REGEX = r'^.*$'
 
 FRONTEND_ROOT_URL = 'http://localhost:8080'
 
+DEFAULT_FLOAT_PRECIZION = 6
+
 MEDIA_ROOT = '/var/lib/docker/volumes/contraxsuite_contraxsuite_data_media/_data/'
 CONTRAX_FILE_STORAGE_TYPE = 'WebDAV'
 CONTRAX_FILE_STORAGE_WEBDAV_ROOT_URL = 'http://localhost:8090/'
 CONTRAX_FILE_STORAGE_WEBDAV_USERNAME = 'user'
-CONTRAX_FILE_STORAGE_WEBDAV_PASSWORD = 'pass'
+CONTRAX_FILE_STORAGE_WEBDAV_PASSWORD = 'password'
 DATA_UPLOAD_MAX_MEMORY_SIZE = 100*2621440

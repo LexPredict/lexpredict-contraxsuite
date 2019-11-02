@@ -39,18 +39,17 @@ from apps.common.contraxsuite_urls import doc_editor_url, root_url
 from apps.common.file_storage import get_file_storage
 from apps.common.log_utils import ProcessLogger, render_error
 from apps.document.models import Document
-from apps.rawdb.field_value_tables import FIELD_CODE_DOC_ID, FIELD_CODE_DOC_NAME, FIELD_CODE_PROJECT_ID, \
-    FIELD_CODES_SHOW_BY_DEFAULT_NON_GENERIC, FIELD_CODES_SHOW_BY_DEFAULT_GENERIC, FIELD_CODES_HIDE_BY_DEFAULT, \
-    EmptyDocumentQueryResults
-from apps.rawdb.rawdb.field_handlers import FieldHandler
+from apps.rawdb.field_value_tables import EmptyDocumentQueryResults
+from apps.rawdb.constants import FIELD_CODE_DOC_NAME, FIELD_CODE_DOC_ID, FIELD_CODE_PROJECT_ID
+from apps.rawdb.rawdb.rawdb_field_handlers import RawdbFieldHandler
 from apps.users.models import User
-from .models import DocumentDigestConfig, DocumentDigestSendDate, DIGEST_PERIODS_BY_CODE, \
-    DOC_FILTERS_BY_CODE, DocumentNotificationSubscription
+from apps.notifications.models import DocumentDigestConfig, DocumentDigestSendDate, \
+    DIGEST_PERIODS_BY_CODE, DOC_FILTERS_BY_CODE
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2019, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.3/LICENSE"
-__version__ = "1.2.3"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.3.0/LICENSE"
+__version__ = "1.3.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -104,9 +103,8 @@ def send_email(log: ProcessLogger, dst_user, subject: str, txt: str, html: str, 
 
         email.send(fail_silently=False)
     except Exception as caused_by:
-        msg = render_error('Unable to send email to user "{0}" (#{1})'.format(dst_user.get_full_name(), dst_user.pk),
-                           caused_by=caused_by)
-        log.error(msg)
+        log.error(f'Unable to send email to user "{dst_user.get_full_name()}" (#{dst_user.pk})',
+                  exc_info=caused_by)
 
 
 class RenderedNotification:
@@ -235,87 +233,15 @@ def render_digest(config: DocumentDigestConfig,
                           image_dir=image_dir)
 
 
-def render_notification(already_sent_user_ids: Set,
-                        subscription: DocumentNotificationSubscription,
-                        document: Document,
-                        field_handlers: List[FieldHandler],
-                        field_values: Dict[str, Any],
-                        changes: Dict[str, Tuple[Any, Any]] = None,
-                        changed_by_user: User = None) -> Optional[RenderedNotification]:
-    document_type = document.document_type
-    event_info = subscription.get_event_info()
-    if not event_info:
-        return None
-    recipients = subscription.resolve_recipients(field_values)
-    recipients = {r for r in recipients if r.id not in already_sent_user_ids} if recipients else None
-    if not recipients:
-        return None
-
-    display_fields = set(subscription.generic_fields or {})
-    display_fields.update(FIELD_CODES_SHOW_BY_DEFAULT_GENERIC if document_type.is_generic()
-                          else FIELD_CODES_SHOW_BY_DEFAULT_NON_GENERIC)
-    display_fields.update({f.code for f in subscription.user_fields.all() if f.document_type == document_type})
-
-    changes_filtered = dict()
-
-    if changes:
-        for code, old_new in changes.items():
-            if code in FIELD_CODES_HIDE_BY_DEFAULT:
-                continue
-            if old_new[0] == old_new[1] or field_values.get(code) == old_new[0]:
-                continue
-            changes_filtered[code] = old_new
-    changes = changes_filtered
-
-    display_fields.update(changes.keys())
-
-    template_context = {
-        'app_url': root_url(),
-        'doc_url': doc_editor_url(document_type.code, document.project_id, document.pk),
-        'event_code': event_info.code,
-        'event_title': event_info.title,
-        'event_initiator': changed_by_user,
-        'document': field_values,
-        'fields': [{
-            'code': h.field_code,
-            'title': h.field_title,
-            'type': h.field_type,
-            'value': field_values.get(h.field_code),
-            'changed': h.field_code in changes,
-            'changes': changes.get(h.field_code),
-        } for h in field_handlers if h.field_code in display_fields],
-        'changes': changes,
-        'changed_by_user': changed_by_user
-    }  # type: Dict[str, Any]
-
-    subject_template = subscription.subject or event_info.default_subject
-    header_template = subscription.header or event_info.default_subject
-
-    subject = Template(subject_template).render(template_context)
-    header = Template(header_template).render(template_context)
-
-    template_context.update({
-        'subject': subject,
-        'header': header
-    })
-
-    html = None
-
-    html_template = get_notification_template_resource(os.path.join(subscription.template_name, 'template.html'))
-    if html_template:
-        html = Template(html_template.decode('utf-8')).render(template_context)
-
-    txt_template_name = os.path.join(subscription.template_name, 'template.txt')
-    txt_template = get_notification_template_resource(txt_template_name)
-    if not txt_template:
-        raise RuntimeError('Txt template not found: {0}'.format(txt_template_name))
-    txt = Template(txt_template.decode('utf-8')).render(template_context)
-
-    image_dir = os.path.join(subscription.template_name, 'images')
-
-    return RenderedNotification(dst_users=recipients,
-                                subject=subject,
-                                txt=txt,
-                                html=html,
-                                image_dir=image_dir,
-                                cc=subscription.get_cc_addrs())
+class DocumentNotificationSource:
+    def __init__(self,
+                 document: Document,
+                 field_handlers: List[RawdbFieldHandler],
+                 field_values: Dict[str, Any],
+                 changes: Dict[str, Tuple[Any, Any]] = None,
+                 changed_by_user: User = None):
+        self.document = document
+        self.field_handlers = field_handlers
+        self.field_values = field_values
+        self.changes = changes
+        self.changed_by_user = changed_by_user

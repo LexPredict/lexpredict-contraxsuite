@@ -30,15 +30,14 @@ from django import forms
 from django.conf import settings
 
 from apps.document.models import DocumentType, DocumentField
-from apps.document.tasks import FindBrokenDocumentFieldValues, FixDocumentFieldCodes
-from apps.document.tasks import MODULE_NAME
+from apps.document.tasks import FindBrokenDocumentFieldValues, FixDocumentFieldCodes, MODULE_NAME
 from apps.project.models import Project
-from .tasks import ImportCSVFieldDetectionConfig
+from apps.document.tasks import ImportCSVFieldDetectionConfig
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2019, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.3/LICENSE"
-__version__ = "1.2.3"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.3.0/LICENSE"
+__version__ = "1.3.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 

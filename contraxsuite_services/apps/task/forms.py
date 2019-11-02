@@ -29,22 +29,24 @@ import json
 
 # Third-party imports
 from constance import config
+
 # Django imports
 from django import forms
 from django.conf import settings
 
+# Project imports
 from apps.analyze.models import TextUnitClassification, TextUnitClassifier
 from apps.common.forms import checkbox_field
-# Project imports
-from apps.common.widgets import LTRRadioField
+from apps.common.utils import fast_uuid
+from apps.common.widgets import LTRCheckgroupWidget
 from apps.document.models import DocumentProperty, TextUnitProperty, DocumentType
 from apps.project.models import Project
 from apps.task.models import Task
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2019, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.3/LICENSE"
-__version__ = "1.2.3"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.3.0/LICENSE"
+__version__ = "1.3.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -153,11 +155,18 @@ class LocateForm(forms.Form):
     url_locate = locate_field('Urls')
     url_delete = child_field('Url')
 
+    parse = forms.MultipleChoiceField(
+        widget=LTRCheckgroupWidget(),
+        choices=(('sentence', 'Find in sentences'),
+                 ('paragraph', 'Find in paragraphs')),
+        label="Text units where to find terms")
+    '''
     parse = LTRRadioField(
-        choices=(('sentences', 'Parse Text Units with "sentence" types'),
-                 ('paragraphs', 'Parse Text Units with "paragraph" type')),
-        initial='sentences',
+        choices=(('sentence', 'Parse Text Units with "sentence" types'),
+                 ('paragraph', 'Parse Text Units with "paragraph" type')),
+        initial='sentence',
         required=False)
+    '''
 
     project = forms.ModelChoiceField(queryset=Project.objects.all(), required=False)
 
@@ -171,6 +180,14 @@ class LocateForm(forms.Form):
                 config.standard_optional_locators)
             if field_name not in available_locators:
                 del self.fields[field]
+
+    def is_valid(self):
+        if not super(LocateForm, self).is_valid():
+            return False
+        # check at least one "parse" choice is selected
+        if 'parse' not in self.cleaned_data or not self.cleaned_data['parse']:
+            return False
+        return True
 
 
 class ExistedClassifierClassifyForm(forms.Form):
@@ -522,7 +539,50 @@ class TaskDetailForm(forms.Form):
     def __init__(self, prefix, instance: Task, initial):
         super().__init__()
         self.fields['name'].initial = instance.name
-        self.fields['log'].initial = instance.get_task_log_from_elasticsearch()
+
+        logs = list()
+        # on this stage it was quite hard to implement proper formatting in templates
+        # so putting some html/js right here.
+        # TODO: Refactor, put formatting to the templates
+
+        # Main problem is that this form's template uses some base template which replaces \n with <br />
+        for record in instance.get_task_log_from_elasticsearch():
+            color = 'green'
+            if record.log_level == 'WARN':
+                color = 'yellow'
+            elif record.log_level == 'ERROR':
+                color = 'red'
+
+            if not record.timestamp:
+                ts = ''
+            else:
+                ts = record.timestamp.strftime('%Y-%m-%d %H:%M:%S')
+
+            level = record.log_level or 'INFO'
+            message = record.message
+            if message and '\n' in message:
+                message = '<br />' + message
+
+            log_add = f'<b><span style="color: {color}">{level}</span> {ts} | {record.task_name or "no task"} |</b> ' \
+                f'{message}'
+
+            logs.append(log_add)
+
+            if record.stack_trace:
+                # Adding JS to toggle stack trace showing/hiding
+                stack = record.stack_trace.replace('\n', '<br />')
+                uid = str(fast_uuid())
+                uid_toggle = uid + '_toggle'
+                show_hide = f'''e = document.getElementById('{uid}');
+                                e.style.display = e.style.display === 'block' ? 'none' : 'block';
+                                document.getElementById('{uid_toggle}').innerText 
+                                        = e.style.display === 'block' ? '[-] Stack trace:' : '[+] Stack trace';
+                            '''.replace('\n', '')
+                logs.append(f'<a id="{uid_toggle}" onclick="{show_hide}">[+] Stack trace:</a>')
+                logs.append(f'<div id="{uid}" style="display: none; border-left: 1px solid grey; padding-left: 16px">'
+                            f'{stack}</div>')
+
+        self.fields['log'].initial = '\n'.join(logs)
 
 
 class CleanProjectForm(forms.Form):

@@ -41,8 +41,8 @@ from apps.common.singleton import Singleton
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2019, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.3/LICENSE"
-__version__ = "1.2.3"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.3.0/LICENSE"
+__version__ = "1.3.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -58,11 +58,15 @@ class ContraxsuiteWebDAVFileStorage(ContraxsuiteFileStorage):
     Reads/writes files from/to a WebDAV server running at the configured host/port.
     """
 
-    def __init__(self) -> None:
+    def __init__(self,
+                 root_url: str = '',
+                 username: str = '',
+                 password: str = '') -> None:
         super().__init__()
-        self.root_url = settings.CONTRAX_FILE_STORAGE_WEBDAV_ROOT_URL.rstrip('/')
-        self.auth = HTTPBasicAuth(settings.CONTRAX_FILE_STORAGE_WEBDAV_USERNAME,
-                                  settings.CONTRAX_FILE_STORAGE_WEBDAV_PASSWORD)
+        self.root_url = root_url or \
+                        settings.CONTRAX_FILE_STORAGE_WEBDAV_ROOT_URL.rstrip('/')
+        self.auth = HTTPBasicAuth(username or settings.CONTRAX_FILE_STORAGE_WEBDAV_USERNAME,
+                                  password or settings.CONTRAX_FILE_STORAGE_WEBDAV_PASSWORD)
 
     def mkdir(self, path: str):
         url = self.sub_path_join(self.root_url, quote(path))
@@ -74,9 +78,10 @@ class ContraxsuiteWebDAVFileStorage(ContraxsuiteFileStorage):
                 f'{resp.text}'
             raise Exception(msg)
 
-    def write_file(self, path: str, contents_file_like_object):
+    def write_file(self, path: str, contents_file_like_object, content_length: int = None):
         url = self.sub_path_join(self.root_url, quote(path))
-        resp = requests.put(url, data=contents_file_like_object, auth=self.auth)
+        resp = requests.put(url, data=contents_file_like_object, auth=self.auth,
+                            headers={'Content-Length': str(content_length)})
         if resp.status_code not in {200, 201}:
             msg = f'Unable to write data to WebDAV storage: {url}\n' \
                 f'Http status: {resp.status_code}\n' \
@@ -100,6 +105,11 @@ class ContraxsuiteWebDAVFileStorage(ContraxsuiteFileStorage):
 
     def _exists(self, url: str) -> bool:
         r = requests.head(url, auth=self.auth)
+        return r.status_code == 200
+
+    def document_exists(self, rel_path: str):
+        url = os.path.join(self.root_url, self.documents_path, rel_path.lstrip('/'))
+        r = requests.head(url, auth=self.auth, allow_redirects=True)
         return r.status_code == 200
 
     def _list_impl(self, file_list: List[str], path: str):
@@ -135,6 +145,23 @@ class ContraxsuiteWebDAVFileStorage(ContraxsuiteFileStorage):
         resp = requests.request('DELETE', url, auth=self.auth)
         if resp.status_code not in {200, 201, 204}:
             msg = f'Unable to delete file at WebDAV storage: {url}\n' \
+                f'Http status: {resp.status_code}\n' \
+                f'Response:\n' \
+                f'{resp.text}'
+            if resp.status_code == 404:
+                raise FileNotFoundError(msg)
+            else:
+                raise Exception(msg)
+
+    def rename_file(self, old_rel_path: str, new_rel_path: str):
+        url = self.sub_path_join(self.root_url, quote(old_rel_path))
+        dest_url = self.sub_path_join(self.root_url, quote(new_rel_path))
+        resp = requests.request('MOVE',
+                                url,
+                                auth=self.auth,
+                                headers={'Destination': dest_url})
+        if resp.status_code not in {200, 201, 204}:
+            msg = f'Unable to MOVE file at WebDAV storage: {old_rel_path} -> {new_rel_path}\n' \
                 f'Http status: {resp.status_code}\n' \
                 f'Response:\n' \
                 f'{resp.text}'

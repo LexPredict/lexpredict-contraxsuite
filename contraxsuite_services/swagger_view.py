@@ -36,8 +36,8 @@ from rest_framework.response import Response
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2019, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.3/LICENSE"
-__version__ = "1.2.3"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.3.0/LICENSE"
+__version__ = "1.3.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -58,6 +58,8 @@ def get_swagger_view():
                 api_version = group_name = None
                 if link.url.startswith('/api'):
                     url_parts = link.url.split('/', 5)[1:5]
+                    if len(url_parts) != 4:
+                        continue
                     source, api_version, app_name, group_name = url_parts
                 else:
                     url_parts = link.url.split('/', 3)[1:3]

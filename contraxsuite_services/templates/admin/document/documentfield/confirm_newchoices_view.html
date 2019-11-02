@@ -1,0 +1,49 @@
+{% extends 'admin/app_index.html' %}
+
+{% block content-center %}
+    <form action="" method="post">{% csrf_token %}
+        <div class="info-block" style="padding: 8px">
+            {% if wrong_values %}
+            <div class="alert alert-block alert-error">
+                <h4>Unable to Save Document Field: {{field_name}}</h4>
+                <br />
+                <p>
+                    Field "choices" or "Allow values not specified in choices" have been changed
+                    and there are field values conflicting with the updated configuration.
+                </p>
+            </div>
+            <div>
+                <b>The following existing field values are absent in the new choice list:</b>
+                <br/><br/>
+            </div>
+             <table class="table table-bordered table-condensed table-hover table-striped">
+                 <tr>
+                     <th>Document</th>
+                     <th>Value</th>
+                     <th>Closest match in the new "choices"</th>
+                 </tr>
+                 {% for doc_name, doc_url, value, option in wrong_values %}
+                     <tr>
+                         <td><a href="{{doc_url}}">{{doc_name}}</a></td>
+                         <td>{{value}}</td>
+                         <td>{{option}}</td>
+                     </tr>
+                 {% endfor %}
+             </table>
+            <br/>
+                {% if has_more %}
+                There are more conflicting field values not displayed on this page.
+                Please resolve the conflicts before changing the field configuration.
+                {% endif %}
+            {% else %}
+            <h4 class="alert-heading">All choices have correct values</h4>
+            {% endif %}
+
+            <div style="padding: 20px">
+                <!-- input type="submit" value="Yes, I'm sure" class="btn btn-danger"/ -->
+                <a href="{{return_url}}">Return To Document Field Editing</a>
+            </div>
+        </div>
+    </form>
+
+{% endblock %}

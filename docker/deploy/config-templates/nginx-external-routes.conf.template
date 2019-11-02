@@ -1,14 +1,28 @@
 port_in_redirect off;
 
 
-location /advanced/media/ {
-    rewrite  ^/advanced/media/(.*) /$1 break;
+location ${DOCKER_DJANGO_BASE_PATH}media/data/frontend/ {
+    rewrite  ^${DOCKER_DJANGO_BASE_PATH}media/data/frontend/(.*) /$1 break;
+    root /data/media/data/frontend/;
+    auth_basic off;
+    allow all;
+}
+
+location /frontend/ {
+    rewrite  ^/frontend/(.*) /$1 break;
+    root /data/media/data/frontend/;
+    auth_basic off;
+    allow all;
+}
+
+location ${DOCKER_DJANGO_BASE_PATH}media/ {
+    rewrite  ^${DOCKER_DJANGO_BASE_PATH}media/(.*) /$1 break;
     root /data/media/;
     auth_basic "Contraxsuite";
     auth_basic_user_file /etc/nginx/.kibana_htpasswd;
 }
 
-location /advanced {
+location ${DOCKER_DJANGO_BASE_PATH_STRIPPED} {
     uwsgi_pass  ${DOCKER_HOST_NAME_UWSGI}:3031;
     uwsgi_read_timeout 300;
     include /etc/nginx/uwsgi_params;

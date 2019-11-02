@@ -24,23 +24,54 @@
 """
 # -*- coding: utf-8 -*-
 
-from typing import Any
+import datetime
+import decimal
+from typing import Any, Collection, Mapping
+
+from dataclasses import dataclass
+from dataclasses_json import dataclass_json
+from django.core.serializers.json import DjangoJSONEncoder
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2019, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.3/LICENSE"
-__version__ = "1.2.3"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.3.0/LICENSE"
+__version__ = "1.3.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
 
+@dataclass
+@dataclass_json
 class ChannelMessage:
     """
     Message as it is delivered to client through WebSocket, used in ChannelBroadcasting
     """
-    def __init__(self, message_type: str, payload: Any):
-        self.message_type = message_type
-        self.payload = payload
 
-    def __repr__(self):
-        return f'[{self.message_type}]: "{self.payload}"'
+    message_type: str
+    payload: Any  # dataclass or a JSON serializable value
+
+
+def serialize(obj):
+    if isinstance(obj, Mapping):
+        for k, v in obj.items():
+            obj[k] = serialize(v)
+    elif isinstance(obj, Collection) and not isinstance(obj, str):
+        for i in obj:
+            i = serialize(i)
+    elif isinstance(obj, (datetime.datetime, datetime.date, datetime.time)):
+        obj = DjangoJSONEncoder().default(obj)
+    elif isinstance(obj, decimal.Decimal):
+        obj = float(obj)    # DjangoJSONEncoder().default(obj)
+    return obj
+
+
+def to_dict():
+    def wrapper(func):
+        def decorator(self):
+            self.payload = serialize(self.payload)
+            return func(self)
+        return decorator
+    return wrapper
+
+
+ChannelMessage.to_dict = to_dict()(ChannelMessage.to_dict)

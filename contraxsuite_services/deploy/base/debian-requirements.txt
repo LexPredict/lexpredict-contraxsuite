@@ -16,7 +16,7 @@ zlib1g-dev
 
 # Postgresql and psycopg2 dependencies
 libpq-dev
-postgresql-client-9.6
+postgresql-client-11
 postgresql-client-common
 
 # Pillow dependencies
@@ -57,3 +57,5 @@ npm
 
 # to pdf tools
 wkhtmltopdf
+
+python-cffi

@@ -25,6 +25,7 @@
 # -*- coding: utf-8 -*-
 
 import math
+from collections import defaultdict
 
 import fuzzywuzzy.fuzz
 import nltk
@@ -34,18 +35,20 @@ from sklearn.metrics.pairwise import cosine_similarity
 from apps.analyze.models import (
     DocumentSimilarity, TextUnitSimilarity, PartySimilarity as PartySimilarityModel)
 from apps.celery import app
-from apps.document.fields_processing.document_vectorizers import document_feature_vector_pipeline
-from apps.document.models import DocumentField, DocumentFieldValue, TextUnit, Document
+from apps.document import signals
+from apps.document.field_processing.document_vectorizers import document_feature_vector_pipeline
+from apps.document.models import DocumentField, TextUnit, Document
 from apps.extract.models import Party
-from apps.rawdb.field_value_tables import FIELD_CODE_DOC_ID
-from apps.rawdb.repository.raw_db_repository import RawDbRepository
+from apps.rawdb.constants import FIELD_CODE_DOC_ID
+from apps.similarity.chunk_similarity_task import ChunkSimilarity
 from apps.similarity.models import DocumentSimilarityConfig, DST_FIELD_SIMILARITY_CONFIG_ATTR
-from apps.task.tasks import BaseTask, remove_punctuation_map
+from apps.task.tasks import BaseTask, remove_punctuation_map, CeleryTaskLogger
+
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2019, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.3/LICENSE"
-__version__ = "1.2.3"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.3.0/LICENSE"
+__version__ = "1.3.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -147,11 +150,16 @@ class Similarity(BaseTask):
         search_similar_documents = kwargs['search_similar_documents']
         search_similar_text_units = kwargs['search_similar_text_units']
         similarity_threshold = kwargs['similarity_threshold']
+        project = kwargs['project']
+        project_id = project['pk'] if project else 0
         self.log_info('Min similarity: %d' % similarity_threshold)
 
         # get text units with min length 100 signs
-        text_units = TextUnit.objects.filter(unit_type='paragraph',
-                                             text__regex=r'.{100}.*')
+        text_units = TextUnit.objects.filter(
+            unit_type='paragraph', document__project_id=project_id,
+            text__regex=r'.{100}.*') if project_id else \
+            TextUnit.objects.filter(
+                unit_type='paragraph', text__regex=r'.{100}.*')
         len_tu_set = text_units.count()
 
         push_steps = 0
@@ -160,6 +168,9 @@ class Similarity(BaseTask):
         if search_similar_text_units:
             push_steps += math.ceil(len_tu_set / self.step) ** 2 + 3
         self.set_push_steps(push_steps)
+
+        documents = Document.objects.filter(project_id=project_id) if project_id \
+            else Document.objects.all()
 
         # similar Documents
         if search_similar_documents:
@@ -171,7 +182,7 @@ class Similarity(BaseTask):
 
             # step #2 - prepare data
             texts_set = ['\n'.join(d.textunit_set.values_list('text', flat=True))
-                         for d in Document.objects.all()]
+                         for d in documents]
             self.push()
 
             # step #3
@@ -183,13 +194,13 @@ class Similarity(BaseTask):
 
             # step #4
             similarity_matrix = cosine_similarity(X) * 100
-            pks = Document.objects.values_list('pk', flat=True)
-            for x, document_a in enumerate(pks):
+            pks = documents.values_list('pk', flat=True)
+            for x in range(len(pks) - 1):
+                document_a = pks[x]
                 # use it to search for unique a<>b relations
                 # for y, document_b in enumerate(Document.objects.all()[x + 1:], start=x + 1):
-                for y, document_b in enumerate(pks):
-                    if document_a == document_b:
-                        continue
+                for y in range(x + 1, len(pks)):
+                    document_b = pks[y]
                     similarity = similarity_matrix[x, y]
                     if similarity < similarity_threshold:
                         continue
@@ -259,15 +270,24 @@ class PreconfiguredDocumentSimilaritySearch(BaseTask):
         config.self_validate()
 
         similarity_threshold = config.similarity_threshold
-        feature_vector_fields = dst_field.depends_on_fields.all()
-        feature_vector_field_codes = {f.code for f in feature_vector_fields}.union({FIELD_CODE_DOC_ID})
+        feature_vector_fields = list(dst_field.depends_on_fields.all())
+        feature_vector_field_codes = [f.code for f in feature_vector_fields]
 
         self.log_info('{field}: Min similarity: {threshold}'
                       .format(field=dst_field.code, threshold=similarity_threshold))
 
-        rawdb = RawDbRepository()
-        field_values_list = list(rawdb.get_field_values(document_type=dst_field.document_type,
-                                                        field_codes=feature_vector_field_codes))
+        import apps.document.repository.document_field_repository as dfr
+        field_repo = dfr.DocumentFieldRepository()
+        qr_doc_ids = Document.objects.filter(document_type=dst_field.document_type).values_list('pk', flat=True)
+        doc_ids_to_code_to_value = field_repo \
+            .get_field_code_to_python_value_multiple_docs(document_type_id=dst_field.document_type_id,
+                                                          doc_ids=qr_doc_ids,
+                                                          field_codes_only=feature_vector_field_codes)
+
+        field_values_list = list()
+        for doc_id, values in doc_ids_to_code_to_value:
+            values[FIELD_CODE_DOC_ID] = doc_id
+            field_values_list.append(values)
 
         total_docs = len(field_values_list)
 
@@ -284,7 +304,7 @@ class PreconfiguredDocumentSimilaritySearch(BaseTask):
         self.log_info('{field}: Finding similar documents (similarity >= {threshold})'
                       .format(field=dst_field.code, threshold=similarity_threshold))
 
-        dfvs = list()
+        doc_ids_to_values = defaultdict(set)
         for x, doc_a_field_values in enumerate(field_values_list):
             doc_a_pk = doc_a_field_values[FIELD_CODE_DOC_ID]
             similarities = cosine_similarity(feature_vectors[x], feature_vectors)
@@ -295,8 +315,8 @@ class PreconfiguredDocumentSimilaritySearch(BaseTask):
                 similarity = similarities[0, y]
                 if similarity < similarity_threshold:
                     continue
-                dfvs.append(DocumentFieldValue(document_id=doc_a_pk, value=doc_b_pk, field_id=dst_field.pk))
-                dfvs.append(DocumentFieldValue(document_id=doc_b_pk, value=doc_a_pk, field_id=dst_field.pk))
+                doc_ids_to_values[doc_a_pk].add(doc_b_pk)
+                doc_ids_to_values[doc_b_pk].add(doc_a_pk)
             if x % 100 == 0:
                 self.log_info('{field}: Checked for similarity {x} documents of {n}'
                               .format(field=dst_field.code, x=x + 1, n=total_docs))
@@ -304,19 +324,22 @@ class PreconfiguredDocumentSimilaritySearch(BaseTask):
 
         self.push()
         self.log_info('{field}: Found {n} similar documents. Storing links into the document fields.'
-                      .format(field=dst_field.code, n=len(dfvs)))
+                      .format(field=dst_field.code, n=len(doc_ids_to_values)))
 
-        del_doc_batch_size = 100
-        for i in range(0, len(field_values_list), del_doc_batch_size):
-            DocumentFieldValue.objects \
-                .filter(field_id=dst_field.pk) \
-                .filter(document_id__in={field_values[FIELD_CODE_DOC_ID] for field_values
-                                         in field_values_list[i: i + del_doc_batch_size]}) \
-                .delete()
-        DocumentFieldValue.objects.bulk_create(dfvs)
-        self.push()
+        doc_ids_to_values = {doc_id: list(v) if v else None for doc_id, v in doc_ids_to_values}
+        field_repo.store_values_one_field_many_docs_no_ants(field=dst_field, doc_ids_to_values=doc_ids_to_values)
+
+        log = CeleryTaskLogger(self)
+        for doc_id in doc_ids_to_values.keys():
+            try:
+                doc = Document.objects.get(pk=doc_id)
+                signals.fire_document_changed(log=log, document=doc, changed_by_user=None, system_fields_changed=False,
+                                              generic_fields_changed=False, user_fields_changed=[dst_field.code])
+            except Exception as ex:
+                self.log_error(f'Unable to fire doc id change event for doc #{doc_id}', exc_info=ex)
 
 
 app.register_task(PreconfiguredDocumentSimilaritySearch())
 app.register_task(Similarity())
+app.register_task(ChunkSimilarity())
 app.register_task(PartySimilarity())

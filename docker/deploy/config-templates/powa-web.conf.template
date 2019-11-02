@@ -1,0 +1,8 @@
+servers={
+  'main': {
+    'host': 'contrax-db',
+    'port': '5432',
+    'database': 'powa'
+  }
+}
+cookie_secret="KAJsuasa&&As6a^Sfdsaxzc6sa"

@@ -29,8 +29,8 @@ from apps.common.utils import Map
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2019, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.3/LICENSE"
-__version__ = "1.2.3"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.3.0/LICENSE"
+__version__ = "1.3.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -59,3 +59,43 @@ class AdvancedQuerySet(models.query.QuerySet):
 
 class AdvancedManager(models.manager.BaseManager.from_queryset(AdvancedQuerySet)):
     pass
+
+
+class BulkSignalsQuerySet(models.QuerySet):
+
+    def update(self, **kwargs):
+        ret = super().update(**kwargs)
+        for obj in self:
+            models.signals.post_save.send(obj.__class__, instance=obj, created=False)
+        return ret
+
+    def delete(self):
+        ret = super().delete()
+        for obj in self:
+            models.signals.post_delete.send(obj.__class__, instance=obj)
+        return ret
+
+
+class BulkSignalsManager(models.Manager):
+
+    def __init__(self, use_in_migrations=None):
+        super().__init__()
+        if use_in_migrations is not None:
+            self.use_in_migrations = use_in_migrations
+
+    def get_queryset(self):
+        qs = BulkSignalsQuerySet(self.model, using=self._db)
+        qs.use_in_migrations = self.use_in_migrations
+        return qs
+
+    def bulk_create(self, objs, **kwargs):
+        ret = super().bulk_create(objs, **kwargs)
+        for obj in objs:
+            models.signals.post_save.send(obj.__class__, instance=obj, created=True)
+        return ret
+
+    def bulk_update(self, objs, fields, **kwargs):
+        ret = super().bulk_update(objs, fields, **kwargs)
+        for obj in objs:
+            models.signals.post_save.send(obj.__class__, instance=obj, created=False)
+        return ret

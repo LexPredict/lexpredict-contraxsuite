@@ -29,7 +29,7 @@ import datetime
 import io
 import json
 import re
-from typing import Any, List, Set, Dict, Iterable, Tuple
+from typing import Any, List, Dict, Iterable, Tuple, Union
 
 import jiphy
 from celery import shared_task
@@ -41,33 +41,44 @@ from django.urls import reverse
 from django.utils.timezone import now
 from psycopg2 import InterfaceError, OperationalError
 
+import task_names
 from apps.celery import app
+from apps.common.collection_utils import chunks
 from apps.common.db_cache.db_cache import DbCache
 from apps.common.file_storage import get_file_storage
-from apps.common.log_utils import render_error
+from apps.common.models import ReviewStatus
 from apps.common.sql_commons import escape_column_name
+from apps.document import signals
 from apps.document.async_tasks.detect_field_values_task import DetectFieldValues
-from apps.document.field_types import FieldType
-from apps.document.fields_detection import field_detection, field_detection_utils
-from apps.document.fields_detection.fields_detection_abstractions import DetectedFieldValue
-from apps.document.fields_detection.regexps_field_detection import apply_simple_config
-from apps.document.fields_processing import field_value_cache
-from apps.document.fields_processing.field_processing_utils import merge_document_field_values_to_python_value
-from apps.document.models import DocumentType, Document, ClassifierModel, DocumentFieldValue, TextUnit, DocumentField
+from apps.document.constants import DOCUMENT_FIELD_CODE_MAX_LEN, \
+    DOC_NUMBER_PER_SUB_TASK, DOC_NUMBER_PER_MAIN_TASK, \
+    FieldSpec, DocumentSystemField
+from apps.document.field_detection import field_detection
+from apps.document.field_detection.field_detection import detect_and_cache_field_values_for_document
+from apps.document.field_detection.field_detection_repository import FieldDetectionRepository
+from apps.document.field_detection.regexps_field_detection import apply_simple_config
+from apps.document.field_types import TypedField
+from apps.document.models import DocumentType, \
+    Document, ClassifierModel, TextUnit, DocumentField
+from apps.document.models import FieldValue, FieldAnnotation
 from apps.document.repository.document_bulk_delete import get_document_bulk_delete
+from apps.document.repository.dto import FieldValueDTO
+from apps.document.signals import fire_documents_status_changed, \
+    fire_documents_assignee_changed, fire_document_changed
 from apps.document.sync_tasks.document_files_cleaner import DocumentFilesCleaner
 from apps.dump.document_type_import import import_document_type
 from apps.project.models import Project
 from apps.rawdb.field_value_tables import adapt_table_structure
 from apps.task.models import Task
 from apps.task.tasks import BaseTask, ExtendedTask, CeleryTaskLogger, call_task
+from apps.task.tasks import call_task_func
 from apps.task.utils.task_utils import TaskUtils
-from .constants import DOCUMENT_FIELD_CODE_MAX_LEN
+from apps.users.models import User
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2019, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.3/LICENSE"
-__version__ = "1.2.3"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.3.0/LICENSE"
+__version__ = "1.3.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -156,7 +167,8 @@ class TrainDirtyDocumentFieldDetectorModel(BaseTask):
         if dirty_field.can_retrain():
             dirty_field.dirty = False
             dirty_field.save()
-            train_docs_count = field_detection_utils.get_approved_documents_number(dirty_field, None)
+            fd_repo = FieldDetectionRepository()
+            train_docs_count = fd_repo.get_approved_documents_number(dirty_field, None)
             if train_docs_count >= dirty_field.trained_after_documents_number:
                 new_model = field_detection.train_document_field_detector_model(CeleryTaskLogger(task),
                                                                                 dirty_field,
@@ -166,8 +178,8 @@ class TrainDirtyDocumentFieldDetectorModel(BaseTask):
                     new_model.save()
 
 
-@app.task(name='advanced_celery.retrain_dirty_fields', bind=True)
-def retrain_dirty_fields(self):
+@app.task(name=task_names.TASK_NAME_RETRAIN_DIRTY_TASKS, bind=True)
+def retrain_dirty_fields(_celery_task):
     TaskUtils.prepare_task_execution()
     if DocumentField.objects.has_dirty_fields():
         task_name = TrainDirtyDocumentFieldDetectorModel.name
@@ -244,12 +256,11 @@ class TrainAndTest(BaseTask):
                     .filter(project_id__in=test_data_projects_ids, document_type_id=field.document_type.pk) \
                     .values_list('pk', flat=True)
             else:
-                test_document_ids = set(field_detection_utils
-                                        .get_qs_active_modified_document_ids(field,
-                                                                             test_data_projects_ids))
-                test_document_ids.update(set(field_detection_utils
-                                             .get_qs_finished_document_ids(field.document_type,
-                                                                           test_data_projects_ids)))
+                fd_repo = FieldDetectionRepository()
+                test_document_ids = set(fd_repo.get_qs_active_modified_document_ids(field,
+                                                                                    test_data_projects_ids))
+                test_document_ids.update(set(fd_repo.get_qs_finished_document_ids(field.document_type,
+                                                                                  test_data_projects_ids)))
 
             self.log_info('Testing field detection document-by-document...')
             test_tasks_args = []
@@ -275,54 +286,71 @@ class TrainAndTest(BaseTask):
     def test_field_detector_model(task: ExtendedTask, field_id, document_id) -> dict:
         document = Document.objects.get(pk=document_id)  # type: Document
         field = DocumentField.objects.get(pk=field_id)  # type: DocumentField
+        typed_field = TypedField.by(field)
 
-        expected_dfvs = field_detection.detect_and_cache_field_values(CeleryTaskLogger(task), document, field,
-                                                                      save=False)  # type: List[DetectedFieldValue]
-        actual_dfvs = list(DocumentFieldValue.objects
-                           .filter(document=document, field=field, removed_by_user=False)
-                           .all())  # type: List[DocumentFieldValue]
+        expected_field_value_dto = field_detection.detect_field_value(
+            CeleryTaskLogger(task), document, field)  # type: FieldValueDTO
 
-        if field.is_value_aware():
+        import apps.document.repository.document_field_repository as dfr
+        field_repo = dfr.DocumentFieldRepository()
+
+        if typed_field.requires_value:
             # dates, numbers, e.t.c.
-            expected_field_values = field_detection.merge_detected_field_values_to_python_value(expected_dfvs)
-            expected_field_value = expected_field_values.get(field.code)
+            actual_field_value_dict = field_repo \
+                .get_field_code_to_python_value(document_type_id=document.document_type_id,
+                                                doc_id=document_id,
+                                                field_codes_only={field.code})
 
-            actual_field_values = merge_document_field_values_to_python_value(actual_dfvs)
-            actual_field_value = actual_field_values.get(field.code)
+            actual_field_value = actual_field_value_dict.get(field.code) if actual_field_value_dict else None
+            expected_field_value = expected_field_value_dto.field_value if expected_field_value_dto else None
 
             matches = bool(expected_field_value == actual_field_value)
         else:
-            # related-info e.t.c.
-            expected_set = {'text_unit_' + str(dfv.text_unit.id) for dfv in expected_dfvs if dfv.text_unit}
-            expected_field_value = '; '.join(sorted(expected_set))
+            expected_set = set()
+            # related-info e.t.c. - comparing by annotations - exact comparing
+            if expected_field_value_dto.annotations:
+                for ant_dto in expected_field_value_dto.annotations:
+                    text_unit_id = field_repo.find_text_unit_id_by_location(
+                        document,
+                        field,
+                        ant_dto.location_in_doc_start,
+                        ant_dto.location_in_doc_end)
+                    if not text_unit_id:
+                        continue
+                    expected_set.add('text_unit_' + str(text_unit_id))
+            expected_field_value_dto = '; '.join(sorted(expected_set))
 
+            actual_dfvs = FieldAnnotation.objects.filter(
+                document_type_id=document.document_type_id,
+                doc_id=document_id,
+                field_id=field.pk)
             actual_set = {'text_unit_' + str(dfv.text_unit.id) for dfv in actual_dfvs if dfv.text_unit}
             actual_field_value = '; '.join(sorted(actual_set))
             matches = bool(expected_set == actual_set)
 
         if not matches:
             found_in_text = [dfv.text_unit.text
-                             for dfv in expected_dfvs
-                             if dfv.text_unit and dfv.text_unit.text] if expected_dfvs else []
+                             for dfv in expected_field_value_dto
+                             if dfv.text_unit and dfv.text_unit.text] if expected_field_value_dto else []
             found_in_text_msg = ''
             if found_in_text:
                 found_in_text_msg = '\nDetected in text:\n-----\n{0}\n-----'.format('\n---\n'.join(found_in_text))
             task.log_info('{3} Test doc: {0} (Doc id: {6}, Project: {5}). '
                           'Detected: {1}. Real: {2}.{4}'
                           .format(document.name,
-                                  expected_field_value,
+                                  expected_field_value_dto,
                                   actual_field_value,
                                   '[  OK  ]' if matches else '[ ERR  ]',
                                   found_in_text_msg,
                                   document.project.name if document.project else '',
-                                  document.id))
+                                  document.pk))
 
         text_units_number = TextUnit.objects.filter(document=document, unit_type=field.text_unit_type).count()
 
         return {
             'text_units_number': text_units_number,
             'value_matches_expected': matches,
-            'actual_field_value': actual_field_value if field.is_choice_field() else None
+            'actual_field_value': actual_field_value if typed_field.is_choice_field else None
         }
 
     @staticmethod
@@ -337,7 +365,7 @@ class TrainAndTest(BaseTask):
     def join_field_detector_model_tests(task: ExtendedTask,
                                         field_uid,
                                         classifier_model_id):
-        results = list(Task.objects \
+        results = list(Task.objects
                        .filter(main_task_id=task.request.parent_id,
                                name=TrainAndTest.test_field_detector_model.name)
                        .values_list('result', flat=True))
@@ -389,53 +417,10 @@ class TrainAndTest(BaseTask):
                               test_text_units_number,
                               accuracy))
 
-        if field.is_choice_field():
+        if TypedField.by(field).is_choice_field:
             accuracy_per_value = {actual_field_value: (matches_per_value.get(actual_field_value) or 0) / total
                                   for actual_field_value, total in total_per_value.items()}
             task.log_info('Accuracy per value:\n{0}'.format(json.dumps(accuracy_per_value, sort_keys=True, indent=2)))
-
-
-class CacheDocumentFields(BaseTask):
-    name = 'Cache Document Fields'
-
-    @staticmethod
-    @shared_task(base=ExtendedTask,
-                 bind=True,
-                 soft_time_limit=6000,
-                 default_retry_delay=10,
-                 retry_backoff=True,
-                 autoretry_for=(SoftTimeLimitExceeded, InterfaceError, OperationalError,),
-                 max_retries=3
-                 )
-    def cache_document_fields_for_doc_ids(_task: ExtendedTask, doc_ids: Set):
-        for doc in Document.all_objects.filter(pk__in=doc_ids):
-            log = CeleryTaskLogger(_task)
-            field_value_cache.cache_generic_values(doc, log=log)
-            suggested_values = field_detection.detect_and_cache_field_values_for_document(log, doc, False,
-                                                                                          clear_old_values=False)
-            field_value_cache.cache_field_values(doc, suggested_values, save=True, log=log)
-
-    @classmethod
-    def start_cache_document_fields_for_doc_ids(cls, task: ExtendedTask, ids: Iterable[Any]) -> None:
-        doc_id_pack = set()
-        for doc_id in ids:
-            doc_id_pack.add(doc_id)
-            if len(doc_id_pack) >= 10:
-                task.run_sub_tasks('Cache field values for a set of documents',
-                                   cls.cache_document_fields_for_doc_ids,
-                                   [(list(doc_id_pack),)])
-                doc_id_pack = set()
-        if len(doc_id_pack) > 0:
-            task.run_sub_tasks('Cache field values for a set of documents', cls.cache_document_fields_for_doc_ids,
-                               [(list(doc_id_pack),)])
-
-    def process(self, project: Project = None, **_kwargs):
-        document_qs = Document.objects
-
-        if project:
-            document_qs = document_qs.filter(project__pk=project['pk'])
-
-        self.start_cache_document_fields_for_doc_ids(self, document_qs.values_list('pk', flat=True))
 
 
 class LoadDocumentWithFields(BaseTask):
@@ -448,9 +433,10 @@ class LoadDocumentWithFields(BaseTask):
     priority = 9
 
     @staticmethod
-    def load_field_values(task: ExtendedTask, document: Document, document_fields: dict, field_owners: dict) -> Dict:
+    def load_field_values(task: ExtendedTask, document: Document, document_fields_alias_to_value: Dict[str, Any]) \
+            -> Dict[DocumentField, FieldValueDTO]:
         document_type = document.document_type
-        fields_to_values = {}
+        fields_to_values = dict()  # type: Dict[DocumentField, FieldValueDTO]
 
         if not document_type:
             return fields_to_values
@@ -464,17 +450,7 @@ class LoadDocumentWithFields(BaseTask):
                                           for field_alias, field_code in field_code_aliases.items() if
                                           field_alias and field_code})
 
-        def _maybe_add_val(f, v, owner):
-            if v is None:
-                return
-            v = DetectedFieldValue(f, v, user=owner)
-            prev = fields_to_values.get(f)
-            if not prev:
-                fields_to_values[f] = [v]
-            else:
-                prev.append(v)
-
-        for field_alias, field_value_text in document_fields.items():
+        for field_alias, field_value_text in document_fields_alias_to_value.items():
             if field_value_text is None:
                 continue
 
@@ -483,16 +459,18 @@ class LoadDocumentWithFields(BaseTask):
                 task.log_warn(
                     'Field alias "{0}" not found for document type {1}'.format(field_alias, document_type.code))
                 continue
-            field_type_adapter = field.get_field_type()  # type: FieldType
-            field_owner = field_owners.get(field_alias)
+            typed_field = TypedField.by(field)  # type: TypedField
 
             if type(field_value_text) is list:
                 for possible_value_text in list(field_value_text):
-                    maybe_value = field_type_adapter.extract_from_possible_value_text(field, possible_value_text)
-                    _maybe_add_val(field, maybe_value, field_owner)
+                    maybe_value = typed_field.extract_from_possible_value_text(possible_value_text)
+                    if maybe_value:
+                        fields_to_values[field] = FieldValueDTO(field_value=maybe_value)
+                        break
             else:
-                maybe_value = field_type_adapter.extract_from_possible_value_text(field, field_value_text)
-                _maybe_add_val(field, maybe_value, field_owner)
+                maybe_value = typed_field.extract_from_possible_value_text(field_value_text)
+                if maybe_value:
+                    fields_to_values[field] = FieldValueDTO(field_value=maybe_value)
 
         return fields_to_values
 
@@ -527,7 +505,8 @@ class LoadDocumentWithFields(BaseTask):
             if len(file_list) == 0:
                 raise RuntimeError('Wrong file or directory name or directory is empty: {}'
                                    .format(path))
-            load_docs_args = [(file_path, project.id, run_detect_field_values) for file_path in file_list]
+            load_docs_args = [(file_path, project.pk, run_detect_field_values)
+                              for file_path in file_list]
             self.run_sub_tasks('Load Each Document',
                                LoadDocumentWithFields.create_document,
                                load_docs_args,
@@ -557,42 +536,53 @@ class LoadDocumentWithFields(BaseTask):
                     document_type=document_type,
                     metadata={'parsed_by': None}
                 )
-                LoadDocumentWithFields.load_doc(task, document, data, run_detect_field_values)
+                LoadDocumentWithFields.load_doc(task=task,
+                                                document=document,
+                                                field_values_alias_to_value=data,
+                                                run_detect_field_values=run_detect_field_values)
 
     @staticmethod
-    def load_doc(task: ExtendedTask, document: Document, document_fields: Dict, run_detect_field_values: bool,
-                 field_owners: dict = None):
+    def load_doc(task: ExtendedTask,
+                 document: Document,
+                 field_values_alias_to_value: Dict[str, Any],
+                 run_detect_field_values: bool,
+                 field_owners: Dict[str, User] = None):
         field_owners = field_owners if field_owners else {}
-        fields_to_values = LoadDocumentWithFields.load_field_values(task, document, document_fields, field_owners)
+        fields_to_values = LoadDocumentWithFields.load_field_values(task, document, field_values_alias_to_value)
         log = CeleryTaskLogger(task)
+        import apps.document.repository.document_field_repository as dfr
+        field_repo = dfr.DocumentFieldRepository()
 
         with transaction.atomic():
             new_document = document.pk is None
             document.save(force_insert=new_document)
-            if not new_document:
-                DocumentFieldValue.objects \
-                    .filter(document=document,
-                            removed_by_user=False,
-                            created_by__isnull=True,
-                            modified_by__isnull=True) \
-                    .delete()
 
-            for field, values in fields_to_values.items():
-                field_detection.save_detected_values(document, field, values)
+            for field, value_dto in fields_to_values.items():
+                field_repo.update_field_value_with_dto(document=document,
+                                                       field=field,
+                                                       field_value_dto=value_dto,
+                                                       user=field_owners.get(field.code))
 
             if run_detect_field_values:
-                field_detection.detect_and_cache_field_values_for_document(log, document, True, clear_old_values=False)
+                field_detection.detect_and_cache_field_values_for_document(log=log,
+                                                                           document=document,
+                                                                           save=True,
+                                                                           clear_old_values=False)
             else:
-                dfvs = field_detection.detect_and_cache_field_values_for_document(log, document, False,
-                                                                                  clear_old_values=False)
-                field_value_cache.cache_field_values(document, dfvs, save=True, log=log)
+                signals.fire_document_changed(sender=task,
+                                              log=log,
+                                              document=document,
+                                              changed_by_user=None,
+                                              document_initial_load=True,
+                                              system_fields_changed=True,
+                                              generic_fields_changed=True,
+                                              user_fields_changed=True)
 
         task.log_info('Loaded {0} field values for document #{1} ({2}): {3}'
                       .format(len(fields_to_values),
                               document.pk,
                               document.name,
-                              ';\n'.join('{0}: {1}'.format(f.code, ', '.join([str(v.value) for v in l]) if l else '')
-                                         for f, l in fields_to_values.items())))
+                              ';\n'.join(f'{f}: {dto.field_value}' for f, dto in fields_to_values.items())))
 
 
 class ImportCSVFieldDetectionConfig(BaseTask):
@@ -628,6 +618,23 @@ class FindBrokenDocumentFieldValues(BaseTask):
     name = 'Find Broken Document Field Values'
 
     @staticmethod
+    def process_broken(task: ExtendedTask, obj: Union[FieldAnnotation, FieldValue], delete_broken: bool = False):
+        if delete_broken:
+            obj.delete()
+            task.log_info(f'Found broken {obj.__class__.__name__}.\n'
+                          f'Id: {obj.pk}\n'
+                          f'JSON value: {obj.value}\n'
+                          'The document field value has been deleted.\n')
+        else:
+            content_type = ContentType.objects.get_for_model(obj.__class__)
+            dfv_admin_url = reverse("admin:%s_%s_change" %
+                                    (content_type.app_label, content_type.model), args=(obj.pk,))
+            task.log_info(f'Found broken {obj.__class__.__name__}.\n'
+                          f'Id: {obj.pk}\n'
+                          f'JSON value: {obj.value}\n'
+                          f'Admin URL: {dfv_admin_url}\n')
+
+    @staticmethod
     @shared_task(base=ExtendedTask,
                  bind=True,
                  soft_time_limit=3600,
@@ -635,35 +642,35 @@ class FindBrokenDocumentFieldValues(BaseTask):
                  retry_backoff=True,
                  autoretry_for=(SoftTimeLimitExceeded, InterfaceError, OperationalError),
                  max_retries=3)
-    def check_document_field_values(task: ExtendedTask, dfv_ids: Set, delete_broken: bool = False):
+    def check_annotations(task: ExtendedTask,
+                          annotation_ids: List[int],
+                          delete_broken: bool = False):
+        import apps.document.repository.document_field_repository as dfr
+        field_repo = dfr.DocumentFieldRepository()
+        qa_ants = field_repo.get_ants_by_ids(annotation_ids)
+        for ant in qa_ants:  # FieldAnnotation
+            field = ant.field  # type: DocumentField
+            if not TypedField.by(field).is_json_annotation_value_ok(ant.value):
+                FindBrokenDocumentFieldValues.process_broken(task, ant, delete_broken)
 
-        for dfv in DocumentFieldValue.objects \
-                .filter(pk__in=dfv_ids) \
-                .select_related('field'):  # type: DocumentFieldValue
-            try:
-                temp_value = dfv.python_value
-                if temp_value is not None:
-                    field = dfv.field
-                    if field.is_choice_field() and not field.is_choice_value(temp_value):
-                        raise ValueError('Field value {0} is not in list of its choice values:\n{1}'
-                                         .format(temp_value, field.choices))
-            except:
-                if delete_broken:
-                    dfv.delete()
-                    msg = render_error('Found broken document field value.\n'
-                                       'Document field value id: {0}\n'
-                                       'DB value: {1}\n'
-                                       'The document field value has been deleted.\n'
-                                       .format(dfv.pk, dfv.value))
-                else:
-                    content_type = ContentType.objects.get_for_model(DocumentFieldValue)
-                    dfv_admin_url = reverse("admin:%s_%s_change" %
-                                            (content_type.app_label, content_type.model), args=(dfv.pk,))
-                    msg = render_error('Found broken document field value.\n'
-                                       'Document field value id: {0}\n'
-                                       'DB value: {1}\n'
-                                       'Admin URL: {2}\n'.format(dfv.pk, dfv.value, dfv_admin_url))
-                task.log_info(msg)
+    @staticmethod
+    @shared_task(base=ExtendedTask,
+                 bind=True,
+                 soft_time_limit=3600,
+                 default_retry_delay=10,
+                 retry_backoff=True,
+                 autoretry_for=(SoftTimeLimitExceeded, InterfaceError, OperationalError),
+                 max_retries=3)
+    def check_field_values(task: ExtendedTask,
+                           field_value_ids: List[int],
+                           delete_broken: bool = False):
+        import apps.document.repository.document_field_repository as dfr
+        field_repo = dfr.DocumentFieldRepository()
+        qa_field_values = field_repo.get_field_values_by_ids(field_value_ids)
+        for fv in qa_field_values:  # FieldAnnotation
+            field = fv.field  # type: DocumentField
+            if not TypedField.by(field).is_json_field_value_ok(fv.value):
+                FindBrokenDocumentFieldValues.process_broken(task, fv, delete_broken)
 
     def process(self, **kwargs):
         document_field_arg = kwargs.get('document_field')
@@ -671,30 +678,28 @@ class FindBrokenDocumentFieldValues(BaseTask):
 
         delete_broken = kwargs.get('delete_broken')
 
-        dfv_qs = DocumentFieldValue.objects
+        # check FieldValue-s
+        import apps.document.repository.document_field_repository as dfr
+        field_repo = dfr.DocumentFieldRepository()
 
-        if document_field_id:
-            dfv_qs = dfv_qs.filter(field_id=document_field_id)
-        else:
-            dfv_qs = dfv_qs.all()
+        qs_field_values = field_repo.get_field_value_ids_by_doc_field(document_field_id)
+        total_num = qs_field_values.count()
+        for ids_chunk in chunks(qs_field_values.values_list('pk', flat=True), 100):
+            id_list = list(ids_chunk)
+            self.run_sub_tasks('Check FieldValues',
+                               self.check_field_values,
+                               [(id_list, delete_broken)])
+            self.log_info(f'Sub-tasks started for {len(id_list)} FieldValues of total {total_num}')
 
-        dfv_ids = set()
-        total_num = dfv_qs.count()
-        count = 0
-        for dfv_id in dfv_qs.values_list('pk', flat=True):
-            count += 1
-            if len(dfv_ids) >= 100:
-                self.log_info('Sub-tasks started for {0} document field values of {1}'.format(count, total_num))
-                self.run_sub_tasks('Check document field values', self.check_document_field_values,
-                                   [(list(dfv_ids), delete_broken)])
-                dfv_ids = set()
-            else:
-                dfv_ids.add(dfv_id)
-
-        if len(dfv_ids) > 0:
-            self.run_sub_tasks('Check document field values', self.check_document_field_values,
-                               [(list(dfv_ids), delete_broken)])
-            self.log_info('Sub-tasks started for {0} document field values of {1}'.format(count, total_num))
+        # check FieldAnnotation-s
+        qs_ants = field_repo.get_fieldant_ids_by_doc_field(document_field_id)
+        total_num = qs_ants.count()
+        for ids_chunk in chunks(qs_ants.values_list('pk', flat=True), 100):
+            id_list = list(ids_chunk)
+            self.run_sub_tasks('Check FieldAnnotations',
+                               self.check_annotations,
+                               [(id_list, delete_broken)])
+            self.log_info(f'Sub-tasks started for {len(id_list)} FieldAnnotations of total {total_num}')
 
 
 class ImportDocumentType(BaseTask):
@@ -740,14 +745,36 @@ class ImportDocumentType(BaseTask):
         finally:
             DbCache.clean_cache(document_type_config_csv_file['cache_key'])
 
-        if save and update_cache:
-            from apps.rawdb.app_vars import APP_VAR_DISABLE_RAW_DB_CACHING
-            if not APP_VAR_DISABLE_RAW_DB_CACHING.val:
-                self.log_info('Adapting RawDB table structure after import ...')
-                adapt_table_structure(CeleryTaskLogger(self), document_type, force=False)
-            ids = Document.all_objects.filter(document_type=document_type).values_list('pk', flat=True)
-            self.log_info('Caching document field values ...')
-            CacheDocumentFields.start_cache_document_fields_for_doc_ids(self, ids)
+        if not (save and update_cache):
+            return
+
+        from apps.rawdb.app_vars import APP_VAR_DISABLE_RAW_DB_CACHING
+        if not APP_VAR_DISABLE_RAW_DB_CACHING.val:
+            self.log_info('Adapting RawDB table structure after import ...')
+            adapt_table_structure(CeleryTaskLogger(self), document_type, force=False)
+        ids = Document.all_objects.filter(document_type=document_type).values_list('pk', flat=True)
+        ids = list(ids)
+        self.log_info('Caching document field values ...')
+
+        for chunk in chunks(ids, 50):
+            self.run_sub_tasks('Cache field values for a set of documents',
+                               ImportDocumentType.cache_document_fields_for_doc_ids,
+                               [(list(chunk),)])
+        # CacheDocumentFields.start_cache_document_fields_for_doc_ids(self, ids)
+
+    @staticmethod
+    @shared_task(base=ExtendedTask,
+                 bind=True,
+                 soft_time_limit=6000,
+                 default_retry_delay=10,
+                 retry_backoff=True,
+                 autoretry_for=(SoftTimeLimitExceeded, InterfaceError, OperationalError),
+                 max_retries=0)
+    def cache_document_fields_for_doc_ids(_task: ExtendedTask, doc_ids: List):
+        for doc in Document.all_objects.filter(pk__in=doc_ids):
+            log = CeleryTaskLogger(_task)
+            detect_and_cache_field_values_for_document(
+                log, doc, False, clear_old_values=False)
 
 
 class FixDocumentFieldCodes(BaseTask):
@@ -852,16 +879,158 @@ class DeleteDocuments(BaseTask):
         doc_ids = kwargs.get('_document_ids')
         file_paths = self.document_repository.get_all_document_source_paths(doc_ids)
         get_document_bulk_delete().delete_documents(doc_ids)
-        try:
-            DocumentFilesCleaner.delete_document_files(file_paths)
-        except Exception as e:
-            self.log_error(e)
+        DocumentFilesCleaner.delete_document_files(file_paths)
+
+
+@shared_task(base=ExtendedTask,
+             bind=True,
+             soft_time_limit=6000,
+             default_retry_delay=10,
+             retry_backoff=True,
+             autoretry_for=(SoftTimeLimitExceeded, InterfaceError, OperationalError,),
+             max_retries=3)
+def _process_documents_status_changed(task: ExtendedTask, doc_ids: List, new_status_id: int, changed_by_user_id: int):
+    from apps.document.repository.document_field_repository import DocumentFieldRepository
+
+    dfr = DocumentFieldRepository()
+
+    status = ReviewStatus.objects.get(pk=new_status_id)  # type: ReviewStatus
+    docs_qr = Document.objects.filter(pk__in=doc_ids).defer('full_text')
+    changed_by_user = User.objects.get(pk=changed_by_user_id) if changed_by_user_id is not None else None
+    if not status.is_active:
+        for doc in docs_qr:
+            dfr.delete_hidden_field_values_if_needed(doc, event_sender=task)
+
+    fire_documents_status_changed(sender=task,
+                                  documents=docs_qr,
+                                  new_status_id=new_status_id,
+                                  changed_by_user=changed_by_user)
+
+
+@shared_task(base=ExtendedTask,
+             name='Documents Status Changed',
+             bind=True,
+             soft_time_limit=6000,
+             default_retry_delay=10,
+             retry_backoff=True,
+             autoretry_for=(SoftTimeLimitExceeded, InterfaceError, OperationalError,),
+             max_retries=3)
+def process_documents_status_changed(task: ExtendedTask, doc_ids: List, new_status_id: int, changed_by_user_id: int):
+    task.run_sub_tasks('Process doc status change',
+                       _process_documents_status_changed,
+                       [(l, new_status_id, changed_by_user_id) for l in chunks(doc_ids, DOC_NUMBER_PER_SUB_TASK)])
+
+
+@shared_task(base=ExtendedTask,
+             bind=True,
+             soft_time_limit=6000,
+             default_retry_delay=10,
+             retry_backoff=True,
+             autoretry_for=(SoftTimeLimitExceeded, InterfaceError, OperationalError,),
+             max_retries=3)
+def _process_documents_assignee_changed(task: ExtendedTask,
+                                        doc_ids: List[int],
+                                        new_assignee_id: int,
+                                        changed_by_user_id: int):
+    changed_by_user = User.objects.get(pk=changed_by_user_id) if changed_by_user_id is not None else None
+    fire_documents_assignee_changed(sender=task, doc_ids=doc_ids, new_assignee_id=new_assignee_id,
+                                    changed_by_user=changed_by_user)
+
+
+@shared_task(base=ExtendedTask,
+             name='Documents Assignee Changed',
+             bind=True,
+             soft_time_limit=6000,
+             default_retry_delay=10,
+             retry_backoff=True,
+             autoretry_for=(SoftTimeLimitExceeded, InterfaceError, OperationalError,),
+             max_retries=3)
+def process_documents_assignee_changed(task: ExtendedTask, doc_ids: List, new_assignee_id: int,
+                                       changed_by_user_id: int):
+    task.run_sub_tasks('Process doc assignee change',
+                       _process_documents_assignee_changed,
+                       [(l, new_assignee_id, changed_by_user_id) for l in chunks(doc_ids, DOC_NUMBER_PER_SUB_TASK)])
+
+
+@shared_task(base=ExtendedTask,
+             name='Document Changed',
+             bind=True,
+             soft_time_limit=6000,
+             default_retry_delay=10,
+             retry_backoff=True,
+             autoretry_for=(SoftTimeLimitExceeded, InterfaceError, OperationalError,),
+             max_retries=3)
+def process_document_changed(task: ExtendedTask,
+                             doc_id: int,
+                             system_fields_changed: FieldSpec = True,
+                             generic_fields_changed: FieldSpec = True,
+                             user_fields_changed: bool = True,
+                             changed_by_user_id: int = None):
+    from apps.document.repository.document_field_repository import DocumentFieldRepository
+
+    dfr = DocumentFieldRepository()
+
+    doc = Document.objects.get(pk=doc_id)  # type: Document
+    changed_by_user = User.objects.get(pk=changed_by_user_id) if changed_by_user_id is not None else None
+    if DocumentSystemField.status.specified_in(system_fields_changed):
+        dfr.delete_hidden_field_values_if_needed(doc, event_sender=task)
+    fire_document_changed(sender=task,
+                          log=CeleryTaskLogger(task),
+                          document=doc,
+                          changed_by_user=changed_by_user,
+                          document_initial_load=False,
+                          system_fields_changed=system_fields_changed,
+                          generic_fields_changed=generic_fields_changed,
+                          user_fields_changed=user_fields_changed)
+
+
+def plan_process_document_changed(doc_id: int,
+                                  system_fields_changed: FieldSpec = True,
+                                  generic_fields_changed: FieldSpec = True,
+                                  user_fields_changed: bool = True,
+                                  changed_by_user_id: int = None):
+    call_task_func(process_document_changed,
+                   (doc_id, system_fields_changed, generic_fields_changed, user_fields_changed, changed_by_user_id),
+                   changed_by_user_id)
+
+
+def plan_process_documents_status_changed(doc_ids: Iterable, new_status_id: int, changed_by_user_id: int):
+    """
+    Plans processing of the documents status change. Starts multiple tasks, N doc ids per task, to avoid
+    possible overloading the rabbitmq if too large set of doc ids is provided.
+    Each started task will be shown in the admin task list and may start any number of sub-tasks to parallelize
+    the processing.
+    :param doc_ids:
+    :param new_status_id:
+    :param changed_by_user_id:
+    :return:
+    """
+    for doc_ids_chunk in chunks(doc_ids, DOC_NUMBER_PER_MAIN_TASK):
+        call_task_func(process_documents_status_changed,
+                       (doc_ids_chunk, new_status_id, changed_by_user_id),
+                       changed_by_user_id)
+
+
+def plan_process_documents_assignee_changed(doc_ids: Iterable, new_assignee_id: int, changed_by_user_id: int):
+    """
+    Plans processing of the documents assignee change. Starts multiple tasks, N doc ids per task, to avoid
+    possible overloading the rabbitmq if too large set of doc ids is provided.
+    Each started task will be shown in the admin task list and may start any number of sub-tasks to parallelize
+    the processing.
+    :param doc_ids:
+    :param new_assignee_id:
+    :param changed_by_user_id:
+    :return:
+    """
+    for doc_ids_chunk in chunks(doc_ids, DOC_NUMBER_PER_MAIN_TASK):
+        call_task_func(process_documents_assignee_changed,
+                       (doc_ids_chunk, new_assignee_id, changed_by_user_id),
+                       changed_by_user_id)
 
 
 app.register_task(DetectFieldValues())
 app.register_task(TrainDocumentFieldDetectorModel())
 app.register_task(TrainDirtyDocumentFieldDetectorModel())
-app.register_task(CacheDocumentFields())
 app.register_task(TrainAndTest())
 app.register_task(LoadDocumentWithFields())
 app.register_task(ImportCSVFieldDetectionConfig())

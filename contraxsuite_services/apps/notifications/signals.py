@@ -30,8 +30,7 @@ from django.dispatch import receiver
 from apps.rawdb import signals
 
 from apps.common.log_utils import ProcessLogger
-from apps.document.models import Document
-from apps.rawdb.rawdb.field_handlers import FieldHandler
+from apps.rawdb.rawdb.rawdb_field_handlers import RawdbFieldHandler
 from apps.users.models import User
 
 
@@ -39,8 +38,8 @@ from apps.users.models import User
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2019, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.3/LICENSE"
-__version__ = "1.2.3"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.3.0/LICENSE"
+__version__ = "1.3.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -49,8 +48,8 @@ def document_fields_change_listener_impl(_sender,
                                          signal,
                                          log: ProcessLogger,
                                          document_event: str,
-                                         document: Document,
-                                         field_handlers: Dict[str, FieldHandler],
+                                         document_pk: int,
+                                         field_handlers: Dict[str, RawdbFieldHandler],
                                          fields_before: Optional[Dict],
                                          fields_after: Optional[Dict],
                                          changed_by_user: User = None):
@@ -68,7 +67,7 @@ def document_fields_change_listener_impl(_sender,
     if APP_VAR_DISABLE_EVENT_NOTIFICATIONS.val:
         return
     call_task_func(process_notifications_on_document_change,
-                   (document_event, document.pk, fields_before, fields_after, changed_by_user.pk),
+                   (document_event, document_pk, fields_before, fields_after, changed_by_user.pk),
                    changed_by_user.pk)
 
 

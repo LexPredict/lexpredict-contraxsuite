@@ -26,50 +26,57 @@
 
 # Standard imports
 import json
+import mimetypes
 import os
-import re
+import tarfile
+import zipfile
+from typing import BinaryIO, Union
 
-# Django imports
+import rest_framework.views
 from django.conf import settings
 from django.contrib.contenttypes.models import ContentType
 from django.core.files import File
 from django.core.files.storage import FileSystemStorage
 from django.db import connection, transaction
 from django.db.models import Count, Subquery
-from django.http import JsonResponse
+from django.http import JsonResponse, HttpRequest
 from django.urls import path, include
-from django.utils.timezone import now
-
 # Third-party imports
 from rest_framework import serializers, routers, viewsets
+from rest_framework import status
 from rest_framework.decorators import action
 from rest_framework.exceptions import ValidationError, APIException
 from rest_framework.permissions import BasePermission, IsAuthenticated
 from rest_framework.response import Response
-import rest_framework.views
 
 # Project imports
 import apps.common.mixins
 from apps.analyze.models import DocumentCluster
+from apps.common.file_storage import get_file_storage
+from apps.common.log_utils import render_error
 from apps.common.models import ReviewStatus
+from apps.common.url_utils import as_bool
 from apps.common.utils import get_api_module
-from apps.document.app_vars import MAX_DOCUMENT_SIZE
+from apps.common.utils import safe_to_int
+from apps.document.app_vars import MAX_ARCHIVE_SIZE, MAX_DOCUMENT_SIZE, FORCE_REWRITE_DOC
 from apps.document.constants import DOCUMENT_TYPE_PK_GENERIC_DOCUMENT
-from apps.document.models import Document, DocumentType, DocumentFieldValue, DocumentField
-from apps.document.signals import fire_doc_update_documents_assignees, fire_cache_doc_fields_task
-from apps.document.sync_tasks.soft_delete_document_task import SoftDeleteDocumentsSyncTask
+from apps.document.models import Document, DocumentType, DocumentField
+from apps.document.tasks import plan_process_documents_status_changed, \
+    plan_process_documents_assignee_changed
 from apps.project.models import Project, TaskQueue, UploadSession, ProjectClustering
-from apps.project.sync_tasks.soft_delete_project_task import SoftDeleteProjectSyncTask
+from apps.project.tasks import ReassignProjectClusterDocuments, ClusterProjectDocuments, \
+    CleanProject, CancelUpload, LoadArchive
 from apps.task.models import Task
-from apps.task.tasks import call_task, purge_task
+from apps.task.tasks import call_task, purge_task, LoadDocuments
 from apps.task.utils.logger import get_django_logger
 from apps.users.models import User
-from apps.common.file_storage import get_file_storage
+
+# Django imports
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2019, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.3/LICENSE"
-__version__ = "1.2.3"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.3.0/LICENSE"
+__version__ = "1.3.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -383,7 +390,6 @@ class ProjectViewSet(apps.common.mixins.APILoggingMixin,
                      apps.common.mixins.APIActionMixin,
                      apps.common.mixins.JqListAPIMixin,
                      viewsets.ModelViewSet):
-
     """
     list: Project List
     retrieve: Retrieve Project
@@ -394,6 +400,12 @@ class ProjectViewSet(apps.common.mixins.APILoggingMixin,
     """
 
     queryset = Project.objects.all()
+
+    def dispatch(self, request, *args, **kwargs):
+        self.initialize_request(request, *args, **kwargs)
+        if self.action == 'retrieve':
+            request.needs_action_logging = True
+        return super().dispatch(request, *args, **kwargs)
 
     def perform_create(self, serializer):
         project = super().perform_create(serializer)
@@ -420,9 +432,76 @@ class ProjectViewSet(apps.common.mixins.APILoggingMixin,
         return qs
 
     def get_extra_data(self, queryset):
-        return {
-            'available_statuses': common_api_module.ReviewStatusSerializer(ReviewStatus.objects.select_related('group'),
-                                                                           many=True).data}
+        return {'available_statuses': common_api_module.ReviewStatusSerializer(
+            ReviewStatus.objects.select_related('group'), many=True).data}
+
+    @action(detail=True, methods=['get'])
+    def progress(self, request, **kwargs):
+        """
+        Get current progress of all project sessions / clusterings
+        """
+        # permissions check
+        project = self.get_object()
+
+        project_sessions = project.uploadsession_set
+
+        # renew status for completed=False sessions
+        for session in project_sessions.filter(completed=False):
+            session.status_check()
+
+        # get completed sessions as bool
+        project_has_completed_sessions = project_sessions.filter(completed=True).exists()
+        project_uncompleted_sessions = project_sessions.filter(completed=False)
+
+        # get just LAST recent session
+        user_uncompleted_session = project_uncompleted_sessions.filter(
+            created_by=request.user).order_by('created_date').last()
+        other_uncompleted_session = project_uncompleted_sessions.exclude(
+            created_by=request.user).order_by('created_date').last()
+
+        # get this user opened sessions progress
+        user_uncompleted_session_progress = None
+        if user_uncompleted_session:
+            session_progress = user_uncompleted_session.document_tasks_progress_total
+            if session_progress != 100:
+                user_uncompleted_session_progress = {
+                    'session_id': user_uncompleted_session.pk,
+                    'document_tasks_progress_total': session_progress,
+                    'documents_total_size': user_uncompleted_session.documents_total_size}
+            else:
+                project_has_completed_sessions = True
+
+        # get other users opened sessions progress
+        other_uncompleted_session_progress = None
+        if other_uncompleted_session:
+            session_progress = other_uncompleted_session.document_tasks_progress_total
+            if session_progress != 100:
+                other_uncompleted_session_progress = {
+                    'session_id': other_uncompleted_session.pk,
+                    'document_tasks_progress_total': other_uncompleted_session.document_tasks_progress_total,
+                    'documents_total_size': other_uncompleted_session.documents_total_size}
+            else:
+                project_has_completed_sessions = True
+
+        result = dict(
+            project_has_completed_sessions=project_has_completed_sessions,
+            user_uncompleted_session_progress=user_uncompleted_session_progress,
+            other_uncompleted_session_progress=other_uncompleted_session_progress)
+
+        # add info about clustering
+        if project.type.is_generic():
+            if user_uncompleted_session_progress is not None or other_uncompleted_session_progress is not None:
+                clustering = 'WAITING'
+            else:
+                clustering = self.clustering_status(request).data
+                # define if project should be re-clustered
+                project_total_documents_count = project.document_set.count()
+                project_clusters_documents_count = clustering.get('project_clusters_documents_count', 0)
+                require_clustering = project_total_documents_count != project_clusters_documents_count
+                result['require_clustering'] = require_clustering
+            result['clustering'] = clustering
+
+        return Response(result)
 
     @require_generic_contract_type
     def cluster(self, request, **kwargs):
@@ -441,6 +520,12 @@ class ProjectViewSet(apps.common.mixins.APILoggingMixin,
             elif not project.uploadsession_set.filter(completed=True).exists():
                 raise APIException("Project hasn't completed upload sessions.")
 
+        pending_clustering_task_ids = Task.objects \
+            .filter(name=ClusterProjectDocuments.name, project=project, status='PENDING')\
+            .values_list('pk', flat=True)
+        for task_id in pending_clustering_task_ids:
+            purge_task(task_id)
+
         project_clustering = ProjectClustering.objects.create(project=project)
 
         try:
@@ -449,8 +534,7 @@ class ProjectViewSet(apps.common.mixins.APILoggingMixin,
             n_clusters = 3
 
         task_id = call_task(
-            task_name='ClusterProjectDocuments',
-            module_name='apps.project.tasks',
+            ClusterProjectDocuments,
             user_id=request.user.id,
             project_id=project.id,
             project_clustering_id=project_clustering.id,
@@ -473,12 +557,7 @@ class ProjectViewSet(apps.common.mixins.APILoggingMixin,
 
         clustering = project.projectclustering_set \
             .select_related('project', 'task') \
-            .prefetch_related('document_clusters__documents') \
-            .annotate(
-                project_current_documents_count=Count('project__document',
-                                                      distinct=True),
-                project_clusters_documents_count=Count('document_clusters__documents',
-                                                       distinct=True))
+            .annotate(project_clusters_documents_count=Count('document_clusters__documents', distinct=True))
 
         if project_clustering_id:
             clustering = clustering.get(pk=project_clustering_id)
@@ -486,7 +565,7 @@ class ProjectViewSet(apps.common.mixins.APILoggingMixin,
             clustering = clustering.last()
 
         if not clustering:
-            return Response({'details': 'Cluster session not found'}, status=200)
+            return Response({'details': 'Cluster session not found'}, status=404)
 
         data = ProjectClusteringSerializer(clustering).data
 
@@ -540,8 +619,7 @@ class ProjectViewSet(apps.common.mixins.APILoggingMixin,
 
         new_project_id = int(request.POST.get('project_id'))
         call_task(
-            task_name='ReassignProjectClusterDocuments',
-            module_name='apps.project.tasks',
+            ReassignProjectClusterDocuments,
             cluster_ids=cluster_ids,
             project_id=project.id,
             new_project_id=new_project_id,
@@ -558,8 +636,7 @@ class ProjectViewSet(apps.common.mixins.APILoggingMixin,
         delete = json.loads(request.data.get('delete', 'true'))
 
         call_task(
-            task_name='CleanProject',
-            module_name='apps.project.tasks',
+            CleanProject,
             _project_id=int(kwargs['pk']),
             delete=delete,
             user_id=request.user.id)
@@ -573,7 +650,8 @@ class ProjectViewSet(apps.common.mixins.APILoggingMixin,
         for deleting. These marked documents (and the project) will become hidden in API.
         Documents, listed in excluded_ids list, will not be marked for deleting.\n
             Params:
-                - remove_all: bool
+                - all: bool - mark all filtered by a user documents
+                - remove_all: bool - mark project+documents
                 - excluded_ids: list[int]
         """
         return self.mark_unmark_for_delete(True, request, **kwargs)
@@ -584,24 +662,37 @@ class ProjectViewSet(apps.common.mixins.APILoggingMixin,
         Method removes soft delete sign from project only (remove_all=False) or
         from the project and the project's documents (remove_all=True)
             Body params:
-                - remove_all: bool
+                - all: bool - unmark all filtered by a user documents
+                - remove_all: bool - unmark project+documents
                 - exclude_document_ids: List[int]
         """
         return self.mark_unmark_for_delete(False, request, **kwargs)
 
-    @staticmethod
-    def mark_unmark_for_delete(delete_not_undelete: bool, request, **kwargs) -> Response:
+    def mark_unmark_for_delete(self, delete_pending: bool, request, **kwargs) -> Response:
+        included_ids = []
         project_id = int(kwargs['pk'])
-        remove_all = request.data.get('remove_all', 'false')
+        remove_filtered_documents = request.data.get('all', False)
+        remove_all = request.data.get('remove_all', False)
         excluded_ids = request.data.get('exclude_document_ids', [])
-        if excluded_ids:
+
+        if remove_filtered_documents or excluded_ids:
             remove_all = False
 
-        updated = SoftDeleteProjectSyncTask().process(
-            project_id, remove_all, excluded_ids, delete_not_undelete)
-        return Response({'count_updated_projects': updated[0],
-                         'count_updated_documents': updated[1]},
-                        status=200)
+        if remove_filtered_documents:
+            included_ids = self.get_document_queryset().values_list('id', flat=True)
+
+        from apps.document.sync_tasks.soft_delete_document_task import SoftDeleteDocumentsSyncTask
+        count_deleted = SoftDeleteDocumentsSyncTask().process(
+            document_ids=included_ids,
+            excluded_ids=excluded_ids,
+            project_id=project_id,
+            delete_all_in_project=remove_all,
+            delete_not_undelete=delete_pending)
+        if remove_all:
+            proj = Project.all_objects.get(pk=project_id)  # type: Project
+            proj.delete_pending = delete_pending
+            proj.save()
+        return Response({"count_deleted": count_deleted}, status=200)
 
     @action(detail=True, methods=['get'])
     def assignees(self, request, **kwargs):
@@ -621,6 +712,15 @@ class ProjectViewSet(apps.common.mixins.APILoggingMixin,
                 'document_ids': docs.values_list('pk', flat=True)})
         return Response(result)
 
+    def get_document_queryset(self):
+        """
+        Re-use DocumentsAPIView and SavedFilter to fetch all filtered project documents
+        """
+        project = self.get_object()
+        user = self.request.user
+        from apps.rawdb.api.v1 import DocumentsAPIView
+        return DocumentsAPIView.simulate_get(user, project, return_ids=False)
+
     @action(detail=True, methods=['post'])
     def assign_documents(self, request, **kwargs):
         """
@@ -633,25 +733,21 @@ class ProjectViewSet(apps.common.mixins.APILoggingMixin,
             Returns:
                 int (number of reassigned documents)
         """
-        # permissions check
-        project = self.get_object()
+        self.get_object()    # noqa: permissions check
         assignee_id = request.data.get('assignee_id')
 
         if request.data.get('all'):
-            documents = Document.objects.filter(project=project)
+            documents = self.get_document_queryset()
             if request.data.get('no_document_ids'):
                 documents = documents.exclude(pk__in=request.data.get('no_document_ids'))
+            document_ids = documents.values_list('pk', flat=True)
         else:
             document_ids = request.data.get('document_ids')
-            documents = Document.objects \
-                .filter(project=project, pk__in=document_ids)
 
-        fire_doc_update_documents_assignees(self.__class__,
-                                            documents,
-                                            assignee_id,
-                                            request.user)
-        ret = documents.update(assignee=assignee_id, assign_date=now())
-        return Response({'success': ret})
+        plan_process_documents_assignee_changed(doc_ids=document_ids,
+                                                new_assignee_id=assignee_id,
+                                                changed_by_user_id=request.user.pk)
+        return Response({'success': len(document_ids)})
 
     @action(detail=True, methods=['post'])
     def set_status(self, request, **kwargs):
@@ -669,29 +765,28 @@ class ProjectViewSet(apps.common.mixins.APILoggingMixin,
         status_id = request.data.get('status_id')
 
         if request.data.get('all'):
-            documents = Document.objects.filter(project=project)
+            documents = self.get_document_queryset()
             if request.data.get('no_document_ids'):
                 documents = documents.exclude(pk__in=request.data.get('no_document_ids'))
+            document_ids = documents.values_list('pk', flat=True)
         else:
             document_ids = request.data.get('document_ids')
-            documents = Document.objects \
-                .filter(project=project, pk__in=document_ids)
+
+        documents = Document.objects \
+            .filter(project=project, pk__in=document_ids)
+
+        import apps.document.repository.document_field_repository as dfr
+        field_repo = dfr.DocumentFieldRepository()
 
         with transaction.atomic():
             is_active = ReviewStatus.objects.get(pk=status_id).is_active
-            modified_fields = DocumentFieldValue.objects \
-                .filter(document__in=Subquery(documents.values('pk').distinct('pk').order_by('pk')),
-                        document__status__is_active=not is_active,
-                        removed_by_user=False) \
-                .order_by() \
-                .values_list('field_id') \
-                .distinct('field_id')
-            DocumentField.objects.filter(pk__in=Subquery(modified_fields)).update(dirty=True)
+            modified_fields = field_repo.get_modified_field_ids(
+                documents, is_active)
+            DocumentField.objects.filter(
+                pk__in=Subquery(modified_fields)).update(dirty=True)
             ret = documents.update(status=status_id)
 
-        status_name = ReviewStatus.objects.get(pk=status_id).name
-        fire_cache_doc_fields_task(self.__class__, documents, status_name,
-                                   request.user)
+        plan_process_documents_status_changed(document_ids, status_id, request.user.pk)
 
         return Response({'success': ret})
 
@@ -769,10 +864,11 @@ class UploadSessionSerializer(serializers.ModelSerializer):
         queryset=Project.objects.all(), many=False, required=False)
     created_by = serializers.PrimaryKeyRelatedField(
         queryset=User.objects.all(), many=False, required=False)
+    upload_files = serializers.DictField(required=False, read_only=True)
 
     class Meta:
         model = UploadSession
-        fields = ['uid', 'project', 'created_by']
+        fields = ['uid', 'project', 'created_by', 'upload_files']
 
 
 class UploadSessionDetailSerializer(serializers.ModelSerializer):
@@ -783,8 +879,7 @@ class UploadSessionDetailSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = UploadSession
-        fields = ['uid', 'project', 'created_by', 'created_date',
-                  'document_type', 'progress']
+        fields = ['uid', 'project', 'created_by', 'created_date', 'document_type', 'progress']
 
     def get_progress(self, obj):
         return obj.document_tasks_progress(details=True)
@@ -826,36 +921,97 @@ class UploadSessionViewSet(UploadSessionPermissionViewMixin,
     delete: Delete Session Upload
     """
     queryset = UploadSession.objects.all()
+    http_method_names = ['get', 'post', 'delete']
 
     def get_serializer_class(self):
-        if self.action in ['create', 'update', 'partial_update']:
+        if self.action == 'create':
             return UploadSessionSerializer
         return UploadSessionDetailSerializer
 
-    def get_queryset(self):
-        qs = super().get_queryset()
-        qs = qs.select_related('project', 'created_by', 'created_by',
-                               'project__type', 'project__status', 'project__status__group') \
-            .prefetch_related('project__owners', 'project__owners__role',
-                              'project__reviewers', 'project__reviewers__role',
-                              'project__document_set', 'project__uploadsession_set',
-                              'project__projectclustering_set')
-        return qs
+    @staticmethod
+    @transaction.atomic
+    def can_upload_file(project: Project, file_name: str, file_size: int):
+        """
+        Check whether a file is new and should be uploaded
+        :param project: Project
+        :param file_name: file name
+        :param file_size: file size in bytes
+        :return: bool
+        """
+        # 1. if a Document of file name and size already uploaded and parsed
+        if Document.objects.filter(
+                project=project,
+                name=file_name,
+                file_size=file_size,
+                metadata__upload_status='DONE').exists():
+            return 'exists'
+
+        # 2. if a Document of file name and size already uploaded and parsed BUT soft-deleted
+        if Document.all_objects.filter(
+                delete_pending=True,
+                project=project,
+                name=file_name,
+                file_size=file_size,
+                metadata__upload_status='DONE').exists():
+            return 'delete_pending'
+
+        # 3. if a Document is not created yet or flag 'upload_status="DONE"' is not set yet
+        # so parsing is in progress
+        # and Task for file name and size exists with appropriate status
+        if Task.objects.main_tasks().filter(
+                name=LoadDocuments.name,
+                upload_session__project=project,
+                metadata__file_name=file_name,
+                metadata__file_size=file_size,
+                status='PENDING').exists():
+            return 'processing'
+
+        # 4. VERY RARE: if a file of name and size already exists but LD Task is not created yet
+        # but LD Task object itself is created immediately after storing a file
+        # So - skipping this check, load: True
+
+        # 5. Other RARE cases:
+        #     a) size doesn't match:
+        #         - if a Document exists: it's another document, load: True
+        #         - elif a Task exists: it's another document, load: True
+        #         - else:
+        #             = it's another document - load: True
+        #             = it's the same document, in storing on disk process - load: False (TODO)
+        #             = it's the same document but uploading was interrupted - load: True
+
+        # since we does double check in /upload method, - skip RARE cases for now
+        return True
 
     def create(self, request, *args, **kwargs):
         project = Project.objects.get(pk=request.data.get('project'))
-        # if project.type.is_generic() and project.uploadsession_set.exists():
-        #     return Response("This Project already has upload session", status=500)
-        project.drop_clusters()
-        return super().create(request, *args, **kwargs)
+        response = super().create(request, *args, **kwargs)
+
+        upload_files = request.data.pop('upload_files', None)
+        if upload_files:
+            statuses = {file_name: self.can_upload_file(project, file_name, file_size)
+                        for file_name, file_size in upload_files.items()}
+            upload_files = {file_name: status is True for file_name, status in statuses.items()}
+            exists = [file_name for file_name, status in statuses.items() if status == 'exists']
+            delete_pending = [file_name for file_name, status in statuses.items()
+                              if status == 'delete_pending']
+            processing = [file_name for file_name, status in statuses.items()
+                          if status == 'processing']
+            data = dict(
+                upload_files=upload_files,
+                exists=exists,
+                delete_pending=delete_pending,
+                processing=processing
+            )
+            response.data.update(data)
+        return response
 
     @action(detail=True, methods=['get'])
-    def progress(self, request, **kwargs):
+    def progress(self, request, pk):
         """
         Get Progress for a session per files (short form)
         """
         session = self.get_object()
-        session.is_completed()
+        session.check_and_set_completed()
         document_tasks_progress = session.document_tasks_progress()
         result = {'project_id': session.project.pk if session.project else None,
                   'document_tasks_progress': document_tasks_progress or None,
@@ -878,57 +1034,6 @@ class UploadSessionViewSet(UploadSessionPermissionViewMixin,
         result = {i.pk: i.status_check() for i in qs}
         return Response(result)
 
-    @staticmethod
-    def get_source_path(request, **kwargs):
-        """
-        Store a file and get final source path
-        """
-        session_id = kwargs.get('pk')
-        project = UploadSession.objects.get(pk=session_id).project
-        file_ = request.FILES.dict().get('file')
-        file_name = file_.name
-        folder_name = kwargs.get('folder')
-
-        # check existing documents with the same name
-        # but with delete_pending=False as project.document_set gets default "objects" manager
-        this_file_documents = project.document_set.filter(name=file_name)
-
-        project_storages = {
-            _session_id: FileSystemStorage(
-                location=os.path.join(
-                    settings.MEDIA_ROOT,
-                    settings.FILEBROWSER_DOCUMENTS_DIRECTORY,
-                    _session_id))
-            for _session_id in project.uploadsession_set.values_list('pk', flat=True)}
-
-        # check existing files with the same name in sessions' folders
-        # but not stored yet as Document - i.e. LoadDocuments task has not stored them yet
-        this_file_storages = {
-            _session_id: _storage
-            for _session_id, _storage in project_storages.items()
-            if _storage.exists(file_.name) and not Document.all_objects.filter(
-                source_path=os.path.join(_session_id, file_name)).exists()}
-
-        if this_file_documents.exists() or this_file_storages:
-            if request.POST.get('force') == 'true':
-                del_ids = Document.objects.filter(
-                    project=project, name=file_name).values_list('id',
-                                                                 flat=True)
-                SoftDeleteDocumentsSyncTask().process(del_ids, True)
-            else:
-                raise APIException(ALREADY_EXISTS)
-
-        if not folder_name:
-            storage = FileSystemStorage(
-                location=os.path.join(
-                    settings.MEDIA_ROOT,
-                    settings.FILEBROWSER_DOCUMENTS_DIRECTORY,
-                    session_id))
-
-            stored_file_name = storage.save(file_name, file_.file)
-            return os.path.join(session_id, stored_file_name)
-        return os.path.join(folder_name, file_name)
-
     @classmethod
     def _notify_upload_started(cls, session: UploadSession) -> None:
         try:
@@ -936,55 +1041,182 @@ class UploadSessionViewSet(UploadSessionPermissionViewMixin,
         except Exception as exc:
             get_django_logger().exception(exc)
 
-    @action(detail=True, methods=['post'])
-    def upload(self, request, **kwargs):
-        """
-        Upload a File\n
-            Params:
-                - file: file object
-                - force: bool (optional) - whether rewrite existing file and Document
-                - send_email_notifications: bool (optional) - sent notification email that batch uploading started
-        """
-        file_ = request.FILES.dict().get('file')
-        if not file_:
-            raise APIException('File not found.')
-        if file_.size > MAX_DOCUMENT_SIZE.val * 1024 * 1024:
-            raise APIException(f'File size is greater than allowed max {MAX_DOCUMENT_SIZE.val} Mb')
+    def upload_file(self,
+                    file_name: str,
+                    file_size: int,
+                    contents: Union[BinaryIO, HttpRequest],
+                    force: bool,
+                    user_id: int) -> Response:
+        if file_size > MAX_DOCUMENT_SIZE.val * 1024 * 1024:
+            return Response(status=status.HTTP_400_BAD_REQUEST,
+                            data=f'File size is greater than allowed max {MAX_DOCUMENT_SIZE.val} Mb')
 
-        session_id = kwargs.get('pk')
         try:
             session = self.get_object()
         except (UploadSession.DoesNotExist, ValidationError):
-            raise APIException('Wrong upload session uid.')
+            return Response(status=status.HTTP_400_BAD_REQUEST,
+                            data='Wrong upload session uid.')
 
         project = session.project
+        force_rename = force or FORCE_REWRITE_DOC.val
+
+        if not force_rename and self.can_upload_file(project, file_name, file_size) is not True:
+            # raise APIException('File already uploaded or uploading in progress.')
+            return Response(status=201, data='Loaded')
 
         try:
-            source_path = self.get_source_path(request, **kwargs)
+            stor = get_file_storage()
+
+            source_path = stor.sub_path_join(session.pk, file_name)
+
+            # check file name is unique
+            from apps.document.sync_tasks.ensure_new_paths_unique_task import EnsureNewPathsUnique
+            en_task = EnsureNewPathsUnique(
+                lambda msg: get_django_logger().error(msg))
+
+            try:
+                unique = en_task.ensure_new_file_unique(project=project,
+                                                        source_path=source_path,
+                                                        doc_name=file_name,
+                                                        rename_old_document=force_rename)
+                if not unique:
+                    return Response(status=status.HTTP_409_CONFLICT, data=ALREADY_EXISTS)
+            except Exception as e:
+                return Response(status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                                data='Failed to remove files with the same name, original exception is: {}'.format(str(e)))
+
+            try:
+                stor.mk_doc_dir(session.pk)
+            except:
+                # ignore if dir exists
+                # ignoring other errors too - it will crash on next step anyways
+                pass
+            stor.write_document(rel_file_path=source_path, contents_file_like_object=contents, content_length=file_size)
 
             # Code for running locators and detecting field values has been moved to LoadDocuments task
             # for the unification purposes between old and new ui.
 
             call_task(
-                task_name='LoadDocuments',
+                LoadDocuments,
                 source_data=source_path,
-                user_id=request.user.id,
-                session_id=session_id,
+                user_id=user_id,
+                session_id=session.pk,
                 run_standard_locators=True,
-                metadata={'session_id': session_id, 'file_name': file_.name},
+                metadata={'session_id': session.pk, 'file_name': file_name, 'file_size': file_size},
                 linked_tasks=None)
 
-            if project.send_email_notification and \
-                    request.POST.get('send_email_notifications') == 'true' and \
-                    not session.notified_upload_started:
+            if project.send_email_notification \
+                    and not session.notified_upload_started:
                 self._notify_upload_started(session)
 
         except Exception as e:
-            if str(e) == ALREADY_EXISTS:
-                return Response(ALREADY_EXISTS)
-            raise APIException(str(e))
+            return Response(status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                            data=render_error('Unable to load file', caused_by=e))
 
-        return Response('Loaded')
+        return Response(status=status.HTTP_201_CREATED, data='Loaded')
+
+    @action(detail=True, methods=['post'])
+    def files(self, request: HttpRequest, pk: str):
+        file_size = request.headers.get('Content-Length')
+        if not file_size:
+            return Response(status=status.HTTP_400_BAD_REQUEST, data='Please provide Content-Length header')
+
+        file_name = request.headers.get('File-Name')
+        if not file_name:
+            return Response(status=status.HTTP_400_BAD_REQUEST, data='Please provide File-Name header')
+
+        return self.upload_file(file_name=file_name,
+                                file_size=safe_to_int(file_size),
+                                contents=request,
+                                user_id=request.user.id,
+                                force=as_bool(request.GET, 'force', False))
+
+    def upload_archive(self, request, file_, archive_type):
+
+        if file_.size > MAX_ARCHIVE_SIZE.val * 1024 * 1024:
+            return Response(status=status.HTTP_400_BAD_REQUEST,
+                            data=f'Archive size is greater than allowed max {MAX_ARCHIVE_SIZE.val} Mb')
+
+        try:
+            session = self.get_object()
+        except (UploadSession.DoesNotExist, ValidationError):
+            return Response(status=status.HTTP_400_BAD_REQUEST,
+                            data='Wrong upload session uid.')
+
+        stor = get_file_storage()
+        try:
+            stor.mk_doc_dir(session.pk)
+        except:
+            # ignore if dir exists
+            # ignoring other errors too - it will crash on next step anyways
+            pass
+        source_path = stor.sub_path_join(session.pk, file_.name)
+
+        try:
+            file_.seek(0)
+            stor.write_document(source_path, contents_file_like_object=file_,
+                                content_length=file_.size)
+        except Exception as e:
+            return Response(status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                            data=render_error('Unable to load file', caused_by=e))
+
+        call_task(
+            LoadArchive,
+            archive_type=archive_type,
+            source_path=source_path,
+            user_id=request.user.id,
+            session_id=session.pk,
+            force=as_bool(request.POST, 'force', False)
+        )
+
+        return Response(status=status.HTTP_200_OK, data='Loaded')
+
+    def is_zip(self, file_):
+        if zipfile.is_zipfile(file_) and \
+                mimetypes.guess_type(file_.name)[0] in settings.ARCHIVES['zip']['allowed_mime_types']:
+            ext = os.path.basename(file_.name).split('.', 1)
+            if len(ext) == 2 and ext[1] in settings.ARCHIVES['zip']['allowed_extensions']:
+                return True
+        return False
+
+    def is_tar(self, file_):
+        if (hasattr(file_, 'temporary_file_path') and tarfile.is_tarfile(file_.temporary_file_path())) or \
+                mimetypes.guess_type(file_.name)[0] in settings.ARCHIVES['tar']['allowed_mime_types']:
+            ext = os.path.basename(file_.name).split('.', 1)
+            if len(ext) == 2 and ext[1] in settings.ARCHIVES['tar']['allowed_extensions']:
+                return True
+        return False
+
+    @action(detail=True, methods=['post'])
+    def upload(self, request, pk: str):
+        """
+        Upload a File\n
+            Params:
+                - file: file object
+                - force: bool (optional) - whether rewrite existing file and Document
+        """
+        file_ = request.FILES.dict().get('file')
+
+        if not file_:
+            raise APIException('File not found.')
+
+        if self.is_zip(file_):
+            return self.upload_archive(request, file_, archive_type='zip')
+        if self.is_tar(file_):
+            return self.upload_archive(request, file_, archive_type='tar')
+        file_.seek(0)
+
+        resp = self.upload_file(file_name=file_.name,
+                                file_size=file_.size,
+                                contents=file_.file,
+                                user_id=request.user.id,
+                                force=as_bool(request.POST, 'force', False))
+
+        # workaround for old frontend usage which checks status based on string constants in response data
+        # and not on the status codes
+        if resp.status_code == status.HTTP_201_CREATED:
+            resp.status_code = status.HTTP_200_OK
+        return resp
 
     @action(detail=True, methods=['post'])
     def batch_upload(self, request, **kwargs):
@@ -992,7 +1224,6 @@ class UploadSessionViewSet(UploadSessionPermissionViewMixin,
         Upload files from given sub-folder in media/data/documents folder\n
             Params:
                 - source_path: relative path to a folder with documents
-                - send_email_notifications: bool (optional) - sent notification email that batch uploading started
         """
         session = self.get_object()
         session_id = session.pk
@@ -1011,7 +1242,7 @@ class UploadSessionViewSet(UploadSessionPermissionViewMixin,
             # for the unification purposes between old and new ui.
 
             call_task(
-                task_name='LoadDocuments',
+                LoadDocuments,
                 source_data=file_path,
                 user_id=request.user.id,
                 session_id=session_id,
@@ -1019,9 +1250,7 @@ class UploadSessionViewSet(UploadSessionPermissionViewMixin,
                 run_standard_locators=True,
                 linked_tasks=None)
 
-        if project.send_email_notification and \
-                request.POST.get('send_email_notifications') == 'true' and \
-                not session.notified_upload_started:
+        if project.send_email_notification and not session.notified_upload_started:
             self._notify_upload_started(session)
 
         return Response('Started')
@@ -1033,7 +1262,6 @@ class UploadSessionViewSet(UploadSessionPermissionViewMixin,
             Params:
                 - folder (source_path): str - absolute path to a directory containing files
                 - force: bool (optional) - whether rewrite existing file and Document
-                - send_email_notifications: bool (optional) - sent notification email that batch uploading started
         """
         # permissions check
         _ = self.get_object()
@@ -1052,12 +1280,28 @@ class UploadSessionViewSet(UploadSessionPermissionViewMixin,
                 try:
                     self.upload(request, **kwargs)
                 except APIException as e:
-                    if 'Already exists' in str(e):
+                    if ALREADY_EXISTS in str(e):
                         pass
 
             return Response('Uploading of {} files started'.format(len(files)))
 
         return Response('No folder specified', status=400)
+
+    @action(methods=['delete'], url_path='cancel', detail=True)
+    def cancel_upload(self, request, **kwargs):
+        """
+        Delete a file from session\n
+            Params:
+                - filename: str
+        """
+        session_id = self.get_object().pk
+
+        call_task(
+            CancelUpload,
+            user_id=request.user.id,
+            session_id=session_id)
+
+        return Response('Canceled')
 
     @action(methods=['delete'], url_path='delete-file', detail=True)
     def delete_file(self, request, **kwargs):
@@ -1110,63 +1354,31 @@ class ProjectSerializer(ProjectDetailSerializer):
         fields = ['pk', 'name', 'progress']
 
 
-class TaskSerializer(serializers.ModelSerializer):
-    reason = serializers.SerializerMethodField()
-
-    class Meta:
-        model = Task
-        fields = ['pk', 'name', 'progress', 'status', 'reason']
-
-    def get_reason(self, obj):
-        if obj.has_error:
-            message_head = 'Clustering failed. '
-            message_body = 'Unexpected error while clustering. Try again later.'
-            if obj.result:
-                task_result = obj.result
-                if isinstance(task_result, dict):
-                    exc_message = task_result.get('exc_message')
-                    exc_type = task_result.get('exc_type')
-                    if exc_message and exc_type:
-                        if isinstance(exc_message, list):
-                            # TODO: handle cases when len(exc_message)>1
-                            exc_message = exc_message[0]
-                        if ('max_df corresponds to < documents than min_df' in exc_message) or \
-                                ('Number of samples smaller than number of clusters' in exc_message) or \
-                                (re.search(r'n_samples=\d+ should be >= n_clusters=\d+', exc_message)):
-                            message_body = 'Try to increase number of documents ' \
-                                           'or set lower number of clusters.'
-                        elif re.search(r'n_components=\d+ must be between \d+ and n_features=\d+',
-                                       exc_message):
-                            message_body = 'Chosen documents seems are very similar,' \
-                                           ' clustering algorithm is not able to form clusters.'
-                        elif 'No terms in documents detected' in exc_message:
-                            message_body = exc_message
-
-            reason = message_head + message_body
-            return reason
-
-
 class DocumentClusterSerializer(analyze_api_module.DocumentClusterSerializer):
     class Meta(analyze_api_module.DocumentClusterSerializer.Meta):
         model = DocumentCluster
-        fields = ['pk', 'cluster_id', 'self_name', 'using',
-                  'name', 'description',
-                  'documents_count', 'document_data']
+        fields = ['pk', 'cluster_id', 'self_name', 'name', 'documents_count']
 
 
 class ProjectClusteringSerializer(serializers.ModelSerializer):
     document_clusters = DocumentClusterSerializer(many=True, read_only=True)
-    project = ProjectSerializer(many=False, read_only=True)
-    task = TaskSerializer(many=False, read_only=True)
-    project_current_documents_count = serializers.IntegerField()
     project_clusters_documents_count = serializers.IntegerField()
+    status = serializers.SerializerMethodField()
 
     class Meta:
         model = ProjectClustering
-        fields = ['pk', 'project', 'document_clusters', 'task',
-                  'metadata', 'created_date',
-                  'project_current_documents_count',
+        fields = ['pk', 'document_clusters', 'metadata', 'created_date',
+                  'status', 'reason',
                   'project_clusters_documents_count']
+
+    def get_status(self, obj):
+        # 1. task purged
+        if not obj.task and obj.status == 'PENDING':
+            return
+        # 2. task started, but status is not set yet
+        if obj.status is None and obj.task:
+            return obj.task.status
+        return obj.status
 
 
 class ProjectClusteringViewSet(apps.common.mixins.JqListAPIMixin, viewsets.ReadOnlyModelViewSet):
@@ -1178,13 +1390,10 @@ class ProjectClusteringViewSet(apps.common.mixins.JqListAPIMixin, viewsets.ReadO
     serializer_class = ProjectClusteringSerializer
 
     def get_queryset(self):
-        qs = super().get_queryset()
-
-        qs = qs.prefetch_related('document_clusters').select_related('project', 'task') \
-            .annotate(
-            project_current_documents_count=Count('project__document'),
-            project_clusters_documents_count=Count('document_clusters__documents', distinct=True))
-
+        qs = super().get_queryset() \
+            .prefetch_related('document_clusters') \
+            .select_related('project', 'task') \
+            .annotate(project_clusters_documents_count=Count('document_clusters__documents', distinct=True))
         return qs
 
 

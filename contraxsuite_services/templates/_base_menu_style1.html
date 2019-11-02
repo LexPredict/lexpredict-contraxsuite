@@ -30,6 +30,10 @@
             <li class="divider"></li>
             <li><a href="{% url "task:task-list" %}"><div>Admin Tasks</div></a></li>
             <li><a href="{% url "filebrowser:fb_browse" %}"><div>Browse/Upload Documents</div></a></li>
+            {% if user.is_admin %}
+              <li><a href="{% url "common:method-stats-overview" %}"><div>Method Stats Overview</div></a></li>
+              <li><a href="{% url "common:db-stats" %}"><div>Database and Docker Stats</div></a></li>
+           {% endif %}
           {% endif %}
         </ul>
       </li>

@@ -31,14 +31,15 @@ import requests
 from django.utils.timezone import now
 
 import settings
+import task_names
 from apps.celery import app
 from apps.deployment.models import Deployment
 from apps.task.utils.task_utils import TaskUtils
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2019, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.3/LICENSE"
-__version__ = "1.2.3"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.3.0/LICENSE"
+__version__ = "1.3.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -46,8 +47,8 @@ __email__ = "support@contraxsuite.com"
 MODULE_NAME = __name__
 
 
-@app.task(name='deployment.usage_stats', bind=True)
-def usage_stats(self):
+@app.task(name=task_names.TASK_NAME_USAGE_STATS, bind=True)
+def usage_stats(_celery_task):
     TaskUtils.prepare_task_execution()
     d, _created = Deployment.objects.get_or_create(pk=1)  # type: Deployment
     if d.last_report_date and (now() - d.last_report_date) < datetime.timedelta(hours=12):

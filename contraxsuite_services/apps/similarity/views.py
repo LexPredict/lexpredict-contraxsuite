@@ -24,15 +24,17 @@
 """
 # -*- coding: utf-8 -*-
 
-from apps.task.views import BaseAjaxTaskView
+from apps.similarity.chunk_similarity_task import ChunkSimilarity
 from apps.similarity.forms import (
-    PreconfiguredDocumentSimilaritySearchForm, SimilarityForm, PartySimilarityForm)
+    PreconfiguredDocumentSimilaritySearchForm, SimilarityForm, PartySimilarityForm, ChunkSimilarityForm)
 from apps.similarity.tasks import PreconfiguredDocumentSimilaritySearch, Similarity, PartySimilarity
+from apps.task.views import BaseAjaxTaskView
+
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2019, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.3/LICENSE"
-__version__ = "1.2.3"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.3.0/LICENSE"
+__version__ = "1.3.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -49,6 +51,29 @@ class SimilarityView(BaseAjaxTaskView):
             result_links.append({'name': 'View Document Similarity List',
                                  'link': 'analyze:document-similarity-list'})
         if self.request.POST.get('search_similar_text_units'):
+            similarity_items.append('text units')
+            result_links.append({'name': 'View Text Unit Similarity List',
+                                 'link': 'analyze:text-unit-similarity-list'})
+        return dict(
+            description='similarity for:{}; threshold:{}'.format(
+                ', '.join(similarity_items),
+                self.request.POST.get('similarity_threshold')),
+            result_links=result_links)
+
+
+class ChunkSimilarityView(SimilarityView):
+    task_class = ChunkSimilarity
+    form_class = ChunkSimilarityForm
+
+    def get_metadata(self):
+        similarity_items = []
+        result_links = []
+        tgt = self.request.POST.get('search_target') or 'document'
+        if tgt == 'document':
+            similarity_items.append('documents')
+            result_links.append({'name': 'View Document Similarity List',
+                                 'link': 'analyze:document-similarity-list'})
+        else:
             similarity_items.append('text units')
             result_links.append({'name': 'View Text Unit Similarity List',
                                  'link': 'analyze:text-unit-similarity-list'})

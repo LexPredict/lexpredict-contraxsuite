@@ -72,7 +72,7 @@ services:
     image: docker.elastic.co/beats/filebeat:6.3.0
     user: root
     volumes:
-      - postgres_data:/data/pg_data
+      - postgres_data_11:/data/pg_data
       - contraxsuite_logs:/data/logs
       - filebeat_data:/usr/share/filebeat/data
       - contraxsuite_internal_nginx_logs:/data/nginx_logs
@@ -136,7 +136,7 @@ services:
      - 127.0.0.1:56720:5672 #
 
   contrax-db:
-    image: postgres:9.6
+    image: postgres:11.5
     environment:
       - "PGDATA=/var/lib/contraxsuite-postgres"
       - "POSTGRES_USER=${DOLLAR}{DOCKER_PG_USER}"
@@ -144,12 +144,15 @@ services:
       - "POSTGRES_DB=${DOLLAR}{DOCKER_PG_DB_NAME}"
     command: postgres -c config_file=/etc/contraxsuite/postgresql.conf
     volumes:
-      - postgres_data:/var/lib/contraxsuite-postgres
+      - postgres_data_11:/var/lib/contraxsuite-postgres
+      - backup:/backup
     configs:
       - source: pg_${PG_CONFIG_VERSION}
         target: /etc/contraxsuite/postgresql.conf
       - source: pg_init_sql_${PG_INIT_SQL_CONFIG_VERSION}
         target: /docker-entrypoint-initdb.d/postgres_init.sql
+      - source: pg_backup_script_${PG_BACKUP_SCRIPT_CONFIG_VERSION}
+        target: /contraxsuite/db-backup.sh
     networks:
       - contrax_net
     read_only: false
@@ -175,7 +178,7 @@ volumes:
   contraxsuite_notebooks:
   contraxsuite_logs:
   contraxsuite_internal_nginx_logs:
-  postgres_data:
+  postgres_data_11:
   rabbitmq_data:
   elasticsearch_data:
   redis_data:
@@ -204,3 +207,5 @@ configs:
     file: ./postgres_init.sql
   nginx_cust_${NGINX_CUSTOMER_CONF_VERSION}:
     file: ./nginx-customer.conf
+  pg_backup_script_${PG_BACKUP_SCRIPT_CONFIG_VERSION}:
+    file: ./db-backup.sh

@@ -29,20 +29,21 @@ import inspect
 import json
 import re
 import traceback
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Tuple
 
 # Django imports
 from django import forms
-from django.urls import reverse
-from django.contrib import admin
+from django.contrib import admin, messages
 from django.contrib.admin.actions import delete_selected
 from django.contrib.admin.options import TO_FIELD_VAR
 from django.contrib.admin.utils import get_deleted_objects, unquote
 from django.contrib.admin.widgets import FilteredSelectMultiple
 from django.contrib.postgres import fields
 from django.db import transaction
-from django.db.models import Q
+from django.http import HttpResponse
+from django.shortcuts import render, redirect
 from django.template.response import TemplateResponse
+from django.urls import reverse
 from django.utils.html import format_html_join
 from django.utils.safestring import mark_safe
 from django.utils.translation import ugettext_lazy as _
@@ -52,35 +53,41 @@ from django_json_widget.widgets import JSONEditorWidget
 from simple_history.admin import SimpleHistoryAdmin
 
 # Project imports
-from apps.common.script_utils import ScriptError
+from apps.common.collection_utils import chunks
+from apps.common.expressions import PythonExpressionChecker
 from apps.common.model_utils.model_class_dictionary import ModelClassDictionary
+from apps.common.script_utils import ScriptError
 from apps.common.url_utils import as_bool
+from apps.common.utils import fetchone
 from apps.document import signals
-from apps.document.field_types import RelatedInfoField
-from apps.document.field_type_registry import FIELD_TYPE_REGISTRY
-from apps.document.fields_detection.detector_field_matcher import DetectorFieldMatcher
-from apps.document.fields_detection.field_based_ml_field_detection import init_classifier_impl
-from apps.document.fields_detection.formula_based_field_detection import FormulaBasedFieldDetectionStrategy, \
+from apps.document.constants import DOC_NUMBER_PER_MAIN_TASK
+from apps.document.field_detection.detector_field_matcher import DetectorFieldMatcher
+from apps.document.field_detection.field_based_ml_field_detection import init_classifier_impl
+from apps.document.field_detection.formula_based_field_detection import FormulaBasedFieldDetectionStrategy, \
     DocumentFieldFormulaError
-from apps.document.fields_detection.stop_words import compile_stop_words, detect_value_with_stop_words
-from apps.document.fields_processing.field_processing_utils import order_field_detection
+from apps.document.field_detection.stop_words import compile_stop_words, detect_value_with_stop_words
+from apps.document.field_processing.field_processing_utils import order_field_detection
+from apps.document.field_types import RelatedInfoField, TypedField
 from apps.document.models import (
-    Document, DocumentField, DocumentType,
+    Document, DocumentField, DocumentType, FieldValue, FieldAnnotation,
     DocumentProperty, DocumentRelation, DocumentNote,
-    DocumentFieldDetector, DocumentFieldValue, ExternalFieldValue,
+    DocumentFieldDetector, ExternalFieldValue,
     ClassifierModel, TextUnit, TextUnitProperty, TextUnitNote, TextUnitTag,
     DocumentFieldCategory)
 from apps.document.python_coded_fields_registry import PYTHON_CODED_FIELDS_REGISTRY
-from apps.rawdb.field_value_tables import FIELD_CODE_ANNOTATION_SUFFIX
+from apps.document.repository.document_field_repository import DocumentFieldRepository
+from apps.rawdb.constants import FIELD_CODE_ANNOTATION_SUFFIX
 from apps.task.models import Task
-
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2019, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.3/LICENSE"
-__version__ = "1.2.3"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.3.0/LICENSE"
+__version__ = "1.3.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
+
+
+VALUE_DETECTION_STRATEGY = 'value_detection_strategy'
 
 
 class ModelAdminWithPrettyJsonField(admin.ModelAdmin):
@@ -146,7 +153,7 @@ class DeletePendingFilter(admin.SimpleListFilter):
         return queryset.filter(delete_pending=True)
 
 
-def set_soft_delete(document_ids:List[int], delete_not_undelete:bool, request):
+def set_soft_delete(document_ids: List[int], delete_not_undelete: bool, request):
     from apps.document.sync_tasks.soft_delete_document_task import SoftDeleteDocumentsSyncTask
     SoftDeleteDocumentsSyncTask().process(
         document_ids=document_ids,
@@ -195,10 +202,10 @@ class SoftDeleteDocumentAdmin(DocumentAdmin):
 
     def get_name(self, obj):
         display_text = "<a href={}>{}</a>".format(
-                reverse('admin:{}_{}_change'.format(obj._meta.app_label,
-                                                    obj._meta.model_name),
-                        args=(obj.pk,)),
-                obj.name)
+            reverse('admin:{}_{}_change'.format(obj._meta.app_label,
+                                                obj._meta.model_name),
+                    args=(obj.pk,)),
+            obj.name)
         return mark_safe(display_text)
 
     get_name.short_description = 'Document'
@@ -231,8 +238,8 @@ class SoftDeleteDocumentAdmin(DocumentAdmin):
         if request.method == 'GET':
             items_by_table = get_document_bulk_delete().calculate_deleting_count(doc_ids)
             mdc = ModelClassDictionary()
-            del_count_hash = {mdc.get_model_class_name_hr(t):items_by_table[t]
-                         for t in items_by_table if t in mdc.model_by_table}
+            del_count_hash = {mdc.get_model_class_name_hr(t): items_by_table[t]
+                              for t in items_by_table if t in mdc.model_by_table}
             del_count = [(d, del_count_hash[d], False) for d in del_count_hash]
             del_count = sorted(del_count, key=lambda x: x[0])
             del_count.insert(0, ('Documents', len(doc_ids), True))
@@ -247,10 +254,12 @@ class SoftDeleteDocumentAdmin(DocumentAdmin):
         # POST: actual delete
         from apps.task.tasks import call_task
         from apps.document.tasks import DeleteDocuments
-        call_task(
-            DeleteDocuments,
-            _document_ids=doc_ids,
-            user_id=request.user.id)
+
+        for doc_ids_chunk in chunks(doc_ids, DOC_NUMBER_PER_MAIN_TASK):
+            call_task(
+                DeleteDocuments,
+                _document_ids=doc_ids_chunk,
+                user_id=request.user.id)
         from django.http import HttpResponseRedirect
         return HttpResponseRedirect("../")
 
@@ -418,17 +427,18 @@ class FieldValuesValidationAdmin(UsersTasksValidationAdmin):
     save_warning_template = 'admin/document/field_values_warning_save_form.html'
 
     def build_warning_context(self, object_id, form) -> dict:
+        import apps.document.repository.document_field_repository as dfr
+        field_repo = dfr.DocumentFieldRepository()
         warning_context = super().build_warning_context(object_id, form)
         document_type_changed = 'document_type' in form.changed_data
         field_type_changed = 'type' in form.changed_data
         if object_id is not None and self.model is DocumentField \
                 and (document_type_changed or field_type_changed):
-            values_number = DocumentFieldValue.objects.filter(field=form.instance).count()
+            values_number = field_repo.get_doc_field_values_filtered_count(
+                form.instance.pk)
             if values_number > 0:
-                user_values_number = DocumentFieldValue.objects \
-                    .filter(field=form.instance) \
-                    .filter(Q(created_by__isnull=False) | Q(modified_by__isnull=False) | Q(removed_by_user=True)) \
-                    .count()
+                user_values_number = field_repo.get_filtered_field_values_count(
+                    form.instance.pk)
                 if values_number > 0:
                     detected_values_number = values_number - user_values_number
                     detected_values_number = detected_values_number if detected_values_number > 0 else 0
@@ -541,25 +551,35 @@ class DocumentFieldForm(ModelFormWithUnchangeableFields):
     def _extract_field_and_deps(cls, base_fields: List[DocumentField], fields_buffer: dict) -> dict:
         for field in base_fields:
             if field.code not in fields_buffer:
-                fields_buffer[field.code] = field.get_depends_on_codes() or set()
+                fields_buffer[field.code] = set(field.get_depends_on_codes()) or set()
                 cls._extract_field_and_deps(field.depends_on_fields.all(), fields_buffer)
         return fields_buffer
 
-    def calc_formula(self, field_code, type_code, formula, fields_to_values, form_field, formula_name='formula'):
+    def calc_formula(self, field_code, formula, fields_to_values, form_field, formula_name='formula',
+                     check_name_not_found: bool = False) -> Any:
         try:
-            FormulaBasedFieldDetectionStrategy.calc_formula(field_code, type_code, formula, fields_to_values)
+            return FormulaBasedFieldDetectionStrategy.calc_formula(field_code, formula, fields_to_values)
         except DocumentFieldFormulaError as ex:
             base_error_class = type(ex.base_error).__name__
             base_error_msg = str(ex.base_error)
             lines = list()
-            lines.append('Error caught while trying to execute {0} on example values:'.format(formula_name))
-            for field_name in ex.field_values:
-                lines.append('{0}={1}'.format(field_name, ex.field_values[field_name]))
-            lines.append("{0}. {1} in {2} of field '{3}' at line {4}".format(base_error_class,
-                                                                             base_error_msg,
-                                                                             formula_name,
-                                                                             ex.field_code,
-                                                                             ex.line_number))
+            if check_name_not_found and "NameError" in base_error_msg:
+                if hasattr(ex.base_error, 'base_error') and isinstance(ex.base_error.base_error, NameError):
+                    lines.append('Error caught while trying to execute {0}:'.format(formula_name))
+                    lines.append('\n'.join(i.capitalize() for i in ex.base_error.base_error.args))
+                    missed_field_name = fetchone(r"[Nn]ame '([^']+)", str(ex.base_error.base_error))
+                    missed_field_name = f'"{missed_field_name}"' if missed_field_name else 'this'
+
+                    lines.append(f'\nPossibly {missed_field_name} field is not included into "depends_on_fields"')
+            else:
+                lines.append('Error caught while trying to execute {0} on example values:'.format(formula_name))
+                for field_name in ex.field_values:
+                    lines.append('{0}={1}'.format(field_name, ex.field_values[field_name]))
+                lines.append("{0}. {1} in {2} of field '{3}' at line {4}".format(base_error_class,
+                                                                                 base_error_msg,
+                                                                                 formula_name,
+                                                                                 ex.field_code,
+                                                                                 ex.line_number))
             self.add_error(form_field, lines)
         except Exception:
             trace = traceback.format_exc()
@@ -590,25 +610,90 @@ class DocumentFieldForm(ModelFormWithUnchangeableFields):
 
     UNSURE_THRESHOLDS = 'unsure_thresholds_by_value'
 
+    def _post_clean(self):
+        super()._post_clean()
+        # At this stage self.instance is filled with the data from self.cleaned_data but still not saved.
+        # Here we can apply validation on the self.instance.
+
+        document_field = self.instance  # type: DocumentField
+        formula = document_field.formula
+        hide_until_python = document_field.hide_until_python
+        document_type = document_field.document_type
+        type_code = document_field.type
+        field_code = document_field.code
+        default_value = document_field.default_value
+        depends_on_fields = self.cleaned_data.get('depends_on_fields') or []
+        depends_on_fields = list(depends_on_fields)
+
+        typed_field = None  # type: TypedField
+        try:
+            typed_field = TypedField.by(self.instance)
+        except KeyError:
+            self.add_error('type', 'Unknown field type "{}".'.format(type_code))
+
+        fields_to_values = {field.code: TypedField.by(field).example_python_value()
+                            for field in depends_on_fields}
+
+        if formula and formula.strip() and type_code:
+            example_value = self.calc_formula(field_code, formula, fields_to_values, 'formula',
+                                              check_name_not_found=True)
+            if not typed_field.is_python_field_value_ok(example_value):
+                self.add_error('formula', f'Formula returned value not suitable for this field:\n{example_value}')
+
+        hide_until_python = hide_until_python.strip() if hide_until_python else None
+        if hide_until_python:
+            if not document_type:
+                self.add_error('hide_until_python', 'Document type is not defined.')
+            else:
+                fields_to_values = {field.code: typed_field.example_python_value()
+                                    for field in list(document_type.fields.all())}
+                if field_code and field_code in fields_to_values:
+                    del fields_to_values[field_code]
+                if type_code:
+                    fields_to_values[field_code] = TypedField.by(self.instance).example_python_value()
+
+                self.calc_formula(field_code,
+                                  hide_until_python,
+                                  fields_to_values,
+                                  'hide_until_python',
+                                  formula_name='hide until python',
+                                  check_name_not_found=False)
+
+        if default_value is not None:
+            if type_code == RelatedInfoField.type_code:
+                self.add_error('default_value', 'Related info field can\'t have default value')
+            elif typed_field.extract_from_possible_value(default_value) != default_value:
+                self.add_error('default_value', 'Wrong value for type {0}. Example: {1}'
+                               .format(type_code, json.dumps(typed_field.example_python_value())))
+
+        value_detection_strategy = self.cleaned_data[VALUE_DETECTION_STRATEGY]
+        from apps.document.field_detection.field_detection import FIELD_DETECTION_STRATEGY_REGISTRY
+        if value_detection_strategy not in FIELD_DETECTION_STRATEGY_REGISTRY:
+            self.add_error(VALUE_DETECTION_STRATEGY, f'Unknown value detection strategy {value_detection_strategy}')
+        strategy_problems = FIELD_DETECTION_STRATEGY_REGISTRY[value_detection_strategy] \
+            .has_problems_with_field(self.instance)
+        if strategy_problems:
+            self.add_error(VALUE_DETECTION_STRATEGY, strategy_problems)
+
     def clean(self):
+        # At this stage self.instance is not filled with the values from the form.
+        # All validation should be applied on the form entries passed in self.cleaned_data.
         field_code = self.cleaned_data.get('code')
-        formula = self.cleaned_data.get('formula')
         type_code = self.cleaned_data.get('type')
         depends_on_fields = self.cleaned_data.get('depends_on_fields') or []
-        document_type = self.cleaned_data.get('document_type')
         depends_on_fields = list(depends_on_fields)
         classifier_init_script = self.cleaned_data['classifier_init_script']
         stop_words = self.cleaned_data.get('stop_words')
-        hide_until_python = self.cleaned_data['hide_until_python']
-        default_value = self.cleaned_data.get('default_value')
         unsure_choice_value = self.cleaned_data[self.UNSURE_CHOICE_VALUE]
         choice_values = DocumentField.parse_choice_values(self.cleaned_data['choices'])
         unsure_thresholds_by_value = self.cleaned_data.get(self.UNSURE_THRESHOLDS)
 
         try:
-            field_type = FIELD_TYPE_REGISTRY[type_code]
-        except KeyError:
-            self.add_error('type', 'Unknown field type "{}".'.format(type_code))
+            DocumentField.compile_value_regexp(self.cleaned_data['value_regexp'])
+        except Exception as exc:
+            self.add_error('value_regexp', exc)
+
+        self.validate_field_code()
 
         if unsure_choice_value and (not choice_values or unsure_choice_value not in choice_values):
             self.add_error(self.UNSURE_CHOICE_VALUE, '"Unsure choice value" must be listed in the choice values.')
@@ -631,8 +716,8 @@ class DocumentFieldForm(ModelFormWithUnchangeableFields):
                         elif k not in choice_values:
                             self.add_error(self.UNSURE_THRESHOLDS, 'Value not in choice values: ' + k)
                         if (not isinstance(v, int) and not isinstance(v, float)) or v < 0 or v > 1:
-                            self.add_error(self.UNSURE_THRESHOLDS, 'Threshold should be a float value between 0 and 1: '
-                                           + k)
+                            self.add_error(self.UNSURE_THRESHOLDS,
+                                           'Threshold should be a float value between 0 and 1: ' + k)
 
         try:
             stop_words = compile_stop_words(stop_words)
@@ -653,9 +738,6 @@ class DocumentFieldForm(ModelFormWithUnchangeableFields):
         except ValueError as ve:
             self.add_error(None, str(ve))
 
-        fields_to_values = {field.code: FIELD_TYPE_REGISTRY[field.type].example_python_value(field)
-                            for field in depends_on_fields}
-
         python_coded_field_code = self.cleaned_data.get('python_coded_field')
         if python_coded_field_code:
             python_coded_field = PYTHON_CODED_FIELDS_REGISTRY.get(python_coded_field_code)
@@ -667,43 +749,6 @@ class DocumentFieldForm(ModelFormWithUnchangeableFields):
                                            ' as the field type'.format(python_coded_field.title,
                                                                        python_coded_field.type,
                                                                        type_code))
-
-        if formula and formula.strip() and type_code:
-            self.calc_formula(field_code, type_code, formula, fields_to_values, 'formula')
-
-        hide_until_python = hide_until_python.strip() if hide_until_python else None
-        if hide_until_python:
-            if not document_type:
-                self.add_error('hide_until_python', 'Document type is not defined.')
-            else:
-                fields_to_values = {field.code: FIELD_TYPE_REGISTRY[field.type].example_python_value(field)
-                                    for field in list(document_type.fields.all())}
-                if field_code and field_code in fields_to_values:
-                    del fields_to_values[field_code]
-                if type_code:
-                    fields_to_values[field_code] = FIELD_TYPE_REGISTRY[type_code] \
-                        .example_python_value(self.instance)
-    
-                self.calc_formula(field_code,
-                                  None,
-                                  hide_until_python,
-                                  fields_to_values,
-                                  'hide_until_python',
-                                  formula_name='hide until python')
-
-        if default_value is not None:
-            if type_code == RelatedInfoField.code:
-                self.add_error('default_value', 'Related info field can\'t have default value')
-            elif field_type.extract_from_possible_value(self.instance, default_value) != default_value:
-                self.add_error('default_value', 'Wrong value for type {0}. Example: {1}'
-                               .format(type_code, json.dumps(field_type.example_python_value(self.instance))))
-
-        try:
-            DocumentField.compile_value_regexp(self.cleaned_data['value_regexp'])
-        except Exception as exc:
-            self.add_error('value_regexp', exc)
-
-        self.validate_field_code()
 
         if self.initial and 'type' in self.changed_data:
             wrong_field_detector_pks = []
@@ -719,8 +764,26 @@ class DocumentFieldForm(ModelFormWithUnchangeableFields):
         return self.cleaned_data
 
 
+class FormulaCheckResult:
+    def __init__(self,
+                 calculated: bool,
+                 value: Any = None,
+                 errors: List[str] = None,
+                 warnings: List[str] = None):
+        self.calculated = calculated
+        self.value = value
+        self.errors = errors or []
+        self.warnings = warnings or []
+
+    def to_json(self):
+        return json.dumps(self, default=lambda o: o.__dict__,
+                          sort_keys=True, indent=4)
+
+
 class DocumentFieldAdmin(FieldValuesValidationAdmin):
     form = DocumentFieldForm
+    change_form_template = 'admin/document/documentfield/change_form.html'
+
     list_display = (
         'document_type', 'code', 'category', 'order', 'title', 'description', 'type', 'formula', 'value_regexp', 'user',
         'modified_date', 'confidence')
@@ -742,7 +805,8 @@ class DocumentFieldAdmin(FieldValuesValidationAdmin):
             'fields': ('hidden_always', 'hide_until_python', 'hide_until_js', 'display_yes_no',),
         }),
         ('Field Detection: General', {
-            'fields': ('value_detection_strategy', 'text_unit_type', 'depends_on_fields'),
+            'fields': ('value_detection_strategy', 'text_unit_type', 'depends_on_fields',
+                       'detect_limit_unit', 'detect_limit_count'),
         }),
         ('Field Detection: Regexp-based', {
             'fields': ('stop_words', 'value_regexp'),
@@ -762,13 +826,202 @@ class DocumentFieldAdmin(FieldValuesValidationAdmin):
         }),
     ]
 
+    def __init__(self, *args, **kwargs):
+        super(DocumentFieldAdmin, self).__init__(*args, **kwargs)
+        self.name = 'docfield_admin'
+
     def get_search_results(self, request, queryset, search_term):
         qs, has_duplicates = super().get_search_results(request, queryset, search_term)
         return qs.select_related('document_type', 'modified_by'), has_duplicates
 
-    def save_model(self, request, obj, form, change):
+    def save_model(self, request, obj: DocumentField, form, change: bool):
+        typed = TypedField.by(obj)
+        if change and \
+            (typed.is_choice_field and not obj.allow_values_not_specified_in_choices):
+            # don't save here, prompt user if there are values other than in choices list
+            return
+        # check formula errors
+        errors = {}  # type:Dict[str, List[str]]
+        warnings = {}  # type:Dict[str, List[str]]
+
+        formula_fields = ['formula']
+        for field in formula_fields:
+            check_return_value = field == 'formula'
+            rst_formula = self.check_field_formula_default_and_empty(
+                form, check_return_value, field)
+            errors[field] = rst_formula.errors
+            warnings[field] = rst_formula.warnings
+
+        if errors:
+            for field in errors:
+                if not errors[field]:
+                    continue
+                msg = f'There were errors with field "{field}":\n\n'
+                msg += '\n\n'.join(errors[field])
+                messages.add_message(
+                    request, messages.ERROR, msg)
+        if warnings:
+            for field in warnings:
+                if not warnings[field]:
+                    continue
+                msg = f'There were potential issues with field "{field}":\n\n'
+                msg += '\n\n'.join(warnings[field])
+                messages.add_message(
+                    request, messages.WARNING, msg)
+
         super().save_model(request, obj, form, change)
         signals.document_field_changed.send(self.__class__, user=request.user, document_field=obj)
+
+    def response_change(self, request, obj: DocumentField):
+        return self.process_add_or_change('CHANGE', request, obj)
+
+    def response_add(self, request, obj: DocumentField,
+                     post_url_continue=None):
+        return self.process_add_or_change('ADD', request, obj, post_url_continue)
+
+    def process_add_or_change(self,
+                              action: str,  # 'ADD' or 'CHANGE'
+                              request, obj: DocumentField,
+                              post_url_continue=None):
+        typed = TypedField.by(obj)
+        if not typed.is_choice_field or obj.allow_values_not_specified_in_choices:
+            # object is already saved, continue
+            if action == 'ADD':
+                return super(DocumentFieldAdmin, self).response_add(
+                    request, obj, post_url_continue)
+            # if action == 'CHANGE':
+            return super(DocumentFieldAdmin, self).response_change(request, obj)
+
+        return self.confirm_newchoices_view(request, obj=obj)
+
+    def render_change_form(self, request, context, add=False, change=False, form_url='', obj=None):
+        context['check_field_formula_view_url'] = reverse('admin:check_field_formula', args=['XXX'])
+        return super().render_change_form(request, context, add, change, form_url, obj)
+
+    def confirm_newchoices_view(self, request, **kwargs):
+
+        # if new object is directly passed to the function
+        if 'obj' in kwargs:
+            new_field = kwargs.get('obj')
+        # if view is called via URL - get object by object_id passed in url
+        elif 'object_id' in kwargs:
+            new_field = self.get_object(request, kwargs['object_id'])
+        # otherwise fail
+        else:
+            raise RuntimeError('Failed to get field object.')
+
+        repo = DocumentFieldRepository()
+        has_more, wrong_values = repo.get_wrong_choice_options(new_field)
+        return_url = reverse('admin:document_documentfield_change',
+                             kwargs={'object_id': new_field.pk})
+
+        if not wrong_values:
+            # just save the object
+            new_field.save()
+            signals.document_field_changed.send(
+                self.__class__, user=request.user, document_field=new_field)
+            messages.add_message(
+                request, messages.INFO,
+                f'The document field "{new_field.document_type}: {new_field.code}" was changed successfully.')
+
+            # in case if "SAVE" button is used "Save and Continue"
+            if '_save' in request.POST:
+                return redirect('admin:document_documentfield_changelist')
+            # "Save and Continue"
+            else:
+                return redirect(return_url)    # request.path?
+
+        context = {
+            'field_name': new_field.title,
+            'field_code': new_field.code,
+            'has_more': has_more,
+            'wrong_values': wrong_values,
+            'return_url': mark_safe(return_url)
+        }
+        return render(request, "admin/document/documentfield/confirm_newchoices_view.html", context)
+
+    def check_field_formula_view(self, request, field: str):
+        form = DocumentFieldForm(request.POST)
+        check_return_value = field == 'formula'
+        rst = self.check_field_formula_default_and_empty(form, check_return_value, field)
+        rst_json = rst.to_json()
+        return HttpResponse(rst_json, content_type='application/json')
+
+    def check_field_formula_default_and_empty(self,
+                                              form: DocumentFieldForm,
+                                              check_return_value: bool,
+                                              field: str):
+        rst_default = self.get_formula_errors(form, 'DEFAULT', field, check_return_value)
+        if rst_default.calculated:
+            rst_empty = self.get_formula_errors(form, 'EMPTY', field, check_return_value)
+            if rst_empty.errors:
+                rst_default.warnings += ['There were errors with not initialized fields:']
+                rst_default.warnings += rst_empty.errors
+        return rst_default
+
+    def get_formula_errors(self,
+                           form: DocumentFieldForm,
+                           input_values: str,
+                           formula_field: str,
+                           check_return_value: bool,
+                           ) -> FormulaCheckResult:
+        """
+        Calculates formula and return calculation result
+        :param input_values: 'EMPTY': each dependent field will be None, otherwise - sample value
+        :param form: partially filled DocumentFieldForm
+        :param formula_field: what field to check ('formula' or 'hide_until_python')
+        :param check_return_value: if True, check return value against field type
+        :return: was calculated or is empty; calc. result; errors' list
+        """
+        result = FormulaCheckResult(calculated=False)
+        form.is_valid()
+        document_field = form.instance  # type: DocumentField
+        formula = form.data.get(formula_field) or ''
+        if not formula or formula.isspace():
+            return result
+
+        type_code = document_field.type
+        field_code = document_field.code
+        dependent_fields = []
+        if form.cleaned_data and 'depends_on_fields' in form.cleaned_data:
+            dependent_fields = list(form.cleaned_data['depends_on_fields'])
+        else:
+            depends_on_fields = form.data.get('depends_on_fields') or ''
+            if depends_on_fields:
+                depends_on_fields = depends_on_fields.split(',')
+                depends_on_fields = DocumentField.objects.filter(pk__in=depends_on_fields)
+                dependent_fields = list(depends_on_fields)
+
+        if input_values == 'EMPTY':
+            fields_to_values = {field.code: None
+                                for field in dependent_fields}
+        else:
+            fields_to_values = {field.code: TypedField.by(field).example_python_value()
+                                for field in dependent_fields}
+
+        try:
+            typed_field = TypedField.by(document_field)
+        except KeyError:
+            result.errors.append(f'Unknown field type "{type_code}".')
+            return result
+
+        try:
+            result.value = FormulaBasedFieldDetectionStrategy.calc_formula(
+                field_code, formula, fields_to_values)
+            result.calculated = True
+        except Exception as e:
+            result.errors.append(str(e))
+
+        if result.calculated:
+            checker = PythonExpressionChecker(formula)
+            checker.test_expression()
+            if checker.warnings:
+                result.warnings += checker.warnings
+
+        if check_return_value:
+            if result.calculated and not typed_field.is_python_field_value_ok(result.value):
+                result.errors.append(f'Formula returned value not suitable for this field:\n{result.value}')
+        return result
 
     def on_object_deleted(self, obj):
         signals.document_field_deleted.send(self.__class__, user=None, document_field=obj)
@@ -776,6 +1029,19 @@ class DocumentFieldAdmin(FieldValuesValidationAdmin):
     @staticmethod
     def user(obj):
         return obj.modified_by.username if obj.modified_by else None
+
+    def get_urls(self):
+        urls = super().get_urls()
+        from django.urls import path
+        my_urls = [
+            path('confirm_newchoices_view/<str:object_id>/',
+                 self.confirm_newchoices_view,
+                 name='confirm_newchoices_view'),
+            path('check_field_formula_view/<str:field>/',
+                 self.check_field_formula_view,
+                 name='check_field_formula')
+        ]
+        return my_urls + urls
 
 
 class DocumentFieldDetectorForm(forms.ModelForm):
@@ -830,7 +1096,6 @@ class DocumentFieldDetectorAdmin(admin.ModelAdmin):
                                 ((r,) for r in
                                  obj.exclude_regexps.split('\n'))) if obj.field and obj.exclude_regexps else None
 
-
     @staticmethod
     def definition_words_(obj: DocumentFieldDetector):
         return format_html_join('\n', '<pre>{}</pre>',
@@ -838,7 +1103,28 @@ class DocumentFieldDetectorAdmin(admin.ModelAdmin):
                                  obj.definition_words.split('\n'))) if obj.field and obj.definition_words else None
 
 
-class DocumentFieldValueAdmin(admin.ModelAdmin):
+class FieldValueAdmin(admin.ModelAdmin):
+    raw_id_fields = ('document', 'field',)
+    list_display = ('document_type', 'document', 'field', 'value', 'user')
+    search_fields = ['document__document_type__code', 'document__document_type__title',
+                     'document__name', 'field__code', 'field__title', 'value',
+                     'modified_by__username', 'modified_by__first_name',
+                     'modified_by__last_name']
+
+    @staticmethod
+    def document_type(obj):
+        return obj.document.document_type if obj.document else None
+
+    @staticmethod
+    def field_code(obj):
+        return obj.field.code if obj.field else None
+
+    @staticmethod
+    def user(obj):
+        return obj.modified_by.username if obj.modified_by else None
+
+
+class FieldAnnotationAdmin(admin.ModelAdmin):
     raw_id_fields = ('document', 'text_unit',)
     list_display = ('document_type', 'document', 'field', 'value', 'location_start',
                     'location_end', 'location_text', 'extraction_hint', 'user')
@@ -912,8 +1198,8 @@ class DocumentFieldFormInline(forms.ModelForm):
         self.base_instance = kwargs.get('instance')
 
         if self.base_instance:
-            self.fields['field'].queryset = DocumentField.objects\
-                .filter(document_type=self.base_instance.document_type)\
+            self.fields['field'].queryset = DocumentField.objects \
+                .filter(document_type=self.base_instance.document_type) \
                 .order_by('long_code')
 
         self._filter_tree = None
@@ -1102,7 +1388,8 @@ admin.site.register(Document, DocumentAdmin)
 admin.site.register(SoftDeleteDocument, SoftDeleteDocumentAdmin)
 admin.site.register(DocumentField, DocumentFieldAdmin)
 admin.site.register(DocumentFieldDetector, DocumentFieldDetectorAdmin)
-admin.site.register(DocumentFieldValue, DocumentFieldValueAdmin)
+admin.site.register(FieldValue, FieldValueAdmin)
+admin.site.register(FieldAnnotation, FieldAnnotationAdmin)
 admin.site.register(ExternalFieldValue, ExternalFieldValueAdmin)
 admin.site.register(ClassifierModel, ClassifierModelAdmin)
 admin.site.register(DocumentType, DocumentTypeAdmin)

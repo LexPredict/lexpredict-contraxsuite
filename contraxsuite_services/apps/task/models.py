@@ -26,12 +26,15 @@
 
 # Standard imports
 import logging
-import sys
+from datetime import datetime
 from traceback import format_exc
+from typing import Generator
 
 # Third-party imports
 from celery import states
+from dataclasses import dataclass
 from dateutil import parser as date_parser
+
 # Django imports
 from django.conf import settings
 from django.contrib.postgres.fields import JSONField
@@ -41,17 +44,18 @@ from django.db.models.deletion import CASCADE
 from django.utils.translation import ugettext_lazy as _
 from elasticsearch import Elasticsearch
 
-from apps.common.fields import StringUUIDField
 # Project imports
+from apps.common.fields import StringUUIDField, TruncatingCharField
 from apps.common.utils import fast_uuid
 from apps.task.celery_backend.managers import TaskManager
 from apps.task.celery_backend.utils import now
 from apps.users.models import User
+from contraxsuite_logging import write_task_log
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2019, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.3/LICENSE"
-__version__ = "1.2.3"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.3.0/LICENSE"
+__version__ = "1.3.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -68,6 +72,17 @@ class TaskConfig(models.Model):
 
 ALL_STATES = sorted(states.ALL_STATES)
 TASK_STATE_CHOICES = sorted(zip(ALL_STATES, ALL_STATES))
+
+
+@dataclass
+class TaskLogEntry:
+    message: str
+    timestamp: datetime = None
+    log_level: str = None
+    task_name: str = None
+    task_id: str = None
+    main_task_id: str = None
+    stack_trace: str = None
 
 
 class Task(models.Model):
@@ -134,6 +149,7 @@ class Task(models.Model):
     upload_session = models.ForeignKey('project.UploadSession', blank=True,
                                        null=True, db_index=True, on_delete=CASCADE)
     run_after_sub_tasks_finished = models.BooleanField(editable=False, default=False)
+    call_stack = TruncatingCharField(max_length=1024, db_index=True, null=True, blank=True)
 
     objects = TaskManager()
 
@@ -172,38 +188,7 @@ class Task(models.Model):
         opts = {'metadata__%s' % k: v for k, v in filter_opts.items()}
         return cls.objects.main_tasks().filter(**opts)
 
-    @staticmethod
-    def write_task_log(task_id, message, level='info',
-                       main_task_id=None, task_name: str = None, user_id=None, user_login: str = None,
-                       log_extra: dict = None):
-        message = str(message)
-        extra = {
-            'log_task_id': task_id,
-            'log_main_task_id': main_task_id,
-            'log_task_name': task_name,
-            'log_user_id': user_id,
-            'log_user_login': user_login
-        }
-
-        if log_extra:
-            extra.update(log_extra)
-
-        try:
-            getattr(logger, level)(message, extra=extra)
-
-            return True
-        except Exception:
-            trace = format_exc()
-            exc_class, exception, _ = sys.exc_info()
-            exception_str = '%s: %s' % (exc_class.__name__, str(exception))
-
-            logger.error(
-                'Exception caught while trying to log a message:\n{0}\n{1}'.format(exception_str,
-                                                                                   trace),
-                extra=extra)
-            pass
-
-    def write_log(self, message, level='info', **kwargs):
+    def write_log(self, message, level='info', exc_info: Exception = None, **kwargs):
         message = str(message)
 
         extra = dict()
@@ -214,54 +199,41 @@ class Task(models.Model):
         if kwargs:
             extra.update(kwargs)
 
-        self.write_task_log(self.id, message, level,
-                            main_task_id=self.main_task_id or self.id,
-                            task_name=self.name,
-                            user_id=self.user.id if self.user else None,
-                            user_login=self.user.username if self.user else None,
-                            log_extra=extra)
+        write_task_log(self.id, message, level,
+                       main_task_id=self.main_task_id or self.id,
+                       task_name=self.name,
+                       user_id=self.user.id if self.user else None,
+                       user_login=self.user.username if self.user else None,
+                       exc_info=exc_info,
+                       log_extra=extra)
 
-    def get_task_log_from_elasticsearch(self):
+    def get_task_log_from_elasticsearch(self) -> Generator[TaskLogEntry, None, None]:
         try:
             es_query = {
                 'sort': ['@timestamp'],
                 'query': {
                     'bool': {
                         'must': [
-                            {'match': {'log_main_task_id': self.id}},
+                            {'term': {'log_main_task_id': {'value': f'{self.id}'}}},
                         ]
                     }
                 },
-                '_source': ['@timestamp', 'level', 'message', 'log_task_id', 'log_main_task_id']
+                '_source': ['@timestamp', 'level', 'message', 'log_main_task_id',
+                            'log_task_id', 'log_task_name', 'log_stack_trace']
             }
-            es_res = es.search(size=1000,
+            es_res = es.search(size=10000,
                                index=settings.LOGGING_ELASTICSEARCH_INDEX_TEMPLATE,
                                body=es_query)
-            logs = []
             for hit in es_res['hits']['hits']:
                 doc = hit['_source']
-                timestamp = date_parser.parse(doc['@timestamp'])
-                timestamp = timestamp.strftime('%Y-%m-%d %H:%M:%S')
 
-                level = doc['level']
-                if not level:
-                    level = 'INFO'
+                yield TaskLogEntry(timestamp=date_parser.parse(doc['@timestamp']),
+                                   log_level=doc.get('level'),
+                                   task_name=doc.get('log_task_name'),
+                                   task_id=doc.get('log_task_id'),
+                                   main_task_id=doc.get('log_main_task_id'),
+                                   stack_trace=doc.get('log_stack_trace'),
+                                   message=doc.get('message'))
 
-                message = doc['message']
-
-                # log_add = '{2: <9} {0} | {1}'.format(timestamp, message, level.upper())
-                log_add = 'Main task: {3} | Sub-task: {4}\n{2: <9} {0} | {1}'.format(timestamp,
-                                                                                     message,
-                                                                                     level.upper(),
-                                                                                     doc[
-                                                                                         'log_main_task_id'],
-                                                                                     doc[
-                                                                                         'log_task_id'])
-                logs.append(log_add)
-            return str('\n'.join(logs))
         except:
-            return 'Unable to fetch logs from ElasticSearch:\n{0}'.format(format_exc())
-
-    @property
-    def log(self):
-        return self.get_task_log_from_elasticsearch()
+            yield TaskLogEntry(message='Unable to fetch logs from ElasticSearch:\n{0}'.format(format_exc()))

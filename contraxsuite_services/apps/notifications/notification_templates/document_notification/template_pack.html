@@ -1,0 +1,160 @@
+{%- macro field_value(value_type, value) -%}
+    {%- if value is not none -%}
+        {%- if value_type == 'float' -%}
+{{ '%0.2f'| format(value) }}
+        {%- elif value_type == 'duration' -%}
+{{ '%0.1f'| format(value) }} days
+        {%- elif value_type == 'boolean' or value_type == 'related_info' -%}
+{{ 'Yes' if value else 'No' }}
+        {%- elif value_type == 'date' -%}
+{{ value.strftime('%Y-%m-%d') }}
+        {%- elif value_type == 'datetime' -%}
+{{ value.strftime('%Y-%m-%d') }}
+        {%- elif value_type == 'money' -%}
+{{ '%0.2f'| format(value.amount) }} {{ value.currency }}
+        {%- elif value_type == 'address' -%}
+{{ value.address }}
+        {%- elif value_type == 'multi_choice' -%}
+{{ '; '.join(value) if value else 'No value' }}
+        {%- else -%}
+{{ value or 'No value'}}
+        {%- endif -%}
+    {%- else -%}
+No value
+    {%- endif -%}
+{%- endmacro -%}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>{{ subject }}</title>
+    <link href="https://fonts.googleapis.com/css?family=Source+Sans+Pro" rel="stylesheet">
+    <style>
+        body {
+            color: #16325C;
+            font-family: "Source Sans Pro";
+            font-size: 16px;
+            font-weight: 600;
+            box-shadow: inset 0 0 0px #D8DDE6;
+            background-color: #fff;
+            padding: 0 0 0 0;
+            margin: 0 0 0 0;
+        }
+
+        .logo {
+            padding: 10px 8px 10px 8px;
+            margin: 0 0 16px 0;
+            box-shadow: 0 2px 0px #D8DDE6;
+            background-color: #fff;
+        }
+
+        .logo svg {
+            margin-right: 20px;
+        }
+        .logo a {
+            color: #16325C;
+            font-style: normal;
+            text-decoration: none;
+        }
+
+        .header {
+            padding: 0 10px 0 10px;
+        }
+
+        .table-container {
+            background-color: #fff;
+            margin-bottom: 32px;
+        }
+
+        .table-wrapper {
+            font-family: "Source Sans Pro";
+            font-size: 13px;
+            color: #334C70;
+            font-weight: normal;
+            background-color: #fff;
+            margin: 0 10px 0 10px;
+        }
+
+        .table-wrapper tr:nth-child(even) {
+            background: #fff;
+        }
+
+        .table-wrapper tr:nth-child(odd) {
+            background: #fff;
+        }
+
+        .table-wrapper td {
+            height: 28px;
+            padding-top: 4px;
+            padding-left: 10px;
+            padding-right: 10px;
+        }
+
+        .table-wrapper td a {
+            color: #1589EE;
+        }
+
+        .table-wrapper .header-cell {
+            font-weight: bold;
+            text-overflow: ellipsis;
+            white-space: normal;
+            border-bottom: 1px solid #D8DDE6;
+            background-color: #fff;
+        }
+
+        .table-wrapper .header-row {
+            border-bottom: 1px solid #D8DDE6;
+        }
+
+    </style>
+</head>
+<body>
+<div class="logo">
+    <div><a href="{{ app_url }}"><img src="images/logo.png" width="134" height="28" /></a></div>
+</div>
+<div class="header">
+    <p>{{ header }}</p>
+</div>
+<div>
+    {%- for document in documents -%}
+        <div style="padding:8px 8px 16px 8px">
+            <div class="table-container">
+                <table class="table-wrapper" cellpadding="0" cellspacing="0">
+                    <tbody>
+                        <tr>
+                            <td style="text-align: left; font-weight: bold">Document:</td>
+                            <td style="text-align: left">
+                                <a href="{{ document.doc_url }}">{{ document.document.document_name }}</a>
+                            </td>
+                        </tr>
+                    {%- for field in document.fields -%}
+                        {%- if field.changed -%}
+                            <tr>
+                                {%- if field.value -%}
+                                    <td style="text-align: left; font-weight: bold">{{ field.title }}:</td>
+                                {%- else -%}
+                                    <td style="text-align: left; font-weight: bold">{{ field.title }}:</td>
+                                {%- endif -%}
+                                <td>
+                                    <span style="text-decoration: line-through">{{ field_value(field.type, field.changes[0]) }}</span>
+                                    &nbsp;&#x21e8; &nbsp;{{ field_value(field.type, field.value) }}
+                                 </td>
+                            </tr>
+                        {%- else -%}
+                            <tr>
+                                <td style="text-align: left; font-weight: bold">{{ field.title }}:</td>
+                                <td>
+                                    &nbsp;{{ field_value(field.type, field.value) }}
+                                 </td>
+                            </tr>
+                        {%- endif -%}
+                {%- endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    {%- endfor %}
+
+</div>
+</body>
+</html>

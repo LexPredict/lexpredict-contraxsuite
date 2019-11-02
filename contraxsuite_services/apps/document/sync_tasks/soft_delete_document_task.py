@@ -25,22 +25,37 @@
 # -*- coding: utf-8 -*-
 
 from typing import List
+
+from apps.document.models import Document
 from apps.document.repository.base_document_repository import BaseDocumentRepository
 from apps.document.repository.document_repository import default_document_repository
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2019, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.3/LICENSE"
-__version__ = "1.2.3"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.3.0/LICENSE"
+__version__ = "1.3.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
 
 class SoftDeleteDocumentsSyncTask:
-    def __init__(self, doc_repo: BaseDocumentRepository=None):
+    def __init__(self, doc_repo: BaseDocumentRepository = None):
         self.doc_repo = doc_repo or default_document_repository
 
-    def process(self, document_ids: List[int], delete_not_undelete: bool) -> int:
+    def process(self,
+                document_ids: List[int],
+                delete_not_undelete: bool,
+                delete_all_in_project: bool = False,
+                project_id: int = 0,
+                excluded_ids: List[int] = None) -> int:
+
+        if delete_all_in_project:
+            document_ids = Document.all_objects.filter(
+                project_id=project_id).values_list('pk', flat=True)
+        if excluded_ids:
+            excluded_ids = set(excluded_ids)
+            document_ids = [id for id in document_ids if id not in excluded_ids]
+
         self.doc_repo.set_documents_soft_delete_flag(document_ids, delete_not_undelete)
         from apps.document import signals
         signals.fire_doc_soft_delete('SoftDeleteDocumentsSyncTask', document_ids, delete_not_undelete)

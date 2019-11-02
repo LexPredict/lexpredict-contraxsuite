@@ -28,10 +28,10 @@
 from __future__ import absolute_import, unicode_literals
 
 # Standard imports
-from collections import defaultdict
 import datetime
 import itertools
 import json
+from collections import defaultdict
 from urllib.parse import quote as url_quote
 
 # Third-party import
@@ -41,7 +41,7 @@ import icalendar
 from django.urls import reverse
 from django.contrib.auth import authenticate
 from django.db.models import Count, F, Max, Min, Sum, Q, Value, IntegerField
-from django.db.models.functions import TruncMonth
+from django.db.models.functions import TruncMonth, TruncYear, Left, Concat
 from django.http import Http404, HttpResponseForbidden, HttpResponse
 from django.views.generic import DetailView, TemplateView
 
@@ -56,8 +56,8 @@ from apps.extract.models import (
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2019, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.3/LICENSE"
-__version__ = "1.2.3"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.3.0/LICENSE"
+__version__ = "1.3.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -158,12 +158,9 @@ class TopTermUsageListView(BaseTopUsageListView):
 
     def get_queryset(self):
         qs = super().get_queryset()
-        qs = qs.values('term__term', 'term__source') \
+        qs = qs.values('term__term') \
             .annotate(count=Sum('count')) \
-            .values('term__term', 'count') \
             .order_by('-count')
-        # qs = sorted([dict(j) for j in set([tuple(i.items()) for i in qs])],
-        #             key=lambda i: i['count'], reverse=True)
         return qs
 
 
@@ -437,6 +434,9 @@ class DateUsageTimelineView(apps.common.mixins.JqPaginatedListView):
 
     def get_json_data(self, **kwargs):
         per_month = json.loads(self.request.GET.get('per_month', 'false'))
+        show_documents = json.loads(self.request.GET.get('show_documents', 'false'))
+        show_text_unit_text = json.loads(self.request.GET.get('show_text_unit_text', 'false'))
+        truncate_text_unit_text = json.loads(self.request.GET.get('truncate_text_unit_text', 'false'))
 
         qs = super().get_queryset()
         if "document_pk" in self.request.GET:
@@ -447,23 +447,39 @@ class DateUsageTimelineView(apps.common.mixins.JqPaginatedListView):
                 .annotate(start=TruncMonth('date')) \
                 .values('start') \
                 .annotate(count=Sum('count')).order_by()
-            data = list(qs)
             visible_interval = 360
         else:
             qs = qs.order_by('date') \
                 .values(start=F('date')) \
                 .annotate(count=Sum('count'))
-            data = list(qs)
-            date_list_view = DateUsageListView(request=self.request)
-            date_data = date_list_view.get_json_data()['data']
+            date_data = {}
+            if show_documents:
+                annotations = dict(document=F('text_unit__document__name'))
+                values = ['date', 'document']
+                if show_text_unit_text:
+                    values.append('text')
+                    if truncate_text_unit_text:
+                        annotations.update(dict(text=Concat(Left('text_unit__text', 100), Value('...'))))
+                    else:
+                        annotations.update(dict(text=F('text_unit__text')))
+                date_list_view = DateUsageListView(request=self.request)
+                date_data = date_list_view.get_queryset() \
+                    .annotate(**annotations) \
+                    .values(*values) \
+                    .distinct()
+                values.remove('date')
+                date_data = {k: [{kj: kv for kj, kv in j.items() if kj in values}
+                                 for j in v]
+                             for k, v in itertools.groupby(date_data, lambda i: i['date'])}
             visible_interval = 180
 
         max_value = qs.aggregate(m=Max('count'))['m']
         min_value = qs.aggregate(m=Min('count'))['m']
         range_value = max_value - min_value
 
+        data = list(qs)
         for item in data:
-            item['weight'] = (item['count'] - min_value) / range_value
+            item['weight'] = (item['count'] - min_value) / range_value if range_value else 0
             if per_month:
                 item['url'] = '{}?month_search={}'.format(
                     reverse('extract:date-usage-list'), item['start'].isoformat())
@@ -473,7 +489,7 @@ class DateUsageTimelineView(apps.common.mixins.JqPaginatedListView):
                 item['url'] = '{}?date_search={}'.format(
                     reverse('extract:date-usage-list'), item['start'].isoformat())
                 item['content'] = '{}: {}'.format(item['start'].isoformat(), item['count'])
-                item['date_data'] = [i for i in date_data if i['date'] == item['start']]
+                item['date_data'] = date_data.get(item['start'])
 
         initial_start_date = datetime.date.today() - datetime.timedelta(days=visible_interval)
         initial_end_date = datetime.date.today() + datetime.timedelta(days=visible_interval)
@@ -491,30 +507,73 @@ class DateUsageCalendarView(apps.common.mixins.JqPaginatedListView):
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
-        documents = Document.objects.all()
+        documents = Document.objects
         if self.request.user.is_reviewer:
             documents = documents.filter(
                 taskqueue__user_id=self.request.user.pk,
                 textunit__dateusage__isnull=False).distinct()
-        ctx['documents'] = documents
+        ctx['documents'] = documents.values('pk', 'name').iterator()
+
+        periods_qs = DateUsage.objects
+
+        # got rid of probably false-pos
+        periods_qs = periods_qs.filter(date__gte=datetime.date.today() - datetime.timedelta(365 * 300),
+                                       date__lte=datetime.date.today() + datetime.timedelta(365 * 100))
+
+        periods_qs = periods_qs \
+            .annotate(year=TruncYear('date')).values('year') \
+            .annotate(count=Count('date', distinct=True)).order_by('year')
+        periods = []
+        start = end = count = years_count = 0
+        limit = 1000
+        years_count_limit = 10
+        flag = False
+        current_year = datetime.date.today().year
+
+        # get periods to truncate data by periods otherwise d3 hangs on large datasets
+        for q in periods_qs:
+            if not start:
+                start = q['year']
+            if count + q['count'] > limit or years_count > years_count_limit:
+                periods.append({'start': start.year, 'end': end.year, 'count': count, 'checked': start.year <= current_year <= end.year})
+                count = q['count']
+                start = q['year']
+                years_count = 0
+                flag = True
+            else:
+                count += q['count']
+                years_count += 1
+                flag = False
+            end = q['year']
+        if not flag and count:
+            periods.append({'start': start.year, 'end': end.year, 'count': count, 'checked': start.year <= current_year <= end.year})
+        ctx['periods'] = periods
+
         return ctx
 
     def get_json_data(self, **kwargs):
         qs = super().get_queryset()
-        qs = qs.filter(date__lte=datetime.date.today() + datetime.timedelta(365 * 100))
+
+        # got rid of probably false-pos
+        qs = qs.filter(date__gte=datetime.date.today() - datetime.timedelta(365 * 300),
+                       date__lte=datetime.date.today() + datetime.timedelta(365 * 100))
 
         if self.request.GET.get("document_id"):
             qs = qs.filter(text_unit__document__pk=self.request.GET['document_id'])
+
+        elif self.request.GET.get("period"):
+            start, end = self.request.GET["period"].split('-')
+            qs = qs.filter(date__year__gte=start, date__year__lte=end)
 
         qs = qs.order_by('date') \
             .values('date') \
             .annotate(count=Sum('count'))
         data = list(qs)
 
-        max_value = qs.aggregate(m=Max('count'))['m']
+        if not data:
+            return
 
-        min_date = qs.aggregate(m=Min('date'))['m']
-        max_date = qs.aggregate(m=Max('date'))['m']
+        max_value = qs.aggregate(m=Max('count'))['m']
 
         for item in data:
             item['weight'] = item['count'] / max_value
@@ -522,8 +581,7 @@ class DateUsageCalendarView(apps.common.mixins.JqPaginatedListView):
                 reverse('extract:date-usage-list'), item['date'].isoformat())
 
         return {'data': data,
-                'min_year': min_date.year,
-                'max_year': max_date.year}
+                'years': sorted(set([i['date'].year for i in data]))}
 
 
 class DateDurationUsageListView(BaseUsageListView):
@@ -1064,23 +1122,47 @@ class PartyNetworkChartView(PartyUsageListView):
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
-        parties = defaultdict(list)
-        for result in self.get_queryset() \
-                .values('party__name', 'text_unit__document_id') \
-                .order_by('party__name', 'text_unit__document_id'):
-            parties[result['text_unit__document_id']].append(result['party__name'].upper())
-        parties = [i for sub in parties.values() for i in sub if len(set(sub)) > 1]
-        ctx['parties'] = sorted(set(parties))
+
+        # Var 1. - takes ~7sec on 650K rec
+        # parties = defaultdict(list)
+        # for result in self.get_queryset() \
+        #         .values('party__name', 'text_unit__document_id') \
+        #         .order_by('party__name', 'text_unit__document_id'):
+        #     parties[result['text_unit__document_id']].append(result['party__name'].upper())
+        # parties = [i for sub in parties.values() for i in sub if len(set(sub)) > 1]
+
+        # Var 2. - takes ~25 sec on 650K rec
+        # ids = PartyUsage.objects\
+        #     .values('text_unit__document__pk', 'party__name')\
+        #     .distinct()\
+        #     .values('text_unit__document__pk')\
+        #     .annotate(c=Count('party__name', distinct=True))\
+        #     .filter(c__gt=1)\
+        #     .values_list('text_unit__document__pk', flat=True)
+        # parties = PartyUsage.objects\
+        #     .filter(text_unit__document__pk__in=ids)\
+        #     .values_list('party__name', flat=True)
+
+        # Var 3. so simplify just to retrieve all party names - takes ~1sec on 7.8K rec
+        ctx['parties'] = sorted(Party.objects.filter(partyusage__isnull=False).distinct().values_list('name', flat=True))
         return ctx
 
     def get_json_data(self):
-        parties = defaultdict(list)
-        for result in self.get_queryset()\
-                .values('party__name', 'text_unit__document_id')\
-                .order_by('party__name', 'text_unit__document_id'):
-            parties[result['text_unit__document_id']].append(result['party__name'].upper())
-        party_doc_edge = [list(itertools.combinations(set(i), 2))
-                          for i in parties.values() if len(set(i)) > 1]
+        party_name = self.request.GET.get('party_name_iexact')
+        qs = self.get_queryset() \
+            .values('party__name', 'text_unit__document_id') \
+            .order_by('party__name', 'text_unit__document_id')
+        if party_name:
+            doc_ids = Document.objects\
+                .filter(textunit__partyusage__party__name=party_name)\
+                .values_list('id', flat=True)
+            qs = qs.filter(text_unit__document_id__in=doc_ids)
+
+        parties = defaultdict(set)
+        for item in qs:
+            parties[item['text_unit__document_id']].add(item['party__name'])
+        party_doc_edge = [list(itertools.combinations(i, 2))
+                          for i in parties.values() if len(i) > 1]
         chart_nodes = []
         processed_nodes = []
         for group_num, parties in enumerate(party_doc_edge, start=1):
@@ -1093,21 +1175,19 @@ class PartyNetworkChartView(PartyUsageListView):
         chart_links = [{"source": i, "target": j, "value": 2}
                        for g in party_doc_edge for i, j in g]
 
-        if 'party_name_iexact' in self.request.GET:
-            party_name = self.request.GET.get('party_name_iexact', chart_nodes[0]['id'])
-            members = {party_name}
-            while 1:
-                members1 = {i["source"] for i in chart_links
-                            if i["target"] in members and i["source"] not in members}
-                members2 = {i["target"] for i in chart_links
-                            if i["source"] in members and i["target"] not in members}
-                if not members1 and not members2:
-                    break
-                members = members | members1 | members2
+        members = {party_name}
+        while 1:
+            members1 = {i["source"] for i in chart_links
+                        if i["target"] in members and i["source"] not in members}
+            members2 = {i["target"] for i in chart_links
+                        if i["source"] in members and i["target"] not in members}
+            if not members1 and not members2:
+                break
+            members = members | members1 | members2
 
-            chart_nodes = [i for i in chart_nodes if i['id'] in members]
-            chart_links = [i for i in chart_links
-                           if i['source'] in members or i['target'] in members]
+        chart_nodes = [i for i in chart_nodes if i['id'] in members]
+        chart_links = [i for i in chart_links
+                       if i['source'] in members or i['target'] in members]
         return {"nodes": chart_nodes, "links": chart_links}
 
 

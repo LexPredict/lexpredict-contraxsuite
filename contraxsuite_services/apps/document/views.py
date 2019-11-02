@@ -38,10 +38,9 @@ import magic
 import pandas as pd
 # Django imports
 from django.conf import settings
-from django.contrib.postgres.fields.jsonb import KeyTextTransform
 from django.contrib.sites.models import Site
 from django.urls import reverse
-from django.db.models import Count, F, Prefetch
+from django.db.models import Count, F, Prefetch, Subquery, OuterRef
 from django.http import FileResponse
 from django.shortcuts import get_object_or_404, redirect
 from django.shortcuts import render
@@ -79,8 +78,8 @@ from apps.users.models import User
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2019, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.3/LICENSE"
-__version__ = "1.2.3"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.3.0/LICENSE"
+__version__ = "1.3.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -125,14 +124,15 @@ class DocumentListView(apps.common.mixins.JqPaginatedListView):
     CBV for list of Document records.
     """
     model = Document
-    json_fields = ['name', 'document_type__title', 'description',
-                   'title', 'language', 'is_contract',
-                   'properties', 'relations', 'text_units']
+    json_fields = ['name', 'document_type__title',
+                   'title', 'language',
+                   # this field makes DB query significantly longer
+                   # 'is_contract',
+                   'properties', 'relations', 'paragraphs', 'sentences']
     limit_reviewers_qs_by_field = ""
     field_types = dict(
         properties=int,
         relations=int,
-        text_units=int
     )
 
     def get_queryset(self):
@@ -155,9 +155,9 @@ class DocumentListView(apps.common.mixins.JqPaginatedListView):
 
         # Populate with child counts
         qs = qs.annotate(
-            is_contract=KeyTextTransform('is_contract', 'metadata'),
+            # this field makes DB query significantly longer
+            # is_contract=KeyTextTransform('is_contract', 'metadata'),
             properties=Count('documentproperty', distinct=True),
-            text_units=F('paragraphs') + F('sentences'),
             num_relation_a=Count('document_a_set', distinct=True),
             num_relation_b=Count('document_b_set', distinct=True),
         ).annotate(relations=F('num_relation_a') + F('num_relation_b'))
@@ -421,20 +421,17 @@ class DocumentSentimentChartView(apps.common.mixins.AjaxListView):
     limit_reviewers_qs_by_field = ''
 
     def get_json_data(self):
-        data = []
-        documents = self.get_queryset()
-        documents = documents.filter(documentproperty__key='polarity') \
-            .filter(documentproperty__key='subjectivity')
-        for doc in documents:
-            data.append(dict(
-                pk=doc.pk,
-                url=reverse('document:document-detail', args=[doc.pk]),
-                name=doc.name,
-                polarity=doc.documentproperty_set.filter(
-                    key='polarity').first().value,
-                subjectivity=doc.documentproperty_set.filter(
-                    key='subjectivity').first().value))
-        return data
+        polarity_qs = DocumentProperty.objects.filter(document_id=OuterRef("pk"), key='polarity')
+        subjectivity_qs = DocumentProperty.objects.filter(document_id=OuterRef("pk"),
+                                                          key='subjectivity')
+        data = Document.objects\
+            .annotate(polarity=Subquery(polarity_qs.values('value')[:1]),
+                      subjectivity=Subquery(subjectivity_qs.values('value')[:1]))\
+            .values('pk', 'name', 'polarity', 'subjectivity')
+
+        for item in data:
+            item['url'] = reverse('document:document-detail', args=[item['pk']])
+        return list(data)
 
 
 class TextUnitDetailView(apps.common.mixins.PermissionRequiredMixin, DetailView):
@@ -468,7 +465,7 @@ class TextUnitDetailView(apps.common.mixins.PermissionRequiredMixin, DetailView)
 class TextUnitListView(apps.common.mixins.JqPaginatedListView):
     model = TextUnit
     json_fields = ['unit_type', 'language', 'text',
-                   # 'text_hash',
+                   'text_hash',
                    'document__pk', 'document__name',
                    'document__document_type__title', 'document__description']
     limit_reviewers_qs_by_field = 'document'
@@ -506,10 +503,10 @@ class TextUnitListView(apps.common.mixins.JqPaginatedListView):
             qs = qs.filter(partyusage__party__pk=self.request.GET['party_pk'])
         elif "language" in self.request.GET:
             qs = qs.filter(language=self.request.GET['language'])
-        # elif "text_unit_hash" in self.request.GET:
-        #     # Text Unit Detail identical text units tab
-        #     qs = qs.filter(text_hash=self.request.GET['text_unit_hash']) \
-        #         .exclude(pk=self.request.GET['text_unit_pk'])
+        elif "text_unit_hash" in self.request.GET:
+            # Text Unit Detail identical text units tab
+            qs = qs.filter(text_hash=self.request.GET['text_unit_hash']) \
+                .exclude(pk=self.request.GET['text_unit_pk'])
         else:
             qs = qs.filter(unit_type='paragraph')
         return qs
@@ -547,9 +544,8 @@ class TextUnitPropertyListView(apps.common.mixins.JqPaginatedListView):
     model = TextUnitProperty
     limit_reviewers_qs_by_field = 'text_unit__document'
     json_fields = ['key', 'value',
-                   # 'created_date', 'created_by__username', 'modified_date', 'modified_by__username',
                    'text_unit__document__pk', 'text_unit__document__name',
-                   'text_unit__document__document_type__title', 'text_unit__document__description',
+                   'text_unit__document__document_type__title',
                    'text_unit__unit_type', 'text_unit__language',
                    'text_unit__pk']
     template_name = 'document/text_unit_property_list.html'
@@ -605,9 +601,8 @@ class TextUnitNoteListView(apps.common.mixins.JqPaginatedListView):
     def get_json_data(self, **kwargs):
         data = super().get_json_data(keep_tags=True)
         history = list(
-            TextUnitNote.history
-                .filter(text_unit__document_id__in=list(
-                self.get_queryset().values_list('text_unit__document__pk', flat=True)))
+            TextUnitNote.history.filter(text_unit__document_id__in=list(
+                    self.get_queryset().values_list('text_unit__document__pk', flat=True)))
                 .values('id', 'text_unit_id', 'history_date', 'history_user__username', 'note'))
 
         for item in data['data']:
@@ -1015,8 +1010,7 @@ def view_stats(request):
         project_completed_weight = round(project_completed_count / project_total_count * 100, 1)
         project_progress_avg = round(project_df.mean().progress, 1)
         project_documents_total_count = project_df_sum.total_documents_count
-        project_documents_unique_count = Document.objects.filter(taskqueue__project__isnull=False) \
-            .distinct().count()
+        project_documents_unique_count = Document.objects.filter().distinct('name', 'file_size').count()
 
     task_queue_df = pd.DataFrame(TaskQueueListView(request=request).get_json_data()['data'])
     if task_queue_df.empty:

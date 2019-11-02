@@ -28,13 +28,15 @@ from django import forms
 from django.utils.translation import ugettext_lazy as _
 
 from apps.common.forms import checkbox_field
+from apps.common.widgets import LTRRadioField
 from apps.document.field_types import LinkedDocumentsField
 from apps.document.models import DocumentField
+from apps.project.models import Project
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2019, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.3/LICENSE"
-__version__ = "1.2.3"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.3.0/LICENSE"
+__version__ = "1.3.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -57,6 +59,42 @@ class SimilarityForm(forms.Form):
     )
     use_idf = checkbox_field("Use TF-IDF to normalize data")
     delete = checkbox_field("Delete existing Similarity objects.", initial=True)
+    project = forms.ModelChoiceField(queryset=Project.objects.all(),
+                                     required=False, label='Restrict to project')
+
+
+class ChunkSimilarityForm(forms.Form):
+    header = 'Identify similar Documents and/or Text Units.'
+    search_target = LTRRadioField(
+        choices=(('document', 'Identify similar Documents'),
+                 ('textunit', 'Identify similar Text Units')),
+        initial='document',
+        required=True)
+
+    similarity_threshold = forms.IntegerField(
+        min_value=50,
+        max_value=100,
+        initial=75,
+        required=True,
+        help_text=_("Min. Similarity Value 50-100%")
+    )
+    use_idf = checkbox_field("Use TF-IDF to normalize data", initial=True)
+    ignore_case = checkbox_field("Ignore case", initial=True)
+    delete = checkbox_field("Delete existing Similarity objects.", initial=True)
+    project = forms.ModelChoiceField(queryset=Project.objects.all(),
+                                     required=False, label='Restrict to project')
+    term_type = LTRRadioField(
+        choices=(('CHAR_NGRAMS', 'Compare text by char ngrams'),
+                 ('WORDS', 'Compare text by words'),
+                 ('WORD_3GRAMS', 'Compare texts by word 3-grams')),
+        initial='WORDS',
+        required=True)
+    ngram_len = forms.IntegerField(
+        min_value=3,
+        max_value=20,
+        initial=6,
+        required=True,
+        help_text='ngram length when using char ngrams')
 
 
 class PartySimilarityForm(forms.Form):
@@ -80,5 +118,5 @@ class PreconfiguredDocumentSimilaritySearchForm(forms.Form):
     header = 'Identify similar Documents'
 
     field = forms.ModelChoiceField(
-        queryset=DocumentField.objects.filter(type=LinkedDocumentsField.code),
+        queryset=DocumentField.objects.filter(type=LinkedDocumentsField.type_code),
         required=True)

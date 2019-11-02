@@ -25,44 +25,52 @@
 # -*- coding: utf-8 -*-
 
 import datetime
+import pickle
+import uuid
 from collections import defaultdict
-from typing import Optional, Any
-from typing import Set, Dict, Tuple, List
-from dateutil.parser import parse
+from typing import Optional, Any, Set, Dict, Tuple, List
 
 import tzlocal
 from billiard.exceptions import SoftTimeLimitExceeded
 from celery import shared_task
-from django.conf import settings
+from dateutil.parser import parse
 from django.db import connection
-from django.db.models import Prefetch
+from django.db.models import Prefetch, Min
+from django.utils.timezone import now
 from psycopg2 import InterfaceError, OperationalError
 
 from apps.celery import app
+from apps.common.collection_utils import chunks
 from apps.common.errors import render_error
-from apps.common.log_utils import ProcessLogger
+from apps.common.models import ObjectStorage
 from apps.common.sql_commons import fetch_bool, SQLClause
-from apps.document.models import Document, DocumentField
-from apps.rawdb.field_value_tables import FIELD_CODE_ASSIGNEE_ID, build_field_handlers
-from apps.rawdb.rawdb.field_handlers import FieldHandler
+from apps.document.models import Document, DocumentField, DocumentType
+from apps.notifications.document_notification import DocumentNotification
+from apps.notifications.models import DocumentDeletedEvent, DocumentLoadedEvent, \
+    DocumentChangedEvent, DocumentAssignedEvent, DocumentNotificationSubscription
+from apps.notifications.models import DocumentDigestConfig
+from apps.notifications.notifications import render_digest, RenderedDigest, \
+    RenderedNotification, DocumentNotificationSource
+from apps.notifications.notification_renderer import NotificationRenderer
+from apps.rawdb.field_value_tables import build_field_handlers
+from apps.rawdb.constants import FIELD_CODE_ASSIGNEE_ID
 from apps.rawdb.signals import DocumentEvent
 from apps.task.tasks import BaseTask, ExtendedTask, call_task
 from apps.task.tasks import CeleryTaskLogger
 from apps.users.models import User
-from .models import DocumentDeletedEvent, DocumentLoadedEvent, DocumentChangedEvent, \
-    DocumentAssignedEvent, DocumentNotificationSubscription
-from .models import DocumentDigestConfig
-from .notifications import render_digest, RenderedDigest, render_notification
+import task_names
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2019, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.3/LICENSE"
-__version__ = "1.2.3"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.3.0/LICENSE"
+__version__ = "1.3.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
 
 MODULE_NAME = __name__
+
+CACHE_DOC_NOTIFICATION_PREFIX = 'DocumentNotification_'
 
 
 class SendDigest(BaseTask):
@@ -143,16 +151,11 @@ class SendDigest(BaseTask):
                 digest = render_digest(config=config, dst_user=user, run_date=run_date)
                 if digest:
                     digest.send(log)
-            except:
-                msg = render_error('Unable to send {what}.\n'
-                                   'Config: #{config_id}\n'
-                                   'Dst user: {user_name} #{user_id}\n'
-                                   'Run date: {run_date}'.format(what=RenderedDigest,
-                                                                 config_id=config.pk,
-                                                                 user_name=user.get_full_name(),
-                                                                 user_id=user.pk,
-                                                                 run_date=run_date))
-                self.log_error(msg)
+            except Exception as e:
+                self.log_error(f'Unable to send {RenderedDigest}.\n'
+                               f'Config: #{config.pk}\n'
+                               f'Dst user: {user.get_full_name()} #{user.pk}\n'
+                               f'Run date: {run_date}', exc_info=e)
 
 
 def _as_ints(csv: str):
@@ -168,7 +171,7 @@ def _send_digest_scheduled(run_date: datetime) -> bool:
 
 @shared_task(base=ExtendedTask,
              bind=True,
-             name=settings.TASK_NAME_TRIGGER_DIGESTS,
+             name=task_names.TASK_NAME_TRIGGER_DIGESTS,
              soft_time_limit=600,
              default_retry_delay=10,
              retry_backoff=True,
@@ -245,33 +248,24 @@ def trigger_digests(_task):
                              'countdown': delta})
 
 
-def send_notification(log: ProcessLogger,
-                      already_sent_user_ids: Set,
+def send_notification(package_id: str,
                       event: str,
-                      document: Document,
-                      field_handlers: List[FieldHandler],
+                      document_id: int,
                       field_values: Dict[str, Any],
                       changes: Dict[str, Tuple[Any, Any]] = None,
                       changed_by_user: User = None):
-    document_type = document.document_type
-    subscriptions = DocumentNotificationSubscription.objects \
-        .filter(enabled=True, document_type=document_type, event=event, recipients__isnull=False) \
-        .select_related('specified_user', 'specified_role') \
-        .prefetch_related(Prefetch('user_fields', queryset=DocumentField.objects.all().order_by('order')))
-    for s in subscriptions:  # type: DocumentNotificationSubscription
-        notification = render_notification(already_sent_user_ids=already_sent_user_ids,
-                                           subscription=s,
-                                           document=document,
-                                           field_handlers=field_handlers,
-                                           field_values=field_values,
-                                           changes=changes,
-                                           changed_by_user=changed_by_user)
-        if notification:
-            already_sent_user_ids.update({u.id for u in notification.dst_users})
-            notification.send(log=log)
+    ntf = DocumentNotification(
+        event=event,
+        document_id=document_id,
+        field_values=field_values,
+        package_id=package_id,
+        changes=changes,
+        changed_by_user_id=changed_by_user.pk)
+    EmailNotificationPool.push_notification(ntf, event)
 
 
 @shared_task(base=ExtendedTask,
+             name=task_names.TASK_NAME_NOTIFICATIONS_ON_DOCUMENT_CHANGE,
              bind=True,
              soft_time_limit=600,
              default_retry_delay=10,
@@ -281,53 +275,44 @@ def send_notification(log: ProcessLogger,
              priority=9)
 def process_notifications_on_document_change(task: ExtendedTask,
                                              document_event: str,
-                                             document_id,
+                                             document_id: int,
                                              fields_before: Optional[Dict],
                                              fields_after: Optional[Dict],
-                                             changed_by_user_id):
-    log = CeleryTaskLogger(task)
-
-    document = Document.all_objects.filter(pk=document_id).select_related('document_type').first()  # type: Document
-    document_type = document.document_type
-    changed_by_user = User.objects.get(pk=changed_by_user_id)
+                                             changed_by_user_id: int):
+    document_type_id = Document.all_objects.filter(pk=document_id).values_list(
+        'document_type', flat=True).first()  # type: str
+    document_type = DocumentType.objects.get(pk=document_type_id)  # type: DocumentType
+    changed_by_user = User.objects.get(pk=changed_by_user_id)  # type: User
     field_handlers = build_field_handlers(document_type,
-                                          include_suggested_fields=False,
-                                          include_annotation_fields=False)
-    field_handlers_by_field_code = {h.field_code: h for h in field_handlers}  # Dict[str, FieldHandler]
-    already_sent_user_ids = set()
+                                          include_annotation_fields=False)  # List[RawdbFieldHandler]
+    field_handlers_by_field_code = {h.field_code: h for h in field_handlers}  # Dict[str, RawdbFieldHandler]
 
     log_msgs = []
+    package_id = uuid.uuid4().hex
 
     if document_event == DocumentEvent.CREATED.value or fields_before is None:
         if fields_after.get(FIELD_CODE_ASSIGNEE_ID) is not None:
-            send_notification(event=DocumentAssignedEvent.code,
-                              log=log,
-                              already_sent_user_ids=already_sent_user_ids,
-                              document=document,
-                              field_handlers=field_handlers,
+            send_notification(package_id=package_id,
+                              event=DocumentAssignedEvent.code,
+                              document_id=document_id,
                               field_values=fields_after,
                               changed_by_user=changed_by_user)
 
-        send_notification(event=DocumentLoadedEvent.code,
-                          log=log,
-                          already_sent_user_ids=already_sent_user_ids,
-                          document=document,
-                          field_handlers=field_handlers,
+        send_notification(package_id=package_id,
+                          event=DocumentLoadedEvent.code,
+                          document_id=document_id,
                           field_values=fields_after,
                           changed_by_user=changed_by_user)
     elif document_event == DocumentEvent.DELETED.value:
-        send_notification(event=DocumentDeletedEvent.code,
-                          log=log,
-                          already_sent_user_ids=already_sent_user_ids,
-                          document=document,
-                          field_handlers=field_handlers,
+        send_notification(package_id=package_id,
+                          event=DocumentDeletedEvent.code,
+                          document_id=document_id,
                           field_values=fields_before,
                           changed_by_user=changed_by_user)
     else:
         changes = dict()
         for field_code, old_value in fields_before.items():
-            if field_code not in field_handlers_by_field_code \
-                    or field_handlers_by_field_code[field_code].is_suggested:
+            if field_code not in field_handlers_by_field_code:
                 continue
             new_value = fields_after.get(field_code)
             if not values_look_equal(old_value, new_value):
@@ -343,23 +328,198 @@ def process_notifications_on_document_change(task: ExtendedTask,
             log.info(msgs_str)
 
         if FIELD_CODE_ASSIGNEE_ID in changes:
-            send_notification(event=DocumentAssignedEvent.code,
-                              log=log,
-                              already_sent_user_ids=already_sent_user_ids,
-                              document=document,
-                              field_handlers=field_handlers,
+            send_notification(package_id=package_id,
+                              event=DocumentAssignedEvent.code,
+                              document_id=document_id,
                               field_values=fields_after,
                               changes=changes,
                               changed_by_user=changed_by_user)
 
-        send_notification(event=DocumentChangedEvent.code,
-                          log=log,
-                          already_sent_user_ids=already_sent_user_ids,
-                          document=document,
-                          field_handlers=field_handlers,
+        send_notification(package_id=package_id,
+                          event=DocumentChangedEvent.code,
+                          document_id=document_id,
                           field_values=fields_after,
                           changes=changes,
                           changed_by_user=changed_by_user)
+
+
+class EmailNotificationPool:
+    DOC_NOTIFICATION_EVENTS = {
+        DocumentLoadedEvent.code,
+        DocumentDeletedEvent.code,
+        DocumentChangedEvent.code,
+        DocumentAssignedEvent.code
+    }
+
+    batch_size = 10
+
+    batch_seconds = 15
+
+    @staticmethod
+    @shared_task(base=ExtendedTask,
+                 bind=True,
+                 name=task_names.TASK_NAME_CHECK_EMAIL_POOL,
+                 soft_time_limit=60,
+                 max_retries=3,
+                 autoretry_for=(SoftTimeLimitExceeded, InterfaceError, OperationalError,),
+                 default_retry_delay=10)
+    def check_email_pool(_task) -> None:
+        log = CeleryTaskLogger(_task)
+        for event in EmailNotificationPool.DOC_NOTIFICATION_EVENTS:
+            cache_key = f'{CACHE_DOC_NOTIFICATION_PREFIX}{event}'
+            try:
+                cached_msgs_count = ObjectStorage.objects.filter(pk__startswith=cache_key).count()
+                if not cached_msgs_count:
+                    continue
+                if cached_msgs_count < EmailNotificationPool.batch_size:
+                    lastest_msg_time = ObjectStorage.objects.filter(
+                        pk__startswith=cache_key).aggregate(Min('last_updated'))
+                    lastest_msg_time = [lastest_msg_time[k] for k in lastest_msg_time][0]
+                    delta = now() - lastest_msg_time
+                    if delta.seconds < EmailNotificationPool.batch_seconds:
+                        continue
+
+                ntfs = []  # type:List[DocumentNotification]
+                for raw_msg in ObjectStorage.objects.filter(pk__startswith=cache_key):  # type: ObjectStorage
+                    try:
+                        msg = pickle.loads(raw_msg.data)  # type: DocumentNotification
+                        ntfs.append(msg)
+                    except:
+                        log.error(f'send_notifications_packet() - error unpickling raw_msg.data')
+                        pass
+
+                if not ntfs:
+                    continue
+            except Exception as e:
+                log.error(f'Error in check_email_pool(), extracting pool messages: {e}')
+                continue
+            try:
+                log.info(f'send_notifications_packet({len(ntfs)})')
+                EmailNotificationPool.send_notifications_packet(ntfs, event, _task)
+            except Exception as e:
+                log.error(f'Error in check_email_pool(), sending package: {e}')
+                continue
+
+            try:
+                ObjectStorage.objects.filter(pk__startswith=cache_key).delete()
+            except Exception as e:
+                log.error(f'Error in check_email_pool(), deleting pool objects: {e}')
+                continue
+
+    @staticmethod
+    def push_notification(msg: DocumentNotification,
+                          event: str) -> None:
+        cache_key = f'{CACHE_DOC_NOTIFICATION_PREFIX}{event}_{uuid.uuid4().hex}'
+        ObjectStorage.update_or_create(
+            key=cache_key,
+            value_obj=msg)
+
+    @staticmethod
+    def send_notifications_packet(ntfs: List[DocumentNotification],
+                                  event: str,
+                                  task: BaseTask):
+        documents_data = Document.all_objects.filter(pk__in={d.document_id for d in ntfs}).values_list(
+            'pk', 'document_type', 'project_id')
+        doc_types = list(set([d[1] for d in documents_data]))  # unique document types
+        doc_types = list(DocumentType.objects.filter(pk__in=doc_types))
+        doc_type_by_id = {d.pk: d for d in doc_types}
+
+        doc_by_id = {}  # type: Dict[int, Document]
+        for data in documents_data:
+            doc = Document()
+            doc.pk = data[0]
+            doc.document_type = doc_type_by_id[data[1]]
+            doc.project_id = data[2]
+            doc_by_id[doc.pk] = doc
+
+        users = User.objects.filter(pk__in={d.changed_by_user_id for d in ntfs})
+        user_by_id = {u.pk: u for u in users}
+
+        handlers_by_doctype = {d: build_field_handlers(d, include_annotation_fields=False)
+                               for d in doc_types}  # Dict[str, RawdbFieldHandler]
+
+        log = CeleryTaskLogger(task)
+
+        # { (doc_type, event,) : [notification0, notification1, ...], ... }
+        messages_by_subscr_key = {}  # type: Dict[Tuple[str, str], List[DocumentNotification]]
+        # { (doc_type, event,) : [DocumentNotificationSubscription0, ... ], ... }
+        subscr_by_key = {}  # type: Dict[Tuple[str, str], List[DocumentNotificationSubscription]]
+
+        for ntf in ntfs:
+            if ntf.document_id not in doc_by_id:
+                continue
+            document = doc_by_id[ntf.document_id]
+            key = (document.document_type, ntf.event,)
+            if key in messages_by_subscr_key:
+                messages_by_subscr_key[key].append(ntf)
+            else:
+                subscriptions = DocumentNotificationSubscription.objects \
+                    .filter(enabled=True,
+                            document_type=document.document_type,
+                            event=event,
+                            recipients__isnull=False) \
+                    .select_related('specified_user', 'specified_role') \
+                    .prefetch_related(Prefetch('user_fields',
+                                               queryset=DocumentField.objects.all().order_by('order')))
+                # for s in subscriptions:
+                #     s.max_stack = 1  # TODO: remove
+                subscr_by_key[key] = subscriptions
+                messages_by_subscr_key[key] = [ntf]
+
+        notifications_to_send = []  # type: List[RenderedNotification]
+
+        for key in messages_by_subscr_key:
+            messages = messages_by_subscr_key[key]
+            subscriptions = subscr_by_key[key]
+            for sub in subscriptions:
+                for msg_pack in chunks(messages, sub.max_stack):
+                    # render pack of notifications or just one notification
+                    if sub.max_stack < 2:
+                        # render single notification
+                        document = doc_by_id[msg_pack[0].document_id]
+                        handlers = handlers_by_doctype[document.document_type]
+                        user = user_by_id[msg_pack[0].changed_by_user_id]
+
+                        try:
+                            notification = NotificationRenderer.render_notification(
+                                msg_pack[0].package_id,
+                                sub,
+                                DocumentNotificationSource(
+                                    document=document,
+                                    field_handlers=handlers,
+                                    field_values=msg_pack[0].field_values,
+                                    changes=msg_pack[0].changes,
+                                    changed_by_user=user))
+                            if notification:
+                                notifications_to_send.append(notification)
+                        except Exception as e:
+                            log.error(f'Error in send_notifications_packet(), '
+                                      f'sending render_notification(): {e}')
+                    else:
+                        not_sources = []  # List[DocumentNotificationSource
+                        # render pack of notifications in a single message
+                        for msg in msg_pack:
+                            document = doc_by_id[msg.document_id]
+                            handlers = handlers_by_doctype[document.document_type]
+                            user = user_by_id[msg.changed_by_user_id]
+                            not_src = DocumentNotificationSource(
+                                document=document,
+                                field_handlers=handlers,
+                                field_values=msg_pack[0].field_values,
+                                changes=msg_pack[0].changes,
+                                changed_by_user=user)
+                            not_sources.append(not_src)
+                        try:
+                            notifications = NotificationRenderer.render_notification_pack(
+                                msg_pack[0].package_id, sub, not_sources)
+                            notifications_to_send += notifications
+                        except Exception as e:
+                            log.error(f'Error in send_notifications_packet(), '
+                                      f'sending render_notification_pack(): {e}')
+
+        log.info(f'notification.send({len(notifications_to_send)})')
+        for notification in notifications_to_send:
+            notification.send(log=log)
 
 
 app.register_task(SendDigest())

@@ -50,14 +50,13 @@ from apps.task.forms import (
     UpdateElasticSearchForm, TaskDetailForm, TotalCleanupForm,
     LoadFixtureForm, DumpFixtureForm)
 from apps.task.models import Task
-from apps.task.tasks import call_task, clean_tasks, purge_task
+from apps.task.tasks import call_task, clean_tasks, purge_task, call_task_func, LoadDocuments
 from apps.dump.app_dump import get_model_fixture_dump, load_fixture_from_dump, download
-from apps.imanage_integration.tasks import IManageSynchronization
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2019, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.3/LICENSE"
-__version__ = "1.2.3"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.3.0/LICENSE"
+__version__ = "1.3.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -173,7 +172,7 @@ class LoadTaskView(apps.common.mixins.AdminRequiredMixin, apps.common.mixins.JSO
 
 
 class LoadDocumentsView(BaseAjaxTaskView):
-    task_name = 'Load Documents'
+    task_class = LoadDocuments
     form_class = LoadDocumentsForm
     metadata = dict(
         result_links=[{'name': 'View Document List', 'link': 'document:document-list'},
@@ -367,7 +366,8 @@ class TaskDetailView(apps.common.mixins.CustomDetailView):
 
 class CleanTasksView(apps.common.mixins.TechAdminRequiredMixin, apps.common.mixins.JSONResponseView):
     def get_json_data(self, request, *args, **kwargs):
-        return clean_tasks(delta_days=0)
+        call_task_func(clean_tasks, (), request.user.pk, queue=settings.CELERY_QUEUE_SERIAL)
+        return 'Cleaning task started.'
 
 
 class PurgeTaskView(apps.common.mixins.TechAdminRequiredMixin, apps.common.mixins.JSONResponseView):

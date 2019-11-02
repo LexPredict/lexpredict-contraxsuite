@@ -30,28 +30,27 @@ This folder contains scripts for deploying the current latest Contraxsuite relea
 
 ## Architecture
 
-Contraxsuite is a Python/Django based application.
+ContraxSuite is a Python/Django based application.
 
-Contraxsuite deployment consists of the following main components:
+ContraxSuite deployment consists of the following main components:
 * Django Web application (UWSGI) - Django-based UI, REST API
 * PostgreSQL - Relational database
-* Celery Beat Scheduler - Periodical tasks scheduling
+* Celery Beat Scheduler - Periodic task scheduling
 * Celery Workers (1 or more) - Asynchronous task processing
 * RabbitMQ - Message queue for Celery
 * Flower - Celery management UI
-* Jupyter - Jupyter Notebook application connected to the Contraxsuite code and DB for experimenting
-* Elasticsearch - Full text search, log storage
+* Jupyter - Jupyter Notebook application connected to the ContraxSuite code and DB for experimenting
+* Elasticsearch - Full text search and log storage
 * Tika REST Servers (1 or more) - Text extraction from different file formats
-* Filebeat - Logs collecting
-* Metricbeat - Metrics collecting
-* Kibana - Web UI for accessing Elasticsearch data, logs, metrics
-* Nginx - Web server and reverse proxy server routing request among the web backends, HTTPS support
+* Filebeat - Log collection
+* Metricbeat - Metrics collection
+* Kibana - Web UI for accessing Elasticsearch data, logs, and metrics
+* Nginx - Web server and reverse proxy server for routing requests among the web backends, HTTPS support
 * Docker - Performs operating-system-level virtualization, also known as "containerization". 
 
 To simplify the deployment and management of these components the Contraxsuite platform uses Docker containers and the Docker Swarm clustering platform.
 
-Main Contraxsuite Python project tree and scripts for starting Django and Celery is distributed 
-as a Docker image freely available at Docker-Hub (https://hub.docker.com/r/lexpredict/lexpredict-contraxsuite/).
+Main ContraxSuite Python project tree and scripts for starting Django and Celery are available as Docker images at Docker-Hub (https://hub.docker.com/r/lexpredict/lexpredict-contraxsuite/).
 The same Docker image is used for starting: Django, Celery Beat and Celery Worker containers.
 
 To wire all components together the Docker Swarm uses docker-compose.yml config files.

@@ -1,10 +1,8 @@
 #!/bin/bash
 set -e
-source ../setenv.sh
-if [ -e ../setenv_local.sh ]
-then
-    source ../setenv_local.sh
-fi
+pushd ../
+source setenv.sh
+popd
 
 pushd contraxsuite-app
 ./prepare-image-app.sh

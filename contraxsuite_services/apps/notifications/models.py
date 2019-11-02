@@ -35,16 +35,16 @@ from django.db.models.deletion import CASCADE
 from apps.common.sql_commons import SQLClause
 from apps.document.models import DocumentType, DocumentField
 from apps.rawdb.field_value_tables import query_documents, \
-    FIELD_CODE_ASSIGN_DATE, FIELD_CODE_CREATE_DATE, \
-    FIELD_CODE_IS_COMPLETED, FIELD_CODE_IS_REVIEWED, \
-    FIELD_CODE_ASSIGNEE_ID, DocumentQueryResults
+    DocumentQueryResults
+from apps.rawdb.constants import FIELD_CODE_CREATE_DATE, FIELD_CODE_IS_REVIEWED, FIELD_CODE_IS_COMPLETED, \
+    FIELD_CODE_ASSIGNEE_ID, FIELD_CODE_ASSIGN_DATE
 from apps.rawdb.rawdb.query_parsing import SortDirection
 from apps.users.models import User, Role
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2019, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.3/LICENSE"
-__version__ = "1.2.3"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.3.0/LICENSE"
+__version__ = "1.3.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -479,6 +479,9 @@ class DocumentNotificationSubscription(models.Model):
     user_fields = models.ManyToManyField(DocumentField, blank=True, help_text='''Fields of the documents to 
         render in the email. Should match the specified document type. Leave empty for rendering all fields.
         ''')
+
+    max_stack = models.IntegerField(blank=True, default=1, null=False,
+                                    help_text='Messages limit per email.')
 
     def get_recipients_info(self) -> Optional[NotificationRecipients]:
         if not self.recipients:

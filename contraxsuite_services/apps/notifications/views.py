@@ -27,6 +27,7 @@
 import mimetypes
 import os
 import random
+import uuid
 from datetime import datetime
 
 from django.http import HttpResponse, HttpResponseBadRequest, HttpResponseNotFound, HttpResponseServerError
@@ -36,20 +37,23 @@ from tzlocal import get_localzone
 from apps.common.log_utils import ErrorCollectingLogger
 from apps.common.errors import render_error
 from apps.common.url_utils import as_bool, as_int
-from apps.document.field_types import FieldType
+from apps.document.field_types import TypedField
 from apps.document.models import Document, DocumentField
+from apps.notifications.notification_renderer import NotificationRenderer
 from apps.rawdb.field_value_tables import build_field_handlers, get_document_field_values
 from apps.task.views import BaseAjaxTaskView
 from apps.users.models import User
-from .forms import SendDigestForm
-from .models import DocumentDigestConfig, DocumentNotificationSubscription, DocumentChangedEvent, DocumentAssignedEvent
-from .notifications import render_digest, render_notification, get_notification_template_resource
-from .tasks import SendDigest
+from apps.notifications.forms import SendDigestForm
+from apps.notifications.models import DocumentDigestConfig, DocumentNotificationSubscription, \
+    DocumentChangedEvent, DocumentAssignedEvent
+from apps.notifications.notifications import render_digest, get_notification_template_resource, \
+    DocumentNotificationSource
+from apps.notifications.tasks import SendDigest
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2019, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.3/LICENSE"
-__version__ = "1.2.3"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.3.0/LICENSE"
+__version__ = "1.3.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -140,7 +144,6 @@ class RenderNotificationView(View):
 
         document_id = document.pk
         field_handlers = build_field_handlers(document_type,
-                                              include_suggested_fields=False,
                                               include_annotation_fields=False)
         field_values = get_document_field_values(document_type, document_id, handlers=field_handlers)
 
@@ -149,22 +152,23 @@ class RenderNotificationView(View):
             for h in field_handlers:
                 if random.random() > 0.3:
                     continue
-                field_type = h.get_field_type()  # type: FieldType
                 field = DocumentField.objects.filter(code=h.field_code).first()
                 if not field:
                     continue
-                example_value = field_type.example_python_value(field=field)
+                typed_field = TypedField.by(field)
+                example_value = typed_field.example_python_value()
                 example_changes[h.field_code] = (example_value, field_values.get(h.field_code))
 
         try:
-            notification = render_notification(already_sent_user_ids=set(),
-                                               subscription=subscription,
-                                               document=document,
-                                               field_handlers=field_handlers,
-                                               field_values=field_values,
-                                               changes=example_changes,
-                                               changed_by_user=request.user
-                                               )
+            notification = NotificationRenderer.render_notification(
+                uuid.uuid4().hex,
+                subscription,
+                DocumentNotificationSource(
+                    document=document,
+                    field_handlers=field_handlers,
+                    field_values=field_values,
+                    changes=example_changes,
+                    changed_by_user=request.user))
         except Exception as e:
             return HttpResponse(render_error('Exception caught while trying to render notification', e),
                                 status=500, content_type='text/plain')

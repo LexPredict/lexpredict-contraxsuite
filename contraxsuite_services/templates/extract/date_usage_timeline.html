@@ -12,8 +12,18 @@
 {% endblock %}
 
 {% block content %}
-  <input class="checkbox-style" id="per_month" name="per_month" type="checkbox" disabled="disabled">
-  <label for="per_month" class="checkbox-style-3-label">Group per Month</label>
+  <div id="options">
+    <input class="checkbox-style" id="per_month" name="per_month" type="checkbox" disabled="disabled">
+    <label for="per_month" class="checkbox-style-3-label">Group per Month</label>
+    <input class="checkbox-style" id="show_documents" name="show_documents" type="checkbox" disabled="disabled">
+    <label for="show_documents" class="checkbox-style-3-label">Show Documents</label>
+    <input class="checkbox-style" id="show_text_unit_text" name="show_text_unit_text" type="checkbox" disabled="disabled">
+    <label for="show_text_unit_text" class="checkbox-style-3-label">Show Text Units Text</label>
+    <input class="checkbox-style" id="truncate_text_unit_text" name="truncate_text_unit_text" type="checkbox" disabled="disabled">
+    <label for="truncate_text_unit_text" class="checkbox-style-3-label">Truncate Text Units Text</label>
+    <i id="refresh" class="btn btn-i btn-info btn-sm fa fa-refresh"> Refresh</i>
+  </div>
+
   <div id="timeline"></div>
   <div class="loader-container">
     <div class="loader"></div>
@@ -45,9 +55,13 @@
 
       var draw_timeline = function(){
         $('.loader-container').show();
-        var per_month = $('#per_month').is(':checked');
 
-        $.get('{% url 'extract:date-usage-timeline' %}', {per_month: per_month}).done(function(response){
+        var form_values = {};
+        $('#options input').each(function() {
+            form_values[this.id] = $(this).is(":checked");
+        });
+
+        $.get('{% url 'extract:date-usage-timeline' %}', form_values).done(function(response){
           // hide the "loading..."
           $('.loader-container').hide();
 
@@ -68,11 +82,15 @@
 
             if (!response.per_month) {
               var title = $('<div></div>').addClass('timeline-tooltip');
-              $.each(i.date_data, function (m, j) {
-                $('<p></p>').text(j.text_unit__document__name).appendTo(title);
-                $('<p></p>').text(j.text_unit__text).appendTo(title)
-              });
-              item['title'] = title.get(0).outerHTML
+              if (i.date_data) {
+                $.each(i.date_data, function (m, j) {
+                  $('<p></p>').text(j.document).appendTo(title);
+                  if ('text' in j) {
+                    $('<p></p>').text(j.text).appendTo(title)
+                  }
+                });
+                item['title'] = title.get(0).outerHTML
+              }
             }
 
             data.push(item)
@@ -90,17 +108,65 @@
                           zoomMin: response.per_month ? 2592000000*12 : 2592000000 };  // 30 days
 
           // Create a Timeline
-          var timeline = new vis.Timeline(container, items, options);
-          $('#per_month').attr('disabled', false);
+          new vis.Timeline(container, items, options);
+        $('#options input').attr('disabled', false);
         })
       };
 
       draw_timeline();
 
-      $('#per_month').click(function(){
-        $('#per_month').attr('disabled', true);
+      $('#refresh').click(function(){
+        $('#options input').attr('disabled', true);
         $('#timeline').empty();
         draw_timeline()
+      });
+
+      // options handlers
+      $('#show_text_unit_text, #truncate_text_unit_text').next().hide();
+
+      $('#per_month').change(function(){
+        if (!$(this).is(':checked')){
+          $('#show_documents').next().show();
+          if ($('#show_documents').is(':checked')){
+            $('#show_text_unit_text').next().show();
+            if ($('#show_text_unit_text').is(':checked')){
+              $('#truncate_text_unit_text').next().show();
+            }
+            else {
+              $('#truncate_text_unit_text').next().hide();
+            }
+          }
+          else {
+            $('#show_text_unit_text').next().hide();
+          }
+        }
+        else {
+          $('#show_documents, #show_text_unit_text, #truncate_text_unit_text').next().hide();
+        }
+      });
+
+      $('#show_documents').change(function(){
+        if ($(this).is(':checked')){
+          $('#show_text_unit_text').next().show();
+          if ($('#show_text_unit_text').is(':checked')){
+            $('#truncate_text_unit_text').next().show();
+          }
+          else {
+            $('#truncate_text_unit_text').next().hide();
+          }
+        }
+        else {
+          $('#show_text_unit_text, #truncate_text_unit_text').next().hide();
+        }
+      });
+
+      $('#show_text_unit_text').change(function(){
+        if ($(this).is(':checked')){
+          $('#truncate_text_unit_text').next().show();
+        }
+        else {
+          $('#truncate_text_unit_text').next().hide();
+        }
       })
     })
   </script>

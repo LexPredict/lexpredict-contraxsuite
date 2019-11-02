@@ -25,20 +25,20 @@
 # -*- coding: utf-8 -*-
 
 import logging
-from typing import Dict, List
+from typing import Dict, Type, Iterable
 
 from apps.common.plugins import collect_plugins_in_apps
-from .field_types import FieldType
+from apps.document.field_types import TypedField
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2019, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.3/LICENSE"
-__version__ = "1.2.3"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.3.0/LICENSE"
+__version__ = "1.3.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
 
-FIELD_TYPE_REGISTRY = dict()  # type: Dict[str, FieldType]
+FIELD_TYPE_REGISTRY = dict()  # type: Dict[str, Type[TypedField]]
 
 
 def init_field_type_registry():
@@ -52,7 +52,7 @@ def init_field_type_registry():
     logging.info('Going to register Python-coded document fields from all Django apps...')
 
     plugins = collect_plugins_in_apps('field_types',
-                                      'FIELD_TYPES')  # type: Dict[str, List[FieldType]]
+                                      'FIELD_TYPES')  # type: Dict[str, Iterable[Type[TypedField]]]
     for app_name, field_types in plugins.items():
         try:
             field_types = list(field_types)
@@ -63,11 +63,11 @@ def init_field_type_registry():
         for field_type in field_types:
             i += 1
             try:
-                FIELD_TYPE_REGISTRY[field_type.code] = field_type
+                FIELD_TYPE_REGISTRY[field_type.type_code] = field_type
             except AttributeError:
                 raise AttributeError('{0}.field_types.FIELD_TYPES[{1}] is something wrong'
                                      .format(app_name, i))
-            print('Registered field type: {0} ({1})'.format(field_type.title, field_type.code))
+            print('Registered field type: {0} ({1})'.format(field_type.title, field_type.type_code))
 
     from apps.document.models import DocumentField
     for f in DocumentField._meta.fields:

@@ -96,7 +96,7 @@ services:
     image: docker.elastic.co/beats/filebeat:6.5.4
     user: root
     volumes:
-      - postgres_data:/data/pg_data
+      - postgres_data_11:/data/pg_data
       - contraxsuite_logs:/data/logs
       - filebeat_data:/usr/share/filebeat/data
       - contraxsuite_internal_nginx_logs:/data/nginx_logs
@@ -158,7 +158,7 @@ services:
       - rabbitmq_data:/var/lib/rabbitmq
 
   contrax-db:
-    image: postgres:9.6
+    image: postgres:11.5
     environment:
       - "PGDATA=/var/lib/contraxsuite-postgres"
       - "POSTGRES_USER=${DOLLAR}{DOCKER_PG_USER}"
@@ -166,7 +166,7 @@ services:
       - "POSTGRES_DB=${DOLLAR}{DOCKER_PG_DB_NAME}"
     command: bash -c "service cron start && /usr/local/bin/docker-entrypoint.sh postgres -c config_file=/contraxsuite/postgresql.conf"
     volumes:
-      - postgres_data:/var/lib/contraxsuite-postgres
+      - postgres_data_11:/var/lib/contraxsuite-postgres
       - backup:/backup
     configs:
       - source: pg_${PG_CONFIG_VERSION}
@@ -182,9 +182,9 @@ services:
     deploy:
       replicas: 1
       resources:
-        limits:
-          cpus: '${DOLLAR}{CPU_HALF_CORES}'
-          memory: ${DOLLAR}{RAM_HALF_MB}M
+#       limits:
+#         cpus: '${DOLLAR}{CPU_HALF_CORES}'
+#         memory: ${DOLLAR}{RAM_HALF_MB}M
       placement:
         constraints: [node.role == manager]
     #ports: #
@@ -597,8 +597,8 @@ services:
       replicas: 1
       resources:
         limits:
-          cpus: '${DOLLAR}{CPU_QUARTER_CORES}'
-          memory: ${DOLLAR}{RAM_QUARTER_MB}M
+          cpus: '${DOLLAR}{DOCKER_JUPYTER_CPUS}'
+          memory: ${DOLLAR}{DOCKER_JUPYTER_MEMORY}
       placement:
         constraints: [node.role == manager]
 
@@ -684,7 +684,7 @@ services:
     volumes:
       - contraxsuite_internal_nginx_logs:/logs/nginx
       - contraxsuite_logs:/logs/contraxsuite
-      - postgres_data:/logs/pg_data
+      - postgres_data_11:/logs/pg_data
       - contraxsuite_logrotate:/logrotate
     deploy:
       mode: global
@@ -713,7 +713,7 @@ volumes:
   contraxsuite_internal_nginx_logs:
   contraxsuite_logrotate:
   contraxsuite_data_update:
-  postgres_data:
+  postgres_data_11:
   rabbitmq_data:
   elasticsearch_data:
   redis_data:

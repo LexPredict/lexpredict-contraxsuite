@@ -44,12 +44,12 @@ from django.utils.functional import curry
 
 # Project imports
 from apps.common.utils import get_test_user
-import auth
+from apps.users.authentication import CookieAuthentication
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2019, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.3/LICENSE"
-__version__ = "1.2.3"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.3.0/LICENSE"
+__version__ = "1.3.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -159,9 +159,9 @@ class RequestUserMiddleware(MiddlewareMixin):
         if request.method not in ('HEAD', 'OPTIONS', 'TRACE'):
             if hasattr(request, 'user') and request.user.is_authenticated:
                 user = request.user
-            elif 'auth.CookieAuthentication' in settings.REST_FRAMEWORK.get('DEFAULT_AUTHENTICATION_CLASSES', []):
+            elif 'apps.users.authentication.CookieAuthentication' in settings.REST_FRAMEWORK.get('DEFAULT_AUTHENTICATION_CLASSES', []):
                 try:
-                    user = auth.CookieAuthentication().authenticate(request)[0]
+                    user = CookieAuthentication().authenticate(request)[0]
                     if not user.is_authenticated:
                         user = None
                 except:
@@ -219,7 +219,8 @@ class AppEnabledRequiredMiddleware(MiddlewareMixin):
 class CookieMiddleware(MiddlewareMixin):
     """
     Set cookie in response -
-    1. set auth_token from AUTHORIZATION request header (see auth.CookieAuthentication)
+    1. set auth_token from AUTHORIZATION request header,
+       see apps.users.authentication.CookieAuthentication
     2. set extra cookie variables
     """
     def process_response(self, request, response):
@@ -234,10 +235,10 @@ class CookieMiddleware(MiddlewareMixin):
         # delete token after logout via django UI
         elif request.META['PATH_INFO'] == reverse('account_logout') and request.method == 'POST':
             response.delete_cookie('auth_token')
-            # INFO: token is deleted in apps.users.AccountAdapter.logout
+            # INFO: token is deleted in apps.users.adapters.AccountAdapter.logout
             # because here we have AnonimousUser
 
-        # for login via django UI - set auth_token in auth.CustomLoginForm
+        # for login via django UI - set auth_token in apps.users.forms.CustomLoginForm
 
         # otherwise set auth_token from incoming headers or cookie
         elif auth_token:

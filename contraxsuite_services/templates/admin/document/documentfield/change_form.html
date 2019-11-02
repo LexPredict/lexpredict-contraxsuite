@@ -1,0 +1,137 @@
+{% extends "admin/change_form.html" %}
+
+{% block extrastyle %}
+  {{ block.super }}
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/jquery-confirm/3.0.3/jquery-confirm.min.css" type="text/css" />
+{% endblock %}
+
+{% block extrajs %}
+  {{ block.super }}
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-cookie/1.4.1/jquery.cookie.min.js" style="text/javascrypt"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-confirm/3.1.1/jquery-confirm.min.js" style="text/javascrypt"></script>
+
+  <script type="text/javascript">
+    var docFieldSets = {
+      urlCheckFieldFormulaView: '{{ check_field_formula_view_url }}',
+      formId: 'documentfield_form',
+      fieldCodeFormula: 'formula',
+      fieldCodeHidePython: 'hide_until_python',
+      fieldCodeCode: 'code',
+      fieldCodeType: 'type',
+      fieldCodeDepOnFields: 'depends_on_fields'
+    };
+
+    function ensureTestFormulaButton() {
+      var input_formula = $('[name="' + docFieldSets.fieldCodeFormula + '"]');
+      var markup = '<br/><a href="#" onclick="checkFieldFormula(\'' +
+        docFieldSets.fieldCodeFormula +
+        '\'); ' +
+        'return false;">Check formula</a>';
+      $(markup).insertAfter(input_formula);
+    }
+
+    function ensureTestHidePythonButton() {
+      var input_formula = $('[name="' + docFieldSets.fieldCodeHidePython + '"]');
+      var markup = '<br/><a href="#" onclick="checkFieldFormula(\'' +
+        docFieldSets.fieldCodeHidePython +
+        '\'); ' +
+        'return false;">Check formula</a>';
+      $(markup).insertAfter(input_formula);
+    }
+
+    function ensureTestHiddenPythonButton() {
+      var input_formula = $('[name="' + docFieldSets.fieldCodeFormula + '"]');
+      var markup = '<br/><a href="#" onclick="checkFieldFormula(\'formula\'); ' +
+        'return false;">Check formula</a>';
+      $(markup).insertAfter(input_formula);
+    }
+
+    function checkFieldFormula(formulaField) {
+      var url = docFieldSets.urlCheckFieldFormulaView.replace('XXX', formulaField);
+      var frm = $('#' + docFieldSets.formId);
+      var frm_data = frm.serialize();
+
+      var extra_fields = [[docFieldSets.fieldCodeCode,
+        $('[name="' + docFieldSets.fieldCodeCode + '"]').val()],
+        [docFieldSets.fieldCodeType,
+          $('[name="' + docFieldSets.fieldCodeType + '"]').val()]];
+      var depends = [];
+      $('[name="' + docFieldSets.fieldCodeDepOnFields + '"] option').each(function() {
+        depends.push($(this).val())
+      });
+      extra_fields.push([docFieldSets.fieldCodeDepOnFields, depends.join(',')]);
+
+      frm_data += encodeFormField(extra_fields);
+
+      $.post(url, frm_data).done(function(data){
+        var calculated = data.calculated;
+        var rst = data.value;
+        if (rst === undefined || rst == null)
+          rst = 'None';
+        var errors = data.errors;
+        var warnings = data.warnings;
+
+        if (errors && errors.length > 0) {
+          var text = '<b>There were errors:</b> <br/>';
+          text += errors.join('<br/>');
+          if (warnings.length) {
+            text += '<br/>';
+            text += warnings.join('<br/>')
+          }
+          $.alert({
+            icon: 'fa fa-warning text-danger',
+            title: 'Formula calculation error',
+            type: 'red',
+            content: text,
+            columnClass: 'col-md-6'
+          });
+          return;
+        }
+        if (!calculated)
+          return;
+        text = 'Result is: ' + rst;
+        if (warnings.length) {
+          text += '<br/>';
+          text += warnings.join('<br/>')
+        }
+        $.alert({
+          icon: 'fa fa-check',
+          title: 'Formula is calculated',
+          type: 'blue',
+          content: text,
+          columnClass: 'col-md-6'
+        });
+      });
+    }
+
+    function encodeFormField(formFields) {
+      var fieldsStr = '';
+      for (var i = 0; i < formFields.length; i++) {
+        var name = encodeURIComponent(formFields[i][0]);
+        var value = encodeURIComponent(formFields[i][1]).replace(/%20/g, '+');
+        fieldsStr += '&' + name + '=' + value;
+      }
+      return fieldsStr
+    }
+
+    $(function() {
+      ensureTestFormulaButton();
+      ensureTestHidePythonButton();
+    });
+
+    var csrftoken = $.cookie('csrftoken');
+
+    function csrfSafeMethod(method) {
+      // these HTTP methods do not require CSRF protection
+      return (/^(GET|HEAD|OPTIONS|TRACE)$/.test(method));
+    }
+
+    $.ajaxSetup({
+      beforeSend: function(xhr, settings) {
+        if (!csrfSafeMethod(settings.type) && !this.crossDomain) {
+          xhr.setRequestHeader("X-CSRFToken", csrftoken);
+        }
+      }
+    });
+  </script>
+{% endblock %}

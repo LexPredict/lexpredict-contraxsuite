@@ -24,16 +24,68 @@
 """
 # -*- coding: utf-8 -*-
 
-from typing import List, Set, Generator, Union
+from typing import Iterable, List, Sequence
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2019, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.3/LICENSE"
-__version__ = "1.2.3"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.3.0/LICENSE"
+__version__ = "1.3.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
 
-def chunks(l: Union[Generator, List, Set], n: int):
-    for i in range(0, len(l), n):
-        yield l[i:i + n]
+def sequence_chunks(col: Sequence, n: int) -> Iterable[List]:
+    """
+    Split sequence to chunks of length n. Suitable for lists, django query sets (will execute separate
+    sql query per chunk).
+    :param col:
+    :param n:
+    :return:
+    """
+    i = 0
+    while True:
+        block = col[i:i + n]
+        if block:
+            if not isinstance(block, list):
+                block = list(block)
+            yield block
+            i = i + n
+        else:
+            break
+
+
+def iterable_chunks(col: Iterable, n: int) -> Iterable[List]:
+    """
+    Split iterable to chunks of length n by iterating it and buffering. Suitable for generators, probably for reading
+    files line by line.
+    :param col:
+    :param n:
+    :return:
+    """
+    block = list()
+    for elem in col:
+        block.append(elem)
+        if len(block) == n:
+            yield block
+            block = list()
+    if block:
+        yield block
+
+
+def chunks(col: Iterable, n: int) -> Iterable[List]:
+    """
+    Split iterable to chunks of length n using the best suitable splitting method - slicing for the types
+    supporting it (lists, query sets, e.t.c.) or
+    iterating with buffering for other types (generators, sets).
+    :param col:
+    :param n:
+    :return:
+    """
+    if col is None:
+        return
+
+    if hasattr(col, '__getitem__'):
+        # noinspection PyTypeChecker
+        yield from sequence_chunks(col, n)
+    else:
+        yield from iterable_chunks(col, n)

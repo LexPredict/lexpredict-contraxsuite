@@ -35,40 +35,39 @@ import pickle
 import re
 import string
 import sys
+import threading
+import time
 import traceback
 from inspect import isclass
-from subprocess import CalledProcessError
-from traceback import format_exc
-from typing import List, Dict, Tuple, Any, Callable
+from typing import List, Dict, Tuple, Any, Callable, Iterable
 
-# Additional libraries
+# Third-party imports
 import magic
 import nltk
 import numpy as np
 import pandas as pd
-from apps.task.utils.text_extraction import tabula
 from celery import app
-# Celery imports
 from celery import shared_task
 from celery.exceptions import SoftTimeLimitExceeded, TimeLimitExceeded, Retry
 from celery.result import AsyncResult
-# Django imports
-from celery.states import SUCCESS
+from celery.states import SUCCESS, FAILURE, PENDING
 from celery.utils.log import get_task_logger
 from constance import config
+
+# Django imports
 from django.conf import settings
-from django.db import transaction
-from django.db.models import Count, Q, Case, Value, When, IntegerField
+from django.db import transaction, connection
+from django.db.models import Sum, Q, Case, Value, When, IntegerField, QuerySet
 from django.utils.timezone import now
 from elasticsearch import Elasticsearch
 from elasticsearch.exceptions import RequestError
 from lexnlp.extract.common.text_beautifier import TextBeautifier
 from lexnlp.extract.en.contracts.detector import is_contract
 from lexnlp.nlp.en.segments.paragraphs import get_paragraphs
+from lexnlp.nlp.en.segments.sections import get_section_spans
 from lexnlp.nlp.en.segments.sentences import get_sentence_span_list, pre_process_document
 from lexnlp.nlp.en.segments.titles import get_titles
 from psycopg2 import InterfaceError, OperationalError
-# Scikit-learn imports
 from sklearn.cluster import Birch, DBSCAN, KMeans, MiniBatchKMeans
 from sklearn.ensemble import ExtraTreesClassifier, RandomForestClassifier
 from sklearn.feature_extraction.text import TfidfTransformer
@@ -79,7 +78,7 @@ from sklearn.svm import SVC
 from textblob import TextBlob
 
 # Project imports
-import settings
+import task_names
 from apps.analyze.models import (
     DocumentCluster, TextUnitCluster,
     TextUnitClassification, TextUnitClassifier, TextUnitClassifierSuggestion)
@@ -88,12 +87,13 @@ from apps.common.file_storage import get_file_storage
 from apps.common.log_utils import ProcessLogger
 from apps.common.utils import fast_uuid
 from apps.deployment.app_data import load_geo_entities, load_terms, load_courts
+from apps.document import signals
 from apps.document.constants import DOCUMENT_TYPE_PK_GENERIC_DOCUMENT
-from apps.document.field_types import FieldType
-from apps.document.fields_detection.field_detection import detect_and_cache_field_values_for_document
-from apps.document.fields_processing import field_value_cache
+from apps.document.field_detection.field_detection import detect_and_cache_field_values_for_document
 from apps.document.models import (
-    Document, DocumentField, DocumentProperty, DocumentType, TextUnit, TextUnitProperty, TextUnitTag)
+    Document, DocumentProperty, DocumentType, TextUnit, TextUnitProperty, TextUnitTag, DocumentTable)
+from apps.document.repository.document_field_repository import DocumentFieldRepository
+from apps.document.sync_tasks.document_files_cleaner import DocumentFilesCleaner
 from apps.extract import dict_data_cache
 from apps.extract import models as extract_models
 from apps.extract.locators import LOCATORS, LocationResults
@@ -103,17 +103,18 @@ from apps.extract.models import (
 from apps.project.models import Project, UploadSession
 from apps.task.celery_backend.task_utils import revoke_task
 from apps.task.models import Task, TaskConfig
+from apps.task.parsing_tasks import ParsingTaskParams, XmlWordxDocumentParser, \
+    TikaDocumentParser, TextractDocumentParser, PlainTextDocumentParser
 from apps.task.utils.nlp.lang import get_language
 from apps.task.utils.nlp.parsed_text_corrector import ParsedTextCorrector
-from apps.task.utils.text_extraction.textract import textract2text
-from apps.task.utils.text_extraction.tika import parametrized_tika_parser
 from apps.task.utils.task_utils import TaskUtils, pre_serialize
 from apps.users.models import User
+from contraxsuite_logging import write_task_log
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2019, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.3/LICENSE"
-__version__ = "1.2.3"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.3.0/LICENSE"
+__version__ = "1.3.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -166,6 +167,8 @@ class ExtendedTask(app.Task):
                 Looks like they are reused and it is safer to store anything in self.request
     """
 
+    db_connection_ping = False
+
     @property
     def task(self) -> Task:
         self.init_cache()
@@ -185,23 +188,26 @@ class ExtendedTask(app.Task):
         this_task.log_extra = v
         this_task.save(update_fields=['log_extra'])
 
-    def write_log(self, message, level='info', **kwargs):
+    def write_log(self, message, level='info', exc_info: Exception = None, **kwargs):
         try:
-            self.task.write_log(message, level, **kwargs)
+            self.task.write_log(message, level, exc_info=exc_info, **kwargs)
         except Task.DoesNotExist:
-            Task.write_task_log(self.request.id, message, level, task_name=self.request.task, log_extra=kwargs)
+            write_task_log(self.request.id,
+                           'Task.' + message, level,
+                           task_name=self.request.task,
+                           log_extra=kwargs)
 
     def log_info(self, message, **kwargs):
         self.write_log(message, level='info', **kwargs)
 
-    def log_error(self, message, **kwargs):
-        self.write_log(message, level='error', **kwargs)
+    def log_error(self, message, exc_info: Exception = None, **kwargs):
+        self.write_log(message, level='error', exc_info=exc_info, **kwargs)
 
     def log_debug(self, message, **kwargs):
         self.write_log(message, level='debug', **kwargs)
 
-    def log_warn(self, message, **kwargs):
-        self.write_log(message, level='warn', **kwargs)
+    def log_warn(self, message, exc_info: Exception = None, **kwargs):
+        self.write_log(message, level='warn', exc_info=exc_info, **kwargs)
 
     def init_cache(self):
         if not self._cached_data:
@@ -229,8 +235,9 @@ class ExtendedTask(app.Task):
         else:
             this_task.save(update_fields=['own_progress'])
 
-    def get_progress(self):
-        return Task.objects.get(id=self.request.id).progress
+    # FIXME: is not used anywhere
+    # def get_progress(self):
+    #     return Task.objects.get(id=self.request.id).progress
 
     def update_progress(self, value: float):
         this_task = self.task  # type: Task
@@ -241,42 +248,53 @@ class ExtendedTask(app.Task):
         else:
             this_task.save(update_fields=['own_progress'])
 
-    def _render_task_failed(self, args, kwargs, exc, exception_trace) -> str:
-        if isinstance(exc, SoftTimeLimitExceeded):
+    def _render_task_failed_message(self,
+                                    args,
+                                    kwargs,
+                                    exc: Exception) -> str:
+
+        if exc is None:
+            problem_str = 'unknown'
+        elif isinstance(exc, SoftTimeLimitExceeded):
             problem_str = 'Soft time limit exceeded: {0} seconds'.format(
                 self.request.timelimit[1] or self.soft_time_limit)
         elif isinstance(exc, TimeLimitExceeded):
             problem_str = 'Time limit exceeded: {0} seconds'.format(
                 self.request.timelimit[0] or self.time_limit)
         else:
-            problem_str = '{0}\n{1}'.format(exc, traceback.format_exc())
+            problem_str = f'{exc.__class__.__name__}: {exc}'
 
-        retry_msg = f'({self.request.retries} times retried)' \
+        retry_msg = f' ({self.request.retries} times retried)' \
             if self.request.retries else ''
-        msg = f'Task has been failed{retry_msg}:\n' + \
-              f'{self.name}\n' + \
-              f'Args: {args}\n' + \
-              f'Kwargs: {str(kwargs)}\n' + \
-              f'Reason: {problem_str}'
-        if hasattr(exc, 'detailed_error'):
-            msg += f'\nDetail: {exc.detailed_error}'
-        return msg
+        return f'Task has been failed{retry_msg}:\n' + \
+               f'{self.name}\n' + \
+               f'Args: {args}\n' + \
+               f'Kwargs: {str(kwargs)}\n' \
+                   f'Reason: {problem_str}'
 
-    def chord(self, sub_tasks):
+    def chord(self,
+              sub_tasks: Iterable[Any]):
         self.log_info(
-            '{0}: starting {1} sub-tasks...'.format(self.task_name, len(sub_tasks)))
+            f'{self.task_name}: starting {len(sub_tasks)} sub-tasks...')
         for ss in sub_tasks:
             priority = get_task_priority(ss)
-            ss.apply_async(priority=priority, queue=get_queue_by_task_priority(priority))
+            ss.apply_async(priority=priority,
+                           queue=get_queue_by_task_priority(priority))
 
     def run_after_sub_tasks_finished(self,
                                      tasks_group_title: str,
                                      sub_task_function,
                                      args_list: List[Tuple],
-                                     source_data: List[str] = None):
+                                     source_data: List[str] = None,
+                                     call_stack: str = None,
+                                     parent_stack: str = None):
         task_config = _get_or_create_task_config(sub_task_function)
         tasks = []
         priority = get_task_priority(sub_task_function)
+
+        call_stack = call_stack or get_call_stack_line(-3)
+        if parent_stack:
+            call_stack = f'{parent_stack}\n{parent_stack}'
 
         for index, args in enumerate(args_list):
             tasks.append(Task(
@@ -292,7 +310,8 @@ class ExtendedTask(app.Task):
                         'root_id': self.main_task_id
                     }
                 },
-                priority=priority
+                priority=priority,
+                call_stack=call_stack
             ))
         Task.objects.bulk_create(tasks)
 
@@ -343,20 +362,22 @@ class ExtendedTask(app.Task):
                                   sub_tasks_group_title: str,
                                   sub_task_class,
                                   kwargs_list: List[Dict],
-                                  source_data: List[str] = None):
+                                  source_data: List[str] = None,
+                                  call_stack: str = None,
+                                  parent_stack: str = None):
         """
         Asynchronously execute sub_task_method on each tuple of arguments from the provided list.
-
-        :param sub_tasks_group_title:
-        :param sub_task_function:
-        :param args_list:
-        :param source_data:
-        :return:
         """
         sub_tasks = []
         priority = get_task_priority(sub_task_class)
         task_config = _get_or_create_task_config(sub_task_class)
+
+        call_stack = call_stack or get_call_stack_line(-3)
+        if parent_stack:
+            call_stack = f'{parent_stack}\n{parent_stack}'
+
         for index, args in enumerate(kwargs_list):
+            args['call_stack'] = call_stack
             sub_task_signature = sub_task_class().subtask(
                 kwargs=args,
                 source_data=source_data[index] if source_data is not None else self.task.source_data,
@@ -365,7 +386,8 @@ class ExtendedTask(app.Task):
                 main_task_id=self.main_task_id,
                 parent_id=self.request.id,
                 title=sub_tasks_group_title,
-                priority=priority)
+                priority=priority,
+                call_stack=call_stack)
             sub_tasks.append(sub_task_signature)
 
         self.chord(sub_tasks)
@@ -381,22 +403,33 @@ class ExtendedTask(app.Task):
     def __call__(self, *args: Any, **kwargs: Any) -> Any:
         self.prepare_task_execution()
         Task.objects.increase_run_count(self.request.id)
+
+        working = [True]
+        if self.db_connection_ping:
+            def func_closure(cl_task_id, cl_working):
+                def ping_db():
+                    while cl_working[0]:
+                        Task.objects.filter(pk=cl_task_id).values_list('status', flat=True)
+                        time.sleep(60)
+
+                return ping_db
+
+            self.working = True
+            threading.Thread(target=func_closure(self.request.id, working), daemon=True).start()
+
         try:
             return super().__call__(*args, **kwargs)
         except Exception as exc:
             if isinstance(exc, Retry):
-                task_failed_msg = self._render_task_failed(args, kwargs, exc.exc,
-                                                           traceback.format_exc())
-                self.log_warn(
-                    '{0}\nGoing to retry in {1} seconds...'.format(task_failed_msg, exc.when))
+                msg = self._render_task_failed_message(args, kwargs, exc.exc)
+                self.log_warn(f'{msg}\n'
+                              f'Going to retry in {exc.when} seconds...',
+                              exc_info=exc)
             else:
-                self.log_error(self._render_task_failed(args, kwargs, exc, traceback.format_exc()))
-            Task.objects.set_failure_processed(self.request.id, True)
+                self.log_error(self._render_task_failed_message(args, kwargs, exc), exc_info=exc)
             raise exc
-
-    def on_failure(self, exc, task_id, args, kwargs, exc_traceback):
-        if not self.task.failure_processed:
-            self.log_error(self._render_task_failed(args, kwargs, exc, exc_traceback))
+        finally:
+            working[0] = False
 
 
 class CeleryTaskLogger(ProcessLogger):
@@ -413,8 +446,11 @@ class CeleryTaskLogger(ProcessLogger):
     def info(self, message: str):
         return self._celery_task.log_info(message)
 
-    def error(self, message: str, field_code: str = None):
-        return self._celery_task.log_error('{0}: {1}'.format(field_code, message), log_field_code=field_code)
+    def error(self, message: str, field_code: str = None, exc_info: Exception = None):
+        if field_code:
+            message = f'{field_code}: {message or "error"}'
+
+        return self._celery_task.log_error(message, exc_info=exc_info, log_field_code=field_code)
 
 
 @shared_task(base=ExtendedTask, bind=True, name='advanced_celery.end_chord')
@@ -443,9 +479,14 @@ def call_task_func(task_func: Callable,
                    visible: bool = True,
                    queue: str = None,
                    run_after_sub_tasks_finished: bool = False,
-                   main_task_id: str = None):
+                   main_task_id: str = None,
+                   call_stack: str = None,
+                   parent_stack: str = None):
     celery_task_id = str(fast_uuid())
     priority = get_task_priority(task_func)
+    call_stack = call_stack or get_call_stack_line(-3)
+    if parent_stack:
+        call_stack = f'{parent_stack}\n{parent_stack}'
 
     task = Task.objects.create(
         id=celery_task_id,
@@ -456,7 +497,8 @@ def call_task_func(task_func: Callable,
         visible=visible if visible is not None else True,
         run_after_sub_tasks_finished=run_after_sub_tasks_finished,
         main_task_id=main_task_id,
-        priority=priority
+        priority=priority,
+        call_stack=call_stack
     )
 
     task.write_log('Celery task id: {}\n'.format(celery_task_id))
@@ -501,6 +543,8 @@ def call_task(task_name, **options):
     countdown = options.get('countdown')
     eta = options.get('eta')
 
+    call_stack = options.get('call_stack') or get_call_stack_line(-3)
+
     # metadata should not be stored in kwargs, because kwargs is indexed
     # and can not be a large field
     options_wo_metadata = {o: options[o] for o in options if o != 'metadata'}
@@ -516,7 +560,8 @@ def call_task(task_name, **options):
         visible=options.get('visible', True),
         project=Project.all_objects.get(pk=project_id) if project_id else None,
         upload_session=UploadSession.objects.get(pk=session_id) if session_id else None,
-        priority=priority
+        priority=priority,
+        call_stack=call_stack
     )
 
     # updating options with the changes made in options_wo_metadata by pre_serialize()
@@ -623,6 +668,7 @@ class LoadDocuments(BaseTask):
 
     @staticmethod
     @shared_task(base=ExtendedTask,
+                 db_connection_ping=True,
                  bind=True,
                  soft_time_limit=3600,
                  default_retry_delay=10,
@@ -640,72 +686,6 @@ class LoadDocuments(BaseTask):
         pass
 
     @staticmethod
-    def try_parsing_with_tika(task: ExtendedTask,
-                              file_path: str,
-                              original_file_name: str,
-                              propagate_exceptions: bool = True,
-                              enable_ocr: bool = True):
-
-        # set OCR strategy (environment var)
-        task.log_info('Trying TIKA for file: ' + original_file_name)
-        if settings.TIKA_DISABLE:
-            task.log_info('TIKA is disabled in config')
-            return None, None, None
-
-        from apps.document.app_vars import TIKA_TIMEOUT
-        timeout = TIKA_TIMEOUT.val
-        try:
-            # here we command Tika to use OCR for image-based PDFs
-            # or switch to 'native' call parser.from_file(file_path, settings. ...)
-
-            # this app var is imported here in lazy manner to prevent
-            # issues when tasks.py is imported in migrations before the tables for app vars are created
-            from apps.document.app_vars import TIKA_SERVER_ENDPOINT
-            tika_server_endpoint = TIKA_SERVER_ENDPOINT.val
-            if tika_server_endpoint:
-                task.log_info(f'TIKA server endpoint: {tika_server_endpoint}')
-                # call Tika as server
-                data = parametrized_tika_parser.parse_file_on_server(
-                    'all', file_path, tika_server_endpoint,
-                    enable_ocr=enable_ocr)
-            else:
-                # or execute Tika jar
-                data = parametrized_tika_parser.parse_file_local(
-                    file_path,
-                    original_file_name=original_file_name,
-                    timeout=timeout,
-                    logger=CeleryTaskLogger(task),
-                    enable_ocr=enable_ocr)
-
-            parsed = data.get('content')
-            metadata = data['metadata']
-            if parsed and len(parsed) >= 100:
-                return parsed, 'tika', metadata
-            else:
-                task.log_error('TIKA returned too small text for file: ' + original_file_name)
-                return None, None, None
-        except Exception as ex:
-            task.log_error('Caught exception while trying to parse file with' +
-                           f'Tika: {original_file_name}\n{format_exc()}, ' +
-                           f'timeout is: {timeout}')
-            if propagate_exceptions:
-                raise ex
-            return None, None, None
-
-    @staticmethod
-    def try_parsing_with_textract(task: ExtendedTask, file_path, ext, original_file_name,
-                                  propagate_exceptions: bool = True):
-        task.log_info('Trying Textract for file: ' + original_file_name)
-        try:
-            return textract2text(file_path, ext=ext), 'textract'
-        except Exception as ex:
-            task.log_info('Caught exception while trying to parse file with Textract: {0}\n{1}'
-                          .format(original_file_name, format_exc()))
-            if propagate_exceptions:
-                raise ex
-            return None, None
-
-    @staticmethod
     def get_title(text):
         titles = list(get_titles(text))
         return titles[0] if titles else None
@@ -716,7 +696,7 @@ class LoadDocuments(BaseTask):
                               file_name,
                               kwargs,
                               return_doc_id: bool = False,
-                              pre_defined_doc_fields_code_to_python_val: Dict[str, Any] = None):
+                              pre_defined_doc_fields_code_to_val: Dict[str, Any] = None):
         task.task.title = 'Load Document: {0}'.format(file_name)
         task.log_extra = {'log_document_name': file_name}
 
@@ -744,11 +724,19 @@ class LoadDocuments(BaseTask):
 
         # get plain text and metadata from file
         propagate_exceptions = kwargs.get('propagate_exception')
-        ext, metadata, parser_name, propagate_exceptions, text = \
-            LoadDocuments.get_text_from_file(file_name, file_path,
-                                             propagate_exceptions, task)
+        pars_results = LoadDocuments.get_text_from_file(file_name, file_path,
+                                                        propagate_exceptions, task)
+        text = pars_results.text or ''
+        metadata = pars_results.metadata
+        parser_name = pars_results.parser
+
+        # do reconnect - postgres may have already closed the connection because of long-running OCR
+        connection.close()
 
         if not text:
+            # delete document source file
+            DocumentFilesCleaner.delete_document_files([file_name])
+
             if propagate_exceptions:
                 raise RuntimeError('No text extracted.')
             task.log_info('SKIP (ERROR): ' + file_name)
@@ -773,20 +761,6 @@ class LoadDocuments(BaseTask):
             except ImportError:
                 task.log_warn('Cannot import lexnlp.extract.en.contracts.detector.is_contract')
 
-        # detect tables
-        # if kwargs.get('detect_tables') and ext == '.pdf':
-        if ext == '.pdf':
-            try:
-                document_tables = tabula.read_pdf(
-                    file_path,
-                    multiple_tables=True,
-                    pages='all')
-                metadata['tables'] = [
-                    [list(j) for j in list(i.fillna('').to_records(index=False)) if not i.empty]
-                    for i in document_tables if not i.empty]
-            except CalledProcessError:
-                pass
-
         # remove extra line breaks
         text = LoadDocuments.preprocess_parsed_text(text)
 
@@ -800,6 +774,11 @@ class LoadDocuments(BaseTask):
 
         # detect title
         title = metadata.get('title', None) or LoadDocuments.get_title(text)
+
+        # detect sections
+        sections = list(get_section_spans(text, use_ml=False, return_text=False,
+                                          skip_empty_headers=True))
+        metadata['sections'] = sections
 
         with transaction.atomic():
             upload_session = None
@@ -900,6 +879,13 @@ class LoadDocuments(BaseTask):
             document.sentences = len(sentence_list)
             document.save()
 
+            if pars_results.tables:
+                doc_tables = []
+                for table in pars_results.tables:
+                    doc_table = DocumentTable(document=document, table=table)
+                    doc_tables.append(doc_table)
+                DocumentTable.objects.bulk_create(doc_tables)
+
             TextUnit.objects.bulk_create(paragraph_list + sentence_list)
 
             # store document language
@@ -929,6 +915,7 @@ class LoadDocuments(BaseTask):
 
             # save extra document info
             kwargs['document'] = document
+
         LoadDocuments.save_extra_document_data(**kwargs)
 
         task.log_info(message='LOADED (%s): %s' % (parser_name.upper(), file_name))
@@ -940,7 +927,7 @@ class LoadDocuments(BaseTask):
         if should_run_standard_locators:
             task.run_sub_tasks_class_based('Locate', Locate, [{
                 'locate': LoadDocuments.standard_locators,
-                'parse': 'sentences',
+                'parse': ['sentence'],
                 'do_delete': False,
                 'session_id': upload_session_id,
                 'metadata': {'session_id': upload_session_id, 'file_name': file_name},
@@ -948,16 +935,16 @@ class LoadDocuments(BaseTask):
                 'document_id': document.pk,
                 'doc_loaded_by_user_id': user_id,
                 'document_initial_load': True,
-                'predefined_field_codes_to_python_values': pre_defined_doc_fields_code_to_python_val
+                'predefined_field_codes_to_python_values': pre_defined_doc_fields_code_to_val
             }])
         else:
-            if pre_defined_doc_fields_code_to_python_val:
+            if pre_defined_doc_fields_code_to_val:
                 user = User.objects.get(pk=user_id) if user_id is not None else None
-                Locate. \
-                    store_pre_defined_doc_fields(log=CeleryTaskLogger(task),
-                                                 doc=document,
-                                                 user=user,
-                                                 fields_code_to_python_val=pre_defined_doc_fields_code_to_python_val)
+                field_repo = DocumentFieldRepository()
+                field_repo \
+                    .store_values_one_doc_many_fields_no_ants(doc=document,
+                                                              field_codes_to_python_values=pre_defined_doc_fields_code_to_val,
+                                                              user=user)
 
         for linked_task_kwargs in linked_tasks:
             linked_task_kwargs['document_id'] = document.pk
@@ -966,6 +953,10 @@ class LoadDocuments(BaseTask):
             task.log_info(message='linked_task_id: {}'.format(linked_task_id))
             ret.append({'linked_task_id': linked_task_id,
                         'document_id': document.pk})
+
+        # set status to avoid duplicates during uploading
+        document.metadata['upload_status'] = 'DONE'
+        document.save()
 
         if return_doc_id:
             return document.pk
@@ -980,7 +971,8 @@ class LoadDocuments(BaseTask):
         """
         extract text from file using either Tika or Textract
         """
-        from apps.document.app_vars import OCR_ENABLE, OCR_FILE_SIZE_LIMIT
+        from apps.document.app_vars import OCR_ENABLE, OCR_FILE_SIZE_LIMIT, \
+            MSWORD_TO_TEXT_ENABLE
         ocr_enabled = OCR_ENABLE.val
 
         # disable OCR anyway if file size exceeds limit
@@ -990,42 +982,50 @@ class LoadDocuments(BaseTask):
             fsize /= 1024 * 1024
             ocr_enabled = ocr_enabled and fsize <= fsize_limit
 
-        metadata = {}
         _fn, ext = os.path.splitext(file_name)
         if not ext:
             mt = python_magic.from_file(file_path)
             ext = mimetypes.guess_extension(mt)
         ext = ext or ''
 
+        parse_ptrs = ParsingTaskParams(CeleryTaskLogger(task),
+                                       file_path,
+                                       ext,
+                                       file_name,
+                                       propagate_exceptions,
+                                       ocr_enabled)
+
         # decide can we parse the file with Textract
+        word_parse_enabled = MSWORD_TO_TEXT_ENABLE.val
         textract_enabled = ocr_enabled or \
                            ext in settings.TEXTRACT_NON_OCR_EXTENSIONS
-        first_try_textract = textract_enabled and \
-                             ext in settings.TEXTRACT_FIRST_FOR_EXTENSIONS
 
-        if first_try_textract:
-            text, parser_name = LoadDocuments.try_parsing_with_textract(
-                task, file_path, ext, file_name)
-            if not text:
-                text, parser_name, metadata = LoadDocuments.try_parsing_with_tika(
-                    task, file_path, file_name,
-                    enable_ocr=ocr_enabled)
+        if settings.TEXTRACT_FIRST_FOR_EXTENSIONS:
+            parse_functions = [PlainTextDocumentParser(),
+                               XmlWordxDocumentParser() if word_parse_enabled else None,
+                               TextractDocumentParser() if textract_enabled else None,
+                               TikaDocumentParser()]
         else:
-            text, parser_name, metadata = LoadDocuments.try_parsing_with_tika(
-                task, file_path, file_name,
-                propagate_exceptions=propagate_exceptions,
-                enable_ocr=ocr_enabled)
-            if not text and textract_enabled:
-                text, parser_name = LoadDocuments.try_parsing_with_textract(
-                    task, file_path, ext, file_name,
-                    propagate_exceptions=propagate_exceptions)
+            parse_functions = [PlainTextDocumentParser(),
+                               XmlWordxDocumentParser() if word_parse_enabled else None,
+                               TikaDocumentParser(),
+                               TextractDocumentParser() if textract_enabled else None]
 
-        if text is not None:
+        results = None
+        for parsr in parse_functions:
+            if not parsr:
+                continue
+            results = parsr.try_parse_document(parse_ptrs)
+            if not results.is_empty():
+                break
+
+        if results and not results.is_empty():
+            text = results.text
             text = pre_process_document(text)
             # TODO: migrate it in lexnlp if it works good
             text = re.sub(r'<[\s/]*(?:[A-Za-z]+|[Hh]\d)[\s/]*>', '', text)
-            text = text.replace('\r\n', '\n')
-        return ext, metadata, parser_name, propagate_exceptions, text
+            results.text = text.replace('\r\n', '\n')
+        return results
 
     @staticmethod
     def preprocess_parsed_text(text: str):
@@ -1044,6 +1044,15 @@ class LoadDocuments(BaseTask):
             return list(get_paragraphs(text, return_spans=True))
         except:
             return [(text, 0, len(text) - 1)]
+
+    def on_failure(self, exc, task_id, args, kwargs, exc_traceback):
+        # Delete Document if any errors
+        if isinstance(self.log_extra, dict):
+            document_id = self.log_extra.get('log_document_id')
+            if document_id:
+                self.log_error('Load Documents task failed, Delete Document id={}'.format(document_id))
+                Document.all_objects.filter(pk=document_id).delete()
+        super().on_failure(exc, task_id, args, kwargs, exc_traceback)
 
 
 class UpdateElasticsearchIndex(BaseTask):
@@ -1270,8 +1279,7 @@ class Locate(BaseTask):
                         text_unit__document__project_id=project_id)
 
                 deleted = usage_model_objects.delete()
-                self.log_info('Deleted {} {} objects'.format(
-                    deleted[0], usage_model_name))
+                self.log_info(f'Deleted {deleted[0]} {usage_model_name} objects')
             tag_objects = TextUnitTag.objects.filter(tag=locator_name)
             if document_id:
                 tag_objects = tag_objects.filter(text_unit__document_id=document_id)
@@ -1325,38 +1333,20 @@ class Locate(BaseTask):
 
         if document_id:
             text_units = text_units.filter(document_id=document_id)
-        locate_in = kwargs.get('parse')
-        if locate_in == 'paragraphs':
-            text_units = text_units.filter(unit_type='paragraph')
-        elif locate_in == 'sentences':
-            text_units = text_units.filter(unit_type='sentence')
-        else:
-            locate_in = 'paragraphs and sentences'
+
+        locate_in = kwargs.get('parse', ['paragraph', 'sentence'])  # type:List[str]
+        text_units = text_units.filter(unit_type__in=locate_in)
 
         self.log_info('Run location of [{}].'.format('; '.join(locate.keys())))
-        self.log_info('Locate in [{}].'.format(locate_in))
+        self.log_info('Locate in {}.'.format(locate_in))
         self.log_info('Found {0} Text Units.'.format(text_units.count()))
 
-        locate_args = []
-        text_unit_package = []
-        text_unit_packages = []
+        package_size = settings.TEXT_UNITS_TO_PARSE_PACKAGE_SIZE
+        text_unit_ids = text_units.values_list('pk', flat=True)
+        locate_args = [[text_unit_ids[i:i + package_size], kwargs['user_id'], locate]
+                       for i in range(0, len(text_unit_ids), package_size)]
 
-        for text_unit_id in text_units.values_list('pk', flat=True):
-            if not text_unit_id:
-                continue
-            if settings.TEXT_UNITS_TO_PARSE_PACKAGE_SIZE <= len(text_unit_package):
-                text_unit_packages.append(text_unit_package)
-                text_unit_package = []
-            text_unit_package.append(text_unit_id)
-
-        if len(text_unit_package) > 0:
-            text_unit_packages.append(text_unit_package)
-
-        for text_unit_package in text_unit_packages:
-            locate_args.append((text_unit_package, kwargs['user_id'], locate))
-
-        self.run_sub_tasks('Locate Data In Each Text Unit', Locate.parse_text_units,
-                           locate_args)
+        self.run_sub_tasks('Locate Data In Each Text Unit', Locate.parse_text_units, locate_args)
 
         if document_id:
             document_ids = [document_id]
@@ -1372,33 +1362,18 @@ class Locate(BaseTask):
                 [(document_id, doc_loaded_by_user_id, document_initial_load,
                   predefined_field_codes_to_python_values)])
 
-    @staticmethod
-    def store_pre_defined_doc_fields(log: ProcessLogger,
-                                     doc: Document,
-                                     user: User,
-                                     fields_code_to_python_val: Dict[str, Any]):
-        if not fields_code_to_python_val:
-            return
-
-        document_type = doc.document_type  # type: DocumentType
-
-        all_fields = {f.code: f for f in DocumentField.objects.filter(document_type=document_type).all()}
-
-        for field_code, python_val in fields_code_to_python_val.items():
-            field = all_fields.get(field_code)  # type: DocumentField
-            if not field:
-                log.error('Refusing to store pre-defined document field value for field {0}.\n'
-                          'Document type {1} does not have such field'.format(field_code, document_type.code))
-                continue
-            if field.requires_text_annotations:
-                log.error('Refusing to store pre-defined document field value for field {0}.\n'
-                          'The field requires text annotation.'.format(field_code, document_type.code))
-                continue
-
-            field_type = field.get_field_type()  # type: FieldType
-            field_type.save_value(document=doc, field=field, location_start=None, location_end=None, location_text=None,
-                                  text_unit=None, value=python_val, user=user, allow_overwriting_user_data=True,
-                                  extraction_hint=None)
+    def on_failure(self, exc, task_id, args, kwargs, exc_traceback):
+        # Delete Document if location failed
+        document_id = kwargs.get('document_id')
+        if document_id:
+            self.log_error('Locate task failed, Delete Document id={}'.format(document_id))
+            try:
+                from apps.document.tasks import DeleteDocuments
+                del_task = DeleteDocuments()
+                del_task.process(_document_ids=[document_id])
+            except Exception as e:
+                self.log_error(f'Locate.on_failure - error: {e}')
+        super().on_failure(exc, task_id, args, kwargs, exc_traceback)
 
     @staticmethod
     @shared_task(base=ExtendedTask,
@@ -1410,70 +1385,95 @@ class Locate(BaseTask):
                  max_retries=3,
                  priority=9)
     def on_locate_finished(_self: ExtendedTask, doc_id, doc_loaded_by_user_id, document_initial_load,
-                           predefined_field_codes_to_python_values: Dict[str, Any] = None):
+                           predefined_field_codes_to_val: Dict[str, Any] = None):
+
+        # outer try-catch to delete Document if smth went wrong
         try:
-            doc = Document.all_objects.filter(pk=doc_id).last()
+            try:
+                doc = Document.all_objects.filter(pk=doc_id).last()
+            except Exception as e:
+                raise RuntimeError(f'on_locate_finished(doc_id={doc_id}): ' +
+                                   f'error obtaining document.\n{str(e)}')
+
+            if doc:
+                try:
+                    log = CeleryTaskLogger(_self)
+                except Exception as e:
+                    er_msg = f'on_locate_finished(): ' + \
+                             f'error obtaining CeleryTaskLogger.\n{str(e)}'
+                    raise RuntimeError(er_msg)
+                try:
+                    user = User.objects.get(pk=doc_loaded_by_user_id) \
+                        if doc_loaded_by_user_id is not None \
+                        else User.objects.filter(id=1).first()  # type: User
+                except Exception as e:
+                    er_msg = f'on_locate_finished(user_id={doc_loaded_by_user_id}): ' + \
+                             f'error obtaining user.\n{str(e)}'
+                    raise RuntimeError(er_msg)
+
+                # INFO: see CS-3420: FE team has implemented uploading documents as non-admin (CS-3361)
+                # if not user or not user.is_admin:
+                #     raise Exception('User who is loading the document is unspecified and the first user in '
+                #                     'the system is not admin. Something is wrong.')
+                if predefined_field_codes_to_val:
+                    try:
+                        field_repo = DocumentFieldRepository()
+                        field_repo \
+                            .store_values_one_doc_many_fields_no_ants(doc=doc,
+                                                                      user=user,
+                                                                      field_codes_to_python_values=predefined_field_codes_to_val)
+                    except Exception as e:
+                        er_msg = f'on_locate_finished(doc_id={doc_id}): ' + \
+                                 f'error storing doc fields.\n{str(e)}'
+                        raise RuntimeError(er_msg)
+                    try:
+                        ignore_field_codes = predefined_field_codes_to_val.keys()
+                    except Exception as e:
+                        er_msg = f'on_locate_finished(doc_id={doc_id}): ' + \
+                                 f'error accessing predefined_field_codes_to_val keys().\n{str(e)}'
+                        raise RuntimeError(er_msg)
+                else:
+                    ignore_field_codes = None
+
+                try:
+                    signals.fire_document_changed(sender=_self,
+                                                  log=log,
+                                                  document=doc,
+                                                  changed_by_user=None,
+                                                  system_fields_changed=True,
+                                                  user_fields_changed=False,
+                                                  generic_fields_changed=True)
+                except Exception as e:
+                    er_msg = f'on_locate_finished(doc_id={doc_id}): ' + \
+                             f'error caching generic values.\n{str(e)}'
+                    raise RuntimeError(er_msg)
+                try:
+                    detect_and_cache_field_values_for_document(log=log,
+                                                               document=doc,
+                                                               save=True,
+                                                               clear_old_values=True,
+                                                               ignore_field_codes=ignore_field_codes,
+                                                               changed_by_user=user,
+                                                               document_initial_load=document_initial_load)
+                except Exception as e:
+                    er_msg = f'on_locate_finished(doc_id={doc_id}): error detecting field values.'
+                    raise RuntimeError(er_msg) from e
+
+        # delete Document if detection failed
         except Exception as e:
-            raise RuntimeError(f'on_locate_finished(doc_id={doc_id}): ' +
-                               f'error obtaining document.\n{str(e)}')
+            try:
+                from apps.document.tasks import DeleteDocuments
+                del_task = DeleteDocuments()
+                del_task.process(_document_ids=[doc_id])
+            except Exception as de:
+                _self.log_error(f'Unable to delete document #{doc_id}', exc_info=de)
+            raise e
 
-        if doc:
-            try:
-                log = CeleryTaskLogger(_self)
-            except Exception as e:
-                er_msg = f'on_locate_finished(): ' + \
-                         f'error obtaining CeleryTaskLogger.\n{str(e)}'
-                raise RuntimeError(er_msg)
-            try:
-                user = User.objects.get(pk=doc_loaded_by_user_id) \
-                    if doc_loaded_by_user_id is not None \
-                    else User.objects.filter(id=1).first()  # type: User
-            except Exception as e:
-                er_msg = f'on_locate_finished(user_id={doc_loaded_by_user_id}): ' + \
-                         f'error obtaining user.\n{str(e)}'
-                raise RuntimeError(er_msg)
-
-            # INFO: see CS-3420: FE team has implemented uploading documents as non-admin (CS-3361)
-            # if not user or not user.is_admin:
-            #     raise Exception('User who is loading the document is unspecified and the first user in '
-            #                     'the system is not admin. Something is wrong.')
-            if predefined_field_codes_to_python_values:
-                try:
-                    Locate.store_pre_defined_doc_fields(log=log,
-                                                        doc=doc,
-                                                        user=user,
-                                                        fields_code_to_python_val=predefined_field_codes_to_python_values)
-                except Exception as e:
-                    er_msg = f'on_locate_finished(doc_id={doc_id}): ' + \
-                             f'error storing doc fields.\n{str(e)}'
-                    raise RuntimeError(er_msg)
-                try:
-                    ignore_field_codes = predefined_field_codes_to_python_values.keys()
-                except Exception as e:
-                    er_msg = f'on_locate_finished(doc_id={doc_id}): ' + \
-                             f'error accessing predefined_field_codes_to_python_values keys().\n{str(e)}'
-                    raise RuntimeError(er_msg)
-            else:
-                ignore_field_codes = None
-
-            try:
-                field_value_cache.cache_generic_values(doc, log=log, save=True, fire_doc_changed_event=False)
-            except Exception as e:
-                er_msg = f'on_locate_finished(doc_id={doc_id}): ' + \
-                         f'error caching generic values.\n{str(e)}'
-                raise RuntimeError(er_msg)
-            try:
-                detect_and_cache_field_values_for_document(log=log,
-                                                           document=doc,
-                                                           save=True,
-                                                           clear_old_values=True,
-                                                           ignore_field_codes=ignore_field_codes,
-                                                           changed_by_user=user,
-                                                           document_initial_load=document_initial_load)
-            except Exception as e:
-                er_msg = f'on_locate_finished(doc_id={doc_id}): ' + \
-                         f'error detecting field values.\n{str(e)}'
-                raise RuntimeError(er_msg)
+        doc = Document.objects.filter(pk=doc_id)
+        if doc.exists():
+            doc = doc.last()
+            doc.processed = True
+            doc.save()
 
     @staticmethod
     @shared_task(base=ExtendedTask,
@@ -1489,13 +1489,15 @@ class Locate(BaseTask):
         text_units = list(text_units)
         location_results = LocationResults()
         log = CeleryTaskLogger(self)
+
         for task_name, task_kwargs in locate.items():
             if task_name not in LOCATORS:
                 raise Exception('Programming error. Unknown locator: {0}'.format(task_name))
             locator = LOCATORS[task_name]
 
             for text_unit_id, text, text_unit_lang in text_units:
-                locator.try_parsing(log, location_results, text, text_unit_id, text_unit_lang, **task_kwargs)
+                locator.try_parsing(log, location_results, text,
+                                    text_unit_id, text_unit_lang, **task_kwargs)
         location_results.save(log, user_id)
 
 
@@ -1630,7 +1632,7 @@ class Classify(BaseTask):
         tf_idf_transformer = TfidfTransformer()
         run_date = datetime.datetime.now()
 
-        for d in Document.objects.all()[:kwargs['sample_size']]:
+        for d in Document.objects.all().defer('full_text')[:kwargs['sample_size']]:
             # Build document feature matrix
             d_text_units = d.textunit_set.all()
             text_unit_ids = d_text_units.values_list('id', flat=True)
@@ -1789,6 +1791,19 @@ class Cluster(BaseTask):
                 term='textunit__termusage__term__term',
                 party='textunit__partyusage__party__name',
                 entity='textunit__geoentityusage__entity__name'),
+            'annotation_map': dict(
+                source_type=Value('source_type'),
+                document_type=Value('document_type'),
+                metadata=Value('metadata'),
+                date=Sum('textunit__dateusage__count'),
+                definition=Sum('textunit__definitionusage__count'),
+                duration=Sum('textunit__datedurationusage__count'),
+                court=Sum('textunit__courtusage__count'),
+                currency_name=Sum('textunit__currencyusage__count'),
+                currency_value=Sum('textunit__currencyusage__count'),
+                term=Sum('textunit__termusage__count'),
+                party=Sum('textunit__partyusage__count'),
+                entity=Sum('textunit__geoentityusage__count')),
             'filter_map': dict(
                 source_type='source_type__isnull',
                 document_type='document_type__isnull',
@@ -1820,6 +1835,19 @@ class Cluster(BaseTask):
                 terms='termusage__term__term',
                 party='partyusage__party__name',
                 entity='geoentityusage__entity__name'),
+            'annotation_map': dict(
+                source_type=Value('document__source_type'),
+                document_type=Value('document__document_type'),
+                metadata=Value('document__metadata'),
+                date=Sum('dateusage__count'),
+                definition=Sum('definitionusage__count'),
+                duration=Sum('datedurationusage__count'),
+                court=Sum('courtusage__count'),
+                currency_name=Sum('currencyusage__count'),
+                currency_value=Sum('currencyusage__count'),
+                term=Sum('termusage__count'),
+                party=Sum('_partyusage__count'),
+                entity=Sum('geoentityusage__count')),
             'filter_map': dict(
                 source_type='document__source_type__isnull',
                 document_type='document__document_type__isnull',
@@ -1855,6 +1883,7 @@ class Cluster(BaseTask):
         cluster_model = target_attrs['cluster_model']
         lookup_map = target_attrs['lookup_map']
         filter_map = target_attrs['filter_map']
+        annotation_map = target_attrs['annotation_map']
 
         # step #1 - delete
         if kwargs['delete_type']:
@@ -1877,6 +1906,7 @@ class Cluster(BaseTask):
 
             id_field = 'id'
             prop_field = lookup_map[cluster_by_item]
+            prop_field_param = annotation_map[cluster_by_item]
             count_as_bool = cluster_by_item == 'metadata'
 
             if count_as_bool:
@@ -1886,7 +1916,7 @@ class Cluster(BaseTask):
                     default=Value(0),
                     output_field=IntegerField()))
             else:
-                ann_cond = dict(prop_count=Count(prop_field))
+                ann_cond = dict(prop_count=prop_field_param)
             qs = objects.values(id_field, prop_field).annotate(**ann_cond).distinct()
             if not qs:
                 continue
@@ -2058,40 +2088,40 @@ class Cluster(BaseTask):
             self.cluster('text_units', kwargs)
 
 
-@shared_task(name='advanced_celery.clean_tasks')
-def clean_tasks(delta_days=2):
-    """
-    Clean Task and TaskResult
-    """
-    control_date = now() - datetime.timedelta(days=delta_days)
-    logger.info('Clean tasks. Control date: {}'.format(control_date))
+@shared_task(base=ExtendedTask,
+             bind=True,
+             soft_time_limit=3600,
+             default_retry_delay=10,
+             retry_backoff=True,
+             autoretry_for=(SoftTimeLimitExceeded, InterfaceError, OperationalError),
+             max_retries=3)
+def clean_tasks(this_task: ExtendedTask):
+    purged_pending_tasks = 0
 
-    removed_tasks = 0
-    removed_task_results = 0
-    for task in Task.objects.all():
-        logger.info('Task="{}", status="{}", date_start="{}"'.format(
-            task.name, task.status, task.date_start))
-        if task.status == 'PENDING' or task.date_start > control_date:
-            logger.info('skip...')
-        else:
-            logger.info('remove...')
-            # remove subtasks
-            res = Task.objects \
-                .filter(Q(main_task_id=task.id) |
-                        Q(id=task.id)) \
-                .delete()
-            removed_task_results += res[0]
-            # remove task
-            task.delete()
-            removed_tasks += 1
+    qr = Task.objects.main_tasks().filter(status=PENDING).exclude(id=this_task.request.id)  # type: QuerySet
 
-    ret = 'Deleted %d Tasks and %d TaskResults' % (removed_tasks, removed_task_results)
-    logger.info(ret)
-    return ret
+    this_task.set_push_steps(qr.count() + 1)
+
+    for task_to_purge in qr:
+        this_task.log_info('Purging: Task="{}", status="{}", date_start="{}"'.format(
+            task_to_purge.name, task_to_purge.status, task_to_purge.date_start))
+        try:
+            purge_task(task_to_purge)
+            purged_pending_tasks += 1
+        except Exception as e:
+            # if we were unable to purge a task - log error and proceed to the next one, don't break
+            this_task.log_error(f'Unable to purge task {task_to_purge.name} (#{task_to_purge.id})', exc_info=e)
+        this_task.push()
+
+    deleted_tasks, _unused = Task.objects.all().exclude(id=this_task.request.id).delete()
+    this_task.push()
+
+    ret = f'Purged {purged_pending_tasks} pending main tasks. Deleted {deleted_tasks} tasks after purging main tasks.'
+    this_task.log_info(ret)
 
 
-@app.task(name='advanced_celery.track_tasks', bind=True)
-def track_tasks(self):
+@app.task(name=task_names.TASK_NAME_TRACK_TASKS, bind=True)
+def track_tasks(_celery_task):
     TaskUtils.prepare_task_execution()
 
     for task in Task.objects.unready_main_tasks():
@@ -2117,8 +2147,10 @@ def track_tasks(self):
             call_task(**seq_task_kwargs)
 
 
-@app.task(name='advanced_celery.clean_sub_tasks', bind=True)
-def clean_sub_tasks(self):
+@app.task(name=task_names.TASK_NAME_CLEAN_TASKS_PERIODIC, bind=True)
+def clean_tasks_periodic(_celery_task):
+    from apps.task.app_vars import REMOVE_READY_TASKS_DELAY_IN_HOURS
+
     TaskUtils.prepare_task_execution()
 
     del_sub_tasks_date = now() - datetime.timedelta(seconds=settings.REMOVE_SUB_TASKS_DELAY_IN_SEC)
@@ -2134,18 +2166,26 @@ def clean_sub_tasks(self):
         .delete()
 
     # Delete excess tasks from task list
-    del_ready_tasks_date = now() - datetime.timedelta(seconds=settings.REMOVE_READY_TASKS_DELAY_IN_SEC)
-    Task.objects \
-        .filter(name__in=settings.REMOVE_WHEN_READY, date_done__lt=del_ready_tasks_date) \
-        .delete()
+    h = REMOVE_READY_TASKS_DELAY_IN_HOURS.val
+
+    if h and h > 0:
+        del_ready_tasks_date = now() - datetime.timedelta(hours=h)
+        qr = Task.objects.filter(date_done__lt=del_ready_tasks_date)  # type: QuerySet
+
+        if settings.TASKS_DO_NOT_REMOVE_WHEN_READY:
+            qr = qr.exclude(settings.TASKS_DO_NOT_REMOVE_WHEN_READY)
+        qr = qr.exclude(status=FAILURE)
+
+        qr.delete()
 
 
-def purge_task(task_pk, wait=False, timeout=None):
+def purge_task(task_pk, wait=False, timeout=None, delete=True):
     """
     Purge task method.
-    :param task_pk:
+    :param task_pk: Task id
     :param wait:
     :param timeout
+    :oaram delete - bool - either delete task and its subtasks after purge
     :return:
     """
 
@@ -2164,18 +2204,21 @@ def purge_task(task_pk, wait=False, timeout=None):
     logger.info('Celery task id={}'.format(task.id))
 
     revoke_task(celery_task, wait=wait, timeout=timeout)
-    ret = 'Deleted '
 
-    # delete TaskResults for subtasks
-    subtask_results_deleted = task.subtasks.delete()
+    if delete:
+        ret = 'Deleted '
+        # delete TaskResults for subtasks
+        subtask_results_deleted = task.subtasks.delete()
 
-    # delete Task
-    task.delete()
+        # delete Task
+        task.delete()
 
-    ret += 'Task(id={}), TaskHistory, '.format(task.pk)
+        ret += 'Task(id={}), TaskHistory, '.format(task.pk)
 
-    ret += 'main celery task, children celery tasks, {} TaskResult(s)'.format(
-        subtask_results_deleted[0] + 1)
+        ret += 'main celery task, children celery tasks, {} TaskResult(s)'.format(
+            subtask_results_deleted[0] + 1)
+    else:
+        ret = 'Revoked Task(id={})'
 
     logger.info(ret)
 
@@ -2206,6 +2249,17 @@ class TotalCleanup(BaseTask):
         # check that all tasks deleted EXCEPT THIS ONE
         Task.objects.exclude(pk=self.main_task_id).delete()
         self.push()
+
+
+def get_call_stack_line(index: int) -> str:
+    stack_lines = traceback.format_stack()
+    if not stack_lines or len(stack_lines) < -index:
+        return None
+    call_stack = stack_lines[index]
+    lbr_pos = call_stack.find('\n')
+    if lbr_pos:
+        call_stack = call_stack[:lbr_pos]
+    return call_stack
 
 
 # Register all load tasks

@@ -40,9 +40,9 @@ from psycopg2 import InterfaceError, OperationalError
 
 from apps.celery import app
 from apps.common.collection_utils import chunks
-from apps.common.errors import render_error
 from apps.common.file_storage import get_file_storage
 from apps.common.sql_commons import fetch_int, SQLClause
+from apps.common.errors import render_error
 from apps.common.streaming_utils import buffer_contents_into_temp_file
 from apps.imanage_integration.models import IManageConfig, IManageDocument
 from apps.task.models import Task
@@ -52,8 +52,8 @@ from apps.users.user_utils import get_main_admin_user
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2019, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.3/LICENSE"
-__version__ = "1.2.3"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.3.0/LICENSE"
+__version__ = "1.3.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -136,7 +136,7 @@ class IManageSynchronization(BaseTask):
                 document_id = LoadDocuments \
                     .create_document_local(task, temp_fn, rel_filepath, kwargs,
                                            return_doc_id=True,
-                                           pre_defined_doc_fields_code_to_python_val=pre_defined_fields)
+                                           pre_defined_doc_fields_code_to_val=pre_defined_fields)
 
                 if document_id:
                     task.log_info('Created Contraxsuite document #{0}'.format(document_id))
@@ -148,8 +148,7 @@ class IManageSynchronization(BaseTask):
                                    'iManage document #{0}'.format(imanage_doc_id))
                     raise RuntimeError('No document loaded.')
         except Exception as ex:
-            msg = render_error('Unable to synchronize iManage document #{0}'.format(imanage_doc_id), ex)
-            task.log_error(msg)
+            task.log_error('Unable to synchronize iManage document #{0}'.format(imanage_doc_id), exc_info=ex)
             imanage_doc.import_problem = True
             imanage_doc.save(update_fields=['import_problem'])
 
@@ -216,8 +215,8 @@ class IManageSynchronization(BaseTask):
             try:
                 found = True
                 self.sync_imanage_config(imanage_config)
-            except:
-                self.log_error(render_error('Unable to synchronize iManage config "{0}"'.format(imanage_config.code)))
+            except Exception as ex:
+                self.log_error('Unable to synchronize iManage config "{0}"'.format(imanage_config.code), exc_info=ex)
                 return
         if not found:
             self.log_info('No enabled iManage configs matching the specified criteria found.')

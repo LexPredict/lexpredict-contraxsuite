@@ -28,6 +28,7 @@
 import pickle
 import sys
 
+import pandas as pd
 from rest_framework_tracking.models import APIRequestLog
 
 # Django imports
@@ -35,7 +36,8 @@ from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
 from django.contrib.postgres.fields import JSONField
 from django.db import models, transaction
-from django.db.models.deletion import CASCADE
+from django.db.models import Count, Avg, Max, Case, When, IntegerField
+from django.db.models.deletion import CASCADE, DO_NOTHING
 from django.dispatch import receiver
 from django.utils.timezone import now
 
@@ -45,8 +47,8 @@ from apps.common import signals
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2019, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.3/LICENSE"
-__version__ = "1.2.3"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.3.0/LICENSE"
+__version__ = "1.3.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -278,3 +280,193 @@ class SQCount(models.Subquery):
 
 class CustomAPIRequestLog(APIRequestLog):
     sql_log = models.TextField(null=True, blank=True)
+
+
+class ThreadDumpRecord(models.Model):
+    date = models.DateTimeField(auto_now=True, db_index=True)
+    node = models.CharField(max_length=1024, blank=True, null=True, db_index=True)
+    pid = models.IntegerField(null=True, blank=True)
+    command_line = models.CharField(max_length=1024, blank=True, null=True, db_index=True)
+    cpu_usage = models.FloatField(null=True, blank=True)
+    cpu_usage_system_wide = models.FloatField(null=True, blank=True)
+    memory_usage = models.BigIntegerField(null=True, blank=True)
+    memory_usage_system_wide = models.BigIntegerField(null=True, blank=True)
+    dump = models.TextField(null=True, blank=True)
+
+
+class MethodStats(models.Model):
+    user = models.ForeignKey(User, blank=True, null=True, on_delete=models.CASCADE)
+    date = models.DateTimeField(auto_now=True, db_index=True)
+    time = models.FloatField(db_index=True)
+
+    # user-defined fields
+    name = models.CharField(max_length=50, blank=True, null=True, db_index=True)
+    comment = models.CharField(max_length=200, blank=True, null=True)
+
+    # method description
+    # function name "get_json_data"
+    method = models.CharField(max_length=200, db_index=True)
+    # function path like "apps.common.decorators.callers"
+    path = models.CharField(max_length=200, null=True, blank=True, db_index=True)
+    # output of help(function)
+    description = models.TextField(null=True, blank=True)
+    # SQL logs
+    sql_log = models.TextField(null=True, blank=True)
+    # function args
+    args = models.TextField(null=True, blank=True)
+    # function kwargs
+    kwargs = models.TextField(null=True, blank=True)
+    # callers "... pdb.TerminalPdb.default  >> apps.common.decorators.callers'
+    callers = models.TextField(null=True, blank=True)
+    has_error = models.BooleanField(default=False)
+    error_traceback = models.TextField(null=True, blank=True)
+
+    class Meta:
+        verbose_name_plural = 'Method Stats'
+
+    def __str__(self):
+        body = '{} - {} - {}'.format(
+            self.method,
+            self.name,
+            round(self.time, 5))
+        if self.has_error:
+            body += ', error'
+        return body
+
+    @classmethod
+    def get(cls, as_dataframe: bool = True, **filter_kwargs):
+        """
+        Return grouped by method/name statistic with AVG time and N calls
+        :param as_dataframe: bool - whether return pandas.dataframe or plain QuerySet
+        :param filter_kwargs: positional arguments represents options for filter() qs method
+        :return: pandas Dataframe OR QuerySet
+        """
+        # .filter(has_error=False)\
+        qs = cls.objects\
+            .values('method', 'path', 'name')\
+            .annotate(calls=Count('id'),
+                      errors=Count(Case(
+                          When(has_error=True, then=1),
+                          output_field=IntegerField(),
+                      )),
+                      avg_time=Avg('time'), max_time=Max('time'))\
+            .filter(**filter_kwargs)
+        if as_dataframe:
+            return pd.DataFrame.from_records(qs, columns=['name', 'method',
+                                                          'calls', 'errors',
+                                                          'avg_time', 'max_time'])
+        return qs
+
+
+class MethodStatsCollectorPlugin(models.Model):
+
+    path = models.CharField(
+        max_length=200, db_index=True, unique=True,
+        help_text='Full absolute path to a method like "apps.common.api.v1.AppVarsAPIView.get".')
+
+    # user-defined fields
+    name = models.CharField(max_length=50, blank=True, null=True, db_index=True)
+    comment = models.CharField(max_length=200, blank=True, null=True)
+
+    # SQL logs
+    log_sql = models.BooleanField(default=False)
+    # how deep introspect to store a caller name, min is 3 for the decorator
+    callers_depth = models.PositiveSmallIntegerField(default=5)
+    # store batch of collected stats in N items
+    batch_size = models.PositiveSmallIntegerField(default=10, blank=True, null=True)
+    # store batch of collected stats in N seconds
+    batch_time = models.PositiveSmallIntegerField(default=60, blank=True, null=True)
+
+    class Meta:
+        verbose_name_plural = 'Method Stats Collector Plug-in'
+
+    def __str__(self):
+        return '{} - {}'.format(self.path, self.name)
+
+
+@receiver(models.signals.post_save, sender=MethodStatsCollectorPlugin)
+def save_plugin(sender, instance, created, **kwargs):
+    """
+    Decorate chosen method
+    """
+    from apps.common.decorators import collect_stats, decorate, undecorate
+    if not created:
+        undecorate(path=instance.path)
+    decorate(collect_stats, **MethodStatsCollectorPlugin.objects.filter(pk=instance.pk).values()[0])
+
+
+@receiver(models.signals.post_delete, sender=MethodStatsCollectorPlugin)
+def delete_plugin(sender, instance, **kwargs):
+    """
+    Un-decorate chosen method
+    """
+    from apps.common.decorators import undecorate
+    undecorate(path=instance.path)
+
+
+class MenuGroup(models.Model):
+
+    name = models.CharField(
+        max_length=100, db_index=True,
+        help_text='Menu item group (folder) name.')
+
+    public = models.BooleanField(default=False)
+
+    # Group order number
+    order = models.PositiveSmallIntegerField(default=0)
+
+    user = models.ForeignKey(
+        User, related_name="created_%(class)s_set", null=True, blank=True, db_index=True, on_delete=DO_NOTHING)
+
+    def __str__(self):
+        return '{}'.format(self.name)
+
+
+@receiver(models.signals.post_save, sender=MenuGroup)
+def save_menu_group(sender, instance, created, **kwargs):
+    """
+    Store created_by from request
+    """
+    if hasattr(instance, 'request_user'):
+        models.signals.post_save.disconnect(save_menu_group, sender=sender)
+        if created:
+            instance.user = instance.request_user
+            instance.save()
+        models.signals.post_save.connect(save_menu_group, sender=sender)
+
+
+class MenuItem(models.Model):
+
+    name = models.CharField(
+        max_length=100, db_index=True,
+        help_text='Menu item name.')
+
+    group = models.ForeignKey(MenuGroup, blank=True, null=True, on_delete=models.CASCADE)
+
+    url = models.CharField(
+        max_length=200, db_index=True,
+        help_text='Menu item name.')
+
+    public = models.BooleanField(default=False)
+
+    # Group order number
+    order = models.PositiveSmallIntegerField(default=0)
+
+    user = models.ForeignKey(
+        User, related_name="created_%(class)s_set", null=True, blank=True, db_index=True, on_delete=DO_NOTHING)
+
+    def __str__(self):
+        return '{} - {}'.format(self.group, self.name)
+
+
+@receiver(models.signals.post_save, sender=MenuItem)
+def save_menu_item(sender, instance, created, **kwargs):
+    """
+    Store created_by from request
+    """
+    if hasattr(instance, 'request_user'):
+        models.signals.post_save.disconnect(save_menu_item, sender=sender)
+        if created:
+            instance.user = instance.request_user
+            instance.save()
+        models.signals.post_save.connect(save_menu_item, sender=sender)

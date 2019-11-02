@@ -32,8 +32,8 @@ from apps.extract.models import Usage
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2019, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.3/LICENSE"
-__version__ = "1.2.3"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.3.0/LICENSE"
+__version__ = "1.3.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -64,7 +64,7 @@ class Employee(models.Model):
     has_noncompete = models.BooleanField(default=False)
     has_termination = models.BooleanField(default=False)
     has_benefits = models.BooleanField(default=False)
-    has_severance=models.BooleanField(default=False)
+    has_severance = models.BooleanField(default=False)
 
     class Meta:
         unique_together = (("name", "document"),)

@@ -41,8 +41,8 @@ from apps.task.tasks import BaseTask, ExtendedTask
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2019, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.3/LICENSE"
-__version__ = "1.2.3"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.3.0/LICENSE"
+__version__ = "1.3.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -84,7 +84,7 @@ class ProcessLeaseDocuments(BaseTask):
 
     @staticmethod
     @shared_task(base=ExtendedTask, bind=True)
-    def detect_and_process_lease_document(task:ExtendedTask, document_id: int, no_detect: bool):
+    def detect_and_process_lease_document(task: ExtendedTask, document_id: int, no_detect: bool):
         doc = Document.objects.get(pk=document_id)
         doc_text = doc.full_text
 

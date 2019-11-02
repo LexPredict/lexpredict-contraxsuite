@@ -25,7 +25,6 @@
 # -*- coding: utf-8 -*-
 
 import sys
-import jsonpickle
 from channels.layers import get_channel_layer
 from asgiref.sync import async_to_sync
 from apps.task.utils.logger import get_django_logger
@@ -33,8 +32,8 @@ from apps.websocket.channels.channel_message import ChannelMessage
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2019, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.3/LICENSE"
-__version__ = "1.2.3"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.3.0/LICENSE"
+__version__ = "1.3.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -50,7 +49,7 @@ class ChannelBroadcasting:
         try:
             message_obj = {
                 'type': 'send_message',
-                'content': jsonpickle.encode(message, unpicklable=False)
+                'content': message.to_dict()
             }
 
             layer = get_channel_layer()

@@ -29,8 +29,8 @@ import shutil
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2019, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.3/LICENSE"
-__version__ = "1.2.3"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.3.0/LICENSE"
+__version__ = "1.3.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -50,7 +50,6 @@ if __name__ == '__main__':
     os.makedirs(dst_lease, exist_ok=True)
     os.makedirs(dst_not_lease, exist_ok=True)
 
-
     def process_dir(dir_path: str, dst_lease: str, dst_not_lease: str):
         for dir_path, dir_names, file_names in os.walk(dir_path):
             print('Dir: ' + dir_path)
@@ -61,6 +60,5 @@ if __name__ == '__main__':
                     shutil.copy(src=os.path.join(dir_path, fn), dst=os.path.join(dst_lease, fn))
                 else:
                     shutil.copy(src=os.path.join(dir_path, fn), dst=os.path.join(dst_not_lease, fn))
-
 
     process_dir(src, dst_lease, dst_not_lease)

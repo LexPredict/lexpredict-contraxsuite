@@ -27,7 +27,7 @@ RUN echo "deb mirror://mirrors.ubuntu.com/mirrors.txt bionic main restricted uni
 	echo "deb https://artifacts.elastic.co/packages/6.x/apt stable main" | tee -a /etc/apt/sources.list.d/elastic-6.x.list && \
 	add-apt-repository -y ppa:openjdk-r/ppa && \
 	apt-get -y update --fix-missing && \
-	apt-get install -y openjdk-8-jdk postgresql-client-9.6 && \
+	apt-get install -y openjdk-8-jdk postgresql-client-11 && \
 	cat /contraxsuite_services/deploy/base/debian-requirements.txt \
     | grep -v -E "^postgresql$" \
     | grep -v -E "^#" \

@@ -27,8 +27,8 @@
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2019, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.3/LICENSE"
-__version__ = "1.2.3"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.3.0/LICENSE"
+__version__ = "1.3.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -37,3 +37,6 @@ __email__ = "support@contraxsuite.com"
 For CHANNEL_FIELDS channel:
 """
 CHANNEL_MSG_TYPE_FIELDS_UPDATED = 'fields_updated'
+CHANNEL_MSG_TYPE_FIELD_VALUE_SAVED = 'field_value_saved'
+CHANNEL_MSG_TYPE_FIELD_ANNOTATION_SAVED = 'field_annotation_saved'
+CHANNEL_MSG_TYPE_FIELD_ANNOTATION_DELETED = 'field_annotation_deleted'

@@ -37,8 +37,8 @@ import json
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2019, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.3/LICENSE"
-__version__ = "1.2.3"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.3.0/LICENSE"
+__version__ = "1.3.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -159,7 +159,7 @@ class LoggingAPIView(rest_framework.views.APIView):
             lgr = getattr(logger, level)
             lgr(msg_text, extra=msg_extra)
             return True
-        except Exception as _:
+        except Exception:
             trace = format_exc()
             exc_class, exception, _ = sys.exc_info()
             exception_str = '%s: %s' % (exc_class.__name__, str(exception))

@@ -29,8 +29,8 @@ from apps.project.models import Project
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2019, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.3/LICENSE"
-__version__ = "1.2.3"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.3.0/LICENSE"
+__version__ = "1.3.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -39,36 +39,40 @@ class SoftDeleteProjectSyncTask:
 
     def process(self,
                 project_id: int,
-                remove_all: bool,
-                excluded_ids: List[int],
-                delete_not_undelete: bool) -> Tuple[int, int]:
+                delete_pending: bool,
+                remove_all: bool = False,
+                included_ids: List[int] = list(),
+                excluded_ids: List[int] = list()
+                ) -> Tuple[int, int]:
         """
         Mark document as "soft deleted" or uncheck this flag.
         This "task" executes in the same thread unlike real celery tasks.
         :param project_id: documents' root project id
+        :param delete_pending: delete or uncheck "delete_pending" flag
         :param remove_all: remove all documents within the project
-        :param excluded_ids: document ids list
-        :param delete_not_undelete: delete or uncheck "delete_pending" flag
+        :param included_ids: document ids list to mark/unmark
+        :param excluded_ids: document ids list to leave as is
         :return: (projects deleted, documents deleted)
         """
         project = Project.all_objects.get(pk=project_id)
         if not project:
             raise Exception(f'project pk={project_id} was not found')
 
-        if remove_all or not delete_not_undelete:
-            project.delete_pending = delete_not_undelete
+        if remove_all or not delete_pending:
+            project.delete_pending = delete_pending
             project.save()
 
-        if delete_not_undelete and remove_all:
+        if delete_pending and remove_all:
             return 1, 0
 
         from apps.document.models import Document
-        doc_ids = Document.all_objects.filter(project=project_id). \
-            exclude(id__in=excluded_ids).values_list('id', flat=True)
+        documents = Document.all_objects.filter(project=project_id).exclude(id__in=excluded_ids)
+        if included_ids:
+            documents = documents.filter(id__in=included_ids)
+        doc_ids = documents.values_list('id', flat=True)
 
-        count = Document.all_objects.filter(project=project_id).exclude(
-            id__in=excluded_ids).update(delete_pending=delete_not_undelete)
+        count = documents.update(delete_pending=delete_pending)
         from apps.document import signals
         signals.fire_doc_soft_delete('SoftDeleteProjectSyncTask',
-                                     doc_ids, delete_not_undelete)
+                                     doc_ids, delete_pending)
         return 0, count

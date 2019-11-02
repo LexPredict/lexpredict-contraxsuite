@@ -2,7 +2,7 @@
 
 from django.db import migrations, connection
 
-from apps.rawdb.field_value_tables import doc_fields_table_name
+from apps.rawdb.repository.raw_db_repository import doc_fields_table_name
 
 
 def do_migrate(apps, schema_editor):

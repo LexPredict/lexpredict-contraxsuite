@@ -24,29 +24,32 @@
 """
 # -*- coding: utf-8 -*-
 
-import traceback
-from typing import Set, Generator, List, Any, Optional, Dict
+from typing import Generator, List, Any, Iterable
 
 from celery import shared_task
 from celery.exceptions import SoftTimeLimitExceeded
-from django.conf import settings
 from django.db import connection
 from django.db.models import Q
 from psycopg2 import InterfaceError, OperationalError
 
+from apps.common.collection_utils import chunks
 from apps.common.log_utils import ProcessLogger
 from apps.document.models import Document, DocumentType
-from apps.rawdb.field_value_tables import (
-    adapt_table_structure, doc_fields_table_name)
-from apps.task.tasks import ExtendedTask, CeleryTaskLogger, Task, purge_task, call_task_func
+from apps.document.constants import FieldSpec
 from apps.rawdb.app_vars import APP_VAR_DISABLE_RAW_DB_CACHING
-from apps.users.models import User
+from apps.rawdb.constants import DOC_NUM_PER_SUB_TASK, DOC_NUM_PER_MAIN_TASK
+from apps.rawdb.field_value_tables import (
+    adapt_table_structure)
+from apps.rawdb.repository.raw_db_repository import doc_fields_table_name
 from apps.rawdb.field_value_tables import cache_document_fields
+from apps.task.tasks import ExtendedTask, CeleryTaskLogger, Task, purge_task, call_task_func
+from apps.users.models import User
+import task_names
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2019, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.3/LICENSE"
-__version__ = "1.2.3"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.3.0/LICENSE"
+__version__ = "1.3.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -74,7 +77,6 @@ def there_are_non_indexed_docs_not_planned_to_index(
 
 def non_indexed_doc_ids_not_planned_to_index(
         document_type: DocumentType, pack_size: int = 100) -> Generator[List[int], None, None]:
-
     table_name = doc_fields_table_name(document_type.code)
 
     with connection.cursor() as cursor:
@@ -89,7 +91,8 @@ def non_indexed_doc_ids_not_planned_to_index(
                        '                         where name = %s \n'
                        '                         and own_status = %s\n'
                        '                         and date_work_start is null) tt on tt.doc_id = to_jsonb(dd.id) \n'
-                       'where dd.document_type_id = %s and df.document_id is null and tt.doc_id is null'
+                       'where dd.document_type_id = %s and df.document_id is null and tt.doc_id is null \n'
+                       'and dd.processed is true'
                        .format(table_name=table_name), [_get_reindex_task_name(), 'PENDING', document_type.uid])
 
         rows = cursor.fetchmany(pack_size)
@@ -108,7 +111,7 @@ def get_all_doc_ids(document_type_id, pack_size: int = 100) -> Generator[List[in
             rows = cursor.fetchmany(pack_size)
 
 
-def _get_all_doc_ids_not_planned_to_index(query_filter: str, params: list, pack_size: int)\
+def _get_all_doc_ids_not_planned_to_index(query_filter: str, params: list, pack_size: int) \
         -> Generator[List[int], None, None]:
     with connection.cursor() as cursor:
         cursor.execute('select d.id from document_document d \n'
@@ -117,7 +120,8 @@ def _get_all_doc_ids_not_planned_to_index(query_filter: str, params: list, pack_
                        '                         where name = %s \n'
                        '                         and own_status = %s\n'
                        '                         and date_work_start is null) tt on tt.doc_id = to_jsonb(d.id) \n'
-                       'where {0} and tt.doc_id is null'.format(query_filter),
+                       'where {0} and tt.doc_id is null and d.processed is true'
+                       .format(query_filter),
                        [_get_reindex_task_name(), 'PENDING'] + params)
 
         rows = cursor.fetchmany(pack_size)
@@ -147,7 +151,7 @@ def get_all_doc_ids_not_planned_to_index_by_status_pk(status_pk: Any, pack_size:
 
 
 @shared_task(base=ExtendedTask,
-             name=settings.TASK_NAME_MANUAL_REINDEX,
+             name=task_names.TASK_NAME_MANUAL_REINDEX,
              bind=True,
              soft_time_limit=6000,
              default_retry_delay=10,
@@ -161,7 +165,7 @@ def manual_reindex(task: ExtendedTask,
         task.log_info('Document caching to raw tables is disabled in Commons / App Vars')
         return
     msg = f'manual_reindex called for {document_type_code}. ' \
-          f'Task: {task.task_name}, main id: {task.main_task_id}'
+        f'Task: {task.task_name}, main id: {task.main_task_id}'
     log = CeleryTaskLogger(task)
     log.info(msg)
     adapt_tables_and_reindex(task, document_type_code, force, True)
@@ -179,60 +183,64 @@ def _reindex_document_ids_packets(task: ExtendedTask, ids_packets: Generator[Lis
 
 
 @shared_task(base=ExtendedTask,
-             name=settings.TASK_NAME_UPDATE_PROJECT_DOCUMENTS,
+             name=task_names.TASK_NAME_UPDATE_PROJECT_DOCUMENTS,
              bind=True,
              soft_time_limit=6000,
              default_retry_delay=10,
              retry_backoff=True,
              autoretry_for=(SoftTimeLimitExceeded, InterfaceError, OperationalError,),
              max_retries=3)
-def update_project_documents(task: ExtendedTask, project_pk: Any) -> None:
+def reindex_all_project_documents(task: ExtendedTask, project_pk: Any) -> None:
     if APP_VAR_DISABLE_RAW_DB_CACHING.val:
         task.log_info('Document caching to raw tables is disabled in Commons / App Vars')
         return
-    _reindex_document_ids_packets(task, get_all_doc_ids_not_planned_to_index_by_project_pk(project_pk, 20))
+    _reindex_document_ids_packets(task,
+                                  get_all_doc_ids_not_planned_to_index_by_project_pk(project_pk, DOC_NUM_PER_SUB_TASK))
 
 
 @shared_task(base=ExtendedTask,
-             name=settings.TASK_NAME_UPDATE_ASSIGNEE_FOR_DOCUMENTS,
+             name=task_names.TASK_NAME_UPDATE_ASSIGNEE_FOR_DOCUMENTS,
              bind=True,
              soft_time_limit=6000,
              default_retry_delay=10,
              retry_backoff=True,
              autoretry_for=(SoftTimeLimitExceeded, InterfaceError, OperationalError,),
              max_retries=3)
-def update_assignee_for_documents(task: ExtendedTask, assignee_pk: Any) -> None:
+def reindex_assignee_for_all_documents_in_system(task: ExtendedTask, assignee_pk: Any) -> None:
     if APP_VAR_DISABLE_RAW_DB_CACHING.val:
         task.log_info('Document caching to raw tables is disabled in Commons / App Vars')
         return
-    _reindex_document_ids_packets(task, get_all_doc_ids_not_planned_to_index_by_assignee_pk(assignee_pk, 20))
+    _reindex_document_ids_packets(task,
+                                  get_all_doc_ids_not_planned_to_index_by_assignee_pk(assignee_pk,
+                                                                                      DOC_NUM_PER_SUB_TASK))
 
 
 @shared_task(base=ExtendedTask,
-             name=settings.TASK_NAME_UPDATE_STATUS_NAME_FOR_DOCUMENTS,
+             name=task_names.TASK_NAME_UPDATE_STATUS_NAME_FOR_DOCUMENTS,
              bind=True,
              soft_time_limit=6000,
              default_retry_delay=10,
              retry_backoff=True,
              autoretry_for=(SoftTimeLimitExceeded, InterfaceError, OperationalError,),
              max_retries=3)
-def update_status_name_for_documents(task: ExtendedTask, status_pk: Any) -> None:
+def reindex_status_name_for_all_documents_in_system(task: ExtendedTask, status_pk: Any) -> None:
     if APP_VAR_DISABLE_RAW_DB_CACHING.val:
         task.log_info('Document caching to raw tables is disabled in Commons / App Vars')
         return
-    _reindex_document_ids_packets(task, get_all_doc_ids_not_planned_to_index_by_status_pk(status_pk, 20))
+    _reindex_document_ids_packets(task,
+                                  get_all_doc_ids_not_planned_to_index_by_status_pk(status_pk, DOC_NUM_PER_SUB_TASK))
 
 
 def any_other_reindex_task(self_task_id, document_type_code: str):
     return Task.objects.unready_main_tasks() \
-        .filter(name__in={settings.TASK_NAME_AUTO_REINDEX, settings.TASK_NAME_MANUAL_REINDEX}) \
+        .filter(name__in={task_names.TASK_NAME_AUTO_REINDEX, task_names.TASK_NAME_MANUAL_REINDEX}) \
         .exclude(pk=self_task_id) \
-        .filter(Q(kwargs__document_type_code=document_type_code)
-                | Q(kwargs__document_type_code__isnull=True))
+        .filter(Q(kwargs__document_type_code=document_type_code) |
+                Q(kwargs__document_type_code__isnull=True))
 
 
 @shared_task(base=ExtendedTask,
-             name=settings.TASK_NAME_AUTO_REINDEX,
+             name=task_names.TASK_NAME_AUTO_REINDEX,
              bind=True,
              soft_time_limit=6000,
              default_retry_delay=10,
@@ -256,7 +264,9 @@ def auto_reindex_not_tracked(task: ExtendedTask,
             force_fmt = ', forced' if force else ''
             task.log_info(f'Re-index from auto_reindex_not_tracked, {task.name}, '
                           f'for {document_type}{force_fmt}')
-            call_task_func(manual_reindex, (document_type.code, False), task_model.user_id)
+            call_task_func(manual_reindex,
+                           (document_type.code, False),
+                           task_model.user_id)
         else:
             if there_are_non_indexed_docs_not_planned_to_index(document_type, log) \
                     and not any_other_reindex_task(task.request.id, document_type.code).exists():
@@ -299,21 +309,22 @@ def adapt_tables_and_reindex(task: ExtendedTask,
             # and plan (re-plan) reindexing for all documents of this task.
             for prev_task in any_other_reindex_task(task.request.id, document_type.code):
                 purge_task(prev_task)
-            args = [(ids,) for ids in get_all_doc_ids(document_type.uid, 20)]
-            task.log_info(f'Initiating re-index for all documents of {document_type.code} ' +
+            args = [(ids,) for ids in get_all_doc_ids(document_type.uid, DOC_NUM_PER_SUB_TASK)]
+            task.log_info(f'Initiating re-index for all documents of {document_type.code} '
                           f' - forced tables recreating.')
             task.run_sub_tasks('Reindex set of documents',
                                cache_document_fields_for_doc_ids_tracked,
                                args)
         elif reindex_needed or force_reindex:
             comment = 'forced' if force_reindex else 'reindex needed'
-            task.log_info(f'Raw DB table for document type {document_type.code} ' +
-                          f'has been altered ({comment}), task "{task.task_name}".\n' +
+            task.log_info(f'Raw DB table for document type {document_type.code} '
+                          f'has been altered ({comment}), task "{task.task_name}".\n'
                           f'Initiating re-index for all documents of this document type.')
             # If we altered the field structure then we need to re-index all docs of this type.
             # If no need to force - we plan re-index tasks only
             # for those documents for which they are not planned yet
-            args = [(ids,) for ids in get_all_doc_ids_not_planned_to_index_by_doc_type(document_type.uid, 20)]
+            args = [(ids,) for ids in get_all_doc_ids_not_planned_to_index_by_doc_type(document_type.uid,
+                                                                                       DOC_NUM_PER_SUB_TASK)]
             task.run_sub_tasks('Reindex set of documents',
                                cache_document_fields_for_doc_ids_tracked, args)
         else:
@@ -325,24 +336,52 @@ def adapt_tables_and_reindex(task: ExtendedTask,
             # It makes sense to only plan re-indexing for those docs which are:
             # - not indexed
             # - have no re-index planned for them
-            task.log_info(f'Initiating re-index for all documents of {document_type.code} ' +
+            task.log_info(f'Initiating re-index for all documents of {document_type.code} '
                           f' - index not planned.')
-            args = [(ids,) for ids in non_indexed_doc_ids_not_planned_to_index(document_type, 20)]
+            args = [(ids,) for ids in non_indexed_doc_ids_not_planned_to_index(document_type, DOC_NUM_PER_SUB_TASK)]
             task.run_sub_tasks('Reindex set of documents', cache_document_fields_for_doc_ids_tracked, args)
 
 
-def cache_document_fields_for_doc_ids(task: ExtendedTask, doc_ids: Set):
-    # This task is added to exclude-from-tracking list and is not seen in task list at /advanced
-    # Also if running it as a aub-task it will not participate in the parent task's progress.
+def cache_document_fields_for_doc_ids(task: ExtendedTask, doc_ids: Iterable, changed_by_user_id: int = None,
+                                      cache_system_fields: FieldSpec = True,
+                                      cache_generic_fields: FieldSpec = True,
+                                      cache_user_fields: bool = True):
     log = CeleryTaskLogger(task)
+    changed_by_user = User.objects.get(pk=changed_by_user_id) if changed_by_user_id is not None else None
     for doc in Document.all_objects.filter(pk__in=doc_ids) \
             .select_related('document_type', 'assignee', 'status'):  # type: Document
         try:
-            cache_document_fields(log, doc)
+            cache_document_fields(log, doc, changed_by_user=changed_by_user,
+                                  cache_system_fields=cache_system_fields,
+                                  cache_generic_fields=cache_generic_fields,
+                                  cache_user_fields=cache_user_fields)
         except Document.DoesNotExist:
             pass
 
 
+@shared_task(name=task_names.TASK_NAME_CACHE_DOC_NOT_TRACKED,
+             base=ExtendedTask,
+             bind=True,
+             soft_time_limit=6000,
+             default_retry_delay=10,
+             retry_backoff=True,
+             autoretry_for=(SoftTimeLimitExceeded, InterfaceError, OperationalError,),
+             max_retries=3)
+def cache_document_fields_for_doc_ids_not_tracked(task: ExtendedTask, doc_ids: List,
+                                                  changed_by_user_id: int = None,
+                                                  cache_system_fields: FieldSpec = True,
+                                                  cache_generic_fields: FieldSpec = True,
+                                                  cache_user_fields: bool = True):
+    """
+    Cache document fields in a loop, not parallel.
+    "Not tracked" - means it is in a list of tasks not shown in the admin task lists if started as the main task.
+    """
+    cache_document_fields_for_doc_ids(task, doc_ids, changed_by_user_id,
+                                      cache_system_fields=cache_system_fields,
+                                      cache_generic_fields=cache_generic_fields,
+                                      cache_user_fields=cache_user_fields)
+
+
 @shared_task(base=ExtendedTask,
              bind=True,
              soft_time_limit=6000,
@@ -350,54 +389,52 @@ def cache_document_fields_for_doc_ids(task: ExtendedTask, doc_ids: Set):
              retry_backoff=True,
              autoretry_for=(SoftTimeLimitExceeded, InterfaceError, OperationalError,),
              max_retries=3)
-def cache_document_fields_for_doc_ids_not_tracked(task: ExtendedTask, doc_ids: Set):
-    cache_document_fields_for_doc_ids(task, doc_ids)
+def cache_document_fields_for_doc_ids_tracked(task: ExtendedTask, doc_ids: List, changed_by_user_id: int = None,
+                                              cache_system_fields: FieldSpec = True,
+                                              cache_generic_fields: FieldSpec = True,
+                                              cache_user_fields: bool = True):
+    """
+    Cache document fields in a loop, not parallel.
+    "Tracked" - means if it is startedfrom apps.rawdb.field_value_tables import cache_document_fields
+    """
+    cache_document_fields_for_doc_ids(task, doc_ids, changed_by_user_id,
+                                      cache_system_fields=cache_system_fields,
+                                      cache_generic_fields=cache_generic_fields,
+                                      cache_user_fields=cache_user_fields)
 
 
 @shared_task(base=ExtendedTask,
+             name='Index Documents',
              bind=True,
              soft_time_limit=6000,
              default_retry_delay=10,
              retry_backoff=True,
              autoretry_for=(SoftTimeLimitExceeded, InterfaceError, OperationalError,),
              max_retries=3)
-def cache_document_fields_for_doc_ids_tracked(task: ExtendedTask, doc_ids: Set):
-    cache_document_fields_for_doc_ids(task, doc_ids)
+def index_documents(task: ExtendedTask, doc_ids: List, changed_by_user_id,
+                    cache_system_fields: FieldSpec = True,
+                    cache_generic_fields: FieldSpec = True,
+                    cache_user_fields: bool = True):
+    """
+    Index documents (cache document fields) in parallel. Document ids set is split to chunks and a
+    sub-task is started for each sub-list.
+    """
+    args = [(sub_list, changed_by_user_id, cache_system_fields, cache_generic_fields, cache_user_fields)
+            for sub_list in chunks(doc_ids, DOC_NUM_PER_SUB_TASK)]
+    task.run_sub_tasks('Reindex documents', cache_document_fields_for_doc_ids_tracked, args)
 
 
-@shared_task(base=ExtendedTask,
-             bind=True,
-             soft_time_limit=6000,
-             default_retry_delay=10,
-             retry_backoff=True,
-             autoretry_for=(SoftTimeLimitExceeded, InterfaceError, OperationalError,),
-             max_retries=3)
-def cache_fields_for_docs_queryset(task: ExtendedTask,
-                                   doc_qr,
-                                   changed_by_user: User = None,
-                                   document_initial_load: bool = False,
-                                   generic_fields_changed: bool = True,
-                                   user_fields_changed: bool = True,
-                                   pre_detected_field_values: Optional[Dict[str, Any]] = None,
-                                   old_field_values: Dict[int, Dict[str, Any]] = None):
-    from apps.rawdb.field_value_tables import cache_document_fields
-    old_field_values = old_field_values or {}
-    for doc in doc_qr.select_related('document_type', 'project', 'status'):  # type: Document
-        log = CeleryTaskLogger(task)
-        cache_document_fields(
-            log=log,
-            document=doc,
-            cache_generic_fields=generic_fields_changed,
-            cache_user_fields=user_fields_changed,
-            pre_detected_field_codes_to_suggested_values=pre_detected_field_values,
-            changed_by_user=changed_by_user,
-            document_initial_load=document_initial_load,
-            old_field_values=old_field_values.get(doc.pk))
-
-
-def get_brief_call_stack() -> str:
-    lines = []  # type: List[str]
-    for line in traceback.format_stack():
-        if 'site-packages' not in line:
-            lines.append(line.strip())
-    return '\n'.join(lines)
+def plan_reindex_tasks_in_chunks(all_doc_ids: Iterable, changed_by_user_id: int,
+                                 cache_system_fields: FieldSpec = True,
+                                 cache_generic_fields: FieldSpec = True,
+                                 cache_user_fields: bool = True):
+    """
+    Plans document reindexing. Splits the provided set of doc ids to chunks and runs N main tasks which will be
+    displayed in the admin task list. Splitting is done to avoid overloading rabbitmq with possible too large
+    argument list. Started tasks may split their processing to any number of sub-tasks to parallelize the work.
+    """
+    for doc_ids_chunk in chunks(all_doc_ids, DOC_NUM_PER_MAIN_TASK):
+        call_task_func(index_documents,
+                       (doc_ids_chunk, changed_by_user_id,
+                        cache_system_fields, cache_generic_fields, cache_user_fields),
+                       changed_by_user_id)

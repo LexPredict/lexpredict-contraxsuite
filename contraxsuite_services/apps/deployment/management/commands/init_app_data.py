@@ -31,7 +31,7 @@ import shutil
 import traceback
 from os import listdir, mkdir, path
 from tempfile import NamedTemporaryFile
-from typing import Dict, Tuple, Any, Callable, Optional, Type
+from typing import Dict, Tuple, Any, Callable, Optional
 from zipfile import ZipFile
 import pandas as pd
 
@@ -43,16 +43,16 @@ from django.utils.timezone import now
 
 # Project imports
 from apps.common.models import AppVar
-from apps.deployment.app_data import load_courts, load_terms, load_geo_entities, get_terms_data_urls, \
-    get_courts_data_urls, get_geoentities_data_urls, load_df
+from apps.deployment.app_data import load_courts, load_terms, load_geo_entities, \
+    get_terms_data_urls, get_courts_data_urls, get_geoentities_data_urls, load_df
 from apps.document.models import DocumentType, DocumentField
 from apps.extract import dict_data_cache
 from apps.extract.models import Court, Term, GeoEntity
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2019, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.3/LICENSE"
-__version__ = "1.2.3"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.3.0/LICENSE"
+__version__ = "1.3.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -269,7 +269,7 @@ class Command(BaseCommand):
     def add_arguments(self, parser) -> None:
         parser.add_argument('--data-dir', required=False, type=str)
         parser.add_argument('--upload-dict-data-from-repository', default=False, action='store_true')
-        parser.add_argument('--arch-files',  default=False, action='store_true')
+        parser.add_argument('--arch-files', default=False, action='store_true')
 
     @classmethod
     def get_proceed_dir(cls, data_dir):

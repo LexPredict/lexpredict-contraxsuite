@@ -6,16 +6,16 @@
   <script type="text/javascript">
     $(document).ready(function () {
       var datafields = [
-        { name: 'document_a__pk', type: 'int' },
         { name: 'document_a__name', type: 'string' },
-        { name: 'document_a__description', type: 'string' },
-        { name: 'document_a__document_type', type: 'string' },
+        { name: 'document_a__project__name', type: 'string' },
+        { name: 'document_a__document_type__title', type: 'string' },
         { name: 'document_a__url', type: 'string' },
-        { name: 'document_b__pk', type: 'int' },
+        { name: 'project_a__url', type: 'string' },
         { name: 'document_b__name', type: 'string' },
-        { name: 'document_b__description', type: 'string' },
-        { name: 'document_b__document_type', type: 'string' },
+        { name: 'document_b__project__name', type: 'string' },
+        { name: 'document_b__document_type__title', type: 'string' },
         { name: 'document_b__url', type: 'string' },
+        { name: 'project_b__url', type: 'string' },
         { name: 'similarity', type: 'float' }
       ];
       var document_a_name_renderer = function(index, columnfield, value, defaulthtml, columnproperties, row){
@@ -24,31 +24,33 @@
       var document_b_name_renderer = function(index, columnfield, value, defaulthtml, columnproperties, row){
         return linkFormatter(defaulthtml, row.document_b__url, value);
       };
+      var project_a_renderer = function(index, columnfield, value, defaulthtml, columnproperties, row){
+        return linkFormatter(defaulthtml, row.project_a__url, value);
+      };
+      var project_b_renderer = function(index, columnfield, value, defaulthtml, columnproperties, row){
+        return linkFormatter(defaulthtml, row.project_b__url, value);
+      };
       var columns = [
-        { text: 'ID', datafield: 'document_a__pk', width: 50,
-          align: 'center', cellsalign: 'center',
-          columngroup: 'Document A' },
         { text: 'Name', datafield: 'document_a__name', width: 200,
           align: 'center', cellsalign: 'left',
           cellsrenderer: document_a_name_renderer,
           columngroup: 'Document A' },
-        { text: 'Description', datafield: 'document_a__description', width: 'auto',
+        { text: 'Project', datafield: 'document_a__project__name', width: 'auto',
           enabletooltips: true, columngroup: 'Document A',
-          align: 'center', cellsalign: 'center' },
-        { text: 'Type', datafield: 'document_a__document_type', width: 100,
+          align: 'center', cellsalign: 'center',
+          cellsrenderer: project_a_renderer },
+        { text: 'Type', datafield: 'document_a__document_type__title', width: 100,
           align: 'center', cellsalign: 'center',
           columngroup: 'Document A' },
-        { text: 'ID', datafield: 'document_b__pk', width: 50,
-          align: 'center', cellsalign: 'center',
-          columngroup: 'Document B' },
         { text: 'Name', datafield: 'document_b__name', width: 200,
           align: 'center', cellsalign: 'left',
           cellsrenderer: document_b_name_renderer,
           columngroup: 'Document B' },
-        { text: 'Description', datafield: 'document_b__description', width: 'auto',
+        { text: 'Project', datafield: 'document_b__project__name', width: 'auto',
           enabletooltips: true, columngroup: 'Document B',
-          align: 'center', cellsalign: 'center' },
-        { text: 'Type', datafield: 'document_b__document_type', width: 100,
+          align: 'center', cellsalign: 'center',
+          cellsrenderer: project_b_renderer },
+        { text: 'Type', datafield: 'document_b__document_type__title', width: 100,
           align: 'center', cellsalign: 'center',
           columngroup: 'Document B' },
         { text: 'Similarity', datafield: 'similarity', width: 80,

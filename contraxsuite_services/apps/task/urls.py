@@ -27,18 +27,15 @@
 # Future imports
 from __future__ import absolute_import, unicode_literals
 
-# Django imports
-from sys import path
-
 from django.conf.urls import url
 
 # Project imports
-from apps.task import views, api
+from apps.task import views
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2019, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.3/LICENSE"
-__version__ = "1.2.3"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.3.0/LICENSE"
+__version__ = "1.3.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -128,5 +125,4 @@ urlpatterns = [
         views.DumpFixturesView.as_view(),
         name='dump-fixtures',
     ),
-
 ]

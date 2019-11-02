@@ -79,12 +79,14 @@ CELERY_LOG_FILE_PATH = '/data/logs/celery-{0}.log'.format(platform.node())
 LOG_FILE_PATH = '/data/logs/django-{0}.log'.format(platform.node())
 DB_LOG_FILE_PATH = '/data/logs/db-{0}.log'.format(platform.node())
 FRONT_LOG_FILE_PATH = '/data/logs/frontend-{0}.log'.format(platform.node())
+DEBUG_STACK_DUMP_DIR = '/data/logs'
 
 LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,
     'formatters': {
         'verbose': {
+            '()': 'contraxsuite_logging.ContraxsuiteTextFormatter',
             'format': '%(levelname)-7s %(asctime)s | %(message)s'
         },
         'json': {
@@ -162,10 +164,15 @@ LOGGING = {
             'level': 'INFO',
             'propagate': True,
         },
+        'celery.app.trace': {
+            'handlers': ['json_celery', 'text_celery'],
+            'level': 'INFO',
+            'propagate': True,
+        },
         'django.db.backends': {
             'handlers': ['text_db', 'json_db'],  # Quiet by default!
             'propagate': False,
-            'level': 'ERROR',
+            'level': 'DEBUG' if DEBUG_SQL else 'ERROR',
         },
         'frontend': {
             'handlers': ['json_frontend'],

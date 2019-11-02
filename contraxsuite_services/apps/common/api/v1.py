@@ -29,21 +29,25 @@ import json
 # Third-party imports
 from constance.admin import ConstanceForm, get_values
 from rest_framework import serializers, routers, viewsets
-from rest_framework.exceptions import APIException
+from rest_framework.exceptions import APIException, ValidationError
 from rest_framework.response import Response
+from rest_framework.permissions import BasePermission, IsAuthenticated
 import rest_framework.views
 
 # Django imports
 from django.conf.urls import url
-from apps.common.models import Action, AppVar, ReviewStatusGroup, ReviewStatus
+from django.db.models import Q
+
+# Project imports
+from apps.common.models import Action, AppVar, ReviewStatusGroup, ReviewStatus, MenuGroup, MenuItem
 import apps.common.mixins
 from apps.common.api.permissions import ReviewerReadOnlyPermission
 from apps.users.api.v1 import UserSerializer
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2019, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.3/LICENSE"
-__version__ = "1.2.3"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.3.0/LICENSE"
+__version__ = "1.3.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -323,10 +327,90 @@ class ActionViewSet(apps.common.mixins.JqListAPIMixin, viewsets.ModelViewSet):
     permission_classes = (ReviewerReadOnlyPermission,)
 
 
+# --------------------------------------------------------
+# MenuGroup Views
+# --------------------------------------------------------
+
+class MenuItemPermissions(BasePermission):
+
+    def has_object_permission(self, request, view, obj):
+        if not request.user.is_superuser:
+            return obj.user == request.user and not obj.public
+        return True
+
+
+class MenuGroupSerializer(serializers.ModelSerializer):
+    user = serializers.PrimaryKeyRelatedField(read_only=True)
+
+    class Meta:
+        model = MenuGroup
+        fields = ['pk', 'name', 'public', 'order', 'user']
+
+    def validate_public(self, value):
+        if not self.context['request'].user.is_superuser and value is True:
+            raise ValidationError('Non-admin users cannot create public link groups.')
+        return value
+
+
+class MenuGroupViewSet(apps.common.mixins.APIFormFieldsMixin, viewsets.ModelViewSet):
+    """
+    list: MenuGroup List
+    retrieve: Retrieve MenuGroup
+    create: Create MenuGroup
+    update: Update MenuGroup
+    partial_update: Partial Update MenuGroup
+    delete: Delete MenuGroup
+    """
+    permission_classes = (IsAuthenticated, MenuItemPermissions)
+    serializer_class = MenuGroupSerializer
+
+    def get_queryset(self):
+        qs = MenuGroup.objects.all()
+        if not self.request.user.is_superuser:
+            qs = qs.filter(Q(public=False, user=self.request.user) |
+                           Q(public=True))
+        return qs
+
+
+# --------------------------------------------------------
+# MenuItem Views
+# --------------------------------------------------------
+
+class MenuItemSerializer(MenuGroupSerializer):
+
+    class Meta:
+        model = MenuItem
+        fields = ['pk', 'name', 'url', 'group', 'public', 'order', 'user']
+
+
+class MenuItemViewSet(MenuGroupViewSet):
+    """
+    list: MenuItem List
+    retrieve: Retrieve MenuItem
+    create: Create MenuItem
+    update: Update MenuItem
+    partial_update: Partial Update MenuItem
+    delete: Delete MenuItem
+    """
+    serializer_class = MenuItemSerializer
+
+    def get_queryset(self):
+        qs = MenuItem.objects.select_related('group')
+        if not self.request.user.is_superuser:
+            qs = qs.filter(Q(public=False, user=self.request.user) |
+                           Q(public=True))\
+                .filter(Q(group__public=False, group__user=self.request.user) |
+                        Q(group__public=True) |
+                        Q(group__isnull=True))
+        return qs
+
+
 router = routers.DefaultRouter()
 router.register(r'actions', ActionViewSet, 'actions')
 router.register(r'review-status-groups', ReviewStatusGroupViewSet, 'review-status-group')
 router.register(r'review-statuses', ReviewStatusViewSet, 'review-status')
+router.register(r'menu-groups', MenuGroupViewSet, 'menu-group')
+router.register(r'menu-items', MenuItemViewSet, 'menu-item')
 
 urlpatterns = [
     url(r'^app-config/$', AppConfigAPIView.as_view(),

@@ -7,6 +7,30 @@ export RAM_MB=$(( $(awk '/MemTotal/ {print $2}' /proc/meminfo) / 1024 ))
 export RAM_HALF_MB=$(( ${RAM_MB} / 2 ))
 export RAM_QUARTER_MB=$(( ${RAM_MB} / 4 ))
 
+export POSTGRES_CPUS=$(( 4*${CPU_CORES}/5  ))
+export POSTGRES_RAM=$(( 3*${RAM_MB}/4  ))
+export POSTGRES_MAX_CONNECTIONS=1000
+export POSTGRES_SHARED_BUFFERS=$(( ${POSTGRES_RAM}/4 ))MB
+export POSTGRES_EFFECTIVE_CACHE_SIZE=$(( 3*${POSTGRES_RAM}/4 ))MB
+export POSTGRES_MAINTENANCE_WORK_MEM=$(( ${POSTGRES_RAM}/16 ))MB
+
+export POSTGRES_DISK=hdd
+
+if [[ ${POSTGRES_DISK} = "ssd" ]]; then
+    export POSTGRES_RANDOM_PAGE_COST=1.1
+    export POSTGRES_EFFECTIVE_IO_CONCURRENCY=200
+else
+    export POSTGRES_RANDOM_PAGE_COST=4
+    export POSTGRES_EFFECTIVE_IO_CONCURRENCY=2
+fi
+
+export POSTGRES_PARALLEL_WORKERS_PER_GATHER=$(( (${POSTGRES_CPUS}+2-1)/2 ))  # ceil (cpus / 2)
+
+# ((RAM - shared_buffers) / (max_connections * 3) / max_parallel_workers_per_gather)
+# + some magic
+export POSTGRES_WORK_MEM=$(( 3*1024*${POSTGRES_RAM}/(2*4*${POSTGRES_MAX_CONNECTIONS}*3*((${POSTGRES_CPUS}+2-1)/2))  ))kB
+
+
 export CONTRAXSUITE_ROOT=../contraxsuite_services
 
 export DOCKER_HOST_NAME_PG=contrax-db
@@ -38,6 +62,7 @@ export DOCKER_DJANGO_EMAIL_BACKEND=django.core.mail.backends.console.EmailBacken
 export DOCKER_DJANGO_EMAIL_HOST=localhost
 # Base path should start and end with slashes
 export DOCKER_DJANGO_BASE_PATH=/advanced/
+export DOCKER_DJANGO_BASE_PATH_STRIPPED=${DOCKER_DJANGO_BASE_PATH%/}
 export DOCKER_DJANGO_EMAIL_USE_TLS=False
 export DOCKER_DJANGO_EMAIL_PORT=587
 export DOCKER_DJANGO_EMAIL_HOST_USER=
@@ -70,6 +95,7 @@ export DOCKER_WEBDAV_AUTH_PASSWORD=password
 
 export DOCKER_FLOWER_BASE_PATH=flower
 export DOCKER_HOST_NAME_FLOWER=contrax-flower
+export FLOWER_REPLICAS=0
 
 # This is required to be the same user id as WebDAV storage reads/writes with.
 # For bytemark/webdav:2.4 its id is 82
@@ -99,11 +125,8 @@ export DOCKER_POSTGRES_MEMORY=6G
 export DOCKER_POSTGRES_CPU_RESERVATIONS=1
 export DOCKER_POSTGRES_MEMORY_RESERVATIONS=2G
 
-export DOCKER_POSTGRES_CONFIG_FILE=deploy/postgres_params_high.conf
-export DOCKER_POSTGRES_CONFIG=
-
-export DOCKER_JUPYTER_CPUS=1
-export DOCKER_JUPYTER_MEMORY=4G
+export DOCKER_JUPYTER_CPUS=$(( ${CPU_CORES}/5  ))
+export DOCKER_JUPYTER_MEMORY=$(( ${RAM_MB}/5  ))M
 export DOCKER_FLOWER_CPUS=1
 export DOCKER_FLOWER_MEMORY=2G
 export DOCKER_ELASTICSEARCH_CPU=2
@@ -152,5 +175,4 @@ else
     export CONTRAXSUITE_IMAGE_FULL_NAME=${DOCKER_REGISTRY}/${CONTRAXSUITE_IMAGE}
 fi
 
-export DOCKER_POSTGRES_CONFIG=`cat ${DOCKER_POSTGRES_CONFIG_FILE}`
-export DOCKER_POSTGRES_LOG_MIN_DUR_STMT=5000
+export DOCKER_POSTGRES_LOG_MIN_DUR_STMT=-1

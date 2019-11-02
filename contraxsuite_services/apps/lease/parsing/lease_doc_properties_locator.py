@@ -36,8 +36,8 @@ from lexnlp.extract.en.entities.nltk_maxent import get_companies
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2019, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.3/LICENSE"
-__version__ = "1.2.3"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.3.0/LICENSE"
+__version__ = "1.3.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -272,12 +272,10 @@ class FieldDetector:
                 # print('Update Time: {0:.2f}'.format(1000 * (time.time() - time_start)))
 
     def process(self, sentence: str, fields_dst: Dict[str, Any]):
-        time_start = time.time()
         if self.exclude:
             for m in self.exclude(sentence):
                 if m:
                     return
-        # print('Regexp: {0}'.format(self.select_re))
 
         if self.pre_process:
             sentence = self.pre_process(sentence)
@@ -296,7 +294,6 @@ class FieldDetector:
                     FieldDetector._update(fields_dst, self.fill_fields)
             except Exception:
                 continue
-                # print('Processing Time: {0:.2f}'.format(1000 * (time.time() - time_start)))
 
 
 # Order makes sense - less accurate regexps should go first and more detailed should follow them.

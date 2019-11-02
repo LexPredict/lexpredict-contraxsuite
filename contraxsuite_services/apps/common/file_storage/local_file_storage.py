@@ -37,8 +37,8 @@ from apps.common.streaming_utils import copy_data
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2019, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.3/LICENSE"
-__version__ = "1.2.3"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.3.0/LICENSE"
+__version__ = "1.3.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -73,10 +73,14 @@ class ContraxsuiteLocalFileStorage(ContraxsuiteFileStorage):
         path = os.path.join(self.root_dir, rel_path)
         os.mkdir(path)
 
-    def write_file(self, rel_file_path: str, contents_file_like_object: BinaryIO):
+    def write_file(self, rel_file_path: str, contents_file_like_object: BinaryIO, content_length: int = None):
         path = os.path.join(self.root_dir, rel_file_path)
         with open(path, 'wb') as dst_f:
             copy_data(contents_file_like_object, dst_f)
+
+    def document_exists(self, rel_path: str):
+        abs_path = os.path.join(self.root_dir, self.documents_path, rel_path.lstrip('/'))
+        return os.path.exists(abs_path)
 
     def list(self, rel_file_path: str) -> List[str]:
         file_list = []
@@ -96,9 +100,23 @@ class ContraxsuiteLocalFileStorage(ContraxsuiteFileStorage):
         """
         file_path = os.path.join(self.root_dir, rel_file_path)
         if not os.path.exists(file_path):
-            raise Exception(f'LocalFileStorage: file "{rel_file_path}"' +
-                            f' (mapped on "{file_path}") is not found')
+            raise FileNotFoundError(f'LocalFileStorage: file "{rel_file_path}"' +
+                                    f' (mapped on "{file_path}") is not found')
         os.remove(file_path)
+
+    def rename_file(self, old_rel_path: str, new_rel_path: str):
+        """
+        Rename files by absolute path (file system) or full URI
+        """
+        old_path = os.path.join(self.root_dir, old_rel_path)
+        if not os.path.exists(old_path):
+            raise FileNotFoundError(f'LocalFileStorage.rename: source file "{old_rel_path}"' +
+                                    f' (mapped on "{old_path}") is not found')
+        new_path = os.path.join(self.root_dir, new_rel_path)
+        if os.path.exists(new_path):
+            raise Exception(f'LocalFileStorage.rename: dest file "{new_rel_path}"' +
+                            f' (mapped on "{new_path}") already exists')
+        os.rename(old_path, new_path)
 
     @contextmanager
     def get_as_local_fn(self, rel_file_path):

@@ -59,7 +59,7 @@ services:
 #     - 127.0.0.1:56720:5672 #
 
   contrax-db:
-    image: postgres:9.6
+    image: postgres:11.5
     environment:
       - "PGDATA=/var/lib/contraxsuite-postgres"
       - "POSTGRES_USER=${DOLLAR}{DOCKER_PG_USER}"
@@ -68,7 +68,7 @@ services:
       - "POSTGRES_MAX_BACKUP_NUMBER=${DOLLAR}{DOCKER_PG_MAX_BACKUP_NUMBER}"
     command: bash -c "service cron start && /usr/local/bin/docker-entrypoint.sh postgres -c config_file=/contraxsuite/postgresql.conf"
     volumes:
-      - postgres_data:/var/lib/contraxsuite-postgres
+      - postgres_data_11:/var/lib/contraxsuite-postgres
       - backup:/backup
     configs:
       - source: pg_${PG_CONFIG_VERSION}
@@ -460,7 +460,7 @@ volumes:
   contraxsuite_internal_nginx_logs:
   contraxsuite_logrotate:
   contraxsuite_data_update:
-  postgres_data:
+  postgres_data_11:
   rabbitmq_data:
   elasticsearch_data:
   redis_data:

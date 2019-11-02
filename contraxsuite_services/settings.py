@@ -368,7 +368,7 @@ ACCOUNT_LOGIN_ATTEMPTS_TIMEOUT = 5
 # Set the allauth adapter to be the 2FA adapter
 # ACCOUNT_ADAPTER = 'allauth_2fa.adapter.OTPAdapter'
 ACCOUNT_ADAPTER = 'apps.users.adapters.AccountAdapter'
-ACCOUNT_FORMS = {'login': 'auth.CustomLoginForm'}
+ACCOUNT_FORMS = {'login': 'apps.users.forms.CustomLoginForm'}
 SOCIALACCOUNT_ADAPTER = 'apps.users.adapters.SocialAccountAdapter'
 
 # Custom user app defaults
@@ -393,89 +393,86 @@ CELERY_RESULT_EXPIRES = 0
 
 CELERY_QUEUE_SERIAL = 'serial'
 
-TASK_NAME_AUTO_REINDEX = 'apps.rawdb.tasks.auto_reindex'
-
-TASK_NAME_MANUAL_REINDEX = 'RawDB: Reindex'
-
-TASK_NAME_UPDATE_PROJECT_DOCUMENTS = 'RawDB: Update project documents'
-
-TASK_NAME_UPDATE_ASSIGNEE_FOR_DOCUMENTS = 'RawDB: Update assignee for documents'
-
-TASK_NAME_UPDATE_STATUS_NAME_FOR_DOCUMENTS = 'RawDB: Update status name for documents'
-
-TASK_NAME_IMANAGE_TRIGGER_SYNC = 'apps.imanage_integration.tasks.trigger_imanage_sync'
-
-TASK_NAME_TRIGGER_DIGESTS = 'apps.notifications.tasks.trigger_digests'
+import task_names
 
 CELERY_BEAT_SCHEDULE = {
-    # Backend cleanup is disabled to not miss debug info after long loading
-    # 'advanced_celery.backend_cleanup': {
-    #     'task': 'advanced_celery.clean_tasks',
-    #     'schedule': crontab(hour=7, minute=30, day_of_week='mon')
-    # },
     'advanced_celery.track_tasks': {
-        'task': 'advanced_celery.track_tasks',
+        'task': task_names.TASK_NAME_TRACK_TASKS,
         'schedule': 10.0,
         'options': {'queue': CELERY_QUEUE_SERIAL, 'expires': 10},
     },
-    'advanced_celery.clean_sub_tasks': {
-        'task': 'advanced_celery.clean_sub_tasks',
+    'advanced_celery.clean_tasks_periodic': {
+        'task': task_names.TASK_NAME_CLEAN_TASKS_PERIODIC,
         'schedule': 60.0,
         'options': {'queue': CELERY_QUEUE_SERIAL, 'expires': 60},
     },
     'advanced_celery.retrain_dirty_fields': {
-        'task': 'advanced_celery.retrain_dirty_fields',
+        'task': task_names.TASK_NAME_RETRAIN_DIRTY_TASKS,
         'schedule': 60.0,
         'options': {'queue': CELERY_QUEUE_SERIAL, 'expires': 60},
     },
     'advanced_celery.track_session_completed': {
-        'task': 'advanced_celery.track_session_completed',
+        'task': task_names.TASK_NAME_TRACK_SESSION_COMPLETED,
         'schedule': 120.0,
         'options': {'queue': CELERY_QUEUE_SERIAL, 'expires': 120},
     },
     'deployment.usage_stats': {
-        'task': 'deployment.usage_stats',
+        'task': task_names.TASK_NAME_USAGE_STATS,
         'schedule': 60 * 60 * 12,
         'options': {'queue': 'default', 'expires': 60 * 60 * 12},
     },
     'apps.rawdb.tasks.adapt_table_and_reindex_doc_type': {
-        'task': TASK_NAME_AUTO_REINDEX,
+        'task': task_names.TASK_NAME_AUTO_REINDEX,
         'schedule': 60,
         'options': {'queue': CELERY_QUEUE_SERIAL, 'expires': 60},
     },
     'apps.imanage_integration.tasks.trigger_imanage_sync': {
-        'task': TASK_NAME_IMANAGE_TRIGGER_SYNC,
+        'task': task_names.TASK_NAME_IMANAGE_TRIGGER_SYNC,
         'schedule': 60,
-        'options': {'queue': 'serial', 'expires': 60},
+        'options': {'queue': CELERY_QUEUE_SERIAL, 'expires': 60},
     },
     'apps.notifications.trigger_digests': {
-        'task': TASK_NAME_TRIGGER_DIGESTS,
+        'task': task_names.TASK_NAME_TRIGGER_DIGESTS,
         'schedule': 5,
-        'options': {'queue': 'serial', 'expires': 5},
-    }
+        'options': {'queue': CELERY_QUEUE_SERIAL, 'expires': 5},
+    },
+    'apps.notification.tasks.check_email_pool': {
+        'task': task_names.TASK_NAME_CHECK_EMAIL_POOL,
+        'schedule': 15,
+        'options': {'queue': CELERY_QUEUE_SERIAL, 'expires': 15},
+    },
+    'apps.common.tasks.delete_method_stats': {
+        'task': task_names.TASK_NAME_DELETE_METHOD_STATS,
+        'schedule': crontab(minute=0, hour=0),
+        'options': {'queue': CELERY_QUEUE_SERIAL},
+    },
+    'apps.imanage_integration.tasks.init_method_stats_collectors': {
+        'task': task_names.TASK_NAME_INIT_METHOD_STATS_COLLECTORS,
+        'schedule': 60,
+        'options': {'queue': CELERY_QUEUE_SERIAL, 'expires': 60},
+    },
 }
 
 EXCLUDE_FROM_TRACKING = {
-    'celery.chord_unlock',
-    'advanced_celery.track_tasks',
-    'advanced_celery.track_session_completed',
-    'advanced_celery.update_main_task',
-    'advanced_celery.clean_sub_tasks',
-    'advanced_celery.clean_dead_tasks',
-    'advanced_celery.clean_tasks',
-    'deployment.usage_stats',
-    'advanced_celery.retrain_dirty_fields',
-    'apps.rawdb.tasks.cache_document_fields_for_doc_ids_not_tracked',
-    TASK_NAME_AUTO_REINDEX,
-    TASK_NAME_IMANAGE_TRIGGER_SYNC,
-    TASK_NAME_TRIGGER_DIGESTS
+    task_names.TASK_NAME_TRACK_TASKS,
+    task_names.TASK_NAME_TRACK_SESSION_COMPLETED,
+    task_names.TASK_NAME_UPDATE_MAIN_TASK,
+    task_names.TASK_NAME_CLEAN_TASKS_PERIODIC,
+    task_names.TASK_NAME_USAGE_STATS,
+    task_names.TASK_NAME_RETRAIN_DIRTY_TASKS,
+    task_names.TASK_NAME_CACHE_DOC_NOT_TRACKED,
+    task_names.TASK_NAME_AUTO_REINDEX,
+    task_names.TASK_NAME_IMANAGE_TRIGGER_SYNC,
+    task_names.TASK_NAME_TRIGGER_DIGESTS,
+    task_names.TASK_NAME_NOTIFICATIONS_ON_DOCUMENT_CHANGE,
+    task_names.TASK_NAME_INIT_METHOD_STATS_COLLECTORS,
+    task_names.TASK_NAME_CHECK_EMAIL_POOL
 }
 
-REMOVE_WHEN_READY = set()
+TASKS_DO_NOT_REMOVE_WHEN_READY = set()
 
 USER_TASK_EXECUTION_DELAY = 24 * 60 * 60
 REMOVE_SUB_TASKS_DELAY_IN_SEC = 60
-REMOVE_READY_TASKS_DELAY_IN_SEC = 24 * 60 * 60
 
 CELERY_TIMEZONE = 'UTC'
 CELERY_ENABLE_UTC = True
@@ -505,12 +502,15 @@ CELERY_TASK_DEFAULT_QUEUE = 'default'
 CELERY_CACHE_REDIS_URL = 'redis://127.0.0.1:6379/0'
 CELERY_CACHE_REDIS_KEY_PREFIX = 'celery_task'
 
-# django-excel
-# http://django-excel.readthedocs.io/en/latest/
-FILE_UPLOAD_HANDLERS = (
-    "django_excel.ExcelMemoryFileUploadHandler",
-    "django_excel.TemporaryExcelFileUploadHandler"
-)
+
+FILE_UPLOAD_HANDLERS = [
+    'django.core.files.uploadhandler.MemoryFileUploadHandler',
+    'django.core.files.uploadhandler.TemporaryFileUploadHandler',
+]
+
+# MemoryFileUploadHandler will not be used if uploading file bigger than this limit.
+# Bigger files will be streamed to temp files.
+FILE_UPLOAD_MAX_MEMORY_SIZE = 10 * 1024
 
 # elasticsearch integration
 # https://elasticsearch-py.readthedocs.io/en/master/
@@ -552,6 +552,17 @@ FILEBROWSER_DEFAULT_SORTING_BY = 'filename_lower'
 FILEBROWSER_SEARCH_TRAVERSE = True
 FILEBROWSER_LIST_PER_PAGE = 25
 
+ARCHIVES = {
+    'zip': {
+        'allowed_extensions': ['zip'],
+        'allowed_mime_types': ['application/zip']
+    },
+    'tar': {
+        'allowed_extensions': ['tar', 'tar.gz', 'tar.xz'],
+        'allowed_mime_types': ['application/x-tar']
+    }
+}
+
 CONTRAX_FILE_STORAGE_TYPE = 'Local'
 CONTRAX_FILE_STORAGE_LOCAL_ROOT_DIR = MEDIA_ROOT + '/' + FILEBROWSER_DIRECTORY
 #CONTRAX_FILE_STORAGE_TYPE = 'WebDAV'
@@ -561,6 +572,10 @@ CONTRAX_FILE_STORAGE_LOCAL_ROOT_DIR = MEDIA_ROOT + '/' + FILEBROWSER_DIRECTORY
 CONTRAX_FILE_STORAGE_DOCUMENTS_DIR = 'documents/'
 
 # django-constance settings
+
+# default precision (numbers after decimal dot) for float values
+DEFAULT_FLOAT_PRECIZION = 6
+
 # https://django-constance.readthedocs.io/en/latest/
 REQUIRED_LOCATORS = (
     'geoentity',
@@ -615,7 +630,7 @@ REST_FRAMEWORK = {
     'DEFAULT_VERSION': 'v1',
     'ALLOWED_VERSIONS': ('v1',),
     'DEFAULT_AUTHENTICATION_CLASSES': (
-        'authenticator.CookieAuthentication',
+        'apps.users.authentication.CookieAuthentication',
         # 'rest_framework.authentication.TokenAuthentication',
         # 'rest_framework.authentication.SessionAuthentication',
     ),
@@ -624,12 +639,12 @@ REST_FRAMEWORK = {
     )
 }
 REST_AUTH_SERIALIZERS = {
-    'TOKEN_SERIALIZER': 'authenticator.TokenSerializer',
-    'PASSWORD_CHANGE_SERIALIZER': 'authenticator.CustomPasswordChangeSerializer',
+    'TOKEN_SERIALIZER': 'apps.users.authentication.TokenSerializer',
+    'PASSWORD_CHANGE_SERIALIZER': 'apps.users.authentication.CustomPasswordChangeSerializer',
 }
 
 # rest auth token settings
-REST_AUTH_TOKEN_CREATOR = 'authenticator.token_creator'
+REST_AUTH_TOKEN_CREATOR = 'apps.users.authentication.token_creator'
 REST_AUTH_TOKEN_EXPIRES_DAYS = 3
 REST_AUTH_TOKEN_UPDATE_EXPIRATION_DATE = True
 
@@ -809,7 +824,7 @@ NOTEBOOK_ARGUMENTS = [
 # CORS_ALLOW_CREDENTIALS = False
 # CORS_URLS_REGEX = r'^.*$'
 
-VERSION_NUMBER = '1.2.3'
+VERSION_NUMBER = '1.3.0'
 VERSION_COMMIT = 'cdd28414'
 
 NOTIFICATION_EMBEDDED_TEMPLATES_PATH = 'apps/notifications/notification_templates'
@@ -836,7 +851,7 @@ ML_TRAIN_DATA_SET_GROUP_LEN = 10000
 
 RAW_DB_FULL_TEXT_SEARCH_CUT_ABOVE_TEXT_LENGTH = 4 * 1024 * 1024
 
-DATA_UPLOAD_MAX_MEMORY_SIZE = 100*2621440
+DATA_UPLOAD_MAX_MEMORY_SIZE = 100 * 2621440
 
 # Debugging Docker Deployments:
 # CELERY_BROKER_URL = 'amqp://contrax1:contrax1@127.0.0.1:56720/contrax1_vhost'
@@ -846,6 +861,10 @@ DATA_UPLOAD_MAX_MEMORY_SIZE = 100*2621440
 # TIKA_FOR_EXTENSIONS = ['pdf']
 
 FRONTEND_ROOT_URL = None
+
+DEBUG_STACK_DUMP_ENABLED = True
+DEBUG_STACK_DUMP_SIGNAL = 39
+DEBUG_STACK_DUMP_DIR = PROJECT_DIR('logs')
 
 try:
     from local_settings import *
@@ -864,9 +883,9 @@ try:
     if CUSTOMER_EXCLUDE_FROM_TRACKING:
         for task_name in CUSTOMER_EXCLUDE_FROM_TRACKING:
             EXCLUDE_FROM_TRACKING.add(task_name)
-    if CUSTOMER_REMOVE_WHEN_READY:
-        for task_name in CUSTOMER_REMOVE_WHEN_READY:
-            REMOVE_WHEN_READY.add(task_name)
+    if CUSTOMER_TASKS_DO_NOT_REMOVE_WHEN_READY:
+        for task_name in CUSTOMER_TASKS_DO_NOT_REMOVE_WHEN_READY:
+            TASKS_DO_NOT_REMOVE_WHEN_READY.add(task_name)
 except (ImportError, NameError):
     pass
 
@@ -890,34 +909,6 @@ LOGIN_EXEMPT_URLS = (
 )
 
 TEMPLATES[0]['OPTIONS']['debug'] = DEBUG_TEMPLATE
-
-if DEBUG_SQL:
-    LOGGING = {
-        'version': 1,
-        'disable_existing_loggers': False,
-        'formatters': {
-            'verbose': {
-                'format': '%(levelname)-7s %(asctime)s | %(message)s'
-            },
-        },
-        'filters': {
-            'require_debug_false': {
-                '()': 'django.utils.log.RequireDebugFalse'
-            }
-        },
-        'handlers': {
-            'console': {
-                'level': 'DEBUG',
-                'class': 'logging.StreamHandler',
-            },
-        },
-        'loggers': {
-            'django.db.backends': {
-                'level': 'DEBUG',
-                'handlers': ['console'],
-            },
-        }
-    }
 
 if DEBUG:
     INSTALLED_APPS += (

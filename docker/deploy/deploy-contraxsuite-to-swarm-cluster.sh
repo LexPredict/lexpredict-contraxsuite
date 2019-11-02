@@ -56,7 +56,16 @@ fi
 
 envsubst < ./config-templates/postgresql.conf.template > ./temp/postgresql.conf
 if [ ${PG_STATISTICS_ENABLED} = true ]; then
-    echo "shared_preload_libraries = 'pg_stat_statements'" >> ./temp/postgresql.conf
+    if [ ! -z ${POWA_ENABLED} ]; then
+    	echo "shared_preload_libraries = 'pg_stat_statements,powa,pg_stat_kcache,pg_qualstats'" >> ./temp/postgresql.conf
+	    export POWA_WEB_REPLICAS=1
+        export POWA_INSTALL="apt-get update && apt-get install -y --no-install-recommends postgresql-11-powa postgresql-11-pg-qualstats postgresql-11-pg-stat-kcache postgresql-11-hypopg && rm -rf /var/lib/apt/lists/* &&"
+        envsubst < ./config-templates/nginx-powa.conf.template > ./temp/powa.conf
+        sudo cp ./temp/powa.conf ${VOLUME_NGINX_CONF}/conf.d/powa.conf
+    else
+	    echo "shared_preload_libraries = 'pg_stat_statements'" >> ./temp/postgresql.conf
+	    export POWA_WEB_REPLICAS=0
+    fi
     echo "pg_stat_statements.max = 1000" >> ./temp/postgresql.conf
     echo "pg_stat_statements.track = all" >> ./temp/postgresql.conf
 fi
@@ -70,6 +79,7 @@ envsubst < ./config-templates/filebeat.yml.template > ./temp/filebeat.yml
 envsubst < ./config-templates/elasticsearch.yml.template > ./temp/elasticsearch.yml
 envsubst < ./config-templates/db-backup.sh.template > ./temp/db-backup.sh
 envsubst < ./config-templates/postgres_init.sql.template > ./temp/postgres_init.sql
+envsubst < ./config-templates/powa-web.conf.template > ./temp/powa-web.conf
 
 NGINX_CUSTOMER_TEMPLATE=./config-templates/nginx-customer.conf.template
 NGINX_CUSTOMER_CONF=./temp/nginx-customer.conf
@@ -92,12 +102,13 @@ export PG_CONFIG_VERSION=`md5sum ./temp/postgresql.conf | awk '{ print $1 }'`
 export PG_BACKUP_SCRIPT_CONFIG_VERSION=`md5sum ./temp/db-backup.sh | awk '{ print $1 }'`
 export PG_BACKUP_CRON_CONFIG_VERSION=`md5sum ./temp/backup-cron.conf | awk '{ print $1 }'`
 export PG_INIT_SQL_CONFIG_VERSION=`md5sum ./temp/postgres_init.sql | awk '{ print $1 }'`
+export POWA_WEB_CONFIG_VERSION=`md5sum ./temp/powa-web.conf | awk '{ print $1 }'`
 
 envsubst < ./docker-compose-templates/${DOCKER_COMPOSE_FILE} > ./temp/${DOCKER_COMPOSE_FILE}
 
 echo "Updating hosts file"
-export DOCKER_NODE_ID=$(sudo docker node ls | grep $HOSTNAME | awk '{print $1}')
-export DOCKER_NODE_IP=$(sudo docker node inspect --format '{{.Status.Addr}}' $DOCKER_NODE_ID)
+export DOCKER_NODE_IP=$(sudo docker run -it --net=host codenvy/che-ip | tr -d '\r')
+sudo sed -i "/$DOCKER_DJANGO_HOST_NAME/d" /etc/hosts
 grep -qxF "$DOCKER_NODE_IP $DOCKER_DJANGO_HOST_NAME" /etc/hosts || sudo bash -c "echo $DOCKER_NODE_IP $DOCKER_DJANGO_HOST_NAME >> /etc/hosts"
 
 echo "Updating notification webhooks url"
@@ -108,6 +119,8 @@ echo "Refreshing scheduled Cron tasks"
 
 sudo crontab -l > crontemp && cat crontemp | grep "sudo docker system prune -af" >/dev/null || echo "0 0 * * * sudo docker system prune -af > /dev/null 2>&1" >> crontemp && cat crontemp | sudo crontab - && rm crontemp
 sudo crontab -l > crontemp && cat crontemp | grep "sudo bash es_recovery.sh" >/dev/null || echo "0,15,30,45 * * * * cd /data/deploy/contraxsuite-deploy/docker/util && sudo bash es_recovery.sh ${SLACK_WEBHOOK_URL} > /dev/null 2>&1" >> crontemp && cat crontemp | sudo crontab - && rm crontemp
+sudo crontab -l > crontemp && cat crontemp | grep "docker node inspect NODE_ID" >/dev/null || echo "* * * * * sudo docker node ls | cut -c 1-24 | grep -v ID | paste -sd ' ' | xargs -I'NODE_ID' sh -c 'sudo docker node inspect NODE_ID' >> ~/docker_nodes.txt && sudo mv ~/docker_nodes.txt ${VOLUME_DATA_MEDIA}/data/docker_nodes.txt > /dev/null 2>&1" >> crontemp && cat crontemp | sudo crontab - && rm crontemp
+sudo crontab -l > crontemp && cat crontemp | grep "docker service inspect SERVICE_ID" >/dev/null || echo "* * * * * sudo docker service ls | cut -c 1-12 | grep -v ID | paste -sd ' ' | xargs -I'SERVICE_ID' sh -c 'sudo docker service inspect SERVICE_ID' >> ~/docker_services.txt && sudo mv ~/docker_services.txt ${VOLUME_DATA_MEDIA}/data/docker_services.txt > /dev/null 2>&1" >> crontemp && cat crontemp | sudo crontab - && rm crontemp
 
 echo "Starting with image: ${CONTRAXSUITE_IMAGE_FULL_NAME}:${CONTRAXSUITE_IMAGE_VERSION}"
 

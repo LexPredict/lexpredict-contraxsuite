@@ -36,8 +36,8 @@ from celery.app import trace
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2019, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.3/LICENSE"
-__version__ = "1.2.3"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.3.0/LICENSE"
+__version__ = "1.3.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -64,7 +64,6 @@ if True: # not WAS_INIT:
 
     old_build_tracer = trace.build_tracer
 
-
     def build_tracer_patched(name, task, loader=None, hostname=None, *args, **kwargs):
         old_trace_task = old_build_tracer(name, task, loader, hostname, *args, **kwargs)
         worker = hostname
@@ -80,11 +79,8 @@ if True: # not WAS_INIT:
 
         return trace_task_patched
 
-
     trace.build_tracer = build_tracer_patched
 
-
-    # Bind debug task
     @app.task(bind=True)
     def debug_task(self):
         print('Request: {0!r}'.format(self.request))  # pragma: no cover

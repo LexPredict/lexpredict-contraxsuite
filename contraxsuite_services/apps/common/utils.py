@@ -30,31 +30,31 @@ import importlib
 import io
 import random
 import re
+import sys
 import uuid
 
 # Third-party imports
 import django_excel as excel
 import pandas as pd
 import pdfkit as pdf
-from jinja2 import Environment, FileSystemLoader
-from weasyprint import HTML
-
 # Django imports
 from django.conf import settings
 from django.conf.urls import url
-from django.urls import reverse
 from django.core.serializers.json import DjangoJSONEncoder
 from django.http import HttpResponse
-from django.utils.text import slugify
+from django.urls import reverse
 from django.utils import numberformat
+from django.utils.text import slugify
+from jinja2 import Environment, FileSystemLoader
+from weasyprint import HTML
 
 # App imports
 from apps.users.models import User, Role
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2019, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.3/LICENSE"
-__version__ = "1.2.3"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.3.0/LICENSE"
+__version__ = "1.3.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -63,6 +63,7 @@ class CustomDjangoJSONEncoder(DjangoJSONEncoder):
     """
     JSONEncoder subclass that knows how to encode unusual objects.
     """
+
     def default(self, obj):
         if isinstance(obj, set):
             return list(obj)
@@ -285,7 +286,12 @@ def create_standard_urls(model, views, view_types=('list', 'add', 'detail', 'upd
 
 
 def fast_uuid():
-    return uuid.UUID(int=random.getrandbits(128), version=4)
+    # this function may be used for overriding generating uuids
+    # used for various needs in the project
+    # Originally we were creating uuids fully based on Python random generation
+    # but next we replaced it with the standard implementation to avoid too straightforward
+    # dependency on the random seed.
+    return uuid.uuid4()
 
 
 def get_api_module(app_name):
@@ -338,7 +344,8 @@ def download_pdf(data: pd.DataFrame, file_name='output'):
 def download(data: [list, pd.DataFrame], fmt='csv', file_name='output'):
     if not isinstance(data, pd.DataFrame):
         data = pd.DataFrame(data)
-    data[data.select_dtypes(['object', 'datetime64[ns, UTC]']).columns] = data.select_dtypes(['object', 'datetime64[ns, UTC]']).apply(lambda x: x.astype(str))
+    data[data.select_dtypes(['object', 'datetime64[ns, UTC]']).columns] = data.select_dtypes(
+        ['object', 'datetime64[ns, UTC]']).apply(lambda x: x.astype(str))
     data.fillna('', inplace=True)
     if fmt == 'xlsx':
         return download_xls(data, file_name=file_name)
@@ -417,3 +424,43 @@ class Serializable(dict):
 
     def items(self):
         return iter(self._myattrs())
+
+
+def fetchone(pattern, text, flags=None):
+    args = (pattern, text, flags) if flags is not None else (pattern, text)
+    res = re.findall(*args)
+    if res:
+        return res[0]
+
+
+def migrating():
+    return 'makemigrations' in sys.argv or 'migrate' in sys.argv
+
+
+def dictfetchall(cursor):
+    """
+    Return all rows from a cursor as a dict
+    """
+    columns = [col[0] for col in cursor.description]
+    values = cursor.fetchall()
+    if values:
+        return [dict(zip(columns, row)) for row in values]
+
+
+def dictfetchone(cursor):
+    """
+    Return one row from a cursor as a dict
+    """
+    columns = [col[0] for col in cursor.description]
+    value = cursor.fetchone()
+    if value is not None:
+        return dict(zip(columns, value))
+
+
+def safe_to_int(s: str) -> int:
+    if not s:
+        return None
+    try:
+        return int(s)
+    except ValueError:
+        return None

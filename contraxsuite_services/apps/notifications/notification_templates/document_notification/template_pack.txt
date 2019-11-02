@@ -1,0 +1,50 @@
+{%- macro field_value(value_type, value) -%}
+    {%- if value is not none -%}
+        {%- if value_type == 'float' -%}
+{{ '%0.2f'| format(value)}}
+        {%- elif value_type == 'duration' -%}
+{{ '%0.1f'| format(value)}} days
+        {%- elif value_type == 'boolean' or value_type == 'related_info' -%}
+{{ 'Yes' if value else 'No' }}
+        {%- elif value_type == 'date' -%}
+{{ value.strftime('%Y-%m-%d') }}
+        {%- elif value_type == 'datetime' -%}
+{{ value.strftime('%Y-%m-%d') }}
+        {%- elif value_type == 'money' -%}
+{{ '%0.2f'| format(value.amount)}} {{ value.currency }}
+        {%- elif value_type == 'address' -%}
+{{ value.address }}
+        {%- elif value_type == 'multi_choice' -%}
+{{ '; '.join(value) if value else 'No value' }}
+        {%- else -%}
+{{ value or 'No value' }}
+        {%- endif -%}
+    {%- else -%}
+No value
+    {%- endif -%}
+{%- endmacro -%}
+Contraxsuite by LexPredict
+
+{{ header }}
+
+{%- for document in documents -%}
+{% if True %}
+
+
+{% endif %}
+URL: {{ document.doc_url }}
+{%- set ml = [0] %}
+{%- for field in document.fields -%}
+{%- if field.title|length > ml[-1] -%}
+    {% set _ = ml.append(field.title | length) -%}
+{%- endif -%}
+{%- endfor -%}
+{%- set fmt = '%-' + (ml[-1] + 2) | string + 's'%}
+{% for field in document.fields -%}
+    {%- if field.changed %}
+{{ fmt | format(field.title + ':') }} {{ field_value(field.type, field.changes[0]) }} ==> {{ field_value(field.type, field.value) }}
+    {%- else %}
+{{ fmt | format(field.title + ':') }} {{ field_value(field.type, field.value) }}
+    {%- endif -%}
+{% endfor %}
+{% endfor %}

@@ -153,8 +153,7 @@
           align: 'center', cellsalign: 'center', columngroup: 'Clustering info' },
         { text: 'Using', datafield: 'using', width: 120,
           align: 'center', cellsalign: 'center', columngroup: 'Clustering info' },
-        { text: 'Documents', datafield: 'documents', width: 80,
-          cellsrenderer: documents_count_renderer,
+        { text: 'Documents', datafield: 'count', width: 80,
           align: 'center', cellsalign: 'center' },
         { text: 'Date', datafield: 'created_date', width: 120,
           filtertype: 'date', cellsformat: 'MM-dd-yyyy HH:mm',
@@ -222,7 +221,7 @@
 
       var custom_grid_options = {
         rowsheight: 60,
-        pageable: false,
+        pageable: true,
         rowdetails: true,
         initrowdetails: initrowdetails,
         rowdetailstemplate: {
@@ -234,7 +233,7 @@
           { text: 'Clustering info', name: 'Clustering info', align: 'center' }
         ]
       };
-      draw_grid(".jqxgrid", datafields, columns, false, null, custom_grid_options);
+      draw_grid(".jqxgrid", datafields, columns, true, null, custom_grid_options);
     });
   </script>
 {% endblock %}

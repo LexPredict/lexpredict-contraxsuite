@@ -24,62 +24,39 @@
 """
 # -*- coding: utf-8 -*-
 
-
-__author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2019, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.3/LICENSE"
-__version__ = "1.2.3"
-__maintainer__ = "LexPredict, LLC"
-__email__ = "support@contraxsuite.com"
-
-
-"""
-    Copyright (C) 2017, ContraxSuite, LLC
-    This program is free software: you can redistribute it and/or modify
-    it under the terms of the GNU Affero General Public License as
-    published by the Free Software Foundation, either version 3 of the
-    License, or (at your option) any later version.
-    This program is distributed in the hope that it will be useful,
-    but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-    GNU Affero General Public License for more details.
-    You should have received a copy of the GNU Affero General Public License
-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
-    You can also be released from the requirements of the license by purchasing
-    a commercial license from ContraxSuite, LLC. Buying such a license is
-    mandatory as soon as you develop commercial activities involving ContraxSuite
-    software without disclosing the source code of your own applications.  These
-    activities include: offering paid services to customers as an ASP or "cloud"
-    provider, processing documents on the fly in a web application,
-    or shipping ContraxSuite within a closed source product.
-"""
-# -*- coding: utf-8 -*-
-
 import logging
 import sys
 import traceback
 from io import StringIO
 from tempfile import NamedTemporaryFile
-# Project imports
-from typing import Any, Dict, Set, Type, Callable
+from typing import Any, Dict, Type, Callable
 
 from allauth.account.models import EmailAddress, EmailConfirmation
 from django.core import serializers as core_serializers
 from django.core.management import call_command
-from django.db.models import F, Subquery
+from django.db.models import Subquery
 from django.db.models import Model, QuerySet
 from django.http import HttpResponse
 
-from apps.common.log_utils import render_error
+# Project imports
 from apps.common.models import ReviewStatus, ReviewStatusGroup, AppVar
 from apps.common.plugins import collect_plugins_in_apps
 from apps.deployment.models import Deployment
 from apps.document.models import (
-    DocumentField, DocumentType, DocumentFieldDetector, DocumentFieldValue, ExternalFieldValue,
+    DocumentField, DocumentType, DocumentFieldDetector, ExternalFieldValue,
     DocumentFieldCategory)
 from apps.extract.models import Court, GeoAlias, GeoEntity, GeoRelation, Party, Term
 from apps.task.models import TaskConfig
 from apps.users.models import User, Role
+
+
+__author__ = "ContraxSuite, LLC; LexPredict, LLC"
+__copyright__ = "Copyright 2015-2019, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.3.0/LICENSE"
+__version__ = "1.3.0"
+__maintainer__ = "LexPredict, LLC"
+__email__ = "support@contraxsuite.com"
+
 
 APP_CONFIG_MODELS = {
     DocumentType: None,
@@ -167,14 +144,9 @@ def get_app_config_dump(document_type_codes=None) -> str:
 
 
 def get_field_values_dump() -> str:
-    data = DocumentFieldValue.objects \
-        .filter(removed_by_user=False,
-                created_by__isnull=False,
-                text_unit__text__isnull=False) \
-        .annotate(text_unit_text=F('text_unit__text')) \
-        .values('field_id', 'value', 'extraction_hint',
-                'text_unit_text', 'created_date', 'modified_date')
-
+    import apps.document.repository.document_field_repository as dfr
+    field_repo = dfr.DocumentFieldRepository()
+    data = field_repo.get_annotated_values_for_dump()
     transfer_objects = [ExternalFieldValue(**i) for i in data]
     return core_serializers.serialize('json', transfer_objects)
 
@@ -261,9 +233,8 @@ def _register_app_dump_models(plugin_attr_name: str, dst_collection: Dict[Type[M
             models = dict(models)
             dst_collection.update(models)
         except Exception as e:
-            logging.error(render_error('Unable to register app dump models from app {0}.\n'
-                                       'Check {0}.app_dump_models.{1}'
-                                       .format(app_name, plugin_attr_name), caused_by=e))
+            logging.error(f'Unable to register app dump models from app {app_name}.\n'
+                          'Check {app_name}.app_dump_models.{plugin_attr_name}', exc_info=e)
 
 
 def register_pluggable_app_dump_models():

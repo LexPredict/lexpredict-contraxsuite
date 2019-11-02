@@ -26,7 +26,7 @@
 
 import hashlib
 import traceback
-from typing import List, Dict, Optional, Tuple, Any, Generator, Set
+from typing import List, Dict, Optional, Tuple, Any, Generator, Set, Callable
 
 from django.conf import settings
 from django.db import connection, transaction, IntegrityError
@@ -36,32 +36,36 @@ from apps.common.log_utils import ProcessLogger, render_error
 from apps.common.sql_commons import fetch_int, escape_column_name, sum_list, SQLClause, \
     SQLInsertClause, join_clauses, format_clause, fetch_dicts
 from apps.document import field_types
-from apps.document.constants import DOCUMENT_FIELD_CODE_MAX_LEN
-from apps.document.fields_processing.field_value_cache import get_generic_values
-from apps.document.models import DocumentType, Document, DocumentField, DocumentFieldValue
+from apps.document.constants import DOCUMENT_FIELD_CODE_MAX_LEN, DocumentGenericField, DocumentSystemField, FieldSpec
+from apps.document.models import DocumentType, Document, DocumentField
+from apps.document.models import FieldAnnotation
 from apps.extract.models import DefinitionUsage
+from apps.rawdb.constants import TABLE_NAME_PREFIX, FIELD_CODE_DOC_NAME, FIELD_CODE_DOC_TITLE, FIELD_CODE_DOC_FULL_TEXT, \
+    FIELD_CODE_DOC_FULL_TEXT_LENGTH, FIELD_CODE_DOC_ID, FIELD_CODE_CREATE_DATE, FIELD_CODE_IS_REVIEWED, \
+    FIELD_CODE_IS_COMPLETED, FIELD_CODE_PROJECT_ID, FIELD_CODE_PROJECT_NAME, FIELD_CODE_ASSIGNEE_ID, \
+    FIELD_CODE_ASSIGNEE_NAME, FIELD_CODE_ASSIGN_DATE, FIELD_CODE_STATUS_NAME, FIELD_CODE_DELETE_PENDING, \
+    FIELD_CODE_NOTES, FIELD_CODE_DEFINITIONS, FIELD_CODE_HIDDEN_COLUMNS, FIELD_CODE_CLUSTER_ID, FIELD_CODE_PARTIES, \
+    FIELD_CODE_EARLIEST_DATE, FIELD_CODE_LATEST_DATE, FIELD_CODE_LARGEST_CURRENCY, FIELD_CODES_SYSTEM, \
+    FIELD_CODES_GENERIC, FIELD_CODE_ANNOTATION_SUFFIX, INDEX_NAME_PREFIX, DEFAULT_ORDER_BY
 from apps.rawdb.models import SavedFilter
 from apps.rawdb.notifications import UserNotifications
-from apps.rawdb.rawdb import field_handlers
+from apps.rawdb.rawdb.rawdb_field_handlers import PgTypes, RawdbFieldHandler, ColumnDesc, StringRawdbFieldHandler, \
+    AnnotationTextFieldHandler, MoneyRawdbFieldHandler, DateFieldHandler, IntFieldHandler, BooleanRawdbFieldHandler, \
+    DateTimeFieldHandler, LongTextFromRelTableFieldHandler, LinkedDocumentsRawdbFieldHandler, RatioRawdbFieldHandler, \
+    FloatFieldHandler, MultichoiceFieldHandler, RelatedInfoRawdbFieldHandler, AddressFieldHandler, PercentFieldHandler
 from apps.rawdb.rawdb.errors import Forbidden, UnknownColumnError
 from apps.rawdb.rawdb.query_parsing import SortDirection, parse_column_filters, parse_order_by
+from apps.rawdb.repository.raw_db_repository import RawDbRepository, doc_fields_table_name
 from apps.rawdb.signals import fire_document_fields_changed, DocumentEvent
 from apps.task.utils.logger import get_django_logger
 from apps.users.models import User
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2019, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.3/LICENSE"
-__version__ = "1.2.3"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.3.0/LICENSE"
+__version__ = "1.3.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
-
-
-TABLE_NAME_PREFIX = 'doc_fields_'
-
-
-def doc_fields_table_name(document_type_code: str) -> str:
-    return escape_column_name(TABLE_NAME_PREFIX + document_type_code)
 
 
 # method return types
@@ -71,8 +75,9 @@ class DocumentQueryResults(list):
                  limit: Optional[int],
                  total_sql: Optional[SQLClause],
                  reviewed_sql: Optional[SQLClause],
-                 columns: List[field_handlers.ColumnDesc],
-                 items_sql: Optional[SQLClause]) -> None:
+                 columns: List[ColumnDesc],
+                 items_sql: Optional[SQLClause],
+                 row_processor: Callable[[List], List] = None) -> None:
         super().__init__()
         self.offset = offset
         self.limit = limit
@@ -81,6 +86,7 @@ class DocumentQueryResults(list):
         self._items_sql = items_sql
         self.reviewed = None
         self.total = None
+        self.row_processor = row_processor
         if total_sql or reviewed_sql:
             with connection.cursor() as cursor:
                 self.reviewed = fetch_int(cursor, reviewed_sql) if reviewed_sql else None
@@ -101,7 +107,7 @@ class DocumentQueryResults(list):
                 rows = cursor.fetchmany(100)
                 while rows:
                     for row in rows:
-                        yield row
+                        yield self.row_processor(row) if self.row_processor else row
                     rows = cursor.fetchmany(100)
 
     def fetch_dicts(self) -> Generator[Dict, None, None]:
@@ -142,167 +148,139 @@ class EmptyDocumentQueryResults(DocumentQueryResults):
         return None
 
 
-FIELD_DB_SUPPORT_REGISTRY = {
-    field_types.StringField.code: field_handlers.StringFieldHandler,
-    field_types.StringFieldWholeValueAsAToken.code: field_handlers.StringFieldHandler,
-    field_types.LongTextField.code: field_handlers.StringFieldHandler,
-    field_types.IntField.code: field_handlers.IntFieldHandler,
-    field_types.FloatField.code: field_handlers.FloatFieldHandler,
-    field_types.DateTimeField.code: field_handlers.DateTimeFieldHandler,
-    field_types.DateField.code: field_handlers.DateFieldHandler,
-    field_types.RecurringDateField.code: field_handlers.DateFieldHandler,
-    field_types.CompanyField.code: field_handlers.StringFieldHandler,
-    field_types.DurationField.code: field_handlers.FloatFieldHandler,
-    field_types.PercentField.code: field_handlers.PercentFieldHandler,
-    field_types.AddressField.code: field_handlers.AddressFieldHandler,
-    field_types.RelatedInfoField.code: field_handlers.RelatedInfoFieldHandler,
-    field_types.ChoiceField.code: field_handlers.StringFieldHandler,
-    field_types.MultiChoiceField.code: field_handlers.MultichoiceFieldHandler,
-    field_types.PersonField.code: field_handlers.StringFieldHandler,
-    field_types.AmountField.code: field_handlers.FloatFieldHandler,
-    field_types.MoneyField.code: field_handlers.MoneyFieldHandler,
-    field_types.RatioField.code: field_handlers.RatioFieldHandler,
-    field_types.GeographyField.code: field_handlers.StringFieldHandler,
-    field_types.BooleanField.code: field_handlers.BooleanFieldHandler,
-    field_types.LinkedDocumentsField.code: field_handlers.LinkedDocumentsFieldHandler
+RAWDB_FIELD_HANDLER_REGISTRY = {
+    field_types.StringField.type_code: StringRawdbFieldHandler,
+    field_types.StringFieldWholeValueAsAToken.type_code: StringRawdbFieldHandler,
+    field_types.LongTextField.type_code: StringRawdbFieldHandler,
+    field_types.IntField.type_code: IntFieldHandler,
+    field_types.FloatField.type_code: FloatFieldHandler,
+    field_types.DateTimeField.type_code: DateTimeFieldHandler,
+    field_types.DateField.type_code: DateFieldHandler,
+    field_types.RecurringDateField.type_code: DateFieldHandler,
+    field_types.CompanyField.type_code: StringRawdbFieldHandler,
+    field_types.DurationField.type_code: FloatFieldHandler,
+    field_types.PercentField.type_code: PercentFieldHandler,
+    field_types.AddressField.type_code: AddressFieldHandler,
+    field_types.RelatedInfoField.type_code: RelatedInfoRawdbFieldHandler,
+    field_types.ChoiceField.type_code: StringRawdbFieldHandler,
+    field_types.MultiChoiceField.type_code: MultichoiceFieldHandler,
+    field_types.PersonField.type_code: StringRawdbFieldHandler,
+    field_types.AmountField.type_code: FloatFieldHandler,
+    field_types.MoneyField.type_code: MoneyRawdbFieldHandler,
+    field_types.RatioField.type_code: RatioRawdbFieldHandler,
+    field_types.GeographyField.type_code: StringRawdbFieldHandler,
+    field_types.BooleanField.type_code: BooleanRawdbFieldHandler,
+    field_types.LinkedDocumentsField.type_code: LinkedDocumentsRawdbFieldHandler
 }
 
-FIELD_CODE_DOC_NAME = 'document_name'
-FIELD_CODE_DOC_TITLE = 'document_title'
-FIELD_CODE_DOC_FULL_TEXT = 'document_full_text'
-FIELD_CODE_DOC_FULL_TEXT_LENGTH = 'document_full_text_length'
-FIELD_CODE_DOC_ID = 'document_id'
-FIELD_CODE_CREATE_DATE = 'create_date'
-FIELD_CODE_IS_REVIEWED = 'document_is_reviewed'
-FIELD_CODE_IS_COMPLETED = 'document_is_completed'
-FIELD_CODE_PROJECT_ID = 'project_id'
-FIELD_CODE_PROJECT_NAME = 'project_name'
-FIELD_CODE_ASSIGNEE_ID = 'assignee_id'
-FIELD_CODE_ASSIGNEE_NAME = 'assignee_name'
-FIELD_CODE_ASSIGN_DATE = 'assign_date'
-FIELD_CODE_STATUS_NAME = 'status_name'
-FIELD_CODE_DELETE_PENDING = 'delete_pending'
-FIELD_CODE_NOTES = 'notes'
-FIELD_CODE_DEFINITIONS = 'definitions'
 
 # Generic Fields - should match keys from the output of field_value_cache.get_generic_values(doc)
-_FIELD_CODE_CLUSTER_ID = 'cluster_id'
-_FIELD_CODE_PARTIES = 'parties'
-_FIELD_CODE_EARLIEST_DATE = 'min_date'
-_FIELD_CODE_LATEST_DATE = 'max_date'
-_FIELD_CODE_LARGEST_CURRENCY = 'max_currency'
-
-FIELD_CODES_SYSTEM = {FIELD_CODE_PROJECT_ID, FIELD_CODE_PROJECT_NAME,
-                      FIELD_CODE_DOC_ID, FIELD_CODE_CREATE_DATE, FIELD_CODE_DOC_NAME,
-                      FIELD_CODE_DOC_FULL_TEXT_LENGTH, FIELD_CODE_DOC_TITLE,
-                      FIELD_CODE_DOC_FULL_TEXT, FIELD_CODE_IS_REVIEWED, FIELD_CODE_IS_COMPLETED,
-                      FIELD_CODE_ASSIGNEE_ID, FIELD_CODE_ASSIGNEE_NAME, FIELD_CODE_ASSIGN_DATE,
-                      FIELD_CODE_STATUS_NAME, FIELD_CODE_DELETE_PENDING,
-                      FIELD_CODE_NOTES, FIELD_CODE_DEFINITIONS}
-
-_FIELD_CODE_ALL_DOC_TYPES = {FIELD_CODE_PROJECT_ID, FIELD_CODE_DOC_ID, FIELD_CODE_CREATE_DATE, FIELD_CODE_DOC_NAME,
-                             FIELD_CODE_DOC_FULL_TEXT_LENGTH, FIELD_CODE_DOC_TITLE,
-                             FIELD_CODE_DOC_FULL_TEXT, FIELD_CODE_IS_REVIEWED, FIELD_CODE_IS_COMPLETED,
-                             FIELD_CODE_ASSIGNEE_ID, FIELD_CODE_ASSIGNEE_NAME, FIELD_CODE_ASSIGN_DATE,
-                             FIELD_CODE_STATUS_NAME, FIELD_CODE_DELETE_PENDING,
-                             FIELD_CODE_NOTES, FIELD_CODE_DEFINITIONS}
-
-_FIELD_CODES_GENERIC = {_FIELD_CODE_CLUSTER_ID, _FIELD_CODE_PARTIES,
-                        _FIELD_CODE_LARGEST_CURRENCY, _FIELD_CODE_EARLIEST_DATE, _FIELD_CODE_LATEST_DATE}
-
-FIELD_CODES_SHOW_BY_DEFAULT_NON_GENERIC = {
-    FIELD_CODE_DOC_NAME, FIELD_CODE_ASSIGNEE_NAME, FIELD_CODE_STATUS_NAME
-}
-
-FIELD_CODES_SHOW_BY_DEFAULT_GENERIC = {
-    FIELD_CODE_DOC_NAME, _FIELD_CODE_CLUSTER_ID, FIELD_CODE_DOC_TITLE, _FIELD_CODE_PARTIES, _FIELD_CODE_EARLIEST_DATE,
-    _FIELD_CODE_LATEST_DATE, _FIELD_CODE_LARGEST_CURRENCY
-}
-
-FIELD_CODES_HIDE_BY_DEFAULT = {
-    FIELD_CODE_ASSIGNEE_ID, FIELD_CODE_PROJECT_ID, FIELD_CODE_DELETE_PENDING,
-    FIELD_CODE_NOTES, FIELD_CODE_DEFINITIONS
-}
-
-FIELD_CODES_RETURN_ALWAYS = {FIELD_CODE_DOC_ID, FIELD_CODE_DOC_NAME}
-
-FIELD_CODES_HIDE_FROM_CONFIG_API = {FIELD_CODE_ASSIGNEE_ID, FIELD_CODE_ASSIGN_DATE, FIELD_CODE_DELETE_PENDING}
-
-FIELD_CODE_ANNOTATION_SUFFIX = '_ann'
 
 
-def _build_system_field_handlers(table_name: str) -> List[field_handlers.FieldHandler]:
+def _build_system_field_handlers(table_name: str, include_system_fields: FieldSpec = True) \
+        -> List[RawdbFieldHandler]:
     res = list()
-    id_handler = field_handlers.IntFieldHandler(FIELD_CODE_DOC_ID, field_types.IntField.code, 'Id', table_name)
-    id_handler.pg_type = field_handlers.PgTypes.INTEGER_PRIMARY_KEY
+    id_handler = IntFieldHandler(FIELD_CODE_DOC_ID, field_types.IntField.type_code, 'Id', table_name)
+    id_handler.pg_type = PgTypes.INTEGER_PRIMARY_KEY
     res.append(id_handler)
-    res.append(field_handlers.StringFieldHandler(FIELD_CODE_DOC_NAME, field_types.StringFieldWholeValueAsAToken.code,
-                                                 'Name', table_name))
-    res.append(field_handlers.StringFieldHandler(FIELD_CODE_DOC_TITLE, field_types.StringField.code,
-                                                 'Title', table_name))
-    res.append(field_handlers.StringWithTextSearchFieldHandler(FIELD_CODE_DOC_FULL_TEXT, field_types.StringField.code,
-                                                               'Text', table_name,
-                                                               output_column_char_limit=200))
-    res.append(field_handlers.IntFieldHandler(FIELD_CODE_DOC_FULL_TEXT_LENGTH, field_types.IntField.code,
-                                              'Text Length', table_name))
-    res.append(field_handlers.BooleanFieldHandler(FIELD_CODE_IS_REVIEWED, field_types.BooleanField.code,
-                                                  'Reviewed', table_name))
-    res.append(field_handlers.BooleanFieldHandler(FIELD_CODE_IS_COMPLETED, field_types.BooleanField.code,
-                                                  'Completed', table_name))
-    res.append(field_handlers.IntFieldHandler(FIELD_CODE_PROJECT_ID, field_types.IntField.code,
-                                              'Project Id', table_name))
-    res.append(field_handlers.StringFieldHandler(FIELD_CODE_PROJECT_NAME, field_types.StringField.code,
-                                                 'Project', table_name))
-    res.append(field_handlers.IntFieldHandler(FIELD_CODE_ASSIGNEE_ID, field_types.IntField.code,
-                                              'Assignee Id', table_name))
-    res.append(field_handlers.StringFieldHandler(FIELD_CODE_ASSIGNEE_NAME, field_types.StringField.code,
-                                                 'Assignee', table_name))
-    res.append(field_handlers.DateTimeFieldHandler(FIELD_CODE_ASSIGN_DATE, field_types.DateTimeField.code,
-                                                   'Assign Date', table_name))
-    res.append(field_handlers.DateTimeFieldHandler(FIELD_CODE_CREATE_DATE, field_types.DateTimeField.code,
-                                                   'Load Date', table_name))
-    res.append(field_handlers.StringFieldHandler(FIELD_CODE_STATUS_NAME, field_types.StringFieldWholeValueAsAToken.code,
-                                                 'Status', table_name))
-    res.append(field_handlers.BooleanFieldHandler(FIELD_CODE_DELETE_PENDING, field_types.BooleanField.code,
-                                                  'Delete Pending', table_name))
-    res.append(field_handlers.StringFieldHandler(FIELD_CODE_NOTES, field_types.StringField.code,
-                                                 'Notes', table_name))
-    res.append(field_handlers.StringFieldHandler(FIELD_CODE_DEFINITIONS, field_types.StringField.code,
-                                                 'Definitions', table_name))
+
+    if not include_system_fields:
+        return res
+
+    if include_system_fields is True:
+        res.append(
+            StringRawdbFieldHandler(FIELD_CODE_DOC_NAME, field_types.StringFieldWholeValueAsAToken.type_code,
+                                    'Name', table_name))
+        res.append(StringRawdbFieldHandler(FIELD_CODE_DOC_TITLE, field_types.StringField.type_code,
+                                           'Title', table_name))
+
+        lim = int(settings.RAW_DB_FULL_TEXT_SEARCH_CUT_ABOVE_TEXT_LENGTH)
+        res.append(LongTextFromRelTableFieldHandler(FIELD_CODE_DOC_FULL_TEXT, 'Text', table_name,
+                                                    select_text_sql=f'''select 
+                                                                   substring(full_text for {lim}) 
+                                                                   from document_document where id = %s''',
+                                                    select_text_ref_id_field_code=FIELD_CODE_DOC_ID,
+                                                    output_column_char_limit=200))
+        res.append(IntFieldHandler(FIELD_CODE_DOC_FULL_TEXT_LENGTH, field_types.IntField.type_code,
+                                   'Text Length', table_name))
+        res.append(DateTimeFieldHandler(FIELD_CODE_CREATE_DATE, field_types.DateTimeField.type_code,
+                                        'Load Date', table_name))
+        res.append(StringRawdbFieldHandler(FIELD_CODE_DEFINITIONS, field_types.StringField.type_code,
+                                           'Definitions', table_name))
+
+    if DocumentSystemField.project.specified_in(include_system_fields):
+        res.append(IntFieldHandler(FIELD_CODE_PROJECT_ID, field_types.IntField.type_code,
+                                   'Project Id', table_name))
+        res.append(StringRawdbFieldHandler(FIELD_CODE_PROJECT_NAME, field_types.StringField.type_code,
+                                           'Project', table_name))
+
+    if DocumentSystemField.assignee.specified_in(include_system_fields):
+        res.append(IntFieldHandler(FIELD_CODE_ASSIGNEE_ID, field_types.IntField.type_code,
+                                   'Assignee Id', table_name))
+        res.append(StringRawdbFieldHandler(FIELD_CODE_ASSIGNEE_NAME, field_types.StringField.type_code,
+                                           'Assignee', table_name))
+        res.append(DateTimeFieldHandler(FIELD_CODE_ASSIGN_DATE, field_types.DateTimeField.type_code,
+                                        'Assign Date', table_name))
+
+    if DocumentSystemField.status.specified_in(include_system_fields):
+        res.append(
+            StringRawdbFieldHandler(FIELD_CODE_STATUS_NAME, field_types.StringFieldWholeValueAsAToken.type_code,
+                                    'Status', table_name))
+        res.append(BooleanRawdbFieldHandler(FIELD_CODE_IS_REVIEWED, field_types.BooleanField.type_code,
+                                            'Reviewed', table_name))
+        res.append(BooleanRawdbFieldHandler(FIELD_CODE_IS_COMPLETED, field_types.BooleanField.type_code,
+                                            'Completed', table_name))
+    if DocumentSystemField.delete_pending.specified_in(include_system_fields):
+        res.append(BooleanRawdbFieldHandler(FIELD_CODE_DELETE_PENDING, field_types.BooleanField.type_code,
+                                            'Delete Pending', table_name))
+
+    if DocumentSystemField.notes.specified_in(include_system_fields):
+        res.append(StringRawdbFieldHandler(FIELD_CODE_NOTES, field_types.StringField.type_code,
+                                           'Notes', table_name))
+
     return res
 
 
-def _build_generic_field_handlers(table_name: str) -> List[field_handlers.FieldHandler]:
+def _build_generic_field_handlers(table_name: str,
+                                  include_generic_fields: FieldSpec = True) \
+        -> List[RawdbFieldHandler]:
     res = list()
-    res.append(field_handlers.IntFieldHandler(_FIELD_CODE_CLUSTER_ID, field_types.IntField.code,
-                                              'Cluster Id', table_name))
-    res.append(field_handlers.StringFieldHandler(_FIELD_CODE_PARTIES, field_types.StringField.code,
-                                                 'Parties', table_name))
-    res.append(field_handlers.DateFieldHandler(_FIELD_CODE_EARLIEST_DATE, field_types.DateField.code,
-                                               'Earliest Date', table_name))
-    res.append(field_handlers.DateFieldHandler(_FIELD_CODE_LATEST_DATE, field_types.DateField.code,
-                                               'Latest Date', table_name))
-    res.append(field_handlers.MoneyFieldHandler(_FIELD_CODE_LARGEST_CURRENCY, field_types.MoneyField.code,
-                                                'Largest Currency', table_name))
+
+    if not include_generic_fields:
+        return res
+
+    if DocumentGenericField.cluster_id.specified_in(include_generic_fields):
+        res.append(IntFieldHandler(FIELD_CODE_CLUSTER_ID, field_types.IntField.type_code,
+                                   'Cluster Id', table_name))
+
+    if include_generic_fields is True:
+        res.append(StringRawdbFieldHandler(
+            FIELD_CODE_PARTIES, field_types.StringField.type_code, 'Parties', table_name))
+        res.append(DateFieldHandler(
+            FIELD_CODE_EARLIEST_DATE, field_types.DateField.type_code, 'Earliest Date', table_name))
+        res.append(DateFieldHandler(
+            FIELD_CODE_LATEST_DATE, field_types.DateField.type_code, 'Latest Date', table_name))
+        res.append(MoneyRawdbFieldHandler(
+            FIELD_CODE_LARGEST_CURRENCY, field_types.MoneyField.type_code, 'Largest Currency', table_name))
     return res
 
 
 def build_field_handlers(document_type: DocumentType, table_name: str = None,
-                         include_generic_fields: bool = True,
-                         include_user_fields: bool = True,
-                         include_suggested_fields: bool = True,
+                         include_system_fields: FieldSpec = True,
+                         include_generic_fields: FieldSpec = True,
+                         include_user_fields: FieldSpec = True,
                          include_annotation_fields: bool = True,
                          exclude_hidden_always_fields: bool = False) \
-        -> List[field_handlers.FieldHandler]:
-    res = list()  # type: List[field_handlers.FieldHandler]
+        -> List[RawdbFieldHandler]:
+    res = list()  # type: List[RawdbFieldHandler]
 
     if not table_name:
         table_name = doc_fields_table_name(document_type.code)
 
-    res.extend(_build_system_field_handlers(table_name))
+    res.extend(_build_system_field_handlers(table_name, include_system_fields=include_system_fields))
 
     if include_generic_fields:
-        res.extend(_build_generic_field_handlers(table_name))
+        res.extend(_build_generic_field_handlers(table_name, include_generic_fields=include_generic_fields))
 
     # Prevent repeating column names.
     # Lets assume generic field codes are unique as well as system field codes.
@@ -312,11 +290,14 @@ def build_field_handlers(document_type: DocumentType, table_name: str = None,
 
     if include_user_fields:
         doc_field_qr = DocumentField.objects.filter(document_type=document_type)
+        if isinstance(include_user_fields, set) or isinstance(include_user_fields, list):
+            doc_field_qr = doc_field_qr.filter(code__in=include_user_fields)
+
         if exclude_hidden_always_fields:
             doc_field_qr = doc_field_qr.filter(hidden_always=False)
 
         for field in doc_field_qr.order_by('order', 'code'):  # type: DocumentField
-            field_type = field.get_field_type()  # type: field_types.FieldType
+            typed_field = field_types.TypedField.by(field)  # type: field_types.TypedField
 
             # Escape field code and take max N chars for using as the column name base
             field_code_escaped = escape_column_name(field.code)[:DOCUMENT_FIELD_CODE_MAX_LEN]
@@ -337,38 +318,25 @@ def build_field_handlers(document_type: DocumentType, table_name: str = None,
             else:
                 field_code_use_counts[field_code_escaped] = 1
 
-            field_handler_class = FIELD_DB_SUPPORT_REGISTRY[field_type.code]
-            field_handler = field_handler_class(
+            rawdb_field_handler_class = RAWDB_FIELD_HANDLER_REGISTRY[typed_field.type_code]
+            rawdb_field_handler = rawdb_field_handler_class(
                 field.code,
-                field_type.code,
+                typed_field.type_code,
                 field.title,
                 table_name,
                 field.default_value,
-                field_column_name_base=field_code_escaped,
-                is_suggested=False)
-            res.append(field_handler)
+                field_column_name_base=field_code_escaped)
+            res.append(rawdb_field_handler)
             if include_annotation_fields:
                 field_code_ann = field.code + FIELD_CODE_ANNOTATION_SUFFIX
-                field_handler_ann = field_handlers.AnnotationTextFieldHandler(
+                field_handler_ann = AnnotationTextFieldHandler(
                     field_code_ann,
-                    field_type.code,
+                    typed_field.type_code,
                     field.title + ': Annotations',
                     table_name,
                     None,
-                    field_column_name_base=field_code_escaped + FIELD_CODE_ANNOTATION_SUFFIX,
-                    is_suggested=False)
+                    field_column_name_base=field_code_escaped + FIELD_CODE_ANNOTATION_SUFFIX)
                 res.append(field_handler_ann)
-            if include_suggested_fields and field.is_detectable() and not field.read_only:
-                field_code_suggested = field.code + '_suggested'
-                field_handler_suggested = field_handler_class(
-                    field_code_suggested,
-                    field_type.code,
-                    field.title + ': Suggested',
-                    table_name,
-                    field.default_value,
-                    field_column_name_base=field_code_escaped + '_sug',
-                    is_suggested=True)
-                res.append(field_handler_suggested)
 
     return res
 
@@ -394,9 +362,6 @@ def get_table_columns_from_pg(cursor, table_name: str) -> Dict[str, str]:
                    'where c.relname = %s and f.attnum > 0 and f.atttypid != 0', [table_name])
     return {column_name: column_type + (' primary key' if constr and 'p' in constr else '')
             for column_name, column_type, constr in cursor.fetchall()}
-
-
-INDEX_NAME_PREFIX = 'cx_'
 
 
 def build_index_name(table_name: str, index_definition: str) -> str:
@@ -488,11 +453,12 @@ def adapt_table_structure(log: ProcessLogger,
     should_be_columns = dict()  # type: Dict[str, str]
     should_be_indexes = dict()  # type: Dict[str, str]
     for field_handler in fields:
-        field_columns = field_handler.get_pg_column_definitions()  # type: Dict[str, field_handlers.PgTypes]
+        field_columns = field_handler.get_pg_column_definitions()  # type: Dict[str, PgTypes]
         should_be_columns.update({name: pg_type.value for name, pg_type in field_columns.items()})
         index_defs = field_handler.get_pg_index_definitions()
         if index_defs:
             should_be_indexes.update({build_index_name(table_name, index_def): index_def for index_def in index_defs})
+    should_be_columns[FIELD_CODE_HIDDEN_COLUMNS] = PgTypes.STRING_ARRAY.value
 
     if not check_only and (force or not table_exists(table_name)):
         log_msg = 'force' if force else f'table "{table_name}" does not exist'
@@ -597,76 +563,109 @@ def _recreate_document_fields_table(log: ProcessLogger, table_name: str, column_
 
 
 def _fill_system_fields_to_python_values(document: Document,
-                                         field_to_python_values: Dict[str, List]):
-    field_to_python_values[FIELD_CODE_DOC_ID] = document.id
-    field_to_python_values[FIELD_CODE_DOC_NAME] = document.name
-    field_to_python_values[FIELD_CODE_DOC_TITLE] = document.title
-    field_to_python_values[FIELD_CODE_IS_REVIEWED] = document.is_reviewed()
-    field_to_python_values[FIELD_CODE_IS_COMPLETED] = document.is_completed()
-    field_to_python_values[FIELD_CODE_DOC_FULL_TEXT] = \
-        document.full_text[:settings.RAW_DB_FULL_TEXT_SEARCH_CUT_ABOVE_TEXT_LENGTH] if document.full_text else None
-    field_to_python_values[FIELD_CODE_DOC_FULL_TEXT_LENGTH] = len(document.full_text) if document.full_text else 0
-    project = document.project
-    field_to_python_values[FIELD_CODE_PROJECT_ID] = project.pk if project is not None else None
-    field_to_python_values[FIELD_CODE_PROJECT_NAME] = project.name if project is not None else None
-    field_to_python_values[FIELD_CODE_ASSIGNEE_ID] = document.assignee_id
-    field_to_python_values[FIELD_CODE_ASSIGNEE_NAME] = document.assignee.get_full_name() if document.assignee else None
-    field_to_python_values[FIELD_CODE_CREATE_DATE] = document.history.last().history_date \
-        if document.history.exists() else document.upload_session.created_date \
-        if document.upload_session else None
-    field_to_python_values[FIELD_CODE_ASSIGN_DATE] = document.assign_date
-    field_to_python_values[FIELD_CODE_STATUS_NAME] = document.status.name if document.status else None
-    field_to_python_values[FIELD_CODE_DELETE_PENDING] = document.delete_pending
-    field_to_python_values[FIELD_CODE_NOTES] = '\n{}\n'.format('_'*20).join(
-        ['{user} {date} - {target} Level Note\n{note}'.format(
-            user=n.history.last().history_user.get_full_name()
+                                         field_to_python_values: Dict[str, List],
+                                         include_system_fields: FieldSpec = True):
+    field_to_python_values[FIELD_CODE_DOC_ID] = document.pk
+
+    if not include_system_fields:
+        return
+    if isinstance(include_system_fields, list):
+        include_system_fields = set(include_system_fields)
+
+    if include_system_fields is True:
+        field_to_python_values[FIELD_CODE_DOC_NAME] = document.name
+        field_to_python_values[FIELD_CODE_DOC_TITLE] = document.title
+        field_to_python_values[FIELD_CODE_DOC_FULL_TEXT] = \
+            document.full_text[:settings.RAW_DB_FULL_TEXT_SEARCH_CUT_ABOVE_TEXT_LENGTH] if document.full_text else None
+        field_to_python_values[FIELD_CODE_DOC_FULL_TEXT_LENGTH] = len(document.full_text) if document.full_text else 0
+        field_to_python_values[FIELD_CODE_CREATE_DATE] = document.history.last().history_date \
+            if document.history.exists() else document.upload_session.created_date \
+            if document.upload_session else None
+        field_to_python_values[FIELD_CODE_DEFINITIONS] = '; '.join(
+            DefinitionUsage.objects.filter(text_unit__document=document)
+                .values_list('definition', flat=True)) or None
+
+    if DocumentSystemField.status.specified_in(include_system_fields):
+        field_to_python_values[FIELD_CODE_IS_REVIEWED] = document.is_reviewed()
+        field_to_python_values[FIELD_CODE_IS_COMPLETED] = document.is_completed()
+        field_to_python_values[FIELD_CODE_STATUS_NAME] = document.status.name if document.status else None
+
+    if DocumentSystemField.assignee.specified_in(include_system_fields):
+        field_to_python_values[FIELD_CODE_ASSIGNEE_ID] = document.assignee_id
+        field_to_python_values[FIELD_CODE_ASSIGNEE_NAME] = document.assignee.get_full_name() \
+            if document.assignee else None
+        field_to_python_values[FIELD_CODE_ASSIGN_DATE] = document.assign_date
+
+    if DocumentSystemField.delete_pending.specified_in(include_system_fields):
+        field_to_python_values[FIELD_CODE_DELETE_PENDING] = document.delete_pending
+
+    if DocumentSystemField.project.specified_in(include_system_fields):
+        project = document.project
+        field_to_python_values[FIELD_CODE_PROJECT_ID] = project.pk if project is not None else None
+        field_to_python_values[FIELD_CODE_PROJECT_NAME] = project.name if project is not None else None
+
+    if DocumentSystemField.notes.specified_in(include_system_fields):
+        field_to_python_values[FIELD_CODE_NOTES] = '\n{}\n'.format('_' * 20).join(
+            ['{user} {date} - {target} Level Note\n{note}'.format(
+                user=n.history.last().history_user.get_full_name()
                 if n.history.exists() and n.history.last().history_user else None,
-            date=n.timestamp.strftime('%m-%d-%Y %I:%M %p %Z'),
-            target='Text' if n.location_start is not None and n.location_end is not None else 'Document',
-            note=n.note)
-            for n in document.documentnote_set.all()]) or None
-    field_to_python_values[FIELD_CODE_DEFINITIONS] = '; '.join(
-        DefinitionUsage.objects.filter(definition__isnull=False, text_unit__document=document)
-            .values_list('definition', flat=True)) or None
+                date=n.timestamp.strftime('%m-%d-%Y %I:%M %p %Z'),
+                target='Text' if n.location_start is not None and n.location_end is not None else 'Document',
+                note=n.note)
+                for n in document.documentnote_set.all()]) or None
 
 
 def _fill_generic_fields_to_python_values(document: Document,
-                                          field_to_python_values: Dict[str, List]):
-    generic_values = get_generic_values(document)
+                                          field_to_python_values: Dict[str, List],
+                                          generic_values_to_fill: FieldSpec = True):
+    dal = RawDbRepository()
+    generic_values = dal.get_generic_values(document, generic_values_to_fill)
     field_to_python_values.update(generic_values)
 
 
 def _build_insert_clause(log: ProcessLogger,
                          table_name: str,
-                         handlers: List[field_handlers.FieldHandler],
+                         handlers: List[RawdbFieldHandler],
+                         hidden_handlers: List[RawdbFieldHandler],
                          document: Document,
-                         fields_to_python_values: Dict[str, Any]) -> SQLClause:
+                         fields_to_python_values: Dict[str, Any],
+                         hidden_field_codes: Set[str]) -> SQLClause:
     insert_clauses = list()
 
-    for handler in handlers:  # type: field_handlers.FieldHandler
-        python_value = fields_to_python_values.get(handler.field_code)
+    fields_to_python_values = dict(fields_to_python_values)  # creating a copy to not modify the original one
+
+    if hidden_field_codes is not None:
+        hidden_columns = list()
+        for h in hidden_handlers:
+            if h.field_code and h.field_code in hidden_field_codes:
+                cdefs = h.get_pg_column_definitions()
+                if cdefs:
+                    hidden_columns.extend(cdefs.keys())
+                hidden_columns.append(h.field_code + FIELD_CODE_ANNOTATION_SUFFIX)
+                fields_to_python_values[h.field_code] = None
+
+        insert_clauses.append(SQLInsertClause(f'"{FIELD_CODE_HIDDEN_COLUMNS}"', [],
+                                              '%s', [list(hidden_columns)]))
+
+    for handler in handlers:  # type: FieldHandler
         try:
             insert_clause = handler.get_pg_sql_insert_clause(document.language,
-                                                             python_value)  # type: SQLInsertClause
+                                                             fields_to_python_values)  # type: SQLInsertClause
             insert_clauses.append(insert_clause)
         except Exception as ex:
-            msg = render_error(
-                'Unable to cache field values.\n'
-                'Document: {0} (#{1}).\n'
-                'Field: {2}'.format(document.name, document.id, handler.field_code), caused_by=ex)
-            log.error(msg)
+            log.error(f'Unable to cache field values.\n'
+                      f'Document: {document.name} (#{document.pk}).\n'
+                      f'Field: {handler.field_code}', exc_info=ex)
 
     columns_clause, values_clause = SQLInsertClause.join(insert_clauses)
 
-    insert_clause = format_clause('insert into "{table_name}" ({columns}) '
-                                  'values ({values}) on conflict ({column_document_id}) '
-                                  'do update set ({columns}) = ({values})',
-                                  table_name=table_name,
-                                  columns=columns_clause,
-                                  values=values_clause,
-                                  column_document_id=FIELD_CODE_DOC_ID)
-
-    return insert_clause
+    return format_clause('insert into "{table_name}" ({columns}) '
+                         'values ({values}) on conflict ({column_document_id}) '
+                         'do update set ({columns}) = ({values})',
+                         table_name=table_name,
+                         columns=columns_clause,
+                         values=values_clause,
+                         column_document_id=FIELD_CODE_DOC_ID)
 
 
 def _delete_document_from_cache(cursor, document_id):
@@ -698,7 +697,7 @@ def delete_document_from_cache(user: User, document: Document):
         fire_document_fields_changed(cache_document_fields,
                                      log=log,
                                      document_event=DocumentEvent.DELETED.value,
-                                     document=document,
+                                     document_pk=document.pk,
                                      field_handlers={h.field_code: h for h in handlers},
                                      fields_before=document_fields_before, fields_after=None,
                                      changed_by_user=user)
@@ -707,7 +706,7 @@ def delete_document_from_cache(user: User, document: Document):
 def get_document_field_values(document_type: DocumentType,
                               document_id,
                               table_name: str = None,
-                              handlers: List[field_handlers.FieldHandler] = None,
+                              handlers: List[RawdbFieldHandler] = None,
                               none_on_errors: bool = True) -> Optional[Dict[str, Any]]:
     with connection.cursor() as cursor:
         if not table_name:
@@ -721,12 +720,12 @@ def get_document_field_values(document_type: DocumentType,
 def _get_document_fields(document_id,
                          cursor,
                          table_name: str,
-                         handlers: List[field_handlers.FieldHandler],
+                         handlers: List[RawdbFieldHandler],
                          none_on_errors: bool = True) -> Optional[Dict[str, Any]]:
     column_names = list()  # type: List[str]
-    for h in handlers:  # type: field_handlers.FieldHandler
-        columns = h.get_client_column_descriptions()  # type: List[field_handlers.ColumnDesc]
-        for c in columns:  # type: field_handlers.ColumnDesc
+    for h in handlers:  # type: FieldHandler
+        columns = h.get_client_column_descriptions()  # type: List[ColumnDesc]
+        for c in columns:  # type: ColumnDesc
             column_names.append(c.name)
 
     sql_columns = ', \n'.join(['"{column}"'.format(column=column) for column in column_names])
@@ -749,77 +748,117 @@ def _get_document_fields(document_id,
     return None
 
 
+def clear_user_fields_no_events(document: Document,
+                                user_fields: FieldSpec = True):
+    document_type = document.document_type
+    table_name = doc_fields_table_name(document_type.code)
+    handlers = build_field_handlers(document_type,
+                                    table_name,
+                                    include_system_fields=False,
+                                    include_generic_fields=False,
+                                    include_user_fields=user_fields,
+                                    include_annotation_fields=True)
+    columns = set()
+    for h in handlers:
+        if h.field_code not in FIELD_CODES_SYSTEM and h.field_code not in FIELD_CODES_GENERIC:
+            columns.update(h.get_pg_column_definitions().keys())
+
+    if columns:
+        columns_update = ',\n'.join([f'"{c}" = null' for c in columns])
+        sql = f'update "{table_name}" set\n{columns_update}\nwhere "{FIELD_CODE_DOC_ID}" = %s'
+        with connection.cursor() as cursor:
+            cursor.execute(sql, [document.pk])
+
+
 def cache_document_fields(log: ProcessLogger,
                           document: Document,
-                          cache_generic_fields: bool = True,
-                          cache_user_fields: bool = True,
-                          pre_detected_field_codes_to_suggested_values: Optional[Dict[str, Any]] = None,
+                          cache_system_fields: FieldSpec = True,
+                          cache_generic_fields: FieldSpec = True,
+                          cache_user_fields: FieldSpec = True,
                           document_initial_load: bool = False,
                           changed_by_user: User = None,
                           old_field_values: Dict[str, Any] = None):
     document_type = document.document_type
     table_name = doc_fields_table_name(document_type.code)
 
-    cache_suggested_fields = pre_detected_field_codes_to_suggested_values is not None
-
     handlers = build_field_handlers(document_type,
                                     table_name,
-                                    include_generic_fields=True,
-                                    include_user_fields=True,
-                                    include_suggested_fields=True,
+                                    include_system_fields=cache_system_fields,
+                                    include_generic_fields=cache_generic_fields,
+                                    include_user_fields=cache_user_fields,
                                     include_annotation_fields=True)
-
-    system_field_handlers = list()  # type: List[field_handlers.FieldHandler]
-    generic_field_handlers = list()  # type: List[field_handlers.FieldHandler]
-    user_field_handlers = list()  # type: List[field_handlers.FieldHandler]
+    system_field_handlers = list()  # type: List[RawdbFieldHandler]
+    generic_field_handlers = list()  # type: List[RawdbFieldHandler]
+    user_field_handlers = list()  # type: List[RawdbFieldHandler]
     user_field_annotations_handlers = list()
-    user_suggested_field_handlers = list()
 
     for h in handlers:
         if h.field_code in FIELD_CODES_SYSTEM:
             system_field_handlers.append(h)
-        elif h.field_code in _FIELD_CODES_GENERIC:
+        elif h.field_code in FIELD_CODES_GENERIC:
             generic_field_handlers.append(h)
-        elif h.is_suggested:
-            user_suggested_field_handlers.append(h)
         elif h.field_code.endswith(FIELD_CODE_ANNOTATION_SUFFIX):
             user_field_annotations_handlers.append(h)
         else:
             user_field_handlers.append(h)
 
-    insert_field_handlers = list()  # type: List[field_handlers.FieldHandler]
+    insert_field_handlers = list()  # type: List[RawdbFieldHandler]
     field_to_python_values = dict()
-    _fill_system_fields_to_python_values(document, field_to_python_values)
+
+    _fill_system_fields_to_python_values(document, field_to_python_values, cache_system_fields)
     insert_field_handlers += system_field_handlers
 
     if cache_generic_fields:
-        _fill_generic_fields_to_python_values(document, field_to_python_values)
+        _fill_generic_fields_to_python_values(document, field_to_python_values, cache_generic_fields)
         insert_field_handlers += generic_field_handlers
 
-    if cache_user_fields:
-        if user_field_handlers:
-            insert_field_handlers += user_field_handlers
-            insert_field_handlers += user_field_annotations_handlers
-            real_document_field_values = DocumentFieldValue.objects \
-                .filter(document=document, field__code__in={h.field_code for h in user_field_handlers}) \
-                .exclude(removed_by_user=True) \
-                .select_related('field')  # type: List[DocumentFieldValue]
+    hidden_field_codes = None  # None means no update
 
-            for dfv in real_document_field_values:  # type: DocumentFieldValue
-                field_type = dfv.field.get_field_type()
-                field_to_python_values[dfv.field.code] = field_type.merge_multi_python_values(
-                    field_to_python_values.get(dfv.field.code), dfv.python_value)
+    hid_handlers = {}
 
-            for dfv in real_document_field_values.filter(location_text__isnull=False).order_by('location_start'):  # type: DocumentFieldValue
-                field_code = dfv.field.code + FIELD_CODE_ANNOTATION_SUFFIX
-                field_to_python_values[field_code] = field_to_python_values.get(field_code, []) + [dfv.location_text]
+    if cache_user_fields and user_field_handlers:
+        insert_field_handlers += user_field_handlers
+        insert_field_handlers += user_field_annotations_handlers
+        from apps.document.repository.document_field_repository import DocumentFieldRepository
+        field_repo = DocumentFieldRepository()
 
-            if cache_suggested_fields and pre_detected_field_codes_to_suggested_values is not None:
-                insert_field_handlers += user_suggested_field_handlers
-                for field_code, python_value in pre_detected_field_codes_to_suggested_values.items():
-                    field_to_python_values[field_code + '_suggested'] = python_value
+        user_fields_code_to_value = {code: None for code in
+                                     document_type.fields.all().values_list('code', flat=True)}
+        user_fields_code_to_value.update(field_repo.get_field_code_to_python_value(document_type_id=document_type.pk,
+                                                                                   doc_id=document.pk))
 
-    insert_clause = _build_insert_clause(log, table_name, insert_field_handlers, document, field_to_python_values)
+        _hidden_field_ids, hidden_field_codes = field_repo.get_hidden_field_ids_codes(document,
+                                                                                      user_fields_code_to_value)
+        if hidden_field_codes:
+            hid_handlers = build_field_handlers(document_type,
+                                                table_name,
+                                                include_system_fields=False,
+                                                include_generic_fields=False,
+                                                include_user_fields=list(hidden_field_codes),
+                                                include_annotation_fields=True)
+
+        field_to_python_values.update(user_fields_code_to_value)
+
+        # now get field annotations only for those fields which we are really going to index
+        field_codes = {h.field_code for h in user_field_handlers}
+        for dfv in field_repo.get_docfield_ants_by_doc_and_code(document.pk,
+                                                                field_codes=field_codes,
+                                                                order_by_location=True):  # type: FieldAnnotation
+            field_code = dfv.field.code + FIELD_CODE_ANNOTATION_SUFFIX
+            field_to_python_values[field_code] = field_to_python_values.get(field_code, []) + [dfv.location_text]
+
+    # do not do anything if finally there are no fields to cache
+    # the single field handler - is document id
+    if len(insert_field_handlers) == 1:
+        return
+
+    insert_clause = _build_insert_clause(log,
+                                         table_name,
+                                         insert_field_handlers,
+                                         hid_handlers,
+                                         document,
+                                         field_to_python_values,
+                                         hidden_field_codes=hidden_field_codes)
 
     with connection.cursor() as cursor:
         document_fields_before = _get_document_fields(cursor=cursor,
@@ -862,25 +901,23 @@ def cache_document_fields(log: ProcessLogger,
                                  log=log,
                                  document_event=DocumentEvent.CREATED.value if document_initial_load
                                  else DocumentEvent.CHANGED.value,
-                                 document=document,
+                                 document_pk=document.pk,
                                  field_handlers={h.field_code: h for h in handlers},
                                  fields_before=document_fields_before, fields_after=document_fields_after,
                                  changed_by_user=changed_by_user)
 
 
-def _get_columns(handlers: List[field_handlers.FieldHandler]) -> List[field_handlers.ColumnDesc]:
+def _get_columns(handlers: List[RawdbFieldHandler]) -> List[ColumnDesc]:
     return sum_list([h.get_client_column_descriptions() for h in handlers])
 
 
 def get_columns(document_type: DocumentType,
-                include_suggested: bool = True,
                 include_annotations: bool = True,
-                include_generic: bool = False) \
-        -> List[field_handlers.ColumnDesc]:
+                include_generic: FieldSpec = False) \
+        -> List[ColumnDesc]:
     table_name = doc_fields_table_name(document_type.code)
     handlers = build_field_handlers(document_type,
                                     table_name,
-                                    include_suggested_fields=include_suggested,
                                     include_generic_fields=include_generic,
                                     include_annotation_fields=include_annotations,
                                     exclude_hidden_always_fields=True)
@@ -951,9 +988,6 @@ def _extract_column_filters_and_order_by_from_saved_filters(document_type: Docum
     return column_filters, order_by
 
 
-DEFAULT_ORDER_BY = (FIELD_CODE_DOC_NAME, SortDirection.ASC)
-
-
 def query_documents(document_type: DocumentType,
                     requester: Optional[User] = None,
                     project_ids: Optional[List[int]] = None,
@@ -978,13 +1012,13 @@ def query_documents(document_type: DocumentType,
     handlers = build_field_handlers(document_type=document_type,
                                     table_name=table_name,
                                     include_annotation_fields=include_annotation_fields,
-                                    exclude_hidden_always_fields=True)  # type: List[field_handlers.FieldHandler]
-    existing_columns = _get_columns(handlers)  # type: List[field_handlers.ColumnDesc]
+                                    exclude_hidden_always_fields=True)  # type: List[RawdbFieldHandler]
+    existing_columns = _get_columns(handlers)  # type: List[ColumnDesc]
     existing_column_name_to_desc = {column.name: column
                                     for column in
-                                    existing_columns}  # type: Dict[str, field_handlers.ColumnDesc]
+                                    existing_columns}  # type: Dict[str, ColumnDesc]
     existing_column_names = set(existing_column_name_to_desc.keys())
-    field_codes_to_desc = {d.field_code: d for d in existing_columns}  # type: Dict[str, field_handlers.ColumnDesc]
+    field_codes_to_desc = {d.field_code: d for d in existing_columns}  # type: Dict[str, ColumnDesc]
     if return_documents or saved_filter_ids or column_filters:
         # build column handlers only if there can be filters on columns (saved filters or filters specified in request)
         # or if we are returning data which requires column names
@@ -1052,6 +1086,19 @@ def query_documents(document_type: DocumentType,
                                            '{where}', table_name=table_name,
                                            where=where_clause)
 
+    def process_hidden_columns(row: List) -> List:
+        if not row:
+            return row
+        if not isinstance(row, list):
+            row = list(row)
+        hidden_columns = row[-1]
+        if hidden_columns:
+            hidden_columns = set(hidden_columns)
+            for n, column in enumerate(requested_columns):
+                if column.name in hidden_columns:
+                    row[n] = 'N/A'
+        return row[:-1]
+
     if return_documents:
         sql_columns = ', \n'.join(column_sql_specs)
 
@@ -1067,23 +1114,30 @@ def query_documents(document_type: DocumentType,
                     correct_order_by.append((column, direction))
 
         order_by = correct_order_by if correct_order_by else [DEFAULT_ORDER_BY]
-
-        order_by_clause = SQLClause('order by ' + ', '.join(
-            ['"{column}" {direction} nulls {nulls_prio}'.format(
-                column=column,
-                direction=direction.value,
-                nulls_prio='first' if direction == SortDirection.ASC else 'last')
-             for column, direction in order_by]))
+        # If field IS in hidden list, "=ANY" returns 't' (true), that
+        # goes after 'f' (false). Thus hidden values always go after visible ones.
+        order_by_clause = SQLClause('order by ' +
+                                    ', '.join(
+                                        [
+                                            '\'{column}\' = ANY({hid_columns}), "{column}" {direction} nulls {nulls_prio}'.format(
+                                                column=column,
+                                                hid_columns=FIELD_CODE_HIDDEN_COLUMNS,
+                                                direction=direction.value,
+                                                nulls_prio='first' if direction == SortDirection.ASC else 'last')
+                                            for column, direction in order_by]))
 
         offset_clause = SQLClause('offset %s', [int(offset)]) if offset else None
         limit_clause = SQLClause('limit %s', [int(limit)]) if limit else None
 
-        data_clause = format_clause('SELECT {sql_columns}\n'
+        data_clause = format_clause('SELECT {sql_columns},\n'
+                                    '{hidden_columns_name}\n'
                                     'FROM "{table_name}"\n'
                                     '{where}\n'
                                     '{sql_order_by}\n'
                                     '{offset_clause}\n'
-                                    '{limit_clause}', sql_columns=sql_columns,
+                                    '{limit_clause}',
+                                    sql_columns=sql_columns,
+                                    hidden_columns_name=FIELD_CODE_HIDDEN_COLUMNS,
                                     table_name=table_name,
                                     where=where_clause,
                                     offset_clause=offset_clause,
@@ -1095,7 +1149,8 @@ def query_documents(document_type: DocumentType,
                                 total_sql=count_total_clause,
                                 reviewed_sql=count_reviewed_clause,
                                 columns=requested_columns,
-                                items_sql=data_clause)
+                                items_sql=data_clause,
+                                row_processor=process_hidden_columns if return_documents else None)
 
 
 def set_documents_delete_status(document_ids: List[int],
@@ -1111,8 +1166,8 @@ def set_documents_delete_status(document_ids: List[int],
         with connection.cursor() as cursor:
             for doc_type in doc_types:
                 table_name = doc_fields_table_name(doc_type)
-                cmd = f'UPDATE "{table_name}" set "{FIELD_CODE_DELETE_PENDING}"' +\
-                      f'={delete_pending} where ' +\
+                cmd = f'UPDATE "{table_name}" set "{FIELD_CODE_DELETE_PENDING}"' + \
+                      f'={delete_pending} where ' + \
                       f'"{FIELD_CODE_DOC_ID}" in ({doc_id_str});'
                 cursor.execute(cmd)
                 total_checked += cursor.rowcount
@@ -1128,6 +1183,23 @@ def set_documents_delete_status(document_ids: List[int],
         logger = get_django_logger()
         logger.error(er_msg)
         raise RuntimeError(er_msg)
+
+
+def update_document_name(doc_id: int, doc_name: str) -> None:
+    doc_type = Document.all_objects.filter(pk=doc_id).values_list(
+        'document_type__code', flat=True)[0]
+    table_name = doc_fields_table_name(doc_type)
+
+    try:
+        with connection.cursor() as cursor:
+            cmd = f'UPDATE "{table_name}" set "{FIELD_CODE_DOC_NAME}"' + \
+                  f"='{doc_name}' where " + \
+                  f'"{FIELD_CODE_DOC_ID}" = {doc_id};'
+            cursor.execute(cmd)
+    except Exception as e:
+        logger = get_django_logger()
+        logger.error(f'RawDB: could not rename doc id = {doc_id} to "{doc_name}"', exc_info=e)
+        raise e
 
 
 def format_error_msg(doc_ids: List[int],

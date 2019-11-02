@@ -28,15 +28,15 @@ from django.apps import AppConfig
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2019, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.3/LICENSE"
-__version__ = "1.2.3"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.3.0/LICENSE"
+__version__ = "1.3.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
 
 class NotificationsConfig(AppConfig):
     name = 'apps.notifications'
-    verbose_name = "Notifications"
+    verbose_name = "AsyncNotifications"
 
     def ready(self):
         # noinspection PyUnresolvedReferences

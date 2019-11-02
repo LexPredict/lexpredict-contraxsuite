@@ -42,8 +42,7 @@ import rest_framework.filters
 import rest_framework.response
 import rest_framework.generics
 from django.http.response import StreamingHttpResponse
-from rest_framework import serializers
-from rest_framework import status
+from rest_framework import serializers, status
 from rest_framework.decorators import action
 from rest_framework.fields import empty as EMPTY
 from rest_framework.response import Response
@@ -77,8 +76,8 @@ from apps.common.utils import cap_words, export_qs_to_file, download
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2019, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.3/LICENSE"
-__version__ = "1.2.3"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.3.0/LICENSE"
+__version__ = "1.3.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -565,24 +564,22 @@ class JqPaginatedListView(AjaxListView):
         return qs
 
     def get_json_data(self, **kwargs):
-        data = []
         qs = self.get_queryset()    # .distinct()
-        total_records = qs.count()
         enable_pagination = json.loads(self.request.GET.get('enable_pagination', 'null'))
         export_to = self.request.GET.get('export_to')
         qs = self.filter_and_sort(qs)
-        if export_to or not enable_pagination:
-            if getattr(self, 'deep_processing', True):
-                data = super().get_json_data(qs=qs, **kwargs)
-            else:
-                data = list(qs)
-        elif qs.exists():
-            total_records = qs.count()
+
+        if enable_pagination and not export_to:
             qs = self.paginate(qs)
-            if getattr(self, 'deep_processing', True):
-                data = super().get_json_data(qs=qs, **kwargs)
-            else:
-                data = list(qs)
+            total_records = qs.total_records
+        else:
+            total_records = qs.count()
+
+        if getattr(self, 'deep_processing', True):
+            data = super().get_json_data(qs=qs, **kwargs)
+        else:
+            data = list(qs)
+
         return {'data': data, 'total_records': total_records}
 
     @staticmethod
@@ -719,7 +716,7 @@ class APIFormFieldsMixin:
 
     def get_fields_data(self):
         fields = OrderedDict()
-        serializer_class = self.options_serializer or self.get_serializer()
+        serializer_class = self.options_serializer or self.get_serializer_class()
         try:
             instance = self.get_object()
         except:
@@ -949,7 +946,11 @@ class APIActionMixin:
     user_action = None
 
     def dispatch(self, request, *args, **kwargs):
+        request.needs_action_logging = getattr(request, 'needs_action_logging', (request.method != 'GET'))
         response = super().dispatch(request, *args, **kwargs)
+        if not request.needs_action_logging:
+            return response
+
         if not request.user or not request.user.is_authenticated:
             return response
 
@@ -1162,7 +1163,7 @@ class APILoggingMixin(LoggingMixin):
         from apps.common.app_vars import TRACK_API_SAVE_SQL_LOG
         if TRACK_API_SAVE_SQL_LOG.val:
             self.log['sql_log'] = '\n'.join(['({}) {}'.format(
-                q.get('time') or q.get('duration', 0)/1000, q.get('sql') or '')
+                q.get('time') or q.get('duration', 0) / 1000, q.get('sql') or '')
                                              for q in connection.queries])
         CustomAPIRequestLog(**self.log).save()
 

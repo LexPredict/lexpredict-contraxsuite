@@ -24,58 +24,56 @@
 """
 # -*- coding: utf-8 -*-
 
-from typing import List, Any, Tuple, Optional
+from typing import Any, Tuple
 
+from apps.common.log_utils import ProcessLogger
 from apps.document.field_types import PersonField, AmountField
-from apps.document.python_coded_fields import PythonCodedField
-from apps.document.models import Document, DocumentField
+from apps.document.models import Document, DocumentField, TextUnit
+from apps.document.python_coded_fields import TextUnitBasedSingleValuePythonCodedField
 from apps.employee.services import get_employee_name, get_employer_name, get_salary
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2019, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.3/LICENSE"
-__version__ = "1.2.3"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.3.0/LICENSE"
+__version__ = "1.3.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
 
-class EmployeeName(PythonCodedField):
+class EmployeeName(TextUnitBasedSingleValuePythonCodedField):
     code = 'employment.employee_name'
     title = 'Employment: Employee Name'
-    type = PersonField.code
-    detect_per_text_unit = True
+    type = PersonField.type_code
 
-    def get_values(self, field: DocumentField, doc: Document, text: str) \
-            -> List[Tuple[Any, Optional[int], Optional[int]]]:
-        res = get_employee_name(text)
-        return [(res, 0, len(text))] if res else None
+    def find_value_in_text_unit(self, log: ProcessLogger, field: DocumentField, doc: Document, text_unit: TextUnit) -> \
+            Tuple[bool, Any]:
+        res = get_employee_name(text_unit.text)
+        return res is not None, res
 
 
-class EmployerName(PythonCodedField):
+class EmployerName(TextUnitBasedSingleValuePythonCodedField):
     code = 'employment.employer_name'
     title = 'Employment: Employer Name'
-    type = PersonField.code
-    detect_per_text_unit = True
+    type = PersonField.type_code
 
-    def get_values(self, field: DocumentField, doc: Document, text: str) \
-            -> List[Tuple[Any, Optional[int], Optional[int]]]:
-        res = get_employer_name(text)
-        return [(res, 0, len(text))] if res else None
+    def find_value_in_text_unit(self, log: ProcessLogger, field: DocumentField, doc: Document, text_unit: TextUnit) -> \
+            Tuple[bool, Any]:
+        res = get_employer_name(text_unit.text)
+        return res is not None, res
 
 
-class Salary(PythonCodedField):
+class Salary(TextUnitBasedSingleValuePythonCodedField):
     code = 'employment.salary'
     title = 'Employment: Salary'
-    type = AmountField.code
-    detect_per_text_unit = True
+    type = AmountField.type_code
 
-    def get_values(self, field: DocumentField, doc: Document, text: str) \
-            -> List[Tuple[Any, Optional[int], Optional[int]]]:
-        res = get_salary(text)
+    def find_value_in_text_unit(self, log: ProcessLogger, field: DocumentField, doc: Document, text_unit: TextUnit) -> \
+            Tuple[bool, Any]:
+        res = get_salary(text_unit.text)
         if not res:
-            return []
+            return False, None
         money, _found_time_unit = res
-        return [(money, 0, len(text))] if money else None
+        return True, money
 
 
 # Python coded fields enlisted in this attribute will be automatically registered on Django start.

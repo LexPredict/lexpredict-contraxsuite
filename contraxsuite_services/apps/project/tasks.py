@@ -24,38 +24,51 @@
 """
 # -*- coding: utf-8 -*-
 
+import mimetypes
+import os
+import re
+import tarfile
+import time
+import zipfile
+
 # Third-party imports
 import numpy as np
 import pandas as pd
-from django.db.models import Count
 # Django imports
+from django.core.files.uploadedfile import TemporaryUploadedFile
+from django.db.models import Sum
+from django.http import HttpRequest
 from django.utils.timezone import now
 from sklearn.cluster import Birch, KMeans, MiniBatchKMeans
 from sklearn.decomposition import PCA
 from sklearn.feature_extraction.text import TfidfVectorizer, TfidfTransformer
 
 # Project imports
+import task_names
 from apps.analyze.models import DocumentCluster
 from apps.celery import app
+from apps.common.file_storage import get_file_storage
 from apps.document import signals
-from apps.document.fields_detection.field_detection_celery_api import run_detect_field_values_as_sub_tasks
-from apps.document.fields_processing import field_value_cache
+from apps.document.constants import DocumentGenericField
+from apps.document.field_detection.field_detection_celery_api import run_detect_field_values_as_sub_tasks
 from apps.document.models import Document
 from apps.document.repository.base_document_repository import BaseDocumentRepository
 from apps.document.repository.document_repository import DocumentRepository
 from apps.project.models import Project, ProjectClustering, UploadSession
-from apps.task.tasks import BaseTask, CeleryTaskLogger, call_task
+from apps.task.tasks import BaseTask, CeleryTaskLogger, Task, purge_task, call_task_func
 from apps.task.utils.task_utils import TaskUtils
+from apps.users.models import User
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2019, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.3/LICENSE"
-__version__ = "1.2.3"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.3.0/LICENSE"
+__version__ = "1.3.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
 
 THIS_MODULE = __name__
+file_storage = get_file_storage()
 
 
 class ClusterProjectDocuments(BaseTask):
@@ -66,15 +79,17 @@ class ClusterProjectDocuments(BaseTask):
 
     queue = 'high_priority'
 
+    project_clustering_id = None
+
     def process(self, **kwargs):
 
         n_clusters = kwargs.get('n_clusters')
         method = kwargs.get('method')
         project_id = kwargs.get('project_id')
 
-        project_clustering_id = kwargs.get('project_clustering_id')
-        project_clustering = ProjectClustering.objects.get(
-            pk=project_clustering_id) if project_id else None
+        self.project_clustering_id = kwargs.get('project_clustering_id')
+        project_clustering = ProjectClustering.objects.get(pk=self.project_clustering_id)
+        project_clustering.status = 'PENDING'
         project_clustering.task = self.task
         project_clustering.save()
 
@@ -114,15 +129,17 @@ class ClusterProjectDocuments(BaseTask):
 
         # Cluster by terms
         else:
+            documents = documents.defer('full_text')
             id_field = 'id'
             prop_field = 'textunit__termusage__term__term'
+            prop_field_count = 'textunit__termusage__count'
             # filter non-null, null
-            qs = documents.filter(textunit__termusage__isnull=False)
-            if not qs.exists():
+            qs_exists = documents.filter(textunit__termusage__isnull=False)
+            if not qs_exists.exists():
                 raise RuntimeError('No terms in documents detected, try to re-run terms parser.')
             # get values
-            ann_cond = dict(prop_count=Count(prop_field))
-            qs = qs.values(id_field, prop_field).annotate(**ann_cond).distinct()
+            ann_cond = dict(prop_count=Sum(prop_field_count))
+            qs = documents.values(id_field, prop_field).annotate(**ann_cond).distinct()
             # get data
             df = pd.DataFrame(list(qs)).dropna()
             null_qs = documents.exclude(textunit__termusage__isnull=False)
@@ -185,9 +202,11 @@ class ClusterProjectDocuments(BaseTask):
             order_centroids = cluster_centers.argsort()[:, ::-1]
             clusters = m.labels_.tolist()
             cluster_labels = set(clusters)
-            _n_clusters = len(cluster_labels)
+            # _n_clusters = len(cluster_labels)
+            # cluster_terms = [[terms[ind] for ind in order_centroids[i, :10]] for i in
+            #                  range(_n_clusters)]
             cluster_terms = [[terms[ind] for ind in order_centroids[i, :10]] for i in
-                             range(_n_clusters)]
+                             range(max(cluster_labels) + 1)]
             centers2d = pca.transform(cluster_centers)
 
         points_data = [{'document_id': pks[i],
@@ -197,8 +216,14 @@ class ClusterProjectDocuments(BaseTask):
 
         self.push()
 
+        # clear previous clusters, their tasks and cluster sessions
+        project.drop_clusters(exclude_task_ids={self.request.id},
+                              exclude_project_clustering_id=self.project_clustering_id)
+
         clusters_data = {}
         created_date = now()
+
+        to_add = list()
         for cluster_id in cluster_labels:
             cluster_label = cluster_terms[cluster_id]
             if isinstance(cluster_label, list):
@@ -220,7 +245,10 @@ class ClusterProjectDocuments(BaseTask):
                 cluster_terms=cluster_terms[cluster_id],
                 centroid_coord=centers2d[cluster_id].tolist() if centers2d is not None else None
             )
-            project_clustering.document_clusters.add(cluster)
+
+            # can't add cluster to project_clustering.document_clusters before storing project_clustering itself
+            # so caching them in a list to add later
+            to_add.append(cluster)
 
         result = {'method': method,
                   'n_clusters': n_clusters,
@@ -229,16 +257,55 @@ class ClusterProjectDocuments(BaseTask):
         project_clustering.metadata = result
         project_clustering.save()
 
+        for cluster in to_add:
+            project_clustering.document_clusters.add(cluster)
+
         self.push()
         self.log_info('Clustering completed. Updating document cache.')
 
         log = CeleryTaskLogger(self)
         for doc in Document.objects.filter(project__pk=project_id):
-            field_value_cache.cache_generic_values(doc, log=log)
+            signals.fire_document_changed(sender=self,
+                                          log=log,
+                                          document=doc,
+                                          changed_by_user=None,
+                                          system_fields_changed=False,
+                                          user_fields_changed=False,
+                                          generic_fields_changed=[DocumentGenericField.cluster_id.value])
+
+        project_clustering.status = 'SUCCESS'
+        project_clustering.save()
 
         self.push()
         self.log_info('Finished.')
         return result
+
+    def on_failure(self, exc, task_id, args, kwargs, exc_traceback):
+        if self.project_clustering_id:
+            project_clustering = ProjectClustering.objects.get(pk=self.project_clustering_id)
+            project_clustering.status = 'FAILURE'
+
+            exc_str = str(exc)
+            message_head = 'Clustering failed. '
+            message_body = 'Unexpected error while clustering. Try again later.'
+
+            if ('max_df corresponds to < documents than min_df' in exc_str) or \
+                    ('Number of samples smaller than number of clusters' in exc_str) or \
+                    (re.search(r'n_samples=\d+ should be >= n_clusters=\d+', exc_str)):
+                message_body = 'Try to increase number of documents ' \
+                               'or set lower number of clusters.'
+            elif re.search(r'n_components=\d+ must be between \d+ and n_features=\d+', exc_str):
+                message_body = 'Chosen documents look very similar,' \
+                               ' clustering algorithm is not able to form clusters.'
+            elif 'No terms in documents detected' in exc_str:
+                message_body = exc_str
+            else:
+                message_body += ' \nOriginal issue is: "{}"'.format(exc_str)
+
+            project_clustering.reason = message_head + message_body
+            project_clustering.save()
+
+        super().on_failure(exc, task_id, args, kwargs, exc_traceback)
 
 
 class ReassignProjectClusterDocuments(BaseTask):
@@ -253,7 +320,7 @@ class ReassignProjectClusterDocuments(BaseTask):
         new_project_id = kwargs.get('new_project_id')
         new_project = Project.objects.get(pk=new_project_id)
 
-        documents = Document.objects.filter(documentcluster__pk__in=cluster_ids)
+        documents = Document.objects.filter(documentcluster__pk__in=cluster_ids).defer('full_text')
         documents.update(project_id=new_project, document_type=new_project.type)
 
         for document in documents:
@@ -323,7 +390,7 @@ class CleanProject(BaseTask):
             from apps.document.sync_tasks.document_files_cleaner import DocumentFilesCleaner
             DocumentFilesCleaner.delete_document_files(file_paths)
         except Exception as e:
-            self.log_error(e)
+            self.log_error(f'Unable to clean document files: {file_paths}', exc_info=e)
 
         # delete documents
         from apps.document.repository.document_bulk_delete \
@@ -359,8 +426,73 @@ class CleanProjects(BaseTask):
                                        clean_args)
 
 
-@app.task(name='advanced_celery.track_session_completed', bind=True)
-def track_session_completed(*args, **kwargs):
+class CancelUpload(BaseTask):
+    """
+    Cancel Upload Session - remove session, remove uploaded files, Documents, Tasks, reindex.
+    """
+    name = 'Cancel Upload'
+    priority = 9
+
+    def process(self, **kwargs):
+
+        session_id = kwargs['session_id']
+
+        # 1. Purge Tasks
+        session_tasks = Task.objects.main_tasks().filter(metadata__session_id=session_id)
+        self.log_info('Purge {} session tasks.'.format(session_tasks.count()))
+        for a_task in session_tasks:
+            try:
+                purge_task(a_task.id)
+            except:
+                # case when task is already deleted as subtask
+                pass
+
+        # 2. Remove Documents+
+        document_ids = Document.objects.filter(upload_session_id=session_id).values_list('pk', flat=True)
+        self.log_info('Remove {} documents'.format(document_ids))
+        from apps.document.repository.document_bulk_delete import get_document_bulk_delete
+
+        # TODO: WHY it fails with
+        # psycopg2.errors.ForeignKeyViolation: update or delete on table "document_textunit" violates foreign key constraint
+        attempts = 3
+        delay = 60
+        for attempt in range(1, attempts + 1):
+            try:
+                get_document_bulk_delete().delete_documents(document_ids)
+                break
+            except:
+                self.log_info('Attempt #{} of {} to delete documents failed, retry'.format(attempt, attempts))
+                time.sleep(delay)
+
+        # 3. Remove files
+        file_storage_exists = file_storage.document_exists(session_id)
+        self.log_info('File Storage exists: {}'.format(file_storage_exists))
+
+        if file_storage_exists:
+            files = file_storage.list_documents(session_id)
+            self.log_info('Remove {} files from File Storage.'.format(len(files)))
+            for file_path in files:
+                file_storage.delete_document(file_path)
+            try:
+                file_storage.delete_document(session_id)
+            except:
+                # TODO: removing folders through LocalStorage is not implemented
+                pass
+
+        # 4. Remove Upload Session
+        self.log_info('Remove session uid="{}".'.format(session_id))
+        session = UploadSession.objects.get(pk=session_id)
+        project = session.project
+        session.delete()
+
+        # 5. Reindex Project
+        self.log_info('Reindex project id="{}" documents.'.format(project.id))
+        from apps.rawdb.tasks import reindex_all_project_documents
+        call_task_func(reindex_all_project_documents, (project.pk,), None)
+
+
+@app.task(name=task_names.TASK_NAME_TRACK_SESSION_COMPLETED, bind=True)
+def track_session_completed(_celery_task):
     """
     Filter sessions where users were notified that upload job started
     i.e. a user set "send email notifications" flag,
@@ -373,11 +505,109 @@ def track_session_completed(*args, **kwargs):
     for session in UploadSession.objects.filter(
             notified_upload_started=True,
             notified_upload_completed=False):
-        if session.is_completed():
+        if session.check_and_set_completed():
             session.notify_upload_completed()
+
+
+class LoadArchive(BaseTask):
+    """
+    Load Documents from archive
+    """
+    name = 'Load Archive'
+    session_id = source_path = force = user_id = None
+
+    def process(self, **kwargs):
+        self.session_id = kwargs.get('session_id')
+        self.source_path = kwargs.get('source_path')
+        self.force = kwargs.get('force')
+        self.user_id = kwargs.get('user_id')
+        archive_type = kwargs.get('archive_type')
+
+        if archive_type == 'zip':
+            return self.process_zip()
+
+        elif archive_type == 'tar':
+            return self.process_tar()
+
+        # else fail silently - it should be caught in API view
+
+        self.log_info('Remove processed archive {}'.format(self.source_path))
+        file_storage.delete_document(self.source_path)
+
+    @staticmethod
+    def get_mime_type(file_name):
+        mime_type, _ = mimetypes.guess_type(file_name)
+        if mime_type is None:
+            mime_type = 'application/text'
+        return mime_type
+
+    def upload_file(self, **kwargs):
+        from apps.project.api.v1 import UploadSessionViewSet
+        request = HttpRequest()
+        request.user = User.objects.get(pk=self.user_id)
+        api_view = UploadSessionViewSet(request=request, kwargs={'pk': self.session_id})
+        kwargs.update({'user_id': self.user_id, 'force': self.force})
+        api_view.upload_file(**kwargs)
+
+    def process_zip(self):
+        with file_storage.get_document_as_local_fn(self.source_path) as (local_file_path, _):
+            with zipfile.ZipFile(local_file_path) as zip_file:
+                zip_file_filelist = zip_file.filelist
+
+                self.log_info('Start extracting {} documents from {}'.format(
+                    len(zip_file_filelist), local_file_path))
+
+                for n, a_file in enumerate(zip_file_filelist):
+                    if a_file.is_dir():
+                        continue
+                    file_size = a_file.file_size
+                    file_name = os.path.basename(a_file.filename)
+                    mime_type = self.get_mime_type(file_name)
+
+                    self.log_info(
+                        'Extract/start LoadDocument for {} of {} files: name={}, size={}, mime_type={}'.format(
+                            n + 1, len(zip_file_filelist), file_name, file_size, mime_type))
+
+                    with TemporaryUploadedFile(file_name, mime_type, file_size, 'utf-8') as tempfile:
+                        tempfile.file = zip_file.open(a_file)
+                        tempfile.file.seek = lambda *args: 0
+
+                        self.upload_file(
+                            file_name=file_name,
+                            file_size=file_size,
+                            contents=tempfile)
+
+    def process_tar(self):
+        with file_storage.get_document_as_local_fn(self.source_path) as (local_file_path, _):
+            with tarfile.TarFile(local_file_path) as tar_file:
+                tar_file_members = tar_file.getmembers()
+
+                self.log_info('Start extracting {} documents from {}'.format(
+                    len(tar_file_members), local_file_path))
+
+                for n, a_file in enumerate(tar_file_members):
+                    if a_file.isdir():
+                        continue
+                    file_size = a_file.size
+                    file_name = os.path.basename(a_file.name)
+                    mime_type = self.get_mime_type(file_name)
+
+                    self.log_info(
+                        'Extract/start LoadDocument for {} of {} files: name={}, size={}, mime_type={}'.format(
+                            n + 1, len(tar_file_members), file_name, file_size, mime_type))
+
+                    with TemporaryUploadedFile(file_name, mime_type, file_size, 'utf-8') as tempfile:
+                        tempfile.file = tar_file.extractfile(a_file)
+
+                        self.upload_file(
+                            file_name=file_name,
+                            file_size=file_size,
+                            contents=tempfile)
 
 
 app.register_task(ClusterProjectDocuments())
 app.register_task(ReassignProjectClusterDocuments())
 app.register_task(CleanProject())
 app.register_task(CleanProjects())
+app.register_task(CancelUpload())
+app.register_task(LoadArchive())

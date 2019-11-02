@@ -39,13 +39,14 @@ from apps.analyze.models import (
     DocumentCluster, DocumentSimilarity, PartySimilarity,
     TextUnitClassification, TextUnitClassifier, TextUnitClassifierSuggestion,
     TextUnitSimilarity, TextUnitCluster)
+from apps.common.contraxsuite_urls import doc_editor_url, project_documents_url
 from apps.document.views import SubmitTextUnitTagView
 import apps.common.mixins
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2019, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.3/LICENSE"
-__version__ = "1.2.3"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.3.0/LICENSE"
+__version__ = "1.3.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -202,6 +203,7 @@ class DocumentClusterListView(apps.common.mixins.JqPaginatedListView):
     model = DocumentCluster
     template_name = "analyze/document_cluster_list.html"
     limit_reviewers_qs_by_field = 'documents'
+    extra_json_fields = ['count']
 
     def get_json_data(self, **kwargs):
         data = super().get_json_data(**kwargs)
@@ -225,7 +227,7 @@ class DocumentClusterListView(apps.common.mixins.JqPaginatedListView):
         qs = qs.values("pk", "cluster_id", "name", "self_name",
                        "description", "cluster_by", "using", "created_date") \
             .annotate(count=Count("documents")) \
-            .order_by('cluster_by', 'using', 'cluster_id')
+            .order_by('cluster_by', 'using', 'cluster_id').distinct()
         return qs
 
 
@@ -237,19 +239,32 @@ class DocumentSimilarityListView(apps.common.mixins.JqPaginatedListView):
     model = DocumentSimilarity
     template_name = "analyze/document_similarity_list.html"
     limit_reviewers_qs_by_field = ['document_a', 'document_b']
-    json_fields = ['document_a__name', 'document_a__description',
-                   'document_a__pk', 'document_a__document_type',
-                   'document_b__name', 'document_b__description',
-                   'document_b__pk', 'document_b__document_type',
-                   'similarity']
+    json_fields = ['document_a__name', 'document_a__project__name',
+                   'document_a__pk', 'document_a__document_type__title',
+                   'document_b__name', 'document_b__project__name',
+                   'document_b__pk', 'document_b__document_type__title',
+                   'similarity',
+                   'document_a__project_id',
+                   'document_b__project_id',
+                   'document_a__document_type__code',
+                   'document_b__document_type__code']
 
     def get_json_data(self, **kwargs):
         data = super().get_json_data()
+
         for item in data['data']:
-            item['document_a__url'] = reverse('document:document-detail',
-                                              args=[item['document_a__pk']]),
-            item['document_b__url'] = reverse('document:document-detail',
-                                              args=[item['document_b__pk']]),
+            item['document_a__url'] = \
+                doc_editor_url(item['document_a__document_type__code'],
+                               item['document_a__project_id'], item['document_a__pk'])
+            item['document_b__url'] = \
+                doc_editor_url(item['document_b__document_type__code'],
+                               item['document_b__project_id'], item['document_b__pk'])
+            item['project_a__url'] = \
+                project_documents_url(item['document_a__document_type__code'],
+                                      item['document_a__project_id'])
+            item['project_b__url'] = \
+                project_documents_url(item['document_b__document_type__code'],
+                                      item['document_b__project_id'])
         return data
 
     def get_queryset(self):
@@ -332,6 +347,7 @@ class TextUnitClusterListView(apps.common.mixins.JqPaginatedListView):
     model = TextUnitCluster
     template_name = "analyze/text_unit_cluster_list.html"
     limit_reviewers_qs_by_field = 'text_units__document'
+    extra_json_fields = ['count']
 
     def get_json_data(self, **kwargs):
         data = super().get_json_data(**kwargs)
@@ -358,7 +374,7 @@ class TextUnitClusterListView(apps.common.mixins.JqPaginatedListView):
         qs = qs.values("pk", "cluster_id", "name", "self_name",
                        "description", "cluster_by", "using", "created_date") \
             .annotate(count=Count("text_units")) \
-            .order_by('cluster_by', 'using', 'cluster_id')
+            .order_by('cluster_by', 'using', 'cluster_id').distinct()
         return qs
 
 

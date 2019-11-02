@@ -129,7 +129,7 @@ services:
     image: docker.elastic.co/beats/filebeat:6.5.4
     user: root
     volumes:
-      - postgres_data:/data/pg_data
+      - postgres_data_11:/data/pg_data
       - contraxsuite_logs:/data/logs
       - filebeat_data:/usr/share/filebeat/data
       - contraxsuite_internal_nginx_logs:/data/nginx_logs
@@ -195,7 +195,7 @@ services:
 #     - 127.0.0.1:56720:5672 #
 
   contrax-db:
-    image: postgres:9.6
+    image: postgres:11.5
     environment:
       - "PGDATA=/var/lib/contraxsuite-postgres"
       - "POSTGRES_USER=${DOLLAR}{DOCKER_PG_USER}"
@@ -204,7 +204,7 @@ services:
       - "POSTGRES_MAX_BACKUP_NUMBER=${DOLLAR}{DOCKER_PG_MAX_BACKUP_NUMBER}"
     command: bash -c "service cron start && /usr/local/bin/docker-entrypoint.sh postgres -c config_file=/contraxsuite/postgresql.conf"
     volumes:
-      - postgres_data:/var/lib/contraxsuite-postgres
+      - postgres_data_11:/var/lib/contraxsuite-postgres
       - backup:/backup
     configs:
       - source: pg_${PG_CONFIG_VERSION}
@@ -219,10 +219,10 @@ services:
       - contrax_net
     deploy:
       replicas: 1
-      resources:
-        limits:
-          cpus: '4'
-          memory: 14G
+#     resources:
+#       limits:
+#         cpus: '4'
+#         memory: 14G
       placement:
         constraints:
           - node.labels.role == db
@@ -723,7 +723,7 @@ services:
       - contrax-rabbitmq
       - contrax-elasticsearch
     deploy:
-      replicas: 1
+      replicas: ${FLOWER_REPLICAS}
       resources:
         limits:
           cpus: '${DOLLAR}{DOCKER_FLOWER_CPUS}'
@@ -746,7 +746,7 @@ services:
       - contraxsuite_internal_nginx_logs:/logs/nginx
       - contraxsuite_logs:/logs/contraxsuite
       - contraxsuite_logrotate:/logrotate
-      - postgres_data:/logs/pg_data
+      - postgres_data_11:/logs/pg_data
     deploy:
       mode: global
 
@@ -763,7 +763,7 @@ volumes:
   contraxsuite_internal_nginx_logs:
   contraxsuite_logrotate:
   contraxsuite_data_update:
-  postgres_data:
+  postgres_data_11:
   rabbitmq_data:
   elasticsearch_data:
   redis_data:

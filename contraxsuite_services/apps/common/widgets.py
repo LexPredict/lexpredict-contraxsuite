@@ -34,8 +34,8 @@ from django.utils.html import format_html
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2019, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.3/LICENSE"
-__version__ = "1.2.3"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.3.0/LICENSE"
+__version__ = "1.3.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -86,6 +86,40 @@ class LTRRadioWidget(forms.widgets.RadioSelect):
             html += '<span><input{0}{1} /><label for="{2}" class="{3}"> {4}</label></span>'.format(
                 flatatt(final_attrs), checked, choice_id, label_class, choice_label)
         return html
+
+
+class LTRCheckgroupWidget(forms.CheckboxSelectMultiple):
+    def render(self, name, value, attrs=None, renderer=None):
+        option_class = self.attrs.get('option_class') or 'checkbox-ltr-full-width checkbox-parent'
+        check_class = self.attrs.get('check_class') or 'checkbox-style checkbox-parent'
+        label_class = self.attrs.get('label_class') or 'checkbox-style-3-label'
+        list_class = self.attrs.get('list_class') or ''
+
+        widget_id = attrs['id']
+        choices = self.choices
+
+        html = f'<ul id="{widget_id}" class="{list_class}">\n'
+        for n, choice in enumerate(choices):
+            choice_name, choice_label = choice
+            choice_id = '{}_{}'.format(widget_id, n)
+
+            html += f'  <li>\n    <div class="{option_class}">\n'
+            html += f'       <input class="{check_class}" '
+            html += f'id="{choice_id}" name="{name}_choice_{choice_name}" type="checkbox">\n'
+            html += f'       <label for="{choice_id}" class="{label_class}">{choice_label}</label>\n'
+            html += '      </div>\n  </li>\n'
+
+        html += '</ul>\n'
+        return html
+
+    def value_from_datadict(self, data, files, name):
+        # find checked choices
+        selected_options = set()
+        for choice_name, _ in self.choices:
+            choice_input_name = f'{name}_choice_{choice_name}'
+            if choice_input_name in data:
+                selected_options.add(choice_name)
+        return list(selected_options)
 
 
 class LTRRadioField(ChoiceField):

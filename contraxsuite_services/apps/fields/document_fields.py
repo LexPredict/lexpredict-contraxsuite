@@ -25,7 +25,6 @@
 # -*- coding: utf-8 -*-
 
 import re
-import time
 import types
 from enum import Enum, unique
 from typing import Type, Callable, Union, Pattern, List, Generator, Dict, Any, Tuple
@@ -39,8 +38,8 @@ from apps.fields.parsing import extractors
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2019, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.3/LICENSE"
-__version__ = "1.2.3"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.3.0/LICENSE"
+__version__ = "1.3.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -153,7 +152,6 @@ class FieldDetector:
                 return True
 
     def process(self, sentence: str, fields_dst: Dict[str, Any]):
-        time_start = time.time()
         if self.exclude:
             for m in self.exclude(sentence):
                 if m:

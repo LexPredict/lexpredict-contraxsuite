@@ -24,7 +24,6 @@
 """
 # -*- coding: utf-8 -*-
 
-import os
 import re
 from contextlib import contextmanager
 from typing import Optional, BinaryIO
@@ -33,8 +32,8 @@ from django.conf import settings
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2019, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.3/LICENSE"
-__version__ = "1.2.3"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.3.0/LICENSE"
+__version__ = "1.3.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -119,6 +118,12 @@ class ContraxsuiteFileStorage:
         """
         pass
 
+    def rename_file(self, old_file_path: str, new_file_path: str):
+        """
+        Rename files by absolute path (file system) or full URI
+        """
+        pass
+
     @contextmanager
     def get_as_local_fn(self, rel_file_path: str):
         """
@@ -141,11 +146,20 @@ class ContraxsuiteFileStorage:
         """
         pass
 
-    def write_file(self, rel_file_path: str, contents_file_like_object: BinaryIO):
+    def document_exists(self, rel_path: str):
+        """
+        Detect by rel path if a document or a folder exists.
+        :param rel_path: Path relative to the root of the storage.
+        :return:
+        """
+        pass
+
+    def write_file(self, rel_file_path: str, contents_file_like_object: BinaryIO, content_length: int = None):
         """
         Write file into the file storage.
         :param rel_file_path: Path to the new file related to the root of the file storage.
         :param contents_file_like_object: Data to write into the file.
+        :param content_length: Length of file if available
         :return:
         """
         pass
@@ -156,16 +170,18 @@ class ContraxsuiteFileStorage:
         :param rel_path: Path of the dir related to the "documents" sub-dir of the file storage.
         :return:
         """
-        self.mkdir(os.path.join(self.documents_path, rel_path))
+        self.mkdir(self.sub_path_join(self.documents_path, rel_path))
 
-    def write_document(self, rel_file_path: str, contents_file_like_object):
+    def write_document(self, rel_file_path: str, contents_file_like_object: BinaryIO, content_length: int = None):
         """
         Write contents into a file in the documents sub-dir of the file storage.
         :param rel_file_path: Path related to the "documents" sub-dir.
         :param contents_file_like_object:
+        :param content_length:
         :return:
         """
-        self.write_file(os.path.join(self.documents_path, rel_file_path), contents_file_like_object)
+        p = self.sub_path_join(self.documents_path, rel_file_path)
+        self.write_file(p, contents_file_like_object, content_length)
 
     @contextmanager
     def get_document_as_local_fn(self, rel_file_path: str):
@@ -190,6 +206,16 @@ class ContraxsuiteFileStorage:
         """
         p = self.sub_path_join(self.documents_path, rel_file_path)
         self.delete_file(p)
+
+    def rename_document(self,
+                        old_rel_file_path: str,
+                        new_rel_file_path: str):
+        """
+        Rename document given by path relative to the documents folder.
+        """
+        old_path = self.sub_path_join(self.documents_path, old_rel_file_path)
+        new_path = self.sub_path_join(self.documents_path, new_rel_file_path)
+        self.rename_file(old_path, new_path)
 
     def list_documents(self, rel_file_path: str = ''):
         """

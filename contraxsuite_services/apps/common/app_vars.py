@@ -34,8 +34,8 @@ from apps.common.models import AppVar
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2019, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.3/LICENSE"
-__version__ = "1.2.3"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.3.0/LICENSE"
+__version__ = "1.3.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -69,3 +69,9 @@ ENABLE_AUTH_TOKEN_IN_QUERY_STRING = AppVar.set(
     'enable_auth_token_in_query_string', False,
     'Enables/disables ability to authenticate via query string param auth_token in query string'
     'in API calls. WARNING: this is insecure setting for DEV purposes only!!!')
+CUSTOM_LINKS_HEADER = AppVar.set(
+    'custom_links_header', 'Custom Links',
+    'Title for Custom Links menu item on left sidebar..')
+CUSTOM_LOGO_URL = AppVar.set(
+    'custom_logo_url', None,
+    'Url to custom logo.')

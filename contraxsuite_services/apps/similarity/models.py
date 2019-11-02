@@ -33,14 +33,13 @@ from django.core.validators import MinValueValidator
 from django.db import models
 from django.utils.safestring import mark_safe
 
-from apps.document.field_type_registry import FIELD_TYPE_REGISTRY
-from apps.document.field_types import LinkedDocumentsField, FieldType
+from apps.document.field_types import LinkedDocumentsField, TypedField
 from apps.document.models import DocumentField
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2019, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.3/LICENSE"
-__version__ = "1.2.3"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.3.0/LICENSE"
+__version__ = "1.3.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -52,15 +51,6 @@ ATTR_DATE_CONSTRAINT_FIELD = 'date_constraint_field'
 ATTR_DATE_CONSTRAINT_DAYS = 'date_constraint_days'
 DEFAULT_SIMILARITY_TRESHOLD = 0.9
 DEFAULT_DATE_CONSTRAINT_DAYS = 10
-
-
-def _get_date_fields(f: DocumentField) -> List[FieldType]:
-    res = list()
-    for ft in FIELD_TYPE_REGISTRY.values():
-        v = ft.example_python_value(f)
-        if isinstance(v, (date, datetime)):
-            res.append(ft)
-    return res
 
 
 class DocumentSimilarityConfig(models.Model):
@@ -98,11 +88,9 @@ class DocumentSimilarityConfig(models.Model):
                                                    'constraint field is assigned.'))
 
         if date_constraint_field is not None:
-            date_field_types = _get_date_fields(date_constraint_field)
-            if date_constraint_field.type not in [ft.code for ft in date_field_types]:
-                res.append((ATTR_DATE_CONSTRAINT_FIELD, 'Type of the date constraint field should be one of date '
-                                                        'or datetime field types: {0}', ', '
-                            .join([ft.title for ft in date_field_types])))
+            example_value = TypedField.by(date_constraint_field).example_python_value()
+            if not isinstance(example_value, (date, datetime)):
+                res.append((ATTR_DATE_CONSTRAINT_FIELD, 'Type of the date constraint field should be date or datetime'))
 
         if dst_field.type != LinkedDocumentsField.code:
             res.append((ATTR_DST_FIELD, 'Destination field should be of type {0}'.format(LinkedDocumentsField.code)))

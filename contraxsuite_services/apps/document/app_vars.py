@@ -30,8 +30,8 @@ from django.conf import settings
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2019, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.3/LICENSE"
-__version__ = "1.2.3"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.3.0/LICENSE"
+__version__ = "1.3.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -51,6 +51,10 @@ TIKA_TIMEOUT = AppVar.set(
 MAX_DOCUMENT_SIZE = AppVar.set(
     'max_document_size', 50,
     'Enables maximum document file size for uploading, Mb')
+
+MAX_ARCHIVE_SIZE = AppVar.set(
+    'max_archive_size', 100,
+    'Enables maximum archive file size for uploading, Mb')
 
 PREPROCESS_DOCTEXT_LINEBREAKS = AppVar.set(
     'preprocess_doctext_linebreaks', True,
@@ -75,3 +79,15 @@ OCR_ENABLE = AppVar.set(
 OCR_FILE_SIZE_LIMIT = AppVar.set(
     'ocr_file_size_limit', 100,
     'Max file size enabled (MB) for OCR')
+
+MSWORD_TO_TEXT_ENABLE = AppVar.set(
+    'msword_to_text_enable', True,
+    'Enables / disables parsing MS Word documents with python-docx')
+
+FORCE_REWRITE_DOC = AppVar.set(
+    'force_rewrite_doc', True,
+    'Enables / disables rewriting existing documents')
+
+STRICT_PARSE_DATES = AppVar.set(
+    'strict_parse_dates', True,
+    'Skip values like "C-4-30" if strict mode (True) is on')

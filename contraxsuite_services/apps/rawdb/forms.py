@@ -30,12 +30,12 @@ from django import forms
 
 from apps.document.models import DocumentType
 from apps.document.tasks import MODULE_NAME
-from django.conf import settings
+import task_names
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2019, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.3/LICENSE"
-__version__ = "1.2.3"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.3.0/LICENSE"
+__version__ = "1.3.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -51,7 +51,7 @@ class ProjectModelMultipleChoiceField(forms.ModelMultipleChoiceField):
 
 
 class ReindexForm(forms.Form):
-    header = settings.TASK_NAME_MANUAL_REINDEX
+    header = task_names.TASK_NAME_MANUAL_REINDEX
 
     document_type = forms.ModelChoiceField(
         queryset=DocumentType.objects.all(),

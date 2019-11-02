@@ -27,7 +27,8 @@
 from typing import Dict, Any, List
 
 from apps.document.models import Document
-from apps.rawdb.rawdb.field_handlers import FieldHandler
+from apps.rawdb.constants import FIELD_CODE_ANNOTATION_SUFFIX
+from apps.rawdb.rawdb.rawdb_field_handlers import RawdbFieldHandler
 from apps.users.models import User
 from apps.websocket.channels.broadcasting import ChannelBroadcasting
 from apps.websocket.channels.channel_message import ChannelMessage
@@ -36,8 +37,8 @@ from apps.websocket.channels.channel_names import CHANNEL_FIELDS
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2019, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.3/LICENSE"
-__version__ = "1.2.3"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.3.0/LICENSE"
+__version__ = "1.3.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -48,16 +49,18 @@ class UserNotifications:
             document: Document,
             document_fields_before: Dict[str, Any],
             document_fields_after: Dict[str, Any],
-            field_handlers: List[FieldHandler],
+            field_handlers: List[RawdbFieldHandler],
             changed_by_user: User) -> None:
         if not document_fields_after:
             return
         allowed_fields = {h.field_code for h in field_handlers
-                          if not h.is_suggested and not h.is_annotation}
+                          if not h.is_annotation}
 
         field_changed = {}
         for field in document_fields_after:
             if field not in allowed_fields:
+                continue
+            if field.endswith(FIELD_CODE_ANNOTATION_SUFFIX):
                 continue
             old_val = document_fields_before.get(field) \
                 if document_fields_before else None

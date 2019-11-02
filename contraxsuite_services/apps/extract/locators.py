@@ -36,6 +36,7 @@ from lexnlp.extract.en.entities.nltk_maxent import get_companies
 from lexnlp.nlp.en.tokens import get_stems, get_token_list
 
 from apps.common.log_utils import ProcessLogger, render_error
+from apps.document.app_vars import STRICT_PARSE_DATES
 from apps.document.models import TextUnitTag
 from apps.extract import dict_data_cache
 from apps.extract.models import (
@@ -43,11 +44,12 @@ from apps.extract.models import (
     DateDurationUsage, DateUsage, DefinitionUsage, DistanceUsage,
     GeoAliasUsage, GeoEntityUsage, PercentUsage, RatioUsage, RegulationUsage,
     Party, PartyUsage, TermUsage, TrademarkUsage, UrlUsage, Usage)
+from settings import DEFAULT_FLOAT_PRECIZION
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2019, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.3/LICENSE"
-__version__ = "1.2.3"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.3.0/LICENSE"
+__version__ = "1.3.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -64,6 +66,7 @@ class ParseResults:
 
 
 class LocationResults:
+
     def __init__(self) -> None:
         self.tags = defaultdict(set)  # type: Dict[int, Set[str]]
         self.located_usage_entities = defaultdict(list)  # type: Dict[Type[Usage], List]
@@ -107,41 +110,35 @@ class LocationResults:
                 log.info(
                     'Stored {0} usage entities and {1} tags for {2} text units'.format(
                         count, len(tag_models), len(self.processed_text_unit_ids)))
-        except:
-            msg = render_error(
-                'Unable to store location results.\n'
-                'Text unit ids: {text_unit_ids}\n'
-                'Usage models caused the problem:\n{entities}'.format(
-                    text_unit_ids=self.processed_text_unit_ids,
-                    entities='\n'.join([str(e) for e in self.processed_usage_entity_classes])))
-            log.error(msg)
+        except Exception as e:
+            entities_str = '\n'.join([str(e) for e in self.processed_usage_entity_classes])
+            log.error(f'Unable to store location results.\n'
+                      f'Text unit ids: {self.processed_text_unit_ids}\n'
+                      f'Usage models caused the problem:\n{entities_str}', exc_info=e)
 
 
 class Locator:
+    STRICT_DATES_PTR = 'strict_dates'
+
     code = None
 
     locates_usage_model_classes = []
 
-    def parse(self, text: str, text_unit_id: int, text_unit_lang: str, **kwargs) -> ParseResults:
+    def parse(self, log: ProcessLogger, text: str, text_unit_id: int, text_unit_lang: str, **kwargs) -> ParseResults:
         pass
 
     def try_parsing(self, log: ProcessLogger, locate_results: LocationResults, text: str,
                     text_unit_id: int, text_unit_lang: str, **kwargs):
         try:
-            parse_results = self.parse(text, text_unit_id, text_unit_lang, **kwargs)  # type: ParseResults
-            locate_results.collect(self, text_unit_id, parse_results)
-        except:
-            msg = render_error(
-                'Exception caught while trying to run locator on a text unit.\n'
-                'Locator: {locator}\n'
-                'Text unit id: {text_unit_id}\n'
-                'Text: {text}\n'
-                'Text unit language: {text_unit_lang}\n'.format(
-                    locator=self.__class__.__name__,
-                    text_unit_id=text_unit_id,
-                    text=text[:1024],
-                    text_unit_lang=text_unit_lang))
-            log.error(msg)
+            parse_results = self.parse(log, text, text_unit_id, text_unit_lang, **kwargs)  # type: ParseResults
+            if parse_results:
+                locate_results.collect(self, text_unit_id, parse_results)
+        except Exception as e:
+            log.error(f'Exception caught while trying to run locator on a text unit.\n'
+                      f'Locator: {self.__class__.__name__}\n'
+                      f'Text unit id: {text_unit_id}\n'
+                      f'Text: {text[:1024]}\n'
+                      f'Text unit language: {text_unit_lang}\n', exc_info=e)
 
 
 class AmountLocator(Locator):
@@ -149,13 +146,16 @@ class AmountLocator(Locator):
 
     locates_usage_model_classes = [AmountUsage]
 
-    def parse(self, text, text_unit_id, _text_unit_lang, **kwargs) -> ParseResults:
-        found = list(amounts.get_amounts(text, return_sources=True, extended_sources=False))
+    def parse(self, log: ProcessLogger, text, text_unit_id, _text_unit_lang, **kwargs) -> ParseResults:
+        precision = DEFAULT_FLOAT_PRECIZION
+        found = list(amounts.get_amount_annotations(text,
+                                                    extended_sources=False,
+                                                    float_digits=precision))
         if found:
             unique = set(found)
             return ParseResults({AmountUsage: [AmountUsage(text_unit_id=text_unit_id,
-                                                           amount=item[0],
-                                                           amount_str=item[1][:300] if item[1] else None,
+                                                           amount=item.value,
+                                                           amount_str=item.text[:300] if item.text else None,
                                                            count=found.count(item)
                                                            ) for item in unique]})
 
@@ -164,19 +164,19 @@ class CitationLocator(Locator):
     code = 'citation'
     locates_usage_model_classes = [CitationUsage]
 
-    def parse(self, text, text_unit_id, _text_unit_lang, **kwargs) -> ParseResults:
-        found = list(citations.get_citations(text, return_source=True))
+    def parse(self, log: ProcessLogger, text, text_unit_id, _text_unit_lang, **kwargs) -> ParseResults:
+        found = list(citations.get_citation_annotations(text))
         if found:
             unique = set(found)
             return ParseResults({CitationUsage: [CitationUsage(text_unit_id=text_unit_id,
-                                                               volume=item[0],
-                                                               reporter=item[1],
-                                                               reporter_full_name=item[2],
-                                                               page=item[3],
-                                                               page2=item[4],
-                                                               court=item[5],
-                                                               year=item[6],
-                                                               citation_str=item[7],
+                                                               volume=item.volume,
+                                                               reporter=item.reporter,
+                                                               reporter_full_name=item.reporter_full_name,
+                                                               page=item.page,
+                                                               page2=item.page_range,
+                                                               court=item.court,
+                                                               year=item.year,
+                                                               citation_str=item.source,
                                                                count=found.count(item)) for item in unique]})
 
 
@@ -185,7 +185,7 @@ class CourtLocator(Locator):
 
     locates_usage_model_classes = [CourtUsage]
 
-    def parse(self, text, text_unit_id, text_unit_lang, **kwargs) -> ParseResults:
+    def parse(self, log: ProcessLogger, text, text_unit_id, text_unit_lang, **kwargs) -> ParseResults:
         court_config = dict_data_cache.get_court_config()
         found = [dict_entities.get_entity_id(i[0])
                  for i in courts.get_courts(text,
@@ -203,14 +203,15 @@ class DistanceLocator(Locator):
 
     locates_usage_model_classes = [DistanceUsage]
 
-    def parse(self, text, text_unit_id, _text_unit_lang, **kwargs) -> ParseResults:
-        found = list(distances.get_distances(text, return_sources=True))
+    def parse(self, log: ProcessLogger, text, text_unit_id, _text_unit_lang, **kwargs) -> ParseResults:
+        precision = DEFAULT_FLOAT_PRECIZION
+        found = list(distances.get_distance_annotations(text, float_digits=precision))
         if found:
             unique = set(found)
             return ParseResults({DistanceUsage: [DistanceUsage(text_unit_id=text_unit_id,
-                                                               amount=item[0],
-                                                               amount_str=item[2],
-                                                               distance_type=item[1],
+                                                               amount=item.amount,
+                                                               amount_str=item.text,
+                                                               distance_type=item.distance_type,
                                                                count=found.count(item)) for item in unique]})
 
 
@@ -219,14 +220,14 @@ class DateLocator(Locator):
 
     locates_usage_model_classes = [DateUsage]
 
-    def parse(self, text, text_unit_id, _text_unit_lang, **kwargs) -> ParseResults:
-        strict = kwargs.get('strict', False)
-        found = dates.get_dates_list(
+    def parse(self, log: ProcessLogger, text, text_unit_id, _text_unit_lang, **kwargs) -> ParseResults:
+        strict = kwargs.get(Locator.STRICT_DATES_PTR, STRICT_PARSE_DATES.val)
+        found = list(dates.get_date_annotations(
             text,
-            strict=strict,
-            return_source=False)
+            strict=strict))
         if found:
-            unique = set([i.date() if isinstance(i, datetime.datetime) else i for i in found])
+            unique = set([i.date.date() if isinstance(i.date, datetime.datetime)
+                          else i.date for i in found])
             return ParseResults({DateUsage: [DateUsage(text_unit_id=text_unit_id,
                                                        date=item,
                                                        count=found.count(item)) for item in unique]})
@@ -237,12 +238,12 @@ class DefinitionLocator(Locator):
 
     locates_usage_model_classes = [DefinitionUsage]
 
-    def parse(self, text, text_unit_id, _text_unit_lang, **kwargs) -> ParseResults:
-        found = list(definitions.get_definitions_in_sentence(text))
+    def parse(self, log: ProcessLogger, text, text_unit_id, _text_unit_lang, **kwargs) -> ParseResults:
+        found = definitions.get_definition_list_in_sentence((0, len(text), text,))
         if found:
             unique = set(found)
             return ParseResults({DefinitionUsage: [DefinitionUsage(text_unit_id=text_unit_id,
-                                                                   definition=item,
+                                                                   definition=item.name,
                                                                    count=found.count(item)
                                                                    ) for item in unique]})
 
@@ -252,15 +253,17 @@ class DurationLocator(Locator):
 
     locates_usage_model_classes = [DateDurationUsage]
 
-    def parse(self, text, text_unit_id, _text_unit_lang, **kwargs) -> ParseResults:
-        found = list(durations.get_durations(text, return_sources=True))
+    def parse(self, log: ProcessLogger, text, text_unit_id, _text_unit_lang, **kwargs) -> ParseResults:
+        precision = DEFAULT_FLOAT_PRECIZION
+        found = durations.get_duration_annotations_list(
+            text, float_digits=precision)
         if found:
             unique = set(found)
             return ParseResults({DateDurationUsage: [DateDurationUsage(text_unit_id=text_unit_id,
-                                                                       amount=item[1],
-                                                                       amount_str=item[3],
-                                                                       duration_type=item[0],
-                                                                       duration_days=item[2],
+                                                                       amount=item.amount,
+                                                                       amount_str=item.text,
+                                                                       duration_type=item.duration_type,
+                                                                       duration_days=item.duration_days,
                                                                        count=found.count(item)
                                                                        ) for item in unique]})
 
@@ -270,14 +273,15 @@ class CurrencyLocator(Locator):
 
     locates_usage_model_classes = [CurrencyUsage]
 
-    def parse(self, text, text_unit_id, _text_unit_lang, **kwargs) -> ParseResults:
-        found = list(money.get_money(text, return_sources=True, float_digits=6))
+    def parse(self, log: ProcessLogger, text, text_unit_id, _text_unit_lang, **kwargs) -> ParseResults:
+        found = list(money.get_money_annotations(text,
+                                                 float_digits=DEFAULT_FLOAT_PRECIZION))
         if found:
             unique = set(found)
             return ParseResults({CurrencyUsage: [CurrencyUsage(text_unit_id=text_unit_id,
-                                                               amount=item[0],
-                                                               amount_str=item[2],
-                                                               currency=item[1],
+                                                               amount=item.amount,
+                                                               amount_str=item.text,
+                                                               currency=item.currency,
                                                                count=found.count(item)
                                                                ) for item in unique]})
 
@@ -287,10 +291,11 @@ class PartyLocator(Locator):
 
     locates_usage_model_classes = [PartyUsage]
 
-    def parse(self, text, text_unit_id, _text_unit_lang, **kwargs) -> ParseResults:
+    def parse(self, log: ProcessLogger, text, text_unit_id, _text_unit_lang, **kwargs) -> Optional[ParseResults]:
+        # Here we override saving logic to workaround race conditions on party creation vs party usage saving
+        PartyUsage.objects.filter(text_unit_id=text_unit_id).delete()
         found = list(get_companies(text, count_unique=True, detail_type=True, name_upper=True))
         if found:
-            pu_list = []
             for _party in found:
                 name, _type, type_abbr, type_label, type_desc, count = _party
                 defaults = dict(
@@ -298,16 +303,16 @@ class PartyLocator(Locator):
                     type_label=type_label,
                     type_description=type_desc
                 )
-                party, _ = Party.objects.get_or_create(
+                party, created = Party.objects.get_or_create(
                     name=name,
                     type_abbr=type_abbr or '',
                     defaults=defaults
                 )
-                pu_list.append(
-                    PartyUsage(text_unit_id=text_unit_id,
-                               party=party,
-                               count=count))
-            return ParseResults({PartyUsage: pu_list})
+
+                PartyUsage(text_unit_id=text_unit_id,
+                           party=party,
+                           count=count).save()
+            return None
 
 
 class PercentLocator(Locator):
@@ -315,15 +320,16 @@ class PercentLocator(Locator):
 
     locates_usage_model_classes = [PercentUsage]
 
-    def parse(self, text, text_unit_id, _text_unit_lang, **kwargs) -> ParseResults:
-        found = list(percents.get_percents(text, return_sources=True, float_digits=6))
+    def parse(self, log: ProcessLogger, text, text_unit_id, _text_unit_lang, **kwargs) -> ParseResults:
+        found = list(percents.get_percent_annotations(text,
+                                                      float_digits=DEFAULT_FLOAT_PRECIZION))
         if found:
             unique = set(found)
             return ParseResults({PercentUsage: [PercentUsage(text_unit_id=text_unit_id,
-                                                             amount=item[1],
-                                                             amount_str=item[3],
-                                                             unit_type=item[0],
-                                                             total=item[2],
+                                                             amount=item.amount,
+                                                             amount_str=item.text,
+                                                             unit_type=item.sign,
+                                                             total=item.fraction,
                                                              count=found.count(item)) for item in unique]})
 
 
@@ -332,15 +338,16 @@ class RatioLocator(Locator):
 
     locates_usage_model_classes = [RatioUsage]
 
-    def parse(self, text, text_unit_id, _text_unit_lang, **kwargs) -> ParseResults:
-        found = list(ratios.get_ratios(text, return_sources=True))
+    def parse(self, log: ProcessLogger, text, text_unit_id, _text_unit_lang, **kwargs) -> ParseResults:
+        found = list(ratios.get_ratio_annotations(text,
+                                                  float_digits=DEFAULT_FLOAT_PRECIZION))
         if found:
             unique = set(found)
             return ParseResults({RatioUsage: [RatioUsage(text_unit_id=text_unit_id,
-                                                         amount=item[0],
-                                                         amount2=item[1],
-                                                         amount_str=item[3],
-                                                         total=item[2],
+                                                         amount=item.left,
+                                                         amount2=item.right,
+                                                         amount_str=item.text,
+                                                         total=item.ratio,
                                                          count=found.count(item)) for item in unique]})
 
 
@@ -349,13 +356,13 @@ class RegulationLocator(Locator):
 
     locates_usage_model_classes = [RegulationUsage]
 
-    def parse(self, text, text_unit_id, _text_unit_lang, **kwargs) -> ParseResults:
-        found = list(regulations.get_regulations(text))
+    def parse(self, log: ProcessLogger, text, text_unit_id, _text_unit_lang, **kwargs) -> ParseResults:
+        found = list(regulations.get_regulation_annotations(text))
         if found:
             unique = set(found)
             return ParseResults({RegulationUsage: [RegulationUsage(text_unit_id=text_unit_id,
-                                                                   regulation_type=item[0],
-                                                                   regulation_name=item[1],
+                                                                   regulation_type=item.source,
+                                                                   regulation_name=item.name,
                                                                    count=found.count(item)) for item in unique]})
 
 
@@ -363,24 +370,25 @@ class CopyrightLocator(Locator):
     code = 'copyright'
     locates_usage_model_classes = [CopyrightUsage]
 
-    def parse(self, text, text_unit_id, _text_unit_lang, **kwargs) -> ParseResults:
-        found = list(copyright.get_copyright(text, return_sources=True))
+    def parse(self, log: ProcessLogger, text, text_unit_id, _text_unit_lang, **kwargs) -> ParseResults:
+        # TODO: what's the logic behind [:200] ... < 100 ?
+        found = list(copyright.get_copyright_annotations(text, return_sources=True))
         if found:
             unique = set(found)
             return ParseResults({CopyrightUsage: [CopyrightUsage(text_unit_id=text_unit_id,
-                                                                 year=item[1],
-                                                                 name=item[2][:200],
-                                                                 copyright_str=item[3][:200],
+                                                                 year=item.date,
+                                                                 name=item.name[:200],
+                                                                 copyright_str=item.text[:200],
                                                                  count=found.count(item)
-                                                                 ) for item in unique if len(item[2]) < 100]})
+                                                                 ) for item in unique if len(item.name) < 100]})
 
 
 class TrademarkLocator(Locator):
     code = 'trademark'
     locates_usage_model_classes = [TrademarkUsage]
 
-    def parse(self, text, text_unit_id, _text_unit_lang, **kwargs) -> ParseResults:
-        found = list(trademarks.get_trademarks(text))
+    def parse(self, log: ProcessLogger, text, text_unit_id, _text_unit_lang, **kwargs) -> ParseResults:
+        found = [t.trademark for t in trademarks.get_trademark_annotations(text)]
         if found:
             unique = set(found)
             return ParseResults({TrademarkUsage: [TrademarkUsage(text_unit_id=text_unit_id,
@@ -394,8 +402,8 @@ class UrlLocator(Locator):
 
     locates_usage_model_classes = [UrlUsage]
 
-    def parse(self, text, text_unit_id, _text_unit_lang, **kwargs) -> ParseResults:
-        found = list(urls.get_urls(text))
+    def parse(self, log: ProcessLogger, text, text_unit_id, _text_unit_lang, **kwargs) -> ParseResults:
+        found = [u.url for u in urls.get_url_annotations(text)]
         if found:
             unique = set(found)
             return ParseResults({UrlUsage: [UrlUsage(text_unit_id=text_unit_id,
@@ -408,7 +416,7 @@ class GeoEntityLocator(Locator):
 
     locates_usage_model_classes = [GeoEntityUsage, GeoAliasUsage]
 
-    def parse(self, text, text_unit_id, text_unit_lang, **kwargs) -> ParseResults:
+    def parse(self, log: ProcessLogger, text, text_unit_id, text_unit_lang, **kwargs) -> ParseResults:
         priority = kwargs.get('priority', True)
         geo_config = dict_data_cache.get_geo_config()
         entity_alias_pairs = list(geoentities.get_geoentities(text,
@@ -435,7 +443,7 @@ class TermLocator(Locator):
     code = 'term'
     locates_usage_model_classes = [TermUsage]
 
-    def parse(self, text, text_unit_id, _text_unit_lang, **kwargs) -> ParseResults:
+    def parse(self, log: ProcessLogger, text, text_unit_id, _text_unit_lang, **kwargs) -> ParseResults:
         term_stems = dict_data_cache.get_term_config()
         text_stems = ' %s ' % ' '.join(get_stems(text, lowercase=True))
         text_tokens = get_token_list(text, lowercase=True)

@@ -26,19 +26,19 @@
 
 from billiard.exceptions import SoftTimeLimitExceeded
 from celery import shared_task
-from django.db.models import Subquery, Q
+from django.db.models import Subquery
 from psycopg2._psycopg import InterfaceError, OperationalError
 
 import settings
-from apps.document.fields_detection import field_detection
-from apps.document.fields_detection.detect_field_values_params import DocDetectFieldValuesParams
-from apps.document.models import DocumentType, Document, DocumentFieldValue
+from apps.document.field_detection import field_detection
+from apps.document.field_detection.detect_field_values_params import DocDetectFieldValuesParams
+from apps.document.models import DocumentType, Document
 from apps.task.tasks import BaseTask, ExtendedTask, call_task_func, CeleryTaskLogger
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2019, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.3/LICENSE"
-__version__ = "1.2.3"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.3.0/LICENSE"
+__version__ = "1.3.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -101,11 +101,11 @@ class DetectFieldValues(BaseTask):
             qs = qs.filter(document_type_id__in=document_type_pks)
 
         # filter out modified documents
+        import apps.document.repository.document_field_repository as dfr
+        field_repo = dfr.DocumentFieldRepository()
+
         if do_not_run_for_modified_documents:
-            modified_document_ids = DocumentFieldValue.objects \
-                .filter(Q(created_by__isnull=False) | Q(removed_by_user=True)) \
-                .distinct('document_id') \
-                .values_list('document_id')
+            modified_document_ids = field_repo.get_removed_fieldvals_doc_ids()
             qs = qs.exclude(pk__in=Subquery(modified_document_ids))
 
         for doc_id, source, name in qs.values_list('id', 'source', 'name'):
@@ -144,7 +144,7 @@ class DetectFieldValues(BaseTask):
         dfvs = field_detection \
             .detect_and_cache_field_values_for_document(log,
                                                         doc,
-                                                        changed_by_user = task.task.user,
+                                                        changed_by_user=task.task.user,
                                                         save=not detect_ptrs.do_not_write,
                                                         clear_old_values=detect_ptrs.clear_old_values,
                                                         updated_field_codes=detect_ptrs.updated_field_codes)

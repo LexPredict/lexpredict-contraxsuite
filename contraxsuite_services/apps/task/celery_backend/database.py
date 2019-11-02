@@ -32,16 +32,14 @@ from celery.backends.base import BaseDictBackend
 from apps.task.models import Task
 from apps.task.utils.task_utils import TaskUtils
 from django.conf import settings
+import task_names
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2019, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.3/LICENSE"
-__version__ = "1.2.3"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.3.0/LICENSE"
+__version__ = "1.3.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
-
-
-TASK_NAME_UPDATE_MAIN_TASK = 'advanced_celery.update_main_task'
 
 
 class DatabaseBackend(BaseDictBackend):
@@ -52,7 +50,7 @@ class DatabaseBackend(BaseDictBackend):
     subpolling_interval = 0.5
 
     @staticmethod
-    @shared_task(bind=True, name=TASK_NAME_UPDATE_MAIN_TASK)
+    @shared_task(bind=True, name=task_names.TASK_NAME_UPDATE_MAIN_TASK)
     def update_main_task(self, main_task_id: str):
         TaskUtils.prepare_task_execution()
 
@@ -101,7 +99,7 @@ class DatabaseBackend(BaseDictBackend):
 
         if settings.CELERY_UPDATE_MAIN_TASK_ON_EACH_SUB_TASK \
                 and getattr(request, 'root_id', None) != task_id \
-                and task_name != TASK_NAME_UPDATE_MAIN_TASK:
+                and task_name != task_names.TASK_NAME_UPDATE_MAIN_TASK:
             self.plan_update_main_task(request.root_id)
 
         return result

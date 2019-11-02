@@ -23,136 +23,39 @@
     or shipping ContraxSuite within a closed source product.
 """
 # -*- coding: utf-8 -*-
-from typing import Dict, List, Any, Generator, Iterable, Set, Union, Optional
-import regex as re
+
+from typing import Dict, Any, Iterable
+
+from django.contrib.postgres.aggregates.general import StringAgg
 from django.db import connection
+from django.db.models import Min, Max
 from django.utils.timezone import now
 
-from apps.common.sql_commons import fetch_int, SQLClause, format_clause
-from apps.document.models import Document, DocumentField, DocumentType
-from apps.document.repository.document_field_repository import DocumentFieldRepository
-from apps.rawdb.field_value_tables import \
-    FIELD_CODE_PROJECT_ID, FIELD_CODE_DOC_ID, \
-    FIELD_CODE_DOC_FULL_TEXT, FIELD_CODE_ASSIGNEE_ID, \
-    FIELD_CODE_ASSIGN_DATE, FIELD_CODE_ASSIGNEE_NAME, \
-    FIELD_CODE_STATUS_NAME
-from apps.rawdb.field_value_tables import doc_fields_table_name, build_field_handlers
-from apps.rawdb.rawdb.field_handlers import FieldHandler
+from apps.common.singleton import Singleton
+from apps.common.sql_commons import escape_column_name
+from apps.common.utils import dictfetchone
+from apps.document.constants import DocumentGenericField, FieldSpec
+from apps.document.models import Document
+from apps.rawdb.constants import FIELD_CODE_DOC_FULL_TEXT, FIELD_CODE_DOC_ID, FIELD_CODE_ASSIGNEE_ID, \
+    FIELD_CODE_ASSIGNEE_NAME, FIELD_CODE_ASSIGN_DATE, FIELD_CODE_STATUS_NAME, TABLE_NAME_PREFIX
 from apps.rawdb.repository.base_raw_db_repository import BaseRawDbRepository
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2019, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.3/LICENSE"
-__version__ = "1.2.3"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.3.0/LICENSE"
+__version__ = "1.3.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
 
 # TODO: check exclude_hidden_always_fields in build_field_handlers()
-class RawDbRepository(DocumentFieldRepository, BaseRawDbRepository):
-    REG_FIELD_NAME_SUG = re.compile(r'_suggested$')
+@Singleton
+class RawDbRepository(BaseRawDbRepository):
     DEFAULT_FIELD_CODE_FILTER = {FIELD_CODE_DOC_ID, FIELD_CODE_DOC_FULL_TEXT}
 
-    def get_document_fields_hash(self, doc: Document) -> Dict[str, Any]:
-        doc_type = doc.document_type
-        table_name = doc_fields_table_name(doc_type.code)
-        field_handlers = build_field_handlers(document_type=doc_type,
-                                              table_name=table_name,
-                                              include_generic_fields=False,
-                                              include_suggested_fields=False,
-                                              include_annotation_fields=False,
-                                              include_user_fields=True,
-                                              exclude_hidden_always_fields=True)
-        field_handlers = self.filter_field_handlers(field_handlers)
-        columns = self.build_columns_sql(field_handlers)
-        query = f'SELECT {columns} FROM "{table_name}" WHERE "{FIELD_CODE_DOC_ID}" = {doc.pk};'
-        rows = list(self.parse_raw_db_into_fields(query, field_handlers))
-        return rows[0] if len(rows) > 0 else {}
-
-    def get_doc_field_values_by_uid(self, doc: Document) -> Dict[str, Any]:
-        row_vals = self.get_document_fields_hash(doc)
-        if not any(row_vals):
-            return {}
-        hash_ids = list(self.map_field_names_on_uids([row_vals], doc.document_type))
-        return hash_ids[0] if len(hash_ids) > 0 else []
-
-    def get_project_documents_field_values_by_uid(
-            self,
-            project_ids: List[int],
-            max_count: int,
-            doc_type: DocumentType) -> Generator[Dict[str, Any], None, None]:
-        table_name = doc_fields_table_name(doc_type.code)
-        proj_ids_str = ','.join([str(i) for i in project_ids])
-
-        field_handlers = build_field_handlers(document_type=doc_type,
-                                              table_name=table_name,
-                                              include_annotation_fields=False,
-                                              exclude_hidden_always_fields=True)
-        columns = self.build_columns_sql(field_handlers)
-        query_select = f'SELECT {columns} FROM "{table_name}"'
-        query_where = f'WHERE "{FIELD_CODE_PROJECT_ID}" IN ({proj_ids_str})'
-        limit_str = f' LIMIT({max_count})' if max_count > 0 else ''
-        query = f'{query_select}\n{query_where}{limit_str};'
-
-        rows = self.parse_raw_db_into_fields(query, field_handlers)
-        return self.map_field_names_on_uids(rows, doc_type)
-
-    def get_documents_fields_by_doc_ids(self,
-                                        doc_ids: List[int],
-                                        max_count: int = 0) \
-            -> List[Dict[str, Any]]:
-        doc_type_code = Document.all_objects.filter(id__in=doc_ids).values_list(
-            'document_type__code', flat=True)[0]
-        if not doc_type_code:
-            return []
-
-        doc_type = DocumentType.objects.get(code=doc_type_code)
-
-        doc_ids_str = ','.join([str(id) for id in doc_ids])
-        table_name = doc_fields_table_name(doc_type_code)
-        field_handlers = build_field_handlers(document_type=doc_type,
-                                              table_name=table_name,
-                                              include_annotation_fields=False,
-                                              exclude_hidden_always_fields=True)
-        columns = self.build_columns_sql(field_handlers)
-
-        query_select = f'SELECT {columns} FROM "{table_name}"'
-        query_where = f'WHERE "{FIELD_CODE_DOC_ID}" IN ({doc_ids_str})'
-        query = f'{query_select}\n{query_where}'
-        rows = self.parse_raw_db_into_fields(query, field_handlers)
-
-        fvals = []
-        for fval in self.map_field_names_on_uids(rows, doc_type):
-            fvals.append(fval)
-            if len(fval) == max_count:
-                break
-        return fvals
-
-    def get_documents_field_values_by_uid(self, documents: Iterable[Document]) \
-            -> Generator[Dict[str, Any], None, None]:
-        doc_type = None
-        for doc in documents:
-            doc_type = doc.document_type
-            break
-        if not doc_type:
-            return
-        doc_ids_str = ','.join([str(doc.pk) for doc in documents])
-        table_name = doc_fields_table_name(doc_type.code)
-        field_handlers = build_field_handlers(document_type=doc_type,
-                                              table_name=table_name,
-                                              include_annotation_fields=False,
-                                              exclude_hidden_always_fields=True)
-        columns = self.build_columns_sql(field_handlers)
-
-        query_select = f'SELECT {columns} FROM "{table_name}"'
-        query_where = f'WHERE "{FIELD_CODE_DOC_ID}" IN ({doc_ids_str})'
-        query = f'{query_select}\n{query_where}'
-        rows = self.parse_raw_db_into_fields(query, field_handlers)
-        return self.map_field_names_on_uids(rows, doc_type)
-
-    def update_documents_assignees(self,
-                                   doc_ids: List[int],
-                                   assignee_id: int) -> int:
+    def update_documents_assignee(self,
+                                  doc_ids: Iterable[int],
+                                  assignee_id: int) -> int:
         from apps.users.models import User
         if not doc_ids:
             return 0
@@ -165,20 +68,22 @@ class RawDbRepository(DocumentFieldRepository, BaseRawDbRepository):
         return self.update_rawdb_column_values(doc_ids, col_values)
 
     def update_documents_status(self,
-                                doc_ids: List[int],
-                                status_name: str) -> int:
+                                doc_ids: Iterable[int],
+                                status_id: int) -> int:
         if not doc_ids:
             return 0
-        col_values = {FIELD_CODE_STATUS_NAME: status_name}
-
+        from apps.common.models import ReviewStatus
+        status = ReviewStatus.objects.get(pk=status_id)  # type: ReviewStatus
+        col_values = {FIELD_CODE_STATUS_NAME: status.name}
         return self.update_rawdb_column_values(doc_ids, col_values)
 
     def update_rawdb_column_values(self,
-                                   doc_ids: List[int],
+                                   doc_ids: Iterable[int],
                                    col_values: Dict[str, Any]) -> int:
         if not doc_ids:
             return 0
         # documents are supposed to be of the same type
+        from apps.document.models import Document
         doc_type = Document.all_objects.filter(pk__in=doc_ids).values_list(
             'document_type__code', flat=True)[:1].get()  # type: str
         table_name = doc_fields_table_name(doc_type)
@@ -194,102 +99,53 @@ class RawDbRepository(DocumentFieldRepository, BaseRawDbRepository):
             cursor.execute(query_text, param_values)
             return cursor.rowcount
 
-    def map_field_names_on_uids(self, rows: Iterable[Dict[str, Any]],
-                                document_type: DocumentType) -> Generator[Dict[str, Any], None, None]:
-        fields = DocumentField.objects.filter(document_type=document_type)
-        field_uid_by_name = {f.code: f.uid for f in fields}
+    def get_generic_values(self, doc: Document, generic_values_to_fill: FieldSpec = None) \
+            -> Dict[str, Any]:
+        # If changing keys of the returned dictionary - please change field code constants
+        # in apps/rawdb/field_value_tables.py accordingly (FIELD_CODE_CLUSTER_ID and others)
 
-        for hash in rows:
-            if not any(hash):
-                continue
-            hash_uid = {}
-            for field_name in hash:
-                field_uid = field_uid_by_name.get(field_name)
-                if not field_uid:
-                    field_name_brief = self.REG_FIELD_NAME_SUG.sub('', field_name)
-                    field_uid = field_uid_by_name.get(field_name_brief)
-                    if not field_uid:
-                        continue
-                    field_uid += '_suggested'
-                hash_uid[field_uid] = hash[field_name]
-            yield hash_uid
+        document_qs = Document.all_objects.filter(pk=doc.pk)
 
-    def parse_raw_db_into_fields(self, query: Union[str, SQLClause],
-                                 field_handlers: List[FieldHandler]) -> Generator[Dict[str, Any], None, None]:
-        if isinstance(query, str):
-            query = SQLClause(query)
-        with connection.cursor() as cursor:
-            cursor.execute(query.sql, query.params)
-            rows = cursor.fetchall()
-            for row in rows:
-                col_names = [n.name for n in cursor.description]
-                row_values = {}
-                for i in range(len(row)):
-                    row_values[col_names[i]] = row[i]
-                values = {}
-                for handler in field_handlers:
-                    val = handler.columns_to_field_value(row_values)
-                    values[handler.field_code] = val
-                yield values
+        annotations = dict()
 
-    def filter_field_handlers(self, handlers: List[FieldHandler],
-                              excluded_fields: Set[str] = None) -> List[FieldHandler]:
-        excluded_fields = excluded_fields or self.DEFAULT_FIELD_CODE_FILTER
-        return [h for h in handlers if h.field_code not in excluded_fields]
+        if DocumentGenericField.cluster_id.specified_in(generic_values_to_fill):
+            annotations['cluster_id'] = Max('documentcluster')
 
-    def build_columns_sql(self, field_handlers: List[FieldHandler]) -> str:
-        columns = set()
-        for fh in field_handlers:
-            columns.update(fh.column_names_for_field_values())
-        return ', '.join([f'"{column_name}"' for column_name in columns])
+        if generic_values_to_fill is True:
+            annotations['parties'] = StringAgg('textunit__partyusage__party__name',
+                                               delimiter=', ', distinct=True)
+            annotations['min_date'] = Min('textunit__dateusage__date')
+            annotations['max_date'] = Max('textunit__dateusage__date')
 
-    def count_docs(self,
-                   document_type: DocumentType,
-                   where_sql: Union[str, SQLClause],
-                   table_name: str = None) -> int:
-        if table_name is None:
-            table_name = doc_fields_table_name(document_type_code=document_type.code)
+        # if a Document was suddenly removed to this time
+        if not document_qs.exists():
+            raise Document.DoesNotExist
 
-        if isinstance(where_sql, str):
-            where_sql = SQLClause(where_sql)
+        values = {}
+        if annotations:
+            values = document_qs.annotate(**annotations).values(*annotations.keys()).first()  # type: Dict[str, Any]
 
-        with connection.cursor() as cursor:
-            return fetch_int(cursor,
-                             format_clause('select count(*) from "{table_name}"\n'
-                                           'where {where_sql}'
-                                           .format(table_name=table_name, where_sql=where_sql)))
+        if generic_values_to_fill is True:
+            # max_currency = CurrencyUsage.objects.filter(text_unit__document_id=doc.pk) \
+            #     .order_by('-amount').values('currency', 'amount').first()  # type: Dict[str, Any]
 
-    def get_field_values(self,
-                         document_type: DocumentType,
-                         where_sql: Optional[Union[str, SQLClause]] = None,
-                         offset: int = None,
-                         limit: int = None,
-                         table_name: str = None,
-                         field_codes: Set[str] = None) \
-            -> Generator[Dict[str, str], None, None]:
-        if table_name is None:
-            table_name = doc_fields_table_name(document_type_code=document_type.code)
+            # use raw sql as the query above sometimes hangs up to 1 minute
+            max_currency_sql = '''
+                SELECT c.currency, MAX(c.amount) amount
+                FROM extract_currencyusage c
+                INNER JOIN document_textunit dtu ON c.text_unit_id = dtu.id
+                WHERE dtu.document_id = {}
+                GROUP BY c.currency ORDER BY amount DESC limit 1;'''.format(doc.pk)
+            with connection.cursor() as cursor:
+                cursor.execute(max_currency_sql)
+                max_currency = dictfetchone(cursor)
 
-        field_handlers = build_field_handlers(document_type=document_type,
-                                              table_name=table_name,
-                                              include_generic_fields=True,
-                                              include_suggested_fields=False,
-                                              include_annotation_fields=False,
-                                              exclude_hidden_always_fields=True,
-                                              include_user_fields=True)
+                values['max_currency'] = max_currency
+                values['max_currency_name'] = max_currency['currency'] if max_currency else None
+                values['max_currency_amount'] = max_currency['amount'] if max_currency else None
 
-        field_handlers = [fh for fh in field_handlers if fh.field_code in field_codes]
+        return values
 
-        columns_sql = self.build_columns_sql(field_handlers)
 
-        sql = format_clause('select {columns_sql} from "{table_name}"\n'
-                            '{where_sql}\n'
-                            '{offset_sql}\n'
-                            '{limit_sql}',
-                            columns_sql=columns_sql,
-                            table_name=table_name,
-                            where_sql=format_clause('where {where_sql}', where_sql=where_sql) if where_sql else '',
-                            offset_sql=SQLClause('offset %s', [offset]) if offset is not None else '',
-                            limit_sql=SQLClause('limit %s', [limit]) if limit is not None else '')
-
-        yield from self.parse_raw_db_into_fields(query=sql, field_handlers=field_handlers)
+def doc_fields_table_name(document_type_code: str) -> str:
+    return escape_column_name(TABLE_NAME_PREFIX + document_type_code)

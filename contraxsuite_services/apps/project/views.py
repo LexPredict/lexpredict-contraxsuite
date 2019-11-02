@@ -47,8 +47,8 @@ from apps.project.forms import (
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2019, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.3/LICENSE"
-__version__ = "1.2.3"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.3.0/LICENSE"
+__version__ = "1.3.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -70,8 +70,10 @@ class ProjectListView(apps.common.mixins.JqPaginatedListView):
         for item in data['data']:
             item['url'] = reverse('project:project-update', args=[item['pk']])
             project = Project.objects.get(pk=item['pk'])
-            item.update(project.progress(as_dict=True))
-            item['progress'] = round(item['progress'], 1)
+            item['total_documents_count'] = project.document_set.count()
+            item['reviewed_documents_count'] = project.document_set.filter(status__group__is_active=False).count()
+            item['progress'] = round(item['reviewed_documents_count'] / item['total_documents_count'] * 100, 1) \
+                if item['total_documents_count'] else 0
             item['completed'] = item['progress'] == 100
             item['task_queue_data'] = [i for i in task_queue_data if i['project__pk'] == item['pk']]
         return data

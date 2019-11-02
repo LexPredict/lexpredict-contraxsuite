@@ -2,22 +2,27 @@
 {% load admin_static %}
 
 {% block extrastyle %}
-    <link rel="shortcut icon" href="{% static "images/favicon.ico" %}">
-    <style>
-      .form-horizontal .control-group .controls .selector .selector-available,
-      .form-horizontal .control-group .controls .selector .selector-chosen {
-        width: auto;
-        min-width: 45%;
-        max-width: none;
-      }
-      select option {
-        width: auto;
-        max-width: none;
-      }
-      .nowrap {
-        white-space: nowrap;
-      }
-    </style>
+  <link rel="shortcut icon" href="{% static "images/favicon.ico" %}">
+  <style>
+    .form-horizontal .control-group .controls .selector .selector-available,
+    .form-horizontal .control-group .controls .selector .selector-chosen {
+      width: auto;
+      min-width: 45%;
+      max-width: none;
+    }
+    select option {
+      width: auto;
+      max-width: none;
+    }
+    .nowrap {
+      white-space: nowrap;
+    }
+    #suit-left {
+      width: 200px;
+      right: 0;
+      margin-left: -200px;
+    }
+  </style>
 {% endblock %}
 
 {% block branding %}

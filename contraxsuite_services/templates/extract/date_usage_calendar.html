@@ -20,6 +20,24 @@
     {% endfor %}
   </select>
 
+  <p></p>
+
+  <div id="period-container">
+    {% for period in periods %}
+    <div>
+      <input id="period-{{ forloop.counter }}" class="radio-style" name="period" value="{{ period.start }}-{{ period.end }}" type="radio" {% if period.checked %}checked="checked"{% endif %}>
+      <label for="period-{{ forloop.counter }}" class="radio-style-2-label">{{ period.start }}-{{ period.end }}</label>
+    </div>
+    {% endfor %}
+ </div>
+
+{#  <select name="period" data-placeholder="Filter by period..." required="" id="period" class="chosen">#}
+{#    <option></option>#}
+{#    {% for period in periods %}#}
+{#      <option value="{{ period.start }}-{{ period.end }}" checked="{% if period.checked %}checked{% endif %}">{{ period.start }}-{{ period.end }}</option>#}
+{#    {% endfor %}#}
+{#  </select>#}
+
   <div class="loader-container">
     <div class="loader"></div>
     <span>Loading...</span>
@@ -42,6 +60,9 @@
               draw_calendar();
           });
 
+      $('[name="period"]').change(function(ev){
+        draw_calendar()
+      });
       var width = 960,
           height = 136,
           cellSize = 17;
@@ -62,17 +83,29 @@
       }
 
       var draw_calendar = function(){
-        $('#calendar').empty();
+       $('#calendar').empty();
         $('.loader-container').show();
 
         var document_id = $('#document_id').val();
+        var period = $('[name="period"]:checked').val();
 
-        d3.request('{% url 'extract:date-usage-calendar' %}?document_id=' + document_id)
+        if (document_id != ""){
+          $('#period-container').hide()
+        }
+        else {
+          $('#period-container').show()
+        }
+
+        d3.request('{% url 'extract:date-usage-calendar' %}?document_id=' + document_id + '&period=' + period)
             .header("X-Requested-With", "XMLHttpRequest")
             .header("Content-Type", "application/x-www-form-urlencoded")
             .response(function(xhr) { return JSON.parse(xhr.responseText); })
             .get('a=b', function(response) {
-
+              if (!response){
+                $('.loader-container').hide();
+                $('#calendar').text('No data');
+                return
+              }
               var data = d3.nest()
                   .key(function (d) {
                     return d.date;
@@ -84,7 +117,7 @@
 
               var svg = d3.select("#calendar")
                   .selectAll("svg")
-                  .data(d3.range(response.min_year, response.max_year + 1))
+                  .data(response.years)
                   .enter().append("svg")
                   .attr("width", width)
                   .attr("height", height)

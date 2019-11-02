@@ -1,0 +1,38 @@
+{% extends "base_list_ajax.html" %}
+{% load static %}
+
+{% block page_header %}Method Stats Overview{% endblock %}
+
+{% block js_extra %}
+  {{ block.super }}
+  <script type="text/javascript">
+    $(document).ready(function () {
+      var datafields = [
+        { name: 'method', type: 'string' },
+        { name: 'path', type: 'string' },
+        { name: 'name', type: 'string' },
+        { name: 'calls', type: 'int' },
+        { name: 'errors', type: 'int' },
+        { name: 'avg_time', type: 'float' },
+        { name: 'max_time', type: 'float' }
+     ];
+      var columns = [
+        { text: 'method', datafield: 'method', width: 200,
+          align: 'center', cellsalign: 'center' },
+        { text: 'path', datafield: 'path', width: 'auto',
+          align: 'center', cellsalign: 'center' },
+        { text: 'name', datafield: 'name', width: 'auto',
+          align: 'center', cellsalign: 'center' },
+        { text: 'calls', datafield: 'calls', width: 80,
+          align: 'center', cellsalign: 'center' },
+        { text: 'errors', datafield: 'errors', width: 80,
+          align: 'center', cellsalign: 'center' },
+        { text: 'avg_time', datafield: 'avg_time', width: 80, cellsformat: 'f5',
+          align: 'center', cellsalign: 'center' },
+        { text: 'max_time', datafield: 'max_time', width: 80, cellsformat: 'f5',
+          align: 'center', cellsalign: 'center' }
+      ];
+      draw_grid(".jqxgrid", datafields, columns, false);
+    });
+  </script>
+{% endblock %}

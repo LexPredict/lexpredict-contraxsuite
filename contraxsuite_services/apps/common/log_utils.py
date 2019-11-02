@@ -26,12 +26,14 @@
 
 import logging
 import sys
-import traceback
+from typing import List
+
+from contraxsuite_logging import HumanReadableTraceBackException
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2019, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.3/LICENSE"
-__version__ = "1.2.3"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.3.0/LICENSE"
+__version__ = "1.3.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -40,19 +42,20 @@ logger = logging.getLogger(__name__)
 
 
 def render_error(message: str, caused_by: Exception = None) -> str:
+    if not caused_by:
+        caused_by_tuple = sys.exc_info()
+        if not caused_by_tuple:
+            caused_by = caused_by_tuple[1]
+
+    msg_lines = list()
+    if message:
+        msg_lines.append(message + ('\n' if caused_by else ''))
+
     if caused_by:
-        exc_type = caused_by.__class__
-        exc_obj = caused_by
-        exc_tb = caused_by.__traceback__
-    else:
-        exc_type, exc_obj, exc_tb = sys.exc_info()
-    details = traceback.extract_tb(exc_tb)
-    msg = message + \
-          f'\nError: {exc_type.__name__}: {exc_obj}.\nDetails: '
-    msg += '\n'.join([str(d) for d in details])
-    if caused_by and hasattr(caused_by, 'detailed_error'):
-        msg += f'\nCustom message: {caused_by.detailed_error}'
-    return msg
+        msg_lines.append('\nDetails:\n')
+        msg_lines.extend(HumanReadableTraceBackException.from_exception(caused_by).human_readable_format())
+
+    return ''.join(msg_lines)
 
 
 class ProcessLogger:
@@ -65,8 +68,10 @@ class ProcessLogger:
     def info(self, message: str):
         logger.info(message)
 
-    def error(self, message: str, field_code: str = None):
-        logger.error(message)
+    def error(self, message: str, field_code: str = None, exc_info: Exception = None):
+        if field_code:
+            message = f'{field_code}: {message or "error"}'
+        logger.error(message, exc_info=exc_info)
 
 
 class ErrorCollectingLogger(ProcessLogger):
@@ -84,11 +89,14 @@ class ErrorCollectingLogger(ProcessLogger):
     def info(self, message: str):
         logger.info(message)
 
-    def error(self, message: str, field_code: str = None):
-        logger.error('{0}: {1}'.format(field_code, message))
+    def error(self, message: str, field_code: str = None, exc_info: Exception = None):
+
         if not field_code:
+            logger.error(message, exc_info=exc_info)
             self.common_problems.append(message)
             return
+        else:
+            logger.error(f'{field_code}: {message}', exc_info=exc_info)
 
         problems = self.field_problems.get(field_code)
 
@@ -107,7 +115,7 @@ class ErrorCollectingLogger(ProcessLogger):
             return None
 
     def raise_if_error(self):
-        if self.common_problems or  self.field_problems:
+        if self.common_problems or self.field_problems:
             messages = list()  # type: List[str]
             if self.common_problems:
                 messages.extend(self.common_problems)
@@ -115,3 +123,18 @@ class ErrorCollectingLogger(ProcessLogger):
                 messages.extend(['Field: {0}. Error: {1}'.format(field_code, field_error)
                                  for field_code, field_error in self.field_problems.items()])
             raise Exception('\n'.join(messages))
+
+
+def render_exception(e: Exception) -> str:
+    return ''.join(HumanReadableTraceBackException.from_exception(e).human_readable_format())
+
+
+def auto_str(cls):
+    def __str__(self):
+        return '%s(%s)' % (
+            type(self).__name__,
+            ', '.join('%s=%s' % item for item in vars(self).items())
+        )
+
+    cls.__str__ = __str__
+    return cls

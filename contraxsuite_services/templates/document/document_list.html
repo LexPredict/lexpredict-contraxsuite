@@ -9,13 +9,13 @@
         { name: 'pk', type: 'int' },
         { name: 'name', type: 'string' },
         { name: 'document_type__title', type: 'string' },
-        { name: 'description', type: 'string' },
         { name: 'title', type: 'string' },
         { name: 'language', type: 'string' },
         { name: 'properties', type: 'int' },
         { name: 'relations', type: 'int' },
-        { name: 'text_units', type: 'int' },
-        { name: 'is_contract', type: 'bool' },
+        { name: 'paragraphs', type: 'int' },
+        { name: 'sentences', type: 'int' },
+        {#{ name: 'is_contract', type: 'bool' },#}
         { name: 'url', type: 'string' }
       ];
       var columns = [
@@ -34,12 +34,15 @@
           align: 'center', cellsalign: 'center' },
         { text: 'Relations', datafield: 'relations', width: 100,
           align: 'center', cellsalign: 'center' },
-        { text: 'Is Contract', datafield: 'is_contract', width: 100,
-          align: 'center', cellsalign: 'center',
+        {#{ text: 'Is Contract', datafield: 'is_contract', width: 100,#}
+        {#  align: 'center', cellsalign: 'center',#}
 {#          threestatecheckbox: true,#}
-          columntype: 'checkbox' },
-        { text: 'Text Units', datafield: 'text_units', width: 100,
+{#          columntype: 'checkbox' },#}
+        { text: 'Paragraphs', datafield: 'paragraphs', width: 100,
+          align: 'center', cellsalign: 'center' },
+        { text: 'Sentences', datafield: 'sentences', width: 100,
           align: 'center', cellsalign: 'center' }
+
       ];
       draw_grid(".jqxgrid", datafields, columns, true);
     });

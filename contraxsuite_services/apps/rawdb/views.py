@@ -27,36 +27,30 @@
 # Future imports
 from __future__ import absolute_import, unicode_literals
 
-# Third-party imports
-import magic
-
+import task_names
 # Project imports
 from apps.rawdb.forms import ReindexForm
 from apps.rawdb.tasks import manual_reindex
-from apps.task.views import BaseAjaxTaskView
 from apps.task.tasks import call_task_func
+from apps.task.views import BaseAjaxTaskView
 
 # Standard imports
 # Django imports
-from django.conf import settings
 
 # Other lib imports
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2019, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.3/LICENSE"
-__version__ = "1.2.3"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.3.0/LICENSE"
+__version__ = "1.3.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
-
-
-python_magic = magic.Magic(mime=True)
 
 
 class ReindexTaskView(BaseAjaxTaskView):
     form_class = ReindexForm
     html_form_class = 'popup-form reindex'
-    task_name = settings.TASK_NAME_MANUAL_REINDEX
+    task_name = task_names.TASK_NAME_MANUAL_REINDEX
 
     def disallow_start(self):
         return False

@@ -27,6 +27,7 @@
 # Standard imports
 import itertools
 import uuid
+from typing import Set
 
 from celery.states import UNREADY_STATES
 
@@ -35,8 +36,8 @@ from django.conf import settings
 from django.contrib.postgres.fields import JSONField
 from django.core.mail import send_mail
 from django.db import models
-from django.db.models import Count, Max
-from django.db.models.deletion import CASCADE
+from django.db.models import Count, Max, QuerySet, Sum
+from django.db.models.deletion import CASCADE, SET_NULL
 from django.db.models.signals import m2m_changed, post_save
 from django.dispatch import receiver
 from django.template.loader import render_to_string
@@ -52,8 +53,8 @@ from apps.project import signals
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2019, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.3/LICENSE"
-__version__ = "1.2.3"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.3.0/LICENSE"
+__version__ = "1.3.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -355,20 +356,28 @@ class Project(models.Model):
         """
         return self.project_tasks.completed()
 
-    def drop_clusters(self):
+    def drop_clusters(self, exclude_task_ids: Set = None, exclude_project_clustering_id: int = None):
         project = self
         # Stop running tusks
         from apps.task.tasks import purge_task
         from apps.project.tasks import ClusterProjectDocuments
-        for task in project.project_tasks.filter(name=ClusterProjectDocuments.name, status__in=UNREADY_STATES):
+        task_qr = project.project_tasks \
+            .filter(name=ClusterProjectDocuments.name, status__in=UNREADY_STATES)  # type: QuerySet
+        if exclude_task_ids:
+            task_qr = task_qr.exclude(pk__in=exclude_task_ids)
+
+        for task in task_qr:
             purge_task(task.pk, wait=True, timeout=1.5)
         # delete DocumentClusters
         for pcl in project.projectclustering_set.all():
             pcl.document_clusters.all().delete()
         # delete ProjectClustering
-        project.projectclustering_set.all().delete()
+        project.projectclustering_set.exclude(id=exclude_project_clustering_id).delete()
         # delete ClusterProjectDocuments Tasks
-        project.project_tasks.filter(name=ClusterProjectDocuments.name).delete()
+        to_delete_qr = project.project_tasks.filter(name=ClusterProjectDocuments.name)  # type: QuerySet
+        if exclude_task_ids:
+            to_delete_qr = to_delete_qr.exclude(pk__in=exclude_task_ids)
+        to_delete_qr.delete()
 
     def cleanup(self, delete=False):
 
@@ -461,7 +470,7 @@ class UploadSession(models.Model):
         """
         Get tasks related with session
         """
-        return self.task_set.all()
+        return self.task_set.main_tasks()
 
     @property
     def session_tasks_progress(self):
@@ -480,38 +489,31 @@ class UploadSession(models.Model):
         """
         Progress per document (avg session document tasks progress)
         """
-        result = {}
-        tasks_number = 3
+        result = self.document_set.annotate(document_id=models.F('id'))\
+            .values('document_id', 'name', 'file_size')
+        result = {i['name']: i for i in result}
+
         for file_name, task_progress_data in itertools.groupby(
                 sorted(self.session_tasks_progress, key=lambda i: i['file_name']),
                 key=lambda i: i['file_name']):
             task_progress_data = list(task_progress_data)
-            document_progress = round(
-                sum([int(i['task_progress'])
-                     for i in task_progress_data][:tasks_number]) / tasks_number, 2)
+            document_progress = round(sum([int(i['task_progress']) for i in task_progress_data]), 2)
             task_statuses = {i['task_status'] for i in task_progress_data}
-            if 'FAILURE' in task_statuses:
-                task_status = 'FAILURE'
+            if 'PENDING' in task_statuses:
+                task_status = 'PENDING'
             elif task_statuses == {'SUCCESS'}:
                 task_status = 'SUCCESS'
             else:
-                task_status = 'PENDING'
-            try:
-                document = self.document_set.get(name=file_name)
-                document_id = document.pk
-                file_size = document.file_size
-            except:
-                document_id = file_size = None
-            result[file_name] = {
-                'document_id': document_id,
-                'file_name': file_name,
-                'file_size': file_size,
-                'task_progress_data': task_progress_data,
-                'tasks_overall_status': task_status,
-                'document_progress': document_progress if task_status == 'PENDING' else 100.0
-            }
+                task_status = 'FAILURE'
+
+            file_data = result.get(file_name, {'document_id': None, 'file_size': None})
+            file_data.update({'file_name': file_name, 'tasks_overall_status': task_status,
+                'document_progress': document_progress if task_status == 'PENDING' else 100.0})
+
             if details:
-                result[file_name]['task_progress_data'] = task_progress_data
+                file_data['task_progress_data'] = task_progress_data
+
+            result[file_name] = file_data
         # store result for further processing in status() and document_tasks_progress_total()
         self._document_tasks_progress = result
         return result
@@ -522,12 +524,13 @@ class UploadSession(models.Model):
         Total Progress of session document tasks (i.e. session progress)
         """
         document_tasks_progress = self._document_tasks_progress or self.document_tasks_progress()
-        _p = [i['document_progress'] for i in document_tasks_progress.values()]
+        _p = [i.get('document_progress', (i.get('tasks_overall_status') != 'PENDING') * 100)
+              for i in document_tasks_progress.values()]
         return round(sum(_p) / float(len(_p)), 2) if _p else 0
 
     @property
     def documents_total_size(self):
-        return sum(self.document_set.values_list('file_size', flat=True))
+        return self.document_set.aggregate(Sum('file_size')).get('file_size__sum')
 
     @property
     def status(self):
@@ -542,10 +545,10 @@ class UploadSession(models.Model):
         """
         The same as status() - but make check if session is completed
         """
-        self.is_completed()
+        self.check_and_set_completed()
         return self.status
 
-    def is_completed(self):
+    def check_and_set_completed(self):
         """
         Check and set "completed"
         """
@@ -554,8 +557,9 @@ class UploadSession(models.Model):
         if not self.session_tasks.exists():
             return None
         completed = not self.session_tasks.filter(status='PENDING').exists()
-        self.completed = completed
-        self.save()
+        if self.completed != completed:
+            self.completed = completed
+            self.save()
         return completed
 
     def notify_upload_started(self):
@@ -597,23 +601,26 @@ def save_upload(sender, instance, created, **kwargs):
 
 
 class ProjectClustering(models.Model):
-
     project = models.ForeignKey(Project, on_delete=CASCADE)
 
     document_clusters = models.ManyToManyField('analyze.DocumentCluster', blank=True)
 
-    task = models.ForeignKey('task.Task', blank=True, null=True, on_delete=CASCADE)
+    task = models.ForeignKey('task.Task', blank=True, null=True, on_delete=SET_NULL)
 
     metadata = JSONField(default=dict, blank=True, null=True)
 
     created_date = models.DateTimeField(auto_now_add=True, db_index=True)
 
+    status = models.CharField(max_length=10, blank=True, null=True)
+
+    reason = models.TextField(blank=True, null=True)
+
     def __str__(self):
         """"
         String representation
         """
-        return "Project Clustering (pk={0}, project_id={1})" \
-            .format(self.pk, self.project.pk)
+        return "Project Clustering (pk={0}, project_id={1}, status={2})" \
+            .format(self.pk, self.project.pk, self.status)
 
     @property
     def completed(self):

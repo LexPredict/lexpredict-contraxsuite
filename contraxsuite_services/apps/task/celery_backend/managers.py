@@ -38,8 +38,7 @@ from celery import signature
 from celery.result import AsyncResult
 from celery.states import READY_STATES, PROPAGATE_STATES, SUCCESS, UNREADY_STATES, FAILURE, ALL_STATES
 from django.conf import settings
-from django.db import connections, router, transaction
-from django.db import models
+from django.db import connections, router, transaction, models
 from django.db.models import F, Q, Value
 from django.db.utils import IntegrityError
 
@@ -49,8 +48,8 @@ from apps.task.celery_backend.utils import now
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2019, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.3/LICENSE"
-__version__ = "1.2.3"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.3.0/LICENSE"
+__version__ = "1.3.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -289,7 +288,7 @@ class TaskManager(models.Manager):
 
     NON_FAILED_STATES = set(ALL_STATES) - {FAILURE}
 
-    def main_tasks(self, show_failed_excluded_from_tracking:bool = False):
+    def main_tasks(self, show_failed_excluded_from_tracking: bool = False):
         qr = self.filter(Q(main_task__isnull=True) | Q(main_task_id=F('id')))
         if not show_failed_excluded_from_tracking:
             qr = qr.exclude(name__in=self.EXCLUDE_FROM_TRACKING)
@@ -403,11 +402,7 @@ class TaskManager(models.Manager):
         if total_status in READY_STATES:
             try:
                 main_task = self.get(id=main_task_id)  # type: Task
-                if total_status == SUCCESS:
-                    main_task.write_log(
-                        '{0} #{1}: all sub-tasks have been processed successfully'.format(
-                            main_task.name, main_task_id))
-                else:
+                if total_status != SUCCESS:
                     main_task.write_log('{0} #{1}: some/all of sub-tasks have been crashed'.format(
                         main_task.name, main_task_id), level='error')
             except:
@@ -462,9 +457,6 @@ class TaskManager(models.Manager):
 
         try:
             obj, created = self.get_or_create(id=task_id, defaults=initial_values)
-
-            if traceback:
-                obj.write_log('Traceback:\n{0}'.format(traceback))
 
             if not created:
                 if task_name and not obj.name:

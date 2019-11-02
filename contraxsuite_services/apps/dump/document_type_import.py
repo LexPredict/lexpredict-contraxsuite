@@ -36,16 +36,18 @@ from django.core import serializers
 
 # Project imports
 from apps.common.log_utils import ProcessLogger
+from apps.document.field_types import TypedField
 from apps.document.field_type_registry import FIELD_TYPE_REGISTRY
-from apps.document.models import DocumentType, DocumentFieldDetector, DocumentField, DocumentFieldValue, \
+from apps.document.models import DocumentType, DocumentFieldDetector, DocumentField, \
     DocumentFieldCategory
+from apps.document.repository.document_field_repository import DocumentFieldRepository
 from apps.task.models import Task
 from apps.task.tasks import ExtendedTask, CeleryTaskLogger
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2019, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.3/LICENSE"
-__version__ = "1.2.3"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.3.0/LICENSE"
+__version__ = "1.3.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -330,11 +332,14 @@ class DeserializedDocumentField(DeserializedObjectController):
     def _get_field_type_title(cls, field_type_code: str) -> str:
         field_type_title = field_type_code
         if field_type_code is not None:
-            field_type = FIELD_TYPE_REGISTRY[field_type_code]
-            field_type_title = field_type.title if field_type is not None else field_type_code
+            field_type_class = FIELD_TYPE_REGISTRY[field_type_code]
+            field_type_title = field_type_class.title if field_type_class is not None else field_type_code
         return field_type_title
 
     def _validate_critical_properties_changed(self, context: dict) -> None:
+        import apps.document.repository.document_field_repository as dfr
+        field_repo = dfr.DocumentFieldRepository()
+
         saved_field = self._get_saved_field(context)
         if not saved_field:
             return
@@ -351,12 +356,11 @@ class DeserializedDocumentField(DeserializedObjectController):
                 .format(self._get_field_type_title(old_field_type), self._get_field_type_title(new_field_type))
         if err_msg:
             err_msg = 'Unable to update field #{0} "{1}". {2}'.format(self.pk, self.object.code, err_msg)
-            values_count = DocumentFieldValue.objects.filter(field=self.object).count()
+            values_count = field_repo.get_count_by_field(self.object.pk)
             user_values_count = 0
             detected_values_count = 0
             if values_count > 0:
-                user_values_qs = DocumentFieldValue.objects.filter(field=self.object)
-                user_values_count = DocumentFieldValue.filter_user_values(user_values_qs).count()
+                user_values_count = field_repo.get_doc_field_values_filtered_count(self.object.pk)
                 detected_values_count = self._get_detected_values_count(values_count, user_values_count)
             err_msg += 'Existing document field values become invalid and will be removed. User entered values {0},' \
                        ' automatically detected values {1}. You need to set force auto-fixes option to continue' \
@@ -381,7 +385,8 @@ class DeserializedDocumentField(DeserializedObjectController):
 
     def _validate_choice_values_removed(self, context: dict) -> None:
         saved_field = self._get_saved_field(context)
-        if not saved_field or not saved_field.is_choice_field() or not self.object.is_choice_field():
+        if not saved_field or not TypedField.by(saved_field).is_choice_field \
+                or not TypedField.by(self.object).is_choice_field:
             return
         err_msg = ''
         invalid_choices = self._get_invalid_choices(saved_field)
@@ -393,12 +398,12 @@ class DeserializedDocumentField(DeserializedObjectController):
                 .format(', '.join(invalid_choices))
 
         if err_msg:
-            invalid_values_count = self.object.get_invalid_choice_values().count()
+            invalid_values_count = self.object.get_invalid_choice_annotations().count()
             user_values_count = 0
             detected_values_count = 0
             if invalid_values_count > 0:
-                user_values_qs = self.object.get_invalid_choice_values()
-                user_values_count = DocumentFieldValue.filter_user_values(user_values_qs).count()
+                field_repo = DocumentFieldRepository()
+                user_values_count = field_repo.get_invalid_choice_vals_count(self.object)
                 detected_values_count = self._get_detected_values_count(invalid_values_count, user_values_count)
             err_msg += 'Number of invalid values: user entered values {0}, automatically detected values {1}.' \
                        ' You need to set force auto-fixes option to continue (this option will remove all invalid' \
@@ -462,7 +467,7 @@ class DeserializedDocumentField(DeserializedObjectController):
 
         if saved_field and (self._is_allow_values_not_specified_in_choices_was_unset(saved_field) or
                             self._get_invalid_choices(saved_field)):
-            self.object.get_invalid_choice_values().delete()
+            self.object.get_invalid_choice_annotations().delete()
 
     def clear_missed_objects(self) -> None:
         super().clear_missed_objects()

@@ -26,22 +26,23 @@
 
 # Standard imports
 import traceback
-from typing import Dict, Tuple
+from collections import defaultdict
+from itertools import groupby
+from typing import Dict, Tuple, Set
 
-# Third-party imports
-from celery.states import SUCCESS, FAILURE, PENDING, REVOKED
 import numpy as np
 import pandas as pd
 import rest_framework.views
-
+# Third-party imports
+from celery.states import SUCCESS, FAILURE, PENDING, REVOKED
 # Django imports
 from django.conf.urls import url
 from django.contrib.postgres.aggregates.general import StringAgg
 from django.db.models import Min, Max, Subquery, Prefetch
-from django.http import JsonResponse
+from django.http import JsonResponse, HttpRequest
 from django.urls import reverse
 from elasticsearch import Elasticsearch
-from rest_framework import serializers, routers, viewsets, status
+from rest_framework import routers, viewsets, serializers
 from rest_framework.decorators import action
 from rest_framework.exceptions import APIException, ValidationError as DRFValidationError
 from rest_framework.generics import ListAPIView
@@ -53,30 +54,32 @@ from rest_framework_nested import routers as nested_routers
 import apps.common.mixins
 from apps.analyze.models import *
 from apps.common.api.permissions import ReviewerReadOnlyPermission
-from apps.common.log_utils import ErrorCollectingLogger
 from apps.common.models import ReviewStatus
-from apps.common.url_utils import as_bool
+from apps.common.serializers import WritableSerializerMethodField
+from apps.common.url_utils import as_bool, as_int
 from apps.common.utils import get_api_module
 from apps.document import signals
 from apps.document.admin import (
     DocumentFieldForm, UsersTasksValidationAdmin, PARAM_OVERRIDE_WARNINGS, DocumentTypeForm)
+from apps.document.api.annotator_error import NoValueProvidedOrLocated
 from apps.document.async_tasks.detect_field_values_task import DocDetectFieldValuesParams
-from apps.document.field_type_registry import FIELD_TYPE_REGISTRY
-from apps.document.field_types import FieldType
-from apps.document.fields_detection import field_detection
-from apps.document.fields_detection.detector_field_matcher import DetectorFieldMatcher
-from apps.document.fields_detection.field_detection_celery_api import run_detect_field_values_for_document
-from apps.document.fields_processing.field_processing_utils import build_field_value_by_id_hash
-from apps.document.fields_processing.field_value_cache import cache_field_values
+from apps.document.constants import DocumentSystemField
+from apps.document.field_detection import field_detection
+from apps.document.field_detection.detector_field_matcher import DetectorFieldMatcher
+from apps.document.field_detection.field_detection_celery_api import run_detect_field_values_for_document
+from apps.document.field_types import TypedField, BooleanField, RelatedInfoField, MultiValueField
 from apps.document.models import *
+from apps.document.repository.document_field_repository import DocumentFieldRepository
+from apps.document.repository.document_repository import DocumentRepository
+from apps.document.repository.dto import FieldValueDTO, AnnotationDTO
+from apps.document.tasks import plan_process_document_changed
 from apps.document.views import show_document
 from apps.extract.models import *
-from apps.users.models import User
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2019, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.3/LICENSE"
-__version__ = "1.2.3"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.3.0/LICENSE"
+__version__ = "1.3.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -87,8 +90,55 @@ extract_api_module = get_api_module('extract')
 
 
 # --------------------------------------------------------
+# Document Field Value Views
+# --------------------------------------------------------
+
+class GeneratorListSerializer(serializers.ListSerializer):
+    """
+    Return data as a generator instead of a list
+    """
+
+    def to_representation(self, data):
+        """
+        List of object instances -> List of dicts of primitive datatypes.
+        """
+        # Dealing with nested relationships, data can be a Manager,
+        # so, get a queryset from the Manager if needed
+        # Use an iterator on the queryset to allow large querysets to be
+        # exported without excessive memory usage
+        if isinstance(data, models.Manager):
+            iterable = data.all().iterator()
+        elif isinstance(data, models.QuerySet):
+            iterable = data.iterator()
+        else:
+            iterable = data
+        # Return a generator rather than a list so that streaming responses
+        # can be used
+        return (self.unify_representation(item) for item in iterable)
+
+    def unify_representation(self, item):
+        # if some nested field is not found i.e. document.project.name
+        # but document has no associated project
+        # this field will be missed in item data, so we need to override it
+        # in case if we need strong fields mapping
+        item_representation = self.child.to_representation(item)
+        for field in self.child.Meta.fields:
+            if field not in item_representation:
+                item_representation[field] = None
+        return item_representation
+
+    @property
+    def data(self):
+        # Note we deliberately return the super of ListSerializer to avoid
+        # instantiating a ReturnList, which would force evaluating the generator
+        return super(serializers.ListSerializer, self).data
+
+
+# --------------------------------------------------------
 # Document Note Views
 # --------------------------------------------------------
+from apps.users.models import User
+
 
 class UserSerializer(serializers.ModelSerializer):
     full_name = serializers.SerializerMethodField()
@@ -109,13 +159,16 @@ class UserSerializer(serializers.ModelSerializer):
 class DocumentNoteDetailSerializer(apps.common.mixins.SimpleRelationSerializer):
     document_id = serializers.PrimaryKeyRelatedField(
         source='document', queryset=Document.objects.all())
+
+    user = UserSerializer(source='history.last.history_user', many=False, read_only=True)
+    # history = serializers.SerializerMethodField()
+    field_repo = DocumentFieldRepository()
     field_value_id = serializers.PrimaryKeyRelatedField(
-        source='field_value', queryset=DocumentFieldValue.objects.all(), required=False)
+        source='field_value',
+        queryset=field_repo.get_all_docfieldvalues(),
+        required=False)
     field_id = serializers.PrimaryKeyRelatedField(
         source='field', queryset=DocumentField.objects.all(), required=False)
-    user = UserSerializer(source='history.last.history_user', many=False, read_only=True)
-
-    # history = serializers.SerializerMethodField()
 
     class Meta:
         model = DocumentNote
@@ -138,6 +191,66 @@ class DocumentNoteUpdateSerializer(serializers.ModelSerializer):
     class Meta:
         model = DocumentNote
         fields = ['note']
+
+
+class DocumentFieldValueSerializer(serializers.ModelSerializer):
+    adapter = None
+
+    value = serializers.SerializerMethodField()
+    field_name = serializers.SerializerMethodField()
+    project = serializers.CharField(source='document.project.name', read_only=True)
+    document_name = serializers.CharField(source='document.name', read_only=True)
+
+    class Meta:
+        model = FieldValue
+        list_serializer_class = GeneratorListSerializer
+        fields = ['pk',
+                  'document',
+                  'document_name',
+                  'field',
+                  'field_name',
+                  'project',
+                  'value',
+                  'modified_by', 'modified_date']
+
+    def get_field_name(self, obj: FieldValue):
+        return '{type}: {field}'.format(
+            type=obj.field.document_type.title if obj.field.document_type else 'NA',
+            field=obj.field.title)
+
+    def get_project(self, obj: FieldValue):
+        return obj.document.project.name if obj.document.project else 'NA'
+
+    def get_value(self, obj: FieldValue):
+        return obj.value
+
+
+class FieldAnnotationValueSerializer(serializers.ModelSerializer):
+    adapter = None
+
+    value = serializers.SerializerMethodField()
+    field_name = serializers.SerializerMethodField()
+
+    class Meta:
+        model = FieldAnnotation
+        list_serializer_class = GeneratorListSerializer
+        fields = ['pk',
+                  'field',
+                  'field_name',
+                  'location_start', 'location_end', 'location_text',
+                  'value',
+                  'modified_by', 'modified_date']
+
+    def get_field_name(self, obj: FieldAnnotation):
+        return '{type}: {field}'.format(
+            type=obj.field.document_type.title if obj.field.document_type else 'NA',
+            field=obj.field.title)
+
+    def get_project(self, obj: FieldAnnotation):
+        return obj.document.project.name if obj.document.project else 'NA'
+
+    def get_value(self, obj: FieldAnnotation):
+        return obj.value
 
 
 class DocumentNotePermissions(BasePermission):
@@ -263,22 +376,18 @@ class GenericDocumentSerializer(apps.common.mixins.SimpleRelationSerializer):
                   'max_currency_amount', 'max_currency_name']
 
 
-class FakeRequest:
-
-    def __init__(self):
-        self.GET = {'columns': 'document_id',
-                    'save_filter': 'false'}
-
-
 class DocumentWithFieldsDetailSerializer(BaseDocumentSerializer):
     """
     Serializer for document review page with detailed document field values
     """
+    field_repo = DocumentFieldRepository()
+
     field_value_objects = serializers.SerializerMethodField()
     field_values = serializers.SerializerMethodField()
     notes = DocumentNoteDetailSerializer(source='documentnote_set', many=True)
     prev_id = serializers.SerializerMethodField()
     next_id = serializers.SerializerMethodField()
+    sections = serializers.SerializerMethodField()
 
     class Meta:
         model = Document
@@ -287,40 +396,15 @@ class DocumentWithFieldsDetailSerializer(BaseDocumentSerializer):
                   'assignee', 'assign_date', 'assignee_data', 'available_assignees_data',
                   'description', 'title', 'full_text',
                   'notes', 'field_values', 'field_value_objects',
-                  'prev_id', 'next_id']
+                  'prev_id', 'next_id', 'sections', 'cluster_id']
 
     def get_neighbours(self, document, use_saved_filter=True):
-        prev_id = next_id = order_by = filters = None
+        prev_id = next_id = None
         user = self.context['request'].user
-        project_id = document.project_id
-        from apps.rawdb.models import SavedFilter
+        project = document.project
         from apps.rawdb.api.v1 import DocumentsAPIView
 
-        if use_saved_filter:
-            try:
-                saved_filter = SavedFilter.objects.get(project_id=project_id, user=user)
-                order_by = saved_filter.order_by
-                filters = saved_filter.column_filters
-            except:
-                pass
-
-        if order_by is None:
-            order_by = [['document_name', 'asc']]
-
-        # just use DocumentsAPIView and SavedFilter to fetch ids in right order
-        request = FakeRequest()
-        request.user = user
-        request.GET.update({
-            'project_ids': str(project_id),
-            'order_by': ','.join('{}:{}'.format(field, order) for field, order in order_by)})
-        if filters:
-            for field_name, condition in filters.items():
-                request.GET['where_{}'.format(field_name)] = condition
-
-        doc_type_code = document.project.type.code
-        view = DocumentsAPIView(request=request, format_kwarg=doc_type_code)
-        resp = view.get(request=request, document_type_code=doc_type_code).data['items']
-        ids = [i['document_id'] for i in resp]
+        ids = DocumentsAPIView.simulate_get(user, project, use_saved_filter=use_saved_filter)
 
         if document.pk in ids:
             pos = ids.index(document.pk)
@@ -341,19 +425,32 @@ class DocumentWithFieldsDetailSerializer(BaseDocumentSerializer):
     def get_next_id(self, obj):
         return self.get_neighbours(obj)[1]
 
+    def get_sections(self, obj):
+        if isinstance(obj.metadata, dict) and 'sections' in obj.metadata:
+            return obj.metadata['sections']
+
     def get_field_values(self, doc: Document):
-        fvals = doc.documentfieldvalue_set.filter(removed_by_user=False)
-        merged_fields = build_field_value_by_id_hash(fvals)
-        return merged_fields
+        """
+        Get field values in format: field uid -> python/json value.
+        :param doc:
+        :return:
+        """
+        field_repo = DocumentFieldRepository()
+        return field_repo.get_field_uid_to_python_value(document_type_id=doc.document_type_id, doc_id=doc.pk)
 
     def get_field_value_objects(self, doc: Document):
+        """
+        Get annotations.
+        :param doc:
+        :return:
+        """
         field_uids_to_field_value_objects = {}
-        for fv in doc.documentfieldvalue_set.filter(removed_by_user=False):  # type: DocumentFieldValue
-            serialized_fv = DocumentFieldValueSerializer(fv).data
+        for fv in doc.annotations_matches.all():  # type: FieldAnnotation
+            serialized_fv = FieldAnnotationValueSerializer(fv).data
             field = fv.field
             field_uid = field.uid
-            field_type = fv.field.get_field_type()
-            if field_type.multi_value:
+            typed_field = TypedField.by(fv.field)
+            if typed_field.multi_value:
                 if field_uids_to_field_value_objects.get(field_uid) is None:
                     field_uids_to_field_value_objects[field_uid] = [serialized_fv]
                 else:
@@ -362,40 +459,38 @@ class DocumentWithFieldsDetailSerializer(BaseDocumentSerializer):
                 field_uids_to_field_value_objects[field_uid] = serialized_fv
         return field_uids_to_field_value_objects
 
-    def update(self, instance, validated_data):
+    def update(self, updated_doc: Document, validated_data):
         with transaction.atomic():
+            system_fields_changed = list()
+
             new_status = validated_data.get('status')
-            if new_status is not None and new_status.pk != instance.status_id:
-                is_active = instance.status and instance.status.is_active
+            if new_status is not None and new_status.pk != updated_doc.status_id:
+                is_active = updated_doc.status and updated_doc.status.is_active
                 if new_status.is_active != is_active:
-                    field_ids = DocumentFieldValue.objects \
-                        .filter(document=instance, removed_by_user=False) \
-                        .values('field_id') \
-                        .order_by('field_id') \
-                        .distinct()
+                    field_repo = DocumentFieldRepository()
+                    field_ids = field_repo.get_doc_field_ids_with_values(updated_doc.pk)
                     DocumentField.objects \
-                        .filter(document_type_id=instance.document_type_id, pk__in=Subquery(field_ids)) \
+                        .filter(document_type_id=updated_doc.document_type_id, pk__in=Subquery(field_ids)) \
                         .update(dirty=True)
+                system_fields_changed.append(DocumentSystemField.status.value)
 
             user = self.context['request'].user  # type: User
             new_assignee = validated_data.get('assignee')
-            prev_assignee = instance.assignee
+            prev_assignee = updated_doc.assignee
             if new_assignee is None and prev_assignee is not None:
                 validated_data['assign_date'] = None
+                system_fields_changed.append(DocumentSystemField.assignee.value)
             elif new_assignee is not None and (prev_assignee is None or new_assignee.pk != prev_assignee.pk):
                 validated_data['assign_date'] = datetime.datetime.now(tz=user.get_time_zone())
+                system_fields_changed.append(DocumentSystemField.assignee.value)
 
-            res = super().update(instance, validated_data)
-            log = ErrorCollectingLogger()
-            signals.fire_document_changed(self.__class__,
-                                          log=log,
-                                          document=instance,
-                                          system_fields_changed=True,
+            res = super().update(updated_doc, validated_data)
+
+            plan_process_document_changed(doc_id=updated_doc.pk,
+                                          system_fields_changed=system_fields_changed,
                                           generic_fields_changed=False,
                                           user_fields_changed=False,
-                                          pre_detected_field_values=None,
-                                          changed_by_user=user)
-            log.raise_if_error()
+                                          changed_by_user_id=user.pk)
             return res
 
 
@@ -403,28 +498,13 @@ class DocumentWithFieldsListSerializer(BaseDocumentSerializer):
     """
     Serializer for document list page with document field values
     """
-    field_values = serializers.SerializerMethodField()
 
     class Meta:
         model = Document
         fields = ['pk', 'name', 'document_type',
                   'description', 'title', 'file_size',
-                  'status', 'status_data', 'status_name', 'field_values',
+                  'status', 'status_data', 'status_name',
                   'assignee', 'assign_date', 'assignee_data', 'assignee_name']
-
-    def get_field_values(self, doc):
-        field_names_to_field_types = self.context.get('field_names_to_field_types')  # type: Dict
-        if not field_names_to_field_types:
-            return {}
-        field_values = {}
-        for field_name, field_type_code in field_names_to_field_types.items():  # type: str, FieldType
-            document_field = field_name.replace('-', '_')
-            if hasattr(doc, document_field):
-                sortable_value = getattr(doc, document_field)
-                field_type = FIELD_TYPE_REGISTRY[field_type_code]
-                representation_value = field_type.merged_db_value_to_python(sortable_value)
-                field_values[field_name] = representation_value
-        return field_values
 
 
 class ExtendedDocumentWithFieldsListSerializer(GenericDocumentSerializer,
@@ -478,6 +558,12 @@ class DocumentPermissions(BasePermission):
         if request.method == 'POST' and view.action in ['mark_delete', 'unmark_delete'] \
                 and request.user.is_reviewer:
             document_ids = request.data.get('document_ids', [])
+            project_id = request.data.get('project_id')
+
+            if request.data.get('all') and project_id:
+                from apps.rawdb.api.v1 import DocumentsAPIView
+                document_ids = DocumentsAPIView.simulate_get(request.user, project_id)
+
             projects = project_api_module.Project.objects.filter(
                 document__in=document_ids,
                 super_reviewers=request.user)
@@ -586,7 +672,11 @@ class DocumentViewSet(DocumentPermissionViewMixin, apps.common.mixins.APIActionM
                 - values: str - list of str separated by comma like dates,parties,courts
         """
         document = self.get_object()
-        class_kwargs = dict(request=request, format_kwarg=None, document_id=document.id)
+        text_unit_type = self.request.GET.get('text_unit_type')
+
+        class_kwargs = dict(request=request, format_kwarg=None,
+                            document_id=document.id, text_unit_type=text_unit_type)
+
         extraction_map = dict(
             amounts=extract_api_module.TopAmountUsageListAPIView,
             citations=extract_api_module.TopCitationUsageListAPIView,
@@ -623,6 +713,31 @@ class DocumentViewSet(DocumentPermissionViewMixin, apps.common.mixins.APIActionM
         except:
             pass
         return Response(result)
+
+    @action(detail=True, methods=['get'])
+    def definitions(self, request, **kwargs):
+        document = self.get_object()
+        if 'definitions' not in document.metadata:
+            definitions = DefinitionUsage.objects.filter(text_unit__document=document) \
+                .annotate(startOffset=F('text_unit__location_start'),
+                          endOffset=F('text_unit__location_end'),
+                          text=F('text_unit__text')).values(
+                'definition', 'startOffset', 'endOffset', 'text')
+
+            res = list()
+            grouped = {k: [{vik: viv for vik, viv in vi.items() if vik != 'definition'} for vi in v] for
+                       k, v in groupby(definitions, lambda i: i['definition'])}
+            for definition, data in grouped.items():
+                definition_re = re.compile(r'\b{}(?!\-)\b(?!s\b)'.format(re.escape(definition)), re.I | re.M)
+
+                item = {'definition': definition,
+                        'matches': [{'startOffset': m.start(), 'endOffset': m.end()} for m in
+                                    definition_re.finditer(document.text.replace('\n', ' '))],
+                        'descriptions': list(data)}
+                res.append(item)
+            document.metadata['definitions'] = res
+            document.save()
+        return Response(document.metadata['definitions'])
 
     def destroy(self, request, *args, **kwargs):
         document = self.get_object()
@@ -679,7 +794,13 @@ class DocumentViewSet(DocumentPermissionViewMixin, apps.common.mixins.APIActionM
 
     @staticmethod
     def mark_unmark_for_delete(delete_not_undelete: bool, request) -> Response:
-        ids = request.data.get('document_ids', [])  # json.loads()
+        ids = request.data.get('document_ids', [])
+        project_id = request.data.get('project_id')
+
+        if request.data.get('all') and project_id:
+            from apps.rawdb.api.v1 import DocumentsAPIView
+            ids = DocumentsAPIView.simulate_get(request.user, project_id)
+
         from apps.document.sync_tasks.soft_delete_document_task import SoftDeleteDocumentsSyncTask
         count_deleted = SoftDeleteDocumentsSyncTask().process(
             document_ids=ids,
@@ -695,8 +816,6 @@ class ProjectDocumentsWithFieldsViewSet(apps.common.mixins.APILoggingMixin,
     retrieve: Document Detail with Fields
     """
     queryset = Document.objects.all()
-
-    field_names_to_field_types = None
 
     def get_object(self, *args, **kwargs):
         doc_pk = self.kwargs.get('pk')
@@ -737,11 +856,6 @@ class ProjectDocumentsWithFieldsViewSet(apps.common.mixins.APILoggingMixin,
         extra_data.update({'query_string': self.request.META['QUERY_STRING']})
         return extra_data
 
-    def get_serializer_context(self):
-        context = super(ProjectDocumentsWithFieldsViewSet, self).get_serializer_context()
-        context.update({"field_names_to_field_types": self.field_names_to_field_types})
-        return context
-
     def get_serializer_class(self, *args, **kwargs):
         if self.action == 'for_user':
             return SimpleDocumentSerializer
@@ -779,6 +893,29 @@ class ProjectDocumentsWithFieldsViewSet(apps.common.mixins.APILoggingMixin,
     @action(detail=False, methods=['get'], url_path='for-user')
     def for_user(self, request, *args, **kwrags):
         return super().list(request, *args, **kwrags)
+
+    @action(methods=['get'], detail=True)
+    def full_text(self, request, project_pk, pk):
+        text = Document.objects.filter(pk=pk).values_list('full_text', flat=True).first()
+        return JsonResponse(data=text, safe=False)
+
+    @action(methods=['get', 'put', 'post', 'patch'], detail=True)
+    def fields(self, request: HttpRequest, project_pk: int, pk: int):
+        field_repo = DocumentFieldRepository()
+
+        if request.method == 'GET':
+            field_code_to_value = field_repo.get_field_code_to_json_value(doc_id=pk)
+            field_code_to_ant_stats = field_repo.get_annotation_stats_by_doc(document_id=pk)
+            res = {
+                field_code: {'value': value, 'annotation_stats': field_code_to_ant_stats.get(field_code)}
+                for field_code, value in field_code_to_value.items()
+            }
+            return JsonResponse(res)
+        elif request.method in {'POST', 'PUT', 'PATCH'}:
+            doc = self.get_object()
+            updated_fields = {f for f, fv in field_repo.update_field_values(doc, request.user, request.data)}
+            cache_and_detect_field_values(doc=doc, user=request.user, updated_fields=updated_fields)
+            return Response(status=200)
 
 
 class DocumentSentimentChartAPIView(ListAPIView):
@@ -1185,6 +1322,7 @@ class DocumentFieldDetailSerializer(apps.common.mixins.SimpleRelationSerializer)
                   'stop_words', 'metadata', 'training_finished', 'dirty', 'order',
                   'trained_after_documents_number', 'hidden_always',
                   'hide_until_python', 'hide_until_js',
+                  'detect_limit_unit', 'detect_limit_count',
                   'display_yes_no', 'value_aware', 'created_by', 'modified_by',
                   'created_date', 'modified_date']
 
@@ -1192,7 +1330,7 @@ class DocumentFieldDetailSerializer(apps.common.mixins.SimpleRelationSerializer)
         return obj.category.name if obj.category else None
 
     def get_value_aware(self, obj: DocumentField):
-        return obj.is_value_aware()
+        return TypedField.by(obj).requires_value
 
     def get_choices(self, obj: DocumentField):
         return obj.get_choice_values()
@@ -1271,7 +1409,7 @@ class DocumentFieldCreateSerializer(ModelFormBasedSerializer):
                   'default_value', 'choices', 'allow_values_not_specified_in_choices',
                   'stop_words', 'metadata', 'training_finished', 'dirty', 'order',
                   'trained_after_documents_number', 'hidden_always', 'hide_until_python',
-                  'hide_until_js', 'display_yes_no']
+                  'hide_until_js', 'display_yes_no', 'detect_limit_unit', 'detect_limit_count']
 
     def is_valid(self, raise_exception=False):
         super().is_valid()
@@ -1532,6 +1670,7 @@ class DocumentTypeCreateSerializer(ModelFormBasedSerializer):
         return self.set_fields(instance)
 
     def validate_may_delete_data(self, errors_dst: dict):
+        field_repo = DocumentFieldRepository()
         request = self.context['request']
         if as_bool(request.GET, PARAM_OVERRIDE_WARNINGS):
             return
@@ -1543,7 +1682,7 @@ class DocumentTypeCreateSerializer(ModelFormBasedSerializer):
             for field in list(self.instance.fields.all()):  # type: DocumentField
                 field_patch = fields_data.get(field.uid)
                 if not field_patch:
-                    field_values_to_delete[field.code] = DocumentFieldValue.objects.filter(field=field).count()
+                    field_values_to_delete[field.code] = field_repo.get_count_by_field(field.pk)
             if field_values_to_delete:
                 field_values_to_delete = ';<br />\n'.join([f'{field}: {n} values'
                                                            for field, n in field_values_to_delete.items()])
@@ -1643,285 +1782,122 @@ class DocumentTypeViewSet(apps.common.mixins.JqListAPIMixin,
 
 
 # --------------------------------------------------------
-# Document Field Value Views
-# --------------------------------------------------------
-
-class GeneratorListSerializer(serializers.ListSerializer):
-    """
-    Return data as a generator instead of a list
-    """
-
-    def to_representation(self, data):
-        """
-        List of object instances -> List of dicts of primitive datatypes.
-        """
-        # Dealing with nested relationships, data can be a Manager,
-        # so, get a queryset from the Manager if needed
-        # Use an iterator on the queryset to allow large querysets to be
-        # exported without excessive memory usage
-        if isinstance(data, models.Manager):
-            iterable = data.all().iterator()
-        elif isinstance(data, models.QuerySet):
-            iterable = data.iterator()
-        else:
-            iterable = data
-        # Return a generator rather than a list so that streaming responses
-        # can be used
-        return (self.unify_representation(item) for item in iterable)
-
-    def unify_representation(self, item):
-        # if some nested field is not found i.e. document.project.name
-        # but document has no associated project
-        # this field will be missed in item data, so we need to override it
-        # in case if we need strong fields mapping
-        item_representation = self.child.to_representation(item)
-        for field in self.child.Meta.fields:
-            if field not in item_representation:
-                item_representation[field] = None
-        return item_representation
-
-    @property
-    def data(self):
-        # Note we deliberately return the super of ListSerializer to avoid
-        # instantiating a ReturnList, which would force evaluating the generator
-        return super(serializers.ListSerializer, self).data
-
-
-class DocumentFieldValueSerializer(serializers.ModelSerializer):
-    adapter = None
-
-    value = serializers.SerializerMethodField()
-    field_name = serializers.SerializerMethodField()
-    project = serializers.CharField(source='document.project.name', read_only=True)
-    document_name = serializers.CharField(source='document.name', read_only=True)
-
-    class Meta:
-        model = DocumentFieldValue
-        list_serializer_class = GeneratorListSerializer
-        fields = ['pk',
-                  'document',
-                  'document_name',
-                  'field',
-                  'field_name',
-                  'project',
-                  'location_start', 'location_end', 'location_text',
-                  'value',
-                  'created_by', 'created_date', 'modified_by', 'modified_date']
-
-    def get_field_name(self, obj: DocumentFieldValue):
-        return '{type}: {field}'.format(
-            type=obj.field.document_type.title if obj.field.document_type else 'NA',
-            field=obj.field.title)
-
-    def get_value(self, obj: DocumentFieldValue):
-        return obj.python_value
-
-
-class DocumentFieldValueViewSet(apps.common.mixins.JqListAPIMixin, viewsets.ModelViewSet):
-    """
-    list: Document Field Value List
-    retrieve: Retrieve Document Field Value
-    create: Create Document Field Value
-    update: Update Document Field Value
-    partial_update: Partial Update Document Field Value
-    delete: Delete Document Field Value
-    """
-    queryset = DocumentFieldValue.objects.all()
-    serializer_class = DocumentFieldValueSerializer
-
-    def get_queryset(self):
-        qs = super().get_queryset()
-        qs = qs.filter(value__isnull=False)
-
-        document_type_code = self.request.GET.get('document_type_code')
-        if document_type_code:
-            qs = qs.filter(document__type__code=document_type_code)
-
-        document_id = self.request.GET.get('document_id')
-        if document_id:
-            qs = qs.filter(document_id=document_id)
-
-        field_code = self.request.GET.get('field_code')
-        if field_code:
-            qs = qs.filter(field__code=field_code)
-
-        value = self.request.GET.get('value')
-        if value:
-            qs = qs.filter(value__val=value)
-
-        include_removed_by_user = self.request.GET.get('include_removed_by_user')
-        if not include_removed_by_user == 'true':
-            qs = qs.filter(removed_by_user=False)
-
-        qs = qs.annotate(
-            document_name=F('document__name'),
-            project=F('document__project__name'),
-            field_name=Concat('field__document_type__title', Value(': '), 'field__title'))
-        return qs.prefetch_related('field')
-
-    def destroy(self, request, *args, **kwargs):
-        instance = self.get_object()  # type: DocumentFieldValue
-        adapter = instance.field.get_field_type()
-        adapter.delete(instance)
-        return Response(status=status.HTTP_204_NO_CONTENT)
-
-
-# --------------------------------------------------------
 # Annotator Views
 # --------------------------------------------------------
 
-def _to_dto(field_value: DocumentFieldValue, **kwargs):
-    res = DocumentFieldValueSerializer(field_value).data
-    if kwargs:
-        res.update(kwargs)
-    return res
+class AnnotationSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = FieldAnnotation
+        fields = ['pk', 'document', 'field', 'value',
+                  'location_start', 'location_end', 'location_text',
+                  'modified_by', 'modified_date']
 
 
-class FieldLogicError(RuntimeError):
-    pass
-
-
-class NoValueProvidedOrLocated(FieldLogicError):
-    pass
-
-
-class RelatedInfoFieldNotRequiringAnnotationOnlySupportsYesAsValue(FieldLogicError):
-    pass
-
-
-class UpdatingReadOnlyFieldNotAllowed(FieldLogicError):
-    pass
-
-
-class FieldRequiresTextAnnotation(FieldLogicError):
-    pass
-
-
-def delete_all_field_values(doc: Document, field: DocumentField, value_python):
-    q = DocumentFieldValue.objects.filter(document=doc, field=field)
-    if value_python is not None:
-        field_type = field.get_field_type()  # type: FieldType
-        value_db = field_type.single_python_value_to_db(value_python)
-        q = q.filter(value=value_db)
-
-    q.filter(location_start__isnull=True, location_end__isnull=True).delete()
-    q.exclude(location_start__isnull=True, location_end__isnull=True).update(removed_by_user=True)
-
-
-def do_save_document_field_value(request_data: Dict, user) -> Tuple[Document, Dict]:
+def do_save_document_field_value(request_data: Dict, user) -> \
+        Tuple[Document, DocumentField, Dict]:
     """
-    Store document field value.
+    Creates or updates document's field value with or w/o annotations.
     """
-    doc = Document.all_objects.get(pk=request_data['document'])
-    document_field = DocumentField.objects.get(pk=request_data['field'])
+    field_repo = DocumentFieldRepository()
 
-    if document_field.read_only:
-        raise UpdatingReadOnlyFieldNotAllowed('Cannot save value for read-only field {0}'.format(document_field.code))
+    if 'pk' in request_data and request_data['pk']:
+        ant_model = FieldAnnotation.objects.filter(pk=request_data['pk']).first()  # type: FieldAnnotation
+        if ant_model:
+            document = ant_model.document
+        else:
+            raise Exception(f'do_save_document_field_value: ' +
+                            f'FieldAnnotation(pk={request_data["pk"]}) was not found')
+    else:
+        document = DocumentRepository().get_document_by_id(request_data['document'])
+    field = field_repo.get_document_field_by_id(request_data['field'])
 
-    value = request_data.get('value')
+    annotation_value = request_data.get('value')
+    typed_field = TypedField.by(field)
+
+    if (isinstance(typed_field, BooleanField) or isinstance(typed_field, RelatedInfoField)) \
+            and annotation_value is not None and not isinstance(annotation_value, bool):
+        annotation_value = True if str(annotation_value).lower() == 'yes' else None
+
     location_start = request_data.get('location_start')
     location_end = request_data.get('location_end')
-    selection_range = location_start is not None and location_end is not None
     location_text = None
-    text_unit = None
+    if location_start is not None and location_end is not None:
+        location_text = document.full_text[location_start:location_end]
 
-    if document_field.requires_text_annotations:
-        if not selection_range:
-            raise FieldRequiresTextAnnotation(
-                'Field {0} requires text annotation but no text ranges provided'.format(document_field))
+    annotation_value, hint = typed_field.get_or_extract_value(document, annotation_value, None, location_text)
+    annotation_value = typed_field.annotation_value_python_to_json(annotation_value)
 
-    if selection_range:
-        location_text = doc.full_text[location_start:location_end]
-        text_unit = TextUnit.objects.filter(document=doc,
-                                            unit_type=document_field.text_unit_type,
-                                            location_start__lte=location_end,
-                                            location_end__gte=location_start).first()
+    if location_start is not None \
+            and location_end is not None \
+            and annotation_value is None \
+            and typed_field.requires_value:
+        raise NoValueProvidedOrLocated(f'Field {field.code} is value-aware. '
+                                       'There was no value provided and no suitable '
+                                       'value located in the provided text. '
+                                       'Storing empty value makes no sense.')
+        # And saving None to a field without providing annotation means - clearing the field.
 
-    if document_field.requires_text_annotations:
-        if not text_unit:
-            raise FieldRequiresTextAnnotation(
-                'Field {0} requires text annotation but no text unit matching the provided range has been found'
-                    .format(document_field))
+    field_value = typed_field.build_json_field_value_from_json_ant_values([annotation_value]) \
+        if isinstance(typed_field, MultiValueField) else annotation_value
+    dto = FieldValueDTO(field_value=field_value, annotations=[])
 
-    field_type = document_field.get_field_type()
+    if location_start is not None and location_end is not None:
+        ant = AnnotationDTO(
+            extraction_hint_name=hint,
+            annotation_value=annotation_value,
+            location_in_doc_start=location_start,
+            location_in_doc_end=location_end)
+        dto.annotations.append(ant)
 
-    value, hint = field_type.get_or_extract_value(doc, document_field, value, None, location_text)
+    field_val, field_ants = field_repo.update_field_value_with_dto(
+        document=document, field=field, field_value_dto=dto,
+        user=user)
 
-    if document_field.is_value_aware() and not value and value != 0:
-        # TODO: REFACTOR THE API
-        # For now:
-        # PUT/POST with value:null and text annotation provided = try locating value in the text
-        # PUT/POST with value:null and no annotation provided = delete
-        if text_unit:
-            raise NoValueProvidedOrLocated('Field {0} is value-aware. There was no value provided and no suitable '
-                                           'value located in the provided text. '
-                                           'Storing empty value makes no sense.'.format(document_field.code))
-        else:
-            # Dirty hack for simplifying deleting field values for frontend
-            # TODO: Refactor the API
-            delete_all_field_values(doc, document_field, None)
-            return doc, {'document': doc.pk, 'field': document_field.uid, 'value': None}
+    field_value = {
+        'document': document.pk,
+        'document_name': document.name,
+        'field': field.uid,
+        'field_name': field.code,
+        'value': field_val.value,
+        'project': document.project.name,
+        'modified_by': user.pk,
+        'modified_date': datetime.datetime.now(),
+        'pk': None,
+        'location_start': location_start,
+        'location_end': location_end,
+        'location_text': location_text
+    }
 
-    if document_field.is_related_info_field() and not document_field.requires_text_annotations:
-        if not value or value == 'No':
-            delete_all_field_values(doc, document_field, None)
-            return doc, {'document': doc.pk, 'field': document_field.uid, 'value': None}
-        elif value != 'Yes':
-            raise RelatedInfoFieldNotRequiringAnnotationOnlySupportsYesAsValue('''Field {0} is a related info field with 
-annotations disabled. It only supports "Yes" or "No" as a value to represent the fact that the related info is 
-contained in the document but it is not specified where exactly it is contained.'''.format(document_field.code))
+    annotation = field_ants[0] if field_ants else None
+    if annotation:
+        field_value['value'] = annotation.value
+        field_value['pk'] = annotation.pk
+        field_value['location_start'] = annotation.location_start
+        field_value['location_end'] = annotation.location_end
+        field_value['location_text'] = annotation.location_text
 
-    field_value = field_type.save_value(doc,
-                                        document_field,
-                                        location_start,
-                                        location_end,
-                                        location_text,
-                                        text_unit,
-                                        value,
-                                        user,
-                                        allow_overwriting_user_data=True,
-                                        extraction_hint=hint)
-
-    return doc, _to_dto(field_value)
+    return document, field, field_value
 
 
 def cache_and_detect_field_values(doc: Document,
-                                  user: User = None,
-                                  updated_field_codes: List[str] = None):
-    # First pre-cache f i eld_values right in web-api thread to avoid missync between
-    # just stored DocumentFieldValue-s
-    cache_field_values(doc, None, save=True, changed_by_user=user)
-
+                                  user: User,
+                                  updated_fields: Set[DocumentField]):
     # Next start field re-detection and re-caching in Celery because there can be other fields
     # depending on the changed fields.
-    dcptrs = DocDetectFieldValuesParams(doc.pk, updated_field_codes=updated_field_codes)
+    dcptrs = DocDetectFieldValuesParams(doc.pk,
+                                        updated_field_codes=[field.code for field in updated_fields])
     run_detect_field_values_for_document(dcptrs, user=user)
 
 
-def do_delete_document_field_value(pk) -> Tuple[Document, Dict]:
+def do_delete_document_field_value(ant_id: int, user) -> Tuple[Document, DocumentField, Dict]:
     """
     Delete an annotation / DocumentFieldValue / mark it as removed
     """
-    field_value = DocumentFieldValue.objects.get(pk=pk)  # type: DocumentFieldValue
-    doc = field_value.document
-
-    with transaction.atomic():
-        if field_value.location_start is None and field_value.location_end is None:
-            field_value.delete()
-        else:
-            field_value.removed_by_user = True
-            field_value.save()
-        DocumentField.objects.set_dirty_for_value(field_value)
-
-    return doc, _to_dto(field_value)
-
-
-class AnnotationSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = DocumentFieldValue
-        fields = ['pk', 'document', 'field', 'value',
-                  'location_start', 'location_end', 'location_text',
-                  'created_by', 'created_date', 'modified_by', 'modified_date']
+    field_repo = DocumentFieldRepository()
+    ant_model = FieldAnnotation.objects.get(pk=ant_id)
+    doc, field, ant_model = field_repo.delete_field_annotation_and_update_field_value(ant_model, user)
+    ant_dict = AnnotationSerializer(ant_model).data
+    return doc, field, ant_dict
 
 
 def render_error_json(operation_uid, e: Exception) -> Dict:
@@ -1940,13 +1916,13 @@ class AnnotationViewSet(viewsets.ModelViewSet):
     update: Update Annotation (Document Field Value)
     delete: Delete Annotation (Document Field Value)
     """
-    queryset = DocumentFieldValue.objects.all()
+    field_repo = DocumentFieldRepository()
+    queryset = field_repo.get_all_docfieldvalues()
     serializer_class = AnnotationSerializer
     http_method_names = ['get', 'put', 'post', 'delete']
 
     def get_queryset(self):
         qs = super().get_queryset()
-        qs = qs.filter(removed_by_user=False)
         document_id = self.request.GET.get('document_id')
         if document_id:
             qs = qs.filter(document_id=document_id)
@@ -1954,15 +1930,10 @@ class AnnotationViewSet(viewsets.ModelViewSet):
 
     def update(self, request, *args, **kwargs):
         try:
-            doc, res = do_save_document_field_value(request.data, request.user)
-
-            updated_field_codes = []
-            field_id = request.data.get('field')
-            if field_id:
-                updated_field_codes = [DocumentField.objects.get(uid=field_id).code]
+            doc, field, res = do_save_document_field_value(request.data, request.user)
             cache_and_detect_field_values(doc,
                                           user=request.user,
-                                          updated_field_codes=updated_field_codes)
+                                          updated_fields={field})
         except Exception as e:
             res = render_error_json(None, e)
 
@@ -1977,8 +1948,8 @@ class AnnotationViewSet(viewsets.ModelViewSet):
 
     def destroy(self, request, *args, **kwargs):
         try:
-            doc, res = do_delete_document_field_value(kwargs['pk'])
-            cache_and_detect_field_values(doc, user=request.user)
+            doc, field, res = do_delete_document_field_value(kwargs['pk'], request.user)
+            cache_and_detect_field_values(doc, user=request.user, updated_fields={field})
         except Exception as e:
             res = render_error_json(None, e)
         return Response(res)
@@ -1993,12 +1964,12 @@ class AnnotationViewSet(viewsets.ModelViewSet):
         document_field = DocumentField.objects.get(pk=annotator_data['field'])
         location_text = annotator_data['quote']
 
-        field_type = document_field.get_field_type()
+        typed_field = TypedField.by(document_field)
 
         if document_field.is_detectable():
-            field_value = field_detection.suggest_field_value(document_field, doc)
+            field_value = field_detection.suggest_field_value(doc=doc, field=document_field)
         else:
-            field_value = field_type.suggest_value(doc, document_field, location_text)
+            field_value = typed_field.suggest_value(doc, location_text)
 
         return Response({'suggested_value': field_value})
 
@@ -2015,7 +1986,7 @@ class AnnotationViewSet(viewsets.ModelViewSet):
         batch_commands = request.data
 
         res = []
-        documents_to_cache = set()
+        documents_to_cache = defaultdict(set)
         for cmd_num, cmd in enumerate(batch_commands):
             operation_uid = cmd.get('operation_uid')
             try:
@@ -2023,20 +1994,20 @@ class AnnotationViewSet(viewsets.ModelViewSet):
 
                 if action == 'delete':
                     pk = cmd['id']
-                    doc, deleted_field_value = do_delete_document_field_value(pk)
-                    documents_to_cache.add(doc)
+                    doc, field, deleted_field_value = do_delete_document_field_value(pk, request.user)
+                    documents_to_cache[doc].add(field)
                     res.append({'operation_uid': operation_uid, 'status': 'success', 'data': deleted_field_value})
                 elif action == 'save':
                     data = cmd['data']
-                    doc, saved_field_value = do_save_document_field_value(data, request.user)
-                    documents_to_cache.add(doc)
+                    doc, field, saved_field_value = do_save_document_field_value(data, request.user)
+                    documents_to_cache[doc].add(field)
                     res.append({'operation_uid': operation_uid, 'status': 'success', 'data': saved_field_value})
             except Exception as e:
                 res.append(render_error_json(operation_uid, e))
 
-        for doc in documents_to_cache:
+        for doc, fields in documents_to_cache.items():
             if doc:
-                cache_and_detect_field_values(doc, user=request.user)
+                cache_and_detect_field_values(doc, user=request.user, updated_fields=fields)
 
         return Response(res)
 
@@ -2044,69 +2015,6 @@ class AnnotationViewSet(viewsets.ModelViewSet):
 # --------------------------------------------------------
 # Document Field Value History Views
 # --------------------------------------------------------
-
-class DocumentFieldValueHistorySerializer(apps.common.mixins.SimpleRelationSerializer):
-    object_id = serializers.SerializerMethodField()
-    history_id = serializers.SerializerMethodField()
-    history_user = serializers.SerializerMethodField()
-    history_date = serializers.SerializerMethodField()
-    history_type = serializers.SerializerMethodField()
-    latest_history_type = serializers.SerializerMethodField()
-    value = serializers.SerializerMethodField()
-
-    class Meta:
-        model = DocumentFieldValue
-        fields = ['history_id', 'object_id', 'document_id', 'document__name',
-                  'document__type__code', 'document__type__title',
-                  'field_id', 'field__code', 'field__type', 'field__title',
-                  'value', 'history_user', 'history_date', 'history_type',
-                  'latest_history_type']
-
-    def get_value(self, obj):
-        return obj.history_object.value
-
-    def get_object_id(self, obj):
-        return obj.history_object.pk
-
-    def get_history_id(self, obj):
-        return obj.pk
-
-    def get_history_user(self, obj):
-        user = obj.history_user
-        return user.username if user else None
-
-    def get_history_date(self, obj):
-        return obj.history_date
-
-    def get_history_type(self, obj):
-        return obj.get_history_type_display()
-
-    def get_latest_history_type(self, obj):
-        return obj.instance.history.latest().get_history_type_display()
-
-
-class DocumentFieldValueHistoryViewSet(apps.common.mixins.JqListAPIMixin, viewsets.ModelViewSet):
-    """
-    list: Document Field Value History List
-    retrieve: Retrieve Document Field Value History
-    update: Update Document Field Value History\n
-        Apply specific history state
-    """
-    queryset = DocumentFieldValue.history.all()
-    serializer_class = DocumentFieldValueHistorySerializer
-    http_method_names = ['get', 'put']
-
-    def get_queryset(self):
-        qs = super().get_queryset()
-        return qs.order_by('document_id', 'field__code', 'history_date')
-
-    def update(self, request, *args, **kwargs):
-        hist_object = self.get_object()
-        source_object = hist_object.instance
-        source_object.save()
-        serializer = self.get_serializer(source_object.history.latest())
-        return Response(serializer.data)
-
 
 class StatsAPIView(rest_framework.views.APIView):
     def get(self, request, *args, **kwargs):
@@ -2129,18 +2037,22 @@ class StatsAPIView(rest_framework.views.APIView):
         project_data = project_api_view.list(request=request).data
         if not project_data:
             project_total_count = project_completed_count = project_completed_weight = \
-                project_progress_avg = project_documents_total_count = 0
+                project_documents_total_count = \
+                project_documents_completed_count = project_documents_completed_weight = 0
         else:
             project_df = pd.DataFrame(project_data)
-            project_df['progress'] = project_df.apply(lambda row: (row['reviewed_documents_count'] / row['total_documents_count'] * 100)
+            project_df['progress'] = project_df.apply(
+                lambda row: (row['reviewed_documents_count'] / row['total_documents_count'] * 100)
                 if row['total_documents_count'] else 0, axis=1)
             project_df['completed'] = np.where(project_df['progress'] == 100, 1, 0)
             project_total_count = project_df.shape[0]
             project_df_sum = project_df.sum()
             project_completed_count = project_df_sum.completed
             project_completed_weight = round(project_completed_count / project_total_count * 100, 1)
-            project_progress_avg = round(project_df.mean().progress, 1)
             project_documents_total_count = project_df_sum.total_documents_count
+            project_documents_completed_count = project_df_sum.reviewed_documents_count
+            project_documents_completed_weight = round(
+                project_documents_completed_count / project_documents_total_count * 100, 1)
 
         # set counts depending on user role
         documents = Document.objects
@@ -2281,11 +2193,14 @@ class StatsAPIView(rest_framework.views.APIView):
             "url_usage_count": url_usages.count(),
             "term_count": terms.count(),
             "term_usage_count": term_usages.count(),
+
             "project_total_count": project_total_count,
             "project_completed_count": project_completed_count,
             "project_completed_weight": project_completed_weight,
-            "project_progress_avg": project_progress_avg,
             "project_documents_total_count": project_documents_total_count,
+            "project_documents_completed_count": project_documents_completed_count,
+            "project_documents_completed_weight": project_documents_completed_weight,
+
             "admin_task_total_count": admin_task_total_count,
             "admin_task_by_status_count": admin_task_by_status_count,
 
@@ -2294,15 +2209,96 @@ class StatsAPIView(rest_framework.views.APIView):
         return Response(data)
 
 
+class AnnotationInDocumentSerializer(serializers.ModelSerializer):
+    field = WritableSerializerMethodField(read_only=False)
+
+    def get_field(self, instance: FieldAnnotation):
+        return instance.field.code
+
+    def deserialize_field(self, field_code: str):
+        document_id = self.initial_data['document']
+        return DocumentField.objects.get(code=field_code,
+                                         document_type_id__in=Document.objects
+                                         .filter(pk=document_id)
+                                         .values('document_type_id'))
+
+    class Meta:
+        model = FieldAnnotation
+        fields = ['pk', 'document', 'value', 'field',
+                  'location_start', 'location_end', 'location_text',  # TODO: Remove location_text when frontend ready
+                  'modified_by', 'modified_date']
+
+    def validate(self, attrs):
+        return super().validate(attrs)
+
+    def create(self, validated_data):
+        instance = FieldAnnotation()
+        self.update(instance, validated_data)
+        cache_and_detect_field_values(doc=instance.document,
+                                      user=self.context['request'].user,
+                                      updated_fields={instance.field})
+        return instance
+
+    def update(self, instance: FieldAnnotation, validated_data):
+        instance.document = validated_data['document']
+        instance.field = validated_data['field']
+        typed_field = TypedField.by(instance.field)
+        instance.location_start = validated_data['location_start']
+        instance.location_end = validated_data['location_end']
+        instance.location_text = instance.document.full_text[instance.location_start:instance.location_end]
+        old_ant_value = instance.value
+        instance.value = validated_data['value']
+        instance.extraction_hint = typed_field.pick_hint_by_searching_for_value_among_extracted(instance.location_text,
+                                                                                                instance.value)
+        user = self.context['request'].user
+        instance.modified_by = user
+
+        field_repo = DocumentFieldRepository()
+        field_repo.store_field_annotation_and_update_field_value(instance, old_ant_value=old_ant_value)
+        cache_and_detect_field_values(doc=instance.document, user=user, updated_fields={instance.field})
+        return instance
+
+
+# TODO: Ensure security
+class AnnotationsInDocumentViewSet(viewsets.ModelViewSet):
+
+    def get_queryset(self):
+        qs = FieldAnnotation.objects.filter(document_id=self.kwargs['document_pk'])
+
+        location_offset = as_int(self.request.GET, 'location_offset')
+        if location_offset is not None:
+            qs = qs.filter(location_start__gte=location_offset)
+
+        location_limit = as_int(self.request.GET, 'location_limit')
+        if location_limit is not None:
+            qs = qs.filter(location_start__lte=(location_offset or 0) + location_limit)
+
+        field_code = self.request.GET.get('field')
+        if field_code:
+            qs = qs.filter(field__code=field_code)
+
+        offset = as_int(self.request.GET, 'offset', None)
+        limit = as_int(self.request.GET, 'limit', None)
+        end = (offset or 0) + limit if limit else None
+
+        return qs.select_related('field').order_by('location_start')[offset:end]
+
+    def get_serializer_class(self):
+        return AnnotationInDocumentSerializer
+
+    def perform_destroy(self, instance: FieldAnnotation):
+        field_repo = DocumentFieldRepository()
+        user = self.request.user
+        field_repo.delete_field_annotation_and_update_field_value(instance, user)
+        cache_and_detect_field_values(doc=instance.document, user=user, updated_fields={instance.field})
+
+
 main_router = routers.DefaultRouter()
 main_router.register(r'documents', DocumentViewSet, 'document')
 main_router.register(r'document-fields', DocumentFieldViewSet, 'document-field')
 main_router.register(r'document-field-detectors', DocumentFieldDetectorViewSet, 'document-field-detector')
 
-main_router.register(r'document-field-values', DocumentFieldValueViewSet, 'document-field-value')
 main_router.register(r'annotations', AnnotationViewSet, 'annotation')
-main_router.register(r'document-field-values-history', DocumentFieldValueHistoryViewSet,
-                     'document-field-values-history')
 
 main_router.register(r'document-properties', DocumentPropertyViewSet, 'document-property')
 main_router.register(r'document-notes', DocumentNoteViewSet, 'document-note')
@@ -2326,8 +2322,12 @@ document_via_project_router = nested_routers.NestedSimpleRouter(
     project_router, r'project', lookup='project', trailing_slash=True)
 document_via_project_router.register(r'documents', ProjectDocumentsWithFieldsViewSet, 'documents')
 
+annotation_via_document_router = nested_routers.NestedSimpleRouter(
+    document_via_project_router, r'documents', lookup='document', trailing_slash=True)
+annotation_via_document_router.register(r'annotations', AnnotationsInDocumentViewSet, 'annotations')
+
 api_routers = [main_router, document_type_router,
-               document_via_type_router, document_via_project_router]
+               document_via_type_router, document_via_project_router, annotation_via_document_router]
 
 urlpatterns = [
     url(r'document-sentiment-chart/$', DocumentSentimentChartAPIView.as_view(),

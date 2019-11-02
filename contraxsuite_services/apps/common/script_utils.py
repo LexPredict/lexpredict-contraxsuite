@@ -34,8 +34,8 @@ from django.conf import settings
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2019, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.3/LICENSE"
-__version__ = "1.2.3"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.3.0/LICENSE"
+__version__ = "1.3.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -76,14 +76,14 @@ class ScriptError(RuntimeError):
 
 def eval_script(script_title: str, script_code: str, eval_locals: Dict[str, Any]) -> Any:
     if '__' in script_code:
-        raise SyntaxError('Classifier init script contains "__" string. This may be unsafe for python eval.')
+        raise SyntaxError(f'Script "{script_title}"" contains "__" string. This may be unsafe for python eval.')
     try:
         eval_locals_full = dict()
         eval_locals_full.update(settings.SCRIPTS_BASE_EVAL_LOCALS)
         if eval_locals:
             eval_locals_full.update(eval_locals)
         return eval(script_code, {}, eval_locals_full)
-    except:
+    except Exception:
         raise ScriptError(script_title, script_code)
 
 

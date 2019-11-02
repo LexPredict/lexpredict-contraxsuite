@@ -31,12 +31,12 @@ from __future__ import absolute_import, unicode_literals
 from django.conf.urls import url
 
 # Project imports
-from . import views
+from apps.common import views
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2019, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.3/LICENSE"
-__version__ = "1.2.3"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.3.0/LICENSE"
+__version__ = "1.3.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -46,6 +46,16 @@ urlpatterns = [
         r'^application-settings/$',
         views.AppConfigView.as_view(),
         name='application-settings',
+    ),
+    url(
+        r'^method-stats-overview/$',
+        views.MethodStatsOverviewListView.as_view(),
+        name='method-stats-overview',
+    ),
+    url(
+        r'^db-stats-overview/$',
+        views.DBStatsView.as_view(),
+        name='db-stats',
     ),
     url(
         r'^500/$',

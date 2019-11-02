@@ -31,7 +31,6 @@ from django.contrib import admin
 from django.contrib.admin import SimpleListFilter
 from django.contrib.admin.utils import NestedObjects
 from django.db import router
-from django.db.models import F
 from django.urls import reverse
 from django.utils.safestring import mark_safe
 from django.utils.translation import ugettext_lazy as _
@@ -44,8 +43,8 @@ from apps.common.model_utils.model_class_dictionary import ModelClassDictionary
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2019, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.3/LICENSE"
-__version__ = "1.2.3"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.3.0/LICENSE"
+__version__ = "1.3.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -131,7 +130,7 @@ class ProjectAdmin(admin.ModelAdmin):
 
 
 class ProjectClusteringAdmin(admin.ModelAdmin):
-    list_display = ('pk', 'project_id', 'project_name', 'task_id', 'created_date')
+    list_display = ('pk', 'project_id', 'project_name', 'task_id', 'status', 'created_date')
     search_fields = ('pk', 'project__name')
 
     @staticmethod
@@ -172,13 +171,12 @@ class DeletePendingFilter(SimpleListFilter):
         return queryset.filter(delete_pending=True)
 
 
-def set_soft_delete(project_ids: List[int], delete_not_undelete: bool):
+def set_soft_delete(project_ids: List[int], delete_pending: bool):
     from apps.project.sync_tasks.soft_delete_project_task import SoftDeleteProjectSyncTask
     for project_id in project_ids:
         SoftDeleteProjectSyncTask().process(project_id=project_id,
-                                            remove_all=True,
-                                            excluded_ids=[],
-                                            delete_not_undelete=delete_not_undelete)
+                                            delete_pending=delete_pending,
+                                            remove_all=True)
 
 
 def mark_deleting(_, request, queryset):

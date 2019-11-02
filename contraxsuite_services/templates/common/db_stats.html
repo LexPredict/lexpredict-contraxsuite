@@ -1,0 +1,514 @@
+{% extends "base_list_ajax.html" %}
+{% load static %}
+
+{%  block css_extra %}
+  {{ block.super }}
+  <style>
+    .jqx-grid-statusbar {
+      color: white;
+    }
+    .container {
+      max-width: 95%;
+    }
+    .template {
+      display: none
+    }
+    .page-tabs {
+      margin-left: 10px;
+    }
+    .boot-tabs {
+      margin-bottom: 5px !important;
+    }
+  </style>
+{% endblock %}
+
+{% block page_header %}Database and Docker Stats Overview{% endblock %}
+
+{% block content %}
+
+  <div class="page-tabs">
+
+    <ul class="nav nav-tabs boot-tabs">
+      <li><a data-toggle="tab" href="#tab-01" class="tab-01 active">Database Tables</a></li>
+      <li><a data-toggle="tab" href="#tab-02" class="tab-02">PG Stat Statements</a></li>
+      <li><a data-toggle="tab" href="#tab-03" class="tab-03">PG Stat Activity</a></li>
+      <li><a data-toggle="tab" href="#tab-04" class="tab-04">Docker Nodes</a></li>
+      <li><a data-toggle="tab" href="#tab-05" class="tab-05">Docker Services</a></li>
+    </ul>
+
+    <div class="tab-content">
+
+      <div class="tab-pane clearfix tab-01 active" id="tab-01">
+        <div class="pull-right grid-controls">
+          {% include '_base_grid_buttons_block.html' %}
+        </div>
+        <div class="jqxgrid-container jqxgrid-db-stats">
+          <div class="jqxgrid col-md-12"></div>
+        </div>
+      </div>
+
+      <div class="tab-pane clearfix tab-02" id="tab-02">
+        <div class="pull-right grid-controls">
+          {% include '_base_grid_buttons_block.html' %}
+        </div>
+        <div class="jqxgrid-container jqxgrid-pg-stats-statements">
+          <div class="jqxgrid col-md-12"></div>
+        </div>
+      </div>
+
+      <div class="tab-pane clearfix tab-03" id="tab-03">
+        <div class="pull-right grid-controls">
+          {% include '_base_grid_buttons_block.html' %}
+        </div>
+        <div class="jqxgrid-container jqxgrid-pg-stats-activity">
+          <div class="jqxgrid col-md-12"></div>
+        </div>
+      </div>
+
+      <div class="tab-pane clearfix tab-04" id="tab-04">
+        <div class="pull-right grid-controls">
+          {% include '_base_grid_buttons_block.html' %}
+        </div>
+        <span><small>* Data is updated every minute.</small></span>
+        <div class="jqxgrid-container jqxgrid-docker-nodes-data">
+          <div class="jqxgrid col-md-12"></div>
+        </div>
+      </div>
+
+      <div class="tab-pane clearfix tab-05" id="tab-05">
+        <div class="pull-right grid-controls">
+          {% include '_base_grid_buttons_block.html' %}
+        </div>
+        <span><small>* Data is updated every minute.</small></span>
+        <div class="jqxgrid-container jqxgrid-docker-services-data">
+          <div class="jqxgrid col-md-12"></div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+{% endblock %}
+
+
+{% block js_extra %}
+  {{ block.super }}
+
+  <div class="page-tabs template">
+
+    <ul class="nav nav-tabs boot-tabs">
+      <li><a data-toggle="tab" class="tab-1 active">Table Columns</a></li>
+      <li><a data-toggle="tab" class="tab-2">Table Indexes</a></li>
+    </ul>
+
+    <div class="tab-content">
+
+      <div class="tab-pane clearfix tab-1 active">
+        <div class="jqxgrid-container">
+          <div class="jqxgrid col-md-12 jqxgrid-table-columns"></div>
+        </div>
+      </div>
+
+      <div class="tab-pane clearfix tab-2">
+        <div class="jqxgrid-container">
+          <div class="jqxgrid col-md-12 jqxgrid-table-indexes"></div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <script type="text/javascript">
+
+    function prettify_bytes(value){
+      if (!value) return 0
+      var unit_list = ['bytes', 'kB', 'MB', 'GB', 'TB'];
+      for (var i = 0; i < unit_list.length; i++){
+        var unit = unit_list[i];
+        if (Math.abs(value) < 1024.0){
+          return value.toFixed(1) + ' ' + unit
+        }
+        value = value / 1024.0
+      }
+      return value.toFixed(value) + ' ' + unit
+    };
+
+    $(document).ready(function () {
+      var datafields = [
+        { name: 'table_name', type: 'string' },
+        { name: 'rows', type: 'int' },
+        { name: 'total_bytes', type: 'int' },
+        { name: 'table_bytes', type: 'int' },
+        { name: 'index_bytes', type: 'int' },
+        { name: 'toast_bytes', type: 'int' },
+        { name: 'total_pretty', type: 'int', map: 'total_bytes' },
+        { name: 'table_pretty', type: 'int', map: 'table_bytes' },
+        { name: 'index_pretty', type: 'int', map: 'index_bytes' },
+        { name: 'toast_pretty', type: 'int', map: 'toast_bytes' },
+        { name: 'table_percent', type: 'int' },
+        { name: 'index_percent', type: 'int' },
+        { name: 'toast_percent', type: 'int' }
+      ];
+      var aggregatesRenderer = function(val){
+        return '<div style="position: relative; margin: 10px 4px; overflow: hidden; font-size: bold;">' + val + '</div>';
+      };
+      var aggregatesSumRenderer = function(aggregates, column, element){
+        return aggregatesRenderer(aggregates.sum);
+      };
+      var aggregatesAvgRenderer = function(aggregates, column, element){
+        return aggregatesRenderer(aggregates.avg);
+      };
+      var aggregatesPrettySumRenderer = function(aggregates, column, element){
+        return aggregatesRenderer(prettify_bytes(aggregates.sum));
+      };
+      var prettySizeRenderer = function(index, columnfield, value, defaulthtml, columnproperties, row){
+        return renderCell(defaulthtml, prettify_bytes(value));
+      };
+      var columns = [
+        { text: 'Table Name', datafield: 'table_name', width: 'auto', min_width: 'auto',
+          aggregatesrenderer: function(aggregates, column, element){
+            return aggregatesRenderer('Total:');
+          },
+          align: 'center', cellsalign: 'left' },
+
+        { text: 'Rows', datafield: 'rows', width: 110, cellsformat: 'd',
+          align: 'center', cellsalign: 'right' },
+
+        { text: 'Bytes', datafield: 'table_bytes', width: 140, cellsformat: 'd',
+          aggregates: ['sum'], aggregatesrenderer: aggregatesSumRenderer,
+          columngroup: 'Table',
+          align: 'center', cellsalign: 'right' },
+        { text: 'Pretty', datafield: 'table_pretty', width: 80,
+          aggregates: ['sum'], aggregatesrenderer: aggregatesPrettySumRenderer,
+          columngroup: 'Table', cellsrenderer: prettySizeRenderer,
+          align: 'center', cellsalign: 'right' },
+        { text: '%', datafield: 'table_percent', width: 40, cellsformat: 'd',
+          columngroup: 'Table',
+          aggregates: ['avg'], aggregatesrenderer: aggregatesAvgRenderer,
+          align: 'center', cellsalign: 'right' },
+
+        { text: 'Bytes', datafield: 'index_bytes', width: 140, cellsformat: 'd',
+          aggregates: ['sum'], aggregatesrenderer: aggregatesSumRenderer,
+          columngroup: 'Index',
+          align: 'center', cellsalign: 'right' },
+        { text: 'Pretty', datafield: 'index_pretty', width: 80,
+          aggregates: ['sum'], aggregatesrenderer: aggregatesPrettySumRenderer,
+          columngroup: 'Index', cellsrenderer: prettySizeRenderer,
+          align: 'center', cellsalign: 'right' },
+        { text: '%', datafield: 'index_percent', width: 40, cellsformat: 'd',
+          columngroup: 'Index',
+          aggregates: ['avg'], aggregatesrenderer: aggregatesAvgRenderer,
+          align: 'center', cellsalign: 'right' },
+
+        { text: 'Bytes', datafield: 'toast_bytes', width: 110, cellsformat: 'd',
+          aggregates: ['sum'], aggregatesrenderer: aggregatesSumRenderer,
+          columngroup: 'Toast',
+          align: 'center', cellsalign: 'right' },
+        { text: 'Pretty', datafield: 'toast_pretty', width: 80,
+          aggregates: ['sum'], aggregatesrenderer: aggregatesPrettySumRenderer,
+          columngroup: 'Toast', cellsrenderer: prettySizeRenderer,
+          align: 'center', cellsalign: 'right' },
+        { text: '%', datafield: 'toast_percent', width: 40, cellsformat: 'd',
+          columngroup: 'Toast',
+          aggregates: ['avg'], aggregatesrenderer: aggregatesAvgRenderer,
+          align: 'center', cellsalign: 'right' },
+
+        { text: 'Bytes', datafield: 'total_bytes', width: 140, cellsformat: 'd',
+          aggregates: ['sum'], aggregatesrenderer: aggregatesSumRenderer,
+          columngroup: 'Total',
+          align: 'center', cellsalign: 'right' },
+        { text: 'Pretty', datafield: 'total_pretty', width: 80,
+          aggregates: ['sum'], aggregatesrenderer: aggregatesPrettySumRenderer,
+          columngroup: 'Total', cellsrenderer: prettySizeRenderer,
+          align: 'center', cellsalign: 'right' }
+      ];
+      var custom_grid_options = {
+        showaggregates: true,
+        showstatusbar: true,
+        statusbarheight: 40,
+        rowdetails: true,
+        rowdetailstemplate: {
+          rowdetailsheight: 265,
+          rowdetailshidden: true
+        },
+        initrowdetails: function(index, parentElement, gridElement, datarecord){
+          var parent = $(parentElement);
+          var grids_container = $('.template').clone().removeClass('template');
+          var tab_1_index = 'tab-1-' + datarecord.boundindex;
+          var tab_2_index = 'tab-2-' + datarecord.boundindex;
+          grids_container.find('li a.tab-1').attr('href', '#' + tab_1_index);
+          grids_container.find('li a.tab-2').attr('href', '#' + tab_2_index);
+          grids_container.find('.tab-pane.tab-1').attr('id', tab_1_index);
+          grids_container.find('.tab-pane.tab-2').attr('id', tab_2_index);
+
+          parent.append(grids_container);
+
+          var table_columns_grid = grids_container.find('.jqxgrid-table-columns');
+          table_columns_grid.attr('id', 'grid-1-' + datarecord.boundindex);
+          var table_columns_details_source = {
+            datafields: [
+              { name: 'name', type: 'string' },
+              { name: 'notnull', type: 'bool' },
+              { name: 'type', type: 'string' },
+              { name: 'primarykey', type: 'bool' },
+              { name: 'uniquekey', type: 'bool' },
+              { name: 'foreignkey', type: 'string' },
+              { name: 'default', type: 'string' }
+            ],
+            url: window.location.href,
+            datatype: "json",
+            id: 'pk',
+            root: 'data',
+            data: { 'columns_table_name': datarecord.table_name }
+          };
+          var columnsGridAdapter = new $.jqx.dataAdapter(table_columns_details_source);
+          if (table_columns_grid != null) {
+            table_columns_grid.jqxGrid({
+              source: columnsGridAdapter,
+              altrows: true,
+              rowsheight: 40,
+              enabletooltips: true,
+              sortable: true,
+              filterable: true,
+              width: '98%',
+              height: 200,
+              columns: [
+                { text: 'Column Name', datafield: 'name', width: 250,
+                  align: 'center', cellsalign: 'left' },
+                { text: 'Type', datafield: 'type', width: 200,
+                  align: 'center', cellsalign: 'center' },
+                { text: 'Not Null', datafield: 'notnull', width: 100,
+                  columntype: 'checkbox',
+                  align: 'center', cellsalign: 'center' },
+                { text: 'Primary Key', datafield: 'primarykey', width: 100,
+                  columntype: 'checkbox',
+                  align: 'center', cellsalign: 'center' },
+                { text: 'Unique', datafield: 'uniquekey', width: 100,
+                  columntype: 'checkbox',
+                  align: 'center', cellsalign: 'center' },
+                { text: 'Foreign Key', datafield: 'foreignkey', width: 200,
+                  align: 'center', cellsalign: 'left' },
+                { text: 'default', datafield: 'default', width: 'auto',
+                  align: 'center', cellsalign: 'center' }
+              ]
+            });
+          }
+
+          var table_indexes_grid = grids_container.find('.jqxgrid-table-indexes');
+          table_indexes_grid.attr('id', 'grid-2-' + datarecord.boundindex);
+          var table_indexes_details_source = {
+            datafields: [
+              { name: 'indexname', type: 'string' },
+              { name: 'size', type: 'int' },
+              { name: 'size_pretty', type: 'string', map: 'size' }
+            ],
+            url: window.location.href,
+            datatype: "json",
+            id: 'pk',
+            root: 'data',
+            data: { 'indexes_table_name': datarecord.table_name }
+          };
+          var indexesGridAdapter = new $.jqx.dataAdapter(table_indexes_details_source);
+          if (table_indexes_grid != null) {
+            table_indexes_grid.jqxGrid({
+              source: indexesGridAdapter,
+              altrows: true,
+              rowsheight: 40,
+              enabletooltips: true,
+              sortable: true,
+              filterable: true,
+              width: '98%',
+              height: 200,
+              showaggregates: true,
+              showstatusbar: true,
+              statusbarheight: 40,
+              columns: [
+                { text: 'Index Name', datafield: 'indexname', width: 'auto',
+                  align: 'center', cellsalign: 'left' },
+                { text: 'Size bytes', datafield: 'size', width: 200, cellsformat: 'd',
+                  aggregates: ['sum'], aggregatesrenderer: aggregatesSumRenderer,
+                  align: 'center', cellsalign: 'right' },
+                { text: 'Size Pretty', datafield: 'size_pretty', width: 200,
+                  cellsrenderer: prettySizeRenderer,
+                  aggregates: ['sum'], aggregatesrenderer: aggregatesPrettySumRenderer,
+                  align: 'center', cellsalign: 'right' }
+              ]
+            });
+          }
+        },
+        columngroups: [
+          { text: 'Table size', name: 'Table', align: 'center' },
+          { text: 'Index size', name: 'Index', align: 'center' },
+          { text: 'Toast size', name: 'Toast', align: 'center' },
+          { text: 'Total size', name: 'Total', align: 'center' }
+        ]
+
+      };
+      draw_grid(".jqxgrid-db-stats .jqxgrid", datafields, columns, false, null, custom_grid_options);
+
+      var pg_stat_statements_datafields = [
+        { name: 'calls', type: 'int' },
+        { name: 'total_time', type: 'int' },
+        { name: 'min_time', type: 'int' },
+        { name: 'max_time', type: 'int' },
+        { name: 'mean_time', type: 'int' },
+        { name: 'rows', type: 'int' },
+        { name: 'query', type: 'string' }
+     ];
+      var pg_stat_statements_columns = [
+        { text: 'calls', datafield: 'calls', width: 100, cellsformat: 'd',
+          align: 'center', cellsalign: 'center' },
+        { text: 'total_time', datafield: 'total_time', width: 100, cellsformat: 'd',
+          align: 'center', cellsalign: 'center' },
+        { text: 'min_time', datafield: 'min_time', width: 100, cellsformat: 'd',
+          align: 'center', cellsalign: 'center' },
+        { text: 'max_time', datafield: 'max_time', width: 100, cellsformat: 'd',
+          align: 'center', cellsalign: 'center' },
+        { text: 'mean_time', datafield: 'mean_time', width: 100, cellsformat: 'd',
+          align: 'center', cellsalign: 'center' },
+        { text: 'rows', datafield: 'rows', width: 100, cellsformat: 'd',
+          align: 'center', cellsalign: 'center' },
+        { text: 'query', datafield: 'query', width: 'auto',
+          align: 'center', cellsalign: 'left' }
+      ];
+      var pg_stat_statements_custom_source_data = {
+        url: window.location.href,
+        datatype: "json",
+        id: 'pk',
+        root: 'data',
+        data: { 'source': 'pg_stat_statements' }
+      };
+      draw_grid(".jqxgrid-pg-stats-statements .jqxgrid", pg_stat_statements_datafields, pg_stat_statements_columns, false, pg_stat_statements_custom_source_data);
+
+      var pg_stat_activity_datafields = [
+        { name: 'query_start', type: 'date' },
+        { name: 'state', type: 'string' },
+        { name: 'query', type: 'string' }
+     ];
+      var pg_stat_activity_columns = [
+        { text: 'query_start', datafield: 'query_start', width: 160, cellsformat: 'MM-dd-yyyy HH:mm:ss',
+          align: 'center', cellsalign: 'center' },
+        { text: 'state', datafield: 'state', width: 160,
+          align: 'center', cellsalign: 'center' },
+        { text: 'query', datafield: 'query', width: 'auto',
+          align: 'center', cellsalign: 'left' }
+      ];
+      var pg_stat_activity_custom_source_data = {
+        url: window.location.href,
+        datatype: "json",
+        id: 'pk',
+        root: 'data',
+        data: { 'source': 'pg_stat_activity' }
+      };
+      draw_grid(".jqxgrid-pg-stats-activity .jqxgrid", pg_stat_activity_datafields, pg_stat_activity_columns, false, pg_stat_activity_custom_source_data);
+
+      var docker_nodes_datafields = [
+        { name: 'ID', type: 'string' },
+        { name: 'Hostname', type: 'string', map: 'Description>Hostname' },
+        { name: 'MemoryBytes', type: 'int', map: 'Description>Resources>MemoryBytes' },
+        { name: 'NanoCPUs', type: 'int', map: 'Description>Resources>NanoCPUs' },
+        { name: 'Availability', type: 'string', map: 'Spec>Availability' },
+        { name: 'Role', type: 'string', map: 'Spec>Role' },
+        { name: 'State', type: 'string', map: 'Status>State' },
+        { name: 'CreatedAt', type: 'date' },
+        { name: 'UpdatedAt', type: 'date' }
+      ];
+      var docker_nodes_columns = [
+        { text: 'ID', datafield: 'ID', width: 220,
+          align: 'center', cellsalign: 'center' },
+        { text: 'Hostname', datafield: 'Hostname', width: 'auto',
+          align: 'center', cellsalign: 'center' },
+        { text: 'Role', datafield: 'Role', width: 120,
+          align: 'center', cellsalign: 'center' },
+        { text: 'Availability', datafield: 'Availability', width: 120,
+          align: 'center', cellsalign: 'center' },
+        { text: 'State', datafield: 'State', width: 120,
+          align: 'center', cellsalign: 'center' },
+        { text: 'MemoryBytes', datafield: 'MemoryBytes', width: 160, cellsformat: 'd',
+          cellsrenderer: prettySizeRenderer,
+          align: 'center', cellsalign: 'center' },
+        { text: 'NanoCPUs', datafield: 'NanoCPUs', width: 160, cellsformat: 'd',
+          align: 'center', cellsalign: 'center' },
+        { text: 'CreatedAt', datafield: 'CreatedAt', width: 160, cellsformat: 'MM-dd-yyyy HH:mm',
+          align: 'center', cellsalign: 'center' },
+        { text: 'UpdatedAt', datafield: 'UpdatedAt', width: 160, cellsformat: 'MM-dd-yyyy HH:mm',
+          align: 'center', cellsalign: 'center' }
+      ];
+      var docker_nodes_custom_source_data = {
+        url: window.location.href,
+        datatype: "json",
+        id: 'pk',
+        root: 'data',
+        data: { 'source': 'docker_nodes_data' }
+      };
+      draw_grid(".jqxgrid-docker-nodes-data .jqxgrid", docker_nodes_datafields, docker_nodes_columns, false, docker_nodes_custom_source_data);
+
+      var portRenderer = function(index, columnfield, value, defaulthtml, columnproperties, row){
+        if (value) {
+          var ret = [];
+          for (var i = 0; i < value.length; i++) {
+            ret.push(value[i]['PublishedPort'] + '->' + value[i]['TargetPort'] + '/' + value[i]['Protocol'])
+          }
+          value = ret.join('; ')
+        }
+        return renderCell(defaulthtml, value);
+      };
+      var replicasRenderer = function(index, columnfield, value, defaulthtml, columnproperties, row){
+        if (value && value.Replicas !== undefined) {
+          value = value.Replicas
+        }
+        else if (row.Mode.Global !== undefined) {
+          value = 1
+        }
+        return renderCell(defaulthtml, value);
+      };
+      var modeRenderer = function(index, columnfield, value, defaulthtml, columnproperties, row){
+        if (value) {
+          value = value.Replicated !== undefined ? 'Replicated' : 'Global';
+        }
+        return renderCell(defaulthtml, value);
+      };
+      var docker_services_datafields = [
+        { name: 'ID', type: 'string' },
+        { name: 'Name', type: 'string', map: 'Spec>Name' },
+        { name: 'Mode', type: 'int', map: 'Spec>Mode' },
+        { name: 'Replicas', type: 'int', map: 'Spec>Mode>Replicated>Replicas' },
+        { name: 'Ports', type: 'string', map: 'Spec>EndpointSpec>Ports' },
+        { name: 'Image', type: 'string', map: 'Spec>Labels>com.docker.stack.image' },
+        { name: 'CreatedAt', type: 'date' }
+     ];
+      var docker_services_columns = [
+        { text: 'ID', datafield: 'ID', width: 250,
+          align: 'center', cellsalign: 'left' },
+        { text: 'Name', datafield: 'Name', width: 'auto',
+          align: 'center', cellsalign: 'left' },
+        { text: 'Mode', datafield: 'Mode', width: 100,
+          cellsrenderer: modeRenderer,
+          align: 'center', cellsalign: 'center' },
+        { text: 'Replicas', datafield: 'Replicas', width: 100, cellsformat: 'd',
+          cellsrenderer: replicasRenderer,
+          align: 'center', cellsalign: 'center' },
+        { text: 'Ports', datafield: 'Ports', width: 150,
+          cellsrenderer: portRenderer,
+          align: 'center', cellsalign: 'left' },
+        { text: 'Image', datafield: 'Image', width: 'auto',
+          align: 'center', cellsalign: 'left' },
+        { text: 'CreatedAt', datafield: 'CreatedAt', width: 150, cellsformat: 'MM-dd-yyyy HH:mm',
+          align: 'center', cellsalign: 'center' }
+      ];
+      var docker_services_custom_source_data = {
+        url: window.location.href,
+        datatype: "json",
+        id: 'pk',
+        root: 'data',
+        data: { 'source': 'docker_services_data' }
+      };
+      var docker_services_custon_options = {
+          pagesize: 30
+      };
+      draw_grid(".jqxgrid-docker-services-data .jqxgrid", docker_services_datafields, docker_services_columns, false,
+        docker_services_custom_source_data, docker_services_custon_options);
+
+    });
+  </script>
+{% endblock %}

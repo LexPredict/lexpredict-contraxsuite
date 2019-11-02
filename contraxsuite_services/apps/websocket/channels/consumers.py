@@ -32,8 +32,8 @@ from apps.task.utils.logger import get_django_logger
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2019, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.3/LICENSE"
-__version__ = "1.2.3"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.3.0/LICENSE"
+__version__ = "1.3.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -69,7 +69,7 @@ class SubscriptionConsumer(WebsocketConsumer):
             return
 
         if 'message' not in msg_obj:
-            self.logger.error(f'Malformatted message: "{text_data}"' +
+            self.logger.error(f'Malformatted message: "{text_data}"'
                               ' - no "message" field declared')
             return
 
@@ -95,7 +95,7 @@ class SubscriptionConsumer(WebsocketConsumer):
                                   message_text: str, message_obj) -> None:
         if 'channels' not in message_obj:
             self.logger.error(
-                f'Malformatted subscribe message: "{message_text}"' +
+                f'Malformatted subscribe message: "{message_text}"'
                 ' - no "channels" field declared')
             return
 
@@ -112,8 +112,7 @@ class SubscriptionConsumer(WebsocketConsumer):
             self.groups_by_channel[self.channel_name] = {c for c in channels}
 
     def process_unsubscribe_message(self, message_obj) -> None:
-        groups = message_obj.get('channels') or \
-                   list(self.groups_by_channel[self.channel_name])
+        groups = message_obj.get('channels') or list(self.groups_by_channel[self.channel_name])
 
         for gr in groups:
             async_to_sync(self.channel_layer.group_discard)(gr,

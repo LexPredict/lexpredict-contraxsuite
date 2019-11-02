@@ -24,25 +24,14 @@
 """
 # -*- coding: utf-8 -*-
 
-
-__author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2019, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.3/LICENSE"
-__version__ = "1.2.3"
-__maintainer__ = "LexPredict, LLC"
-__email__ = "support@contraxsuite.com"
-
-
+import re
 from datetime import datetime, date
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 from random import randint, random
 from typing import List, Tuple, Optional, Any, Callable, Set
 
 import dateparser
 import pyap
-from django.db import models as django_models
-from django.db import transaction
-from django.db.models import Q
 from lexnlp.extract.en.addresses.addresses import get_addresses
 from lexnlp.extract.en.amounts import get_amounts
 from lexnlp.extract.en.dates import get_dates_list
@@ -53,14 +42,18 @@ from lexnlp.extract.en.money import get_money
 from lexnlp.extract.en.percents import get_percents
 from lexnlp.extract.en.ratios import get_ratios
 from sklearn.feature_extraction.text import CountVectorizer, TfidfTransformer
-from sklearn.pipeline import FeatureUnion
-from sklearn.pipeline import Pipeline
+from sklearn.pipeline import FeatureUnion, Pipeline
 
-from apps.common.fields import RoundedFloatField
-from apps.document import models
-from apps.document.fields_processing import vectorizers
-from apps.extract import models as extract_models
-from .value_extraction_hints import ValueExtractionHint
+from apps.document.field_processing import vectorizers
+from apps.document.value_extraction_hints import ValueExtractionHint
+from apps.document.models import DocumentField
+
+__author__ = "ContraxSuite, LLC; LexPredict, LLC"
+__copyright__ = "Copyright 2015-2019, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.3.0/LICENSE"
+__version__ = "1.3.0"
+__maintainer__ = "LexPredict, LLC"
+__email__ = "support@contraxsuite.com"
 
 
 def to_float(v, decimal_places=None) -> Optional[float]:
@@ -74,30 +67,22 @@ def to_float(v, decimal_places=None) -> Optional[float]:
     """
     if v is None:
         return None
-    try:
-        v = Decimal(v)
-        if isinstance(decimal_places, int):
-            v = round(v, decimal_places).normalize()
-        return float(v)
-    except ValueError:
-        return None
+    v = Decimal(v)
+    if isinstance(decimal_places, int):
+        v = round(v, decimal_places).normalize()
+    return float(v)
 
 
 def to_int(v) -> Optional[int]:
-    try:
-        return int(v) if v is not None else None
-    except ValueError:
-        return None
+    return int(v) if v is not None else None
 
 
-class FieldType:
-    code = ''
+ATTR_TYPED_FIELD = '__typed_field__'
+
+
+class TypedField:
+    type_code = ''
     title = ''
-
-    # If true: When detecting field values try to extract values in every sentence without their pre-selection
-    #          regex field detectors or machine learning models. If extractor returns no value - then proceed
-    #          to the next sentence.
-    search_in_every_sentence = False
 
     # Does this field support storing multiple DocumentFieldValue objects per document+field
     multi_value = False
@@ -119,152 +104,49 @@ class FieldType:
 
     default_hint = ValueExtractionHint.TAKE_FIRST.name
 
-    def merge_multi_python_values(self, previous_merge_result: Set[str], value_to_merge_in: str):
-        """
-        Merges a single value into the combined value.
-        Annotated field values are stored in DocumentFieldValue models.
-        For multi-value fields there can be multiple DocumentFieldValue per document+field but they
-        need to be combined into a single value to cache in Document.f i eld_values.
+    def __init__(self, field: DocumentField) -> None:
+        super().__init__()
+        self.field = field
 
-        Different field types can support different variants of combining multiple DocumentFieldValues.
-        For example for related_info fields we store the number of entries in Document.f i eld_values.
+    def is_there_annotation_matching_field_value(self, field_value: Any, annotation_values: List) -> bool:
+        if field_value is None:
+            return True
+        return not self.field.requires_text_annotations or any([av == field_value for av in annotation_values])
 
-        But for most cases it will be enough to only combine the values into a set.
-        :param previous_merge_result:
-        :param value_to_merge_in:
-        :return:
-        """
-        if self.multi_value:
-            if not previous_merge_result:
-                return {value_to_merge_in} if value_to_merge_in is not None else None
-            else:
-                if value_to_merge_in is not None:
-                    previous_merge_result.add(value_to_merge_in)
-                return previous_merge_result
-        else:
-            return value_to_merge_in
+    def annotation_value_matches_field_value(self, field_value: Any, annotation_value: Any) -> bool:
+        return field_value == annotation_value
 
-    def merge_lists_of_python_values(self, previous_merge_result: List[str], value_to_merge_in: str):
-        """
-        Merges a single value into the combined value.
-        Annotated field values are stored in DocumentFieldValue models.
-        For multi-value fields there can be multiple DocumentFieldValue per document+field but they
-        need to be combined into a single value to cache in Document.f i eld_values.
+    def is_json_field_value_ok(self, val: Any):
+        raise NotImplementedError()
 
-        Different field types can support different variants of combining multiple DocumentFieldValues.
-        For example for related_info fields we store the number of entries in Document.f i eld_values.
+    def is_python_field_value_ok(self, val: Any):
+        return self.is_json_field_value_ok(val)
 
-        But for most cases it will be enough to only combine the values into a set.
-        :param previous_merge_result:
-        :param value_to_merge_in:
-        :return:
-        """
-        if self.multi_value:
-            if not previous_merge_result:
-                return [value_to_merge_in] if value_to_merge_in is not None else None
-            else:
-                if value_to_merge_in is not None:
-                    previous_merge_result.append(value_to_merge_in)
-                return previous_merge_result
-        else:
-            return value_to_merge_in
+    def is_python_annotation_value_ok(self, val: Any) -> bool:
+        return self.is_json_annotation_value_ok(val)
 
-    def merged_python_value_to_db(self, merged_python_value):
-        """
-        Convert python value of the field into a DB-aware sortable form to save to Document.field_values.
+    def is_json_annotation_value_ok(self, val: Any):
+        return self.is_json_field_value_ok(val)
 
-        That's what it needed for:
-            There are simple atomic field types like float, string, date e.t.c.
-            But there are also structured fields - like Money (currency + amount) and maybe others.
-            Use the code of the Money type as a reference.
+    def field_value_python_to_json(self, python_value: Any) -> Any:
+        return python_value
 
-            For all kinds of fields we need to solve two main problems:
+    def field_value_json_to_python(self, json_value: Any) -> Any:
+        return json_value
 
-            1. Good JSON-ready representation of their values suitable for python backend and JS frontend needs.
-            Python backend should be able to calculate user-entered Python formulas based on the field values.
-            Python backend should be able to store the field values in JSON in DB.
-            Frontend should not know any implementation details but only have simple and understandable
-            structure for displaying for example Money editor consisting of:
-            (1) currency selector and (2) amount text field.
-                ===> Document editing support with text annotating.
+    def annotation_value_python_to_json(self, python_value: Any) -> Any:
+        return self.field_value_python_to_json(python_value)
 
-            2. Ability to query documents with sorting and filtering by concrete field values, with pagination
-            support. And the querying should work on the database side.
-                ===> Document Grid Support
+    def annotation_value_json_to_python(self, json_value: Any) -> Any:
+        return self.field_value_json_to_python(json_value)
 
-
-            Field values are stored in DB in two forms:
-            - detailed annotated form: DocumentFieldValue (contains text annotation per each value),
-                there can be multiple DocumentFieldValues per field+document if the field type is multi-value;
-            - short cached variant for querying and sorting: Document.f i eld_values
-            The engine maintains these two forms in the consistent state.
-
-            DocumentFieldValue contains the original full json structure (e.g. { "currency": "USD", "amount": 5 }
-            Document.f i eld_values is a jsonb field of uids -> pre-formatted sortable values (e.g. "USD|0000000005.0000")
-
-            This way we can query DB from Django with any sorting/pagination or >=< filtering by
-            writing queries which access components of the Document. f i eld_values jsonb field.
-
-            Next to return to the frontend the original simple structure we should decode the sortable format
-            back to the original JSON-ready form.
-
-            This looks complicated but at the moment we don't have better solution. We need both text annotated
-            detailed DocumentFieldValues for text-based machine learning and short sortable Document. f i eld_values
-            for easy DB querying.
-
-            To allow the above we use the set of methods per each FieldType:
-            - encode from normal Python structure to sortable DB-aware format;
-            - decode back to the Python structure;
-            - Django field type (TextField, FloatField and so on);
-
-        Examples:
-            For strings - it will be just the string because it is sortable and everything is fine.
-            For money (currency + amount) - it should be something like "USD:000012345.67" allowing the currency
-            to participate in the sorting.
-            For dates - it should be something like sortable ISO format '2018-10-23T03:17'.
-        Output format of this method should be restorable to the original python value.
-        :param merged_python_value:
-        :return:
-        """
-        return str(merged_python_value) if merged_python_value else None
-
-    def merged_db_value_to_python(self, db_value):
-        """
-        Decode value created by merged_python_value_to_db() back to python value.
-        See explanation in merged_python_value_to_db().
-        :param db_value:
-        :return:
-        """
-        return db_value
-
-    def single_python_value_to_db(self, python_single_value):
-        """
-        Used for storing values in DB format in DocumentFieldValue models.
-        Otherwise for example it looses date/datetime type on loading from DB.
-        :param python_single_value:
-        :return:
-        """
-        return self.merged_python_value_to_db(python_single_value)
-
-    def single_db_value_to_python(self, db_value):
-        return self.merged_db_value_to_python(db_value)
-
-    def get_postgres_transform_map(self):
-        """
-        Return django DB field type suitable for this field type.
-
-        Used in querying/sorting components of Document.field_value with django DB routines.
-        :return:
-        """
-        return django_models.TextField
-
-    def _extract_variants_from_text(self, field, text: str, **kwargs):
+    def _extract_variants_from_text(self, text: str, **kwargs):
         return None
 
-    def extract_from_possible_value(self, field, possible_value):
+    def extract_from_possible_value(self, possible_value):
         return possible_value
 
-    def extract_from_possible_value_text(self, field, possible_value_or_text):
+    def extract_from_possible_value_text(self, possible_value_or_text):
         """
         Check if possible_value_or_text is also containing the value in this field type's data type.
         If not parse the possible_value_text var for extracting the first suitable value of this type.
@@ -274,22 +156,23 @@ class FieldType:
         :param possible_value_or_text:
         :return:
         """
-        maybe_value = self.extract_from_possible_value(field, possible_value_or_text)
+        maybe_value = self.extract_from_possible_value(possible_value_or_text)
         if maybe_value:
             return maybe_value
-        variants = self._extract_variants_from_text(field, possible_value_or_text)
+        variants = self._extract_variants_from_text(possible_value_or_text)
         if variants:
             return variants[0]
         return None
 
-    def _pick_hint_by_searching_for_value_among_extracted(self, field, text: str, value, **kwargs) -> Optional[str]:
+    def pick_hint_by_searching_for_value_among_extracted(self, text: str, value, **kwargs) -> \
+            Optional[str]:
         if not self.value_extracting:
             return None
 
         if value is None or not text:
             return self.default_hint
 
-        extracted = self._extract_variants_from_text(field, text, **kwargs)
+        extracted = self._extract_variants_from_text(text, **kwargs)
 
         if not extracted:
             return self.default_hint
@@ -300,7 +183,7 @@ class FieldType:
 
         return self.default_hint
 
-    def get_or_extract_value(self, document, field, possible_value, possible_hint: str, text) \
+    def get_or_extract_value(self, document, possible_value, possible_hint: str, text) \
             -> Tuple[Any, Optional[str]]:
         if possible_value is None and not text:
             return None, None
@@ -308,12 +191,12 @@ class FieldType:
         # If we have some value provided, then try using it and picking hint for it
         # by simply finding this value in all values extracted from this text
         if possible_value is not None:
-            value = self.extract_from_possible_value(field, possible_value)
+            value = self.extract_from_possible_value(possible_value)
 
             if value is not None:
                 if self.value_extracting:
                     hint = possible_hint or self \
-                        ._pick_hint_by_searching_for_value_among_extracted(field, text, value, document=document)
+                        .pick_hint_by_searching_for_value_among_extracted(text, value, document=document)
                 else:
                     hint = None
                 return value, hint
@@ -326,7 +209,7 @@ class FieldType:
 
         text = str(possible_value) if possible_value else text
 
-        extracted = self._extract_variants_from_text(field, text, document=document)
+        extracted = self._extract_variants_from_text(text, document=document)
 
         if not extracted:
             return None, None
@@ -339,133 +222,16 @@ class FieldType:
 
     def suggest_value(self,
                       document,
-                      field,
                       location_text: str):
-        value, hint = self.get_or_extract_value(document, field, location_text,
+        value, hint = self.get_or_extract_value(document, location_text,
                                                 self.default_hint, location_text)
         return value
 
-    def _get_value_to_save(self, document, field, location_start: int, location_end: int, value):
-        if self.multi_value:
-            q = models.DocumentFieldValue.objects.filter(document=document,
-                                                         field=field,
-                                                         location_start=location_start,
-                                                         location_end=location_end)
-            q = q.filter(value__isnull=True) if value is None else q.filter(value=value)
-
-            return q.first()
-        else:
-            return models.DocumentFieldValue.objects.filter(document=document, field=field).first()
-
-    def save_value(self,
-                   document,
-                   field,
-                   location_start: Optional[int],
-                   location_end: Optional[int],
-                   location_text: Optional[str],
-                   text_unit,
-                   value=None,
-                   user=None,
-                   allow_overwriting_user_data=True,
-                   extraction_hint=None):
-        """
-        Saves a new value to the field. Depending on the field type it should either
-        rewrite existing DocumentFieldValues or add new ones.
-        """
-        field_value = self._get_value_to_save(document, field,
-                                              location_start, location_end, value)  # type: 'DocumentFieldValue'
-        if self.requires_value and value is None:
-            if field_value and (allow_overwriting_user_data or not field_value.is_user_value()):
-                field_value.delete()
-            return value
-
-        if self.multi_value:
-            if field_value:
-                if field_value.removed_by_user:
-                    if allow_overwriting_user_data:
-                        field_value.removed_by_user = False
-                        field_value.save()
-                return field_value
-
-            field_value = models.DocumentFieldValue()
-            return self._update(field_value, document, field, location_start, location_end,
-                                location_text,
-                                text_unit,
-                                value,
-                                extraction_hint,
-                                user)
-        else:
-            if field_value:
-                qr = models.DocumentFieldValue.objects.filter(document=document, field=field).exclude(pk=field_value.pk)
-                if not allow_overwriting_user_data:
-                    qr = qr.exclude(Q(created_by__isnull=False) | Q(modified_by__isnull=False))
-                qr.filter(location_start__isnull=True, location_end__isnull=True).delete()
-                qr.exclude(location_start__isnull=True, location_end__isnull=True).update(removed_by_user=True)
-
-                if (field_value.location_start is not None or field_value.location_end is not None) \
-                        and location_start is None and location_end is None:
-                    if field_value.removed_by_user:
-                        field_value = models.DocumentFieldValue()
-                    elif allow_overwriting_user_data:
-                        models.DocumentFieldValue.objects.filter(pk=field_value.pk).update(removed_by_user=True)
-                        field_value = models.DocumentFieldValue()
-                    else:
-                        return field_value
-            else:
-                field_value = models.DocumentFieldValue()
-
-            # This will work only for existing field values having filled created_by or modified_by.
-            if not allow_overwriting_user_data and field_value.is_user_value():
-                return field_value
-            else:
-                return self._update(field_value, document, field, location_start, location_end,
-                                    location_text, text_unit,
-                                    value, extraction_hint, user)
-
-    def _update(self, field_value, document, field,
-                location_start: int, location_end: int, location_text: str, text_unit,
-                value=None, hint=None,
-                user=None):
-        """
-        Updates existing field value with the new data.
-        """
-        if field_value.id \
-                and field_value.location_start == location_start \
-                and field_value.location_end == location_end \
-                and field_value.python_value == value \
-                and field_value.extraction_hint == hint \
-                and not field_value.removed_by_user:
-            return field_value
-
-        field_value.document = document
-        field_value.field = field
-        field_value.location_start = location_start
-        field_value.location_end = location_end
-        field_value.location_text = location_text
-        field_value.text_unit = text_unit
-        field_value.python_value = value
-        field_value.extraction_hint = hint
-        field_value.created_by = field_value.created_by or user
-        field_value.modified_by = user
-        field_value.created_date = field_value.created_date or datetime.now()
-        field_value.modified_date = field_value.modified_date or datetime.now()
-        field_value.removed_by_user = False
-
-        with transaction.atomic():
-            field_value.save()
-            if user:
-                models.DocumentField.objects.set_dirty_for_value(field_value)
-
-        return field_value
-
-    def get_value(self, field_value):
-        return field_value.value
-
-    def example_python_value(self, field):
+    def example_python_value(self):
         return None
 
-    @staticmethod
-    def _wrap_get_feature_names(vectorizer_step):
+    @classmethod
+    def _wrap_get_feature_names(cls, vectorizer_step):
         """
         Return the function which retrieves the feature names from the vectorizer stored in its scope.
         For some vectorizers the feature names depend on the train data passed to them into the fit() function.
@@ -477,7 +243,8 @@ class FieldType:
         """
         return lambda: vectorizer_step.get_feature_names()
 
-    def build_vectorization_pipeline(self) -> Tuple[List[Tuple[str, Any]], Callable[[], List[str]]]:
+    @classmethod
+    def build_vectorization_pipeline(cls) -> Tuple[List[Tuple[str, Any]], Callable[[], List[str]]]:
         """
         Build SKLearn vectorization pipeline for this field.
         This is used in field-based machine learning when we calculate value of one field based on the
@@ -497,24 +264,113 @@ class FieldType:
                                stop_words='english')
         return [('clean', vectorizers.ReplaceNoneTransformer('')),
                 ('vect', vect),
-                ('tfidf', TfidfTransformer())], self._wrap_get_feature_names(vect)
+                ('tfidf', TfidfTransformer())], cls._wrap_get_feature_names(vect)
+
+    @staticmethod
+    def by(field: DocumentField) -> 'TypedField':
+        from apps.document.field_type_registry import FIELD_TYPE_REGISTRY
+        code = field.type if isinstance(field, DocumentField) else str(field)
+
+        try:
+            res = getattr(field, ATTR_TYPED_FIELD)  # type: Optional[TypedField]
+        except AttributeError:
+            res = None
+        if res is None or res.type_code != code:
+            res = FIELD_TYPE_REGISTRY[code](field)
+            setattr(field, ATTR_TYPED_FIELD, res)
+        return res
 
 
-class StringField(FieldType):
-    code = 'string'
+class MultiValueField(TypedField):
+
+    def build_json_field_value_from_json_ant_values(self, ant_values: List) -> Any:
+        raise NotImplementedError()
+
+    def update_field_value_by_changing_annotations(self,
+                                                   current_ant_values: List,
+                                                   old_field_value: Any,
+                                                   added_ant_value: Any,
+                                                   removed_ant_value: Any):
+        raise NotImplementedError()
+
+
+class MultiValueSetField(MultiValueField):
+
+    def is_there_annotation_matching_field_value(self, field_value: List, annotation_values: List) -> bool:
+        if not field_value:
+            return True
+        if not self.field.requires_text_annotations:
+            return True
+        if not annotation_values:
+            return False
+        ants = set(annotation_values)
+        return all(fv in ants for fv in field_value)
+
+    def annotation_value_matches_field_value(self, field_value: List, annotation_value: Any) -> bool:
+        if not field_value:
+            return False
+        return any(fv == annotation_value for fv in field_value)
+
+    def update_field_value_by_changing_annotations(self,
+                                                   current_ant_values: List,
+                                                   old_field_value: List,
+                                                   added_ant_value: Any,
+                                                   removed_ant_value: Any):
+
+        # New field value consists of:
+        # - values introduced by current annotations;
+        # - values existed in the original field value not introduced by any annotation.
+        #
+        # If we removed an annotation value then we leave it in the field value
+        # only if there is another annotation with this value.
+
+        ant_values_set = set()
+
+        if current_ant_values:
+            ant_values_set.update(current_ant_values)
+
+        if old_field_value and not self.field.requires_text_annotations:
+            # Adding all previous field values to the new collection excepting the removed one.
+            # But if the removed one was introduced by some other annotation - it will stay in the new field value.
+            for old_fv_item in old_field_value:
+                if old_fv_item != removed_ant_value:
+                    ant_values_set.add(old_fv_item)
+
+        return sorted(ant_values_set) if ant_values_set else None
+
+    def build_json_field_value_from_json_ant_values(self, ant_values: List) -> Any:
+        if not ant_values:
+            return None
+        return sorted(set(ant_values))
+
+    def field_value_python_to_json(self, python_value: Set) -> Any:
+        return sorted(python_value) if python_value else None
+
+    def field_value_json_to_python(self, json_value: Any) -> Any:
+        return set(json_value) if json_value else None
+
+    def annotation_value_python_to_json(self, python_value: Any) -> Any:
+        return python_value
+
+    def annotation_value_json_to_python(self, json_value: Any) -> Any:
+        return json_value
+
+
+class StringField(TypedField):
+    type_code = 'string'
     title = 'String (vectorizer uses words as tokens)'
     requires_value = True
     allows_value = True
     value_extracting = True
 
-    def get_postgres_transform_map(self):
-        return django_models.TextField
+    def is_json_field_value_ok(self, val: Any):
+        return val is None or isinstance(val, str)
 
-    def example_python_value(self, field):
+    def example_python_value(self):
         return "example_string"
 
-    def _extract_variants_from_text(self, field, text: str, **kwargs):
-        regexp = field.get_compiled_value_regexp()
+    def _extract_variants_from_text(self, text: str, **kwargs):
+        regexp = self.field.get_compiled_value_regexp()
         extracted = None
         if regexp:
             extracted = regexp.findall(text)
@@ -527,36 +383,37 @@ class StringField(FieldType):
 
 
 class StringFieldWholeValueAsAToken(StringField):
-    code = 'string_no_word_wrap'
+    type_code = 'string_no_word_wrap'
     title = 'String (vectorizer uses whole value as a token)'
     requires_value = True
     allows_value = True
     value_extracting = True
 
-    def build_vectorization_pipeline(self) -> Tuple[List[Tuple[str, Any]], Callable[[], List[str]]]:
+    @classmethod
+    def build_vectorization_pipeline(cls) -> Tuple[List[Tuple[str, Any]], Callable[[], List[str]]]:
         vect = CountVectorizer(strip_accents='unicode', analyzer='word',
                                stop_words='english',
                                tokenizer=vectorizers.whole_value_as_token)
         return [('clean', vectorizers.ReplaceNoneTransformer('')),
                 ('vect', vect),
-                ('tfidf', TfidfTransformer())], self._wrap_get_feature_names(vect)
+                ('tfidf', TfidfTransformer())], cls._wrap_get_feature_names(vect)
 
 
-class LongTextField(FieldType):
-    code = 'text'
+class LongTextField(TypedField):
+    type_code = 'text'
     title = 'Long Text'
     requires_value = True
     allows_value = True
     value_extracting = True
 
-    def get_postgres_transform_map(self):
-        return django_models.TextField
+    def is_json_field_value_ok(self, val: Any):
+        return val is None or isinstance(val, str)
 
-    def example_python_value(self, field):
+    def example_python_value(self):
         return "example\nmulti-line\ntext"
 
-    def _extract_variants_from_text(self, field, text: str, **kwargs):
-        regexp = field.get_compiled_value_regexp()
+    def _extract_variants_from_text(self, text: str, **kwargs):
+        regexp = self.field.get_compiled_value_regexp()
         extracted = None
         if regexp:
             extracted = regexp.findall(text)
@@ -568,62 +425,57 @@ class LongTextField(FieldType):
         return extracted or None
 
 
-class ChoiceField(FieldType):
-    code = 'choice'
+class ChoiceField(TypedField):
+    type_code = 'choice'
     title = 'Choice'
     requires_value = True
     allows_value = True
     value_extracting = False
     is_choice_field = True
 
-    def merged_python_value_to_db(self, merged_python_value):
-        return str(merged_python_value) if merged_python_value else None
+    def is_json_field_value_ok(self, val: Any):
+        if val is None:
+            return True
+        if not isinstance(val, str):
+            return False
+        if self.field.allow_values_not_specified_in_choices:
+            return True
+        return val in self.field.get_choice_values()
 
-    def merged_db_value_to_python(self, db_value):
-        return str(db_value) if db_value else None
-
-    def get_postgres_transform_map(self):
-        return django_models.TextField
-
-    def extract_from_possible_value(self, field, possible_value):
-        if field.is_choice_value(possible_value):
+    def extract_from_possible_value(self, possible_value):
+        if self.field.is_choice_value(possible_value):
             return possible_value
         else:
             return None
 
-    def _extract_variants_from_text(self, field, text: str, **kwargs):
+    def _extract_variants_from_text(self, text: str, **kwargs):
         return None
 
-    def example_python_value(self, field):
-        choice_values = field.get_choice_values()
+    def example_python_value(self):
+        choice_values = self.field.get_choice_values()
         return choice_values[randint(0, len(choice_values) - 1)] if choice_values else None
 
-    def build_vectorization_pipeline(self) -> Tuple[List[Tuple[str, Any]], Callable[[], List[str]]]:
+    @classmethod
+    def build_vectorization_pipeline(cls) -> Tuple[List[Tuple[str, Any]], Callable[[], List[str]]]:
         vect = CountVectorizer(strip_accents='unicode', analyzer='word',
                                stop_words='english',
                                tokenizer=vectorizers.whole_value_as_token)
         return [('clean', vectorizers.ReplaceNoneTransformer('')),
                 ('vect', vect),
-                ('tfidf', TfidfTransformer())], self._wrap_get_feature_names(vect)
+                ('tfidf', TfidfTransformer())], cls._wrap_get_feature_names(vect)
 
 
-class BooleanField(FieldType):
-    code = 'boolean'
+class BooleanField(TypedField):
+    type_code = 'boolean'
     title = 'Boolean'
     requires_value = True
     allows_value = True
     value_extracting = False
 
-    def merged_python_value_to_db(self, merged_python_value):
-        return bool(merged_python_value)
+    def is_json_field_value_ok(self, val: Any):
+        return val is None or isinstance(val, bool)
 
-    def merged_db_value_to_python(self, db_value):
-        return bool(db_value)
-
-    def get_postgres_transform_map(self):
-        return django_models.BooleanField
-
-    def extract_from_possible_value(self, field, possible_value):
+    def extract_from_possible_value(self, possible_value):
         if not possible_value:
             return False
         if type(possible_value) is bool:
@@ -633,19 +485,20 @@ class BooleanField(FieldType):
         else:
             return bool(possible_value)
 
-    def _extract_variants_from_text(self, field, text: str, **kwargs):
+    def _extract_variants_from_text(self, text: str, **kwargs):
         return None
 
-    def example_python_value(self, field):
+    def example_python_value(self):
         return False
 
-    def build_vectorization_pipeline(self) -> Tuple[List[Tuple[str, Any]], Callable[[], List[str]]]:
+    @classmethod
+    def build_vectorization_pipeline(cls) -> Tuple[List[Tuple[str, Any]], Callable[[], List[str]]]:
         vect = vectorizers.NumberVectorizer()
-        return [('vect', vect)], self._wrap_get_feature_names(vect)
+        return [('vect', vect)], cls._wrap_get_feature_names(vect)
 
 
-class MultiChoiceField(ChoiceField):
-    code = 'multi_choice'
+class MultiChoiceField(ChoiceField, MultiValueSetField):
+    type_code = 'multi_choice'
     title = 'Multi Choice'
     multi_value = True
     requires_value = True
@@ -653,31 +506,42 @@ class MultiChoiceField(ChoiceField):
     value_extracting = False
     is_choice_field = True
 
-    def merged_python_value_to_db(self, merged_python_value):
-        if merged_python_value is None or type(merged_python_value) is not set:
-            return None
+    def is_json_annotation_value_ok(self, val: Any):
+        if val is None:
+            return False
+        if not isinstance(val, str):
+            return False
 
-        value_set = set(merged_python_value)
-        return ', '.join(sorted([str(v) for v in value_set]))
+        return self.field.is_choice_value(val)
 
-    def merged_db_value_to_python(self, db_value: str):
-        if not db_value:
-            return None
-        return {p.strip() for p in str(db_value).split(',')}
+    def is_json_field_value_ok(self, val: Any):
+        if val is None:
+            return True
+        if not isinstance(val, list):
+            return False
+        if self.field.allow_values_not_specified_in_choices:
+            return all([isinstance(v, str) for v in val])
 
-    def single_python_value_to_db(self, python_single_value):
-        return str(python_single_value)
+        choices = self.field.get_choice_values()
+        choices = set(choices) if choices is not None else set()
 
-    def single_db_value_to_python(self, db_value):
-        if not isinstance(db_value, str):
-            raise RuntimeError('Non-string value found for a multi-choice field. Please run cleanup.')
-        return db_value
+        return all([v in choices for v in val])
 
-    def get_postgres_transform_map(self):
-        return django_models.TextField
+    def is_python_field_value_ok(self, val: Any):
+        if val is None:
+            return True
+        if not isinstance(val, list) and not isinstance(val, set):
+            return False
+        if self.field.allow_values_not_specified_in_choices:
+            return all([isinstance(v, str) for v in val])
 
-    def example_python_value(self, field):
-        choice_values = field.get_choice_values()
+        choices = self.field.get_choice_values()
+        choices = set(choices) if choices is not None else set()
+
+        return all([v in choices for v in val])
+
+    def example_python_value(self):
+        choice_values = self.field.get_choice_values()
         if not choice_values:
             return None
         res = set()
@@ -685,25 +549,54 @@ class MultiChoiceField(ChoiceField):
             res.add(choice_values[randint(0, len(choice_values) - 1)])
         return res
 
-    def build_vectorization_pipeline(self) -> Tuple[List[Tuple[str, Any]], Callable[[], List[str]]]:
+    @classmethod
+    def build_vectorization_pipeline(cls) -> Tuple[List[Tuple[str, Any]], Callable[[], List[str]]]:
         count_vectorizer = CountVectorizer(strip_accents='unicode', analyzer='word',
                                            stop_words='english',
                                            preprocessor=vectorizers.set_items_as_tokens_preprocessor,
                                            tokenizer=vectorizers.set_items_as_tokens)
         return [('clean', vectorizers.ReplaceNoneTransformer('')),
                 ('vect', count_vectorizer),
-                ('tfidf', TfidfTransformer())], self._wrap_get_feature_names(count_vectorizer)
+                ('tfidf', TfidfTransformer())], cls._wrap_get_feature_names(count_vectorizer)
 
 
-class LinkedDocumentsField(FieldType):
-    code = 'linked_documents'
+class LinkedDocumentsField(MultiValueSetField):
+    type_code = 'linked_documents'
     title = 'Linked Documents'
     multi_value = True
     requires_value = True
     allows_value = True
     value_extracting = True
 
-    def extract_from_possible_value(self, field, possible_value):
+    def is_json_field_value_ok(self, val: Any):
+        if val is None:
+            return True
+        if not isinstance(val, list):
+            return False
+        if not all(isinstance(v, int) for v in val):
+            return False
+
+        from apps.document.models import Document
+        return Document.objects.filter(pk__in=val).count() == len(val)
+
+    def is_json_annotation_value_ok(self, val: Any):
+        if not isinstance(val, int):
+            return False
+        from apps.document.models import Document
+        return Document.objects.filter(pk=val).exists()
+
+    def is_python_field_value_ok(self, val: Any):
+        if val is None:
+            return True
+        if not isinstance(val, list) and not isinstance(val, set):
+            return False
+        if not all(isinstance(v, int) for v in val):
+            return False
+
+        from apps.document.models import Document
+        return Document.objects.filter(pk__in=val).count() == len(val)
+
+    def extract_from_possible_value(self, possible_value):
         if not isinstance(possible_value, int) and not isinstance(possible_value, str):
             return None
 
@@ -713,83 +606,68 @@ class LinkedDocumentsField(FieldType):
             except ValueError:
                 return None
 
-        if not models.Document.objects.filter(pk=possible_value).exists():
+        from apps.document.models import Document
+        if not Document.objects.filter(pk=possible_value).exists():
             return None
 
         return possible_value
 
-    def _extract_variants_from_text(self, field, text: str, **kwargs):
+    def _extract_variants_from_text(self, text: str, **kwargs):
         return None
 
-    def merged_python_value_to_db(self, merged_python_value):
-        if merged_python_value is None or type(merged_python_value) is not set:
-            return None
-
-        value_set = set(merged_python_value)
-        return ', '.join(sorted([str(v) for v in value_set]))
-
-    def merged_db_value_to_python(self, db_value: str):
-        if not db_value:
-            return None
-        return {int(p.strip()) for p in str(db_value).split(',')}
-
-    def single_python_value_to_db(self, python_single_value):
-        return int(python_single_value)
-
-    def single_db_value_to_python(self, db_value):
-        if not isinstance(db_value, int):
-            raise RuntimeError('Non-int value found for a document id in Linked Documents field. Please run cleanup.')
-        return db_value
-
-    def get_postgres_transform_map(self):
-        return django_models.TextField
-
-    def example_python_value(self, field):
+    def example_python_value(self):
         res = set()
         for i in range(randint(0, 10)):
             res.add(randint(0, 12345))
         return res
 
-    def build_vectorization_pipeline(self) -> Tuple[List[Tuple[str, Any]], Callable[[], List[str]]]:
+    @classmethod
+    def build_vectorization_pipeline(cls) -> Tuple[List[Tuple[str, Any]], Callable[[], List[str]]]:
         count_vectorizer = CountVectorizer(strip_accents='unicode', analyzer='word',
                                            stop_words='english',
                                            preprocessor=vectorizers.set_items_as_tokens_preprocessor,
                                            tokenizer=vectorizers.set_items_as_tokens)
         return [('clean', vectorizers.ReplaceNoneTransformer('')),
                 ('vect', count_vectorizer),
-                ('tfidf', TfidfTransformer())], self._wrap_get_feature_names(count_vectorizer)
+                ('tfidf', TfidfTransformer())], cls._wrap_get_feature_names(count_vectorizer)
 
 
-class DateTimeField(FieldType):
-    code = 'datetime'
+RE_DATE_TIME_ISO = re.compile(
+    r'^(-?(?:[1-9][0-9]*)?[0-9]{4})-(1[0-2]|0[1-9])-(3[01]|0[1-9]|[12][0-9])T(2[0-3]|[01][0-9]):([0-5][0-9]):([0-5][0-9])(\.[0-9]+)?(Z|[+-](?:2[0-3]|[01][0-9]):[0-5][0-9])?$')
+
+RE_DATE_ISO = re.compile(
+    r'^(-?(?:[1-9][0-9]*)?[0-9]{4})-(1[0-2]|0[1-9])-(3[01]|0[1-9]|[12][0-9])')
+
+
+class DateTimeField(TypedField):
+    type_code = 'datetime'
     title = 'DateTime: Non-recurring Events'
     requires_value = True
     allows_value = True
     value_extracting = True
     ordinal = True
 
-    def merged_python_value_to_db(self, merged_python_value):
-        if not merged_python_value:
+    def is_json_field_value_ok(self, val: Any):
+        if val is None:
+            return True
+
+        if not isinstance(val, str):
+            return False
+
+        return RE_DATE_TIME_ISO.fullmatch(val) is not None
+
+    def is_python_field_value_ok(self, val: Any):
+        return val is None or isinstance(val, datetime)
+
+    def field_value_python_to_json(self, python_value: Any) -> Any:
+        return python_value.isoformat() if python_value else None
+
+    def field_value_json_to_python(self, json_value: Any) -> Any:
+        if json_value is None:
             return None
+        return dateparser.parse(json_value)
 
-        if type(merged_python_value) is date or type(merged_python_value) is datetime:
-            return merged_python_value.isoformat()
-
-        if type(merged_python_value) is str:
-            return merged_python_value
-
-        return None
-
-    def merged_db_value_to_python(self, db_value):
-        if not db_value:
-            return None
-
-        return dateparser.parse(str(db_value))
-
-    def get_postgres_transform_map(self):
-        return django_models.DateTimeField
-
-    def extract_from_possible_value(self, field, possible_value):
+    def extract_from_possible_value(self, possible_value):
         if isinstance(possible_value, datetime) or isinstance(possible_value, date):
             return possible_value
         else:
@@ -798,53 +676,56 @@ class DateTimeField(FieldType):
             except:
                 return None
 
-    def _extract_variants_from_text(self, field, text: str, **kwargs):
+    def _extract_variants_from_text(self, text: str, **kwargs):
         dates = get_dates_list(text) or []
-        dates = [d.date() if isinstance(d, datetime) else d
+        dates = [d if isinstance(d, datetime) else datetime(d.year, d.month, d.day)
                  for d in dates if d.year < 3000]
         return dates or None
 
-    def example_python_value(self, field):
+    def example_python_value(self):
         return datetime.now()
 
-    def build_vectorization_pipeline(self) -> Tuple[List[Tuple[str, Any]], Callable[[], List[str]]]:
+    @classmethod
+    def build_vectorization_pipeline(cls) -> Tuple[List[Tuple[str, Any]], Callable[[], List[str]]]:
         vect = vectorizers.SerialDateVectorizer()
         return [('vect', vect)], lambda: vect.get_feature_names()
 
 
-class DateField(FieldType):
-    code = 'date'
+class DateField(TypedField):
+    type_code = 'date'
     title = 'Date: Non-recurring Events'
     requires_value = True
     allows_value = True
     value_extracting = True
     ordinal = True
 
-    def merged_python_value_to_db(self, merged_python_value):
-        if not merged_python_value:
+    def is_json_field_value_ok(self, val: Any):
+        if val is None:
+            return True
+
+        if not isinstance(val, str):
+            return False
+
+        return RE_DATE_TIME_ISO.fullmatch(val) is not None or RE_DATE_ISO.fullmatch(val) is not None
+
+    def is_python_field_value_ok(self, val: Any):
+        return val is None or isinstance(val, datetime) or isinstance(val, date)
+
+    def field_value_python_to_json(self, python_value: Any) -> Any:
+        if not python_value:
             return None
+        if isinstance(python_value, datetime):
+            return python_value.date().isoformat()
+        return python_value.isoformat()
 
-        if type(merged_python_value) is date:
-            return merged_python_value.isoformat()
-
-        if type(merged_python_value) is datetime:
-            return merged_python_value.date().isoformat()
-
-        if type(merged_python_value) is str:
-            return merged_python_value
-
-        return None
-
-    def merged_db_value_to_python(self, db_value):
-        if not db_value:
+    def field_value_json_to_python(self, json_value: Any) -> Any:
+        if json_value is None:
             return None
+        if isinstance(json_value, date):
+            return json_value
+        return dateparser.parse(json_value).date()
 
-        return dateparser.parse(str(db_value)).date()
-
-    def get_postgres_transform_map(self):
-        return django_models.DateField
-
-    def extract_from_possible_value(self, field, possible_value):
+    def extract_from_possible_value(self, possible_value):
         if isinstance(possible_value, datetime):
             return possible_value.date()
         elif isinstance(possible_value, date):
@@ -855,82 +736,85 @@ class DateField(FieldType):
             except:
                 return None
 
-    def _extract_variants_from_text(self, field, text: str, **kwargs):
+    def _extract_variants_from_text(self, text: str, **kwargs):
         dates = get_dates_list(text) or []
         dates = [d.date() if isinstance(d, datetime) else d
                  for d in dates if d.year < 3000]
         return dates or None
 
-    def example_python_value(self, field):
+    def example_python_value(self):
         return datetime.now()
 
-    def build_vectorization_pipeline(self) -> Tuple[List[Tuple[str, Any]], Callable[[], List[str]]]:
+    @classmethod
+    def build_vectorization_pipeline(cls) -> Tuple[List[Tuple[str, Any]], Callable[[], List[str]]]:
         vect = vectorizers.SerialDateVectorizer()
         return [('vect', vect)], lambda: vect.get_feature_names()
 
 
 class RecurringDateField(DateField):
-    code = 'date_recurring'
+    type_code = 'date_recurring'
     title = 'Date: Recurring Events'
 
-    def build_vectorization_pipeline(self) -> Tuple[List[Tuple[str, Any]], Callable[[], List[str]]]:
+    @classmethod
+    def build_vectorization_pipeline(cls) -> Tuple[List[Tuple[str, Any]], Callable[[], List[str]]]:
         vect = vectorizers.RecurringDateVectorizer()
         return [('vect', vect)], lambda: vect.get_feature_names()
 
 
-class FloatField(FieldType):
-    code = 'float'
+class FloatField(TypedField):
+    type_code = 'float'
     title = 'Floating Point Number'
     requires_value = True
     allows_value = True
     value_extracting = True
     ordinal = True
 
-    def merged_python_value_to_db(self, merged_python_value):
-        return to_float(merged_python_value)
+    def is_json_field_value_ok(self, val: Any):
+        return val is None or isinstance(val, float)
 
-    def merged_db_value_to_python(self, db_value):
-        return to_float(db_value)
+    def field_value_python_to_json(self, python_value: Any) -> Any:
+        return to_float(python_value)
 
-    def get_postgres_transform_map(self):
-        return RoundedFloatField
+    def field_value_json_to_python(self, json_value: Any) -> Any:
+        return to_float(json_value)
 
-    def extract_from_possible_value(self, field, possible_value):
+    def extract_from_possible_value(self, possible_value):
         return to_float(possible_value)
 
-    def _extract_variants_from_text(self, field, text: str, **kwargs):
+    def _extract_variants_from_text(self, text: str, **kwargs):
         amounts = get_amounts(text, return_sources=False)
         return list(amounts) if amounts else None
 
-    def example_python_value(self, field):
+    def example_python_value(self):
         return random() * 1000
 
-    def build_vectorization_pipeline(self) -> Tuple[List[Tuple[str, Any]], Callable[[], List[str]]]:
+    @classmethod
+    def build_vectorization_pipeline(cls) -> Tuple[List[Tuple[str, Any]], Callable[[], List[str]]]:
         vect = vectorizers.NumberVectorizer()
-        return [('vect', vect)], self._wrap_get_feature_names(vect)
+        return [('vect', vect)], cls._wrap_get_feature_names(vect)
 
 
-class IntField(FieldType):
-    code = 'int'
+class IntField(TypedField):
+    type_code = 'int'
     title = 'Integer Number'
     requires_value = True
     allows_value = True
     value_extracting = True
     ordinal = True
 
-    def merged_python_value_to_db(self, merged_python_value):
-        return to_int(merged_python_value)
+    def is_json_field_value_ok(self, val: Any):
+        return val is None or isinstance(val, int)
 
-    def merged_db_value_to_python(self, db_value):
-        return to_int(db_value)
+    def field_value_python_to_json(self, python_value: Any) -> Any:
+        return to_int(python_value)
 
-    def get_postgres_transform_map(self):
-        return django_models.IntegerField
+    def field_value_json_to_python(self, json_value: Any) -> Any:
+        return to_int(json_value)
 
-    def extract_from_possible_value(self, field, possible_value):
+    def extract_from_possible_value(self, possible_value):
         return to_int(possible_value)
 
-    def _extract_variants_from_text(self, field, text: str, **kwargs):
+    def _extract_variants_from_text(self, text: str, **kwargs):
         amounts = get_amounts(text, return_sources=False)
         if not amounts:
             return None
@@ -938,31 +822,29 @@ class IntField(FieldType):
                    if isinstance(i, (float, int))]
         return amounts or None
 
-    def example_python_value(self, field):
+    def example_python_value(self):
         return randint(0, 1000)
 
-    def build_vectorization_pipeline(self) -> Tuple[List[Tuple[str, Any]], Callable[[], List[str]]]:
+    @classmethod
+    def build_vectorization_pipeline(cls) -> Tuple[List[Tuple[str, Any]], Callable[[], List[str]]]:
         vect = vectorizers.NumberVectorizer()
-        return [('vect', vect)], self._wrap_get_feature_names(vect)
+        return [('vect', vect)], cls._wrap_get_feature_names(vect)
 
 
-class AddressField(FieldType):
-    code = 'address'
+class AddressField(TypedField):
+    type_code = 'address'
     title = 'Address'
     requires_value = True
     allows_value = True
     value_extracting = True
 
-    def merged_python_value_to_db(self, merged_python_value):
-        if merged_python_value is None:
-            return None
-        return merged_python_value.get('address') if type(merged_python_value) is dict else str(merged_python_value)
-
-    def merged_db_value_to_python(self, db_value):
-        return {'address': db_value}
-
-    def get_postgres_transform_map(self):
-        return django_models.TextField
+    def is_json_field_value_ok(self, val: Any):
+        if val is None:
+            return True
+        if not isinstance(val, dict):
+            return False
+        addr = val.get('address')
+        return addr is None or isinstance(addr, str)
 
     @staticmethod
     def _get_from_geocode(address: str):
@@ -976,7 +858,7 @@ class AddressField(FieldType):
             'city': None
         }
 
-    def extract_from_possible_value(self, field, possible_value):
+    def extract_from_possible_value(self, possible_value):
         if possible_value is None:
             return None
 
@@ -985,7 +867,7 @@ class AddressField(FieldType):
         else:
             return {'address': str(possible_value)}
 
-    def _extract_variants_from_text(self, field, text: str, **kwargs):
+    def _extract_variants_from_text(self, text: str, **kwargs):
         addresses = list(pyap.parse(text, country='US'))
         result = []
 
@@ -1002,7 +884,7 @@ class AddressField(FieldType):
             result.append(resolved_address)
         return result
 
-    def example_python_value(self, field):
+    def example_python_value(self):
         return {
             'address': 'Some address',
             'latitude': None,
@@ -1012,38 +894,33 @@ class AddressField(FieldType):
             'city': None
         }
 
-    def build_vectorization_pipeline(self) -> Tuple[List[Tuple[str, Any]], Callable[[], List[str]]]:
+    @classmethod
+    def build_vectorization_pipeline(cls) -> Tuple[List[Tuple[str, Any]], Callable[[], List[str]]]:
         vect = CountVectorizer(strip_accents='unicode', analyzer='word',
                                stop_words='english')
         return [('item_select', vectorizers.DictItemSelector('address')),
                 ('clean', vectorizers.ReplaceNoneTransformer('')),
                 ('vect', vect),
-                ('tfidf', TfidfTransformer())], self._wrap_get_feature_names(vect)
+                ('tfidf', TfidfTransformer())], cls._wrap_get_feature_names(vect)
 
 
-class CompanyField(FieldType):
-    code = 'company'
+class CompanyField(TypedField):
+    type_code = 'company'
     title = 'Company'
     requires_value = True
     allows_value = True
     value_extracting = True
 
-    def merged_python_value_to_db(self, merged_python_value):
-        return str(merged_python_value) if merged_python_value else None
+    def is_json_field_value_ok(self, val: Any):
+        return val is None or isinstance(val, str)
 
-    def merged_db_value_to_python(self, db_value):
-        return db_value
-
-    def get_postgres_transform_map(self):
-        return django_models.TextField
-
-    def extract_from_possible_value(self, field, possible_value):
+    def extract_from_possible_value(self, possible_value):
         if possible_value is not None:
             return str(possible_value)
         else:
             return None
 
-    def _extract_variants_from_text(self, field, text: str, **kwargs):
+    def _extract_variants_from_text(self, text: str, **kwargs):
         companies = list(get_companies(text, detail_type=True, name_upper=True, strict=True))
         if not companies:
             return None
@@ -1051,19 +928,20 @@ class CompanyField(FieldType):
                                 (' ' + company[1].upper()) if company[1] is not None else '')
                 for company in companies]
 
-    def example_python_value(self, field):
+    def example_python_value(self):
         return 'SOME COMPANY LLC'
 
-    def build_vectorization_pipeline(self) -> Tuple[List[Tuple[str, Any]], Callable[[], List[str]]]:
+    @classmethod
+    def build_vectorization_pipeline(cls) -> Tuple[List[Tuple[str, Any]], Callable[[], List[str]]]:
         vect = CountVectorizer(strip_accents='unicode', analyzer='word',
                                stop_words='english', tokenizer=vectorizers.whole_value_as_token)
         return [('clean', vectorizers.ReplaceNoneTransformer('')),
                 ('vect', vect),
-                ('tfidf', TfidfTransformer())], self._wrap_get_feature_names(vect)
+                ('tfidf', TfidfTransformer())], cls._wrap_get_feature_names(vect)
 
 
-class DurationField(FieldType):
-    code = 'duration'
+class DurationField(TypedField):
+    type_code = 'duration'
     title = 'Duration'
     requires_value = True
     allows_value = True
@@ -1071,34 +949,29 @@ class DurationField(FieldType):
     ordinal = True
     MAX_DURATION = 5000 * 365
 
-    def merged_python_value_to_db(self, merged_python_value):
-        return to_float(merged_python_value)
+    def is_json_field_value_ok(self, val: Any):
+        return val is None or isinstance(val, float) or isinstance(val, int)
 
-    def merged_db_value_to_python(self, db_value):
-        return to_float(db_value)
-
-    def get_postgres_transform_map(self):
-        return RoundedFloatField
-
-    def extract_from_possible_value(self, field, possible_value):
+    def extract_from_possible_value(self, possible_value):
         return to_float(possible_value)
 
-    def _extract_variants_from_text(self, field, text: str, **kwargs):
+    def _extract_variants_from_text(self, text: str, **kwargs):
         durations = get_durations(text)
         if not durations:
             return None
         return [duration[2] for duration in durations if duration[2] < self.MAX_DURATION]
 
-    def example_python_value(self, field):
+    def example_python_value(self):
         return random() * 365 * 5
 
-    def build_vectorization_pipeline(self) -> Tuple[List[Tuple[str, Any]], Callable[[], List[str]]]:
+    @classmethod
+    def build_vectorization_pipeline(cls) -> Tuple[List[Tuple[str, Any]], Callable[[], List[str]]]:
         vect = vectorizers.NumberVectorizer(to_float_converter=lambda d: d.total_seconds() if d else 0 if d else 0)
-        return [('vect', vect)], self._wrap_get_feature_names(vect)
+        return [('vect', vect)], cls._wrap_get_feature_names(vect)
 
 
-class PercentField(FieldType):
-    code = 'percent'
+class PercentField(TypedField):
+    type_code = 'percent'
     title = 'Percent'
     requires_value = True
     allows_value = True
@@ -1106,86 +979,74 @@ class PercentField(FieldType):
     ordinal = True
     MAX_PERCENT = 1
 
-    def merged_python_value_to_db(self, merged_python_value):
-        # round to 6 decimal places of PERCENTAGE value - i.e. to 8 decimal places of ABSOLUTE value
-        return to_float(merged_python_value / 100, decimal_places=8) if merged_python_value is not None else None
+    def is_json_field_value_ok(self, val: Any):
+        return val is None or isinstance(val, float) or isinstance(val, int)
 
-    def merged_db_value_to_python(self, db_value):
-        # round to 6 decimal places of PERCENTAGE value
-        return to_float(db_value * 100, decimal_places=6) if db_value is not None else None
+    def field_value_python_to_json(self, python_value: Any) -> Any:
+        return to_float(python_value)
 
-    def get_postgres_transform_map(self):
-        return RoundedFloatField
+    def field_value_json_to_python(self, json_value: Any) -> Any:
+        return to_float(json_value)
 
-    def extract_from_possible_value(self, field, possible_value):
+    def extract_from_possible_value(self, possible_value):
         return to_float(possible_value, decimal_places=6)
 
-    def _extract_variants_from_text(self, field, text: str, **kwargs):
+    def _extract_variants_from_text(self, text: str, **kwargs):
         percents = list(get_percents(text, float_digits=8))
         if not percents:
             return None
         return [percent[2] * 100 for percent in percents]
         # return [percent[2] for percent in percents if percent[2] < self.MAX_PERCENT]
 
-    def example_python_value(self, field):
+    def example_python_value(self):
         return round(random(), 6)
 
-    def build_vectorization_pipeline(self) -> Tuple[List[Tuple[str, Any]], Callable[[], List[str]]]:
+    @classmethod
+    def build_vectorization_pipeline(cls) -> Tuple[List[Tuple[str, Any]], Callable[[], List[str]]]:
         vect = vectorizers.NumberVectorizer()
-        return [('vect', vect)], self._wrap_get_feature_names(vect)
+        return [('vect', vect)], cls._wrap_get_feature_names(vect)
 
 
-class RatioField(FieldType):
-    code = 'ratio'
+class RatioField(TypedField):
+    type_code = 'ratio'
     title = 'Ratio'
     requires_value = True
     allows_value = True
     value_extracting = True
     ordinal = True
 
-    def merged_python_value_to_db(self, merged_python_value):
-        if not merged_python_value:
-            return None
-        if isinstance(merged_python_value, list):
-            merged_python_value = merged_python_value[0]
-        numerator = to_float(merged_python_value['numerator'])
-        consequent = to_float(merged_python_value['consequent'])
-        if numerator is None or consequent is None:
-            return None
-        return '{}|{}'.format(numerator, consequent)
+    def is_json_field_value_ok(self, val: Any):
+        if val is None:
+            return True
+        if not isinstance(val, dict):
+            return False
+        n = val.get('numerator')
+        if n is not None and not isinstance(n, float) and not isinstance(n, int):
+            return False
+        c = val.get('denominator')
+        if c is not None and not isinstance(c, float) and not isinstance(c, int):
+            return False
+        return True
 
-    def merged_db_value_to_python(self, db_value):
-        if isinstance(db_value, dict):
-            return db_value
-        elif isinstance(db_value, str) and '|' in db_value:
-            ar = db_value.split('|')
-            numerator_str = ar[0]
-            consequent_str = ar[1]
-            return {
-                'numerator': to_float(numerator_str),
-                'consequent': to_float(consequent_str)}
-
-    def get_postgres_transform_map(self):
-        return django_models.TextField
-
-    def _extract_variants_from_text(self, field, text: str, **kwargs):
+    def _extract_variants_from_text(self, text: str, **kwargs):
         ratios = list(get_ratios(text))
         if not ratios:
             return None
         return [{'numerator': i[0],
-                 'consequent': i[1]} for i in ratios]
+                 'denominator': i[1]} for i in ratios]
 
-    def example_python_value(self, field):
-        return {'numerator': randint(1, 10), 'consequent': randint(1, 10)}
+    def example_python_value(self):
+        return {'numerator': randint(1, 10), 'denominator': randint(1, 10)}
 
-    def build_vectorization_pipeline(self) -> Tuple[List[Tuple[str, Any]], Callable[[], List[str]]]:
+    @classmethod
+    def build_vectorization_pipeline(cls) -> Tuple[List[Tuple[str, Any]], Callable[[], List[str]]]:
         vect_numerator = vectorizers.NumberVectorizer()
-        vect_consequent = vectorizers.NumberVectorizer()
+        vect_denominator = vectorizers.NumberVectorizer()
 
-        def get_feature_names_(vect_numerator, vect_consequent):
+        def get_feature_names_(vect_numerator, vect_denominator):
             def res():
                 return ['numerator_' + str(c) for c in vect_numerator.get_feature_names()] \
-                       + ['consequent_' + str(c) for c in vect_consequent.get_feature_names()]
+                       + ['denominator_' + str(c) for c in vect_denominator.get_feature_names()]
 
             return res
 
@@ -1195,149 +1056,154 @@ class RatioField(FieldType):
                            ('selector', vectorizers.DictItemSelector(item='numerator')),
                            ('vect', vect_numerator),
                        ])),
-                       ('consequent', Pipeline([
-                           ('selector', vectorizers.DictItemSelector(item='consequent')),
-                           ('vect', vect_consequent),
+                       ('denominator', Pipeline([
+                           ('selector', vectorizers.DictItemSelector(item='denominator')),
+                           ('vect', vect_denominator),
                        ]))
                    ]))
-               ], get_feature_names_(vect_numerator, vect_consequent)
+               ], get_feature_names_(vect_numerator, vect_denominator)
 
 
-class RelatedInfoField(FieldType):
-    code = 'related_info'
+class RelatedInfoField(MultiValueField):
+    type_code = 'related_info'
     title = 'Related Info'
     multi_value = True
     requires_value = False
     allows_value = True
     value_extracting = False
 
-    def merged_python_value_to_db(self, merged_python_value):
-        return merged_python_value
+    def is_there_annotation_matching_field_value(self, field_value: Any, annotation_values: List) -> bool:
+        if not field_value or not self.field.requires_text_annotations:
+            return True
+        return bool(annotation_values)
 
-    def merged_db_value_to_python(self, db_value):
-        return db_value
+    def annotation_value_matches_field_value(self, field_value: Any, annotation_value: Any) -> bool:
+        if not field_value:
+            return False
+        return True
 
-    def single_python_value_to_db(self, python_single_value):
-        return python_single_value
+    def is_json_field_value_ok(self, val: Any):
+        return val is None or isinstance(val, bool)
 
-    def single_db_value_to_python(self, db_value):
-        return db_value
+    def build_json_field_value_from_json_ant_values(self, ant_values: List) -> Any:
+        return bool(ant_values)
 
-    def get_postgres_transform_map(self):
-        return django_models.IntegerField
+    def update_field_value_by_changing_annotations(self,
+                                                   current_ant_values: List,
+                                                   old_field_value: List,
+                                                   added_ant_value: Any,
+                                                   removed_ant_value: Any):
+        return self.build_json_field_value_from_json_ant_values(current_ant_values)
 
-    def build_vectorization_pipeline(self) -> Tuple[List[Tuple[str, Any]], Callable[[], List[str]]]:
+    @classmethod
+    def build_vectorization_pipeline(cls) -> Tuple[List[Tuple[str, Any]], Callable[[], List[str]]]:
         vect = vectorizers.NumberVectorizer(to_float_converter=lambda merged: len(merged) if merged else 0)
-        return [('vect', vect)], self._wrap_get_feature_names(vect)
+        return [('vect', vect)], cls._wrap_get_feature_names(vect)
 
-    def example_python_value(self, field):
+    def example_python_value(self):
         return 1
 
-    def merge_multi_python_values(self, previous_merge_result, value_to_merge_in):
-        return super().merge_multi_python_values(previous_merge_result, value_to_merge_in or '')
+    def _extract_variants_from_text(self, text: str, **kwargs):
+        return True
 
 
-class PersonField(FieldType):
-    code = 'person'
+class PersonField(TypedField):
+    type_code = 'person'
     title = 'Person'
     requires_value = True
     allows_value = True
     value_extracting = True
 
-    def merged_python_value_to_db(self, merged_python_value):
-        return merged_python_value
+    def is_json_field_value_ok(self, val: Any):
+        return val is None or isinstance(val, str)
 
-    def merged_db_value_to_python(self, db_value):
-        return db_value
-
-    def get_postgres_transform_map(self):
-        return django_models.TextField
-
-    def extract_from_possible_value(self, field, possible_value):
+    def extract_from_possible_value(self, possible_value):
         if possible_value is not None:
             return str(possible_value)
         return None
 
-    def _extract_variants_from_text(self, field, text: str, **kwargs):
+    def _extract_variants_from_text(self, text: str, **kwargs):
         persons = get_persons(text, return_source=False)
         return list(persons) if persons else None
 
-    def example_python_value(self, field):
+    def example_python_value(self):
         return 'John Doe'
 
-    def build_vectorization_pipeline(self) -> Tuple[List[Tuple[str, Any]], Callable[[], List[str]]]:
+    @classmethod
+    def build_vectorization_pipeline(cls) -> Tuple[List[Tuple[str, Any]], Callable[[], List[str]]]:
         vect = CountVectorizer(strip_accents='unicode', analyzer='word',
                                stop_words='english', tokenizer=vectorizers.whole_value_as_token)
         return [('clean', vectorizers.ReplaceNoneTransformer('')),
                 ('vect', vect),
-                ('tfidf', TfidfTransformer())], self._wrap_get_feature_names(vect)
+                ('tfidf', TfidfTransformer())], cls._wrap_get_feature_names(vect)
 
 
 class AmountField(FloatField):
-    code = 'amount'
+    type_code = 'amount'
     title = 'Amount'
     requires_value = True
     allows_value = True
     value_extracting = True
     ordinal = True
 
-    def merged_python_value_to_db(self, merged_python_value):
-        return to_float(merged_python_value)
+    def field_value_python_to_json(self, python_value: Any) -> Any:
+        return to_float(python_value)
 
-    def merged_db_value_to_python(self, db_value):
-        return to_float(db_value)
+    def field_value_json_to_python(self, json_value: Any) -> Any:
+        return to_float(json_value)
 
-    def get_postgres_transform_map(self):
-        return RoundedFloatField
+    def is_json_field_value_ok(self, val: Any):
+        return val is None or isinstance(val, float) or isinstance(val, int)
 
-    def _extract_variants_from_text(self, field, text: str, **kwargs):
+    def _extract_variants_from_text(self, text: str, **kwargs):
         amounts = get_amounts(text, return_sources=False)
         return list(amounts) if amounts else None
 
-    def example_python_value(self, field):
+    def example_python_value(self):
         return 25000.50
 
-    def build_vectorization_pipeline(self) -> Tuple[List[Tuple[str, Any]], Callable[[], List[str]]]:
+    @classmethod
+    def build_vectorization_pipeline(cls) -> Tuple[List[Tuple[str, Any]], Callable[[], List[str]]]:
         vect = vectorizers.NumberVectorizer()
-        return [('vect', vect)], self._wrap_get_feature_names(vect)
+        return [('vect', vect)], cls._wrap_get_feature_names(vect)
 
 
 class MoneyField(FloatField):
-    code = 'money'
+    type_code = 'money'
     title = 'Money'
     requires_value = True
     allows_value = True
     value_extracting = True
     ordinal = True
 
-    def merged_python_value_to_db(self, merged_python_value):
-        if not merged_python_value:
+    def is_json_field_value_ok(self, val: Any):
+        if val is None:
+            return True
+        if not isinstance(val, dict):
+            return False
+        c = val.get('currency')
+        if c is not None and not isinstance(c, str):
+            return False
+        a = val.get('amount')
+        if a is not None and not isinstance(a, float) and not isinstance(a, int):
+            return False
+        return True
+
+    def field_value_python_to_json(self, python_value: Any) -> Any:
+        if python_value is None:
             return None
-        if isinstance(merged_python_value, list):
-            merged_python_value = merged_python_value[0]
-        amount = to_float(merged_python_value.get('amount')) or 0
-        currency = merged_python_value.get('currency') or ''
-        return '{}|{:020.6f}'.format(currency, amount)
+        d = dict(python_value)
+        d['amount'] = to_float(d.get('amount'))
+        return d
 
-    def merged_db_value_to_python(self, db_value):
-        if isinstance(db_value, dict):
-            return {
-                'currency': db_value.get('currency'),
-                'amount': to_float(db_value.get('amount'))
-            }
-        elif isinstance(db_value, str) and '|' in db_value:
-            ar = db_value.split('|')
-            currency = ar[0]
-            amount_str = ar[1]  # type: str
-            return {
-                'currency': currency,
-                'amount': to_float(amount_str)
-            }
+    def field_value_json_to_python(self, json_value: Any) -> Any:
+        if json_value is None:
+            return None
+        d = dict(json_value)
+        d['amount'] = to_float(d.get('amount'))
+        return d
 
-    def get_postgres_transform_map(self):
-        return django_models.TextField
-
-    def extract_from_possible_value(self, field, possible_value):
+    def extract_from_possible_value(self, possible_value):
         if not possible_value:
             return None
 
@@ -1357,21 +1223,24 @@ class MoneyField(FloatField):
             }
         except ValueError:
             return None
+        except InvalidOperation:
+            return None
 
-    def _extract_variants_from_text(self, field, text: str, **kwargs):
+    def _extract_variants_from_text(self, text: str, **kwargs):
         money = get_money(text, return_sources=False, float_digits=6)
         if not money:
             return None
         return [{'currency': m[1],
                  'amount': m[0]} for m in money]
 
-    def example_python_value(self, field):
+    def example_python_value(self):
         return {
             'currency': 'USD',
             'amount': random() * 10000000,
         }
 
-    def build_vectorization_pipeline(self) -> Tuple[List[Tuple[str, Any]], Callable[[], List[str]]]:
+    @classmethod
+    def build_vectorization_pipeline(cls) -> Tuple[List[Tuple[str, Any]], Callable[[], List[str]]]:
         vect_cur = CountVectorizer(strip_accents='unicode', analyzer='word',
                                    stop_words='english', tokenizer=vectorizers.whole_value_as_token)
         vect_amount = vectorizers.NumberVectorizer()
@@ -1399,24 +1268,25 @@ class MoneyField(FloatField):
                ], get_feature_names_(vect_cur, vect_amount)
 
 
-class GeographyField(FieldType):
-    code = 'geography'
+class GeographyField(TypedField):
+    type_code = 'geography'
     title = 'Geography'
     requires_value = True
     allows_value = True
     value_extracting = True
 
-    def get_postgres_transform_map(self):
-        return django_models.TextField
+    def is_json_field_value_ok(self, val: Any):
+        return val is None or isinstance(val, str)
 
-    def _extract_variants_from_text(self, field, text: str, **kwargs):
+    def _extract_variants_from_text(self, text: str, **kwargs):
         geo_entities = None
         document = kwargs.get('document')
         if document is not None:
             # try to extract from GeoEntityUsage
             # pros: faster extraction
             # cons: we may extract extra entities
-            geo_entities = extract_models.GeoEntityUsage.objects \
+            from apps.extract.models import GeoEntityUsage
+            geo_entities = GeoEntityUsage.objects \
                 .filter(text_unit__document=document,
                         text_unit__unit_type='sentence',
                         text_unit__text__contains=text) \
@@ -1428,7 +1298,8 @@ class GeographyField(FieldType):
 
             text_languages = None
             if document:
-                text_languages = models.TextUnit.objects.filter(
+                from apps.document.models import TextUnit
+                text_languages = TextUnit.objects.filter(
                     document=document,
                     text__contains=text).values_list('language', flat=True)
                 if document.language and not text_languages:
@@ -1440,44 +1311,45 @@ class GeographyField(FieldType):
                                                              priority=True)]
         return list(geo_entities) or None
 
-    def example_python_value(self, field):
+    def example_python_value(self):
         return 'New York'
 
-    def build_vectorization_pipeline(self) -> Tuple[List[Tuple[str, Any]], Callable[[], List[str]]]:
+    @classmethod
+    def build_vectorization_pipeline(cls) -> Tuple[List[Tuple[str, Any]], Callable[[], List[str]]]:
         vect = CountVectorizer(strip_accents='unicode', analyzer='word',
                                stop_words='english', tokenizer=vectorizers.whole_value_as_token)
         return [('clean', vectorizers.ReplaceNoneTransformer('')),
                 ('vect', vect),
-                ('tfidf', TfidfTransformer())], self._wrap_get_feature_names(vect)
+                ('tfidf', TfidfTransformer())], cls._wrap_get_feature_names(vect)
 
 
 FIELD_TYPES_ALLOWED_FOR_DETECTED_VALUE = {
-    StringField.code,
-    StringFieldWholeValueAsAToken.code,
-    LongTextField.code,
-    ChoiceField.code,
-    MultiChoiceField.code,
+    StringField.type_code,
+    StringFieldWholeValueAsAToken.type_code,
+    LongTextField.type_code,
+    ChoiceField.type_code,
+    MultiChoiceField.type_code,
 }
 
-FIELD_TYPES = (StringField(),
-               StringFieldWholeValueAsAToken(),
-               LongTextField(),
-               IntField(),
-               BooleanField(),
-               FloatField(),
-               DateTimeField(),
-               DateField(),
-               RecurringDateField(),
-               CompanyField(),
-               DurationField(),
-               PercentField(),
-               RatioField(),
-               AddressField(),
-               RelatedInfoField(),
-               ChoiceField(),
-               MultiChoiceField(),
-               PersonField(),
-               AmountField(),
-               MoneyField(),
-               GeographyField(),
-               LinkedDocumentsField())
+FIELD_TYPES = (StringField,
+               StringFieldWholeValueAsAToken,
+               LongTextField,
+               IntField,
+               BooleanField,
+               FloatField,
+               DateTimeField,
+               DateField,
+               RecurringDateField,
+               CompanyField,
+               DurationField,
+               PercentField,
+               RatioField,
+               AddressField,
+               RelatedInfoField,
+               ChoiceField,
+               MultiChoiceField,
+               PersonField,
+               AmountField,
+               MoneyField,
+               GeographyField,
+               LinkedDocumentsField)

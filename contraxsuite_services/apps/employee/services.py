@@ -40,8 +40,8 @@ from lexnlp.nlp.en.tokens import get_stems
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2019, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.3/LICENSE"
-__version__ = "1.2.3"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.3.0/LICENSE"
+__version__ = "1.3.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -293,7 +293,7 @@ def get_similar_to_terms_employee(text, positives, negatives):
         if trained_similar_words.get(i) is not None:
             sum_similarity = sum_similarity + trained_similar_words[i]
             num_similars += 1
-    if num_similars is not 0:
+    if num_similars != 0:
         return sum_similarity / num_similars
     else:
         return 0

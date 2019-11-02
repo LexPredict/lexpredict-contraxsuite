@@ -32,8 +32,8 @@ from django.utils._os import upath
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2019, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.2.3/LICENSE"
-__version__ = "1.2.3"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.3.0/LICENSE"
+__version__ = "1.3.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -64,7 +64,6 @@ class Loader(FilesystemLoader):
                     other_app_dirs.append(upath(template_dir))
         project_dir = [os.path.join(str(settings.PROJECT_DIR), 'templates')]
         root_app_dir = [settings.APPS_DIR]
-
 
         # Immutable return value because it will be cached and shared by callers.
         return tuple(project_app_dirs + root_app_dir + project_dir + other_app_dirs)
