@@ -351,6 +351,8 @@ class MethodStats(models.Model):
                       )),
                       avg_time=Avg('time'), max_time=Max('time'))\
             .filter(**filter_kwargs)
+        qs = list(qs)
+        qs.sort(key=lambda m: -m['calls'])
         if as_dataframe:
             return pd.DataFrame.from_records(qs, columns=['name', 'method',
                                                           'calls', 'errors',

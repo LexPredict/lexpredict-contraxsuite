@@ -208,14 +208,16 @@ class XmlWordxDocumentParser(BaseDocumentParser):
         """
         :return: (text, 'msword', None)
         """
-        if ptrs.logger:
-            ptrs.logger.info('Trying MS Word extract for file: ' +
-                             ptrs.original_file_name)
         try:
             log_func = lambda s: ptrs.logger.info(s) if ptrs.logger else None
             xtractor = XmlWordxExtractor(log_func=log_func)
             if not xtractor.can_process_file(ptrs.original_file_name):
                 return DocumentParsingResults()
+
+            if ptrs.logger:
+                ptrs.logger.info('Trying MS Word extract for file: ' +
+                                 ptrs.original_file_name)
+
             return DocumentParsingResults(
                 xtractor.parse_file(ptrs.file_path), 'msword', None,
                 xtractor.tables)
