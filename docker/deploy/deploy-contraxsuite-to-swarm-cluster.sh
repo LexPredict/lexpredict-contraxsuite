@@ -68,6 +68,8 @@ if [ ${PG_STATISTICS_ENABLED} = true ]; then
     fi
     echo "pg_stat_statements.max = 1000" >> ./temp/postgresql.conf
     echo "pg_stat_statements.track = all" >> ./temp/postgresql.conf
+else
+    export POWA_WEB_REPLICAS=0
 fi
 
 sudo cp ./temp/nginx.conf ${VOLUME_NGINX_CONF}/nginx.conf
