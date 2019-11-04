@@ -97,7 +97,7 @@ tornado==6.0.3
 us==1.0.0
 uWSGI==2.0.15
 WeasyPrint==0.42.3
-Werkzeug==0.15.5
+Werkzeug==0.16.0
 python-tds==1.9.1
 pyOpenSSL==18.0.0
 bitarray==0.8.3
