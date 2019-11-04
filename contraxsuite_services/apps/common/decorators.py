@@ -43,6 +43,7 @@ from django.http import HttpRequest
 # Project imports
 from apps.common import redis
 from apps.common.models import MethodStats, MethodStatsCollectorPlugin
+from apps.common.singleton import Singleton
 from apps.users.models import User
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
@@ -110,7 +111,13 @@ def collect_stats(name=None, comment=None, log_sql=False, callers_depth=5, batch
             # get timing
             start = time.time()
             try:
-                res = func(*args, **kwargs)
+                if inspect.ismethod(func):
+                    if len(args) <= 1:
+                        res = func(**kwargs)
+                    else:
+                        res = func(args[1:], **kwargs)
+                else:
+                    res = func(*args, **kwargs)
             except Exception as e:
                 res = None
                 exception = e
@@ -139,7 +146,7 @@ def collect_stats(name=None, comment=None, log_sql=False, callers_depth=5, batch
                         break
 
             func_name = func.__name__
-            fun_args = inspect.getcallargs(func, *args, **kwargs)
+            fun_args = inspect.signature(func).parameters  # ['self'].__class__.__name__
             if fun_args and 'self' in fun_args:
                 func_self = fun_args["self"]
                 if func_self:
@@ -232,11 +239,12 @@ def get_func_path(func, *args, **kwargs):
     """
     func_module = inspect.getmodule(func).__name__
     path_parts = [func_module]
-    if 'self' in inspect.getcallargs(func, *args, **kwargs):
+    fun_args = inspect.signature(func).parameters
+    if 'self' in fun_args:
         # I don't know any way to detect call from the object method
         # XXX: there seems to be no way to detect static method call - it will
         #      be just a function call
-        class_name = inspect.getcallargs(func, *args)['self'].__class__.__name__
+        class_name = inspect.signature(func).parameters['self'].__class__.__name__
         path_parts.append(class_name)
     path_parts.append(func.__name__)
     return '.'.join(path_parts)
@@ -264,6 +272,8 @@ def get_function_from_str(path):
                     parents_chain = local_path_chain[:-1]
                     for _parent in parents_chain:
                         method_parent = getattr(method_parent, _parent)
+                    if type(method_parent) is Singleton:
+                        method_parent = method_parent.clz
                 method = getattr(method_parent, method_name)
                 return method_parent, method, method_name
     except AttributeError:

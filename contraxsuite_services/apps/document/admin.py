@@ -76,7 +76,7 @@ from apps.document.models import (
     DocumentFieldCategory)
 from apps.document.python_coded_fields_registry import PYTHON_CODED_FIELDS_REGISTRY
 from apps.document.repository.document_field_repository import DocumentFieldRepository
-from apps.rawdb.constants import FIELD_CODE_ANNOTATION_SUFFIX
+from apps.rawdb.constants import FIELD_CODE_ANNOTATION_SUFFIX, FIELD_CODE_HIDE_UNTIL_PYTHON
 from apps.task.models import Task
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
@@ -645,8 +645,9 @@ class DocumentFieldForm(ModelFormWithUnchangeableFields):
             if not document_type:
                 self.add_error('hide_until_python', 'Document type is not defined.')
             else:
-                fields_to_values = {field.code: typed_field.example_python_value()
-                                    for field in list(document_type.fields.all())}
+                doc_fields = list(document_type.fields.all())
+                fields_to_values = {field.code: TypedField.by(field).example_python_value()
+                                    for field in doc_fields}
                 if field_code and field_code in fields_to_values:
                     del fields_to_values[field_code]
                 if type_code:
@@ -983,14 +984,20 @@ class DocumentFieldAdmin(FieldValuesValidationAdmin):
         type_code = document_field.type
         field_code = document_field.code
         dependent_fields = []
-        if form.cleaned_data and 'depends_on_fields' in form.cleaned_data:
-            dependent_fields = list(form.cleaned_data['depends_on_fields'])
+        if formula_field == FIELD_CODE_HIDE_UNTIL_PYTHON:
+            # check "hide until Python" formula on all fields' values
+            dependent_fields = list(DocumentField.objects.filter(
+                document_type__code=document_field.document_type.code))
         else:
-            depends_on_fields = form.data.get('depends_on_fields') or ''
-            if depends_on_fields:
-                depends_on_fields = depends_on_fields.split(',')
-                depends_on_fields = DocumentField.objects.filter(pk__in=depends_on_fields)
-                dependent_fields = list(depends_on_fields)
+            # check "formula" only on listed fields' values
+            if form.cleaned_data and 'depends_on_fields' in form.cleaned_data:
+                dependent_fields = list(form.cleaned_data['depends_on_fields'])
+            else:
+                depends_on_fields = form.data.get('depends_on_fields') or ''
+                if depends_on_fields:
+                    depends_on_fields = depends_on_fields.split(',')
+                    depends_on_fields = DocumentField.objects.filter(pk__in=depends_on_fields)
+                    dependent_fields = list(depends_on_fields)
 
         if input_values == 'EMPTY':
             fields_to_values = {field.code: None
@@ -1010,6 +1017,10 @@ class DocumentFieldAdmin(FieldValuesValidationAdmin):
                 field_code, formula, fields_to_values)
             result.calculated = True
         except Exception as e:
+            msg = str(e)
+            if hasattr(e, 'base_error') and e.base_error:
+                if hasattr(e.base_error, 'base_error') and e.base_error.base_error:
+                    msg += f'\n{e.base_error.base_error}'
             result.errors.append(str(e))
 
         if result.calculated:

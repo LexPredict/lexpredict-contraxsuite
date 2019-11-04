@@ -401,7 +401,12 @@ def delete_plugin(sender, instance, **kwargs):
     Un-decorate chosen method
     """
     from apps.common.decorators import undecorate
-    undecorate(path=instance.path)
+    try:
+        undecorate(path=instance.path)
+    except RuntimeError:
+        # MethodStatsCollectorPlugin may have wrong "path", for example - but we
+        # shouldn't prevent SQL record's deleting
+        pass
 
 
 class MenuGroup(models.Model):
