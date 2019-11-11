@@ -67,7 +67,7 @@ from apps.document.field_detection.formula_based_field_detection import FormulaB
     DocumentFieldFormulaError
 from apps.document.field_detection.stop_words import compile_stop_words, detect_value_with_stop_words
 from apps.document.field_processing.field_processing_utils import order_field_detection
-from apps.document.field_types import RelatedInfoField, TypedField
+from apps.document.field_types import RelatedInfoField, TypedField, ChoiceField
 from apps.document.models import (
     Document, DocumentField, DocumentType, FieldValue, FieldAnnotation,
     DocumentProperty, DocumentRelation, DocumentNote,
@@ -76,7 +76,7 @@ from apps.document.models import (
     DocumentFieldCategory)
 from apps.document.python_coded_fields_registry import PYTHON_CODED_FIELDS_REGISTRY
 from apps.document.repository.document_field_repository import DocumentFieldRepository
-from apps.rawdb.constants import FIELD_CODE_ANNOTATION_SUFFIX, FIELD_CODE_HIDE_UNTIL_PYTHON
+from apps.rawdb.constants import FIELD_CODE_ANNOTATION_SUFFIX, FIELD_CODE_HIDE_UNTIL_PYTHON, FIELD_CODE_FORMULA
 from apps.task.models import Task
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
@@ -555,13 +555,16 @@ class DocumentFieldForm(ModelFormWithUnchangeableFields):
                 cls._extract_field_and_deps(field.depends_on_fields.all(), fields_buffer)
         return fields_buffer
 
-    def calc_formula(self, field_code, formula, fields_to_values, form_field, formula_name='formula',
+    def calc_formula(self, field_code, formula,
+                     fields_to_values, form_field,
+                     formula_name='formula',
                      check_name_not_found: bool = False) -> Any:
         try:
             return FormulaBasedFieldDetectionStrategy.calc_formula(field_code, formula, fields_to_values)
         except DocumentFieldFormulaError as ex:
             base_error_class = type(ex.base_error).__name__
-            base_error_msg = str(ex.base_error)
+            base_error_msg = str(ex.base_error.base_error) if hasattr(ex.base_error, 'base_error') \
+                else str(ex.base_error)
             lines = list()
             if check_name_not_found and "NameError" in base_error_msg:
                 if hasattr(ex.base_error, 'base_error') and isinstance(ex.base_error.base_error, NameError):
@@ -569,12 +572,13 @@ class DocumentFieldForm(ModelFormWithUnchangeableFields):
                     lines.append('\n'.join(i.capitalize() for i in ex.base_error.base_error.args))
                     missed_field_name = fetchone(r"[Nn]ame '([^']+)", str(ex.base_error.base_error))
                     missed_field_name = f'"{missed_field_name}"' if missed_field_name else 'this'
-
-                    lines.append(f'\nPossibly {missed_field_name} field is not included into "depends_on_fields"')
+                    if formula_name == FIELD_CODE_FORMULA:
+                        lines.append(f'\nPossibly {missed_field_name} field is not included into "depends_on_fields"')
             else:
                 lines.append('Error caught while trying to execute {0} on example values:'.format(formula_name))
-                for field_name in ex.field_values:
-                    lines.append('{0}={1}'.format(field_name, ex.field_values[field_name]))
+                if formula_name == FIELD_CODE_FORMULA:
+                    for field_name in ex.field_values:
+                        lines.append('{0}={1}'.format(field_name, ex.field_values[field_name]))
                 lines.append("{0}. {1} in {2} of field '{3}' at line {4}".format(base_error_class,
                                                                                  base_error_msg,
                                                                                  formula_name,
@@ -688,6 +692,11 @@ class DocumentFieldForm(ModelFormWithUnchangeableFields):
         unsure_choice_value = self.cleaned_data[self.UNSURE_CHOICE_VALUE]
         choice_values = DocumentField.parse_choice_values(self.cleaned_data['choices'])
         unsure_thresholds_by_value = self.cleaned_data.get(self.UNSURE_THRESHOLDS)
+
+        if choice_values:
+            choice_errors = ChoiceField.check_choice_values_list(choice_values)
+            for ch_err in choice_errors:
+                self.add_error('choices', ch_err)
 
         try:
             DocumentField.compile_value_regexp(self.cleaned_data['value_regexp'])
@@ -1017,11 +1026,9 @@ class DocumentFieldAdmin(FieldValuesValidationAdmin):
                 field_code, formula, fields_to_values)
             result.calculated = True
         except Exception as e:
-            msg = str(e)
-            if hasattr(e, 'base_error') and e.base_error:
-                if hasattr(e.base_error, 'base_error') and e.base_error.base_error:
-                    msg += f'\n{e.base_error.base_error}'
-            result.errors.append(str(e))
+            msg = str(e.base_error) if hasattr(e, 'base_error') and \
+                                       formula_field == FIELD_CODE_HIDE_UNTIL_PYTHON else str(e)
+            result.errors.append(msg)
 
         if result.calculated:
             checker = PythonExpressionChecker(formula)

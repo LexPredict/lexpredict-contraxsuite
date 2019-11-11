@@ -1,6 +1,6 @@
 from collections import defaultdict
 from decimal import Decimal
-from typing import Any, List, Optional
+from typing import Any, List, Optional, Dict, Tuple
 
 import dateparser
 from django.db import migrations, transaction
@@ -151,6 +151,21 @@ class FieldValuePopulator:
                 ant_values = list()
                 last_modified_by = None
                 last_modified_date = None
+
+                dup_check_ant = defaultdict(list) # type: Dict[Tuple[int, int], List]
+                dup_check_false_match = defaultdict(list)  # type: Dict[Tuple[int, int], List]
+
+                def ant_in(where: Dict[Tuple[int, int], List],
+                           location_start: int,
+                           location_end: int,
+                           value):
+                    lst = where.get((location_start, location_end))
+                    if lst:
+                        for v in lst:
+                            if v == value:
+                                return True
+                    return False
+
                 for dfv in dfvs:
                     dfv_modified_date = dfv.modified_date or dfv.created_date
                     dfv_modified_by = dfv.modified_by or dfv.created_by
@@ -170,24 +185,28 @@ class FieldValuePopulator:
                     if dfv.location_start is not None and dfv.location_end is not None:
                         location_text = doc.full_text[dfv.location_start:dfv.location_end]
                         if dfv.removed_by_user:
-                            false_matches.append(self.FieldAnnotationFalseMatch(document=doc,
-                                                                                field=field,
-                                                                                value=ant_value,
-                                                                                location_start=dfv.location_start,
-                                                                                location_end=dfv.location_end,
-                                                                                location_text=location_text,
-                                                                                text_unit=dfv.text_unit))
+                            if not ant_in(dup_check_false_match, dfv.location_start, dfv.location_end, ant_value):
+                                false_matches.append(self.FieldAnnotationFalseMatch(document=doc,
+                                                                                    field=field,
+                                                                                    value=ant_value,
+                                                                                    location_start=dfv.location_start,
+                                                                                    location_end=dfv.location_end,
+                                                                                    location_text=location_text,
+                                                                                    text_unit=dfv.text_unit))
+                                dup_check_false_match[(dfv.location_start, dfv.location_end)].append(ant_value)
                         else:
-                            ants.append(self.FieldAnnotation(document=doc,
-                                                             field=field,
-                                                             value=ant_value,
-                                                             location_start=dfv.location_start,
-                                                             location_end=dfv.location_end,
-                                                             location_text=location_text,
-                                                             text_unit=dfv.text_unit,
-                                                             extraction_hint=dfv.extraction_hint,
-                                                             modified_date=dfv_modified_date,
-                                                             modified_by=dfv_modified_by))
+                            if not ant_in(dup_check_ant, dfv.location_start, dfv.location_end, ant_value):
+                                ants.append(self.FieldAnnotation(document=doc,
+                                                                 field=field,
+                                                                 value=ant_value,
+                                                                 location_start=dfv.location_start,
+                                                                 location_end=dfv.location_end,
+                                                                 location_text=location_text,
+                                                                 text_unit=dfv.text_unit,
+                                                                 extraction_hint=dfv.extraction_hint,
+                                                                 modified_date=dfv_modified_date,
+                                                                 modified_by=dfv_modified_by))
+                                dup_check_ant[(dfv.location_start, dfv.location_end)].append(ant_value)
 
                 field_value_json = self.merge_dfv_values(field.type, ant_values) if dfvs else None
                 field_values.append(self.FieldValue(document=doc,

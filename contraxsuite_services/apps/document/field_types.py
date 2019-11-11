@@ -464,6 +464,23 @@ class ChoiceField(TypedField):
                 ('vect', vect),
                 ('tfidf', TfidfTransformer())], cls._wrap_get_feature_names(vect)
 
+    @classmethod
+    def check_choice_values_list(cls,
+                                 choice_values: List[str]) -> List[str]:
+        errors = []  # type: List[str]
+        opt_num = 0
+        unique_opts = set()  # type: Set[str]
+        for opt in choice_values:
+            opt_num += 1
+            if not opt:
+                errors.append(f'[{opt_num}] option is empty')
+                continue
+            if opt in unique_opts:
+                errors.append(f'Option ([{opt_num}]:{opt}) appeared multiple times')
+                continue
+            unique_opts.add(opt)
+        return errors
+
 
 class BooleanField(TypedField):
     type_code = 'boolean'

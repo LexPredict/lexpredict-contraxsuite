@@ -233,7 +233,8 @@ class CookieMiddleware(MiddlewareMixin):
             response.set_cookie('auth_token', 'Token %s' % response.data['key'])
 
         # delete token after logout via django UI
-        elif request.META['PATH_INFO'] == reverse('account_logout') and request.method == 'POST':
+        elif request.META['PATH_INFO'] in (reverse('account_logout'), reverse('rest_logout')) \
+                and request.method == 'POST':
             response.delete_cookie('auth_token')
             # INFO: token is deleted in apps.users.adapters.AccountAdapter.logout
             # because here we have AnonimousUser

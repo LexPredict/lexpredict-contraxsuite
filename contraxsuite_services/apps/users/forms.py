@@ -74,6 +74,6 @@ class CustomLoginForm(LoginForm):
     """
     def login(self, request, **kwargs):
         response = super().login(request, **kwargs)
-        token, _ = TokenModel.objects.get_or_create(user=request.user)
+        token, _ = TokenModel.objects.get_or_create(user=self.user)
         response.set_cookie('auth_token', 'Token %s' % token)
         return response

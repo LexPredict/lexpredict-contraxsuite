@@ -28,6 +28,8 @@ import json
 from typing import Dict, Set
 from channels.generic.websocket import WebsocketConsumer
 from asgiref.sync import async_to_sync
+from rest_framework.authtoken.models import Token
+
 from apps.task.utils.logger import get_django_logger
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
@@ -51,13 +53,49 @@ class SubscriptionConsumer(WebsocketConsumer):
         super().__init__(*args, **kwargs)
         self.groups_by_channel = {}  # type: Dict[str, Set[str]]
         self.logger = get_django_logger()
+        self.username = ''
+        self.authenticated = False
 
     def send_message(self, event):
-        self.send(text_data=json.dumps(event['content']))
+        if not self.authenticated:
+            return
+        try:
+            msg_str = json.dumps(event['content'])
+        except Exception as e:
+            self.logger.error(f'WS: error in send_message() while serializing payload: {e}')
+            return
+
+        try:
+            self.send(text_data=msg_str)
+        except Exception as e:
+            self.logger.error(f'WS: error in send_message(), send(): {e}')
 
     def connect(self):
-        self.username = "Anonymous"
+        self.authenticate_request()
         self.accept()
+
+    def authenticate_request(self):
+        if not self.find_user_by_token():
+            self.username = "Anonymous"
+            self.authenticated = False
+
+    def find_user_by_token(self) -> bool:
+        if 'cookies' not in self.scope:
+            return False
+        cookies = self.scope['cookies']
+        token_key = cookies.get('auth_token')  # type: str
+        if not token_key:
+            return False
+        token_key = token_key.replace('Token ', '').strip()
+        try:
+            token = Token.objects.get(key=token_key)
+            self.scope['user'] = token.user
+            self.username = token.user.name
+        except Exception as e:
+            self.logger.error(f"Couldn't find token by key ({token_key}): {e}")
+            return False
+        self.authenticated = True
+        return True
 
     def receive(self, text_data=None, bytes_data=None):
         # expects message like
@@ -72,6 +110,9 @@ class SubscriptionConsumer(WebsocketConsumer):
             self.logger.error(f'Malformatted message: "{text_data}"'
                               ' - no "message" field declared')
             return
+
+        # authenticate user request once again
+        self.authenticate_request()
 
         if msg_obj['message'] == 'subscribe':
             self.process_subscribe_message(text_data, msg_obj)
@@ -125,3 +166,4 @@ class SubscriptionConsumer(WebsocketConsumer):
 
         if not self.groups_by_channel[self.channel_name]:
             self.groups_by_channel.pop(self.channel_name, None)
+
