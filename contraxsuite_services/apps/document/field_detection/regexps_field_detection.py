@@ -187,7 +187,7 @@ class FieldBasedRegexpsDetectionStrategy(FieldDetectionStrategy):
                            field_code_to_value: Dict[str, Any]) -> Optional[FieldValueDTO]:
 
         depends_on_fields = field.get_depends_on_codes()
-        field_code_to_value = {c: v for c, v in field_code_to_value if c in depends_on_fields}
+        field_code_to_value = {c: v for c, v in field_code_to_value.items() if c in depends_on_fields}
 
         if field.stop_words:
             depends_on_full_text = '\n'.join([str(v) for v in field_code_to_value.values()])

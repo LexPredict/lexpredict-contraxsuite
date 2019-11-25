@@ -242,5 +242,6 @@ class Migration(migrations.Migration):
 
     operations = [
         migrations.RunPython(populate_field_values,
+                             atomic=False,
                              reverse_code=migrations.RunPython.noop),
     ]

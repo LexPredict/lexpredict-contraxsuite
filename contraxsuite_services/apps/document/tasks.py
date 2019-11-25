@@ -465,11 +465,13 @@ class LoadDocumentWithFields(BaseTask):
                 for possible_value_text in list(field_value_text):
                     maybe_value = typed_field.extract_from_possible_value_text(possible_value_text)
                     if maybe_value:
+                        maybe_value = typed_field.field_value_python_to_json(maybe_value)
                         fields_to_values[field] = FieldValueDTO(field_value=maybe_value)
                         break
             else:
                 maybe_value = typed_field.extract_from_possible_value_text(field_value_text)
                 if maybe_value:
+                    maybe_value = typed_field.field_value_python_to_json(maybe_value)
                     fields_to_values[field] = FieldValueDTO(field_value=maybe_value)
 
         return fields_to_values
