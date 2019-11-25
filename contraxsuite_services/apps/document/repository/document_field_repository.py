@@ -207,7 +207,8 @@ class DocumentFieldRepository:
 
         qr = FieldValue.objects.filter(document_id=doc_id)  # type: QuerySet
         fields = DocumentField.objects.filter(document_type_id=document_type_id)
-
+        if field_codes_only and isinstance(field_codes_only, str):
+            field_codes_only = {field_codes_only}
         if field_codes_only:
             qr = qr.filter(field__code__in=field_codes_only)
             fields = fields.filter(code__in=field_codes_only)

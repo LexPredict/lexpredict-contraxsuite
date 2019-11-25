@@ -140,7 +140,7 @@ class FieldBasedMLOnlyFieldDetectionStrategy(FieldDetectionStrategy):
             if not field_codes:
                 break
 
-        return [(code, field_type) for uid, code, field_type in depends_on_code_type if uid not in field_codes]
+        return [(code, field_type) for code, field_type in depends_on_code_type if code not in field_codes]
 
     @classmethod
     def get_categories(cls, field: DocumentField) -> List[str]:
@@ -197,8 +197,8 @@ class FieldBasedMLOnlyFieldDetectionStrategy(FieldDetectionStrategy):
         train_target_data = list()
 
         for doc_field_values in train_data:
-            field_value = doc_field_values.get(field.uid)
-            del doc_field_values[field.uid]
+            field_value = doc_field_values.get(field.code)
+            del doc_field_values[field.code]
 
             field_value_idx = category_names_to_indexes.get(field_value) if field_value else None
 
