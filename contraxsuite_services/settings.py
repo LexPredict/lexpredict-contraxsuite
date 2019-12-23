@@ -103,8 +103,6 @@ INSTALLED_APPS = (
     'django_otp.plugins.otp_static',
     # Enable two-factor auth
     'allauth_2fa',
-    'constance',  # django-constance
-    'constance.backends.database',  # django-constance backend
     'corsheaders',  # inject CORS headers into response
     'django_json_widget',  # widget for json field for admin site
 
@@ -154,7 +152,6 @@ MIDDLEWARE = (
     # simple history middleware
     'simple_history.middleware.HistoryRequestMiddleware',
     # custom middleware
-    # 'apps.common.middleware.AutoLoginMiddleware',
     'apps.common.middleware.LoginRequiredMiddleware',
     'apps.common.middleware.Response500ErrorMiddleware',
     'apps.common.middleware.Response404ErrorMiddleware',
@@ -163,7 +160,7 @@ MIDDLEWARE = (
     'apps.common.middleware.AppEnabledRequiredMiddleware',
     'apps.common.middleware.CookieMiddleware',
     # django-pipeline middleware for minifying data
-    'pipeline.middleware.MinifyHTMLMiddleware',
+    # 'pipeline.middleware.MinifyHTMLMiddleware',
     # Configure the django-otp package. Note this must be after the
     # AuthenticationMiddleware.
     'django_otp.middleware.OTPMiddleware',
@@ -230,7 +227,6 @@ TEMPLATES = [
             ],
             # See: https://docs.djangoproject.com/en/dev/ref/settings/#template-context-processors
             'context_processors': [
-                'constance.context_processors.config',
                 'django.template.context_processors.debug',
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
@@ -290,7 +286,7 @@ ROOT_URLCONF = 'urls'
 
 # See: https://docs.djangoproject.com/en/dev/ref/settings/#wsgi-application
 WSGI_APPLICATION = 'wsgi.application'
-ASGI_APPLICATION = 'routing.application'
+ASGI_APPLICATION = 'apps.websocket.routing.application'
 
 # django-pipeline settings
 # see: https://django-pipeline.readthedocs.io/en/latest/
@@ -302,14 +298,14 @@ PIPELINE = {
     'STYLESHEETS': {
         'theme_css': {
             'source_filenames': (
-                'theme/css/bootstrap.css',
-                'theme/css/style.css',
-                'theme/css/swiper.css',
-                'theme/css/dark.css',
-                'theme/css/font-icons.css',
-                'theme/css/animate.css',
-                'theme/css/magnific-popup.css',
-                'theme/css/responsive.css',
+                'css/bootstrap.css',
+                'css/style.css',
+                'css/swiper.css',
+                'css/dark.css',
+                'css/font-icons.css',
+                'css/animate.css',
+                'css/magnific-popup.css',
+                'css/responsive.css',
             ),
             'output_filename': 'pipeline_theme.css',
         },
@@ -368,7 +364,6 @@ ACCOUNT_LOGIN_ATTEMPTS_TIMEOUT = 5
 # Set the allauth adapter to be the 2FA adapter
 # ACCOUNT_ADAPTER = 'allauth_2fa.adapter.OTPAdapter'
 ACCOUNT_ADAPTER = 'apps.users.adapters.AccountAdapter'
-ACCOUNT_FORMS = {'login': 'apps.users.forms.CustomLoginForm'}
 SOCIALACCOUNT_ADAPTER = 'apps.users.adapters.SocialAccountAdapter'
 
 # Custom user app defaults
@@ -387,7 +382,6 @@ STATS_URLS = ['https://stats.contraxsuite.com/api/v1/stats/', 'http://52.200.197
 CELERY_BROKER_URL = 'amqp://contrax1:contrax1@localhost:5672/contrax1_vhost'
 CELERY_BROKER_HEARTBEAT = 0
 CELERY_RESULT_BACKEND = 'apps.task.celery_backend.database:DatabaseBackend'
-CELERY_UPDATE_MAIN_TASK_ON_EACH_SUB_TASK = False
 CELERY_RESULT_EXPIRES = 0
 # CELERY_WORKER_HIJACK_ROOT_LOGGER = False
 
@@ -457,6 +451,7 @@ EXCLUDE_FROM_TRACKING = {
     task_names.TASK_NAME_TRACK_TASKS,
     task_names.TASK_NAME_TRACK_SESSION_COMPLETED,
     task_names.TASK_NAME_UPDATE_MAIN_TASK,
+    task_names.TASK_NAME_UPDATE_PARENT_TASK,
     task_names.TASK_NAME_CLEAN_TASKS_PERIODIC,
     task_names.TASK_NAME_USAGE_STATS,
     task_names.TASK_NAME_RETRAIN_DIRTY_TASKS,
@@ -575,52 +570,6 @@ CONTRAX_FILE_STORAGE_DOCUMENTS_DIR = 'documents/'
 
 # default precision (numbers after decimal dot) for float values
 DEFAULT_FLOAT_PRECIZION = 6
-
-# https://django-constance.readthedocs.io/en/latest/
-REQUIRED_LOCATORS = (
-    'geoentity',
-    'party',
-    'term',
-    'date',
-)
-OPTIONAL_LOCATORS = (
-    'amount',
-    'citation',
-    'copyright',
-    'court',
-    'currency',
-    'definition',
-    'distance',
-    'duration',
-    'percent',
-    'ratio',
-    'regulation',
-    'trademark',
-    'url'
-)
-LOCATOR_GROUPS = {
-    'amount': ('amount', 'currency', 'distance', 'percent', 'ratio'),
-    'other': ('citation', 'copyright', 'definition', 'regulation', 'trademark', 'url')
-}
-OPTIONAL_LOCATOR_CHOICES = [(i, i) for i in OPTIONAL_LOCATORS]
-CONSTANCE_ADDITIONAL_FIELDS = {
-    'app_multiselect': ['django.forms.fields.MultipleChoiceField', {
-        'widget': 'django.forms.SelectMultiple',
-        'choices': OPTIONAL_LOCATOR_CHOICES
-    }],
-}
-CONSTANCE_CONFIG = {
-    'standard_optional_locators': (OPTIONAL_LOCATORS,
-                                   'Standard Optional Locators',
-                                   'app_multiselect'),
-    'auto_login': (False,
-                   'Enable Auto Login',
-                   bool),
-    'data': ('{}',
-             'Custom Config Data',
-             str),
-}
-CONSTANCE_BACKEND = 'constance.backends.database.DatabaseBackend'
 
 # django-rest-framework settings
 # http://www.django-rest-framework.org/
@@ -824,7 +773,7 @@ NOTEBOOK_ARGUMENTS = [
 # CORS_ALLOW_CREDENTIALS = False
 # CORS_URLS_REGEX = r'^.*$'
 
-VERSION_NUMBER = '1.3.0'
+VERSION_NUMBER = '1.4.0'
 VERSION_COMMIT = 'cdd28414'
 
 NOTIFICATION_EMBEDDED_TEMPLATES_PATH = 'apps/notifications/notification_templates'
@@ -917,17 +866,6 @@ if DEBUG:
     MIDDLEWARE += (
         'debug_toolbar.middleware.DebugToolbarMiddleware',
     )
-
-# settings for AutoLoginMiddleware
-# urls available for unauthorized users,
-# otherwise login as "test_user"
-AUTOLOGIN_ALWAYS_OPEN_URLS = [
-    reverse_lazy('account_login'),
-]
-# forbidden urls for "test user" (all account/* except login/logout)
-AUTOLOGIN_TEST_USER_FORBIDDEN_URLS = [
-    'accounts/(?!login|logout)',
-]
 
 CHANNEL_LAYERS = {
     "default": {

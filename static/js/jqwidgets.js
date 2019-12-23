@@ -195,7 +195,9 @@
   }
 
   function note_renderer(index, columnfield, value, defaulthtml, columnproperties, row) {
-    var $defaulthtml = $(defaulthtml).attr('title', $(value).text());
+    // this throws error on simple text like ",.'p"
+    // var $defaulthtml = $(defaulthtml).attr('title', $(value).text());
+    var $defaulthtml = $(defaulthtml);
     return renderCell($defaulthtml, value)
   }
 

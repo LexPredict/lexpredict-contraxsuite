@@ -30,7 +30,7 @@ import pickle
 import re
 import uuid
 from enum import Enum
-from typing import List, Union
+from typing import List, Union, Any, Tuple
 
 import jiphy
 # Django imports
@@ -51,7 +51,7 @@ from picklefield import PickledObjectField
 from simple_history.models import HistoricalRecords
 
 from apps.common.fields import StringUUIDField, CustomJSONField
-from apps.common.managers import BulkSignalsManager, BulkSignalsQuerySet
+from apps.common.managers import BulkSignalsManager
 from apps.common.models import get_default_status
 from apps.common.utils import CustomDjangoJSONEncoder
 from apps.document import constants
@@ -63,8 +63,8 @@ from apps.users.models import User
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2019, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.3.0/LICENSE"
-__version__ = "1.3.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.4.0/LICENSE"
+__version__ = "1.4.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -269,6 +269,11 @@ class DocumentField(TimeStampedModel):
                                                 choices=VALUE_DETECTION_STRATEGY_CHOICES,
                                                 default=VD_USE_REGEXPS_ONLY)
 
+    vectorizer_stop_words = models.TextField(null=True, blank=True, help_text='''Stop words for vectorizers 
+    user in field-based ML field detection. These stop words are excluded from going into the feature vector part 
+    build based on this field. In addition to these words the standard sklearn "english" word list is used. 
+    Format: each word on new line''')
+
     unsure_choice_value = models.CharField(max_length=256, blank=True, null=True,
                                            help_text='''Makes sense for machine learning 
     strategies with "Unsure" category. The strategy will return this value if probabilities of all other categories 
@@ -385,6 +390,11 @@ class DocumentField(TimeStampedModel):
         if not choices:
             return list()
         return [choice.strip() for choice in choices.strip().splitlines()]
+
+    def get_vectorizer_stop_words(self) -> List[str]:
+        if not self.vectorizer_stop_words:
+            return list()
+        return [w.strip() for w in self.vectorizer_stop_words.strip().splitlines()]
 
     def get_choice_values(self) -> List[str]:
         return self.parse_choice_values(self.choices)
@@ -558,24 +568,21 @@ class Document(models.Model):
     # source file size, bytes
     file_size = models.PositiveIntegerField(default=0, null=False)
 
-    # full document text
-    full_text = models.TextField(null=True)
-
     # Pre-calculated length statistics for paragraph and sentence
     paragraphs = models.PositiveIntegerField(default=0, null=False)
     sentences = models.PositiveIntegerField(default=0, null=False)
-
-    # Document metadata from original file
-    metadata = JSONField(blank=True, encoder=CustomDjangoJSONEncoder)
 
     # Document title
     title = models.CharField(max_length=1024, db_index=True, null=True)
 
     # Document history
-    history = HistoricalRecords(excluded_fields=['full_text'])
+    history = HistoricalRecords()
 
     # selected for Delete admin task
     delete_pending = models.BooleanField(default=False, null=False)
+
+    # Document's original path in end user filesystem
+    folder = models.CharField(max_length=1024, db_index=True, null=True)
 
     # apply custom objects manager
     objects = DocumentManager()
@@ -612,11 +619,31 @@ class Document(models.Model):
             .format(self.document_type.title, self.name)
 
     @property
+    def full_text(self):
+        """
+        Just an alias
+        """
+        try:
+            return self.documenttext.full_text
+        except DocumentText.DoesNotExist:
+            pass
+
+    @property
     def text(self):
         """
         Just an alias
         """
         return self.full_text
+
+    @property
+    def metadata(self):
+        """
+        Just an alias
+        """
+        try:
+            return self.documentmetadata.metadata
+        except DocumentMetadata.DoesNotExist:
+            pass
 
     @property
     def available_assignees(self):
@@ -644,21 +671,38 @@ class Document(models.Model):
             return None
         return self.documentcluster_set.order_by('-pk').values_list('pk', flat=True).first()
 
-    def copy_to_target(self, target: 'Document') -> None:
-        # a 'copy' method that doesn't copy foreign keys
-        target.name = self.name
-        target.description = self.description
-        target.language = self.language
-        target.source = self.source
-        target.source_type = self.source_type
-        target.source_path = self.source_path
-        target.file_size = self.file_size
-        target.full_text = self.full_text
-        target.paragraphs = self.paragraphs
-        target.sentences = self.sentences
-        target.title = self.title
-        target.status = self.status
-        target.assignee = self.assignee
+    def get_field_by_code(self, field_code: str) -> Any:
+        """
+        Get document's attribute (like name, assignee etc) by name or
+        get document's attribute attribute by name as "attr_parent.attr_child.attr_grandchild..."
+        See possible codes in constants.py, like DOCUMENT_FIELD_CODE_NAME
+        :param field_code: code like "status.name"
+        :return: field value (status name for this example)
+        """
+        fval, f_exists = self.try_get_field_by_code(field_code)
+        if not f_exists:
+            raise RuntimeError(f'get_field_by_code("{field_code}") - attribute "{field_code}" was not found')
+        return fval
+
+    def try_get_field_by_code(self, field_code: str) -> Tuple[Any, bool]:
+        """
+        Get document's attribute (like name, assignee etc) by name or
+        get document's attribute attribute by name as "attr_parent.attr_child.attr_grandchild..."
+        See possible codes in constants.py, like DOCUMENT_FIELD_CODE_NAME
+        :param field_code: code like "status.name"
+        :return: (field value (status name for this example); flag indicating such field exists)
+        """
+        fields = field_code.split('.')
+        val = self
+        for field in fields:
+            if not hasattr(val, field):
+                return None, False
+            val = getattr(val, field)
+            if callable(val):
+                val = val()
+            if val is None:
+                break
+        return val, True
 
 
 @receiver(models.signals.post_delete, sender=Document)
@@ -666,6 +710,31 @@ def full_delete(sender, instance, **kwargs):
     # automatically removes Document, TextUnits, ThingUsages
     from apps.document.utils import cleanup_document_relations
     cleanup_document_relations(instance)
+
+
+class DocumentText(models.Model):
+    """DocumentText object model"""
+
+    # Document FK
+    document = models.OneToOneField(Document, db_index=True, on_delete=CASCADE)
+
+    # Full document text
+    full_text = models.TextField(null=True)
+
+    @property
+    def text(self):
+        """
+        Just an alias
+        """
+        return self.full_text
+
+
+class DocumentMetadata(models.Model):
+    # Document FK
+    document = models.OneToOneField(Document, db_index=True, on_delete=CASCADE)
+
+    # Document metadata from original file
+    metadata = JSONField(blank=True, encoder=CustomDjangoJSONEncoder)
 
 
 class DocumentTag(models.Model):
@@ -858,17 +927,12 @@ class TextUnit(models.Model):
     # Language,  as detected upon ingestion and stored via ISO code
     language = models.CharField(max_length=3, db_index=True)
 
-    # Raw text
-    text = models.TextField(max_length=16384)
-
     location_start = models.IntegerField(null=True, blank=True)
 
     location_end = models.IntegerField(null=True, blank=True)
 
     # Cryptographic hash of raw text for identical de-duplication
     text_hash = models.CharField(max_length=1024, null=True, db_index=True)
-
-    metadata = CustomJSONField(blank=True, null=True, encoder=DjangoJSONEncoder)
 
     class Meta:
         ordering = ('document__name', 'unit_type')
@@ -882,6 +946,27 @@ class TextUnit(models.Model):
 
     def is_sentence(self) -> bool:
         return self.unit_type == 'sentence'
+
+    @property
+    def text(self):
+        """
+        Just an alias
+        """
+        try:
+            return self.textunittext.text
+        except TextUnitText.DoesNotExist:
+            pass
+
+
+class TextUnitText(models.Model):
+    """TextUnitText object model"""
+
+    text_unit = models.OneToOneField(TextUnit, db_index=True, on_delete=CASCADE)
+
+    text = models.TextField(max_length=16384, null=True)
+
+    def __str__(self):
+        return "TextUnitText (id={}, text_unit={})".format(self.pk, str(self.text_unit))
 
 
 class TextUnitTag(models.Model):

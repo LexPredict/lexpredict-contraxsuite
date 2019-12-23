@@ -35,8 +35,8 @@ from apps.extract.models import GeoEntity, GeoAlias, Term, Court
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2019, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.3.0/LICENSE"
-__version__ = "1.3.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.4.0/LICENSE"
+__version__ = "1.4.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -162,7 +162,16 @@ def load_terms(df: DataFrame) -> int:
             lt.definition_url = row["Term Locale"]
             terms.append(lt)
 
+    # cache "global" term stems step - should be cached here via model manager
     Term.objects.bulk_create(terms)
+
+    # update existing ProjectTermConfiguration objects for all projects across loaded terms
+    from apps.extract.dict_data_cache import cache_term_stems
+    from apps.project.models import ProjectTermConfiguration
+    for config in ProjectTermConfiguration.objects.all():
+        cache_term_stems(config.project_id)
+        config.add(terms)
+
     return len(df)
 
 

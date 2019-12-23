@@ -39,11 +39,10 @@ from apps.analyze.models import DocumentSimilarity, TextUnitSimilarity
 from apps.document.models import TextUnit, Document
 from apps.task.tasks import BaseTask, ExtendedTask
 
-
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2019, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.3.0/LICENSE"
-__version__ = "1.3.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.4.0/LICENSE"
+__version__ = "1.4.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -150,13 +149,10 @@ class DocumentChunkSimilarityProcessor:
         # just the text units of the specified project
         self.text_unit_query = None
         if search_similar_text_units:
-            self.text_unit_query = TextUnit.objects.filter(
-                unit_type='paragraph',
-                document__project_pk=self.project_id,
-                text__regex=self.unit_text_regex) if self.project_id \
-                else TextUnit.objects.filter(
-                    unit_type='paragraph',
-                    text__regex=self.unit_text_regex)
+            filters = dict(unit_type='paragraph', textunittext__text__regex=self.unit_text_regex)
+            if self.project_id:
+                filters['document__project_id'] = project_id
+            self.text_unit_query = TextUnit.objects.filter(**filters)
 
     def process_pack(self) -> None:
         """
@@ -420,8 +416,8 @@ class DocumentChunkSimilarityProcessor:
         :return: TestUnits' text (string) list
         """
         text_query = self.text_unit_query[start:end]
-        texts_set = [t.lower() for t in text_query.values_list('text', flat=True)] \
-            if self.ignore_case else list(text_query.values_list('text', flat=True))
+        texts_set = [t.lower() for t in text_query.values_list('textunittext__text', flat=True)] \
+            if self.ignore_case else list(text_query.values_list('textunittext__text', flat=True))
         return texts_set
 
     @staticmethod

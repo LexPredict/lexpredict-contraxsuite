@@ -1,0 +1,94 @@
+/* Style-1 + Style-2 */
+.checkbox-style,
+.radio-style {
+	opacity: 0;
+	position: absolute;
+}
+
+.checkbox-style, .radio-style,
+.checkbox-style-1-label, .radio-style-1-label,
+.checkbox-style-2-label, .radio-style-2-label,
+.checkbox-style-3-label, .radio-style-3-label {
+	display: inline-block;
+	vertical-align: middle;
+	margin: 5px;
+	cursor: pointer;
+}
+
+.checkbox-style-1-label, .radio-style-1-label,
+.checkbox-style-2-label, .radio-style-2-label,
+.checkbox-style-3-label, .radio-style-3-label { position: relative; }
+
+.checkbox-style-1-label:before, .radio-style-1-label:before,
+.checkbox-style-2-label:before, .radio-style-2-label:before,
+.checkbox-style-3-label:before, .radio-style-3-label:before {
+	content: '';
+	background: #FFF;
+	border: 2px solid #DDD;
+	display: inline-block;
+	vertical-align: middle;
+	width: 24px;
+	height: 24px;
+	padding: 4px;
+	margin-right: 10px;
+	line-height: 1;
+	text-align: center;
+}
+
+.radio-style-1-label:before,
+.radio-style-2-label:before,
+.radio-style-3-label:before { border-radius: 50%; }
+
+.checkbox-style:checked + .checkbox-style-1-label:before { background: #1ABC9C; }
+.radio-style:checked + .radio-style-1-label:before { background: #CCC; }
+
+/* Checkbox-small + Radio-small */
+.checkbox-style-1-label.checkbox-small:before,
+.radio-style-1-label.radio-small:before,
+.checkbox-style-2-label.checkbox-small:before,
+.radio-style-2-label.radio-small:before,
+.checkbox-style-3-label.checkbox-small:before,
+.radio-style-3-label.radio-small:before {
+	border: 2px solid #DDD;
+	width: 16px;
+	height: 16px;
+	margin: 0 8px 1px 0;
+}
+
+/* Style-2 */
+.checkbox-style:checked + .checkbox-style-2-label:before {
+	background: #1ABC9C;
+	box-shadow: inset 0px 0px 0px 4px #fff;
+}
+
+.radio-style:checked + .radio-style-2-label:before {
+	background: #ccc;
+	box-shadow: inset 0px 0px 0px 4px #fff;
+}
+
+.checkbox-style:checked + .checkbox-style-2-label.checkbox-small:before { box-shadow: inset 0px 0px 0px 2px #fff; }
+.radio-style:checked + .radio-style-2-label.radio-small:before { box-shadow: inset 0px 0px 0px 2px #fff; }
+
+/* style-3 */
+.checkbox-style:checked + .checkbox-style-3-label:before,
+.radio-style:checked + .radio-style-3-label:before {
+	content: "\e116";
+	font-family: 'lined-icons';
+	background: #1ABC9C;
+	color: #FFF;
+}
+.radio-style:checked + .radio-style-3-label:before {
+	color: #BBB;
+	background-color: transparent;
+}
+
+/* style-3 - Small */
+.checkbox-style + .checkbox-style-3-label.checkbox-small:before,
+.radio-style + .radio-style-3-label.radio-small:before {
+	border: 1px solid #BBB;
+	width: 16px;
+	height: 16px;
+	margin: 0 8px 1px 0;
+	font-size: 7px;
+	line-height: .8;
+}

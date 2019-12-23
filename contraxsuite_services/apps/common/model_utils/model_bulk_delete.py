@@ -30,8 +30,8 @@ from apps.common.model_utils.table_deps import TableDeps
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2019, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.3.0/LICENSE"
-__version__ = "1.3.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.4.0/LICENSE"
+__version__ = "1.4.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -98,9 +98,13 @@ class ModelBulkDelete:
         with connection.cursor() as cursor:
             cursor.db.autocommit = True
             for i in range(len(self.deps)):
-                query = queries[i] + ' ' + where_suffix
-                cursor.execute(query)
-                count = cursor.rowcount
-                table_name = self.deps[i].deps[0].own_table
-                count_deleted[table_name] = count
+                try:
+                    query = queries[i] + ' ' + where_suffix
+                    cursor.execute(query)
+                    count = cursor.rowcount
+                    table_name = self.deps[i].deps[0].own_table
+                    count_deleted[table_name] = count
+                except Exception as e:
+                    raise RuntimeError(f'Error in bulk_delete.delete_objects(). Query:\n{query}') from e
+
         return count_deleted

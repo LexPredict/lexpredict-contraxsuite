@@ -33,6 +33,7 @@ import zipfile
 from typing import BinaryIO, Union
 
 import rest_framework.views
+from celery.states import PENDING, SUCCESS
 from django.conf import settings
 from django.contrib.contenttypes.models import ContentType
 from django.core.files import File
@@ -75,8 +76,8 @@ from apps.users.models import User
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2019, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.3.0/LICENSE"
-__version__ = "1.3.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.4.0/LICENSE"
+__version__ = "1.4.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -514,14 +515,14 @@ class ProjectViewSet(apps.common.mixins.APILoggingMixin,
         """
         project = getattr(self, 'object', None) or self.get_object()
 
-        if not request.POST.get('force') == 'true':
+        if not request.data.get('force') == 'true':
             if project.uploadsession_set.filter(completed=False).exists():
                 raise APIException('Project has uncompleted upload sessions.')
             elif not project.uploadsession_set.filter(completed=True).exists():
                 raise APIException("Project hasn't completed upload sessions.")
 
         pending_clustering_task_ids = Task.objects \
-            .filter(name=ClusterProjectDocuments.name, project=project, status='PENDING')\
+            .filter(name=ClusterProjectDocuments.name, project=project, status=PENDING)\
             .values_list('pk', flat=True)
         for task_id in pending_clustering_task_ids:
             purge_task(task_id)
@@ -529,17 +530,25 @@ class ProjectViewSet(apps.common.mixins.APILoggingMixin,
         project_clustering = ProjectClustering.objects.create(project=project)
 
         try:
-            n_clusters = int(request.POST.get('n_clusters', 3))
+            n_clusters = int(request.data.get('n_clusters', 3))
         except ValueError:
             n_clusters = 3
+
+        # json data is used when API is activated via swagger either by passing json directly
+        if request.content_type == 'application/json':
+            cluster_by = request.data.get('cluster_by', ['term'])
+        # either use form data from UI
+        else:
+            cluster_by = request.data.getlist('cluster_by', ['term'])
 
         task_id = call_task(
             ClusterProjectDocuments,
             user_id=request.user.id,
             project_id=project.id,
             project_clustering_id=project_clustering.id,
-            method=request.POST.get('method', 'KMeans'),
+            method=request.data.get('method', 'kmeans'),
             metadata={'project_id': project.id},
+            cluster_by=cluster_by,
             n_clusters=n_clusters)
 
         return Response({'task_id': task_id,
@@ -943,7 +952,7 @@ class UploadSessionViewSet(UploadSessionPermissionViewMixin,
                 project=project,
                 name=file_name,
                 file_size=file_size,
-                metadata__upload_status='DONE').exists():
+                documentmetadata__metadata__upload_status='DONE').exists():
             return 'exists'
 
         # 2. if a Document of file name and size already uploaded and parsed BUT soft-deleted
@@ -952,18 +961,19 @@ class UploadSessionViewSet(UploadSessionPermissionViewMixin,
                 project=project,
                 name=file_name,
                 file_size=file_size,
-                metadata__upload_status='DONE').exists():
+                documentmetadata__metadata__upload_status='DONE').exists():
             return 'delete_pending'
 
         # 3. if a Document is not created yet or flag 'upload_status="DONE"' is not set yet
         # so parsing is in progress
         # and Task for file name and size exists with appropriate status
+        # 3.1. if task has completed at this moment and that's why step#1 was missed
         if Task.objects.main_tasks().filter(
                 name=LoadDocuments.name,
                 upload_session__project=project,
                 metadata__file_name=file_name,
                 metadata__file_size=file_size,
-                status='PENDING').exists():
+                status__in=(PENDING, SUCCESS)).exists():
             return 'processing'
 
         # 4. VERY RARE: if a file of name and size already exists but LD Task is not created yet
@@ -987,17 +997,38 @@ class UploadSessionViewSet(UploadSessionPermissionViewMixin,
         response = super().create(request, *args, **kwargs)
 
         upload_files = request.data.pop('upload_files', None)
+
         if upload_files:
-            statuses = {file_name: self.can_upload_file(project, file_name, file_size)
-                        for file_name, file_size in upload_files.items()}
-            upload_files = {file_name: status is True for file_name, status in statuses.items()}
-            exists = [file_name for file_name, status in statuses.items() if status == 'exists']
-            delete_pending = [file_name for file_name, status in statuses.items()
-                              if status == 'delete_pending']
-            processing = [file_name for file_name, status in statuses.items()
-                          if status == 'processing']
+
+            force_rename = request.data.get('force')
+            if force_rename is None:
+                force_rename = FORCE_REWRITE_DOC.val
+
+            do_upload_files = dict()
+            upload_unique_files = list()
+            exists = list()
+            delete_pending = list()
+            processing = list()
+
+            for file_path, file_size in upload_files.items():
+                file_name = os.path.basename(file_path)
+                status = self.can_upload_file(project, os.path.basename(file_path), file_size)
+
+                if (force_rename and status != 'delete_pending') or \
+                        (status is True and (file_name, file_size) not in upload_unique_files):
+                    do_upload_files[file_path] = True
+                    upload_unique_files.append((file_name, file_size))
+                else:
+                    do_upload_files[file_path] = False
+                    if status == 'exists':
+                        exists.append(file_path)
+                    elif status == 'delete_pending':
+                        delete_pending.append(file_path)
+                    elif status == 'processing':
+                        processing.append(file_path)
+
             data = dict(
-                upload_files=upload_files,
+                upload_files=do_upload_files,
                 exists=exists,
                 delete_pending=delete_pending,
                 processing=processing
@@ -1046,7 +1077,8 @@ class UploadSessionViewSet(UploadSessionPermissionViewMixin,
                     file_size: int,
                     contents: Union[BinaryIO, HttpRequest],
                     force: bool,
-                    user_id: int) -> Response:
+                    user_id: int,
+                    directory_path: str) -> Response:
         if file_size > MAX_DOCUMENT_SIZE.val * 1024 * 1024:
             return Response(status=status.HTTP_400_BAD_REQUEST,
                             data=f'File size is greater than allowed max {MAX_DOCUMENT_SIZE.val} Mb')
@@ -1103,7 +1135,8 @@ class UploadSessionViewSet(UploadSessionPermissionViewMixin,
                 session_id=session.pk,
                 run_standard_locators=True,
                 metadata={'session_id': session.pk, 'file_name': file_name, 'file_size': file_size},
-                linked_tasks=None)
+                linked_tasks=None,
+                directory_path=directory_path)
 
             if project.send_email_notification \
                     and not session.notified_upload_started:
@@ -1210,7 +1243,8 @@ class UploadSessionViewSet(UploadSessionPermissionViewMixin,
                                 file_size=file_.size,
                                 contents=file_.file,
                                 user_id=request.user.id,
-                                force=as_bool(request.POST, 'force', False))
+                                force=as_bool(request.POST, 'force', False),
+                                directory_path=request.POST.get('directory_path'))
 
         # workaround for old frontend usage which checks status based on string constants in response data
         # and not on the status codes
@@ -1373,7 +1407,7 @@ class ProjectClusteringSerializer(serializers.ModelSerializer):
 
     def get_status(self, obj):
         # 1. task purged
-        if not obj.task and obj.status == 'PENDING':
+        if not obj.task and obj.status == PENDING:
             return
         # 2. task started, but status is not set yet
         if obj.status is None and obj.task:

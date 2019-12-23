@@ -56,16 +56,18 @@ from apps.extract.models import (
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2019, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.3.0/LICENSE"
-__version__ = "1.3.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.4.0/LICENSE"
+__version__ = "1.4.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
 
 class BaseUsageListView(apps.common.mixins.JqPaginatedListView):
-    json_fields = ['text_unit__document__pk', 'text_unit__document__name',
+    json_fields = ['text_unit__document__pk',
+                   'text_unit__document__project__name',
+                   'text_unit__document__name',
                    'text_unit__document__description', 'text_unit__document__document_type__title',
-                   'text_unit__text', 'text_unit__pk']
+                   'text_unit__textunittext__text', 'text_unit__pk']
     limit_reviewers_qs_by_field = 'text_unit__document'
     field_types = dict(count=int)
     highlight_field = ''
@@ -88,7 +90,7 @@ class BaseUsageListView(apps.common.mixins.JqPaginatedListView):
         qs = super().get_queryset()
         if "document_pk" in self.request.GET:
             qs = qs.filter(text_unit__document__pk=self.request.GET['document_pk'])
-        return qs
+        return qs.select_related('text_unit', 'text_unit__textunittext')
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
@@ -136,8 +138,8 @@ class TermUsageListView(BaseUsageListView):
         if term_search:
             # qs = self.filter(term_search, qs,
             #                  _or_lookup='term__term__exact',
-            #                  _and_lookup='text_unit__text__icontains',
-            #                  _not_lookup='text_unit__text__icontains')
+            #                  _and_lookup='text_unit__textunittext__text__icontains',
+            #                  _not_lookup='text_unit__textunittext__text__icontains')
             qs = qs.filter(term__term__icontains=term_search)
         # filter out duplicated Terms (equal terms, but diff. term sources)
         # qs = qs.order_by('term__term').distinct('term__term', 'text_unit__pk')
@@ -459,9 +461,9 @@ class DateUsageTimelineView(apps.common.mixins.JqPaginatedListView):
                 if show_text_unit_text:
                     values.append('text')
                     if truncate_text_unit_text:
-                        annotations.update(dict(text=Concat(Left('text_unit__text', 100), Value('...'))))
+                        annotations.update(dict(text=Concat(Left('text_unit__textunittext__text', 100), Value('...'))))
                     else:
-                        annotations.update(dict(text=F('text_unit__text')))
+                        annotations.update(dict(text=F('text_unit__textunittext__text')))
                 date_list_view = DateUsageListView(request=self.request)
                 date_data = date_list_view.get_queryset() \
                     .annotate(**annotations) \
@@ -1097,7 +1099,7 @@ class DateUsageToICalView(DateUsageListView):
             event = icalendar.Event()
             event.add("summary", "Calendar reminder for document {0}, text unit {1}:\n{2}"
                       .format(du['text_unit__document__name'], du['text_unit__pk'],
-                              du['text_unit__text'][:sample_length]))
+                              du['text_unit__textunittext__text'][:sample_length]))
             event.add("dtstart", du['date'])
             event.add("dtend", du['date'])
             event.add("dtstamp", du['date'])

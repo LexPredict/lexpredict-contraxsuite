@@ -40,8 +40,8 @@ from apps.analyze.models import (
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2019, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.3.0/LICENSE"
-__version__ = "1.3.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.4.0/LICENSE"
+__version__ = "1.4.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -87,5 +87,15 @@ urlpatterns += [
         r'^submit/text-unit-classification/$',
         views.SubmitTextUnitClassificationView.as_view(),
         name='text-unit-classification-submit',
+    ),
+    url(
+        r'^train-document-doc2vec-model/$',
+        views.TrainDocumentDoc2VecModelView.as_view(),
+        name='train-document-doc2vec-model',
+    ),
+    url(
+        r'^train-text-unit-doc2vec-model/$',
+        views.TrainTextUnitDoc2VecModelView.as_view(),
+        name='train-text-unit-doc2vec-model',
     ),
 ]

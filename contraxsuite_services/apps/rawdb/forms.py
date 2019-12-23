@@ -28,14 +28,16 @@ import json
 
 from django import forms
 
+from apps.common.widgets import FiltrableProjectSelectWidget, FilterableProjectSelectField
 from apps.document.models import DocumentType
 from apps.document.tasks import MODULE_NAME
 import task_names
+from apps.project.models import Project
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2019, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.3.0/LICENSE"
-__version__ = "1.3.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.4.0/LICENSE"
+__version__ = "1.4.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -59,6 +61,15 @@ class ReindexForm(forms.Form):
         required=False)
 
     recreate_tables = forms.BooleanField(required=False)
+
+    project = FilterableProjectSelectField(queryset=Project.objects.all(),
+                                           required=False,
+                                           label='Restrict to project',
+                                           widget=FiltrableProjectSelectWidget)
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['project'].widget.master_id = 'id_document_type'
 
     def _post_clean(self):
         super()._post_clean()

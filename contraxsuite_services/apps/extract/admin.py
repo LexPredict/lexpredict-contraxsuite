@@ -37,8 +37,8 @@ from apps.extract.models import (
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2019, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.3.0/LICENSE"
-__version__ = "1.3.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.4.0/LICENSE"
+__version__ = "1.4.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -50,17 +50,17 @@ class CourtAdmin(admin.ModelAdmin):
 
 class CourtUsageAdmin(admin.ModelAdmin):
     list_display = ('text_unit', 'court', 'count')
-    search_fields = ('text_unit__text', 'court__name')
+    search_fields = ('text_unit__textunittext__text', 'court__name')
 
 
 class CitationUsageAdmin(admin.ModelAdmin):
     list_display = ('text_unit', 'citation_str', 'count')
-    search_fields = ('text_unit__text', 'citation_str')
+    search_fields = ('text_unit__textunittext__text', 'citation_str')
 
 
 class CopyrightUsageAdmin(admin.ModelAdmin):
     list_display = ('text_unit', 'copyright_str', 'count')
-    search_fields = ('text_unit__text', 'copyright_str')
+    search_fields = ('text_unit__textunittext__text', 'copyright_str')
 
 
 class CurrencyUsageAdmin(admin.ModelAdmin):
@@ -115,7 +115,7 @@ class GeoAliasAdmin(admin.ModelAdmin):
 
 class GeoAliasUsageAdmin(admin.ModelAdmin):
     list_display = ('text_unit', 'alias', 'count')
-    search_fields = ('text_unit__text', 'alias__alias')
+    search_fields = ('text_unit__textunittext__text', 'alias__alias')
 
 
 class GeoEntityAdmin(admin.ModelAdmin):
@@ -125,7 +125,7 @@ class GeoEntityAdmin(admin.ModelAdmin):
 
 class GeoEntityUsageAdmin(admin.ModelAdmin):
     list_display = ('text_unit', 'entity', 'count')
-    search_fields = ('text_unit__text', 'entity__name')
+    search_fields = ('text_unit__textunittext__text', 'entity__name')
 
 
 class GeoRelationAdmin(admin.ModelAdmin):
@@ -145,12 +145,12 @@ class TermUsageAdmin(admin.ModelAdmin):
 
 class TrademarkUsageAdmin(admin.ModelAdmin):
     list_display = ('text_unit', 'trademark', 'count')
-    search_fields = ('text_unit__text', 'trademark')
+    search_fields = ('text_unit__textunittext__text', 'trademark')
 
 
 class UrlUsageAdmin(admin.ModelAdmin):
     list_display = ('text_unit', 'source_url', 'count')
-    search_fields = ('text_unit__text', 'source_url')
+    search_fields = ('text_unit__textunittext__text', 'source_url')
 
 
 admin.site.register(AmountUsage, AmountUsageAdmin)

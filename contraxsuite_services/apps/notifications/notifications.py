@@ -48,8 +48,8 @@ from apps.notifications.models import DocumentDigestConfig, DocumentDigestSendDa
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2019, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.3.0/LICENSE"
-__version__ = "1.3.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.4.0/LICENSE"
+__version__ = "1.4.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -57,6 +57,14 @@ __email__ = "support@contraxsuite.com"
 def ensure_no_dir_change(fn: str):
     if '..' in fn or '/' in fn or '\\' in fn:
         raise RuntimeError('File name should be inside its parent dir: {0}'.format(fn))
+
+
+def get_predefined_mime_type(rfn: str) -> Optional[str]:
+    fn = os.path.normpath(os.path.join(settings.NOTIFICATION_CUSTOM_TEMPLATES_PATH_IN_MEDIA, rfn))
+    _, file_extension = os.path.splitext(fn)
+    if file_extension.lower() == '.svg':
+        return 'svg+xml'
+    return None
 
 
 def get_notification_template_resource(rfn: str) -> Optional[bytes]:
@@ -96,7 +104,11 @@ def send_email(log: ProcessLogger, dst_user, subject: str, txt: str, html: str, 
 
             for image_fn in images:
                 data = get_notification_template_resource(os.path.join(image_dir, image_fn))
-                img = MIMEImage(data)
+                mime_type = get_predefined_mime_type(image_fn)
+                try:
+                    img = MIMEImage(data, _subtype=mime_type) if mime_type else MIMEImage(data)
+                except TypeError as e:
+                    raise RuntimeError(f"Couldn't guess MIME type for tile {image_fn}") from e
                 img.add_header('Content-Id', '<' + image_fn + '>')
                 img.add_header("Content-Disposition", "inline", filename=image_fn)
                 email.attach(img)

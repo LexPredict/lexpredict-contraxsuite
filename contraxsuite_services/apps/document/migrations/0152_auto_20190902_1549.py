@@ -12,8 +12,9 @@ def set_upload_status(apps, schema_editor):
     pending_files = Task.objects.filter(name='Load Documents',
         status__in=['PENDING']).values('metadata__file_name', 'upload_session_id')
     for file_data in pending_files:
-        documents = documents.exclude(name=file_data['file_name'],
-                                      upload_session_id=file_data['upload_session_id'])
+        if 'file_name' in file_data and 'upload_session_id' in file_data:
+            documents = documents.exclude(name=file_data['file_name'],
+                                          upload_session_id=file_data['upload_session_id'])
     chunk_size = 100
     for n in range(0, documents.count(), chunk_size):
         documents_chunk = documents[n:n + chunk_size]

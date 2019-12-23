@@ -27,6 +27,8 @@
 # Future imports
 from __future__ import absolute_import, unicode_literals
 
+from typing import Optional
+
 import task_names
 # Project imports
 from apps.rawdb.forms import ReindexForm
@@ -41,8 +43,8 @@ from apps.task.views import BaseAjaxTaskView
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2019, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.3.0/LICENSE"
-__version__ = "1.3.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.4.0/LICENSE"
+__version__ = "1.4.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -59,4 +61,7 @@ class ReindexTaskView(BaseAjaxTaskView):
         document_type = data.get('document_type', {})
         document_type_code = document_type.code if document_type else None
         force = data.get('recreate_tables') or False
-        call_task_func(manual_reindex, (document_type_code, force), data['user_id'])
+        proj = data.get('project') or None
+        proj_id = proj.pk if proj else None  # type:Optional[int]
+        call_task_func(manual_reindex, (document_type_code, force, proj_id),
+                       data['user_id'])

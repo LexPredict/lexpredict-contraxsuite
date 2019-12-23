@@ -5,7 +5,7 @@
 {% block cancel_button %}
   {% if user == a_user %}
     <a class="btn-u btn-sm" href="{% url 'account_change_password' %}">Change Password</a>
-    <a class="btn-u btn-sm btn-w" href="{% url 'two-factor-setup' %}">Two Factor Authentication</a>
+{#    <a class="btn-u btn-sm btn-w" href="{% url 'two-factor-setup' %}">Two Factor Authentication</a>#}
   {% endif %}
   <a class="btn-u btn-sm" href="{% url 'account_email' %}">E-Mail</a>
   {% if not user.is_reviewer %}

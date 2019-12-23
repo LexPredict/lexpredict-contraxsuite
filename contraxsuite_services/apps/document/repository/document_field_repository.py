@@ -41,6 +41,7 @@ from apps.common.contraxsuite_urls import doc_editor_url
 from apps.common.script_utils import eval_script
 from apps.common.singleton import Singleton
 from apps.common.sql_commons import sql_query
+from apps.document.constants import ALL_DOCUMENT_FIELD_CODES
 from apps.document.field_types import TypedField, MultiValueField
 from apps.document.models import Document
 from apps.document.models import DocumentType, DocumentField
@@ -55,10 +56,11 @@ from apps.users.models import User
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2019, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.3.0/LICENSE"
-__version__ = "1.3.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.4.0/LICENSE"
+__version__ = "1.4.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
+
 
 YES = 'Yes'
 
@@ -126,6 +128,56 @@ class DocumentFieldRepository:
 
         return field_code_to_fvals
 
+    def get_document_own_and_field_values(
+            self,
+            document: Document,
+            field_codes: Set[str] = None,
+            need_field_values: bool = False):
+        """
+        Get fields either from document or from FieldValues stored for the document.
+        We can request such fields as "formula" or "assignee_name".
+        :param document: document with all its fields
+        :param field_codes: fields to retrieve, None means all fields should be returned
+        :param need_field_values: add FieldValue-s values in resulted hashset
+        :return: {field_code: field_value}
+        """
+        field_by_code = None
+        if not field_codes:
+            field_codes = ALL_DOCUMENT_FIELD_CODES
+
+        if need_field_values:
+            field_by_code = self.get_document_field_code_by_id(document.document_type.pk)
+            field_codes.update(field_by_code.values())
+
+        doc_values = {}  # type: Dict[str, Any]
+        field_codes_left = set(field_codes)
+
+        for field_code in field_codes:
+            fval, f_exists = document.try_get_field_by_code(field_code)
+            if f_exists:
+                field_codes_left.remove(field_code)
+                doc_values[field_code] = fval
+
+        # if there are fields left after trying to get values from Document object
+        if not field_codes_left:
+            return doc_values
+
+        fvals = FieldValue.objects.filter(document_id=document.pk).values_list(
+            'field_id', 'value')
+        if not field_by_code:
+            field_by_code = self.get_document_field_code_by_id(document.document_type.pk)
+        for field_id, field_value in fvals:
+            field_code = field_by_code[field_id]
+            if field_code in field_codes_left:
+                doc_values[field_code] = field_value
+        return doc_values
+
+    def get_document_field_code_by_id(self, doc_type_id: str):
+        return {
+            f[0]: f[1] for f in
+            DocumentField.objects.filter(
+                document_type_id=doc_type_id).values_list('pk', 'code')}
+
     def get_document_field_by_id(self, field_id: str) -> DocumentField:
         return DocumentField.objects.get(pk=field_id)
 
@@ -175,8 +227,8 @@ class DocumentFieldRepository:
     def get_annotated_values_for_dump(self) -> List[Dict]:
         data = FieldAnnotation.objects \
             .filter(modified_by__isnull=False,
-                    text_unit__text__isnull=False) \
-            .annotate(text_unit_text=F('text_unit__text')) \
+                    text_unit__textunittext__text__isnull=False) \
+            .annotate(text_unit_text=F('text_unit__textunittext__text')) \
             .values('field_id', 'value', 'extraction_hint',
                     'text_unit_text', 'modified_date')  # 'created_date'
         return data
@@ -427,7 +479,7 @@ class DocumentFieldRepository:
                                   field=field,
                                   value=typed_field.field_value_python_to_json(v),
                                   modified_by=user) for doc_id, v in doc_ids_to_values.items()]
-            FieldValue.objects.bulk_create(to_save, ignore_conflicts=True)
+            FieldValue.objects.bulk_create(to_save)
 
     @transaction.atomic
     def store_values_one_doc_many_fields_no_ants(self,
@@ -454,7 +506,7 @@ class DocumentFieldRepository:
                                     f'but this field requires annotations.')
                 typed_field = TypedField.by(field)
 
-                to_save.append(FieldValue(document_type=doc,
+                to_save.append(FieldValue(document=doc,
                                           field=field,
                                           value=typed_field.field_value_python_to_json(python_val),
                                           modified_by=user))
@@ -462,7 +514,7 @@ class DocumentFieldRepository:
             FieldValue.objects.filter(document_id=doc.pk, field__code__in=field_codes_to_python_values.keys()).delete()
             FieldAnnotation.objects.filter(document_id=doc.pk,
                                            field__code__in=field_codes_to_python_values.keys()).delete()
-            FieldValue.objects.bulk_create(to_save, ignore_conflicts=True)
+            FieldValue.objects.bulk_create(to_save)
 
     @transaction.atomic
     def clear_field_value_no_false_match(self, document: Document, field: DocumentField):
@@ -697,8 +749,7 @@ class DocumentFieldRepository:
 
             field = ant_model.field
             ant_model.delete()
-            FieldAnnotationFalseMatch.objects.bulk_create([FieldAnnotationFalseMatch.make_from_annotation(ant_model)],
-                                                          ignore_conflicts=True)
+            FieldAnnotationFalseMatch.objects.bulk_create([FieldAnnotationFalseMatch.make_from_annotation(ant_model)])
 
             typed_field = TypedField.by(field)
 

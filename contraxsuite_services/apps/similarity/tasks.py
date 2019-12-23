@@ -26,6 +26,7 @@
 
 import math
 from collections import defaultdict
+from typing import Optional
 
 import fuzzywuzzy.fuzz
 import nltk
@@ -44,11 +45,10 @@ from apps.similarity.chunk_similarity_task import ChunkSimilarity
 from apps.similarity.models import DocumentSimilarityConfig, DST_FIELD_SIMILARITY_CONFIG_ATTR
 from apps.task.tasks import BaseTask, remove_punctuation_map, CeleryTaskLogger
 
-
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2019, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.3.0/LICENSE"
-__version__ = "1.3.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.4.0/LICENSE"
+__version__ = "1.4.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -150,16 +150,15 @@ class Similarity(BaseTask):
         search_similar_documents = kwargs['search_similar_documents']
         search_similar_text_units = kwargs['search_similar_text_units']
         similarity_threshold = kwargs['similarity_threshold']
-        project = kwargs['project']
+        project = kwargs.get('project')
         project_id = project['pk'] if project else 0
         self.log_info('Min similarity: %d' % similarity_threshold)
 
         # get text units with min length 100 signs
-        text_units = TextUnit.objects.filter(
-            unit_type='paragraph', document__project_id=project_id,
-            text__regex=r'.{100}.*') if project_id else \
-            TextUnit.objects.filter(
-                unit_type='paragraph', text__regex=r'.{100}.*')
+        filters = dict(unit_type='paragraph', textunittext__text__regex=r'.{100}.*')
+        if project_id:
+            filters['document__project_id'] = project_id
+        text_units = TextUnit.objects.filter(**filters)
         len_tu_set = text_units.count()
 
         push_steps = 0
@@ -181,7 +180,7 @@ class Similarity(BaseTask):
             self.push()
 
             # step #2 - prepare data
-            texts_set = ['\n'.join(d.textunit_set.values_list('text', flat=True))
+            texts_set = ['\n'.join(d.textunit_set.values_list('textunittext__text', flat=True))
                          for d in documents]
             self.push()
 
@@ -219,7 +218,7 @@ class Similarity(BaseTask):
             self.push()
 
             # step #2 - prepare data
-            texts_set, pks = zip(*text_units.values_list('text', 'pk'))
+            texts_set, pks = zip(*text_units.values_list('textunittext__text', 'pk'))
             self.push()
 
             # step #3
@@ -265,6 +264,12 @@ class PreconfiguredDocumentSimilaritySearch(BaseTask):
         if not dst_field:
             raise RuntimeError('Document field not found: {0}'.format(kwargs['field']))
 
+        proj = kwargs['project']
+        proj_id = proj['pk'] if proj else None  # type:Optional[int]
+        doc_query = Document.objects.filter(document_type=dst_field.document_type,
+                                            project_id=proj_id) if proj_id \
+            else Document.objects.filter(document_type=dst_field.document_type)
+
         config = getattr(dst_field, DST_FIELD_SIMILARITY_CONFIG_ATTR)  # type: DocumentSimilarityConfig
 
         config.self_validate()
@@ -278,7 +283,7 @@ class PreconfiguredDocumentSimilaritySearch(BaseTask):
 
         import apps.document.repository.document_field_repository as dfr
         field_repo = dfr.DocumentFieldRepository()
-        qr_doc_ids = Document.objects.filter(document_type=dst_field.document_type).values_list('pk', flat=True)
+        qr_doc_ids = doc_query.values_list('pk', flat=True)
         doc_ids_to_code_to_value = field_repo \
             .get_field_code_to_python_value_multiple_docs(document_type_id=dst_field.document_type_id,
                                                           doc_ids=qr_doc_ids,

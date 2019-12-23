@@ -36,7 +36,7 @@ RUN echo "deb mirror://mirrors.ubuntu.com/mirrors.txt bionic main restricted uni
 	echo -e \'LANG="en_US.UTF-8"\nLANGUAGE="en_US:en"\n\' > /etc/default/locale && \
 	npm -g install yuglify && \
 	virtualenv -p /usr/bin/python3 /contraxsuite_services/venv && chmod ug+x /contraxsuite_services/venv/bin/activate && \
-	. /contraxsuite_services/venv/bin/activate && python --version && pip install -r /contraxsuite_services/deploy/base/python-requirements-all.txt && pip uninstall -y -r /contraxsuite_services/deploy/base/python-unwanted-requirements.txt && pip install -r /contraxsuite_services/python-requirements-additional.txt && deactivate && \
+	. /contraxsuite_services/venv/bin/activate && python --version && pip install -r /contraxsuite_services/python-requirements-additional.txt && pip install -r /contraxsuite_services/deploy/base/python-requirements-all.txt && pip uninstall -y -r /contraxsuite_services/deploy/base/python-unwanted-requirements.txt && deactivate && \
 	if [ -f  /contraxsuite_services/deploy/base/customer-requirements.txt ]; then \
     . /contraxsuite_services/venv/bin/activate && \
     pip install -r /contraxsuite_services/deploy/base/customer-requirements.txt && deactivate; fi && \

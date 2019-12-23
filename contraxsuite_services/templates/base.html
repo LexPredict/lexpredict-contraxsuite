@@ -14,18 +14,17 @@
   {% block css %}
     <!-- Favicon -->
     <link rel="shortcut icon" href="{% static "images/favicon.ico" %}">
-
+<!--    <link href="https://fonts.googleapis.com/css?family=Hind+Vadodara&display=swap" rel="stylesheet">-->
     <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css">
     <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Lato:300,400,400italic,600,700|Raleway:300,400,500,600,700|Crete+Round:400italic" type="text/css" />
     {% stylesheet 'theme_css' %}
-{#    <link rel="stylesheet" href="{% static "theme/css/style.css" %}" type="text/css" />#}
-{#    <link rel="stylesheet" href="{% static "theme/css/bootstrap.css" %}" type="text/css" />#}
-{#    <link rel="stylesheet" href="{% static "theme/css/swiper.css" %}" type="text/css" />#}
-{#    <link rel="stylesheet" href="{% static "theme/css/dark.css" %}" type="text/css" />#}
-{#    <link rel="stylesheet" href="{% static "theme/css/font-icons.css" %}" type="text/css" />#}
-{#    <link rel="stylesheet" href="{% static "theme/css/animate.css" %}" type="text/css" />#}
-{#    <link rel="stylesheet" href="{% static "theme/css/magnific-popup.css" %}" type="text/css" />#}
-{#    <link rel="stylesheet" href="{% static "theme/css/responsive.css" %}" type="text/css" />#}
+{#    <link rel="stylesheet" href="{% static "css/style.css" %}" type="text/css" />#}
+{#    <link rel="stylesheet" href="{% static "css/bootstrap.css" %}" type="text/css" />#}
+{#    <link rel="stylesheet" href="{% static "css/swiper.css" %}" type="text/css" />#}
+{#    <link rel="stylesheet" href="{% static "css/dark.css" %}" type="text/css" />#}
+{#    <link rel="stylesheet" href="{% static "css/font-icons.css" %}" type="text/css" />#}
+{#    <link rel="stylesheet" href="{% static "css/animate.css" %}" type="text/css" />#}
+{#    <link rel="stylesheet" href="{% static "css/magnific-popup.css" %}" type="text/css" />#}
   {% endblock %}
 
   {% block css_extra %}
@@ -40,121 +39,111 @@
 
 <body class="stretched {% block bodyclass %}{% endblock %}">
 
+{% if user.is_authenticated %}
 <!-- Document Wrapper -->
 <div id="wrapper" class="clearfix">
 
   {% block content_wrapper %}
-    <!-- Header -->
-    <header id="header" class="transparent-header semi-transparent dark full-header">
-      <div id="header-wrap">
-        <div class="container clearfix">
-          <div id="primary-menu-trigger"><i class="icon-reorder"></i></div>
+   {% include "layout/header.html" %}
+   {% include "layout/left_sidebar.html" %}
 
-          <!-- Logo -->
-          <div id="logo">
-            <a href="{% url 'home' %}" class="standard-logo" data-dark-logo="{% static "images/contraxsuite_logo.png" %}">
-              <img src="{% static "images/contraxsuite_logo.png" %}" alt="Contraxsuite Logo">
-            </a>
-          </div>
-          <!-- #logo end -->
-
-          <!-- Primary Navigation -->
-          {% include "_base_menu_style1.html" %}
-          <!-- #primary-menu end -->
-
-        </div>
+    <div class="main-container">
+      {% if user.is_authenticated %}
+      <div class="page-header">
+        {% block breadcrumb %}
+        <nav aria-label="breadcrumb">
+          <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="/advanced">LexNLP Extracted Values</a></li>
+            {% block page_header_wrapper %}
+            <li class="breadcrumb-item active" aria-current="page">
+              {% block page_header %}{% endblock %}{% block page_header_addon %}{% endblock %}
+            </li>
+            {% endblock %}
+          </ol>
+        </nav>
+        {% endblock breadcrumb %}
       </div>
-    </header><!-- #header end -->
+      {% endif %}
 
-    <!-- Page Header -->
-    {% block page_header_wrapper %}
-      <section id="page-title">
-        <div class="container clearfix">
-          <h1>{% block page_header %}{% endblock %}{% block page_header_addon %}{% endblock %}</h1>
-        </div>
-      </section>
-    {% endblock %}
-    <!-- end Page Header -->
+      <!-- Content -->
+      <section id="content" class="content-container">
+        <div class="content-wrap">
+          <div class="container clearfix {% block additional-container-classes %}{% endblock %}">
 
-    <!-- Content -->
-    <section id="content">
-      <div class="content-wrap">
-        <div class="container clearfix">
-
-          <!-- Global Search -->
-          {% if user.is_authenticated %}
+            <!-- Global Search -->
+            {% if user.is_authenticated %}
             <div class="well global-search">
-              <div>
-                <i class="fa fa-search"></i>
-                <strong>Global Search</strong>
-              </div>
+              <div class="title">Global Search</div>
               <form class="form-inline" action="{% url "document:search" %}">
-                <div class="form-group">
-                  <input type="text" class="typeahead form-control" id="name_search" name="name_search"
-                         value="{{ name_search }}"
-                         placeholder="Name">
-                </div>
-                <div class="form-group">
-                  <input type="text" class="typeahead form-control" id="description_search" name="description_search"
-                         value="{{ description_search }}"
-                         placeholder="Description">
-                </div>
-                <div class="form-group">
-                  <input type="text" class="form-control" id="term_search" name="term_search"
-                         data-role="tagsinput"
-                         value="{{ term_search }}"
-                         placeholder="Term">
-                </div>
-                <div class="form-group">
-                  <input type="text" class="typeahead form-control" id="entity_search" name="entity_search"
-                         value="{{ entity_search }}"
-                         placeholder="Geo Entity">
-                </div>
-                <div class="form-group">
-                  <input type="text" class="typeahead form-control" id="party_search" name="party_search"
-                         value="{{ party_search }}"
-                         placeholder="Party Name">
-                </div>
+              <div class="form-group">
+                <input type="text" class="typeahead form-control" id="name_search" name="name_search"
+                       value="{{ name_search }}"
+                       placeholder="Name">
+              </div>
+              <div class="form-group">
+                <input type="text" class="typeahead form-control" id="description_search" name="description_search"
+                       value="{{ description_search }}"
+                       placeholder="Description">
+              </div>
+              <div class="form-group">
+                <input type="text" class="form-control" id="term_search" name="term_search"
+                       data-role="tagsinput"
+                       value="{{ term_search }}"
+                       placeholder="Term">
+              </div>
+              <div class="form-group">
+                <input type="text" class="typeahead form-control" id="entity_search" name="entity_search"
+                       value="{{ entity_search }}"
+                       placeholder="Geo Entity">
+              </div>
+              <div class="form-group">
+                <input type="text" class="typeahead form-control" id="party_search" name="party_search"
+                       value="{{ party_search }}"
+                       placeholder="Party Name">
+              </div>
 
-                {% if is_text_unit_list_page %}
-                  <div class="form-group">
-                    <input type="search" class="form-control" id="elastic_search" name="elastic_search"
-                           value="{{ elastic_search }}"
-                           placeholder="Elastic Search by Text">
-                  </div>
-                {% endif %}
+              {% if is_text_unit_list_page %}
+              <div class="form-group">
+                <input type="search" class="form-control" id="elastic_search" name="elastic_search"
+                       value="{{ elastic_search }}"
+                       placeholder="Elastic Search by Text">
+              </div>
+              {% endif %}
 
-                <button type="submit" class="btn-u btn-sm button-dark">Search</button>
+              <button type="submit" class="btn-u btn-sm button-dark">
+                <i class="fa fa-search"></i> Search
+              </button>
 
-                <i class="i-circled i-dark i-small icon-double-angle-right global-search-switch" data-toggle="tooltip" data-placement="bottom"
-                   data-delay="{&quot;show&quot;: 1000, &quot;hide&quot;:0}"
-                   data-original-title="Collapse"></i>
+              <i class="i-circled i-dark i-small icon-double-angle-right global-search-switch" data-toggle="tooltip" data-placement="bottom"
+                 data-delay="{&quot;show&quot;: 1000, &quot;hide&quot;:0}"
+                 data-original-title="Collapse"></i>
               </form>
             </div>
-          {% endif %}
-          <!-- end Global Search -->
+            {% endif %}
+            <!-- end Global Search -->
 
-          {% if messages %}
+            {% if messages %}
             {% for message in messages %}
-              <span class="notification" data-notify-type="{{ message.tags }}" data-notify-msg="{{ message }}"></span>
+            <span class="notification" data-notify-type="{{ message.tags }}" data-notify-msg="{{ message }}"></span>
             {% endfor %}
-          {% endif %}
+            {% endif %}
 
-          {% block content %}{% endblock content %}
+            {% block content %}{% endblock content %}
 
-          {% if request.user.is_authenticated %}
+            {% if request.user.is_authenticated %}
             <span class="user-info">
-            {{ user.username }}/{{ user.role.abbr }}
-              {% if user.is_admin %}
-                <a href="{% url "admin:index" %}"
-                   class="fa fa-cog"
-                   title="Admin site"></a>
+          {{ user.username }}/{{ user.role.abbr }}
+            {% if user.is_admin %}
+              <a href="{% url "admin:index" %}"
+                 class="fa fa-cog"
+                 title="Admin site"></a>
               {% endif %}
-          </span>
-          {% endif %}
-        </div> <!-- /container -->
-      </div>
-    </section><!-- #content end -->
+        </span>
+            {% endif %}
+          </div> <!-- /container -->
+        </div>
+      </section><!-- #content end -->
+    </div>
 
     <!-- /form to export xlsx from list view -->
     <form id="exportForm" method="GET">
@@ -163,95 +152,6 @@
     </form>
 
     {% block modal %}{% endblock modal %}
-
-    <!-- Footer -->
-    <footer id="footer" class="dark">
-
-      {% if user.is_authenticated %}
-        <!-- Footer widgets -->
-        <div class="container" id="footer-counters">
-          <div class="content-wrap">
-            <div class="row counter-block">
-              <div class="col-md-3">
-                <a href="{% url "document:document-list" %}">
-                  <div class="counter counter-small text-center"><span data-from="1" data-to="{{ documents_count }}" data-refresh-interval="100" data-speed="1000" data-comma="true">{{ documents_count }}</span></div>
-                  <h5 class="nobottommargin text-center">Total Documents</h5>
-                </a>
-              </div>
-              <div class="col-md-3">
-                <a href="{% url "project:project-list" %}">
-                  <div class="counter counter-small text-center"><span data-from="1" data-to="{{ projects_count }}" data-refresh-interval="200" data-speed="2000" data-comma="true">{{ projects_count }}</span></div>
-                  <h5 class="nobottommargin text-center">Projects</h5>
-                </a>
-              </div>
-              <div class="col-md-3">
-                <a href="{% url "project:task-queue-list" %}">
-                  <div class="counter counter-small text-center"><span data-from="1" data-to="{{ task_queues_count }}" data-refresh-interval="200" data-speed="2000" data-comma="true">{{ task_queues_count }}</span></div>
-                  <h5 class="nobottommargin text-center">Task Queues</h5>
-                </a>
-              </div>
-              <div class="col-md-3">
-                <a href="{% url "users:user-list" %}">
-                  <div class="counter counter-small text-center"><span data-from="1" data-to="{{ reviewers_count }}" data-refresh-interval="200" data-speed="2000" data-comma="true">{{ reviewers_count }}</span></div>
-                  <h5 class="nobottommargin text-center">Reviewers</h5>
-                </a>
-              </div>
-            </div>
-          </div>
-        </div><!-- end Footer widgets -->
-      {% endif %}
-
-      <!-- Marketing site -->
-{#      <section class="footer-slider">#}
-{#        <div class="vertical-middle center slider-text">#}
-{#          <div class="heading-block nobottomborder nobottommargin center">#}
-{#            <h1>#}
-{#              <a href="https://contraxsuite.com/">#}
-{#                <div class="text-rotater" data-separator="|" data-rotate="flipInX" data-speed="3500">#}
-{#                  Visit <span class="t-rotate">https://contraxsuite.com|contraxsuite marketing site</span>#}
-{#                </div>#}
-{#              </a>#}
-{#            </h1>#}
-{#          </div>#}
-{#        </div>#}
-{#      </section>#}
-
-      <!-- Copyrights -->
-      <div id="copyrights">
-        <div class="container clearfix">
-
-          <div class="col_half">
-            Copyrights &copy; 2015-2019, <a href="https://contraxsuite.com">ContraxSuite, LLC</a><br>
-            <div class="copyright-links"><a href="#">Terms of Use</a></div>
-            <div style="color: #1ABC9C;">version: {% settings_value "VERSION_NUMBER" %}</div>
-          </div>
-
-          <div class="col_half col_last tright">
-            <div class="fright clearfix">
-              <a href="#" class="social-icon si-small si-borderless si-facebook">
-                <i class="icon-facebook"></i>
-                <i class="icon-facebook"></i>
-              </a>
-
-              <a href="#" class="social-icon si-small si-borderless si-twitter">
-                <i class="icon-twitter"></i>
-                <i class="icon-twitter"></i>
-              </a>
-
-              <a href="#" class="social-icon si-small si-borderless si-linkedin">
-                <i class="icon-linkedin"></i>
-                <i class="icon-linkedin"></i>
-              </a>
-            </div>
-
-            <div class="clear"></div>
-
-            <i class="icon-envelope2"></i> <a href="mailto:support@contraxsuite.com">support@contraxsuite.com</a>
-          </div>
-
-        </div>
-      </div><!-- #copyrights end -->
-    </footer><!-- #footer end -->
 
     {% if user.is_authenticated %}
       <!-- Global Search switcher -->
@@ -263,15 +163,18 @@
 
   {% endblock content_wrapper %}
 </div><!-- #wrapper end -->
+{% endif %}
+
+{% block content2 %}{% endblock content2 %}
 
 <!-- Go To Top -->
 <div id="gotoTop" class="icon-angle-up"></div>
 
 
 {% block js %}
-  <script src="{% static 'theme/js/jquery.js' %}" style="text/javascrypt"></script>
-  <script src="{% static 'theme/js/plugins.js' %}" style="text/javascrypt"></script>
-  <script src="{% static "theme/js/functions.js" %}" style="text/javascrypt"></script>
+  <script src="{% static 'js/jquery.js' %}" style="text/javascrypt"></script>
+  <script src="{% static 'js/plugins.js' %}" style="text/javascrypt"></script>
+  <script src="{% static "js/functions.js" %}" style="text/javascrypt"></script>
 
   {#  <script src="https://cdnjs.cloudflare.com/ajax/libs/tether/1.3.7/js/tether.min.js"#}
   {#          integrity="sha384-XTs3FgkjiBgo8qjEjBk0tGmf3wPrWtA6coPfQDfFEY8AnYJwjalXCiosYRBIBZX8"#}

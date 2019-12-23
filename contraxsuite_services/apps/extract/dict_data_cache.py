@@ -29,11 +29,12 @@ from lexnlp.nlp.en.tokens import get_stems
 
 from apps.common.db_cache.db_cache import DbCache
 from apps.extract.models import GeoEntity, GeoAlias, Court, Term
+from apps.project.models import ProjectTermConfiguration
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2019, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.3.0/LICENSE"
-__version__ = "1.3.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.4.0/LICENSE"
+__version__ = "1.4.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -41,6 +42,7 @@ __email__ = "support@contraxsuite.com"
 CACHE_KEY_GEO_CONFIG = 'geo_config'
 CACHE_KEY_COURT_CONFIG = 'court_config'
 CACHE_KEY_TERM_STEMS = 'term_stems'
+CACHE_KEY_TERM_STEMS_PROJECT_PTN = '%s_project_{}' % CACHE_KEY_TERM_STEMS
 
 
 def cache_geo_config():
@@ -80,9 +82,20 @@ def get_court_config():
     return DbCache.get(CACHE_KEY_COURT_CONFIG)
 
 
-def cache_term_stems():
+def cache_term_stems(project_id=None):
     term_stems = {}
-    for t, pk in Term.objects.values_list('term', 'pk'):
+
+    terms_qs = Term.objects
+    key = CACHE_KEY_TERM_STEMS
+
+    if project_id is not None:
+        from apps.project.models import ProjectTermConfiguration
+        qs = ProjectTermConfiguration.objects.filter(project_id=project_id)
+        if qs.exists():
+            terms_qs = qs.last().terms
+            key = CACHE_KEY_TERM_STEMS_PROJECT_PTN.format(project_id)
+
+    for t, pk in terms_qs.values_list('term', 'pk'):
         stemmed_term = ' %s ' % ' '.join(get_stems(t))
         stemmed_item = term_stems.get(stemmed_term, [])
         stemmed_item.append([t, pk])
@@ -90,8 +103,14 @@ def cache_term_stems():
     for item in term_stems:
         term_stems[item] = dict(values=term_stems[item],
                                 length=len(term_stems[item]))
-    DbCache.put_to_db(CACHE_KEY_TERM_STEMS, term_stems)
+    DbCache.put_to_db(key, term_stems)
 
 
-def get_term_config():
-    return DbCache.get(CACHE_KEY_TERM_STEMS)
+def get_term_config(project_id=None):
+    res = None
+    if project_id is not None:
+        key = CACHE_KEY_TERM_STEMS_PROJECT_PTN.format(project_id)
+        res = DbCache.get(key)
+    if res is None:
+        res = DbCache.get(CACHE_KEY_TERM_STEMS)
+    return res

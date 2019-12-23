@@ -1,10 +1,42 @@
 {% extends "base.html" %}
+{% load static project_tags i18n %}
 
-{% block bodyclass %}account{% endblock %}
+{% block title %}{% endblock %}
 
-{% block content %}
-  <div class="divcenter">
-    <h2>{% block header %}{% endblock %}</h2>
-    {% block inner %}{% endblock %}
+{% block css %}{% endblock %}
+{% block css_extra %}
+  <link rel="shortcut icon" href="{% static "images/favicon.ico" %}">
+  <link rel="stylesheet" href="{% static "css/login.css" %}" type="text/css" />
+  <link rel="stylesheet" href="{% static "css/project.css" %}" type="text/css" />
+{% endblock %}
+
+{% block content_wrapper %}{% endblock %}
+{% block content2 %}
+  <div class="login-page container">
+    <div class="wrapper">
+      <div class="login-form login-animation">
+        <div class="logo">
+          <img src="{% static "images/logo.png" %}" alt="Contraxsuite Logo" />
+        </div>
+        <div class="input-group">
+
+          <div class="login-state">{% block header %}{% endblock %}</div>
+          {% block inner %}{% endblock %}
+
+        </div>
+        <div class="help">
+          <p class="helper">Contact Us</p>
+          <div class="version-block">
+            <p class="support-info">support@contraxsuite.com</p>
+            <p class="support-info">Version: {% settings_value "VERSION_NUMBER" %}</p>
+          </div>
+        </div>
+      </div>
+      <div class="greeting-block">
+        <div class="login-intro"></div>
+      </div>
+
+    </div>
   </div>
+
 {% endblock %}

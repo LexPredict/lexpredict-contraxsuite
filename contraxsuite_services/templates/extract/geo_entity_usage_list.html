@@ -3,7 +3,7 @@
 
 {% block css_extra %}
   {{ block.super }}
-  <link rel="stylesheet" href="{% static "theme/css/components/radio-checkbox.css" %}" type="text/css" />
+  <link rel="stylesheet" href="{% static "css/components/radio-checkbox.css" %}" type="text/css" />
 {% endblock %}
 
 {% block content_list_top_addon %}
@@ -16,6 +16,7 @@
   <script type="text/javascript">
     $(document).ready(function () {
       var datafields = [
+        { name: 'text_unit__document__project__name', type: 'string' },
         { name: 'text_unit__document__name', type: 'string' },
         { name: 'text_unit__document__document_type__title', type: 'string' },
         { name: 'text_unit__document__description', type: 'string' },
@@ -25,7 +26,7 @@
         { name: 'alias__locale', type: 'string' },
         { name: 'alias__type', type: 'string' },
         { name: 'count', type: 'int' },
-        { name: 'text_unit__text', type: 'string' },
+        { name: 'text_unit__textunittext__text', type: 'string' },
         { name: 'url', type: 'string' },
         { name: 'detail_url', type: 'string' }
       ];
@@ -43,6 +44,8 @@
         show_menu(menu_data, grid, row.pk);
       };
       var columns = [
+        { text: 'Project', datafield: 'text_unit__document__project__name', width: 100,
+          align: 'center', cellsalign: 'center', columngroup: 'Document' },
         { text: 'Name', datafield: 'text_unit__document__name', width: 200,
           align: 'center', cellsalign: 'left', enabletooltips: true,
           cellsrenderer: defaultLinkFormatter, columngroup: 'Document' },
@@ -63,7 +66,7 @@
           align: 'center', cellsalign: 'center', columngroup: 'Alias' },
         { text: 'Count', datafield: 'count', width: 60,
           align: 'center', cellsalign: 'center' },
-        { text: 'Text Unit', datafield: 'text_unit__text', sortable: false, width: 'auto', minwidth: 200,
+        { text: 'Text Unit', datafield: 'text_unit__textunittext__text', sortable: false, width: 'auto', minwidth: 200,
           align: 'center', cellsalign: 'center' },
         { text: 'Action', datafield: 'url', width: 60,
           align: 'center', exportable: false,

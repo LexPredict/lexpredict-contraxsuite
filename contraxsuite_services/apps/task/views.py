@@ -26,37 +26,38 @@
 
 # Future imports
 from __future__ import absolute_import, unicode_literals
+
 import traceback
 
 # Django imports
 from django.conf import settings
-from django.urls import reverse
 from django.db.models import F
 from django.db.models.functions import Now, Coalesce
 from django.http import JsonResponse, HttpResponseForbidden
 from django.shortcuts import redirect
+from django.urls import reverse
 from django.views.generic.edit import FormView
 
+import apps.common.mixins
 # Project imports
 from apps.analyze.models import TextUnitClassifier
-import apps.common.mixins
 from apps.common.utils import get_api_module
 from apps.deployment.app_data import DICTIONARY_DATA_URL_MAP
-from apps.document.models import DocumentProperty, TextUnitProperty
+from apps.document.models import DocumentProperty, TextUnitProperty, DocumentType
+from apps.dump.app_dump import get_model_fixture_dump, load_fixture_from_dump, download
+from apps.project.models import Project
 from apps.task.forms import (
-    LoadDocumentsForm, LocateTermsForm, LocateForm,
-    ExistedClassifierClassifyForm, CreateClassifierClassifyForm,
+    LoadDocumentsForm, LocateForm, ExistedClassifierClassifyForm, CreateClassifierClassifyForm,
     ClusterForm, CleanProjectForm,
     UpdateElasticSearchForm, TaskDetailForm, TotalCleanupForm,
     LoadFixtureForm, DumpFixtureForm)
 from apps.task.models import Task
 from apps.task.tasks import call_task, clean_tasks, purge_task, call_task_func, LoadDocuments
-from apps.dump.app_dump import get_model_fixture_dump, load_fixture_from_dump, download
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2019, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.3.0/LICENSE"
-__version__ = "1.3.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.4.0/LICENSE"
+__version__ = "1.4.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -182,6 +183,8 @@ class LoadDocumentsView(BaseAjaxTaskView):
 class LocateTaskView(BaseAjaxTaskView):
     form_class = LocateForm
     html_form_class = 'popup-form locate-form'
+
+    # ability to have custom tasks not declared in LOCATORS
     custom_tasks = set(
         # 'LocateTerms',
     )
@@ -211,7 +214,7 @@ class LocateTaskView(BaseAjaxTaskView):
     def post(self, request, *args, **kwargs):
         form = self.form_class(request.POST)
         if not form.is_valid():
-            return self.json_response(form.errors, status=404)
+            return self.json_response(form.errors, status=400)
         data = form.cleaned_data
 
         project_id = None
@@ -250,21 +253,6 @@ class LocateTaskView(BaseAjaxTaskView):
                 lexnlp_task_data[task_name] = kwargs
 
         if lexnlp_task_data:
-            # if Task.disallow_start('Locate'):
-            #     rejected_tasks.append('Locate')
-            # else:
-            #     started_tasks.append('Locate')
-            #     call_task('Locate',
-            #               tasks=lexnlp_task_data,
-            #               parse=data['parse'],
-            #               user_id=request.user.pk,
-            #               metadata={
-            #                   'description': [i for i, j in lexnlp_task_data.items()
-            #                                   if j.get('locate')],
-            #                   'result_links': [self.locator_result_links_map[i]
-            #                                    for i, j in lexnlp_task_data.items()
-            #                                    if j.get('locate')]})
-
             # allow to start "Locate" task anytime
             started_tasks.append('Locate({})'.format(', '.join(lexnlp_task_data.keys())))
             call_task('Locate',
@@ -286,12 +274,6 @@ class LocateTaskView(BaseAjaxTaskView):
             response_text += 'Some tasks were rejected (already started).<br />'
             response_text += 'Rejected Tasks: [{}]'.format(', '.join(rejected_tasks))
         return self.json_response(response_text)
-
-
-# sample view for custom task
-class LocateTermsView(BaseAjaxTaskView):
-    task_name = 'Locate Terms'
-    form_class = LocateTermsForm
 
 
 class ExistedClassifierClassifyView(BaseAjaxTaskView):
@@ -411,6 +393,8 @@ class TaskListView(apps.common.mixins.AdminRequiredMixin, apps.common.mixins.JqP
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
+        ctx['projects'] = \
+            [(p.pk, p.name) for p in Project.objects.filter(type__code=DocumentType.GENERIC_TYPE_CODE)]
         ctx['active_classifiers'] = TextUnitClassifier.objects.filter(is_active=True).exists()
         if DocumentProperty.objects.exists():
             ctx['ls_document_properties'] = DocumentProperty.objects.order_by('key') \

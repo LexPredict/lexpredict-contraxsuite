@@ -7,6 +7,7 @@
     $(document).ready(function () {
       var datafields = [
         { name: 'pk', type: 'int' },
+        { name: 'text_unit__document__project__name', type: 'string' },
         { name: 'text_unit__document__name', type: 'string' },
         { name: 'text_unit__document__document_type__title', type: 'string' },
         { name: 'volume', type: 'int' },
@@ -17,7 +18,7 @@
         { name: 'court', type: 'string' },
         { name: 'year', type: 'int' },
         { name: 'count', type: 'int' },
-        { name: 'text_unit__text', type: 'string' },
+        { name: 'text_unit__textunittext__text', type: 'string' },
         { name: 'url', type: 'string' },
         { name: 'detail_url', type: 'string' }
       ];
@@ -35,6 +36,9 @@
         show_menu(menu_data, grid, row.pk);
       };
       var columns = [
+        { text: 'Project', datafield: 'text_unit__document__project__name', width: 'auto',
+          align: 'center', cellsalign: 'left', enabletooltips: true,
+          cellsrenderer: defaultLinkFormatter, columngroup: 'Document' },
         { text: 'Name', datafield: 'text_unit__document__name', width: 'auto',
           align: 'center', cellsalign: 'left', enabletooltips: true,
           cellsrenderer: defaultLinkFormatter, columngroup: 'Document' },
@@ -54,7 +58,7 @@
           align: 'center', cellsalign: 'center', columngroup: 'Citation' },
         { text: 'Count', datafield: 'count', width: 50,
           align: 'center', cellsalign: 'center', columngroup: 'Citation' },
-        { text: 'Text Unit', datafield: 'text_unit__text', sortable: false, width: 'auto',
+        { text: 'Text Unit', datafield: 'text_unit__textunittext__text', sortable: false, width: 'auto',
           align: 'center', cellsalign: 'center' },
         { text: 'Action', datafield: 'url', width: 60,
           align: 'center', exportable: false,

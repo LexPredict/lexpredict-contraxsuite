@@ -40,8 +40,8 @@ from apps.task.utils.text.segment import segment_sentences
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2019, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.3.0/LICENSE"
-__version__ = "1.3.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.4.0/LICENSE"
+__version__ = "1.4.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -105,8 +105,7 @@ class LocateEmployees(BaseTask):
         employee_dict = {}
         provisions = []
 
-        for t in TextUnit.objects.filter(document_id=document_id, unit_type="paragraph").all():
-            paragraph_text = t.text
+        for tu_id, paragraph_text in TextUnit.objects.filter(document_id=document_id, unit_type="paragraph").values_list('id', 'textunittext__text'):
             # skip if all text in uppercase
             if paragraph_text == paragraph_text.upper():
                 continue
@@ -144,26 +143,26 @@ class LocateEmployees(BaseTask):
                 if employee_dict.get('governing_geo') is None:
                     employee_dict['governing_geo'] = get_governing_geo(text)
 
-            non_compete_similarity = get_similar_to_non_compete(text)
+            non_compete_similarity = get_similar_to_non_compete(paragraph_text)
             if non_compete_similarity > .5:
-                provisions.append({"text_unit": t.id,
+                provisions.append({"text_unit": tu_id,
                                    "similarity": non_compete_similarity,
                                    "type": "noncompete"})
 
-                termination_similarity = get_similar_to_termination(text)
+                termination_similarity = get_similar_to_termination(paragraph_text)
                 if termination_similarity > .5:
-                    provisions.append({"text_unit": t.id,
+                    provisions.append({"text_unit": tu_id,
                                        "similarity": termination_similarity,
                                        "type": "termination"})
 
-                benefits_similarity = get_similar_to_benefits(text)
+                benefits_similarity = get_similar_to_benefits(paragraph_text)
                 if benefits_similarity > .5:
-                    provisions.append({"text_unit": t.id,
+                    provisions.append({"text_unit": tu_id,
                                        "similarity": benefits_similarity,
                                        "type": "benefits"})
-                severance_similarity = get_similar_to_severance(text)
+                severance_similarity = get_similar_to_severance(paragraph_text)
                 if severance_similarity > .5:
-                    provisions.append({"text_unit": t.id,
+                    provisions.append({"text_unit": tu_id,
                                        "similarity": severance_similarity,
                                        "type": "severance"})
 
@@ -197,7 +196,7 @@ class LocateEmployees(BaseTask):
                             if i["type"] == "severance":
                                 severance_found = True
                 Provision.objects.get_or_create(
-                    text_unit=TextUnit.objects.get(pk=i["text_unit"]),
+                    text_unit_id=i["text_unit"],
                     similarity=i["similarity"],
                     employee=employee,
                     document=Document.objects.get(pk=document_id),

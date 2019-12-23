@@ -28,24 +28,23 @@
 import traceback
 from collections import defaultdict
 from itertools import groupby
-from typing import Dict, Tuple, Set
+from typing import Dict, Set, Optional
 
+# Third-party imports
 import numpy as np
 import pandas as pd
 import rest_framework.views
-# Third-party imports
 from celery.states import SUCCESS, FAILURE, PENDING, REVOKED
+
 # Django imports
 from django.conf.urls import url
 from django.contrib.postgres.aggregates.general import StringAgg
-from django.db.models import Min, Max, Subquery, Prefetch
+from django.db.models import Min, Max, Subquery, Prefetch, Q
 from django.http import JsonResponse, HttpRequest
-from django.urls import reverse
 from elasticsearch import Elasticsearch
 from rest_framework import routers, viewsets, serializers
 from rest_framework.decorators import action
 from rest_framework.exceptions import APIException, ValidationError as DRFValidationError
-from rest_framework.generics import ListAPIView
 from rest_framework.permissions import BasePermission, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework_nested import routers as nested_routers
@@ -75,11 +74,12 @@ from apps.document.repository.dto import FieldValueDTO, AnnotationDTO
 from apps.document.tasks import plan_process_document_changed
 from apps.document.views import show_document
 from apps.extract.models import *
+from apps.users.models import User
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2019, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.3.0/LICENSE"
-__version__ = "1.3.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.4.0/LICENSE"
+__version__ = "1.4.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -137,8 +137,6 @@ class GeneratorListSerializer(serializers.ListSerializer):
 # --------------------------------------------------------
 # Document Note Views
 # --------------------------------------------------------
-from apps.users.models import User
-
 
 class UserSerializer(serializers.ModelSerializer):
     full_name = serializers.SerializerMethodField()
@@ -176,10 +174,19 @@ class DocumentNoteDetailSerializer(apps.common.mixins.SimpleRelationSerializer):
                   'location_start', 'location_end',
                   'document_id', 'field_value_id', 'field_id']
 
-        # def get_history(self, obj):
-        #     return obj.history.values(
-        #         'id', 'document_id', 'history_date',
-        #         'history_user__username', 'note')
+
+class DocumentNoteExportSerializer(DocumentNoteDetailSerializer):
+
+    user = serializers.CharField(source='history.last.history_user.username', read_only=True)
+    annotation_text = serializers.SerializerMethodField()
+
+    class Meta:
+        model = DocumentNote
+        fields = ['pk', 'note', 'timestamp', 'user', 'document_id', 'annotation_text']
+
+    def get_annotation_text(self, obj):
+        if obj.location_start is not None and obj.location_end is not None:
+            return obj.document.full_text[obj.location_start:obj.location_end]
 
 
 class DocumentNoteCreateSerializer(DocumentNoteDetailSerializer):
@@ -309,6 +316,8 @@ class DocumentNoteViewSet(apps.common.mixins.JqListAPIMixin, viewsets.ModelViewS
             return DocumentNoteCreateSerializer
         if self.action == 'update':
             return DocumentNoteUpdateSerializer
+        if self.request.GET.get('export_to'):
+            return DocumentNoteExportSerializer
         return DocumentNoteDetailSerializer
 
 
@@ -329,7 +338,7 @@ class BaseDocumentSerializer(apps.common.mixins.SimpleRelationSerializer):
 
     class Meta:
         model = Document
-        fields = ['pk', 'name', 'document_type', 'file_size',
+        fields = ['pk', 'name', 'document_type', 'file_size', 'folder',
                   'status', 'status_data', 'status_name', 'available_statuses_data',
                   'assignee', 'assign_date', 'assignee_data', 'assignee_name', 'available_assignees_data',
                   'project', 'description', 'title']
@@ -371,7 +380,7 @@ class GenericDocumentSerializer(apps.common.mixins.SimpleRelationSerializer):
 
     class Meta:
         model = Document
-        fields = ['pk', 'name', 'cluster_id', 'file_size',
+        fields = ['pk', 'name', 'cluster_id', 'file_size', 'folder',
                   'parties', 'min_date', 'max_date',
                   'max_currency_amount', 'max_currency_name']
 
@@ -391,7 +400,7 @@ class DocumentWithFieldsDetailSerializer(BaseDocumentSerializer):
 
     class Meta:
         model = Document
-        fields = ['pk', 'name', 'document_type', 'file_size',
+        fields = ['pk', 'name', 'document_type', 'file_size', 'folder',
                   'status', 'status_data', 'available_statuses_data',
                   'assignee', 'assign_date', 'assignee_data', 'available_assignees_data',
                   'description', 'title', 'full_text',
@@ -502,7 +511,7 @@ class DocumentWithFieldsListSerializer(BaseDocumentSerializer):
     class Meta:
         model = Document
         fields = ['pk', 'name', 'document_type',
-                  'description', 'title', 'file_size',
+                  'description', 'title', 'file_size', 'folder',
                   'status', 'status_data', 'status_name',
                   'assignee', 'assign_date', 'assignee_data', 'assignee_name']
 
@@ -516,7 +525,7 @@ class ExtendedDocumentWithFieldsListSerializer(GenericDocumentSerializer,
 
     class Meta:
         model = Document
-        fields = ['pk', 'name', 'document_type',
+        fields = ['pk', 'name', 'document_type', 'folder',
                   'description', 'title', 'file_size',
                   'status', 'status_data', 'status_name',
                   'assignee', 'assign_date', 'assignee_data', 'assignee_name',
@@ -532,7 +541,7 @@ class ExportDocumentWithFieldsListSerializer(DocumentWithFieldsListSerializer):
 
     class Meta:
         model = Document
-        fields = ['pk', 'name', 'description', 'title', 'file_size',
+        fields = ['pk', 'name', 'description', 'title', 'file_size', 'folder',
                   'status_name', 'assignee_name']
 
 
@@ -544,19 +553,24 @@ class ExportExtendedDocumentWithFieldsListSerializer(ExtendedDocumentWithFieldsL
 
     class Meta:
         model = Document
-        fields = ['pk', 'name', 'description', 'title', 'file_size',
+        fields = ['pk', 'name', 'description', 'title', 'file_size', 'folder',
                   'status_name', 'assignee_name',
                   'cluster_id', 'parties', 'min_date', 'max_date',
                   'max_currency_amount', 'max_currency_name']
 
 
 class DocumentPermissions(BasePermission):
+
     def has_permission(self, request, view):
+        reviewer_permission = self.has_reviewer_permisson(request, view)
+        if reviewer_permission is not None:
+            return reviewer_permission
 
         # TODO: find better way to validate user permission for those endpoints,
         # because we check multiple projects at once, but need only one containing its documents
-        if request.method == 'POST' and view.action in ['mark_delete', 'unmark_delete'] \
-                and request.user.is_reviewer:
+        is_reviewer_action = request.method == 'POST' and view.action in [
+            'mark_delete', 'unmark_delete']
+        if is_reviewer_action and request.user.is_reviewer:
             document_ids = request.data.get('document_ids', [])
             project_id = request.data.get('project_id')
 
@@ -584,6 +598,23 @@ class DocumentPermissions(BasePermission):
         if request.user.is_reviewer:
             return obj.project.reviewers.filter(pk=request.user.pk).exists()
         return True
+
+    @staticmethod
+    def has_reviewer_permisson(request, view) -> Optional[bool]:
+        if not request.user.is_reviewer:
+            return None
+        reviewer_actions = ['fields']
+        if view.action not in reviewer_actions:
+            return None
+        # check project requested
+        project_id = view.kwargs.get('project_pk')
+        if not project_id:
+            return None
+
+        projects = project_api_module.Project.objects.filter(
+            (Q(reviewers=request.user) | Q(super_reviewers=request.user)) &
+            Q(pk=int(project_id)))
+        return projects.exists()
 
 
 class DocumentPermissionViewMixin(object):
@@ -648,7 +679,7 @@ class DocumentViewSet(DocumentPermissionViewMixin, apps.common.mixins.APIActionM
             if cluster_id:
                 qs = qs.filter(cluster_id=int(cluster_id))
 
-        qs = qs.select_related('document_type', 'status', 'status__group', 'assignee')
+        qs = qs.select_related('document_type', 'status', 'status__group', 'assignee', 'documenttext')
 
         return qs
 
@@ -721,7 +752,7 @@ class DocumentViewSet(DocumentPermissionViewMixin, apps.common.mixins.APIActionM
             definitions = DefinitionUsage.objects.filter(text_unit__document=document) \
                 .annotate(startOffset=F('text_unit__location_start'),
                           endOffset=F('text_unit__location_end'),
-                          text=F('text_unit__text')).values(
+                          text=F('text_unit__textunittext__text')).values(
                 'definition', 'startOffset', 'endOffset', 'text')
 
             res = list()
@@ -735,8 +766,8 @@ class DocumentViewSet(DocumentPermissionViewMixin, apps.common.mixins.APIActionM
                                     definition_re.finditer(document.text.replace('\n', ' '))],
                         'descriptions': list(data)}
                 res.append(item)
-            document.metadata['definitions'] = res
-            document.save()
+            document.documentmetadata.metadata['definitions'] = res
+            document.documentmetadata.save()
         return Response(document.metadata['definitions'])
 
     def destroy(self, request, *args, **kwargs):
@@ -755,7 +786,7 @@ class DocumentViewSet(DocumentPermissionViewMixin, apps.common.mixins.APIActionM
             remove_session = True
         else:
             statuses = {i['tasks_overall_status'] for i in progress.values()}
-            if statuses == {'FAILURE'}:
+            if statuses == {FAILURE}:
                 remove_session = True
         if remove_session:
             # delete session documents' tasks
@@ -842,7 +873,7 @@ class ProjectDocumentsWithFieldsViewSet(apps.common.mixins.APILoggingMixin,
 
         document_qs = document_qs \
             .select_related('status', 'status__group', 'document_type', 'assignee') \
-            .defer('language', 'source', 'source_type', 'source_path', 'full_text',
+            .defer('language', 'source', 'source_type', 'source_path',
                    'paragraphs', 'sentences', 'upload_session_id')
 
         document_qs = document_qs \
@@ -896,7 +927,7 @@ class ProjectDocumentsWithFieldsViewSet(apps.common.mixins.APILoggingMixin,
 
     @action(methods=['get'], detail=True)
     def full_text(self, request, project_pk, pk):
-        text = Document.objects.filter(pk=pk).values_list('full_text', flat=True).first()
+        text = DocumentText.objects.filter(document_id=pk).values_list('full_text', flat=True).first()
         return JsonResponse(data=text, safe=False)
 
     @action(methods=['get', 'put', 'post', 'patch'], detail=True)
@@ -916,31 +947,6 @@ class ProjectDocumentsWithFieldsViewSet(apps.common.mixins.APILoggingMixin,
             updated_fields = {f for f, fv in field_repo.update_field_values(doc, request.user, request.data)}
             cache_and_detect_field_values(doc=doc, user=request.user, updated_fields=updated_fields)
             return Response(status=200)
-
-
-class DocumentSentimentChartAPIView(ListAPIView):
-    """
-    Document Sentiment Chart
-    """
-
-    def list(self, request, *args, **kwargs):
-        data = []
-        documents = Document.objects \
-            .filter(documentproperty__key='polarity') \
-            .filter(documentproperty__key='subjectivity')
-        for doc in documents:
-            try:
-                data.append(dict(
-                    pk=doc.pk,
-                    url=reverse('v1:document-detail', args=[doc.pk]),
-                    name=doc.name,
-                    polarity=float(doc.documentproperty_set.filter(
-                        key='polarity').first().value),
-                    subjectivity=float(doc.documentproperty_set.filter(
-                        key='subjectivity').first().value)))
-            except (AttributeError, ValueError):
-                pass
-        return JsonResponse(data, safe=False)
 
 
 # --------------------------------------------------------
@@ -1045,7 +1051,7 @@ class DocumentTagViewSet(apps.common.mixins.JqListAPIMixin, viewsets.ModelViewSe
 class TextUnitDetailSerializer(apps.common.mixins.SimpleRelationSerializer):
     class Meta:
         model = TextUnit
-        fields = ['pk', 'unit_type', 'language', 'text', 'text_hash',
+        fields = ['pk', 'unit_type', 'language', 'textunittext__text', 'text_hash',
                   'document__pk', 'document__name',
                   'document__document_type', 'document__description']
 
@@ -1081,7 +1087,7 @@ class TextUnitViewSet(apps.common.mixins.JqListAPIMixin, viewsets.ReadOnlyModelV
             qs = TextUnit.objects.filter(pk__in=pks)
         elif "text_contains" in self.request.GET:
             text_search = self.request.GET.get("text_contains")
-            qs = self.filter(text_search, qs, _or_lookup='text__icontains')
+            qs = self.filter(text_search, qs, _or_lookup='textunittext__text__icontains')
 
         if "party_id" in self.request.GET:
             qs = qs.filter(partyusage__party_id=self.request.GET['party_id'])
@@ -1816,7 +1822,8 @@ def do_save_document_field_value(request_data: Dict, user) -> \
 
     if (isinstance(typed_field, BooleanField) or isinstance(typed_field, RelatedInfoField)) \
             and annotation_value is not None and not isinstance(annotation_value, bool):
-        annotation_value = True if str(annotation_value).lower() == 'yes' else None
+        annotation_value = True if str(annotation_value).lower() == 'yes' else \
+            False if str(annotation_value).lower() == 'no' else None
 
     location_start = request_data.get('location_start')
     location_end = request_data.get('location_end')
@@ -1838,7 +1845,8 @@ def do_save_document_field_value(request_data: Dict, user) -> \
         # And saving None to a field without providing annotation means - clearing the field.
 
     field_value = typed_field.build_json_field_value_from_json_ant_values([annotation_value]) \
-        if isinstance(typed_field, MultiValueField) else annotation_value
+        if isinstance(typed_field, MultiValueField) and \
+            not isinstance(typed_field, RelatedInfoField) else annotation_value
     dto = FieldValueDTO(field_value=field_value, annotations=[])
 
     if location_start is not None and location_end is not None:
@@ -2330,8 +2338,6 @@ api_routers = [main_router, document_type_router,
                document_via_type_router, document_via_project_router, annotation_via_document_router]
 
 urlpatterns = [
-    url(r'document-sentiment-chart/$', DocumentSentimentChartAPIView.as_view(),
-        name='document-sentiment-chart'),
 
     url(r'^typeahead/document/(?P<field_name>[a-z_]+)/$', TypeaheadDocument.as_view(),
         name='typeahead-document'),

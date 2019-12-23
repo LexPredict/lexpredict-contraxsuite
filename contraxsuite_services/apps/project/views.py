@@ -28,17 +28,12 @@
 from django.contrib import messages
 from django.core.serializers.json import DjangoJSONEncoder
 from django.urls import reverse
-from django.db.models import Count
+from django.db.models import Count, Q, F, Value
 from django.http import HttpResponseForbidden, JsonResponse
-from django.views.generic import TemplateView
 from django.shortcuts import redirect
 
 # Project imports
-# from apps.common.app_mixins import (
-#   JSONResponseView, AdminRequiredMixin,
-#    JqPaginatedListView, CustomCreateView, CustomUpdateView)
 import apps.common.mixins
-
 from apps.analyze.models import DocumentCluster
 from apps.common.utils import cap_words
 from apps.project.models import Project, TaskQueue
@@ -47,47 +42,35 @@ from apps.project.forms import (
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2019, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.3.0/LICENSE"
-__version__ = "1.3.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.4.0/LICENSE"
+__version__ = "1.4.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
 
 class ProjectListView(apps.common.mixins.JqPaginatedListView):
     model = Project
-    json_fields = ['name', 'description']
-    annotate = {'task_queues_count': Count('task_queues')}
+    json_fields = ['name', 'description', 'type__title', 'status__name', 'total_documents_count', 'reviewed_documents_count']
 
     def get_json_data(self, **kwargs):
         data = super().get_json_data()
-        self.request.GET = self.request.GET.copy()
-        if self.request.GET.get('filterscount'):
-            del self.request.GET['filterscount']
-        if self.request.GET.get('sortdatafield'):
-            del self.request.GET['sortdatafield']
-        task_queue_view = TaskQueueListView(request=self.request)
-        task_queue_data = task_queue_view.get_json_data(with_documents=False)['data']
         for item in data['data']:
             item['url'] = reverse('project:project-update', args=[item['pk']])
-            project = Project.objects.get(pk=item['pk'])
-            item['total_documents_count'] = project.document_set.count()
-            item['reviewed_documents_count'] = project.document_set.filter(status__group__is_active=False).count()
             item['progress'] = round(item['reviewed_documents_count'] / item['total_documents_count'] * 100, 1) \
                 if item['total_documents_count'] else 0
             item['completed'] = item['progress'] == 100
-            item['task_queue_data'] = [i for i in task_queue_data if i['project__pk'] == item['pk']]
         return data
 
     def get_queryset(self):
-        qs = super().get_queryset().filter(delete_pending=False)
-        if self.request.user.is_reviewer:
-            qs = qs.filter(task_queues__reviewers=self.request.user)
-        qs = qs.prefetch_related('task_queues')
+        qs = super().get_queryset().filter(delete_pending=False).annotate(
+            total_documents_count=Count('document', filter=Q(document__delete_pending=False)),
+            reviewed_documents_count=Count('document', filter=Q(document__delete_pending=False, status__group__is_active=False))
+        )
         return qs
 
 
-class DashboardView(TemplateView):
-    template_name = 'project/dashboard.html'
+# class DashboardView(TemplateView):
+#     template_name = 'project/dashboard.html'
 
 
 class ProjectCreateView(apps.common.mixins.CustomCreateView):

@@ -29,32 +29,33 @@ import itertools
 import uuid
 from typing import Set
 
-from celery.states import UNREADY_STATES
-
+from celery.states import UNREADY_STATES, PENDING, SUCCESS, FAILURE
 # Django imports
 from django.conf import settings
 from django.contrib.postgres.fields import JSONField
 from django.core.mail import send_mail
 from django.db import models
+from django.db.models import Q
+from django.db import transaction
 from django.db.models import Count, Max, QuerySet, Sum
 from django.db.models.deletion import CASCADE, SET_NULL
-from django.db.models.signals import m2m_changed, post_save
+from django.db.models.signals import m2m_changed, post_save, post_delete
 from django.dispatch import receiver
 from django.template.loader import render_to_string
-from django.db import transaction
 
 # Project imports
-from apps.common.models import get_default_status
 from apps.common.fields import StringUUIDField
+from apps.common.models import get_default_status
 from apps.document.models import DocumentType
+from apps.extract.models import Term
+from apps.project import signals
 from apps.task.models import Task
 from apps.users.models import User
-from apps.project import signals
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2019, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.3.0/LICENSE"
-__version__ = "1.3.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.4.0/LICENSE"
+__version__ = "1.4.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -218,6 +219,19 @@ def completed_documents_changed(instance, action, pk_set, **kwargs):
 class ProjectManager(models.Manager):
     def get_queryset(self):
         return super(ProjectManager, self).get_queryset().filter(delete_pending=False)
+
+    def qs_owners_reviewers_super_reviewers_by_doc_id(self, doc_id: int) -> models.QuerySet:
+        from apps.document.models import Document
+        project_query = Document.all_objects.filter(pk=doc_id).order_by().values_list('project_id', flat=True)
+        try:
+            project_id = project_query[0]
+        except Exception as e:
+            raise RuntimeError(
+                f'qs_owners_reviewers_super_reviewers_by_doc_id: no documents found for doc_id="{doc_id}"') from e
+
+        return User.objects.filter(Q(project_owners__pk=project_id) |
+                                   Q(project_reviewers__pk=project_id) |
+                                   Q(project_super_reviewers__pk=project_id))
 
 
 class Project(models.Model):
@@ -413,6 +427,12 @@ class Project(models.Model):
             project.delete()
 
 
+@receiver(post_delete, sender=Project)
+def delete_cached_terms(sender, instance, **kwargs):
+    from apps.extract.dict_data_cache import CACHE_KEY_TERM_STEMS_PROJECT_PTN, DbCache
+    DbCache.clean_cache(CACHE_KEY_TERM_STEMS_PROJECT_PTN.format(instance.pk))
+
+
 @receiver(post_save, sender=Project)
 def reviewers_total(sender, instance, **kwargs):
     all_reviewers_pk = set(instance.reviewers.values_list('pk', flat=True))
@@ -489,7 +509,7 @@ class UploadSession(models.Model):
         """
         Progress per document (avg session document tasks progress)
         """
-        result = self.document_set.annotate(document_id=models.F('id'))\
+        result = self.document_set.annotate(document_id=models.F('id')) \
             .values('document_id', 'name', 'file_size')
         result = {i['name']: i for i in result}
 
@@ -497,18 +517,18 @@ class UploadSession(models.Model):
                 sorted(self.session_tasks_progress, key=lambda i: i['file_name']),
                 key=lambda i: i['file_name']):
             task_progress_data = list(task_progress_data)
-            document_progress = round(sum([int(i['task_progress']) for i in task_progress_data]), 2)
+            document_progress = round(sum([int(i.get('task_progress') or 0) for i in task_progress_data]), 2)
             task_statuses = {i['task_status'] for i in task_progress_data}
-            if 'PENDING' in task_statuses:
-                task_status = 'PENDING'
-            elif task_statuses == {'SUCCESS'}:
-                task_status = 'SUCCESS'
+            if None in task_statuses or PENDING in task_statuses:
+                task_status = PENDING
+            elif task_statuses == {SUCCESS}:
+                task_status = SUCCESS
             else:
-                task_status = 'FAILURE'
+                task_status = FAILURE
 
             file_data = result.get(file_name, {'document_id': None, 'file_size': None})
             file_data.update({'file_name': file_name, 'tasks_overall_status': task_status,
-                'document_progress': document_progress if task_status == 'PENDING' else 100.0})
+                              'document_progress': document_progress if task_status == PENDING else 100.0})
 
             if details:
                 file_data['task_progress_data'] = task_progress_data
@@ -524,7 +544,7 @@ class UploadSession(models.Model):
         Total Progress of session document tasks (i.e. session progress)
         """
         document_tasks_progress = self._document_tasks_progress or self.document_tasks_progress()
-        _p = [i.get('document_progress', (i.get('tasks_overall_status') != 'PENDING') * 100)
+        _p = [i.get('document_progress', (i.get('tasks_overall_status') != PENDING) * 100)
               for i in document_tasks_progress.values()]
         return round(sum(_p) / float(len(_p)), 2) if _p else 0
 
@@ -556,7 +576,7 @@ class UploadSession(models.Model):
             return True
         if not self.session_tasks.exists():
             return None
-        completed = not self.session_tasks.filter(status='PENDING').exists()
+        completed = not self.session_tasks.filter(status=PENDING).exists()
         if self.completed != completed:
             self.completed = completed
             self.save()
@@ -627,3 +647,41 @@ class ProjectClustering(models.Model):
         if self.task:
             return self.task.progress == 100
         return None
+
+
+class ProjectTermConfiguration(models.Model):
+    """
+    This object allows for the configuration of project-specific terms,
+    i.e., enabling/disabling terms for individual project.
+    """
+    # Project link
+    project = models.OneToOneField(Project, db_index=True, on_delete=CASCADE)
+
+    # Term link
+    terms = models.ManyToManyField('extract.Term', db_index=True)
+
+    class Meta:
+        ordering = ['project__name']
+
+    def __str__(self):
+        return "ProjectTermConfiguration (project={})" \
+            .format(self.project)
+
+    def excluded_terms(self):
+        all_terms = Term.objects.all()
+        project_terms = self.terms.all()
+        return all_terms.difference(project_terms)
+
+
+@receiver(m2m_changed, sender=ProjectTermConfiguration.terms.through)
+def cache_terms(instance, action, pk_set, **kwargs):
+    # cache project terms only in case if terms have changed, i.e. pk_set != {}
+    if action.startswith('post') and pk_set:
+        from apps.extract.dict_data_cache import cache_term_stems
+        cache_term_stems(instance.project.pk)
+
+
+@receiver(post_delete, sender=ProjectTermConfiguration)
+def delete_cached_terms_2(sender, instance, **kwargs):
+    from apps.extract.dict_data_cache import CACHE_KEY_TERM_STEMS_PROJECT_PTN, DbCache
+    DbCache.clean_cache(CACHE_KEY_TERM_STEMS_PROJECT_PTN.format(instance.project.pk))

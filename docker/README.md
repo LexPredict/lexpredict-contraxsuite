@@ -135,9 +135,7 @@ and going to setup HTTPS certificates.
     ```
 * Obtain third-party paid dependencies:
     * jQWidgets (https://www.jqwidgets.com/download/)
-    * Canvas HTML5 Template (https://themeforest.net/item/canvas-the-multipurpose-html5-template/9228123)
-* Put zipped theme and jqwidgets files into ./deploy/dependencies directory and rename them to 
-**jqwidgets.zip** and **theme.zip**.
+* Put zipped jqwidgets files into ./deploy/dependencies directory and rename it to **jqwidgets.zip**.
   
   Contents of ./deploy/dependencies should be similar to this:
   * jqwidgets.zip - zipped JQWidgets Library
@@ -146,14 +144,7 @@ and going to setup HTTPS certificates.
         * styles
         * jqx-all.js
         * ...
-  * theme.zip - zipped theme
-      * Package-HTML
-        * HTML
-          * css
-          * images
-          * js
-          * style.css
-          
+
 * Prepare the disk
 
     For an initial single-server installation it is enough to have a single disk with 

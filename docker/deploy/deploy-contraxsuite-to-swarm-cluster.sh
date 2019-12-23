@@ -16,7 +16,6 @@ source volumes.sh
 source util/fix_nginx_logs.sh
 source util/configure_host.sh
 
-sudo cp ${DOCKER_DJANGO_THEME_ARCHIVE} ${VOLUME_THIRD_PARTY}
 sudo cp ${DOCKER_DJANGO_JQWIDGETS_ARCHIVE} ${VOLUME_THIRD_PARTY}
 sudo chown -R ${SHARED_USER_NAME}:${SHARED_USER_NAME} ${VOLUME_THIRD_PARTY}
 
@@ -55,7 +54,7 @@ else
 fi
 
 envsubst < ./config-templates/postgresql.conf.template > ./temp/postgresql.conf
-if [ ${PG_STATISTICS_ENABLED} = true ]; then
+if [ "${PG_STATISTICS_ENABLED}" = true ]; then
     if [ ! -z ${POWA_ENABLED} ]; then
     	echo "shared_preload_libraries = 'pg_stat_statements,powa,pg_stat_kcache,pg_qualstats'" >> ./temp/postgresql.conf
 	    export POWA_WEB_REPLICAS=1

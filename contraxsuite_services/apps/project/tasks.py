@@ -24,6 +24,7 @@
 """
 # -*- coding: utf-8 -*-
 
+import datetime
 import mimetypes
 import os
 import re
@@ -32,37 +33,39 @@ import time
 import zipfile
 
 # Third-party imports
-import numpy as np
-import pandas as pd
+from typing import Optional
+from celery import shared_task
+from celery.exceptions import SoftTimeLimitExceeded
+from celery.states import FAILURE, PENDING, SUCCESS
+from psycopg2 import InterfaceError, OperationalError
+
 # Django imports
+from celery.states import FAILURE, PENDING, SUCCESS
 from django.core.files.uploadedfile import TemporaryUploadedFile
-from django.db.models import Sum
 from django.http import HttpRequest
 from django.utils.timezone import now
-from sklearn.cluster import Birch, KMeans, MiniBatchKMeans
-from sklearn.decomposition import PCA
-from sklearn.feature_extraction.text import TfidfVectorizer, TfidfTransformer
 
 # Project imports
 import task_names
-from apps.analyze.models import DocumentCluster
+from apps.analyze.ml.cluster import ClusterDocuments
+from apps.analyze.ml.features import EmptyDataSetError
 from apps.celery import app
 from apps.common.file_storage import get_file_storage
 from apps.document import signals
 from apps.document.constants import DocumentGenericField
-from apps.document.field_detection.field_detection_celery_api import run_detect_field_values_as_sub_tasks
-from apps.document.models import Document
+from apps.document.field_detection import field_detection
+from apps.document.models import Document, DocumentType
 from apps.document.repository.base_document_repository import BaseDocumentRepository
 from apps.document.repository.document_repository import DocumentRepository
 from apps.project.models import Project, ProjectClustering, UploadSession
-from apps.task.tasks import BaseTask, CeleryTaskLogger, Task, purge_task, call_task_func
+from apps.task.tasks import BaseTask, CeleryTaskLogger, Task, purge_task, call_task_func, ExtendedTask
 from apps.task.utils.task_utils import TaskUtils
 from apps.users.models import User
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2019, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.3.0/LICENSE"
-__version__ = "1.3.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.4.0/LICENSE"
+__version__ = "1.4.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -83,188 +86,47 @@ class ClusterProjectDocuments(BaseTask):
 
     def process(self, **kwargs):
 
-        n_clusters = kwargs.get('n_clusters')
-        method = kwargs.get('method')
-        project_id = kwargs.get('project_id')
+        n_clusters = kwargs.get('n_clusters', 3)
+        method = kwargs.get('method', 'kmeans')
+        cluster_by = kwargs.get('cluster_by', 'term')
 
         self.project_clustering_id = kwargs.get('project_clustering_id')
         project_clustering = ProjectClustering.objects.get(pk=self.project_clustering_id)
-        project_clustering.status = 'PENDING'
+        project_clustering.status = PENDING
         project_clustering.task = self.task
         project_clustering.save()
 
         project = project_clustering.project
 
-        self.log_info('Start clustering documents for project id={}'.format(project_id))
+        self.log_info('Start clustering documents for project id={}'.format(project.id))
         self.log_info('Clustering method: "{}", n_clusters={}'.format(method, n_clusters))
+        self.log_info('Cluster by: {}'.format(str(cluster_by)))
 
         self.set_push_steps(4)
-
-        # get documents data
-        documents = Document.objects.filter(project_id=project_id)
-        id_name_map = {k: v for k, v in documents.values_list('id', 'name')}
-        docs_count = len(id_name_map)
-
-        # cluster by full text
-        if kwargs.get('cluster_by') == 'full_text':
-            docs = np.array(documents.values_list('pk', 'full_text'))
-            pks, data = docs[:, 0], docs[:, 1]
-
-            # try increase min_df if exception occurs while fit_trasform
-            for max_df in range(50, 101, 5):
-                max_df = float(max_df / 100)
-                try:
-                    vectorizer = TfidfVectorizer(max_df=max_df, max_features=100,
-                                                 min_df=2, stop_words='english',
-                                                 use_idf=True)
-                    X = vectorizer.fit_transform(data)
-                except ValueError as e:
-                    if 'Try a lower min_df or a higher max_df' in str(e):
-                        continue
-                    else:
-                        raise e
-                break
-
-            terms = vectorizer.get_feature_names()
-
-        # Cluster by terms
-        else:
-            documents = documents.defer('full_text')
-            id_field = 'id'
-            prop_field = 'textunit__termusage__term__term'
-            prop_field_count = 'textunit__termusage__count'
-            # filter non-null, null
-            qs_exists = documents.filter(textunit__termusage__isnull=False)
-            if not qs_exists.exists():
-                raise RuntimeError('No terms in documents detected, try to re-run terms parser.')
-            # get values
-            ann_cond = dict(prop_count=Sum(prop_field_count))
-            qs = documents.values(id_field, prop_field).annotate(**ann_cond).distinct()
-            # get data
-            df = pd.DataFrame(list(qs)).dropna()
-            null_qs = documents.exclude(textunit__termusage__isnull=False)
-            if null_qs.exists():
-                null_df = pd.DataFrame(list(null_qs.values('id'))).set_index('id')
-                df = df.join(null_df, how='outer', on='id')
-            df = df.pivot(index=id_field, columns=prop_field, values='prop_count').fillna(0)
-
-            X = df.as_matrix()
-            # convert CountVec into TFvec
-            tf_transformer = TfidfTransformer(use_idf=False).fit(X)
-            X = tf_transformer.transform(X)
-
-            pks = df.index.tolist()
-            terms = df.columns.tolist()
-
-        if method == 'Birch':
-            m = Birch(
-                n_clusters=n_clusters,
-                threshold=0.5,
-                branching_factor=50)
-        elif method == 'MiniBatchKMeans':
-            m = MiniBatchKMeans(
-                n_clusters=n_clusters,
-                init='k-means++',
-                n_init=1,
-                init_size=100,
-                batch_size=100,
-                verbose=False)
-        else:
-            method = 'KMeans'
-            m = KMeans(
-                n_clusters=n_clusters,
-                init='k-means++',
-                max_iter=100,
-                n_init=1,
-                verbose=False)
-
-        m.fit(X)
-        self.push()
-
-        X = X.toarray()
-        pca = PCA(n_components=2).fit(X)
-        data2d = pca.transform(X)
-
-        if method == 'DBSCAN':
-            clusters = m.labels_
-            cluster_labels = set(clusters)
-            # reshape cluster labels
-            if -1 in cluster_labels:
-                cluster_labels = [i + 1 for i in cluster_labels]
-            cluster_terms = cluster_labels
-            centers2d = None
-        else:
-            if method == 'Birch':
-                cluster_centers = m.subcluster_centers_
-            else:
-                cluster_centers = m.cluster_centers_
-
-            order_centroids = cluster_centers.argsort()[:, ::-1]
-            clusters = m.labels_.tolist()
-            cluster_labels = set(clusters)
-            # _n_clusters = len(cluster_labels)
-            # cluster_terms = [[terms[ind] for ind in order_centroids[i, :10]] for i in
-            #                  range(_n_clusters)]
-            cluster_terms = [[terms[ind] for ind in order_centroids[i, :10]] for i in
-                             range(max(cluster_labels) + 1)]
-            centers2d = pca.transform(cluster_centers)
-
-        points_data = [{'document_id': pks[i],
-                        'document_name': id_name_map[pks[i]],
-                        'coord': data2d[i].tolist(),
-                        'cluster_id': str(clusters[i])} for i in range(docs_count)]
 
         self.push()
 
         # clear previous clusters, their tasks and cluster sessions
         project.drop_clusters(exclude_task_ids={self.request.id},
                               exclude_project_clustering_id=self.project_clustering_id)
+        self.push()
 
-        clusters_data = {}
-        created_date = now()
+        cluster_model = ClusterDocuments(project_id=project.id,
+                                         cluster_algorithm=method,
+                                         n_clusters=n_clusters,
+                                         cluster_by=cluster_by,
+                                         use_default_name=True)
+        result = cluster_model.run()
 
-        to_add = list()
-        for cluster_id in cluster_labels:
-            cluster_label = cluster_terms[cluster_id]
-            if isinstance(cluster_label, list):
-                cluster_label = '-'.join(cluster_label[:5])
-            cluster = DocumentCluster.objects.create(
-                cluster_id=cluster_id,
-                name='Default({})'.format(project.pk if project else None),
-                self_name=cluster_label,
-                description='Cluster Project (id={}) with Multiple Contract Types'.format(
-                    project_id),
-                cluster_by='all',
-                using=method,
-                created_date=created_date)
-            cluster_documents = [i['document_id'] for i in points_data
-                                 if i['cluster_id'] == str(cluster_id)]
-            cluster.documents.set(cluster_documents)
-            clusters_data[str(cluster_id)] = dict(
-                cluster_obj_id=cluster.pk,
-                cluster_terms=cluster_terms[cluster_id],
-                centroid_coord=centers2d[cluster_id].tolist() if centers2d is not None else None
-            )
-
-            # can't add cluster to project_clustering.document_clusters before storing project_clustering itself
-            # so caching them in a list to add later
-            to_add.append(cluster)
-
-        result = {'method': method,
-                  'n_clusters': n_clusters,
-                  'points_data': points_data,
-                  'clusters_data': clusters_data}
-        project_clustering.metadata = result
+        project_clustering.metadata = result.metadata
         project_clustering.save()
-
-        for cluster in to_add:
-            project_clustering.document_clusters.add(cluster)
+        project_clustering.document_clusters.add(*result.metadata['cluster_obj_ids'])
 
         self.push()
         self.log_info('Clustering completed. Updating document cache.')
 
         log = CeleryTaskLogger(self)
-        for doc in Document.objects.filter(project__pk=project_id):
+        for doc in Document.objects.filter(project__pk=project.id):
             signals.fire_document_changed(sender=self,
                                           log=log,
                                           document=doc,
@@ -273,32 +135,35 @@ class ClusterProjectDocuments(BaseTask):
                                           user_fields_changed=False,
                                           generic_fields_changed=[DocumentGenericField.cluster_id.value])
 
-        project_clustering.status = 'SUCCESS'
+        project_clustering.status = SUCCESS
         project_clustering.save()
 
         self.push()
         self.log_info('Finished.')
-        return result
+        return result.metadata
 
     def on_failure(self, exc, task_id, args, kwargs, exc_traceback):
         if self.project_clustering_id:
             project_clustering = ProjectClustering.objects.get(pk=self.project_clustering_id)
-            project_clustering.status = 'FAILURE'
+            project_clustering.status = FAILURE
 
             exc_str = str(exc)
             message_head = 'Clustering failed. '
             message_body = 'Unexpected error while clustering. Try again later.'
+            low_features_message = 'Not enough data points for features ' \
+                                   'of chosen "cluster by". Try adding documents, reducing number ' \
+                                   'of clusters, or changing "cluster by" feature selection.'
 
             if ('max_df corresponds to < documents than min_df' in exc_str) or \
                     ('Number of samples smaller than number of clusters' in exc_str) or \
-                    (re.search(r'n_samples=\d+ should be >= n_clusters=\d+', exc_str)):
-                message_body = 'Try to increase number of documents ' \
-                               'or set lower number of clusters.'
+                    (re.search(r'n_samples=\d+ should be >= n_clusters=\d+', exc_str)) or \
+                    (re.search(r'n_components=\d+ must be between 0 and min', exc_str)):
+                message_body = low_features_message
             elif re.search(r'n_components=\d+ must be between \d+ and n_features=\d+', exc_str):
                 message_body = 'Chosen documents look very similar,' \
                                ' clustering algorithm is not able to form clusters.'
-            elif 'No terms in documents detected' in exc_str:
-                message_body = exc_str
+            elif isinstance(exc, EmptyDataSetError):
+                message_body = low_features_message
             else:
                 message_body += ' \nOriginal issue is: "{}"'.format(exc_str)
 
@@ -320,29 +185,102 @@ class ReassignProjectClusterDocuments(BaseTask):
         new_project_id = kwargs.get('new_project_id')
         new_project = Project.objects.get(pk=new_project_id)
 
-        documents = Document.objects.filter(documentcluster__pk__in=cluster_ids).defer('full_text')
+        documents = Document.objects.filter(documentcluster__pk__in=cluster_ids)
         documents.update(project_id=new_project, document_type=new_project.type)
 
+        self.run_if_task_or_sub_tasks_failed(
+            ReassignProjectClusterDocuments.rollback,
+            (project_id, cluster_ids, new_project_id))
+
+        self.run_sub_tasks(
+            'Reassign Each Document from Cluster',
+            ReassignProjectClusterDocuments.reassign_document,
+            list(documents.values_list('pk')))
+
+        self.run_after_sub_tasks_finished(
+            'Finalize Reassigning Cluster Documents',
+            ReassignProjectClusterDocuments.finalize,
+            [(new_project_id, cluster_ids)])
+
+        # TODO: metadata[project_id] in tasks related with reassigned documents
+
+    @staticmethod
+    @shared_task(base=ExtendedTask,
+                 bind=True,
+                 soft_time_limit=6000,
+                 default_retry_delay=10,
+                 retry_backoff=True,
+                 autoretry_for=(SoftTimeLimitExceeded, InterfaceError, OperationalError),
+                 max_retries=3)
+    def reassign_document(task, document_id):
+        document = Document.objects.get(pk=document_id)
+        signals.document_deleted.send(task.__class__, user=None, document=document)
+        log = CeleryTaskLogger(task)
+        dfvs = field_detection.detect_and_cache_field_values_for_document(
+            log=log,
+            document=document,
+            system_fields_changed=True,
+            generic_fields_changed=True)
+
+        task.log_info(
+            f'Detected {len(dfvs)} field values for document ' + f'#{document.id} ({document.name})')
+
+    @staticmethod
+    @shared_task(base=ExtendedTask,
+                 bind=True,
+                 soft_time_limit=6000,
+                 default_retry_delay=10,
+                 retry_backoff=True,
+                 autoretry_for=(SoftTimeLimitExceeded, InterfaceError, OperationalError),
+                 max_retries=3)
+    def rollback(task, project_id, cluster_ids, new_project_id):
+
+        task.log_error('Rollback Reassigning Document Cluster documents.')
+        log = CeleryTaskLogger(task)
+
+        documents = Document.objects.filter(documentcluster__pk__in=cluster_ids)
+
         for document in documents:
-            signals.document_deleted.send(self.__class__, user=None, document=document)
+            signals.document_deleted.send(task.__name__, user=None, document=document)
 
-        task_model = self.task
-        task_model.metadata = {
-            'task_name': 'reassigning',
-            'old_project_id': project_id,
-            'new_project_id': new_project_id,
-            'cluster_ids': cluster_ids,
-        }
-        task_model.save()
+        documents.update(project_id=project_id, document_type=DocumentType.generic())
 
+        for document in documents:
+            signals.document_changed.send(task.__name__, log=log, document=document)
+
+        p_cl = ProjectClustering.objects.get(document_clusters__pk=cluster_ids[0])
+        reassignings = p_cl.metadata.get('reassigning', [])
         reassigning = {
             'date': now().isoformat(),
             'new_project_id': new_project_id,
             'cluster_ids': cluster_ids,
-            'task_id': task_model.main_task_id
+            'status': FAILURE,
         }
+        reassignings.append(reassigning)
+        p_cl.metadata['reassigning'] = reassignings
+        p_cl.save()
+
+    @staticmethod
+    @shared_task(base=ExtendedTask,
+                 bind=True,
+                 soft_time_limit=6000,
+                 default_retry_delay=10,
+                 retry_backoff=True,
+                 autoretry_for=(SoftTimeLimitExceeded, InterfaceError, OperationalError),
+                 max_retries=3,
+                 priority=9)
+    def finalize(self, new_project_id, cluster_ids):
+
+        documents = Document.objects.filter(documentcluster__pk__in=cluster_ids)
+
         p_cl = ProjectClustering.objects.get(document_clusters__pk=cluster_ids[0])
         reassignings = p_cl.metadata.get('reassigning', [])
+
+        reassigning = {
+            'date': now().isoformat(),
+            'new_project_id': new_project_id,
+            'cluster_ids': cluster_ids
+        }
         reassignings.append(reassigning)
         p_cl.metadata['reassigning'] = reassignings
         reassigned_cluster_ids = list(set(
@@ -355,14 +293,7 @@ class ReassignProjectClusterDocuments(BaseTask):
         reassigned_document_ids = documents.values_list('pk', flat=True)
         p_cl.metadata['points_data'] = [i for i in p_cl.metadata['points_data']
                                         if int(i['document_id']) not in reassigned_document_ids]
-
         p_cl.save()
-        # DocumentCluster.objects.filter(pk__in=cluster_ids).delete()
-
-        run_detect_field_values_as_sub_tasks(self, [doc.id for doc in documents])
-
-        # TODO: metadata[project_id] in tasks related with reassigned documents
-        # TODO: should be updated to new project id value?
 
 
 class CleanProject(BaseTask):
@@ -433,62 +364,99 @@ class CancelUpload(BaseTask):
     name = 'Cancel Upload'
     priority = 9
 
-    def process(self, **kwargs):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.track_start = None  # type: Optional[datetime.datetime]
 
+    def process(self, **kwargs):
         session_id = kwargs['session_id']
+        session = UploadSession.objects.get(pk=session_id)
 
         # 1. Purge Tasks
+        self.track_timelog('')
         session_tasks = Task.objects.main_tasks().filter(metadata__session_id=session_id)
-        self.log_info('Purge {} session tasks.'.format(session_tasks.count()))
+        self.log_info(f'Purge {session_tasks.count()} session tasks.')
         for a_task in session_tasks:
             try:
                 purge_task(a_task.id)
             except:
                 # case when task is already deleted as subtask
                 pass
+        self.track_timelog('1 - purge tasks')
 
         # 2. Remove Documents+
-        document_ids = Document.objects.filter(upload_session_id=session_id).values_list('pk', flat=True)
-        self.log_info('Remove {} documents'.format(document_ids))
+        document_ids = \
+            list(Document.objects.filter(upload_session_id=session_id).values_list('pk', flat=True))
+        self.log_info(f'Remove {len(document_ids)} documents')
         from apps.document.repository.document_bulk_delete import get_document_bulk_delete
 
         # TODO: WHY it fails with
-        # psycopg2.errors.ForeignKeyViolation: update or delete on table "document_textunit" violates foreign key constraint
+        # psycopg2.errors.ForeignKeyViolation: update or delete
+        # on table "document_textunit" violates foreign key constraint
         attempts = 3
         delay = 60
+        attempts_made = 0
+        delete_manager = get_document_bulk_delete()
+        error_logged = False
+
         for attempt in range(1, attempts + 1):
+            attempts_made += 1
             try:
-                get_document_bulk_delete().delete_documents(document_ids)
+                delete_manager.delete_documents(document_ids)
                 break
-            except:
-                self.log_info('Attempt #{} of {} to delete documents failed, retry'.format(attempt, attempts))
+            except Exception as e:
+                if not error_logged:
+                    self.log_error('Error while deleting documents', exc_info=e)
+                    error_logged = True
+                self.log_info(f'Attempt #{attempt} of {attempts} to delete documents failed, retry')
+
                 time.sleep(delay)
+        self.track_timelog(f'2 - bulk delete for {len(document_ids)} documents')
+        if attempts_made > 1:
+            self.log_error(f'{attempts_made} of {attempts} tried to delete documents')
 
         # 3. Remove files
         file_storage_exists = file_storage.document_exists(session_id)
-        self.log_info('File Storage exists: {}'.format(file_storage_exists))
+        self.log_info(f'File Storage exists: {file_storage_exists}')
 
+        files_removed, failed_removing = (0, 0)
         if file_storage_exists:
             files = file_storage.list_documents(session_id)
-            self.log_info('Remove {} files from File Storage.'.format(len(files)))
+            self.log_info(f'Remove {len(files)} files from File Storage.')
             for file_path in files:
                 file_storage.delete_document(file_path)
             try:
                 file_storage.delete_document(session_id)
+                files_removed += 1
             except:
                 # TODO: removing folders through LocalStorage is not implemented
+                failed_removing += 1
                 pass
+        self.track_timelog(f'3 - remove files ({files_removed} removed, {failed_removing} failed)')
 
         # 4. Remove Upload Session
-        self.log_info('Remove session uid="{}".'.format(session_id))
-        session = UploadSession.objects.get(pk=session_id)
+        if not session:
+            raise Exception(f"Couldn't find session by id ({session_id})")
+
+        self.log_info(f'Remove session uid="{session_id}".')
         project = session.project
         session.delete()
+        self.track_timelog('4 - delete session')
 
         # 5. Reindex Project
-        self.log_info('Reindex project id="{}" documents.'.format(project.id))
+        self.log_info(f'Reindex project id="{project.id}" documents.')
         from apps.rawdb.tasks import reindex_all_project_documents
         call_task_func(reindex_all_project_documents, (project.pk,), None)
+        self.track_timelog('5 - reindex project')
+
+    def track_timelog(self, msg: str):
+        now_time = datetime.datetime.now()
+        if not msg:
+            self.track_start = now_time
+            return
+        delta = now_time - self.track_start
+        self.write_log(f'{msg}: {delta}')
+        self.track_start = now_time
 
 
 @app.task(name=task_names.TASK_NAME_TRACK_SESSION_COMPLETED, bind=True)
@@ -521,6 +489,7 @@ class LoadArchive(BaseTask):
         self.source_path = kwargs.get('source_path')
         self.force = kwargs.get('force')
         self.user_id = kwargs.get('user_id')
+        self.directory_path = kwargs.get('directory_path')
         archive_type = kwargs.get('archive_type')
 
         if archive_type == 'zip':
@@ -575,7 +544,8 @@ class LoadArchive(BaseTask):
                         self.upload_file(
                             file_name=file_name,
                             file_size=file_size,
-                            contents=tempfile)
+                            contents=tempfile,
+                            directory_path=self.directory_path)
 
     def process_tar(self):
         with file_storage.get_document_as_local_fn(self.source_path) as (local_file_path, _):
@@ -602,7 +572,8 @@ class LoadArchive(BaseTask):
                         self.upload_file(
                             file_name=file_name,
                             file_size=file_size,
-                            contents=tempfile)
+                            contents=tempfile,
+                            directory_path=self.directory_path)
 
 
 app.register_task(ClusterProjectDocuments())

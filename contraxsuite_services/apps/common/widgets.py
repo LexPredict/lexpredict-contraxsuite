@@ -25,17 +25,20 @@
 # -*- coding: utf-8 -*-
 
 # Django imports
+from typing import Optional
+
 from django import forms
 from django.forms.fields import BooleanField, ChoiceField
 from django.forms.utils import flatatt
-from django.forms.widgets import PasswordInput
+from django.forms.widgets import PasswordInput, Select
 from django.utils.encoding import force_text
 from django.utils.html import format_html
+from django.utils.safestring import SafeText
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2019, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.3.0/LICENSE"
-__version__ = "1.3.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.4.0/LICENSE"
+__version__ = "1.4.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -132,6 +135,57 @@ class LTRRadioField(ChoiceField):
         kwargs['widget'].attrs['initial'] = kwargs['initial']
         kwargs['label'] = ''
         super().__init__(*args, **kwargs)
+
+
+class FilterableProjectSelectField(forms.ModelChoiceField):
+    def _get_choices(self):
+        choices = super()._get_choices()
+        return choices
+
+
+class FiltrableProjectSelectWidget(Select):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.master_id = None  # type: Optional[str]
+
+    def render(self, name: str, value, attrs=None, renderer=None):
+        """
+        name='project', value=None, attrs={'id': 'id_project'}
+        <select name="project" id="id_project">
+        """
+        wig_id = attrs['id']
+        html = self.build_master_change_script(wig_id)
+        html += f'<select name="{name}" id="{wig_id}">\n'
+        html += '    <option value="" selected>---------</option>\n'
+
+        proj_set = [(p.pk, p.type.code, p.name, p.type_id) for p in self.choices.queryset.order_by('-pk')]
+
+        for id, proj_type, proj_name, proj_type_pk in proj_set:
+            val_str = f'{proj_name} ({proj_type}, #{id})'
+            html += f'    <option value="{id}" data_type="{proj_type_pk}" >'
+            html += f'{val_str}</option>\n'
+
+        html += '</select>\n'
+        html_safe = SafeText(html)
+        return html_safe
+
+    def build_master_change_script(self, wig_id: str):
+        markup = f"""
+        <script>
+            window.on_master_changed = function() {{
+                master_val = $('#{self.master_id}').val();
+                $("#{wig_id} option[data_type]").each(function(index) {{
+                    var tp_id = $(this).attr('data_type');
+                    if (!master_val || tp_id == master_val)
+                        $(this).show();
+                    else
+                        $(this).hide();
+                }});
+            }};
+            $('#{self.master_id}').on("change", window.on_master_changed);
+        </script>\n
+        """
+        return markup
 
 
 class FriendlyPasswordInput(PasswordInput):

@@ -3,8 +3,8 @@
 
 {% block css_extra %}
   {{ block.super }}
-  <link rel="stylesheet" href="{% static "theme/css/components/radio-checkbox.css" %}" type="text/css" />
-  <link rel="stylesheet" href="{% static "theme/css/components/bs-switches.css" %}" type="text/css" />
+  <link rel="stylesheet" href="{% static "css/components/radio-checkbox.css" %}" type="text/css" />
+  <link rel="stylesheet" href="{% static "css/components/bs-switches.css" %}" type="text/css" />
   <link rel="stylesheet" type="text/css" href="https://cdnjs.cloudflare.com/ajax/libs/chosen/1.6.2/chosen.min.css">
   <style>
     .load-form-template, .cluster-form-template {
@@ -304,6 +304,15 @@
       <label for="_id_do_cluster_text_units" class="checkbox-style-3-label "> Cluster Text Units</label>
     </p>
     <p>
+      <label for="_id_project">Project:</label>
+      <select name="project" id="_id_project" class="chosen" required="">
+        <option value="" selected=""> ---------- </option>
+        {% for id, name in projects %}
+          <option value="{{ id }}">{{ name }}</option>
+        {% endfor %}
+      </select>
+    </p>
+    <p>
       <label for="_id_cluster_by">Cluster by:</label>
       <select name="cluster_by" id="_id_cluster_by" multiple="multiple" class="chosen" required="">
         <option value="date">Dates</option>
@@ -323,11 +332,11 @@
     <p>
       <label for="_id_using">Algorithm:</label>
       <select name="using" id="_id_using">
-        <option value="MiniBatchKMeans" selected="">MiniBatchKMeans</option>
-        <option value="KMeans">KMeans</option>
-        <option value="Birch">Birch</option>
-        <option value="DBSCAN">DBSCAN</option>
-        <option value="LabelSpreading">LabelSpreading</option>
+        <option value="minibatchkmeans" selected="">MiniBatchKMeans</option>
+        <option value="kmeans">KMeans</option>
+        <option value="birch">Birch</option>
+        <option value="dbscan">DBSCAN</option>
+{#        <option value="LabelSpreading">LabelSpreading</option>#}
       </select>
       <span class="helptext">Clustering algorithm model name.</span>
     </p>
@@ -360,8 +369,8 @@
       <input type="number" name="kmeans_n_init" value="10" id="_id_kmeans_n_init" min="1" required="">
       <span class="helptext">Number of time the k-means algorithm will be run with different centroid seeds. The final results will be the best output of n_init consecutive runs in terms of inertia.</span>
     </p>
-    <p style="display: none;"><label for="_id_mb_kmeans_batch_size">batch_size:</label>
-      <input type="number" name="mb_kmeans_batch_size" value="100" id="_id_mb_kmeans_batch_size" min="1" required="">
+    <p style="display: none;"><label for="_id_minibatchkmeans_batch_size">batch_size:</label>
+      <input type="number" name="minibatchkmeans_batch_size" value="100" id="_id_minibatchkmeans_batch_size" min="1" required="">
       <span class="helptext">Size of the mini batches.</span>
     </p>
     <p style="display: none;"><label for="_id_birch_threshold">threshold:</label>
@@ -386,34 +395,34 @@
       <input type="number" name="dbscan_p" id="_id_dbscan_p" min="0" step="any">
       <span class="helptext">Leaf size passed to BallTree or cKDTree. This can affect the speed of the construction and query, as well as the memory required to store the tree.</span>
     </p>
-    <p style="">
-      <label for="_id_ls_documents_property">Document Property Name:</label>
-      <select name="ls_documents_property" id="_id_ls_documents_property" class="chosen">
-        {% for prop in ls_document_properties %}
-          <option value="{{ prop }}" selected="">{{ prop }}</option>
-        {% endfor %}
-      </select>
-    </p>
-    <p style="">
-      <label for="_id_ls_text_units_property">Text Unit Property Name:</label>
-      <select name="ls_text_units_property" id="_id_ls_text_units_property" class="chosen">
-        {% for prop in ls_text_unit_properties %}
-          <option value="{{ prop }}" selected="">{{ prop }}</option>
-        {% endfor %}
-      </select>
-    </p>
-    <p style="display: none;"><label for="_id_ls_max_iter">max_iter:</label>
-      <input type="number" name="ls_max_iter" value="5" id="_id_ls_max_iter" min="1" required="">
-      <span class="helptext">Maximum number of iterations allowed.</span>
-    </p>
-    <p class="checkbox-ltr-full-width">
-      <input class="checkbox-style max-one-of" id="_id_delete_type" name="delete_type" type="checkbox">
-      <label for="_id_delete_type" class="checkbox-style-3-label "> Delete existed Clusters of the "Cluster By" and "Algorithm" specified above</label>
-    </p>
-    <p class="checkbox-ltr-full-width">
-      <input class="checkbox-style max-one-of" id="_id_delete" name="delete" type="checkbox">
-      <label for="_id_delete" class="checkbox-style-3-label "> Delete all existed Clusters</label>
-    </p>
+{#    <p style="">#}
+{#      <label for="_id_ls_documents_property">Document Property Name:</label>#}
+{#      <select name="ls_documents_property" id="_id_ls_documents_property" class="chosen">#}
+{#        {% for prop in ls_document_properties %}#}
+{#          <option value="{{ prop }}" selected="">{{ prop }}</option>#}
+{#        {% endfor %}#}
+{#      </select>#}
+{#    </p>#}
+{#    <p style="">#}
+{#      <label for="_id_ls_text_units_property">Text Unit Property Name:</label>#}
+{#      <select name="ls_text_units_property" id="_id_ls_text_units_property" class="chosen">#}
+{#        {% for prop in ls_text_unit_properties %}#}
+{#          <option value="{{ prop }}" selected="">{{ prop }}</option>#}
+{#        {% endfor %}#}
+{#      </select>#}
+{#    </p>#}
+{#    <p style="display: none;"><label for="_id_ls_max_iter">max_iter:</label>#}
+{#      <input type="number" name="ls_max_iter" value="5" id="_id_ls_max_iter" min="1" required="">#}
+{#      <span class="helptext">Maximum number of iterations allowed.</span>#}
+{#    </p>#}
+{#    <p class="checkbox-ltr-full-width">#}
+{#      <input class="checkbox-style max-one-of" id="_id_delete_type" name="delete_type" type="checkbox">#}
+{#      <label for="_id_delete_type" class="checkbox-style-3-label "> Delete existing Clusters of the "Cluster By" and "Algorithm" specified above</label>#}
+{#    </p>#}
+{#    <p class="checkbox-ltr-full-width">#}
+{#      <input class="checkbox-style max-one-of" id="_id_delete" name="delete" type="checkbox">#}
+{#      <label for="_id_delete" class="checkbox-style-3-label "> Delete all existing Clusters</label>#}
+{#    </p>#}
   </form>
 
   <form class="popup-form ltr load-form-template">
@@ -423,7 +432,7 @@
     </div>
 
     <div class="level-1">
-      <input class="checkbox-style" id="_id_terms_accounting" name="terms_accounting" type="checkbox">
+      <input class="checkbox-style" id="_id_terms_accounting" name="terms_accounting" type="checkbox" checked="checked">
       <label for="_id_terms_accounting" class="checkbox-style-3-label">Accounting</label>
       <p class="level-2">
         <input class="checkbox-style" id="_id_terms_accounting_1" name="terms_accounting_1" type="checkbox">
@@ -450,10 +459,10 @@
         </span>
       </p>
       <p class="level-2">
-        <input class="checkbox-style" id="_id_terms_accounting_4" name="terms_accounting_4" type="checkbox">
+        <input class="checkbox-style" id="_id_terms_accounting_4" name="terms_accounting_4" type="checkbox" checked="checked">
         <label for="_id_terms_accounting_4" class="checkbox-style-3-label checkbox-small">US GAAP</label>
         <span class="level-3">
-          <input class="as-btn" id="_id_terms_accounting_4_locale_en" name="terms_accounting_4_locale_en" type="checkbox">
+          <input class="as-btn" id="_id_terms_accounting_4_locale_en" name="terms_accounting_4_locale_en" type="checkbox" checked="checked">
           <label for="_id_terms_accounting_4_locale_en">en</label>
         </span>
       </p>
@@ -481,20 +490,20 @@
     </div>
 
     <div class="level-1">
-      <input class="checkbox-style" id="_id_terms_financial" name="terms_financial" type="checkbox">
+      <input class="checkbox-style" id="_id_terms_financial" name="terms_financial" type="checkbox" checked="checked">
       <label for="_id_terms_financial" class="checkbox-style-3-label">Financial</label>
       <p class="level-2">
-        <input class="checkbox-style" id="_id_terms_financial_1" name="terms_financial_1" type="checkbox">
+        <input class="checkbox-style" id="_id_terms_financial_1" name="terms_financial_1" type="checkbox" checked="checked">
         <label for="_id_terms_financial_1" class="checkbox-style-3-label checkbox-small">Common Financial Terms</label>
         <span class="level-3">
-          <input class="as-btn" id="_id_terms_financial_1_locale_en" name="terms_financial_1_locale_en" type="checkbox">
+          <input class="as-btn" id="_id_terms_financial_1_locale_en" name="terms_financial_1_locale_en" type="checkbox" checked="checked">
           <label for="_id_terms_financial_1_locale_en">en</label>
         </span>
       </p>
     </div>
 
     <div class="level-1">
-      <input class="checkbox-style" id="_id_terms_legal" name="terms_legal" type="checkbox">
+      <input class="checkbox-style" id="_id_terms_legal" name="terms_legal" type="checkbox" checked="checked">
       <label for="_id_terms_legal" class="checkbox-style-3-label">Legal</label>
       <p class="level-2">
         <input class="checkbox-style" id="_id_terms_legal_1" name="terms_legal_1" type="checkbox">
@@ -521,18 +530,18 @@
         </span>
       </p>
       <p class="level-2">
-        <input class="checkbox-style" id="_id_terms_legal_4" name="terms_legal_4" type="checkbox">
+        <input class="checkbox-style" id="_id_terms_legal_4" name="terms_legal_4" type="checkbox" checked="checked">
         <label for="_id_terms_legal_4" class="checkbox-style-3-label checkbox-small">Common US Law (top 1000)</label>
         <span class="level-3">
-          <input class="as-btn" id="_id_terms_legal_4_locale_en" name="terms_legal_4_locale_en" type="checkbox">
+          <input class="as-btn" id="_id_terms_legal_4_locale_en" name="terms_legal_4_locale_en" type="checkbox" checked="checked">
           <label for="_id_terms_legal_4_locale_en">en</label>
         </span>
       </p>
       <p class="level-2">
-        <input class="checkbox-style" id="_id_terms_legal_5" name="terms_legal_5" type="checkbox">
-        <label for="_id_terms_legal_5" class="checkbox-style-3-label checkbox-small">Common Top Law Terms (top 2000)</label>
+        <input class="checkbox-style" id="_id_terms_legal_5" name="terms_legal_5" type="checkbox" checked="checked">
+        <label for="_id_terms_legal_5" class="checkbox-style-3-label checkbox-small">Common Top Law Terms (top 1500)</label>
         <span class="level-3">
-          <input class="as-btn" id="_id_terms_legal_5_locale_en" name="terms_legal_5_locale_en" type="checkbox">
+          <input class="as-btn" id="_id_terms_legal_5_locale_en" name="terms_legal_5_locale_en" type="checkbox" checked="checked">
           <label for="_id_terms_legal_5_locale_en">en</label>
         </span>
       </p>
@@ -555,21 +564,21 @@
       </div>
 
       <div class="level-1">
-        <input class="checkbox-style" id="_id_courts" name="courts" type="checkbox">
+        <input class="checkbox-style" id="_id_courts" name="courts" type="checkbox" checked="checked">
         <label for="_id_courts" class="checkbox-style-3-label">Courts</label>
         <p class="level-2">
-          <input class="checkbox-style" id="_id_courts_1" name="courts_1" type="checkbox">
+          <input class="checkbox-style" id="_id_courts_1" name="courts_1" type="checkbox" checked="checked">
           <label for="_id_courts_1" class="checkbox-style-3-label checkbox-small">Canadian Courts</label>
         <span class="level-3">
-          <input class="as-btn" id="_id_courts_1_locale_en" name="courts_1_locale_en" type="checkbox">
+          <input class="as-btn" id="_id_courts_1_locale_en" name="courts_1_locale_en" type="checkbox" checked="checked">
           <label for="_id_courts_1_locale_en">en</label>
         </span>
         </p>
         <p class="level-2">
-          <input class="checkbox-style" id="_id_courts_2" name="courts_2" type="checkbox">
+          <input class="checkbox-style" id="_id_courts_2" name="courts_2" type="checkbox" checked="checked">
           <label for="_id_courts_2" class="checkbox-style-3-label checkbox-small">US Courts</label>
         <span class="level-3">
-          <input class="as-btn" id="_id_courts_2_locale_en" name="courts_2_locale_en" type="checkbox">
+          <input class="as-btn" id="_id_courts_2_locale_en" name="courts_2_locale_en" type="checkbox" checked="checked">
           <label for="_id_courts_2_locale_en">en</label>
         </span>
         </p>
@@ -590,13 +599,13 @@
     </div>
 
     <div class="level-1">
-      <input class="checkbox-style" id="_id_geoentities" name="geoentities" type="checkbox">
+      <input class="checkbox-style" id="_id_geoentities" name="geoentities" type="checkbox" checked="checked">
       <label for="_id_geoentities" class="checkbox-style-3-label">Geo Entities</label>
       <p class="level-2">
-        <input class="checkbox-style" id="_id_geoentities_1" name="geoentities_1" type="checkbox">
+        <input class="checkbox-style" id="_id_geoentities_1" name="geoentities_1" type="checkbox" checked="checked">
         <label for="_id_geoentities_1" class="checkbox-style-3-label checkbox-small">Geopolitical Divisions</label>
         <span class="level-3">
-          <input class="as-btn" id="_id_geoentities_1_locale_multi" name="geoentities_1_locale_multi" type="checkbox">
+          <input class="as-btn" id="_id_geoentities_1_locale_multi" name="geoentities_1_locale_multi" type="checkbox" checked="checked">
           <label for="_id_geoentities_1_locale_multi">multi</label>
         </span>
       </p>
@@ -619,7 +628,7 @@
   <script src="{% static 'moment-duration-format.js' %}"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-confirm/3.1.1/jquery-confirm.min.js"></script>
   <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/jQuery-Knob/1.2.13/jquery.knob.min.js"></script>
-  <script type="text/javascript" src="{% static "theme/js/components/bs-switches.js" %}"></script>
+  <script type="text/javascript" src="{% static "js/components/bs-switches.js" %}"></script>
   <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/chosen/1.6.2/chosen.jquery.min.js"></script>
   <script type="text/javascript">
     var show_options = function($form){
@@ -628,60 +637,60 @@
         $form.find('[name="do_cluster_documents"], [name="do_cluster_text_units"]').parent('p').show();
         var using =  $form.find('select[name="using"]').val();
         var is_simple =  $form.find('input[name="options"]').is(':checked');
-        if (using == 'MiniBatchKMeans') {
-          var advanced = ', [name="kmeans_max_iter"], [name^="mb_kmeans_"]';
+        if (using == 'minibatchkmeans') {
+          var advanced = ', [name="kmeans_max_iter"], [name^="minibatchkmeans_"]';
           var hidden_advanced = is_simple ? advanced : '';
           var visible_advanced = is_simple ? '' : advanced;
           $form.find('[name="n_clusters"]' + visible_advanced).parent('p').show();
           $form.find('[name^="kmeans_n_init"], [name^="birch_"], [name^="dbscan_"], [name^="ls_"]' + hidden_advanced).parent('p').hide()
         }
-        else if (using == 'KMeans') {
+        else if (using == 'kmeans') {
           advanced = ', [name^="kmeans_"]';
           hidden_advanced = is_simple ? advanced : '';
           visible_advanced = is_simple ? '' : advanced;
           $form.find('[name="n_clusters"]' + visible_advanced).parent('p').show();
-          $form.find('[name^="mb_kmeans_"], [name^="birch_"], [name^="dbscan_"], [name^="ls_"]' + hidden_advanced).parent('p').hide()
+          $form.find('[name^="minibatchkmeans_"], [name^="birch_"], [name^="dbscan_"], [name^="ls_"]' + hidden_advanced).parent('p').hide()
         }
-        else if (using == 'Birch') {
+        else if (using == 'birch') {
           advanced = ', [name^="birch_"]';
           hidden_advanced = is_simple ? advanced : '';
           visible_advanced = is_simple ? '' : advanced;
           $form.find('[name="n_clusters"]' + visible_advanced).parent('p').show();
-          $form.find('[name^="kmeans_"], [name^="mb_kmeans_"], [name^="dbscan_"], [name^="ls_"]' + hidden_advanced).parent('p').hide()
+          $form.find('[name^="kmeans_"], [name^="minibatchkmeans_"], [name^="dbscan_"], [name^="ls_"]' + hidden_advanced).parent('p').hide()
         }
-        else if (using == 'DBSCAN') {
+        else if (using == 'dbscan') {
           advanced = ', [name^="dbscan_"]';
           hidden_advanced = is_simple ? advanced : '';
           if (!is_simple) {
             $form.find('[name^="dbscan_"]').parent('p').show();
           }
-          $form.find('[name="n_clusters"], [name^="kmeans_"], [name^="mb_kmeans_"], [name^="birch_"], [name^="ls_"]' + hidden_advanced).parent('p').hide()
+          $form.find('[name="n_clusters"], [name^="kmeans_"], [name^="minibatchkmeans_"], [name^="birch_"], [name^="ls_"]' + hidden_advanced).parent('p').hide()
         }
-        else if (using == 'LabelSpreading') {
-          advanced = '[name="ls_max_iter"]';
-          hidden_advanced = is_simple ? advanced : '';
-          visible_advanced = is_simple ? '' : advanced;
-          var cluster_docs = $form.find('[name="do_cluster_documents"]').is(':checked');
-          var visible_doc_props = cluster_docs ? '[name="ls_documents_property"]' : '';
-          var hidden_doc_props = cluster_docs ? '' : '[name="ls_documents_property"]';
-          var cluster_tus = $form.find('[name="do_cluster_text_units"]').is(':checked');
-          var visible_tu_props = cluster_tus ? '[name="ls_text_units_property"]' : '';
-          var hidden_tu_props = cluster_tus ? '' : '[name="ls_text_units_property"]';
-          var visible = $.grep([visible_advanced, visible_doc_props, visible_tu_props], function(n){ return (n!==''); });
-          visible = visible.join(', ');
-          $form.find(visible).parent('p').show();
-          var hidden = $.grep([hidden_advanced, hidden_doc_props, hidden_tu_props], function(n){ return (n!==''); });
-          hidden = hidden ? ', ' + hidden.join(', ') : '';
-          $form.find(
-              '[name="n_clusters"], [name^="kmeans_"], [name^="mb_kmeans_"], [name^="dbscan_"]' +
-              hidden).parent('p').hide();
-          if (!$form.find('[name="ls_documents_property"]').length){
-            $form.find('[name="do_cluster_documents"]').parent('p').hide()
-          }
-          else if (!$form.find('[name="ls_text_units_property"]').length){
-            $form.find('[name="do_cluster_text_units"]').parent('p').hide()
-          }
-        }
+        {#else if (using == 'LabelSpreading') {#}
+        {#  advanced = '[name="ls_max_iter"]';#}
+        {#  hidden_advanced = is_simple ? advanced : '';#}
+        {#  visible_advanced = is_simple ? '' : advanced;#}
+        {#  var cluster_docs = $form.find('[name="do_cluster_documents"]').is(':checked');#}
+        {#  var visible_doc_props = cluster_docs ? '[name="ls_documents_property"]' : '';#}
+        {#  var hidden_doc_props = cluster_docs ? '' : '[name="ls_documents_property"]';#}
+        {#  var cluster_tus = $form.find('[name="do_cluster_text_units"]').is(':checked');#}
+        {#  var visible_tu_props = cluster_tus ? '[name="ls_text_units_property"]' : '';#}
+        {#  var hidden_tu_props = cluster_tus ? '' : '[name="ls_text_units_property"]';#}
+        {#  var visible = $.grep([visible_advanced, visible_doc_props, visible_tu_props], function(n){ return (n!==''); });#}
+        {#  visible = visible.join(', ');#}
+        {#  $form.find(visible).parent('p').show();#}
+        {#  var hidden = $.grep([hidden_advanced, hidden_doc_props, hidden_tu_props], function(n){ return (n!==''); });#}
+        {#  hidden = hidden ? ', ' + hidden.join(', ') : '';#}
+        {#  $form.find(#}
+        {#      '[name="n_clusters"], [name^="kmeans_"], [name^="minibatchkmeans_"], [name^="dbscan_"]' +#}
+        {#      hidden).parent('p').hide();#}
+        {#  if (!$form.find('[name="ls_documents_property"]').length){#}
+        {#    $form.find('[name="do_cluster_documents"]').parent('p').hide()#}
+        {#  }#}
+        {#  else if (!$form.find('[name="ls_text_units_property"]').length){#}
+        {#    $form.find('[name="do_cluster_text_units"]').parent('p').hide()#}
+        {#  }#}
+        {#}#}
       }
           {# classify form #}
       else if ($('.classify-form').length){
@@ -919,9 +928,9 @@
                   }
                   $.each(data.responseJSON, function(field, error){
                     var error_p = '<p class="error">' + error[0] + '</p>';
-                    form.find('[name=' + field + ']').parent().prepend(error_p)
+                    form.find('#id_' + field).before(error_p)
                   })
-                }})
+                }});
               return false
             }
           },

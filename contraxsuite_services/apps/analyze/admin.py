@@ -28,8 +28,8 @@ from django.contrib import admin
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2019, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.3.0/LICENSE"
-__version__ = "1.3.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.4.0/LICENSE"
+__version__ = "1.4.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -37,7 +37,8 @@ __email__ = "support@contraxsuite.com"
 from apps.analyze.models import (
     DocumentCluster, DocumentSimilarity, PartySimilarity,
     TextUnitClassification, TextUnitClassifier, TextUnitClassifierSuggestion,
-    TextUnitSimilarity, TextUnitCluster)
+    TextUnitSimilarity, TextUnitCluster,
+    DocumentTransformer, TextUnitTransformer, DocumentVector, TextUnitVector)
 
 
 class DocumentClusterAdmin(admin.ModelAdmin):
@@ -80,6 +81,46 @@ class TextUnitClassifierSuggestionAdmin(admin.ModelAdmin):
                      'classifier_confidence', 'class_name')
 
 
+class DocumentTransformerAdmin(admin.ModelAdmin):
+    list_display = ('name', 'version', 'is_active')
+    search_fields = ('name', 'version', 'vector_name')
+
+
+class TextUnitTransformerAdmin(admin.ModelAdmin):
+    list_display = ('name', 'version', 'text_unit_type', 'is_active')
+    search_fields = ('name', 'version', 'vector_name', 'text_unit_type')
+
+
+class DocumentVectorAdmin(admin.ModelAdmin):
+    list_display = ('vector_name', 'transformer_name', 'document', 'project', 'timestamp')
+    search_fields = ('vector_name', 'transformer__name', 'document__name')
+
+    @staticmethod
+    def transformer_name(obj):
+        return obj.transformer.name
+
+    @staticmethod
+    def project(obj):
+        return obj.document.project.name
+
+
+class TextUnitVectorAdmin(admin.ModelAdmin):
+    list_display = ('vector_name', 'transformer_name', 'text_unit', 'document', 'project', 'timestamp')
+    search_fields = ('vector_name', 'text_unit__document__name', 'text_unit__document__project__name')
+
+    @staticmethod
+    def transformer_name(obj):
+        return obj.transformer.name
+
+    @staticmethod
+    def document(obj):
+        return obj.text_unit.document.name
+
+    @staticmethod
+    def project(obj):
+        return obj.text_unit.document.project.name
+
+
 admin.site.register(DocumentCluster, DocumentClusterAdmin)
 admin.site.register(TextUnitCluster, TextUnitClusterAdmin)
 admin.site.register(DocumentSimilarity, DocumentSimilarityAdmin)
@@ -88,3 +129,7 @@ admin.site.register(PartySimilarity, PartySimilarityAdmin)
 admin.site.register(TextUnitClassification, TextUnitClassificationAdmin)
 admin.site.register(TextUnitClassifier, TextUnitClassifierAdmin)
 admin.site.register(TextUnitClassifierSuggestion, TextUnitClassifierSuggestionAdmin)
+admin.site.register(DocumentTransformer, DocumentTransformerAdmin)
+admin.site.register(TextUnitTransformer, TextUnitTransformerAdmin)
+admin.site.register(DocumentVector, DocumentVectorAdmin)
+admin.site.register(TextUnitVector, TextUnitVectorAdmin)

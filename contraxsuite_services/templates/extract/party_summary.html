@@ -100,9 +100,10 @@
       // Documents table
       var documents_datafields = [
         { name: 'pk', type: 'int' },
+        { name: 'project__name', type: 'string' },
         { name: 'name', type: 'string' },
-        { name: 'document_type', type: 'string' },
-        { name: 'description', type: 'string' },
+        { name: 'document_type__title', type: 'string' },
+        { name: 'title', type: 'string' },
         { name: 'url', type: 'string' },
         { name: 'text_unit_data' }
       ];
@@ -122,12 +123,14 @@
       var documents_columns = [
         { text: 'ID', datafield: 'pk', width: 50,
           align: 'center', cellsalign: 'center' },
+        { text: 'Project', datafield: 'project__name', width: 100,
+          align: 'center', cellsalign: 'center' },
         { text: 'Name', datafield: 'name', width: 300,
           align: 'center', cellsalign: 'left',
           cellsrenderer: defaultLinkFormatter },
-        { text: 'Type', datafield: 'document_type', width: 100,
+        { text: 'Type', datafield: 'document_type__title', width: 100,
           align: 'center', cellsalign: 'center' },
-        { text: 'Description', datafield: 'description', width: 'auto',
+        { text: 'Title', datafield: 'title', width: 'auto',
           align: 'center', cellsalign: 'center' },
         { text: 'Action', datafield: 'url', width: 60,
           align: 'center', exportable: false,
@@ -148,7 +151,7 @@
           datafields: [
             { name: 'unit_type', type: 'string' },
             { name: 'language', type: 'string' },
-            { name: 'text', type: 'string' },
+            { name: 'textunittext__text', type: 'string' },
             { name: 'detail_url', type: 'string' }
           ],
           localdata: record.text_unit_data
@@ -178,7 +181,7 @@
                 align: 'center', cellsalign: 'center' },
               { text: 'Language', datafield: 'language', width: 80,
                 align: 'center', cellsalign: 'center' },
-              { text: 'Text', datafield: 'text', width: 'auto', minwidth: 'auto',
+              { text: 'Text', datafield: 'textunittext__text', width: 'auto', minwidth: 'auto',
                 align: 'center', cellsalign: 'center' },
               { text: 'Action', datafield: 'url', width: 60,
                 align: 'center', exportable: false,
@@ -210,7 +213,7 @@
         { name: 'document__description', type: 'string' },
         { name: 'unit_type', type: 'string' },
         { name: 'language', type: 'string' },
-        { name: 'text', type: 'string' },
+        { name: 'textunittext__text', type: 'string' },
         { name: 'url', type: 'string' },
         { name: 'detail_url', type: 'string' }
       ];
@@ -240,7 +243,7 @@
           align: 'center', cellsalign: 'center' },
         { text: 'Language', datafield: 'language', width: 80,
           align: 'center', cellsalign: 'center' },
-        { text: 'Text', datafield: 'text', width: 'auto', minwidth: 300,
+        { text: 'Text', datafield: 'textunittext__text', width: 'auto', minwidth: 300,
           align: 'center', cellsalign: 'center' },
         { text: 'Action', datafield: 'url', width: 60,
           align: 'center', exportable: false,
@@ -312,7 +315,7 @@
             { name: 'entity__name', type: 'string' },
             { name: 'entity__category', type: 'string' },
             { name: 'count', type: 'int' },
-            { name: 'text_unit__text', type: 'string' },
+            { name: 'text_unit__textunittext__text', type: 'string' },
             { name: 'url', type: 'string' },
             { name: 'detail_url', type: 'string' }          ],
           localdata: record.entity_data
@@ -355,7 +358,7 @@
                 align: 'center', cellsalign: 'center', columngroup: 'Entity' },
               { text: 'Count', datafield: 'count', width: 60,
                 align: 'center', cellsalign: 'center' },
-              { text: 'Text Unit', datafield: 'text_unit__text', sortable: false, width: 'auto', minwidth: 200,
+              { text: 'Text Unit', datafield: 'text_unit__textunittext__text', sortable: false, width: 'auto', minwidth: 200,
                 align: 'center', cellsalign: 'center' },
               { text: 'Action', datafield: 'url', width: 60,
                 align: 'center', exportable: false,

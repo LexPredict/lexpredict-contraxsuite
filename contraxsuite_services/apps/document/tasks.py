@@ -59,7 +59,7 @@ from apps.document.field_detection.field_detection_repository import FieldDetect
 from apps.document.field_detection.regexps_field_detection import apply_simple_config
 from apps.document.field_types import TypedField
 from apps.document.models import DocumentType, \
-    Document, ClassifierModel, TextUnit, DocumentField
+    Document, DocumentMetadata, ClassifierModel, TextUnit, DocumentField
 from apps.document.models import FieldValue, FieldAnnotation
 from apps.document.repository.document_bulk_delete import get_document_bulk_delete
 from apps.document.repository.dto import FieldValueDTO
@@ -77,8 +77,8 @@ from apps.users.models import User
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2019, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.3.0/LICENSE"
-__version__ = "1.3.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.4.0/LICENSE"
+__version__ = "1.4.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -492,7 +492,6 @@ class LoadDocumentWithFields(BaseTask):
                 name=document_name,
                 project=project,
                 document_type=project.type,
-                metadata={'parsed_by': None}
             )
             LoadDocumentWithFields.load_doc(self, document, document_fields, run_detect_field_values)
 
@@ -536,7 +535,6 @@ class LoadDocumentWithFields(BaseTask):
                     name=file_name,
                     project=project,
                     document_type=document_type,
-                    metadata={'parsed_by': None}
                 )
                 LoadDocumentWithFields.load_doc(task=task,
                                                 document=document,
@@ -558,6 +556,7 @@ class LoadDocumentWithFields(BaseTask):
         with transaction.atomic():
             new_document = document.pk is None
             document.save(force_insert=new_document)
+            DocumentMetadata.objects.create(document=document, metadata={'parsed_by': None})
 
             for field, value_dto in fields_to_values.items():
                 field_repo.update_field_value_with_dto(document=document,
@@ -762,7 +761,6 @@ class ImportDocumentType(BaseTask):
             self.run_sub_tasks('Cache field values for a set of documents',
                                ImportDocumentType.cache_document_fields_for_doc_ids,
                                [(list(chunk),)])
-        # CacheDocumentFields.start_cache_document_fields_for_doc_ids(self, ids)
 
     @staticmethod
     @shared_task(base=ExtendedTask,
@@ -897,7 +895,7 @@ def _process_documents_status_changed(task: ExtendedTask, doc_ids: List, new_sta
     dfr = DocumentFieldRepository()
 
     status = ReviewStatus.objects.get(pk=new_status_id)  # type: ReviewStatus
-    docs_qr = Document.objects.filter(pk__in=doc_ids).defer('full_text')
+    docs_qr = Document.objects.filter(pk__in=doc_ids)
     changed_by_user = User.objects.get(pk=changed_by_user_id) if changed_by_user_id is not None else None
     if not status.is_active:
         for doc in docs_qr:

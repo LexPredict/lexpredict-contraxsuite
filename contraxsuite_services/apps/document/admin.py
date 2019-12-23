@@ -69,10 +69,11 @@ from apps.document.field_detection.stop_words import compile_stop_words, detect_
 from apps.document.field_processing.field_processing_utils import order_field_detection
 from apps.document.field_types import RelatedInfoField, TypedField, ChoiceField
 from apps.document.models import (
-    Document, DocumentField, DocumentType, FieldValue, FieldAnnotation,
+    Document, DocumentText, DocumentMetadata,
+    DocumentField, DocumentType, FieldValue, FieldAnnotation,
     DocumentProperty, DocumentRelation, DocumentNote,
     DocumentFieldDetector, ExternalFieldValue,
-    ClassifierModel, TextUnit, TextUnitProperty, TextUnitNote, TextUnitTag,
+    ClassifierModel, TextUnit, TextUnitProperty, TextUnitNote, TextUnitTag, TextUnitText,
     DocumentFieldCategory)
 from apps.document.python_coded_fields_registry import PYTHON_CODED_FIELDS_REGISTRY
 from apps.document.repository.document_field_repository import DocumentFieldRepository
@@ -81,8 +82,8 @@ from apps.task.models import Task
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2019, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.3.0/LICENSE"
-__version__ = "1.3.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.4.0/LICENSE"
+__version__ = "1.4.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -108,9 +109,18 @@ class PrettyJsonFieldMixin(object):
     }
 
 
+class DocumentTextInline(admin.TabularInline):
+    model = DocumentText
+
+
+class DocumentMetadatatInline(admin.TabularInline):
+    model = DocumentMetadata
+
+
 class DocumentAdmin(ModelAdminWithPrettyJsonField, SimpleHistoryAdmin):
     list_display = ('name', 'document_type', 'project', 'status_name', 'source_type', 'paragraphs', 'sentences')
     search_fields = ['document_type__code', 'name']
+    inlines = [DocumentTextInline, DocumentMetadatatInline]
 
     def get_queryset(self, request):
         return Document.all_objects
@@ -127,6 +137,14 @@ class DocumentAdmin(ModelAdminWithPrettyJsonField, SimpleHistoryAdmin):
 
     def has_delete_permission(self, request, obj=None):
         return False
+
+
+class DocumentTextAdmin(ModelAdminWithPrettyJsonField, SimpleHistoryAdmin):
+    search_fields = ['document__document_type__code', 'document__name']
+
+
+class DocumentMetadataAdmin(ModelAdminWithPrettyJsonField, SimpleHistoryAdmin):
+    search_fields = ['document__document_type__code', 'document__name']
 
 
 class SoftDeleteDocument(Document):
@@ -490,7 +508,13 @@ class ModelFormWithUnchangeableFields(forms.ModelForm):
                 self.fields[field_name].disabled = True
         for field in self.fields.values():
             if field.disabled and not isinstance(field.widget, forms.widgets.CheckboxInput):
-                field.widget = forms.TextInput(attrs={'readonly': True})
+                widget = field.widget
+                if hasattr(widget, 'attrs'):
+                    widget.attrs['readonly'] = True
+                if hasattr(widget, 'can_add_related'):
+                    widget.can_add_related = False
+                if hasattr(widget, 'can_delete_related'):
+                    widget.can_delete_related = False
 
 
 class DocumentFieldForm(ModelFormWithUnchangeableFields):
@@ -507,7 +531,13 @@ class DocumentFieldForm(ModelFormWithUnchangeableFields):
     hide_until_python = forms.CharField(
         widget=forms.Textarea,
         required=False,
-        help_text='Boolean expression in python syntax. Use field codes for this expression'
+        help_text="""        
+            Enter a true/false expression in python syntax. When this python 
+            results in True, this field will display. When this python results
+            in False, this field will be hidden. IF A DOCUMENT IS SET TO 
+            COMPLETED STATUS WITH THIS FIELD HIDDEN, THIS FIELD'S DATA WILL BE ERASED. 
+            Until the document is set to completed, this field could have data 
+            not reviewed by a user."""
     )
 
     hide_until_js = forms.CharField(
@@ -823,7 +853,7 @@ class DocumentFieldAdmin(FieldValuesValidationAdmin):
         }),
         ('Field Detection: Machine Learning', {
             'fields': ('classifier_init_script', 'unsure_choice_value', 'unsure_thresholds_by_value',
-                       'training_finished', 'dirty', 'trained_after_documents_number'),
+                       'training_finished', 'dirty', 'trained_after_documents_number', 'vectorizer_stop_words'),
         }),
         ('Field Detection: Calculated Fields', {
             'fields': ('formula',),
@@ -1341,9 +1371,18 @@ class DocumentRelationAdmin(admin.ModelAdmin):
     search_fields = ['document_a__name', 'document_a__name', 'relation_type']
 
 
+class TextUnitTextInline(admin.TabularInline):
+    model = TextUnitText
+
+
 class TextUnitAdmin(admin.ModelAdmin):
     list_display = ('document', 'unit_type', 'language')
     search_fields = ('document__name', 'document__name', 'unit_type', 'language')
+    inlines = [TextUnitTextInline]
+
+
+class TextUnitTextAdmin(admin.ModelAdmin):
+    search_fields = ('text_unit__id', 'text_unit__unit_type')
 
 
 class TextUnitTagAdmin(admin.ModelAdmin):
@@ -1403,6 +1442,8 @@ class DocumentFieldCategoryAdmin(admin.ModelAdmin):
 
 
 admin.site.register(Document, DocumentAdmin)
+admin.site.register(DocumentMetadata, DocumentMetadataAdmin)
+admin.site.register(DocumentText, DocumentTextAdmin)
 admin.site.register(SoftDeleteDocument, SoftDeleteDocumentAdmin)
 admin.site.register(DocumentField, DocumentFieldAdmin)
 admin.site.register(DocumentFieldDetector, DocumentFieldDetectorAdmin)
@@ -1415,6 +1456,7 @@ admin.site.register(DocumentRelation, DocumentRelationAdmin)
 admin.site.register(DocumentProperty, DocumentPropertyAdmin)
 admin.site.register(TextUnitProperty, TextUnitPropertyAdmin)
 admin.site.register(TextUnit, TextUnitAdmin)
+admin.site.register(TextUnitText, TextUnitTextAdmin)
 admin.site.register(TextUnitTag, TextUnitTagAdmin)
 admin.site.register(TextUnitNote, TextUnitNoteAdmin)
 admin.site.register(DocumentNote, DocumentNoteAdmin)

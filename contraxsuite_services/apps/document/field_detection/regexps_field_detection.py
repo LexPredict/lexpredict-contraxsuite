@@ -42,8 +42,8 @@ from apps.document.value_extraction_hints import ValueExtractionHint
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2019, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.3.0/LICENSE"
-__version__ = "1.3.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.4.0/LICENSE"
+__version__ = "1.4.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -106,7 +106,7 @@ class RegexpsOnlyFieldDetectionStrategy(FieldDetectionStrategy):
             for field_detector in detectors:
                 try:
                     matching_piece = field_detector.matching_string(
-                        text_unit.text, text_is_sentence=text_unit.is_sentence())
+                        text_unit.textunittext.text, text_is_sentence=text_unit.is_sentence())
                     if matching_piece is not None:
                         if field.detect_limit_unit == DocumentField.DETECT_LIMIT_CHAR:
                             if field.detect_limit_count < units_counted + matching_piece[1]:

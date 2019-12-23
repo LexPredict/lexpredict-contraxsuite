@@ -24,17 +24,14 @@
 """
 # -*- coding: utf-8 -*-
 
-from allauth.account.forms import LoginForm
-from rest_auth.models import TokenModel
-
-from django.contrib.auth.forms import password_validation
 from django import forms
+from django.contrib.auth.forms import password_validation
 from django.utils.translation import ugettext as _
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2019, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.3.0/LICENSE"
-__version__ = "1.3.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.4.0/LICENSE"
+__version__ = "1.4.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -66,14 +63,3 @@ class CustomSetPasswordForm(forms.Form):
         if commit:
             self.user.save()
         return self.user
-
-
-class CustomLoginForm(LoginForm):
-    """
-    Inject auth_token in cookies right after successful login via plain django views
-    """
-    def login(self, request, **kwargs):
-        response = super().login(request, **kwargs)
-        token, _ = TokenModel.objects.get_or_create(user=self.user)
-        response.set_cookie('auth_token', 'Token %s' % token)
-        return response

@@ -47,13 +47,13 @@ from apps.notifications.forms import SendDigestForm
 from apps.notifications.models import DocumentDigestConfig, DocumentNotificationSubscription, \
     DocumentChangedEvent, DocumentAssignedEvent
 from apps.notifications.notifications import render_digest, get_notification_template_resource, \
-    DocumentNotificationSource
+    DocumentNotificationSource, get_predefined_mime_type
 from apps.notifications.tasks import SendDigest
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2019, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.3.0/LICENSE"
-__version__ = "1.3.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.4.0/LICENSE"
+__version__ = "1.4.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -113,10 +113,13 @@ class RenderDigestView(View):
 class DigestImageView(View):
     def get(self, request, config_id, image_fn, **kwargs):
         config = DocumentDigestConfig.objects.get(pk=config_id)
-        image = get_notification_template_resource(os.path.join(config.template_name, 'images', image_fn))
+        image = get_notification_template_resource(os.path.join(config.template_name,
+                                                                'images', image_fn))
         if not image:
             return HttpResponseNotFound('Attachment not found: ' + image_fn)
-        return HttpResponse(content_type=mimetypes.guess_type(image_fn)[0], content=image)
+
+        content_type = get_predefined_mime_type(image_fn) or mimetypes.guess_type(image_fn)[0]
+        return HttpResponse(content_type=content_type, content=image)
 
 
 class RenderNotificationView(View):
@@ -198,7 +201,8 @@ class NotificationImageView(View):
         image = get_notification_template_resource(os.path.join(config.template_name, 'images', image_fn))
         if not image:
             return HttpResponseNotFound('Attachment not found: ' + image_fn)
-        return HttpResponse(content_type=mimetypes.guess_type(image_fn)[0], content=image)
+        content_type = get_predefined_mime_type(image_fn) or mimetypes.guess_type(image_fn)[0]
+        return HttpResponse(content_type=content_type, content=image)
 
 
 class SendDigestTaskView(BaseAjaxTaskView):

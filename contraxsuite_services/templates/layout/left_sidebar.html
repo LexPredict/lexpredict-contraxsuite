@@ -1,0 +1,104 @@
+{% load project_tags i18n %}
+
+{% if user.is_authenticated %}
+<nav class="sidebar no-select">
+    <ul id="leftSidebar" class="components">
+        <li>
+            <a href="{% url "home" %}">
+                <i class="icon fa fa-home"></i> LexNLP Extracted Values
+            </a>
+        </li>
+        <li>
+            <span
+                id="collapseDocument" data-toggle="collapse" data-target="#collapseDocumentArea"
+                aria-expanded="false" aria-controls="collapseDocumentArea"
+                class="accordion-arrow accordion-default"
+            >
+                <i class="icon fa fa-file-text-o"></i> Documents
+            </span>
+            <ul id="collapseDocumentArea" class="collapse" aria-labelledby="collapseDocument" data-parent="#leftSidebar">
+                <li><a href="{% url "document:document-list" %}">Document List</a></li>
+                <li><a href="{% url "document:document-note-list" %}">Document Notes</a></li>
+                <li><a href="{% url "document:document-tag-list" %}">Document Tags</a></li>
+                <li><a href="{% url "document:document-property-list" %}">Document Properties</a></li>
+                <li><a href="{% url "document:document-relation-list" %}">Document Relations</a></li>
+                <li class="divider"></li>
+                <li><a href="{% url "analyze:document-cluster-list" %}">Document Clusters</a></li>
+                <li><a href="{% url "analyze:document-similarity-list" %}">Document Similarity</a></li>
+                <li class="divider"></li>
+                <li><a href="{% url "extract:geo-entity-usage-chart" "country" %}">Document Geography</a></li>
+            </ul>
+        </li>
+
+        <li>
+            <span
+                id="collapseTextUnits" data-toggle="collapse" data-target="#collapseTextUnitsArea"
+                aria-expanded="false" aria-controls="collapseTextUnitsArea"
+                class="accordion-arrow accordion-default"
+            >
+                <i class="icon fa fa-indent"></i><span>Text Units</span>
+            </span>
+            <ul id="collapseTextUnitsArea" class="collapse" aria-labelledby="collapseTextUnits" data-parent="#leftSidebar">
+                <li><a href="{% url "document:text-unit-list" %}">Text Unit List</a></li>
+                <li><a href="{% url "document:text-unit-by-lang-list" %}">Text Unit List (by language)</a></li>
+                <li><a href="{% url "document:text-unit-note-list" %}">Text Unit Notes</a></li>
+                <li><a href="{% url "document:text-unit-tag-list" %}">Text Unit Tags</a></li>
+                <li><a href="{% url "document:text-unit-property-list" %}">Text Unit Properties</a></li>
+                <li class="divider"></li>
+                <li><a href="{% url "analyze:text-unit-cluster-list" %}">Text Unit Clusters</a></li>
+                <li><a href="{% url "analyze:text-unit-similarity-list" %}">Text Unit Similarity</a></li>
+                <li><a href="{% url "analyze:text-unit-classification-list" %}">Text Unit Classification</a></li>
+                <li><a href="{% url "analyze:text-unit-classifier-suggestion-list" %}">Text Unit Classification Suggestions</a></li>
+            </ul>
+        </li>
+
+        {% if not user.is_reviewer %}
+        <li>
+            <span
+                id="collapseAdministration" data-toggle="collapse" data-target="#collapseAdministrationArea"
+                aria-expanded="false" aria-controls="collapseAdministrationArea"
+                class="accordion-arrow accordion-default"
+            >
+                <i class="icon fa fa-gears"></i><span>Administration</span>
+            </span>
+            <ul id="collapseAdministrationArea" class="collapse" aria-labelledby="collapseAdministration" data-parent="#leftSidebar">
+                <li><a href="{% url "task:task-list" %}">Admin Tasks</a></li>
+                <li class="divider"></li>
+                <li><a href="{% url "filebrowser:fb_browse" %}">Browse/Upload Documents</a></li>
+                <li><a href="{% url "document:stats" %}">Stats</a></li>
+                <li><a href="{% url "analyze:text-unit-classifier-list" %}">Classifiers</a></li>
+
+                {% if user.is_admin %}
+                <li class="divider"></li>
+                <li><a href="{% url "common:method-stats-overview" %}">Method Stats Overview</a></li>
+                <li><a href="{% url "common:db-stats" %}">Database and Docker Stats</a></li>
+                <li><a href="{% url "admin:index" %}">Admin Site</a></li>
+                {% endif %}
+            </ul>
+        </li>
+        {% endif %}
+        <li>
+            <a href="{% url "project:project-list" %}">
+                <i class="icon fa fa-suitcase"></i> Projects
+            </a>
+        </li>
+        <li>
+            <a href="{% url 'swagger' group_by='app' %}">
+                <i class="icon fa fa-sitemap"></i> {% trans "API" %}
+            </a>
+        </li>
+        <li>
+            <a href="https://lexpredict.com/blog" class="blog-link" target="_blank">
+                <i class="icon fa fa-rss"></i> {% trans "Blog" %} <i class="fa fa-external-link"></i>
+            </a>
+        </li>
+    </ul>
+    <div data-for="release_version" class="version">
+        <span class="version_text">Version: </span>
+        <span class="version_number">{% settings_value "VERSION_NUMBER" %}</span>
+    </div>
+    <div class="copyright">
+        Copyrights &copy; 2015-{% now 'Y' %}, <a href="https://contraxsuite.com">ContraxSuite, LLC</a>
+    </div>
+</nav>
+{% endif %}

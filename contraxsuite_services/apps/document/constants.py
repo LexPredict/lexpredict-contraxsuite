@@ -27,8 +27,8 @@
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2019, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.3.0/LICENSE"
-__version__ = "1.3.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.4.0/LICENSE"
+__version__ = "1.4.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -61,6 +61,7 @@ class DocumentSystemField(enum.Enum):
     project = 'project'
     delete_pending = 'delete_pending'
     notes = 'notes'
+    folder = 'folder'
 
     def specified_in(self, field_spec: FieldSpec):
         return field_spec is True or field_spec and self.value in field_spec
@@ -68,3 +69,59 @@ class DocumentSystemField(enum.Enum):
 
 DOC_NUMBER_PER_SUB_TASK = 20
 DOC_NUMBER_PER_MAIN_TASK = 100
+
+
+DOCUMENT_FIELD_CODE_NAME = 'name'
+DOCUMENT_FIELD_CODE_DESCRIPTION = 'description'
+DOCUMENT_FIELD_CODE_LANGUAGE = 'language'
+DOCUMENT_FIELD_CODE_SOURCE = 'source'
+DOCUMENT_FIELD_CODE_SOURCE_TYPE = 'source_type'
+DOCUMENT_FIELD_CODE_SOURCE_PATH = 'source_path'
+DOCUMENT_FIELD_CODE_FILE_SIZE = 'file_size'
+DOCUMENT_FIELD_CODE_PARAGRAPHS = 'paragraphs'
+DOCUMENT_FIELD_CODE_SENTENCES = 'sentences'
+DOCUMENT_FIELD_CODE_TITLE = 'title'
+DOCUMENT_FIELD_CODE_HISTORY = 'history'
+DOCUMENT_FIELD_CODE_DELETE_PENDING = 'delete_pending'
+DOCUMENT_FIELD_CODE_FOLDER = 'folder'
+DOCUMENT_FIELD_CODE_DOCUMENT_TYPE = 'document_type'
+DOCUMENT_FIELD_CODE_PROJECT = 'project'
+DOCUMENT_FIELD_CODE_PROJECT_ID = 'project_id'
+DOCUMENT_FIELD_CODE_PROJECT_NAME = 'project.name'
+DOCUMENT_FIELD_CODE_STATUS = 'status'
+DOCUMENT_FIELD_CODE_STATUS_NAME = 'status.name'
+DOCUMENT_FIELD_CODE_ASSIGNEE = 'assignee'
+DOCUMENT_FIELD_CODE_ASSIGNEE_ID = 'assignee_id'
+DOCUMENT_FIELD_CODE_ASSIGNEE_NAME = 'assignee.get_full_name'
+DOCUMENT_FIELD_CODE_ASSIGN_DATE = 'assign_date'
+DOCUMENT_FIELD_CODE_UPLOAD_SESSION = 'upload_session'
+DOCUMENT_FIELD_CODE_PROCESSED = 'processed'
+DOCUMENT_FIELD_CODE_CLUSTER_ID = 'cluster_id'
+
+ALL_DOCUMENT_FIELD_CODES = {
+    DOCUMENT_FIELD_CODE_NAME,
+    DOCUMENT_FIELD_CODE_DESCRIPTION,
+    DOCUMENT_FIELD_CODE_LANGUAGE,
+    DOCUMENT_FIELD_CODE_SOURCE,
+    DOCUMENT_FIELD_CODE_SOURCE_TYPE,
+    DOCUMENT_FIELD_CODE_SOURCE_PATH,
+    DOCUMENT_FIELD_CODE_FILE_SIZE,
+    DOCUMENT_FIELD_CODE_PARAGRAPHS,
+    DOCUMENT_FIELD_CODE_SENTENCES,
+    DOCUMENT_FIELD_CODE_TITLE,
+    DOCUMENT_FIELD_CODE_HISTORY,
+    DOCUMENT_FIELD_CODE_DELETE_PENDING,
+    DOCUMENT_FIELD_CODE_FOLDER,
+    DOCUMENT_FIELD_CODE_DOCUMENT_TYPE,
+    DOCUMENT_FIELD_CODE_PROJECT,
+    DOCUMENT_FIELD_CODE_PROJECT_ID,
+    DOCUMENT_FIELD_CODE_PROJECT_NAME,
+    DOCUMENT_FIELD_CODE_STATUS,
+    DOCUMENT_FIELD_CODE_STATUS_NAME,
+    DOCUMENT_FIELD_CODE_ASSIGNEE,
+    DOCUMENT_FIELD_CODE_ASSIGNEE_ID,
+    DOCUMENT_FIELD_CODE_ASSIGNEE_NAME,
+    DOCUMENT_FIELD_CODE_ASSIGN_DATE,
+    DOCUMENT_FIELD_CODE_UPLOAD_SESSION,
+    DOCUMENT_FIELD_CODE_PROCESSED,
+    DOCUMENT_FIELD_CODE_CLUSTER_ID}

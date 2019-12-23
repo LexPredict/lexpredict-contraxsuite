@@ -33,8 +33,8 @@ from apps.task.tasks import purge_task
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2019, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.3.0/LICENSE"
-__version__ = "1.3.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.4.0/LICENSE"
+__version__ = "1.4.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -52,7 +52,7 @@ def cleanup_document_relations(document):
 
     # INFO: skip "delete step" (set delete=False) since we clean tasks periodically now
     # 2. delete Tasks, Task history, TaskResults, child tasks
-    if document.metadata.get('cascade_delete_tasks', True):
+    if document.metadata and document.metadata.get('cascade_delete_tasks', True):
         task_kwargs = dict(file_name=document.name)
         if document.upload_session_id:
             task_kwargs['session_id'] = str(document.upload_session_id)

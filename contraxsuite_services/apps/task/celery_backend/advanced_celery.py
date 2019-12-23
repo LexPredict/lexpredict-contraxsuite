@@ -25,6 +25,7 @@
 # -*- coding: utf-8 -*-
 
 from celery import Celery  # noqa
+from django.db import transaction
 
 from apps.common.utils import fast_uuid  # noqa
 from apps.task.models import Task  # noqa
@@ -32,8 +33,8 @@ from apps.task.utils.task_utils import TaskUtils  # noqa
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2019, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.3.0/LICENSE"
-__version__ = "1.3.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.4.0/LICENSE"
+__version__ = "1.4.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -43,20 +44,29 @@ class AdvancedCelery(Celery):
                   producer=None, connection=None, router=None, result_cls=None, expires=None,
                   publisher=None, link=None, link_error=None, add_to_parent=True, group_id=None,
                   retries=0, chord=None, reply_to=None, time_limit=None, soft_time_limit=None,
-                  root_id=None, parent_id=None, source_data=None, run_after_sub_tasks_finished=False,
+                  root_id=None, parent_id=None, source_data=None,
+                  run_after_sub_tasks_finished=False,
+                  run_if_parent_task_failed=False,
                   route_name=None, shadow=None, chain=None, task_type=None, main_task_id=None,
                   **options):
         task_id = task_id or str(fast_uuid())
-
-        TaskUtils.prepare_task_execution()
 
         main_task_id = main_task_id or parent_id or root_id
         args_str = ', '.join([str(arg) for arg in args]) if args else ''
         kwargs_str = ', '.join([f'{f}={str(v)}' for f, v in kwargs.items()]) if kwargs else ''
 
-        Task.objects.init_task(task_id, name, main_task_id,
-                               f'Args: {args_str}\nKwargs: {kwargs_str}',
-                               args, source_data, run_after_sub_tasks_finished)  # type: Task
+        TaskUtils.prepare_task_execution()
+        with transaction.atomic():
+            Task.objects.init_task(task_id=task_id,
+                                   task_name=name,
+                                   main_task_id=main_task_id,
+                                   parent_task_id=parent_id,
+                                   description=f'Args: {args_str}\nKwargs: {kwargs_str}',
+                                   args=args,
+                                   source_data=source_data,
+                                   run_after_sub_tasks_finished=run_after_sub_tasks_finished,
+                                   run_if_parent_task_failed=run_if_parent_task_failed)  # type: Task
+            Task.objects.filter(id=parent_id).update(has_sub_tasks=True)
 
         return super().send_task(name, args, kwargs, countdown, eta, task_id, producer, connection,
                                  router, result_cls, expires, publisher, link, link_error,

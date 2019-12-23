@@ -36,8 +36,8 @@ from apps.analyze.models import *
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2019, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.3.0/LICENSE"
-__version__ = "1.3.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.4.0/LICENSE"
+__version__ = "1.4.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -215,7 +215,7 @@ class TextUnitClusterSerializer(apps.common.mixins.SimpleRelationSerializer):
     def get_text_unit_data(self, obj):
         text_units = obj.text_units
         text_units = text_units.values(
-            'pk', 'unit_type', 'text', 'language',
+            'pk', 'unit_type', 'textunittext__text', 'language',
             'document__pk', 'document__name',
             'document__description', 'document__document_type')
         return list(text_units)
@@ -275,10 +275,10 @@ class TextUnitSimilaritySerializer(apps.common.mixins.SimpleRelationSerializer):
     class Meta:
         model = TextUnitSimilarity
         fields = ['pk', 'text_unit_a__pk', 'text_unit_a__unit_type',
-                  'text_unit_a__language', 'text_unit_a__text',
+                  'text_unit_a__language', 'text_unit_a__textunittext__text',
                   'text_unit_a__document__pk', 'text_unit_a__document__name',
                   'text_unit_b__pk', 'text_unit_b__unit_type',
-                  'text_unit_b__language', 'text_unit_b__text',
+                  'text_unit_b__language', 'text_unit_b__textunittext__text',
                   'text_unit_b__document__pk', 'text_unit_b__document__name',
                   'similarity']
 
@@ -295,7 +295,9 @@ class TextUnitSimilarityListAPIView(apps.common.mixins.JqListAPIView):
         text_unit_id = self.request.GET.get('text_unit_id')
         if text_unit_id:
             qs = qs.filter(text_units_a_id=text_unit_id)
-        return qs
+        return qs.select_related('text_unit_a', 'text_unit_a__textunittext',
+                                 'text_unit_b', 'text_unit_b__textunittext',
+                                 'text_unit_a__document', 'text_unit_b__document')
 
 
 # --------------------------------------------------------

@@ -7,13 +7,14 @@
     $(document).ready(function () {
       var datafields = [
         { name: 'pk', type: 'int' },
+        { name: 'text_unit__document__project__name', type: 'string' },
         { name: 'text_unit__document__name', type: 'string' },
         { name: 'text_unit__document__document_type__title', type: 'string' },
         { name: 'text_unit__document__description', type: 'string' },
         { name: 'party__name', type: 'string' },
         { name: 'party__type_abbr', type: 'string' },
         { name: 'count', type: 'int' },
-        { name: 'text_unit__text', type: 'string' },
+        { name: 'text_unit__textunittext__text', type: 'string' },
         { name: 'url', type: 'string' },
         { name: 'detail_url', type: 'string' },
         { name: 'party_summary_url', type: 'string' }
@@ -35,6 +36,8 @@
         return linkFormatter(defaulthtml, row.party_summary_url, value);
       };
       var columns = [
+        { text: 'Project', datafield: 'text_unit__document__project__name', width: 70,
+          align: 'center', cellsalign: 'center', columngroup: 'Document' },
         { text: 'Name', datafield: 'text_unit__document__name', width: 200,
           align: 'center', cellsalign: 'left', enabletooltips: true,
           cellsrenderer: defaultLinkFormatter, columngroup: 'Document' },
@@ -43,14 +46,14 @@
 {#        { text: 'Description', datafield: 'text_unit__document__description',#}
 {#          width: 200, enabletooltips: true, columngroup: 'Document',#}
 {#          align: 'center', cellsalign: 'center' },#}
-        { text: 'Name', datafield: 'party__name', width: 200,
+        { text: 'Name', datafield: 'party__name', width: 165,
           align: 'center', cellsalign: 'center', columngroup: 'Party',
           cellsrenderer: partyNameFormatter },
         { text: 'Type', datafield: 'party__type_abbr', width: 120,
           align: 'center', cellsalign: 'center', columngroup: 'Party' },
         { text: 'Count', datafield: 'count', width: 80,
           align: 'center', cellsalign: 'center' },
-        { text: 'Text Unit', datafield: 'text_unit__text', sortable: false, width: 'auto', minwidth: 300,
+        { text: 'Text Unit', datafield: 'text_unit__textunittext__text', sortable: false, width: 'auto', minwidth: 265,
           align: 'center', cellsalign: 'center' },
         { text: 'Action', datafield: 'url', width: 60,
           align: 'center', exportable: false,

@@ -48,8 +48,8 @@ from settings import DEFAULT_FLOAT_PRECIZION
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2019, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.3.0/LICENSE"
-__version__ = "1.3.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.4.0/LICENSE"
+__version__ = "1.4.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -226,11 +226,11 @@ class DateLocator(Locator):
             text,
             strict=strict))
         if found:
-            unique = set([i.date.date() if isinstance(i.date, datetime.datetime)
-                          else i.date for i in found])
+            _all = [i.date.date() if isinstance(i.date, datetime.datetime)
+                    else i.date for i in found]
             return ParseResults({DateUsage: [DateUsage(text_unit_id=text_unit_id,
                                                        date=item,
-                                                       count=found.count(item)) for item in unique]})
+                                                       count=_all.count(item)) for item in set(_all)]})
 
 
 class DefinitionLocator(Locator):
@@ -444,7 +444,8 @@ class TermLocator(Locator):
     locates_usage_model_classes = [TermUsage]
 
     def parse(self, log: ProcessLogger, text, text_unit_id, _text_unit_lang, **kwargs) -> ParseResults:
-        term_stems = dict_data_cache.get_term_config()
+        project_id = kwargs.get('project_id')
+        term_stems = dict_data_cache.get_term_config(project_id)
         text_stems = ' %s ' % ' '.join(get_stems(text, lowercase=True))
         text_tokens = get_token_list(text, lowercase=True)
         term_usages = []

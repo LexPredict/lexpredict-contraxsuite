@@ -24,7 +24,10 @@
 """
 # -*- coding: utf-8 -*-
 
-from typing import List
+import uuid
+from typing import List, Generator
+
+from django.db import connection
 
 from apps.analyze.models import DocumentCluster, TextUnitCluster
 from apps.common.singleton import Singleton
@@ -34,8 +37,8 @@ from apps.extract.models import Party
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2019, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.3.0/LICENSE"
-__version__ = "1.3.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.4.0/LICENSE"
+__version__ = "1.4.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -76,6 +79,28 @@ class DocumentRepository(BaseDocumentRepository):
 
     def get_document_by_id(self, id: int):
         return Document.all_objects.get(pk=id)
+
+    def get_doc_ids_by_type(self,
+                            document_type_id: uuid,
+                            pack_size: int = 100) -> Generator[List[int], None, None]:
+        with connection.cursor() as cursor:
+            cursor.execute('select id from document_document where document_type_id = %s', [document_type_id])
+
+            rows = cursor.fetchmany(pack_size)
+            while rows:
+                yield [row[0] for row in rows]
+                rows = cursor.fetchmany(pack_size)
+
+    def get_doc_ids_by_project(self,
+                               project_id: int,
+                               pack_size: int = 100) -> Generator[List[int], None, None]:
+        with connection.cursor() as cursor:
+            cursor.execute('select id from document_document where project_id = %d', [project_id])
+
+            rows = cursor.fetchmany(pack_size)
+            while rows:
+                yield [row[0] for row in rows]
+                rows = cursor.fetchmany(pack_size)
 
 
 default_document_repository = DocumentRepository()

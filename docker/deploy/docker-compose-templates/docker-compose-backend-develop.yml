@@ -142,13 +142,13 @@ services:
       - "POSTGRES_USER=${DOLLAR}{DOCKER_PG_USER}"
       - "POSTGRES_PASSWORD=${DOLLAR}{DOCKER_PG_PASSWORD}"
       - "POSTGRES_DB=${DOLLAR}{DOCKER_PG_DB_NAME}"
-    command: postgres -c config_file=/etc/contraxsuite/postgresql.conf
+    command: postgres -c config_file=/contraxsuite/postgresql.conf
     volumes:
       - postgres_data_11:/var/lib/contraxsuite-postgres
       - backup:/backup
     configs:
       - source: pg_${PG_CONFIG_VERSION}
-        target: /etc/contraxsuite/postgresql.conf
+        target: /contraxsuite/postgresql.conf
       - source: pg_init_sql_${PG_INIT_SQL_CONFIG_VERSION}
         target: /docker-entrypoint-initdb.d/postgres_init.sql
       - source: pg_backup_script_${PG_BACKUP_SCRIPT_CONFIG_VERSION}

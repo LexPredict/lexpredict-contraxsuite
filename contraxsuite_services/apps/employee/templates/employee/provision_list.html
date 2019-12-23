@@ -7,7 +7,7 @@
     $(document).ready(function () {
       var datafields = [
         { name: 'pk', type: 'int' },
-        { name: 'text_unit__text', type: 'string' },
+        { name: 'text_unit__textunittext__text', type: 'string' },
         { name: 'similarity', type: 'float' },
         { name: 'employee__name', type:'string' },
         { name: 'employee__pk', type: 'int' },
@@ -27,7 +27,7 @@
       };
 
       var columns = [
-        { text: 'Provision', datafield: 'text_unit__text',
+        { text: 'Provision', datafield: 'text_unit__textunittext__text',
           align: 'center', cellsalign: 'left', enabletooltips: true},
         { text: 'Confidence', datafield: 'similarity', width: 100,
           align: 'center', cellsalign: 'left'},

@@ -31,6 +31,7 @@ from django.contrib import admin
 from django.contrib.admin import SimpleListFilter
 from django.contrib.admin.utils import NestedObjects
 from django.db import router
+from django.db.models import Count, F
 from django.urls import reverse
 from django.utils.safestring import mark_safe
 from django.utils.translation import ugettext_lazy as _
@@ -38,13 +39,14 @@ from django.utils.translation import ugettext_lazy as _
 # Project imports
 from apps.common.utils import cap_words
 from apps.document.models import Document
-from apps.project.models import Project, TaskQueue, TaskQueueHistory, ProjectClustering, UploadSession
+from apps.project.models import Project, TaskQueue, TaskQueueHistory,\
+    ProjectClustering, UploadSession, ProjectTermConfiguration
 from apps.common.model_utils.model_class_dictionary import ModelClassDictionary
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2019, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.3.0/LICENSE"
-__version__ = "1.3.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.4.0/LICENSE"
+__version__ = "1.4.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -288,9 +290,28 @@ class SoftDeleteProjectAdmin(ProjectAdmin):
         return my_urls + urls
 
 
+class ProjectTermConfigurationAdmin(admin.ModelAdmin):
+    list_display = ('project_name', 'project_id', 'terms_count')
+    search_fields = ('pk', 'project__name')
+    filter_horizontal = ('terms',)
+
+    @staticmethod
+    def project_name(obj):
+        return obj.project_name
+
+    @staticmethod
+    def terms_count(obj):
+        return obj.terms_count
+
+    def get_queryset(self, request):
+        qs = super().get_queryset(request)
+        return qs.annotate(project_name=F('project__name'), terms_count=Count('terms'))
+
+
 admin.site.register(TaskQueue, TaskQueueAdmin)
 admin.site.register(TaskQueueHistory, TaskQueueHistoryAdmin)
 admin.site.register(Project, ProjectAdmin)
 admin.site.register(ProjectClustering, ProjectClusteringAdmin)
 admin.site.register(UploadSession, UploadSessionAdmin)
 admin.site.register(SoftDeleteProject, SoftDeleteProjectAdmin)
+admin.site.register(ProjectTermConfiguration, ProjectTermConfigurationAdmin)

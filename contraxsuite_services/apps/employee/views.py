@@ -44,8 +44,8 @@ import apps.common.mixins
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2019, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.3.0/LICENSE"
-__version__ = "1.3.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.4.0/LICENSE"
+__version__ = "1.4.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -89,7 +89,7 @@ class EmployeeListView(apps.common.mixins.JqPaginatedListView):
 class ProvisionListView(apps.common.mixins.JqPaginatedListView):
     model = Provision
     template_name = "employee/provision_list.html"
-    json_fields = ['text_unit__text', 'text_unit__pk', 'similarity', 'type',
+    json_fields = ['text_unit__textunittext__text', 'text_unit__pk', 'similarity', 'type',
                    'employee__name', 'employee__pk', 'document__pk', 'document__name']
     field_types = dict(count=int)
 
@@ -105,7 +105,7 @@ class ProvisionListView(apps.common.mixins.JqPaginatedListView):
             qs = qs.filter(employee__pk=self.request.GET['employee__pk'])
         if "type" in self.request.GET:
             qs = qs.filter(type= self.request.GET['type'])
-        return qs
+        return qs.select_related('text_unit', 'text_unit__textunittext')
 
 
 class EmployerListView(apps.common.mixins.JqPaginatedListView):

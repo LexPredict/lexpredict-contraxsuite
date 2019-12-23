@@ -43,8 +43,8 @@ from apps.users.models import User, Role
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2019, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.3.0/LICENSE"
-__version__ = "1.3.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.4.0/LICENSE"
+__version__ = "1.4.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -362,6 +362,8 @@ class DocumentEvent:
     title = None
     default_subject = None
     default_header = None
+    default_bulk_subject = None
+    default_bulk_header = None
 
     pass
 
@@ -371,6 +373,8 @@ class DocumentLoadedEvent:
     title = 'Document loaded'
     default_subject = 'Document loaded: {{ document.document_name }}'
     default_header = 'Document "{{ document.document_name }}" has been loaded into the system'
+    default_bulk_subject = 'Documents loaded ({{ documents|length }})'
+    default_bulk_header = '{{ documents|length }} document(s) have been loaded into the system'
 
 
 class DocumentDeletedEvent:
@@ -378,6 +382,8 @@ class DocumentDeletedEvent:
     title = 'Document deleted'
     default_subject = 'Document deleted: {{ document.document_name }}'
     default_header = 'Document "{{ document.document_name }}" has been deleted from system'
+    default_bulk_subject = 'Documents deleted ({{ documents|length }})'
+    default_bulk_header = '{{ documents|length }} document(s) have been deleted from system'
 
 
 class DocumentChangedEvent:
@@ -385,6 +391,8 @@ class DocumentChangedEvent:
     title = 'Document changed'
     default_subject = 'Document changed: {{ document.document_name }} '
     default_header = 'Document "{{ document.document_name }}" has been changed'
+    default_bulk_subject = 'Documents changed ({{ documents|length }})'
+    default_bulk_header = '{{ documents|length }} document(s) have been changed'
 
 
 class DocumentAssignedEvent:
@@ -392,6 +400,8 @@ class DocumentAssignedEvent:
     title = 'Document assigned'
     default_subject = 'Document assigned: {{ document.document_name }}'
     default_header = 'Document "{{ document.document_name }}" assigned to {{ document.assignee_name }}'
+    default_bulk_subject = 'Documents assigned ({{ documents|length }})'
+    default_bulk_header = '{{ documents|length }} document(s) have been assigned'
 
 
 class NotificationRecipients:

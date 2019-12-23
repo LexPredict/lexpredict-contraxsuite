@@ -32,14 +32,14 @@ import json
 import mimetypes
 import os
 import pickle
-import re
+import regex as re
 import string
 import sys
 import threading
 import time
 import traceback
 from inspect import isclass
-from typing import List, Dict, Tuple, Any, Callable, Iterable
+from typing import List, Dict, Tuple, Any, Callable, Optional
 
 # Third-party imports
 import magic
@@ -48,12 +48,11 @@ import numpy as np
 import pandas as pd
 from celery import app
 from celery import shared_task
-from celery.exceptions import SoftTimeLimitExceeded, TimeLimitExceeded, Retry
+from celery.exceptions import SoftTimeLimitExceeded, Retry
 from celery.result import AsyncResult
 from celery.states import SUCCESS, FAILURE, PENDING
 from celery.utils.log import get_task_logger
-from constance import config
-
+from celery.utils.time import get_exponential_backoff_interval
 # Django imports
 from django.conf import settings
 from django.db import transaction, connection
@@ -75,14 +74,15 @@ from sklearn.linear_model import LogisticRegressionCV
 from sklearn.naive_bayes import MultinomialNB
 from sklearn.semi_supervised import LabelSpreading
 from sklearn.svm import SVC
-from textblob import TextBlob
 
 # Project imports
 import task_names
+from apps.analyze.ml.cluster import ClusterDocuments, ClusterTextUnits
 from apps.analyze.models import (
     DocumentCluster, TextUnitCluster,
     TextUnitClassification, TextUnitClassifier, TextUnitClassifierSuggestion)
 from apps.celery import app
+from apps.common.errors import find_cause_of_type
 from apps.common.file_storage import get_file_storage
 from apps.common.log_utils import ProcessLogger
 from apps.common.utils import fast_uuid
@@ -91,20 +91,21 @@ from apps.document import signals
 from apps.document.constants import DOCUMENT_TYPE_PK_GENERIC_DOCUMENT
 from apps.document.field_detection.field_detection import detect_and_cache_field_values_for_document
 from apps.document.models import (
-    Document, DocumentProperty, DocumentType, TextUnit, TextUnitProperty, TextUnitTag, DocumentTable)
+    Document, DocumentText, DocumentMetadata, DocumentProperty, DocumentType,
+    TextUnit, TextUnitTag, DocumentTable, TextUnitText)
 from apps.document.repository.document_field_repository import DocumentFieldRepository
 from apps.document.sync_tasks.document_files_cleaner import DocumentFilesCleaner
 from apps.extract import dict_data_cache
 from apps.extract import models as extract_models
 from apps.extract.locators import LOCATORS, LocationResults
 from apps.extract.models import (
-    Court, GeoAlias, GeoEntity, GeoRelation,
-    Party, Term, TermUsage)
+    Court, GeoAlias, GeoEntity, GeoRelation, Party, Term)
 from apps.project.models import Project, UploadSession
 from apps.task.celery_backend.task_utils import revoke_task
 from apps.task.models import Task, TaskConfig
 from apps.task.parsing_tasks import ParsingTaskParams, XmlWordxDocumentParser, \
     TikaDocumentParser, TextractDocumentParser, PlainTextDocumentParser
+from apps.task.utils.nlp.heading_heuristics import HeadingHeuristics
 from apps.task.utils.nlp.lang import get_language
 from apps.task.utils.nlp.parsed_text_corrector import ParsedTextCorrector
 from apps.task.utils.task_utils import TaskUtils, pre_serialize
@@ -113,8 +114,8 @@ from contraxsuite_logging import write_task_log
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2019, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.3.0/LICENSE"
-__version__ = "1.3.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.4.0/LICENSE"
+__version__ = "1.4.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -229,57 +230,46 @@ class ExtendedTask(app.Task):
     def push(self):
         this_task = self.task  # type: Task
         this_task.own_progress = this_task.own_progress + 100.0 / this_task.push_steps
-        if this_task.is_sub_task():
-            this_task.progress = this_task.progress + 100.0 / this_task.push_steps
-            this_task.save(update_fields=['own_progress', 'progress'])
-        else:
-            this_task.save(update_fields=['own_progress'])
-
-    # FIXME: is not used anywhere
-    # def get_progress(self):
-    #     return Task.objects.get(id=self.request.id).progress
-
-    def update_progress(self, value: float):
-        this_task = self.task  # type: Task
-        this_task.own_progress = value
-        if this_task.is_sub_task():
-            this_task.progress = value
-            this_task.save(update_fields=['own_progress', 'progress'])
-        else:
-            this_task.save(update_fields=['own_progress'])
+        this_task.save(update_fields=['own_progress'])
 
     def _render_task_failed_message(self,
                                     args,
-                                    kwargs,
-                                    exc: Exception) -> str:
+                                    kwargs) -> str:
 
-        if exc is None:
-            problem_str = 'unknown'
-        elif isinstance(exc, SoftTimeLimitExceeded):
-            problem_str = 'Soft time limit exceeded: {0} seconds'.format(
-                self.request.timelimit[1] or self.soft_time_limit)
-        elif isinstance(exc, TimeLimitExceeded):
-            problem_str = 'Time limit exceeded: {0} seconds'.format(
-                self.request.timelimit[0] or self.time_limit)
-        else:
-            problem_str = f'{exc.__class__.__name__}: {exc}'
-
-        retry_msg = f' ({self.request.retries} times retried)' \
-            if self.request.retries else ''
-        return f'Task has been failed{retry_msg}:\n' + \
+        return f'Task has been failed:\n' + \
                f'{self.name}\n' + \
                f'Args: {args}\n' + \
-               f'Kwargs: {str(kwargs)}\n' \
-                   f'Reason: {problem_str}'
+               f'Kwargs: {str(kwargs)}\n'
 
-    def chord(self,
-              sub_tasks: Iterable[Any]):
-        self.log_info(
-            f'{self.task_name}: starting {len(sub_tasks)} sub-tasks...')
-        for ss in sub_tasks:
-            priority = get_task_priority(ss)
-            ss.apply_async(priority=priority,
-                           queue=get_queue_by_task_priority(priority))
+    def run_if_task_or_sub_tasks_failed(self,
+                                        func: Callable,
+                                        args,
+                                        call_stack: str = None,
+                                        parent_stack: str = None):
+        task_config = _get_or_create_task_config(func)
+        priority = get_task_priority(func)
+
+        call_stack = call_stack or get_call_stack_line(-3)
+        if parent_stack:
+            call_stack = f'{parent_stack}\n{call_stack}'
+
+        task = Task(name=func.name,
+                    main_task_id=self.main_task_id or self.request.id,
+                    parent_task_id=self.request.id,
+                    source_data=self.task.source_data,
+                    title=func.name,
+                    run_if_parent_task_failed=True,
+                    metadata={
+                        'args': args,
+                        'options': {
+                            'soft_time_limit': task_config.soft_time_limit,
+                            'root_id': self.main_task_id
+                        }
+                    },
+                    priority=priority,
+                    call_stack=call_stack
+                    )
+        task.save()
 
     def run_after_sub_tasks_finished(self,
                                      tasks_group_title: str,
@@ -294,12 +284,13 @@ class ExtendedTask(app.Task):
 
         call_stack = call_stack or get_call_stack_line(-3)
         if parent_stack:
-            call_stack = f'{parent_stack}\n{parent_stack}'
+            call_stack = f'{parent_stack}\n{call_stack}'
 
         for index, args in enumerate(args_list):
             tasks.append(Task(
                 name=sub_task_function.name,
                 main_task_id=self.main_task_id or self.request.id,
+                parent_task_id=self.request.id,
                 source_data=source_data[index] if source_data is not None else self.task.source_data,
                 run_after_sub_tasks_finished=True,
                 title=tasks_group_title,
@@ -374,7 +365,7 @@ class ExtendedTask(app.Task):
 
         call_stack = call_stack or get_call_stack_line(-3)
         if parent_stack:
-            call_stack = f'{parent_stack}\n{parent_stack}'
+            call_stack = f'{parent_stack}\n{call_stack}'
 
         for index, args in enumerate(kwargs_list):
             args['call_stack'] = call_stack
@@ -390,7 +381,12 @@ class ExtendedTask(app.Task):
                 call_stack=call_stack)
             sub_tasks.append(sub_task_signature)
 
-        self.chord(sub_tasks)
+        self.log_info(
+            f'{self.task_name}: starting {len(sub_tasks)} sub-tasks...')
+        for ss in sub_tasks:
+            priority = get_task_priority(ss)
+            ss.apply_async(priority=priority,
+                           queue=get_queue_by_task_priority(priority))
 
     def prepare_task_execution(self):
         TaskUtils.prepare_task_execution()
@@ -420,13 +416,59 @@ class ExtendedTask(app.Task):
         try:
             return super().__call__(*args, **kwargs)
         except Exception as exc:
-            if isinstance(exc, Retry):
-                msg = self._render_task_failed_message(args, kwargs, exc.exc)
-                self.log_warn(f'{msg}\n'
-                              f'Going to retry in {exc.when} seconds...',
-                              exc_info=exc)
-            else:
-                self.log_error(self._render_task_failed_message(args, kwargs, exc), exc_info=exc)
+
+            # Here we can have the following variants:
+            #
+            # 1. Task code has thrown one of auto-retry exceptions (declared in task options).
+            # Celery catches them in a wrapper around the above __call__ and executes the retry logic.
+            # The retry logic can either throw a "Retry" exception if it restarted the task or any other error
+            # if max retry number achieved or by some other reason. So in this code we will catch the "Retry"
+            # or the error thrown by the retry logic.
+            # Timeout exceptions (SoftTimeLimitExceeded) should be declared as auto-retry exceptions if needed.
+            # When a timeout occurs Celery throws SoftTimeLimitExceeded right from the line of code on which
+            # the timeout occurred.
+            #
+            # 2. Task code has caught one of auto-retry exceptions and re-thrown it enclosed into some other exception
+            # similar to: "raise RuntimeError('Document XXX loading failed') from e" where e is SoftTimeLimitExceeded.
+            # In this case Celery will not execute the retry.
+            # Here we try to find - if one of "caused by" or "context" exceptions is in the auto-retry list
+            # and execute the same auto-retry logic as Celery should do.
+            # task.retry() method re-starts the task and throws either Retry exception or any other - we catch them
+            # and log.
+
+            # If it was not Retry - try finding one of enclosed auto-retry exceptions and process them.
+            if not isinstance(exc, Retry) and getattr(self, 'autoretry_for', None):
+                retry_exc = None
+                for retry_exc_class in self.autoretry_for:
+                    retry_exc = find_cause_of_type(exc, retry_exc_class)
+                    if retry_exc:
+                        break
+                if retry_exc:
+                    retry_kwargs = getattr(self, 'retry_kwargs', None) or dict()
+                    retry_backoff = int(getattr(self, 'retry_backoff', False))
+                    retry_backoff_max = int(getattr(self, 'retry_backoff_max', 600))
+                    retry_jitter = getattr(self, 'retry_jitter', True)
+
+                    if retry_backoff:
+                        retry_kwargs['countdown'] = \
+                            get_exponential_backoff_interval(
+                                factor=retry_backoff,
+                                retries=self.request.retries,
+                                maximum=retry_backoff_max,
+                                full_jitter=retry_jitter)
+
+                    try:
+                        # Next line raises Retry exception
+                        self.retry(exc=retry_exc, **retry_kwargs)
+                    except Exception as e1:
+                        # Here we catch either Retry in case Celery is going to retry
+                        # or any other exception thrown by task.retry()
+                        # We log it and re-throw.
+                        self.log_error(self._render_task_failed_message(args, kwargs), exc_info=e1)
+                        raise e1
+
+            # This line logs an error or a Retry exception.
+            self.log_error(self._render_task_failed_message(args, kwargs), exc_info=exc)
             raise exc
         finally:
             working[0] = False
@@ -479,6 +521,7 @@ def call_task_func(task_func: Callable,
                    visible: bool = True,
                    queue: str = None,
                    run_after_sub_tasks_finished: bool = False,
+                   run_if_parent_task_failed: bool = False,
                    main_task_id: str = None,
                    call_stack: str = None,
                    parent_stack: str = None):
@@ -486,16 +529,18 @@ def call_task_func(task_func: Callable,
     priority = get_task_priority(task_func)
     call_stack = call_stack or get_call_stack_line(-3)
     if parent_stack:
-        call_stack = f'{parent_stack}\n{parent_stack}'
+        call_stack = f'{parent_stack}\n{call_stack}'
 
     task = Task.objects.create(
         id=celery_task_id,
         name=task_func.__name__,
         user_id=user_id,
+        args=task_args,
         source_data=source_data,
         metadata=metadata,
         visible=visible if visible is not None else True,
         run_after_sub_tasks_finished=run_after_sub_tasks_finished,
+        run_if_parent_task_failed=run_if_parent_task_failed,
         main_task_id=main_task_id,
         priority=priority,
         call_stack=call_stack
@@ -555,7 +600,6 @@ def call_task(task_name, **options):
         metadata=options.get('metadata', {}),
         kwargs=pre_serialize(celery_task_id, None, options_wo_metadata),  # this changes the options_wo_metadata !
         source_data=options.get('source_data'),
-        sequential_tasks=options.get('sequential_tasks'),
         group_id=options.get('group_id'),
         visible=options.get('visible', True),
         project=Project.all_objects.get(pk=project_id) if project_id else None,
@@ -610,6 +654,31 @@ class BaseTask(ExtendedTask):
         return ret or self.main_task_id
 
 
+@shared_task(base=ExtendedTask,
+             bind=True,
+             soft_time_limit=3600,
+             default_retry_delay=10,
+             retry_backoff=True,
+             autoretry_for=(SoftTimeLimitExceeded, InterfaceError, OperationalError),
+             max_retries=3)
+def delete_document_on_load_failed(task: ExtendedTask, file_name: str):
+    document_name = os.path.basename(file_name)
+    document_source = os.path.dirname(file_name)
+
+    document_ids = list(Document.objects \
+                        .filter(name=document_name, source=document_source) \
+                        .values_list('pk', flat=True))
+
+    if document_ids:
+        task.log_error(f'Loading documents task failed, deleting documents: {file_name} (ids: {document_ids})')
+        try:
+            from apps.document.tasks import DeleteDocuments
+            del_task = DeleteDocuments()
+            del_task.process(_document_ids=document_ids)
+        except Exception as e:
+            task.log_error(f'Unable to delete documents, file_name={file_name}', exc_info=e)
+
+
 class LoadDocuments(BaseTask):
     """
     Load Document, i.e. create Document and TextUnit objects
@@ -623,19 +692,14 @@ class LoadDocuments(BaseTask):
     """
     name = 'Load Documents'
 
-    standard_locators = ['date',
-                         'party',
-                         'term',
-                         'geoentity',
-                         'currency',
-                         'citation',
-                         'definition',
-                         'duration']
-
+    soft_time_limit = 3600
+    default_retry_delay = 10
+    retry_backoff = True
+    autoretry_for = (SoftTimeLimitExceeded, InterfaceError, OperationalError)
+    max_retries = 3
     queue = 'doc_load'
 
     def process(self, **kwargs):
-
         path = kwargs['source_data']
         self.log_info('Parse {0} at {1}'.format(path, file_storage))
         file_list = file_storage.list_documents(path)
@@ -678,6 +742,7 @@ class LoadDocuments(BaseTask):
                  queue='doc_load')
     def create_document(task: ExtendedTask, uri: str, kwargs):
         with file_storage.get_document_as_local_fn(uri) as (fn, file_name):
+            task.run_if_task_or_sub_tasks_failed(delete_document_on_load_failed, args=(uri,))
             return LoadDocuments.create_document_local(task, fn, uri, kwargs)
 
     # FIXME: this becomes unuseful as we CANNOT subclass from LoadDocument now - it hasn't self in methods!!!
@@ -736,11 +801,12 @@ class LoadDocuments(BaseTask):
         if not text:
             # delete document source file
             DocumentFilesCleaner.delete_document_files([file_name])
+            raise RuntimeError('No text extracted.')
 
-            if propagate_exceptions:
-                raise RuntimeError('No text extracted.')
-            task.log_info('SKIP (ERROR): ' + file_name)
-            return None
+            # if propagate_exceptions:
+            #     raise RuntimeError('No text extracted.')
+            # task.log_info('SKIP (ERROR): ' + file_name)
+            # return None
 
         if metadata is None:
             metadata = {}
@@ -775,11 +841,6 @@ class LoadDocuments(BaseTask):
         # detect title
         title = metadata.get('title', None) or LoadDocuments.get_title(text)
 
-        # detect sections
-        sections = list(get_section_spans(text, use_ml=False, return_text=False,
-                                          skip_empty_headers=True))
-        metadata['sections'] = sections
-
         with transaction.atomic():
             upload_session = None
             project = None
@@ -812,11 +873,12 @@ class LoadDocuments(BaseTask):
                 source=document_source,
                 source_type=kwargs.get('source_type'),
                 source_path=file_name,
-                metadata=metadata,
                 language=language,
                 title=title,
                 file_size=file_size,
-                full_text=text)
+                folder=kwargs.get('directory_path'))
+            DocumentText.objects.create(document=document, full_text=text)
+            DocumentMetadata.objects.create(document=document, metadata=metadata)
 
             task.log_extra['log_document_id'] = document.pk
 
@@ -828,33 +890,19 @@ class LoadDocuments(BaseTask):
                     document_id=document.pk,
                     key=k,
                     value=v) for k, v in metadata.items() if v]
-
-            try:
-                polarity, subjectivity = TextBlob(text).sentiment
-                document_properties += [
-                    DocumentProperty(
-                        created_by_id=user_id,
-                        modified_by_id=user_id,
-                        document_id=document.pk,
-                        key='polarity',
-                        value=str(round(polarity, 3))),
-                    DocumentProperty(
-                        created_by_id=user_id,
-                        modified_by_id=user_id,
-                        document_id=document.pk,
-                        key='subjectivity',
-                        value=str(round(subjectivity, 3)))]
-            except AttributeError:
-                pass
             DocumentProperty.objects.bulk_create(document_properties)
 
             # create text units
             paragraph_list = []  # type: List[TextUnit]
+
             paragraphs = LoadDocuments.safely_get_paragraphs(text)
             for paragraph, pos_start, post_end in paragraphs:
+                if not paragraph:
+                    task.log_error(f'Paragraph text is null:\n'
+                                   f'Document: {document.name} (#{document.pk})\n'
+                                   f'Location: {pos_start} - {post_end}')
                 ptr = TextUnit(
                     document=document,
-                    text=paragraph,
                     unit_type="paragraph",
                     location_start=pos_start,
                     location_end=post_end)
@@ -862,12 +910,28 @@ class LoadDocuments(BaseTask):
                 ptr.text_hash = hashlib.sha1(paragraph.encode("utf-8")).hexdigest()
                 paragraph_list.append(ptr)
 
+            paragraph_tu_objects = TextUnit.objects.bulk_create(paragraph_list)
+
+            paragraph_text_list = []  # type: List[TextUnitText]
+            for text_unit, paragraph_data in zip(paragraph_tu_objects, paragraphs):
+                if not paragraph_data[0]:
+                    task.log_error(f'Paragraph text is null:\n'
+                                   f'Document: {document.name} (#{document.pk})\n'
+                                   f'Location: {pos_start} - {post_end}')
+                tu_text_obj = TextUnitText(
+                    text_unit=text_unit,
+                    text=paragraph_data[0]
+                )
+                paragraph_text_list.append(tu_text_obj)
+
+            TextUnitText.objects.bulk_create(paragraph_text_list)
+
             sentence_list = []
-            for span in get_sentence_span_list(text):
+            sentence_spans = get_sentence_span_list(text)
+            for span in sentence_spans:
                 sentence = text[span[0]:span[1]]
                 text_unit = TextUnit(
                     document=document,
-                    text=sentence,
                     location_start=span[0],
                     location_end=span[1],
                     text_hash=hashlib.sha1(sentence.encode("utf-8")).hexdigest(),
@@ -875,9 +939,28 @@ class LoadDocuments(BaseTask):
                     language=get_language(sentence))
                 sentence_list.append(text_unit)
 
+            sentence_tu_objects = TextUnit.objects.bulk_create(sentence_list)
+
+            sentence_text_list = []  # type: List[TextUnitText]
+            for text_unit, span in zip(sentence_tu_objects, sentence_spans):
+                sentence = text[span[0]:span[1]]
+                tu_text_obj = TextUnitText(
+                    text_unit=text_unit,
+                    text=sentence
+                )
+                sentence_text_list.append(tu_text_obj)
+
+            TextUnitText.objects.bulk_create(sentence_text_list)
+
             document.paragraphs = len(paragraph_list)
             document.sentences = len(sentence_list)
             document.save()
+
+            # detect sections
+            sections = list(get_section_spans(text, use_ml=False, return_text=False,
+                                              skip_empty_headers=True))
+            LoadDocuments.find_section_titles(sections, paragraph_list, sentence_list, text)
+            metadata['sections'] = sections
 
             if pars_results.tables:
                 doc_tables = []
@@ -886,32 +969,9 @@ class LoadDocuments(BaseTask):
                     doc_tables.append(doc_table)
                 DocumentTable.objects.bulk_create(doc_tables)
 
-            TextUnit.objects.bulk_create(paragraph_list + sentence_list)
-
             # store document language
             if not document.language:
                 document.set_language_from_text_units()
-
-            # create Text Unit Properties
-            from apps.document.app_vars import LOCATE_TEXTUNITPROPERTIES
-            if LOCATE_TEXTUNITPROPERTIES.val:
-                text_unit_properties = []
-                for pk, text in document.textunit_set.values_list('pk', 'text'):
-                    try:
-                        polarity, subjectivity = TextBlob(text).sentiment
-                        text_unit_properties += [
-                            TextUnitProperty(
-                                text_unit_id=pk,
-                                key='polarity',
-                                value=str(round(polarity))),
-                            TextUnitProperty(
-                                text_unit_id=pk,
-                                key='subjectivity',
-                                value=str(round(subjectivity)))]
-                    except AttributeError:
-                        continue
-                if text_unit_properties:
-                    TextUnitProperty.objects.bulk_create(text_unit_properties)
 
             # save extra document info
             kwargs['document'] = document
@@ -925,8 +985,10 @@ class LoadDocuments(BaseTask):
         linked_tasks = kwargs.get('linked_tasks') or list()  # type: List[Dict[str, Any]]
 
         if should_run_standard_locators:
+            from apps.extract.app_vars import STANDARD_LOCATORS
+
             task.run_sub_tasks_class_based('Locate', Locate, [{
-                'locate': LoadDocuments.standard_locators,
+                'locate': STANDARD_LOCATORS.val,
                 'parse': ['sentence'],
                 'do_delete': False,
                 'session_id': upload_session_id,
@@ -955,13 +1017,52 @@ class LoadDocuments(BaseTask):
                         'document_id': document.pk})
 
         # set status to avoid duplicates during uploading
-        document.metadata['upload_status'] = 'DONE'
-        document.save()
+        document.documentmetadata.metadata['upload_status'] = 'DONE'
+        document.documentmetadata.save()
 
         if return_doc_id:
             return document.pk
         else:
             return json.dumps(ret) if ret else None
+
+    @staticmethod
+    def find_section_titles(
+        sections: List[Dict[str, Any]],
+        paragraphs: List[TextUnit],
+        sentences: List[TextUnit],
+        full_text: str) -> None:
+        """
+        Methods tries to pick section titles as first sentences of
+        referenced paragraphs
+
+        :param sections: # [{'start': 460, 'end': 1283, 'title': 'A', 'title_start': 517, 'title_end': 518, 'level': 2..
+        :param paragraphs: TextUnits - paragraphs of the document
+        :param sentences: TextUnits - sentences of the document
+        """
+        if not sections:
+            return
+        sections.sort(key=lambda s: s['start'])
+        sentences.sort(key=lambda t: t.location_start)
+        sent_index = 0
+        for section in sections:
+            possible_title = ''
+            for i in range(sent_index, len(sentences)):
+                sent_index = i
+                if section['start'] > sentences[i].location_end:
+                    continue
+                if section['start'] < sentences[i].location_start and \
+                        section['end'] < sentences[i].location_start:
+                    break
+                possible_title = full_text[sentences[i].location_start: sentences[i].location_end]
+                break
+            if not possible_title:
+                continue
+
+            possible_title = possible_title.strip()
+            sect_title = section['title'].strip()
+            # choose title that looks better
+            new_title = HeadingHeuristics.get_better_title(sect_title, possible_title)
+            section['title'] = new_title
 
     @staticmethod
     def get_text_from_file(file_name: str,
@@ -1045,15 +1146,6 @@ class LoadDocuments(BaseTask):
         except:
             return [(text, 0, len(text) - 1)]
 
-    def on_failure(self, exc, task_id, args, kwargs, exc_traceback):
-        # Delete Document if any errors
-        if isinstance(self.log_extra, dict):
-            document_id = self.log_extra.get('log_document_id')
-            if document_id:
-                self.log_error('Load Documents task failed, Delete Document id={}'.format(document_id))
-                Document.all_objects.filter(pk=document_id).delete()
-        super().on_failure(exc, task_id, args, kwargs, exc_traceback)
-
 
 class UpdateElasticsearchIndex(BaseTask):
     """
@@ -1064,7 +1156,7 @@ class UpdateElasticsearchIndex(BaseTask):
     def elastic_index(self, es: Elasticsearch, tu: TextUnit):
         es_doc = {
             'pk': tu.pk,
-            'text': tu.text,
+            'text': tu.textunittext.text,
             'document': tu.document.pk,
             'unit_type': tu.unit_type,
             'language': tu.language,
@@ -1104,9 +1196,9 @@ class LoadTerms(BaseTask):
     name = 'Load Terms'
 
     def load_terms_from_path(self, path: str, real_fn: str, terms_df: pd):
-        self.log_info('Parse "%s"' % real_fn or path)
+        self.log_info(f'Parse "{real_fn or path}"')
         data = pd.read_csv(path)
-        self.log_info('Detected %d terms' % len(data))
+        self.log_info(f'Detected {len(data)} terms')
         return terms_df.append(data)
 
     def process(self, **kwargs):
@@ -1116,7 +1208,7 @@ class LoadTerms(BaseTask):
         :return:
         """
 
-        self.set_push_steps(3)
+        self.set_push_steps(2)
 
         repo_paths = kwargs['repo_paths']
         file_path = kwargs.get('file_path')
@@ -1134,13 +1226,9 @@ class LoadTerms(BaseTask):
 
         self.push()
 
+        # terms should be cached here
         terms_count = load_terms(terms_df)
         self.log_info('Total %d unique terms' % terms_count)
-
-        self.push()
-
-        self.log_info('Caching term stems for Locate tasks...')
-        dict_data_cache.cache_term_stems()
 
         self.push()
 
@@ -1161,9 +1249,9 @@ class LoadGeoEntities(BaseTask):
     )
 
     def load_geo_entities_from_path(self, path: str, real_fn: str, entities_df: pd.DataFrame):
-        self.log_info('Parse "%s"' % real_fn or path)
+        self.log_info(f'Parse "{real_fn or path}"')
         data = pd.read_csv(path)
-        self.log_info('Detected %d entities' % len(data))
+        self.log_info(f'Detected {len(data)} entities')
         return entities_df.append(data)
 
     def set_total_progress(self, progress):
@@ -1216,10 +1304,10 @@ class LoadCourts(BaseTask):
     priority = 9
 
     def load_courts_from_path(self, path: str, real_fn: str):
-        self.log_info('Parse "%s"' % real_fn or path)
+        self.log_info(f'Parse "{real_fn or path}"')
         dictionary_data = pd.read_csv(path)
         courts_count = load_courts(dictionary_data)
-        self.log_info('Detected %d courts' % courts_count)
+        self.log_info(f'Detected {courts_count} courts')
 
     def process(self, **kwargs):
         """
@@ -1253,6 +1341,14 @@ class Locate(BaseTask):
     Locate multiple items
     """
     name = "Locate"
+
+    soft_time_limit = 6000
+    default_retry_delay = 10
+    retry_backoff = True
+    autoretry_for = (SoftTimeLimitExceeded, InterfaceError, OperationalError,)
+    max_retries = 3
+    priority = 9
+
     usage_model_map = dict(
         duration=['DateDurationUsage'],
         geoentity=['GeoEntityUsage', 'GeoAliasUsage']
@@ -1313,8 +1409,9 @@ class Locate(BaseTask):
                                          if i not in ['locate', 'delete']}
 
         # cleanup items to locate/delete
-        available_locators = list(settings.REQUIRED_LOCATORS) + list(
-            config.standard_optional_locators)
+        from apps.extract.app_vars import STANDARD_LOCATORS, OPTIONAL_LOCATORS
+        available_locators = set(STANDARD_LOCATORS.val) | set(OPTIONAL_LOCATORS.val)
+
         locate = {i: j for i, j in locate.items() if i in available_locators}
         do_delete = [i for i in do_delete if i in available_locators]
 
@@ -1326,10 +1423,10 @@ class Locate(BaseTask):
             return
 
         # define number of async tasks
+        text_units = TextUnit.objects.all()
+
         if project_id:
-            text_units = TextUnit.objects.filter(document__project__id=project_id)
-        else:
-            text_units = TextUnit.objects.all()
+            text_units = text_units.filter(document__project__id=project_id)
 
         if document_id:
             text_units = text_units.filter(document_id=document_id)
@@ -1343,10 +1440,11 @@ class Locate(BaseTask):
 
         package_size = settings.TEXT_UNITS_TO_PARSE_PACKAGE_SIZE
         text_unit_ids = text_units.values_list('pk', flat=True)
-        locate_args = [[text_unit_ids[i:i + package_size], kwargs['user_id'], locate]
-                       for i in range(0, len(text_unit_ids), package_size)]
 
-        self.run_sub_tasks('Locate Data In Each Text Unit', Locate.parse_text_units, locate_args)
+        if text_unit_ids:
+            locate_args = [[text_unit_ids[i:i + package_size], kwargs['user_id'], locate] for i in
+                           range(0, len(text_unit_ids), package_size)]
+            self.run_sub_tasks('Locate Data In Each Text Unit', Locate.parse_text_units, locate_args)
 
         if document_id:
             document_ids = [document_id]
@@ -1356,24 +1454,19 @@ class Locate(BaseTask):
         else:
             return
         for document_id in document_ids:
-            self.run_after_sub_tasks_finished(
-                'Cache Generic Document Data',
-                Locate.on_locate_finished,
-                [(document_id, doc_loaded_by_user_id, document_initial_load,
-                  predefined_field_codes_to_python_values)])
-
-    def on_failure(self, exc, task_id, args, kwargs, exc_traceback):
-        # Delete Document if location failed
-        document_id = kwargs.get('document_id')
-        if document_id:
-            self.log_error('Locate task failed, Delete Document id={}'.format(document_id))
-            try:
-                from apps.document.tasks import DeleteDocuments
-                del_task = DeleteDocuments()
-                del_task.process(_document_ids=[document_id])
-            except Exception as e:
-                self.log_error(f'Locate.on_failure - error: {e}')
-        super().on_failure(exc, task_id, args, kwargs, exc_traceback)
+            # otherwise run_after_sub_tasks_finished doesn't work if no subtasks
+            # TODO: investigate and fix base methods like run_after_sub_tasks_finished
+            if not text_unit_ids:
+                self.run_sub_tasks('Cache Generic Document Data',
+                                   Locate.on_locate_finished,
+                                   [(document_id, doc_loaded_by_user_id,
+                                     predefined_field_codes_to_python_values)])
+            else:
+                self.run_after_sub_tasks_finished(
+                    'Cache Generic Document Data',
+                    Locate.on_locate_finished,
+                    [(document_id, doc_loaded_by_user_id, document_initial_load,
+                      predefined_field_codes_to_python_values)])
 
     @staticmethod
     @shared_task(base=ExtendedTask,
@@ -1386,94 +1479,47 @@ class Locate(BaseTask):
                  priority=9)
     def on_locate_finished(_self: ExtendedTask, doc_id, doc_loaded_by_user_id, document_initial_load,
                            predefined_field_codes_to_val: Dict[str, Any] = None):
+        doc = Document.all_objects.filter(pk=doc_id).last()  # type: Document
 
-        # outer try-catch to delete Document if smth went wrong
-        try:
-            try:
-                doc = Document.all_objects.filter(pk=doc_id).last()
-            except Exception as e:
-                raise RuntimeError(f'on_locate_finished(doc_id={doc_id}): ' +
-                                   f'error obtaining document.\n{str(e)}')
+        if not doc:
+            _self.log_info(f'on_locate_finished: Document does not exist: {doc.name} (#{doc.pk})\n'
+                           f'Maybe it was deleted previously because of failed loading or failed entity location '
+                           f'stage.')
+            return
 
-            if doc:
-                try:
-                    log = CeleryTaskLogger(_self)
-                except Exception as e:
-                    er_msg = f'on_locate_finished(): ' + \
-                             f'error obtaining CeleryTaskLogger.\n{str(e)}'
-                    raise RuntimeError(er_msg)
-                try:
-                    user = User.objects.get(pk=doc_loaded_by_user_id) \
-                        if doc_loaded_by_user_id is not None \
-                        else User.objects.filter(id=1).first()  # type: User
-                except Exception as e:
-                    er_msg = f'on_locate_finished(user_id={doc_loaded_by_user_id}): ' + \
-                             f'error obtaining user.\n{str(e)}'
-                    raise RuntimeError(er_msg)
+        log = CeleryTaskLogger(_self)
 
-                # INFO: see CS-3420: FE team has implemented uploading documents as non-admin (CS-3361)
-                # if not user or not user.is_admin:
-                #     raise Exception('User who is loading the document is unspecified and the first user in '
-                #                     'the system is not admin. Something is wrong.')
-                if predefined_field_codes_to_val:
-                    try:
-                        field_repo = DocumentFieldRepository()
-                        field_repo \
-                            .store_values_one_doc_many_fields_no_ants(doc=doc,
-                                                                      user=user,
-                                                                      field_codes_to_python_values=predefined_field_codes_to_val)
-                    except Exception as e:
-                        er_msg = f'on_locate_finished(doc_id={doc_id}): ' + \
-                                 f'error storing doc fields.\n{str(e)}'
-                        raise RuntimeError(er_msg)
-                    try:
-                        ignore_field_codes = predefined_field_codes_to_val.keys()
-                    except Exception as e:
-                        er_msg = f'on_locate_finished(doc_id={doc_id}): ' + \
-                                 f'error accessing predefined_field_codes_to_val keys().\n{str(e)}'
-                        raise RuntimeError(er_msg)
-                else:
-                    ignore_field_codes = None
+        user = User.objects.get(pk=doc_loaded_by_user_id) \
+            if doc_loaded_by_user_id is not None \
+            else User.objects.filter(id=1).first()  # type: User
 
-                try:
-                    signals.fire_document_changed(sender=_self,
-                                                  log=log,
-                                                  document=doc,
-                                                  changed_by_user=None,
-                                                  system_fields_changed=True,
-                                                  user_fields_changed=False,
-                                                  generic_fields_changed=True)
-                except Exception as e:
-                    er_msg = f'on_locate_finished(doc_id={doc_id}): ' + \
-                             f'error caching generic values.\n{str(e)}'
-                    raise RuntimeError(er_msg)
-                try:
-                    detect_and_cache_field_values_for_document(log=log,
-                                                               document=doc,
-                                                               save=True,
-                                                               clear_old_values=True,
-                                                               ignore_field_codes=ignore_field_codes,
-                                                               changed_by_user=user,
-                                                               document_initial_load=document_initial_load)
-                except Exception as e:
-                    er_msg = f'on_locate_finished(doc_id={doc_id}): error detecting field values.'
-                    raise RuntimeError(er_msg) from e
+        if predefined_field_codes_to_val:
+            field_repo = DocumentFieldRepository()
+            field_repo \
+                .store_values_one_doc_many_fields_no_ants(doc=doc,
+                                                          user=user,
+                                                          field_codes_to_python_values=predefined_field_codes_to_val)
 
-        # delete Document if detection failed
-        except Exception as e:
-            try:
-                from apps.document.tasks import DeleteDocuments
-                del_task = DeleteDocuments()
-                del_task.process(_document_ids=[doc_id])
-            except Exception as de:
-                _self.log_error(f'Unable to delete document #{doc_id}', exc_info=de)
-            raise e
+            ignore_field_codes = predefined_field_codes_to_val.keys()
+        else:
+            ignore_field_codes = None
 
-        doc = Document.objects.filter(pk=doc_id)
-        if doc.exists():
-            doc = doc.last()
-            doc.processed = True
-            doc.save()
+        signals.fire_document_changed(sender=_self,
+                                      log=log,
+                                      document=doc,
+                                      changed_by_user=None,
+                                      system_fields_changed=True,
+                                      user_fields_changed=False,
+                                      generic_fields_changed=True)
+        detect_and_cache_field_values_for_document(log=log,
+                                                   document=doc,
+                                                   save=True,
+                                                   clear_old_values=True,
+                                                   ignore_field_codes=ignore_field_codes,
+                                                   changed_by_user=user,
+                                                   document_initial_load=document_initial_load)
+
+        Document.objects.filter(pk=doc_id).update(processed=True)
 
     @staticmethod
     @shared_task(base=ExtendedTask,
@@ -1485,8 +1531,8 @@ class Locate(BaseTask):
                  max_retries=3
                  )
     def parse_text_units(self: ExtendedTask, text_unit_ids, user_id, locate):
-        text_units = TextUnit.objects.filter(pk__in=text_unit_ids).values_list('pk', 'text', 'language')
-        text_units = list(text_units)
+        text_units = TextUnit.objects.filter(pk__in=text_unit_ids).values_list(
+            'pk', 'textunittext__text', 'language', 'document__project_id')
         location_results = LocationResults()
         log = CeleryTaskLogger(self)
 
@@ -1494,79 +1540,15 @@ class Locate(BaseTask):
             if task_name not in LOCATORS:
                 raise Exception('Programming error. Unknown locator: {0}'.format(task_name))
             locator = LOCATORS[task_name]
+            for text_unit_id, text, text_unit_lang, project_id in text_units:
 
-            for text_unit_id, text, text_unit_lang in text_units:
+                # inject project_id for TermLocator to use custom ProjectTermConfiguration
+                if task_name == 'term':
+                    task_kwargs['project_id'] = project_id
+
                 locator.try_parsing(log, location_results, text,
                                     text_unit_id, text_unit_lang, **task_kwargs)
         location_results.save(log, user_id)
-
-
-# sample of custom task
-class LocateTerms(BaseTask):
-    """
-    Locate terms in text units
-    """
-    name = 'Locate Terms'
-
-    def process(self, **kwargs):
-        """
-        Locate terms
-        :param kwargs:
-        :return:
-        """
-
-        TextUnitClassifier.objects.filter(name__contains='by:terms').update(is_active=False)
-
-        if kwargs['delete'] or kwargs['locate']:
-            deleted = TermUsage.objects.all().delete()
-            self.log_info('Deleted %d Term Usages' % deleted[0])
-
-        if not kwargs['locate']:
-            return
-
-        self.log_info('Found {0} Terms. Added {0} subtasks.'.format(Term.objects.count()))
-
-        create_ltu_args = []
-        for lt in Term.objects.all():
-            term = lt.term.lower()
-            if term != lt.term and \
-                    Term.objects.filter(term=term).exists():
-                continue
-            create_ltu_args.append((term, lt.id))
-        self.run_sub_tasks('Create LTU For Each Term',
-                           LocateTerms.create_ltu,
-                           create_ltu_args)
-
-    @staticmethod
-    @shared_task(base=ExtendedTask,
-                 soft_time_limit=3600,
-                 default_retry_delay=10,
-                 retry_backoff=True,
-                 autoretry_for=(SoftTimeLimitExceeded, InterfaceError, OperationalError,),
-                 max_retries=3
-                 )
-    def create_ltu(term, term_id):
-        ltu_list = []
-
-        for tu in TextUnit.objects.filter(
-                unit_type='paragraph',
-                text__iregex=r'([{}{}]{}s?|{}ies)[{}{}]'.format(
-                    ''.join(string.punctuation),
-                    ''.join(string.whitespace),
-                    term,
-                    term[:-1],
-                    ''.join(string.punctuation),
-                    ''.join(string.whitespace))).iterator():
-            ltu = TermUsage()
-            ltu.text_unit = tu
-            ltu.term_id = term_id
-            tu_count = tu.text.lower().count(term)
-            if term.endswith('y'):
-                tu_count += tu.text.lower().count(term[:-1] + 'ies')
-            ltu.count = tu_count
-            ltu_list.append(ltu)
-
-        TermUsage.objects.bulk_create(ltu_list)
 
 
 class Classify(BaseTask):
@@ -1608,11 +1590,13 @@ class Classify(BaseTask):
         classifier_selection = kwargs.get('classifier')
         classifier_id = classifier_selection['pk'] if classifier_selection else None
 
-        class_name = kwargs['class_name']
+        class_name = kwargs.get('class_name') or ''
+        if not classifier_id and not class_name:
+            raise RuntimeError(f'Either "class_name" or "classifier" should be passed')
 
         min_confidence = kwargs['min_confidence'] / 100
 
-        if classifier_id is None and kwargs.get('delete_classifier'):
+        if classifier_id is None and kwargs.get('delete_classifier') and class_name:
             TextUnitClassifier.objects.filter(class_name=class_name).delete()
 
         if kwargs['delete_suggestions']:
@@ -1632,13 +1616,20 @@ class Classify(BaseTask):
         tf_idf_transformer = TfidfTransformer()
         run_date = datetime.datetime.now()
 
-        for d in Document.objects.all().defer('full_text')[:kwargs['sample_size']]:
+        doc_query = Document.objects.all()
+        if 'project' in kwargs and kwargs['project']:
+            project_id = kwargs['project']['pk']
+            doc_query = doc_query.filter(project_id=project_id)
+
+        for d in doc_query[:kwargs['sample_size']]:
             # Build document feature matrix
             d_text_units = d.textunit_set.all()
             text_unit_ids = d_text_units.values_list('id', flat=True)
             text_unit_count = len(text_unit_ids)
             test_features = np.zeros((text_unit_count,
                                       len(clf_model.term_index)))
+
+            # TODO: check for using db, especially text_unit.text
             for i in range(text_unit_count):
                 for tu in getattr(d_text_units[i], clf_model.term_set_name).all():
                     term_id = clf_model.term_index.index(getattr(tu, clf_model.term_field).id)
@@ -1769,323 +1760,46 @@ class Cluster(BaseTask):
     # TODO: cluster by expanded entity aliases
 
     name = 'Cluster'
-    verbose = True
-    n_features = 100
-    self_name_len = 3
-
-    cluster_map = {
-        'documents': {
-            'source_model': Document,
-            'cluster_model': DocumentCluster,
-            'property_lookup': 'documentproperty',
-            'lookup_map': dict(
-                source_type='source_type',
-                document_type='document_type',
-                metadata='metadata',
-                date='textunit__dateusage__date',
-                definition='textunit__definitionusage__definition',
-                duration='textunit__datedurationusage__duration_days',
-                court='textunit__courtusage__court__name',
-                currency_name='textunit__currencyusage__currency',
-                currency_value='textunit__currencyusage__amount',
-                term='textunit__termusage__term__term',
-                party='textunit__partyusage__party__name',
-                entity='textunit__geoentityusage__entity__name'),
-            'annotation_map': dict(
-                source_type=Value('source_type'),
-                document_type=Value('document_type'),
-                metadata=Value('metadata'),
-                date=Sum('textunit__dateusage__count'),
-                definition=Sum('textunit__definitionusage__count'),
-                duration=Sum('textunit__datedurationusage__count'),
-                court=Sum('textunit__courtusage__count'),
-                currency_name=Sum('textunit__currencyusage__count'),
-                currency_value=Sum('textunit__currencyusage__count'),
-                term=Sum('textunit__termusage__count'),
-                party=Sum('textunit__partyusage__count'),
-                entity=Sum('textunit__geoentityusage__count')),
-            'filter_map': dict(
-                source_type='source_type__isnull',
-                document_type='document_type__isnull',
-                metadata='metadata__isnull',
-                court='textunit__courtusage__isnull',
-                currency_name='textunit__currencyusage__isnull',
-                currency_value='textunit__currencyusage__isnull',
-                date='textunit__dateusage__isnull',
-                definition='textunit__definitionusage__isnull',
-                duration='textunit__datedurationusage__isnull',
-                term='textunit__termusage__isnull',
-                party='textunit__partyusage__isnull',
-                entity='textunit__geoentityusage__isnull')
-        },
-        'text_units': {
-            'source_model': TextUnit,
-            'cluster_model': TextUnitCluster,
-            'property_lookup': 'textunitproperty',
-            'lookup_map': dict(
-                source_type='document__source_type',
-                document_type='document__document_type',
-                metadata='document__metadata',
-                court='courtusage__court__name',
-                currency_name='currencyusage__currency',
-                currency_value='currencyusage__amount',
-                date='dateusage__date',
-                definition='definitionusage__definition',
-                duration='datedurationusage__duration_days',
-                terms='termusage__term__term',
-                party='partyusage__party__name',
-                entity='geoentityusage__entity__name'),
-            'annotation_map': dict(
-                source_type=Value('document__source_type'),
-                document_type=Value('document__document_type'),
-                metadata=Value('document__metadata'),
-                date=Sum('dateusage__count'),
-                definition=Sum('definitionusage__count'),
-                duration=Sum('datedurationusage__count'),
-                court=Sum('courtusage__count'),
-                currency_name=Sum('currencyusage__count'),
-                currency_value=Sum('currencyusage__count'),
-                term=Sum('termusage__count'),
-                party=Sum('_partyusage__count'),
-                entity=Sum('geoentityusage__count')),
-            'filter_map': dict(
-                source_type='document__source_type__isnull',
-                document_type='document__document_type__isnull',
-                metadata='document__metadata__isnull',
-                court='courtusage__isnull',
-                currency_name='currencyusage__isnull',
-                currency_value='currencyusage__isnull',
-                date='dateusage__isnull',
-                definition='definitionusage__isnull',
-                duration='datedurationusage__isnull',
-                term='termusage__isnull',
-                party='partyusage__isnull',
-                entity='geoentityusage__isnull')
-        },
-    }
-
-    def cluster(self, target, kwargs):
-        """
-        Cluster Documents or Text Units using chosen algorithm
-        :param target: either 'text_units' or 'documents'
-        :param kwargs: dict, form data
-        :return:
-        """
-        cluster_name = kwargs['name']
-        cluster_desc = kwargs['description']
-        using = kwargs['using']
-        n_clusters = kwargs['n_clusters']
-        cluster_by = kwargs['cluster_by']
-        cluster_by_str = ', '.join(sorted(cluster_by))
-
-        target_attrs = self.cluster_map[target]
-        source_model = target_attrs['source_model']
-        cluster_model = target_attrs['cluster_model']
-        lookup_map = target_attrs['lookup_map']
-        filter_map = target_attrs['filter_map']
-        annotation_map = target_attrs['annotation_map']
-
-        # step #1 - delete
-        if kwargs['delete_type']:
-            cluster_model.objects.filter(cluster_by=cluster_by_str, using=using).delete()
-        if kwargs['delete']:
-            cluster_model.objects.all().delete()
-        self.push()
-
-        # step #2 - prepare data
-        # filter objects
-        q_object = Q()
-        for c in cluster_by:
-            q_object.add(Q(**{filter_map[c]: False}), Q.OR)
-        objects = source_model.objects.filter(q_object).distinct()
-        self.push()
-
-        # prepare features dataframe
-        df = pd.DataFrame()
-        for cluster_by_item in cluster_by:
-
-            id_field = 'id'
-            prop_field = lookup_map[cluster_by_item]
-            prop_field_param = annotation_map[cluster_by_item]
-            count_as_bool = cluster_by_item == 'metadata'
-
-            if count_as_bool:
-                ann_cond = dict(prop_count=Case(
-                    When(**{prop_field + '__isnull': False},
-                         then=Value(1)),
-                    default=Value(0),
-                    output_field=IntegerField()))
-            else:
-                ann_cond = dict(prop_count=prop_field_param)
-            qs = objects.values(id_field, prop_field).annotate(**ann_cond).distinct()
-            if not qs:
-                continue
-
-            if cluster_by_item == 'metadata':
-                qs_ = list(qs)
-                qs = []
-                for item in qs_:
-                    for k, v in item[prop_field].items():
-                        qs.append({
-                            'id': item['id'],
-                            prop_field: '%s: %s' % (k, str(v)),
-                            'prop_count': 1})
-
-            df_ = pd.DataFrame(list(qs)).dropna()
-
-            # use number of days since min value as feature value
-            if cluster_by_item == 'date':
-                min_value = df_[prop_field].min().toordinal() - 1
-                df_['prop_count'] = df_.apply(lambda x: x[prop_field].toordinal() - min_value,
-                                              axis=1)
-
-            # use amount value as feature value
-            elif cluster_by_item in ['duration', 'currency_value']:
-                df_['prop_count'] = df_.apply(lambda x: x[prop_field], axis=1)
-
-            dft = df_.pivot(index=id_field, columns=prop_field, values='prop_count')
-            dft.columns = ["%s(%s)" % (cluster_by_item, str(i)) for i in dft.columns]
-            df = df.join(dft, how='outer')
-
-        if df.empty:
-            self.log_info('Empty data set. Exit.')
-            return
-
-        X = df.fillna(0).values.tolist()
-        y = df.index.tolist()
-        feature_names = df.columns.tolist()
-        self.push()
-
-        # step #4 - get model, clustering
-        created_date = datetime.datetime.now()
-        m = self.get_model(**kwargs)
-
-        if using == 'LabelSpreading':
-            # TODO: simplify
-            objects_with_prop = {pk: prop for pk, prop in objects.filter(
-                **{'{}__key'.format(target_attrs['property_lookup']): kwargs[
-                    'ls_%s_property' % target]})
-                .values_list('pk', '{}__value'.format(target_attrs['property_lookup']))
-                .order_by('pk').distinct('pk')}
-            prop_map = {n: prop for n, prop in enumerate(set(objects_with_prop.values()))}
-            prop_map_rev = {prop: n for n, prop in prop_map.items()}
-            objects_with_prop_n = {pk: prop_map_rev[prop] for pk, prop in objects_with_prop.items()}
-            y = [objects_with_prop_n.get(i, -1) for i in objects.values_list('pk', flat=True)]
-            m.fit(X, y)
-            labeled = {pk: prop_map[m.transduction_[n]] for n, pk in
-                       enumerate(objects.values_list('pk', flat=True))
-                       if y[n] != -1}
-            for cluster_id, cluster_label in enumerate(set(labeled.values())):
-                cluster = cluster_model.objects.create(
-                    cluster_id=cluster_id,
-                    name=cluster_name,
-                    self_name=cluster_label,
-                    description=cluster_desc,
-                    cluster_by=cluster_by_str,
-                    using=using,
-                    created_date=created_date)
-                getattr(cluster, target).set(
-                    [pk for pk, label in labeled.items() if label == cluster_label])
-
-        else:
-            m.fit(X)
-            if using == 'DBSCAN':
-                labels = m.labels_
-                unique_labels = set(labels)
-                if unique_labels == {-1}:
-                    self.log_info('Unable to cluster, perhaps because of small data set.')
-                    self.push()
-                    return
-                for cluster_id in unique_labels:
-                    if cluster_id == -1:
-                        continue
-                    cluster_index = np.where(labels == cluster_id)[0]
-                    cluster_self_name = 'cluster-{}'.format(cluster_id + 1)
-                    cluster = cluster_model.objects.create(
-                        cluster_id=cluster_id + 1,
-                        name=cluster_name[:100],
-                        self_name=cluster_self_name[:100],
-                        description=cluster_desc[:200],
-                        cluster_by=cluster_by_str[:100],
-                        using=using,
-                        created_date=created_date)
-                    getattr(cluster, target).set([y[i] for i in cluster_index])
-            else:
-                if using == 'Birch':
-                    order_centroids = m.subcluster_centers_.argsort()[:, ::-1]
-                else:
-                    order_centroids = m.cluster_centers_.argsort()[:, ::-1]
-
-                # create clusters
-                for cluster_id in range(n_clusters):
-                    pks = [y[n] for n, label_id in enumerate(m.labels_.tolist())
-                           if label_id == cluster_id]
-                    if not pks:
-                        continue
-                    cluster_self_name = '>'.join(
-                        [str(feature_names[j]) for j in
-                         order_centroids[cluster_id, :self.self_name_len]])
-                    cluster = cluster_model.objects.create(
-                        cluster_id=cluster_id + 1,
-                        name=cluster_name[:100],
-                        self_name=cluster_self_name[:100],
-                        description=cluster_desc[:200],
-                        cluster_by=cluster_by_str[:100],
-                        using=using[:20],
-                        created_date=created_date)
-                    getattr(cluster, target).set(pks)
-        self.push()
-
-    def get_model(self, **kwargs):
-        using = kwargs['using']
-        n_clusters = kwargs['n_clusters']
-        if using == 'MiniBatchKMeans':
-            m = MiniBatchKMeans(
-                n_clusters=n_clusters,
-                init='k-means++',
-                max_iter=kwargs['kmeans_max_iter'],
-                batch_size=kwargs['mb_kmeans_batch_size'],
-                n_init=3,
-                verbose=self.verbose)
-        elif using == 'KMeans':
-            m = KMeans(
-                n_clusters=n_clusters,
-                init='k-means++',
-                max_iter=kwargs['kmeans_max_iter'],
-                n_init=kwargs['kmeans_n_init'],
-                verbose=self.verbose)
-        elif using == 'Birch':
-            m = Birch(
-                n_clusters=n_clusters,
-                threshold=kwargs['birch_threshold'],
-                branching_factor=kwargs['birch_branching_factor'])
-        elif using == 'DBSCAN':
-            m = DBSCAN(
-                eps=kwargs['dbscan_eps'],
-                min_samples=5,
-                leaf_size=kwargs['dbscan_leaf_size'],
-                p=kwargs['dbscan_p'])
-        elif using == 'LabelSpreading':
-            m = LabelSpreading(
-                max_iter=kwargs['ls_max_iter'])
-        else:
-            raise RuntimeError('Clustering method is not defined')
-        return m
 
     def process(self, **kwargs):
 
-        do_cluster_documents = kwargs['do_cluster_documents']
-        do_cluster_text_units = kwargs['do_cluster_text_units']
+        do_cluster_documents = kwargs.pop('do_cluster_documents')
+        do_cluster_text_units = kwargs.pop('do_cluster_text_units')
 
-        self.set_push_steps(8 if do_cluster_documents and do_cluster_text_units else 4)
+        project = kwargs.pop('project')
+        project_id = project['pk'] if project else None
+        cluster_name = kwargs.pop('name')
+        cluster_desc = kwargs.pop('description')
+        cluster_algorithm = kwargs.pop('using', 'kmeans')
+        n_clusters = kwargs.pop('n_clusters', 3)
+        cluster_by = kwargs.pop('cluster_by', 'term')
+        use_tfidf = kwargs.pop('use_tfidf', True)
+        unit_type = kwargs.pop('unit_type', 'sentence')
 
-        # cluster Documents
+        # get cluster-algorithm-specific cluster options from form data
+        cluster_options = dict()
+        for option_name, option_value in kwargs.items():
+            if option_name.startswith(cluster_algorithm + '_'):
+                option_name = option_name.replace(cluster_algorithm + '_', '')
+                cluster_options[option_name] = option_value
+
+        cluster_classes = []
         if do_cluster_documents:
-            self.cluster('documents', kwargs)
-
-        # cluster Text Units
+            cluster_classes.append(ClusterDocuments)
         if do_cluster_text_units:
-            self.cluster('text_units', kwargs)
+            cluster_classes.append(ClusterTextUnits)
+
+        for cluster_class in cluster_classes:
+            cluster_model = cluster_class(project_id=project_id,
+                                          cluster_algorithm=cluster_algorithm,
+                                          n_clusters=n_clusters,
+                                          cluster_by=cluster_by,
+                                          name=cluster_name,
+                                          description=cluster_desc,
+                                          use_tfidf=use_tfidf,
+                                          unit_type=unit_type,
+                                          **cluster_options)
+            cluster_model.run()
 
 
 @shared_task(base=ExtendedTask,
@@ -2120,34 +1834,24 @@ def clean_tasks(this_task: ExtendedTask):
     this_task.log_info(ret)
 
 
-@app.task(name=task_names.TASK_NAME_TRACK_TASKS, bind=True)
+@app.task(name=task_names.TASK_NAME_TRACK_TASKS, bind=True, queue=settings.CELERY_QUEUE_SERIAL)
 def track_tasks(_celery_task):
     TaskUtils.prepare_task_execution()
-
-    for task in Task.objects.unready_main_tasks():
-        Task.objects.update_main_task(task.id)
-
-    # search for pending sequential tasks and start them
-    for task in Task.objects \
-            .succeed_main_tasks() \
-            .filter(sequential_tasks__isnull=False,
-                    sequential_tasks_started=False):
-        task.sequential_tasks_started = True
-        task.save()
-        for seq_task_kwargs in task.sequential_tasks:
-            try:
-                for required_parent_kwarg in seq_task_kwargs.get('required_parent_task_kwargs', []):
-                    kw = task.kwargs.get(required_parent_kwarg, 'none')
-                    if kw == 'none':
-                        raise RuntimeError('Missed "%s" required parent task kwarg'
-                                           % required_parent_kwarg)
-                    seq_task_kwargs[required_parent_kwarg] = kw
-            except RuntimeError:
-                continue
-            call_task(**seq_task_kwargs)
+    for task_id in Task.objects.unready_parent_tasks().values_list('pk', flat=True):
+        Task.objects.update_parent_task(task_id)
 
 
-@app.task(name=task_names.TASK_NAME_CLEAN_TASKS_PERIODIC, bind=True)
+@app.task(name=task_names.TASK_NAME_UPDATE_PARENT_TASK, bind=True, queue=settings.CELERY_QUEUE_SERIAL)
+def update_parent_task(_celery_task, parent_task_id: str,
+                       linked_parent_task_id: Optional[str] = None):
+    if parent_task_id == linked_parent_task_id:
+        raise Exception(f'Task #{parent_task_id} updates itself')
+    parent_task_id = linked_parent_task_id or parent_task_id
+    TaskUtils.prepare_task_execution()
+    Task.objects.update_parent_task(parent_task_id)
+
+
+@app.task(name=task_names.TASK_NAME_CLEAN_TASKS_PERIODIC, bind=True, queue=settings.CELERY_QUEUE_SERIAL)
 def clean_tasks_periodic(_celery_task):
     from apps.task.app_vars import REMOVE_READY_TASKS_DELAY_IN_HOURS
 
@@ -2270,7 +1974,6 @@ app.register_task(LoadCourts())
 
 # Register all locate tasks
 app.register_task(Locate())
-app.register_task(LocateTerms())
 
 # Register all update/cluster/classify tasks
 app.register_task(UpdateElasticsearchIndex())

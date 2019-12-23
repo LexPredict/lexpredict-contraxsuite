@@ -25,7 +25,7 @@
 # -*- coding: utf-8 -*-
 
 import random
-from typing import Optional, List, Tuple, Dict, Any, Callable, Type
+from typing import Optional, List, Tuple, Dict, Any, Callable, Set
 
 import math
 from django.conf import settings
@@ -33,13 +33,12 @@ from sklearn.metrics import classification_report
 from sklearn.pipeline import Pipeline, FeatureUnion
 
 from apps.common.script_utils import eval_script
-from apps.document.field_type_registry import FIELD_TYPE_REGISTRY
-from apps.document.field_types import TypedField, ChoiceField
 from apps.document.field_detection.field_detection_repository import FieldDetectionRepository
 from apps.document.field_detection.fields_detection_abstractions import FieldDetectionStrategy, ProcessLogger
 from apps.document.field_detection.stop_words import detect_with_stop_words_by_field_and_full_text
 from apps.document.field_processing.document_vectorizers import FieldValueExtractor, \
     wrap_feature_names_with_field_code
+from apps.document.field_types import TypedField, ChoiceField
 from apps.document.models import ClassifierModel
 from apps.document.models import DocumentField, Document
 from apps.document.repository.document_field_repository import DocumentFieldRepository
@@ -47,8 +46,8 @@ from apps.document.repository.dto import FieldValueDTO
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2019, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.3.0/LICENSE"
-__version__ = "1.3.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.4.0/LICENSE"
+__version__ = "1.4.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -103,12 +102,16 @@ class FieldBasedMLOnlyFieldDetectionStrategy(FieldDetectionStrategy):
 
     @classmethod
     def build_pipeline(cls, field: DocumentField, depends_on_fields: List[Tuple[str, str]]) -> Tuple[
-        Pipeline, List[str]]:
+        Pipeline, List[Callable[[], List[str]]]]:
 
         transformer_list = []
         feature_names_funcs = []
+
+        fields = list(DocumentField.objects.filter(code__in={code for code, _type in depends_on_fields}))
+        fields_by_code = {f.code: f for f in fields}
+
         for field_code, field_type in sorted(depends_on_fields, key=lambda t: t[1]):  # type: str, str
-            field_type = FIELD_TYPE_REGISTRY[field_type]  # type: Type[TypedField]
+            field_type = TypedField.by(fields_by_code[field_code])  # type: TypedField
 
             field_vect_steps = [('sel', FieldValueExtractor(field_code))]
 
@@ -166,7 +169,12 @@ class FieldBasedMLOnlyFieldDetectionStrategy(FieldDetectionStrategy):
                              .format(field.code, field.uid, typed_field.type_code))
         # Lets find good values of depends-on fields suitable for using as train data.
 
-        train_data = cls.get_train_values(field, train_data_project_ids, use_only_confirmed_field_values)
+        categories = cls.get_categories(field)
+
+        train_data = cls.get_train_values(field,
+                                          train_data_project_ids,
+                                          set(categories),
+                                          use_only_confirmed_field_values)
 
         if not train_data:
             raise RuntimeError('Not enough train data for field {0} (#{1}). '
@@ -180,7 +188,6 @@ class FieldBasedMLOnlyFieldDetectionStrategy(FieldDetectionStrategy):
         pipeline, feature_names_funcs = cls.build_pipeline(field,
                                                            depends_on_code_types)  # type: Pipeline, List[Callable]
 
-        categories = cls.get_categories(field)
         category_names_to_indexes = {c: i for i, c in enumerate(categories)}
 
         log.step_progress()
@@ -255,6 +262,7 @@ class FieldBasedMLOnlyFieldDetectionStrategy(FieldDetectionStrategy):
     def get_train_values(cls,
                          field: DocumentField,
                          train_data_project_ids: Optional[List],
+                         field_values_only: Set[str],
                          use_only_confirmed_field_values: bool) -> List[Dict[str, Any]]:
         repo = DocumentFieldRepository()
         fd_repo = FieldDetectionRepository()
@@ -263,7 +271,8 @@ class FieldBasedMLOnlyFieldDetectionStrategy(FieldDetectionStrategy):
             return [field_values for doc_id, field_values in
                     repo.get_field_code_to_python_value_multiple_docs(document_type_id=field.document_type_id,
                                                                       project_ids=train_data_project_ids,
-                                                                      doc_limit=settings.ML_TRAIN_DATA_SET_GROUP_LEN)]
+                                                                      doc_limit=settings.ML_TRAIN_DATA_SET_GROUP_LEN)
+                    if field_values.get(field.code) in field_values_only]
         else:
             qs_modified_document_ids = fd_repo.get_qs_active_modified_document_ids(field, train_data_project_ids)
 
@@ -273,7 +282,8 @@ class FieldBasedMLOnlyFieldDetectionStrategy(FieldDetectionStrategy):
             return [field_values for _doc_id, field_values in
                     repo.get_field_code_to_python_value_multiple_docs(document_type_id=field.document_type_id,
                                                                       doc_ids=qs_train_doc_ids,
-                                                                      doc_limit=settings.ML_TRAIN_DATA_SET_GROUP_LEN)]
+                                                                      doc_limit=settings.ML_TRAIN_DATA_SET_GROUP_LEN)
+                    if field_values.get(field.code) in field_values_only]
 
     @classmethod
     def maybe_detect_with_stop_words(cls,

@@ -26,7 +26,6 @@
 
 # Django imports
 from django.conf import settings
-from django.core.exceptions import ObjectDoesNotExist
 from django.urls import reverse
 
 # allauth imports
@@ -36,8 +35,8 @@ from allauth.utils import build_absolute_uri
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2019, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.3.0/LICENSE"
-__version__ = "1.3.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.4.0/LICENSE"
+__version__ = "1.4.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -67,19 +66,12 @@ class AccountAdapter(DefaultAccountAdapter):
         TODO: remove it after uwsgi/nginx will be configured
         """
         url = reverse(
-            "account_confirm_email",
+            "allauth_account_confirm_email",
             args=[emailconfirmation.key])
         ret = build_absolute_uri(
             None,
             url)
         return ret
-
-    def logout(self, request):
-        try:
-            request.user.auth_token.delete()
-        except (AttributeError, ObjectDoesNotExist):
-            pass
-        super().logout(request)
 
 
 class SocialAccountAdapter(DefaultSocialAccountAdapter):

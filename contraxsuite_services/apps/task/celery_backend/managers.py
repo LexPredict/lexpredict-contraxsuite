@@ -36,7 +36,7 @@ from typing import Tuple
 
 from celery import signature
 from celery.result import AsyncResult
-from celery.states import READY_STATES, PROPAGATE_STATES, SUCCESS, UNREADY_STATES, FAILURE, ALL_STATES
+from celery.states import READY_STATES, PROPAGATE_STATES, SUCCESS, UNREADY_STATES, FAILURE, ALL_STATES, REVOKED, PENDING
 from django.conf import settings
 from django.db import connections, router, transaction, models
 from django.db.models import F, Q, Value
@@ -48,8 +48,8 @@ from apps.task.celery_backend.utils import now
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2019, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.3.0/LICENSE"
-__version__ = "1.3.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.4.0/LICENSE"
+__version__ = "1.4.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -58,7 +58,6 @@ try:
     from celery.utils.time import maybe_timedelta
 except ImportError:  # pragma: no cover
     from celery.utils.timeutils import maybe_timedelta  # noqa
-
 
 W_ISOLATION_REP = """
 Polling results with transaction isolation level 'repeatable-read'
@@ -196,17 +195,12 @@ class TaskManager(models.Manager):
                   task_id: str,
                   task_name: str,
                   main_task_id: str,
+                  parent_task_id: str,
                   description: str = None,
                   args: Tuple = None,
                   source_data=None,
-                  run_after_sub_tasks_finished=False):
-        try:
-            main_task = self.get(id=main_task_id) if main_task_id and main_task_id != task_id else None
-        except:
-            print('Bad sub-task: task_id={0}, main_task_id={1}, task_name={2}'.format(task_id,
-                                                                                      main_task_id,
-                                                                                      task_name))
-            raise
+                  run_after_sub_tasks_finished=False,
+                  run_if_parent_task_failed=False):
 
         if description and len(description) > 1020:
             description = description[:1020]
@@ -214,17 +208,24 @@ class TaskManager(models.Manager):
         obj, created = self.get_or_create(id=task_id, defaults={
             'name': task_name,
             'description': description,
-            'main_task_id': main_task.id if main_task else None,
+            'main_task_id': main_task_id,
+            'parent_task_id': parent_task_id,
             'date_start': now(),
             'args': args,
             'source_data': source_data,
-            'run_after_sub_tasks_finished': run_after_sub_tasks_finished})
+            'status': PENDING,
+            'progress': 0,
+            'own_progress': 0,
+            'run_after_sub_tasks_finished': run_after_sub_tasks_finished,
+            'run_if_parent_task_failed': run_if_parent_task_failed})
         if not created:
-            obj.name = task_name
-            obj.description = description
-            obj.main_task_id = main_task.id if main_task else None
+            # If the task model is already created then this is a retry of a failed task
+            # We need to clear its status and progress
             obj.date_done = None
-            obj.run_after_sub_tasks_finished = run_after_sub_tasks_finished
+            obj.own_date_done = None
+            obj.status = PENDING
+            obj.progress = 0
+            obj.own_progress = 0
             obj.save()
 
         return obj
@@ -233,26 +234,14 @@ class TaskManager(models.Manager):
     def update_progress(self,
                         task_id,
                         progress: int):
-        task = self.get(id=task_id)
-
-        if task.is_sub_task():
-            self.filter(id=task_id).update(own_progress=progress, progress=progress)
-        else:
-            self.filter(id=task_id).update(own_progress=progress)
+        self.filter(id=task_id).update(own_progress=progress)
 
     @transaction_retry(max_retries=2)
     def increase_progress(self,
                           task_id,
                           progress_increase: int):
-        task = self.get(id=task_id)
-
-        if task.is_sub_task():  # this is a sub-task
-            self.filter(id=task_id).update(
-                own_progress=F('own_progress') + progress_increase,
-                progress=F('progress') + progress_increase)
-        else:
-            self.filter(id=task_id).update(
-                own_progress=F('own_progress') + progress_increase)
+        self.filter(id=task_id).update(
+            own_progress=F('own_progress') + progress_increase)
 
     @transaction_retry(max_retries=2)
     def set_push_steps(self, task_id, push_steps: int):
@@ -276,15 +265,8 @@ class TaskManager(models.Manager):
 
     @transaction_retry(max_retries=2)
     def push(self, task_id):
-        task = self.get(id=task_id)
-
-        if task.is_sub_task():
-            self.filter(id=task_id).update(
-                own_progress=F('own_progress') + Value(100) / F('push_steps'),
-                progress=F('progress') + Value(100) / F('push_steps'))
-        else:
-            self.filter(id=task_id).update(
-                own_progress=F('own_progress') + Value(100) / F('push_steps'))
+        self.filter(id=task_id).update(
+            own_progress=F('own_progress') + Value(100) / F('push_steps'))
 
     NON_FAILED_STATES = set(ALL_STATES) - {FAILURE}
 
@@ -296,59 +278,121 @@ class TaskManager(models.Manager):
             qr = qr.exclude(Q(name__in=self.EXCLUDE_FROM_TRACKING) & Q(status__in=self.NON_FAILED_STATES))
         return qr
 
+    def parent_tasks(self, show_failed_excluded_from_tracking: bool = False):
+        qr = self.filter(Q(has_sub_tasks=True) | Q(main_task__isnull=True) | Q(main_task_id=F('id')))
+        if not show_failed_excluded_from_tracking:
+            qr = qr.exclude(name__in=self.EXCLUDE_FROM_TRACKING)
+        else:
+            qr = qr.exclude(Q(name__in=self.EXCLUDE_FROM_TRACKING) & Q(status__in=self.NON_FAILED_STATES))
+        return qr
+
     def unready_main_tasks(self):
-        return self.main_tasks().filter(status__in=UNREADY_STATES)
+        return self.main_tasks().filter(Q(status__isnull=True) | Q(status__in=UNREADY_STATES))
+
+    def unready_parent_tasks(self):
+        return self.parent_tasks().filter(Q(status__isnull=True) | Q(status__in=UNREADY_STATES))
 
     def succeed_main_tasks(self):
         return self.main_tasks().filter(status=SUCCESS)
 
-    def run_after_sub_tasks(self, main_task_id: str):
-        for task in self.filter(main_task_id=main_task_id, run_after_sub_tasks_finished=True):
-            options = task.metadata['options']
-            options['task_id'] = task.id
-            options['parent_id'] = task.main_task_id
-            options['title'] = task.title
+    def succeed_parent_tasks(self):
+        return self.parent_tasks().filter(status=SUCCESS)
+
+    def run_after_sub_tasks(self, parent_task_id: str):
+        for task_id, name, metadata, main_task_id, title, priority \
+                in self.filter(parent_task_id=parent_task_id, run_after_sub_tasks_finished=True) \
+                .values_list('id', 'name', 'metadata', 'main_task_id', 'title', 'priority'):
+            options = metadata['options']
+            options['task_id'] = task_id
+            options['parent_id'] = parent_task_id
+            options['main_task_id'] = main_task_id
+            options['title'] = title
             options['run_after_sub_tasks_finished'] = False
-            priority = task.priority
+            options['run_if_parent_task_failed'] = False
+            priority = priority
             from apps.task.tasks import get_queue_by_task_priority
-            queue = get_queue_by_task_priority(task.priority)
-            task = signature(task.name, args=task.metadata['args'], **options)
-            task.apply_async(priority=priority, queue=queue)
+            queue = get_queue_by_task_priority(priority)
+            task = signature(name, args=metadata['args'], **options)
 
-    def update_main_task(self, main_task_id: str):
+            from apps.task.tasks import update_parent_task
+            task.apply_async(priority=priority, queue=queue, link=update_parent_task.s(parent_task_id))
+
+    def run_if_task_failed(self, parent_task_id: str):
+        for task_id, name, metadata, main_task_id, title, priority \
+                in self.filter(parent_task_id=parent_task_id, run_if_parent_task_failed=True) \
+                .values_list('id', 'name', 'metadata', 'main_task_id', 'title', 'priority'):
+            options = metadata['options']
+            options['task_id'] = task_id
+            options['parent_id'] = parent_task_id
+            options['main_task_id'] = main_task_id
+            options['title'] = title
+            options['run_after_sub_tasks_finished'] = False
+            options['run_if_parent_task_failed'] = False
+            priority = priority
+            from apps.task.tasks import get_queue_by_task_priority
+            queue = get_queue_by_task_priority(priority)
+            task = signature(name, args=metadata['args'], **options)
+            from apps.task.tasks import update_parent_task
+            task.apply_async(priority=priority, queue=queue,
+                             link=update_parent_task.s(parent_task_id))
+
+    def update_parent_task(self, parent_task_id: str):
         all_task_info_rows = self.filter(
-            Q(id=main_task_id) | Q(main_task_id=main_task_id)) \
-            .exclude(name__in=self.EXCLUDE_FROM_TRACKING) \
-            .values_list('propagate_exceptions', 'own_status', 'own_progress', 'own_date_done',
-                         'run_after_sub_tasks_finished')
+            Q(id=parent_task_id) | Q(parent_task_id=parent_task_id)) \
+            .exclude(name__in=self.EXCLUDE_FROM_TRACKING)
 
-        total_status_non_propagating_exceptions = None
+        total_status_non_propagating_exceptions = None  # None, 'SUCCESS', ...
         total_status_propagating_exceptions = None
         found_propagating_exceptions = False
-        total_progress = 0
+        total_progress = 0  # 0 ... 100
         total_done = True
         total_date_done = None
         sub_tasks_finished = True
         has_deferred_tasks = False
-        for propagate_exceptions, status, progress, date_done, run_after_sub_tasks_finished in all_task_info_rows:
-            if propagate_exceptions:
-                found_propagating_exceptions = True
-                total_status_propagating_exceptions = status \
-                    if total_status_propagating_exceptions is None \
-                    else max(total_status_propagating_exceptions,
-                             status,
-                             key=precedence_propagating_exceptions)
-            else:
-                total_status_non_propagating_exceptions = status \
-                    if total_status_non_propagating_exceptions is None \
-                    else max(total_status_non_propagating_exceptions,
-                             status,
-                             key=precedence_non_propagating_exceptions)
+        has_fail_handler = False
+        parent_task_completed = False
 
-            if not run_after_sub_tasks_finished:
-                sub_tasks_finished = sub_tasks_finished and status in READY_STATES
-            else:
+        for task_id, \
+            propagate_exceptions, \
+            has_sub_tasks, \
+            status, progress, date_done, \
+            own_status, own_progress, own_date_done, \
+            run_after_sub_tasks_finished, run_if_parent_task_failed in all_task_info_rows \
+                .values_list('id',
+                             'propagate_exceptions',
+                             'has_sub_tasks',
+                             'status', 'progress', 'date_done',
+                             'own_status', 'own_progress', 'own_date_done',
+                             'run_after_sub_tasks_finished', 'run_if_parent_task_failed'):
+            if task_id == parent_task_id:
+                parent_task_completed = status in READY_STATES
+
+            if not has_sub_tasks or task_id == parent_task_id:
+                status, progress, date_done = own_status, own_progress, own_date_done
+
+            if run_if_parent_task_failed:
+                has_fail_handler = True
+                continue
+
+            if not run_after_sub_tasks_finished or status in READY_STATES:
+                if propagate_exceptions:
+                    found_propagating_exceptions = True
+                    total_status_propagating_exceptions = status \
+                        if total_status_propagating_exceptions is None \
+                        else max(total_status_propagating_exceptions,
+                                 status,
+                                 key=precedence_propagating_exceptions)
+                else:
+                    total_status_non_propagating_exceptions = status \
+                        if total_status_non_propagating_exceptions is None \
+                        else max(total_status_non_propagating_exceptions,
+                                 status,
+                                 key=precedence_non_propagating_exceptions)
+
+            if run_after_sub_tasks_finished and task_id != parent_task_id:
                 has_deferred_tasks = True
+            else:
+                sub_tasks_finished = sub_tasks_finished and status in READY_STATES
 
             if progress is None:
                 progress = 0
@@ -387,31 +431,43 @@ class TaskManager(models.Manager):
             # None in total_status_propagating_exceptions
             total_status = total_status_non_propagating_exceptions
 
-        if has_deferred_tasks and sub_tasks_finished:
-            if total_status not in PROPAGATE_STATES:
-                self.run_after_sub_tasks(main_task_id)
-            else:
-                self \
-                    .filter(main_task_id=main_task_id, run_after_sub_tasks_finished=True) \
-                    .update(status=total_status, date_done=total_date_done)
+        if total_status in READY_STATES:
+            total_progress = 100
 
-        self.filter(id=main_task_id).update(date_done=total_date_done,
-                                            status=total_status,
-                                            completed=total_progress == 100,
-                                            progress=total_progress)
+        if sub_tasks_finished:
+            if total_status in PROPAGATE_STATES:
+                if has_fail_handler and not parent_task_completed:
+                    self.run_if_task_failed(parent_task_id)
+                self.filter(main_task_id=parent_task_id, run_after_sub_tasks_finished=True) \
+                    .update(status=REVOKED, date_done=total_date_done)
+            else:
+                if has_deferred_tasks and not parent_task_completed:
+                    self.run_after_sub_tasks(parent_task_id)
+                self \
+                    .filter(main_task_id=parent_task_id, run_if_parent_task_failed=True) \
+                    .update(status=REVOKED, date_done=total_date_done)
+
+        self.filter(id=parent_task_id).update(date_done=total_date_done,
+                                              status=total_status,
+                                              completed=total_progress == 100,
+                                              progress=total_progress)
         if total_status in READY_STATES:
             try:
-                main_task = self.get(id=main_task_id)  # type: Task
+                main_task = self.get(id=parent_task_id)  # type: Task
+                if main_task.parent_task_id is not None:
+                    from apps.task.tasks import update_parent_task
+                    update_parent_task.apply_async((main_task.parent_task_id,))
+
                 if total_status != SUCCESS:
                     main_task.write_log('{0} #{1}: some/all of sub-tasks have been crashed'.format(
-                        main_task.name, main_task_id), level='error')
+                        main_task.name, parent_task_id), level='error')
             except:
                 import logging
                 logging.error('Was unable to log SUCCESS/FAILURE to task log. Task id: {0}'
-                              .format(main_task_id))
+                              .format(parent_task_id))
 
         if total_status_propagating_exceptions in PROPAGATE_STATES:
-            revoke_task(AsyncResult(main_task_id))
+            revoke_task(AsyncResult(parent_task_id))
 
     @classmethod
     def _prepare_task_result(cls, result):
@@ -447,7 +503,7 @@ class TaskManager(models.Manager):
             'celery_metadata': metadata,
         }
 
-        if initial_values['own_status'] == SUCCESS:
+        if initial_values['own_status'] in READY_STATES:
             initial_values['own_progress'] = 100
 
         if main_task_id and main_task_id != task_id:  # this is a sub-task
@@ -466,19 +522,16 @@ class TaskManager(models.Manager):
                 # If the task is already initialized with main_task_id = None - here it can be rewritten
                 # with some value by Celery itself.
 
-                obj.own_status = status
+                obj.set_own_status(status)
 
                 if obj.own_date_done is None:
                     obj.own_date_done = now() if status in READY_STATES else None
-
-                if obj.own_status == SUCCESS:
-                    obj.own_progress = 100
 
                 obj.result = result
                 obj.traceback = traceback
                 obj.celery_metadata = metadata
 
-                if obj.is_sub_task():
+                if not obj.has_sub_tasks:
                     obj.status = obj.own_status
                     obj.date_done = obj.own_date_done
                     obj.progress = obj.own_progress

@@ -37,8 +37,8 @@ from apps.common.model_utils.table_deps_builder import TableDepsBuilder
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2019, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.3.0/LICENSE"
-__version__ = "1.3.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.4.0/LICENSE"
+__version__ = "1.4.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -62,10 +62,15 @@ class DocumentBulkDelete:
         if len(ids) == 0:
             return
         where_clause = self.build_where_clause(ids) + ");"
-
         self.bulk_del.delete_objects(where_clause)
-        self.document_repository.delete_document_history_by_ids(ids)
-        self.document_repository.delete_all_documents_by_ids(ids)
+        try:
+            self.document_repository.delete_document_history_by_ids(ids)
+        except Exception as e:
+            raise RuntimeError(f'error in delete_documents.delete_document_history_by_ids({len(ids)})') from e
+        try:
+            self.document_repository.delete_all_documents_by_ids(ids)
+        except Exception as e:
+            raise RuntimeError(f'error in delete_documents.delete_all_documents_by_ids({len(ids)})') from e
 
     def build_where_clause(self, ids: List[int]) -> str:
         if len(ids) > 1:

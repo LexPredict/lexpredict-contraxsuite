@@ -224,7 +224,7 @@ function custom_notifications( element, remove_prev ){
       notifyTimeout = notifyElement.attr('data-notify-timeout'),
       notifyCloseButton = notifyElement.attr('data-notify-close');
 
-    if( !notifyPosition ) { notifyPosition = 'toast-top-right'; } else { notifyPosition = 'toast-' + notifyElement.attr('data-notify-position'); }
+    if( !notifyPosition ) { notifyPosition = 'toast-bottom-right'; } else { notifyPosition = 'toast-' + notifyElement.attr('data-notify-position'); }
     if( !notifyMsg ) { notifyMsg = 'Please set a message!'; }
     if( !notifyTimeout ) { notifyTimeout = 5000; }
     if( notifyCloseButton == 'true' ) { notifyCloseButton = true; } else { notifyCloseButton = false; }

@@ -26,18 +26,14 @@
 
 from __future__ import absolute_import, unicode_literals
 
-from celery import shared_task
 from celery.backends.base import BaseDictBackend
 
 from apps.task.models import Task
-from apps.task.utils.task_utils import TaskUtils
-from django.conf import settings
-import task_names
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2019, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.3.0/LICENSE"
-__version__ = "1.3.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.4.0/LICENSE"
+__version__ = "1.4.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -48,17 +44,6 @@ class DatabaseBackend(BaseDictBackend):
     TaskModel = Task
 
     subpolling_interval = 0.5
-
-    @staticmethod
-    @shared_task(bind=True, name=task_names.TASK_NAME_UPDATE_MAIN_TASK)
-    def update_main_task(self, main_task_id: str):
-        TaskUtils.prepare_task_execution()
-
-        if self.request.id != main_task_id:
-            Task.objects.update_main_task(main_task_id)
-
-    def plan_update_main_task(self, main_task_id: str):
-        self.update_main_task.apply_async(args=(main_task_id,), queue='serial')
 
     def _store_result(self, task_id, result, status,
                       traceback=None, request=None):
@@ -96,11 +81,6 @@ class DatabaseBackend(BaseDictBackend):
             traceback=traceback,
             metadata=metadata,
         )
-
-        if settings.CELERY_UPDATE_MAIN_TASK_ON_EACH_SUB_TASK \
-                and getattr(request, 'root_id', None) != task_id \
-                and task_name != task_names.TASK_NAME_UPDATE_MAIN_TASK:
-            self.plan_update_main_task(request.root_id)
 
         return result
 

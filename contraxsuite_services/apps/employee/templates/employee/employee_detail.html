@@ -98,7 +98,7 @@
     $(document).ready(function () {
 
       var provision_datafields = [
-        { name: 'text_unit__text', type: 'string' },
+        { name: 'text_unit__textunittext__text', type: 'string' },
         { name: 'similarity', type: 'float' },
         { name: 'detail_url', type:'string' }
       ];
@@ -116,7 +116,7 @@
       var custom_grid_options= { autorowheight: true};
 
       var provision_columns = [
-        { text: 'Provision', datafield: 'text_unit__text', width: 'auto',
+        { text: 'Provision', datafield: 'text_unit__textunittext__text', width: 'auto',
           align: 'center', cellsalign: 'center' },
         { text: 'Confidence', datafield: 'similarity', width: '100',
           align: 'center', cellsalign: 'center'},

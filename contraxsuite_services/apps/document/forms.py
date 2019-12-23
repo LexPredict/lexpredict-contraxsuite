@@ -36,15 +36,15 @@ from apps.document.tasks import ImportCSVFieldDetectionConfig
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2019, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.3.0/LICENSE"
-__version__ = "1.3.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.4.0/LICENSE"
+__version__ = "1.4.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
 
 class ProjectModelMultipleChoiceField(forms.ModelMultipleChoiceField):
     def label_from_instance(self, obj):
-        return obj[1]
+        return f'{obj[1]} (#{obj[0]})'
 
     def clean(self, values):
         if not values:
@@ -64,7 +64,7 @@ class DetectFieldValuesForm(PatchedForm):
     document_type = forms.ModelChoiceField(queryset=DocumentType.objects.all(), required=False)
 
     project_ids = ProjectModelMultipleChoiceField(
-        queryset=Project.objects.all().values_list('pk', 'name'),
+        queryset=Project.objects.all().order_by('-pk').values_list('pk', 'name'),
         label='Projects',
         widget=forms.SelectMultiple(attrs={'class': 'chosen compact'}),
         required=False)
@@ -84,12 +84,6 @@ class TrainDocumentFieldDetectorModelForm(PatchedForm):
     header = 'Train Document Field Detector Model'
 
     document_type = forms.ModelChoiceField(queryset=DocumentType.objects.all(), required=False)
-
-
-class CacheDocumentFieldsForm(PatchedForm):
-    header = 'Cache Document Fields'
-
-    project = forms.ModelChoiceField(queryset=Project.objects.all(), required=False)
 
 
 class FindBrokenDocumentFieldValuesForm(PatchedForm):

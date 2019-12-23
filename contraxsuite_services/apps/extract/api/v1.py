@@ -54,8 +54,8 @@ import apps.common.mixins
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2019, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.3.0/LICENSE"
-__version__ = "1.3.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.4.0/LICENSE"
+__version__ = "1.4.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -117,7 +117,7 @@ class BaseUsageListAPIView(apps.common.mixins.JqListAPIView, ViewSetDataMixin):
             qs = qs.filter(text_unit__document_id=document_id)
             return qs.select_related('text_unit')
         else:
-            return qs.select_related('text_unit', 'text_unit__document')
+            return qs.select_related('text_unit', 'text_unit__textunittext', 'text_unit__document')
 
     @staticmethod
     def filter(search_str, qs, _or_lookup,
@@ -227,8 +227,8 @@ class TermUsageListAPIView(BaseUsageListAPIView):
         if term_search:
             qs = self.filter(term_search, qs,
                              _or_lookup='term__term__exact',
-                             _and_lookup='text_unit__text__icontains',
-                             _not_lookup='text_unit__text__icontains')
+                             _and_lookup='text_unit__textunittext__text__icontains',
+                             _not_lookup='text_unit__textunittext__text__icontains')
         # filter out duplicated Terms (equal terms, but diff. term sources)
         # qs = qs.order_by('term__term').distinct('term__term', 'text_unit__pk')
         return qs.select_related('term')

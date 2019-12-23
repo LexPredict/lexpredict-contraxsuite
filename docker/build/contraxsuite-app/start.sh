@@ -44,6 +44,7 @@ chown -v ${SHARED_USER_NAME}:${SHARED_USER_NAME} /contraxsuite_services || true
 chown -R -v ${SHARED_USER_NAME}:${SHARED_USER_NAME} /contraxsuite_services/staticfiles || true
 chown -R -v ${SHARED_USER_NAME}:${SHARED_USER_NAME} /data || true
 chown -R -v ${SHARED_USER_NAME}:${SHARED_USER_NAME} /static || true
+chown -R -v ${SHARED_USER_NAME}:${SHARED_USER_NAME} /contraxsuite_services/jars || true
 chmod -R -v ug+rw /data/media/data/documents || true
 
 
@@ -99,26 +100,11 @@ su - ${SHARED_USER_NAME} -c "${ACTIVATE_VENV} && \
 "
 
 elif [ "$1" == "uwsgi" ]; then
-    echo "Preparing theme..."
-    THEME_ZIP=/third_party_dependencies/$(basename ${DOCKER_DJANGO_THEME_ARCHIVE})
-    THEME_DIR=/static/theme
-    rm -rf ${THEME_DIR}
-    mkdir -p ${THEME_DIR}
-    unzip ${THEME_ZIP} "Package-HTML/HTML/js/*" -d ${THEME_DIR}
-    unzip ${THEME_ZIP} "Package-HTML/HTML/css/*" -d ${THEME_DIR}
-    unzip ${THEME_ZIP} "Package-HTML/HTML/images/*" -d ${THEME_DIR}
-    unzip ${THEME_ZIP} "Package-HTML/HTML/style.css" -d ${THEME_DIR}
-    mv ${THEME_DIR}/Package-HTML/HTML/js ${THEME_DIR}/
-    mv ${THEME_DIR}/Package-HTML/HTML/css ${THEME_DIR}/
-    mv ${THEME_DIR}/Package-HTML/HTML/images ${THEME_DIR}/
-    mv ${THEME_DIR}/Package-HTML/HTML/style.css ${THEME_DIR}/css/
-
     echo "Preparing jqwidgets..."
     JQWIDGETS_ZIP=/third_party_dependencies/$(basename ${DOCKER_DJANGO_JQWIDGETS_ARCHIVE})
     VENDOR_DIR=/static/vendor
     rm -rf ${VENDOR_DIR}/jqwidgets
     unzip ${JQWIDGETS_ZIP} "jqwidgets/*" -d ${VENDOR_DIR}
-
 
     echo "Updating customizable notification templates in media folder..."
     mkdir -p /data/media/data/notification_templates

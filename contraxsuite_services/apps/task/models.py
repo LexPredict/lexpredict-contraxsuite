@@ -32,6 +32,7 @@ from typing import Generator
 
 # Third-party imports
 from celery import states
+from celery.states import PENDING, READY_STATES
 from dataclasses import dataclass
 from dateutil import parser as date_parser
 
@@ -46,6 +47,7 @@ from elasticsearch import Elasticsearch
 
 # Project imports
 from apps.common.fields import StringUUIDField, TruncatingCharField
+from apps.common.model_utils.hr_django_json_encoder import HRDjangoJSONEncoder
 from apps.common.utils import fast_uuid
 from apps.task.celery_backend.managers import TaskManager
 from apps.task.celery_backend.utils import now
@@ -54,8 +56,8 @@ from contraxsuite_logging import write_task_log
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2019, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.3.0/LICENSE"
-__version__ = "1.3.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.4.0/LICENSE"
+__version__ = "1.4.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -71,6 +73,7 @@ class TaskConfig(models.Model):
 
 
 ALL_STATES = sorted(states.ALL_STATES)
+ALL_STATES_SET = set(ALL_STATES)
 TASK_STATE_CHOICES = sorted(zip(ALL_STATES, ALL_STATES))
 
 
@@ -95,7 +98,8 @@ class Task(models.Model):
         default=fast_uuid
     )
 
-    main_task = models.ForeignKey('self', blank=True, null=True, on_delete=CASCADE)
+    main_task = models.ForeignKey('self', blank=True, null=True, on_delete=CASCADE, related_name='all_sub_tasks')
+    parent_task = models.ForeignKey('self', blank=True, null=True, on_delete=CASCADE, related_name='straight_sub_tasks')
 
     name = models.CharField(max_length=100, db_index=True, null=True, blank=True)
     description = models.CharField(max_length=1024, db_index=False, null=True, blank=True)
@@ -104,10 +108,8 @@ class Task(models.Model):
     user = models.ForeignKey(User, db_index=True, blank=True, null=True, on_delete=CASCADE)
     celery_metadata = JSONField(blank=True, null=True)
     metadata = JSONField(blank=True, null=True)
-    args = JSONField(blank=True, null=True, db_index=True)
+    args = JSONField(blank=True, null=True, db_index=False, encoder=HRDjangoJSONEncoder)
     kwargs = JSONField(blank=True, null=True, db_index=True)
-    sequential_tasks = JSONField(blank=True, null=True, db_index=True)
-    sequential_tasks_started = models.BooleanField(default=False, db_index=True)
     group_id = StringUUIDField(blank=True, null=True, db_index=True)
     source_data = models.TextField(blank=True, null=True)
     visible = models.BooleanField(default=True)
@@ -149,6 +151,11 @@ class Task(models.Model):
     upload_session = models.ForeignKey('project.UploadSession', blank=True,
                                        null=True, db_index=True, on_delete=CASCADE)
     run_after_sub_tasks_finished = models.BooleanField(editable=False, default=False)
+
+    run_if_parent_task_failed = models.BooleanField(editable=False, default=False)
+
+    has_sub_tasks = models.BooleanField(editable=False, default=False)
+
     call_stack = TruncatingCharField(max_length=1024, db_index=True, null=True, blank=True)
 
     objects = TaskManager()
@@ -157,8 +164,8 @@ class Task(models.Model):
         return "Task (name={}, celery_id={})" \
             .format(self.name, self.id)
 
-    def is_sub_task(self):
-        return self.main_task_id and self.main_task_id != self.id
+    def is_suагаb_task(self):
+        return self.parent_task_id and self.parent_task_id != self.id
 
     @property
     def has_error(self) -> bool:
@@ -178,7 +185,7 @@ class Task(models.Model):
 
     @classmethod
     def disallow_start(cls, name):
-        return Task.objects.filter(name=name, status='PENDING').exists()
+        return Task.objects.filter(name=name, status=PENDING).exists()
 
     @classmethod
     def special_tasks(cls, filter_opts):
@@ -237,3 +244,18 @@ class Task(models.Model):
 
         except:
             yield TaskLogEntry(message='Unable to fetch logs from ElasticSearch:\n{0}'.format(format_exc()))
+
+    def set_own_status(self, status: str) -> None:
+        if status not in ALL_STATES_SET:
+            title_str = f"{self.name}, id='{self.pk}'"
+            raise RuntimeError(f'Trying to set "{status}" for task {title_str}')
+        self.own_status = status
+        if status in READY_STATES:
+            self.own_progress = 100
+
+    def save(self, *args, **kwargs):
+        if self.own_status in READY_STATES:
+            self.own_progress = 100
+        if self.status in READY_STATES:
+            self.progress = 100
+        super().save(*args, **kwargs)

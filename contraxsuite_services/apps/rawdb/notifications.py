@@ -26,19 +26,18 @@
 
 from typing import Dict, Any, List
 
+from apps.document.async_notifications import notify_on_document_changes
 from apps.document.models import Document
 from apps.rawdb.constants import FIELD_CODE_ANNOTATION_SUFFIX
 from apps.rawdb.rawdb.rawdb_field_handlers import RawdbFieldHandler
 from apps.users.models import User
-from apps.websocket.channels.broadcasting import ChannelBroadcasting
-from apps.websocket.channels.channel_message import ChannelMessage
-from apps.websocket.channels.channel_message_types import CHANNEL_MSG_TYPE_FIELDS_UPDATED
-from apps.websocket.channels.channel_names import CHANNEL_FIELDS
+from apps.websocket.channel_message import ChannelMessage
+from apps.websocket.channel_message_types import CHANNEL_MSG_TYPE_FIELDS_UPDATED
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2019, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.3.0/LICENSE"
-__version__ = "1.3.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.4.0/LICENSE"
+__version__ = "1.4.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -88,5 +87,4 @@ class UserNotifications:
             }
         message = ChannelMessage(CHANNEL_MSG_TYPE_FIELDS_UPDATED,
                                  payload)
-        ChannelBroadcasting.broadcast_message_to_channel(message,
-                                                         CHANNEL_FIELDS)
+        notify_on_document_changes(document.pk, message)

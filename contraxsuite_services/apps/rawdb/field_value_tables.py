@@ -46,7 +46,8 @@ from apps.rawdb.constants import TABLE_NAME_PREFIX, FIELD_CODE_DOC_NAME, FIELD_C
     FIELD_CODE_ASSIGNEE_NAME, FIELD_CODE_ASSIGN_DATE, FIELD_CODE_STATUS_NAME, FIELD_CODE_DELETE_PENDING, \
     FIELD_CODE_NOTES, FIELD_CODE_DEFINITIONS, FIELD_CODE_HIDDEN_COLUMNS, FIELD_CODE_CLUSTER_ID, FIELD_CODE_PARTIES, \
     FIELD_CODE_EARLIEST_DATE, FIELD_CODE_LATEST_DATE, FIELD_CODE_LARGEST_CURRENCY, FIELD_CODES_SYSTEM, \
-    FIELD_CODES_GENERIC, FIELD_CODE_ANNOTATION_SUFFIX, INDEX_NAME_PREFIX, DEFAULT_ORDER_BY
+    FIELD_CODES_GENERIC, FIELD_CODE_ANNOTATION_SUFFIX, INDEX_NAME_PREFIX, DEFAULT_ORDER_BY, FIELD_CODE_FOLDER, \
+    CACHE_FIELD_TO_DOC_FIELD
 from apps.rawdb.models import SavedFilter
 from apps.rawdb.notifications import UserNotifications
 from apps.rawdb.rawdb.rawdb_field_handlers import PgTypes, RawdbFieldHandler, ColumnDesc, StringRawdbFieldHandler, \
@@ -62,8 +63,8 @@ from apps.users.models import User
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2019, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.3.0/LICENSE"
-__version__ = "1.3.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.4.0/LICENSE"
+__version__ = "1.4.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -198,7 +199,7 @@ def _build_system_field_handlers(table_name: str, include_system_fields: FieldSp
         res.append(LongTextFromRelTableFieldHandler(FIELD_CODE_DOC_FULL_TEXT, 'Text', table_name,
                                                     select_text_sql=f'''select 
                                                                    substring(full_text for {lim}) 
-                                                                   from document_document where id = %s''',
+                                                                   from document_documenttext where document_id = %s''',
                                                     select_text_ref_id_field_code=FIELD_CODE_DOC_ID,
                                                     output_column_char_limit=200))
         res.append(IntFieldHandler(FIELD_CODE_DOC_FULL_TEXT_LENGTH, field_types.IntField.type_code,
@@ -237,6 +238,10 @@ def _build_system_field_handlers(table_name: str, include_system_fields: FieldSp
     if DocumentSystemField.notes.specified_in(include_system_fields):
         res.append(StringRawdbFieldHandler(FIELD_CODE_NOTES, field_types.StringField.type_code,
                                            'Notes', table_name))
+
+    if DocumentSystemField.folder.specified_in(include_system_fields):
+        res.append(StringRawdbFieldHandler(FIELD_CODE_FOLDER, field_types.StringField.type_code,
+                                           'Folder', table_name))
 
     return res
 
@@ -614,6 +619,9 @@ def _fill_system_fields_to_python_values(document: Document,
                 note=n.note)
                 for n in document.documentnote_set.all()]) or None
 
+    if DocumentSystemField.folder.specified_in(include_system_fields):
+        field_to_python_values[FIELD_CODE_FOLDER] = document.folder
+
 
 def _fill_generic_fields_to_python_values(document: Document,
                                           field_to_python_values: Dict[str, List],
@@ -701,6 +709,47 @@ def delete_document_from_cache(user: User, document: Document):
                                      field_handlers={h.field_code: h for h in handlers},
                                      fields_before=document_fields_before, fields_after=None,
                                      changed_by_user=user)
+
+
+def get_document_values_actual_and_cached(
+        document: Document,
+        skip_cached_values: bool = False,
+        handlers: List[RawdbFieldHandler] = None,
+        none_on_errors: bool = True):
+    """
+    Get fields either from document or, if it's not possible (cached fields are
+    requested) from document + from RawDB
+    :param document: document with all its fields
+    :param skip_cached_values: get document values only
+    :param handlers: RawdbFieldHandler collection or None for all handlers
+    :param none_on_errors: return None values when error occured
+    :return: {RawdbFieldHandler.field_code: field_value}
+    """
+    table_name = doc_fields_table_name(document.document_type.code)
+    if not handlers:
+        handlers = build_field_handlers(
+            document.document_type, table_name, include_annotation_fields=False)
+
+    raw_handlers = []
+    doc_values = {}  # type: Dict[str, Any]
+    for handler in handlers:
+        if handler.field_code in CACHE_FIELD_TO_DOC_FIELD:
+            doc_field = CACHE_FIELD_TO_DOC_FIELD[handler.field_code]
+            doc_values[handler.field_code] = document.get_field_by_code(doc_field)
+            continue
+        raw_handlers.append(handler)
+
+    if skip_cached_values:
+        return doc_values
+
+    if raw_handlers:
+        with connection.cursor() as cursor:
+            raw_values = _get_document_fields(
+                document.pk, cursor=cursor, table_name=table_name,
+                handlers=raw_handlers, none_on_errors=none_on_errors)
+        if raw_values:
+            doc_values.update(raw_values)
+    return doc_values
 
 
 def get_document_field_values(document_type: DocumentType,

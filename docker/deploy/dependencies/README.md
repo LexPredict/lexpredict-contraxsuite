@@ -9,10 +9,3 @@ Please put the following files here before running Contraxsuite Docker Image dep
     * styles
     * jqx-all.js
     * ...
-* theme.zip - zipped theme (https://themeforest.net/item/canvas-the-multipurpose-html5-template/9228123)
-  * Package-HTML
-    * HTML
-      * css
-      * images
-      * js
-      * style.css

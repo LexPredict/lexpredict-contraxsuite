@@ -4,7 +4,7 @@
 {% block title %}{{ model_name|capwords }} {% if is_detail %}detail{% elif object %}update{% else %}create new{% endif %}{% endblock %}
 
 {% block css %}
-  <link rel="stylesheet" href="{% static "theme/css/components/radio-checkbox.css" %}" type="text/css" />
+  <link rel="stylesheet" href="{% static "css/components/radio-checkbox.css" %}" type="text/css" />
   <link rel="stylesheet" type="text/css" href="https://cdnjs.cloudflare.com/ajax/libs/chosen/1.6.2/chosen.min.css">
   {{ block.super }}
 {% endblock %}

@@ -53,9 +53,10 @@ from apps.analyze.models import (
     DocumentCluster, TextUnitCluster,
     TextUnitClassification, TextUnitClassifierSuggestion)
 import apps.common.mixins
+from apps.common.file_storage import get_file_storage
 from apps.common.utils import cap_words
 from apps.document.forms import DetectFieldValuesForm, TrainDocumentFieldDetectorModelForm, TrainAndTestForm, \
-    CacheDocumentFieldsForm, LoadDocumentWithFieldsForm, FindBrokenDocumentFieldValuesForm, \
+    LoadDocumentWithFieldsForm, FindBrokenDocumentFieldValuesForm, \
     FixDocumentFieldCodesForm, ExportDocumentTypeForm, ImportDocumentTypeForm
 from apps.document.forms import ImportCSVFieldDetectionConfigForm
 from apps.document.models import (
@@ -78,13 +79,15 @@ from apps.users.models import User
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2019, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.3.0/LICENSE"
-__version__ = "1.3.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.4.0/LICENSE"
+__version__ = "1.4.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
 
 python_magic = magic.Magic(mime=True)
+
+file_storage = get_file_storage()
 
 
 def search(request):
@@ -124,7 +127,8 @@ class DocumentListView(apps.common.mixins.JqPaginatedListView):
     CBV for list of Document records.
     """
     model = Document
-    json_fields = ['name', 'document_type__title',
+    json_fields = ['project__name',
+                   'name', 'document_type__title',
                    'title', 'language',
                    # this field makes DB query significantly longer
                    # 'is_contract',
@@ -218,13 +222,14 @@ class DocumentPropertyListView(apps.common.mixins.JqPaginatedListView):
     json_fields = ['key', 'value',
                    'created_date', 'created_by__username',
                    'modified_date', 'modified_by__username',
-                   'document__pk', 'document__name',
+                   'document__pk',
+                   'document__project__name',
+                   'document__name',
                    'document__document_type__title', 'document__description']
     template_name = 'document/document_property_list.html'
 
     def get_queryset(self):
         qs = super().get_queryset()
-
         if "document_pk" in self.request.GET:
             qs = qs.filter(document__pk=self.request.GET['document_pk'])
 
@@ -264,9 +269,13 @@ class DocumentPropertyDeleteView(apps.common.mixins.CustomDeleteView):
 class DocumentRelationListView(apps.common.mixins.JqPaginatedListView):
     model = DocumentRelation
     json_fields = ['relation_type',
-                   'document_a__pk', 'document_a__name',
+                   'document_a__pk',
+                   'document_a__project__name',
+                   'document_a__name',
                    'document_a__document_type__title', 'document_a__description',
-                   'document_b__pk', 'document_b__name',
+                   'document_b__pk',
+                   'document_b__project__name',
+                   'document_b__name',
                    'document_b__document_type__title', 'document_b__description']
     limit_reviewers_qs_by_field = ['document_a', 'document_b']
     template_name = 'document/document_relation_list.html'
@@ -347,22 +356,17 @@ def show_document(request, pk):
     """
     document = Document.objects.get(pk=pk)
     file_name = document.name
-    file_source = document.source
-    file_path = os.path.join(settings.MEDIA_ROOT.rstrip('/'),
-                             settings.FILEBROWSER_DOCUMENTS_DIRECTORY.strip('/'),
-                             file_source.strip('/'),
-                             file_name.strip('/'))
-    # if not stripping '/' os.path.join() may return some '/child' in reaction to joining 'parent/dir/' with '/child'
-
-    mimetype = python_magic.from_file(file_path)
-    response = FileResponse(open(file_path, 'rb'), content_type=mimetype)
-    response['Content-Disposition'] = 'inline; filename="{}"'.format(file_name)
-    return response
+    with file_storage.get_document_as_local_fn(document.source_path) as (full_name, _):
+        mimetype = python_magic.from_file(full_name)
+        response = FileResponse(open(full_name, 'rb'), content_type=mimetype)
+        response['Content-Disposition'] = 'inline; filename="{}"'.format(file_name)
+        return response
 
 
 class DocumentNoteListView(apps.common.mixins.JqPaginatedListView):
     model = DocumentNote
     json_fields = ['note', 'timestamp', 'document__pk',
+                   'document__project__name',
                    'document__name', 'document__document_type__title',
                    'document__description']
     limit_reviewers_qs_by_field = 'document'
@@ -389,6 +393,7 @@ class DocumentNoteListView(apps.common.mixins.JqPaginatedListView):
 
     def get_queryset(self):
         qs = super().get_queryset()
+
         if "document_pk" in self.request.GET:
             qs = qs.filter(document__pk=self.request.GET['document_pk'])
         return qs
@@ -415,25 +420,6 @@ class DocumentEnhancedView(DocumentDetailView):
         return ctx
 
 
-class DocumentSentimentChartView(apps.common.mixins.AjaxListView):
-    template_name = "document/document_sentiment_chart.html"
-    model = Document
-    limit_reviewers_qs_by_field = ''
-
-    def get_json_data(self):
-        polarity_qs = DocumentProperty.objects.filter(document_id=OuterRef("pk"), key='polarity')
-        subjectivity_qs = DocumentProperty.objects.filter(document_id=OuterRef("pk"),
-                                                          key='subjectivity')
-        data = Document.objects\
-            .annotate(polarity=Subquery(polarity_qs.values('value')[:1]),
-                      subjectivity=Subquery(subjectivity_qs.values('value')[:1]))\
-            .values('pk', 'name', 'polarity', 'subjectivity')
-
-        for item in data:
-            item['url'] = reverse('document:document-detail', args=[item['pk']])
-        return list(data)
-
-
 class TextUnitDetailView(apps.common.mixins.PermissionRequiredMixin, DetailView):
     """
     Used DetailView instead of CustomDetailView to overwrite
@@ -451,22 +437,20 @@ class TextUnitDetailView(apps.common.mixins.PermissionRequiredMixin, DetailView)
         text_unit = self.object
         document = text_unit.document
 
-        # Find identical text unit matches
-        identical_text_unit_list = TextUnit.objects.filter(text_hash=text_unit.text_hash) \
-            .select_related('document')
-
         ctx.update({"document": document,
                     "highlight": self.request.GET.get("highlight", ""),
-                    "text_unit": text_unit,
-                    "identical_text_unit_list": identical_text_unit_list})
+                    "text_unit": text_unit})
         return ctx
 
 
 class TextUnitListView(apps.common.mixins.JqPaginatedListView):
     model = TextUnit
-    json_fields = ['unit_type', 'language', 'text',
+    json_fields = ['unit_type', 'language',
+                   'textunittext__text',
                    'text_hash',
-                   'document__pk', 'document__name',
+                   'document__pk',
+                   'document__project__name',
+                   'document__name',
                    'document__document_type__title', 'document__description']
     limit_reviewers_qs_by_field = 'document'
     es = Elasticsearch(hosts=settings.ELASTICSEARCH_CONFIG['hosts'])
@@ -494,7 +478,7 @@ class TextUnitListView(apps.common.mixins.JqPaginatedListView):
             qs = TextUnit.objects.filter(pk__in=pks)
         elif "text_search" in self.request.GET:
             text_search = self.request.GET.get("text_search")
-            qs = self.filter(text_search, qs, _or_lookup='text__icontains')
+            qs = self.filter(text_search, qs, _or_lookup='textunittext__text__icontains')
 
         if "document_pk" in self.request.GET:
             # Document Detail view
@@ -544,7 +528,9 @@ class TextUnitPropertyListView(apps.common.mixins.JqPaginatedListView):
     model = TextUnitProperty
     limit_reviewers_qs_by_field = 'text_unit__document'
     json_fields = ['key', 'value',
-                   'text_unit__document__pk', 'text_unit__document__name',
+                   'text_unit__document__pk',
+                   'text_unit__document__project__name',
+                   'text_unit__document__name',
                    'text_unit__document__document_type__title',
                    'text_unit__unit_type', 'text_unit__language',
                    'text_unit__pk']
@@ -592,6 +578,7 @@ class TextUnitPropertyDeleteView(apps.common.mixins.CustomDeleteView):
 class TextUnitNoteListView(apps.common.mixins.JqPaginatedListView):
     model = TextUnitNote
     json_fields = ['note', 'timestamp', 'text_unit__document__pk',
+                   'text_unit__document__project__name',
                    'text_unit__document__name', 'text_unit__document__document_type__title',
                    'text_unit__document__description', 'text_unit__pk',
                    'text_unit__unit_type', 'text_unit__language']
@@ -650,6 +637,7 @@ class DocumentNoteDeleteView(apps.common.mixins.CustomDeleteView):
 class DocumentTagListView(apps.common.mixins.JqPaginatedListView):
     model = DocumentTag
     json_fields = ['tag', 'timestamp', 'user__username', 'document__pk',
+                   'document__project__name',
                    'document__name', 'document__document_type__title',
                    'document__description']
     limit_reviewers_qs_by_field = 'document'
@@ -693,6 +681,7 @@ class DocumentTagDeleteView(apps.common.mixins.CustomDeleteView):
 class TextUnitTagListView(apps.common.mixins.JqPaginatedListView):
     model = TextUnitTag
     json_fields = ['tag', 'timestamp', 'user__username', 'text_unit__document__pk',
+                   'text_unit__document__project__name',
                    'text_unit__document__name', 'text_unit__document__document_type__title',
                    'text_unit__document__description', 'text_unit__pk',
                    'text_unit__unit_type', 'text_unit__language']
@@ -1199,12 +1188,6 @@ class TrainDocumentFieldDetectorModelTaskView(BaseAjaxTaskView):
     task_name = 'Train Document Field Detector Model'
     form_class = TrainDocumentFieldDetectorModelForm
     html_form_class = 'popup-form train-field-detector-model-form'
-
-
-class CacheDocumentFieldsTaskView(BaseAjaxTaskView):
-    task_name = 'Cache Document Fields'
-    form_class = CacheDocumentFieldsForm
-    html_form_class = 'popup-form cache-document-fields-form'
 
 
 class FindBrokenDocumentFieldValuesTaskView(BaseAjaxTaskView):

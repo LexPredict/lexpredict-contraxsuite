@@ -39,8 +39,8 @@ from traceback import format_exc
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2019, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.3.0/LICENSE"
-__version__ = "1.3.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.4.0/LICENSE"
+__version__ = "1.4.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -192,9 +192,9 @@ class TextractDocumentParser(BaseDocumentParser):
                 text, 'textract', None, self.tables)
         except Exception as ex:
             if ptrs.logger:
-                ptrs.logger.info('Caught exception while trying to parse file '
-                                 f'with Textract: {ptrs.original_file_name}'
-                                 f'\n{format_exc()}')
+                ptrs.logger.error('Caught exception while trying to parse file '
+                                  f'with Textract: {ptrs.original_file_name}'
+                                  f'\n{format_exc()}')
             if ptrs.propagate_exceptions:
                 raise ex
             return DocumentParsingResults()
@@ -239,7 +239,7 @@ class PlainTextDocumentParser(BaseDocumentParser):
         """
         :return: (text, 'plain text', None)
         """
-        if ptrs.ext.lower() != 'txt':
+        if ptrs.ext.strip(' .').lower() != 'txt':
             return DocumentParsingResults()
         if ptrs.logger:
             ptrs.logger.info('Trying plain text extract for file: ' +

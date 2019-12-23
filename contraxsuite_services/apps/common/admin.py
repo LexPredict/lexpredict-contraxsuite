@@ -26,26 +26,25 @@
 
 # Django imports
 from django import forms
-from django.db import models
-from django.forms import TextInput, Textarea
 from django.contrib import admin
 from rest_framework_tracking.admin import APIRequestLogAdmin
 
-from apps.common.decorators import get_function_from_str
 # Project imports
+from apps.common.decorators import get_function_from_str
 from apps.common.models import AppVar, ReviewStatusGroup, ReviewStatus, Action, \
     CustomAPIRequestLog, APIRequestLog, MethodStats, MethodStatsCollectorPlugin, \
-    MenuGroup, MenuItem, ThreadDumpRecord
+    MenuGroup, MenuItem, ThreadDumpRecord, ObjectStorage
+from apps.document.admin import ModelAdminWithPrettyJsonField
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2019, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.3.0/LICENSE"
-__version__ = "1.3.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.4.0/LICENSE"
+__version__ = "1.4.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
 
-class AppVarAdmin(admin.ModelAdmin):
+class AppVarAdmin(ModelAdminWithPrettyJsonField):
     list_display = ('name', 'value', 'user', 'description', 'date')
     search_fields = ('name', 'description')
 
@@ -119,6 +118,11 @@ class MenuItemAdmin(admin.ModelAdmin):
     search_fields = ('name',)
 
 
+class ObjectStorageAdmin(admin.ModelAdmin):
+    list_display = ('key', 'last_updated')
+    search_fields = ('key',)
+
+
 admin.site.unregister(APIRequestLog)
 
 admin.site.register(CustomAPIRequestLog, APIRequestLogAdmin)
@@ -131,3 +135,4 @@ admin.site.register(MethodStatsCollectorPlugin, MethodStatsCollectorPluginAdmin)
 admin.site.register(MenuGroup, MenuGroupAdmin)
 admin.site.register(MenuItem, MenuItemAdmin)
 admin.site.register(ThreadDumpRecord, ThreadDumpRecordAdmin)
+admin.site.register(ObjectStorage, ObjectStorageAdmin)

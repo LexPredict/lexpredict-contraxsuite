@@ -4,7 +4,7 @@
 {% block css %}
   <link rel="stylesheet" type="text/css" href="https://cdnjs.cloudflare.com/ajax/libs/chosen/1.6.2/chosen.min.css">
   {{ block.super }}
-  <link rel="stylesheet" href="{% static "theme/css/components/radio-checkbox.css" %}" type="text/css" />
+  <link rel="stylesheet" href="{% static "css/components/radio-checkbox.css" %}" type="text/css" />
 {% endblock %}
 
 {% block js_extra %}
@@ -172,6 +172,7 @@
         var details_source = {
           datafields: [
             { name: 'pk', type: 'int' },
+            { name: 'project__name', type: 'string' },
             { name: 'name', type: 'string' },
             { name: 'description', type: 'string' },
             { name: 'document_type__title', type: 'string' },
@@ -201,6 +202,8 @@
             showstatusbar: true,
             statusbarheight: 2,
             columns: [
+              { text: 'Project', datafield: 'project__name', width: 100,
+                align: 'center', cellsalign: 'center' },
               { text: 'Name', datafield: 'name', width: 'auto',
                 cellsrenderer: defaultLinkFormatter,
                 align: 'center', cellsalign: 'center' },

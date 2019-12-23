@@ -39,14 +39,17 @@ from apps.analyze.models import (
     DocumentCluster, DocumentSimilarity, PartySimilarity,
     TextUnitClassification, TextUnitClassifier, TextUnitClassifierSuggestion,
     TextUnitSimilarity, TextUnitCluster)
+from apps.analyze.forms import TrainDocumentDoc2VecTaskForm, TrainTextUnitDoc2VecTaskForm
+from apps.analyze.tasks import TrainDoc2VecModel
 from apps.common.contraxsuite_urls import doc_editor_url, project_documents_url
 from apps.document.views import SubmitTextUnitTagView
+from apps.task.views import BaseAjaxTaskView
 import apps.common.mixins
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2019, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.3.0/LICENSE"
-__version__ = "1.3.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.4.0/LICENSE"
+__version__ = "1.4.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -57,8 +60,10 @@ class TextUnitClassificationListView(apps.common.mixins.JqPaginatedListView):
     CBV for list of TextUnitClassification records
     """
     model = TextUnitClassification
-    json_fields = ['text_unit__document__pk', 'text_unit__document__name',
-                   'text_unit__document__document_type', 'text_unit__document__description',
+    json_fields = ['text_unit__document__pk',
+                   'text_unit__document__project__name',
+                   'text_unit__document__name',
+                   'text_unit__document__document_type__title', 'text_unit__document__description',
                    'text_unit__pk', 'text_unit__unit_type', 'text_unit__language',
                    'class_name', 'class_value', 'user__username', 'timestamp']
     limit_reviewers_qs_by_field = 'text_unit__document'
@@ -150,7 +155,9 @@ class TextUnitClassifierSuggestionListView(apps.common.mixins.JqPaginatedListVie
     """
     model = TextUnitClassifierSuggestion
     ordering = "-classifier_confidence"
-    json_fields = ['text_unit__document__pk', 'text_unit__document__name',
+    json_fields = ['text_unit__document__pk',
+                   'text_unit__document__project__name',
+                   'text_unit__document__name',
                    'text_unit__document__document_type', 'text_unit__document__description',
                    'text_unit__pk',
                    'class_name', 'class_value', 'classifier_run', 'classifier_confidence']
@@ -212,7 +219,7 @@ class DocumentClusterListView(apps.common.mixins.JqPaginatedListView):
             documents = cluster.documents
             if self.request.user.is_reviewer:
                 documents = documents.filter(taskqueue__reviewers=self.request.user)
-            documents = documents.values('pk', 'name', 'description', 'document_type__title')
+            documents = documents.values('pk', 'name', 'description', 'project__name', 'document_type__title')
             for document in documents:
                 document['url'] = reverse('document:document-detail', args=[document['pk']]),
             item['documents'] = list(documents)
@@ -283,10 +290,10 @@ class TextUnitSimilarityListView(apps.common.mixins.JqPaginatedListView):
     template_name = "analyze/text_unit_similarity_list.html"
     limit_reviewers_qs_by_field = ['text_unit_a__document', 'text_unit_b__document']
     json_fields = ['text_unit_a__pk', 'text_unit_a__unit_type',
-                   'text_unit_a__language', 'text_unit_a__text',
+                   'text_unit_a__language', 'text_unit_a__textunittext__text',
                    'text_unit_a__document__pk', 'text_unit_a__document__name',
                    'text_unit_b__pk', 'text_unit_b__unit_type',
-                   'text_unit_b__language', 'text_unit_b__text',
+                   'text_unit_b__language', 'text_unit_b__textunittext__text',
                    'text_unit_b__document__pk', 'text_unit_b__document__name',
                    'similarity']
 
@@ -307,7 +314,8 @@ class TextUnitSimilarityListView(apps.common.mixins.JqPaginatedListView):
         qs = super().get_queryset()
         if "text_unit_pk" in self.request.GET:
             qs = qs.filter(text_unit_a__pk=self.request.GET['text_unit_pk'])
-        return qs
+        return qs.select_related('text_unit_a', 'text_unit_a__textunittext',
+                                 'text_unit_b', 'text_unit_b__textunittext')
 
 
 class PartySimilarityListView(apps.common.mixins.JqPaginatedListView):
@@ -354,9 +362,9 @@ class TextUnitClusterListView(apps.common.mixins.JqPaginatedListView):
         for item in data['data']:
             cluster = TextUnitCluster.objects.get(pk=item['pk'])
             text_units = cluster.text_units.values(
-                'pk', 'unit_type', 'text', 'language',
+                'pk', 'unit_type', 'textunittext__text', 'language',
                 'document__pk', 'document__name',
-                'document__description', 'document__document_type')
+                'document__description', 'document__project__name', 'document__document_type')
             for text_unit in text_units:
                 text_unit['document_url'] = reverse('document:document-detail',
                                                     args=[text_unit['document__pk']]),
@@ -408,3 +416,13 @@ class SubmitTextUnitClassificationView(SubmitTextUnitTagView):
             timestamp=datetime.datetime.now()
         )
         return self.success()
+
+
+class TrainDocumentDoc2VecModelView(BaseAjaxTaskView):
+    task_class = TrainDoc2VecModel
+    module_name = 'apps.analyze.tasks'
+    form_class = TrainDocumentDoc2VecTaskForm
+
+
+class TrainTextUnitDoc2VecModelView(TrainDocumentDoc2VecModelView):
+    form_class = TrainTextUnitDoc2VecTaskForm

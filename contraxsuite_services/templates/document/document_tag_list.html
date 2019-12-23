@@ -20,6 +20,7 @@
     $(document).ready(function () {
       var datafields = [
         { name: 'pk', type: 'int' },
+        { name: 'document__project__name', type: 'string' },
         { name: 'document__name', type: 'string' },
         { name: 'document__document_type__title', type: 'string' },
         { name: 'document__description', type: 'string' },
@@ -45,6 +46,8 @@
         show_menu(menu_data, grid, row.pk);
       };
       var columns = [
+        { text: 'Project', datafield: 'document__project__name', width: 100,
+          align: 'center', cellsalign: 'center', columngroup: 'Document' },
         { text: 'Name', datafield: 'document__name', width: 200,
           align: 'center', cellsalign: 'left', enabletooltips: true,
           cellsrenderer: defaultLinkFormatter, columngroup: 'Document' },

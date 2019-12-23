@@ -27,9 +27,6 @@
 # Standard imports
 import json
 
-# Third-party imports
-from constance import config
-
 # Django imports
 from django import forms
 from django.conf import settings
@@ -45,8 +42,8 @@ from apps.task.models import Task
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2019, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.3.0/LICENSE"
-__version__ = "1.3.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.4.0/LICENSE"
+__version__ = "1.4.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -73,12 +70,6 @@ class LoadDocumentsForm(forms.Form):
     detect_contract = checkbox_field("Detect if a document is contract", initial=True)
     delete = checkbox_field("Delete existing Documents")
     run_standard_locators = checkbox_field("Run Standard Locators", initial=False)
-
-
-# sample form for custom task
-class LocateTermsForm(forms.Form):
-    header = 'Locate Terms in existing Text Units.'
-    delete = checkbox_field("Delete existing Term Usages", initial=True)
 
 
 def locate_field(label, parent_class='checkbox-parent'):
@@ -172,18 +163,28 @@ class LocateForm(forms.Form):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+
+        from apps.extract.app_vars import STANDARD_LOCATORS, OPTIONAL_LOCATORS
+        available_locators = set(STANDARD_LOCATORS.val) | set(OPTIONAL_LOCATORS.val)
+
         for field in list(self.fields.keys()):
             if field in ['parse', 'locate_all', 'project']:
                 continue
             field_name = field.split('_')[0]
-            available_locators = list(settings.REQUIRED_LOCATORS) + list(
-                config.standard_optional_locators)
             if field_name not in available_locators:
                 del self.fields[field]
 
     def is_valid(self):
-        if not super(LocateForm, self).is_valid():
+        is_form_valid = super(LocateForm, self).is_valid()
+
+        # check at least one "locate" choice is selected
+        has_locate_chosen = bool([1 for k, v in self.cleaned_data.items() if 'locate' in k and v is True])
+        if has_locate_chosen is False:
+            self.add_error('locate_all', 'Please choose a locator.')
+
+        if not is_form_valid:
             return False
+
         # check at least one "parse" choice is selected
         if 'parse' not in self.cleaned_data or not self.cleaned_data['parse']:
             return False
@@ -208,6 +209,8 @@ class ExistedClassifierClassifyForm(forms.Form):
         help_text='Store values with confidence greater than (%).')
     delete_suggestions = checkbox_field(
         "Delete ClassifierSuggestions of Classifier specified above.")
+    project = forms.ModelChoiceField(queryset=Project.objects.all(),
+                                     required=False, label='Restrict to project')
 
 
 options_field_kwargs = dict(
@@ -360,6 +363,8 @@ class CreateClassifierClassifyForm(forms.Form):
         "Delete existing Classifiers of class name specified above.")
     delete_suggestions = checkbox_field(
         "Delete ClassifierSuggestions of class name specified above.")
+    project = forms.ModelChoiceField(queryset=Project.objects.all(),
+                                     required=False, label='Restrict to project')
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -376,6 +381,8 @@ class ClusterForm(forms.Form):
         "Cluster Documents", initial=True, input_class='min-one-of')
     do_cluster_text_units = checkbox_field(
         "Cluster Text Units", input_class='min-one-of')
+    project = forms.ModelChoiceField(queryset=Project.objects.all(),
+                                     required=False, label='Restrict to project')
     cluster_by = forms.MultipleChoiceField(
         widget=forms.SelectMultiple(attrs={'class': 'chosen'}),
         choices=[('date', 'Dates'),
@@ -394,13 +401,14 @@ class ClusterForm(forms.Form):
         help_text='Cluster by terms, parties or other fields.')
     using = forms.ChoiceField(
         label='Algorithm',
-        choices=[('MiniBatchKMeans', 'MiniBatchKMeans'),
-                 ('KMeans', 'KMeans'),
-                 ('Birch', 'Birch'),
-                 ('DBSCAN', 'DBSCAN'),
-                 ('LabelSpreading', 'LabelSpreading')],
+        choices=[('minibatchkmeans', 'MiniBatchKMeans'),
+                 ('kmeans', 'KMeans'),
+                 ('birch', 'Birch'),
+                 ('dbscan', 'DBSCAN'),
+                 # ('LabelSpreading', 'LabelSpreading')
+                 ],
         required=True,
-        initial='MiniBatchKMeans',
+        initial='minidatchkmeans',
         help_text='Clustering algorithm model name.')
     name = forms.CharField(
         max_length=100,
@@ -429,7 +437,7 @@ class ClusterForm(forms.Form):
         help_text='Number of time the k-means algorithm will be run with different centroid seeds. '
                   'The final results will be the best output of n_init consecutive runs in '
                   'terms of inertia.')
-    mb_kmeans_batch_size = forms.IntegerField(
+    minibatchkmeans_batch_size = forms.IntegerField(
         label='batch_size',
         min_value=1,
         initial=100,
@@ -471,48 +479,48 @@ class ClusterForm(forms.Form):
         help_text='Leaf size passed to BallTree or cKDTree. '
                   'This can affect the speed of the construction and query, '
                   'as well as the memory required to store the tree.')
-    ls_documents_property = forms.Field()
-    ls_text_units_property = forms.Field()
-    ls_max_iter = forms.IntegerField(
-        label='max_iter',
-        min_value=1,
-        initial=5,
-        required=True,
-        help_text='Maximum number of iterations allowed.')
-    # use_idf = checkbox_field("Use TF-IDF to normalize data")
-    delete_type = checkbox_field(
-        'Delete existed Clusters of the "Cluster By" and "Algorithm" specified above',
-        input_class='max-one-of')
-    delete = checkbox_field("Delete all existed Clusters", input_class='max-one-of')
+    # ls_documents_property = forms.Field()
+    # ls_text_units_property = forms.Field()
+    # ls_max_iter = forms.IntegerField(
+    #     label='max_iter',
+    #     min_value=1,
+    #     initial=5,
+    #     required=True,
+    #     help_text='Maximum number of iterations allowed.')
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        if TextUnitProperty.objects.exists():
-            choices = [(p, p) for p in sorted(
-                set(TextUnitProperty.objects.values_list('key', flat=True)),
-                key=lambda i: i.lower())]
-            self.fields['ls_text_units_property'] = forms.ChoiceField(
-                label='Text Unit Property Name',
-                widget=forms.widgets.Select(attrs={'class': 'chosen'}),
-                choices=choices,
-                required=True,
-                initial=choices[0][0])
-        else:
-            del self.fields['ls_text_units_property']
-        if DocumentProperty.objects.exists():
-            choices = [(p, p) for p in sorted(
-                set(DocumentProperty.objects.values_list('key', flat=True)),
-                key=lambda i: i.lower())]
-            self.fields['ls_documents_property'] = forms.ChoiceField(
-                label='Document Property Name',
-                widget=forms.widgets.Select(attrs={'class': 'chosen'}),
-                choices=choices,
-                required=True,
-                initial=choices[0][0])
-        else:
-            del self.fields['ls_documents_property']
-        if not DocumentProperty.objects.exists() and not TextUnitProperty.objects.exists():
-            self.fields['using'].choices = self.fields['using'].choices[:-1]
+    # delete_type = checkbox_field(
+    #     'Delete existed Clusters of the "Cluster By" and "Algorithm" specified above',
+    #     input_class='max-one-of')
+    # delete = checkbox_field("Delete all existed Clusters", input_class='max-one-of')
+
+    # def __init__(self, *args, **kwargs):
+    #     super().__init__(*args, **kwargs)
+    #     if TextUnitProperty.objects.exists():
+    #         choices = [(p, p) for p in sorted(
+    #             set(TextUnitProperty.objects.values_list('key', flat=True)),
+    #             key=lambda i: i.lower())]
+    #         self.fields['ls_text_units_property'] = forms.ChoiceField(
+    #             label='Text Unit Property Name',
+    #             widget=forms.widgets.Select(attrs={'class': 'chosen'}),
+    #             choices=choices,
+    #             required=True,
+    #             initial=choices[0][0])
+    #     else:
+    #         del self.fields['ls_text_units_property']
+    #     if DocumentProperty.objects.exists():
+    #         choices = [(p, p) for p in sorted(
+    #             set(DocumentProperty.objects.values_list('key', flat=True)),
+    #             key=lambda i: i.lower())]
+    #         self.fields['ls_documents_property'] = forms.ChoiceField(
+    #             label='Document Property Name',
+    #             widget=forms.widgets.Select(attrs={'class': 'chosen'}),
+    #             choices=choices,
+    #             required=True,
+    #             initial=choices[0][0])
+    #     else:
+    #         del self.fields['ls_documents_property']
+    #     if not DocumentProperty.objects.exists() and not TextUnitProperty.objects.exists():
+    #         self.fields['using'].choices = self.fields['using'].choices[:-1]
 
     def clean(self):
         cleaned_data = super().clean()
@@ -564,7 +572,7 @@ class TaskDetailForm(forms.Form):
                 message = '<br />' + message
 
             log_add = f'<b><span style="color: {color}">{level}</span> {ts} | {record.task_name or "no task"} |</b> ' \
-                f'{message}'
+                      f'{message}'
 
             logs.append(log_add)
 

@@ -29,11 +29,13 @@ from typing import Union, List
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2019, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.3.0/LICENSE"
-__version__ = "1.3.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.4.0/LICENSE"
+__version__ = "1.4.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
+
+from celery.states import PENDING
 
 _PRECEDENCE_NON_PROPAGATE_ERRORS = [
     'SUCCESS',
@@ -104,7 +106,7 @@ def revoke_task(_task, wait=False, timeout=None):
     if getattr(_task, 'children', None) is not None:
         for child_task in _task.children:
             revoke_task(child_task)
-    if getattr(_task, 'status', None) == 'PENDING':
+    if getattr(_task, 'status', None) == PENDING:
         try:
             _task.revoke(terminate=True, wait=wait, timeout=timeout)
         except RuntimeError as e:

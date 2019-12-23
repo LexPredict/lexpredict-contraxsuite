@@ -7,6 +7,7 @@
     $(document).ready(function () {
       var datafields = [
         { name: 'pk', type: 'int' },
+        { name: 'text_unit__document__project__name', type: 'string' },
         { name: 'text_unit__document__name', type: 'string' },
         { name: 'text_unit__document__document_type__title', type: 'string' },
         { name: 'text_unit__document__description', type: 'string' },
@@ -37,6 +38,8 @@
         show_menu(menu_data, grid, row.pk);
       };
       var columns = [
+        { text: 'Project', datafield: 'text_unit__document__project__name', width: 100,
+          align: 'center', cellsalign: 'center', columngroup: 'Document' },
         { text: 'Name', datafield: 'text_unit__document__name', width: 300,
           align: 'center', cellsalign: 'left', enabletooltips: true,
           cellsrenderer: defaultLinkFormatter, columngroup: 'Document' },
@@ -68,7 +71,7 @@
           { text: 'Text Unit', name: 'Text Unit', align: 'center' }
         ]
       };
-      draw_grid(".jqxgrid", datafields, columns, false, null, custom_grid_options);
+      draw_grid(".jqxgrid", datafields, columns, true, null, custom_grid_options);
     });
   </script>
 {% endblock %}

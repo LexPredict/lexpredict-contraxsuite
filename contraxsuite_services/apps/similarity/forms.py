@@ -35,8 +35,8 @@ from apps.project.models import Project
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2019, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.3.0/LICENSE"
-__version__ = "1.3.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.4.0/LICENSE"
+__version__ = "1.4.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -120,3 +120,5 @@ class PreconfiguredDocumentSimilaritySearchForm(forms.Form):
     field = forms.ModelChoiceField(
         queryset=DocumentField.objects.filter(type=LinkedDocumentsField.type_code),
         required=True)
+    project = forms.ModelChoiceField(queryset=Project.objects.all(),
+                                     required=False, label='Restrict to project')

@@ -27,13 +27,12 @@
 # Standard imports
 from re import compile as re_compile
 
-# Third-party imports
-from constance import config
+from rest_auth.models import TokenModel
 
 # Django imports
 from django.conf import settings
 from django.contrib import messages
-from django.contrib.auth import authenticate, login
+from django.core.exceptions import ObjectDoesNotExist
 from django.urls import reverse
 from django.db.models import signals
 from django.http import HttpResponseNotAllowed, HttpResponseForbidden, JsonResponse
@@ -48,8 +47,8 @@ from apps.users.authentication import CookieAuthentication
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2019, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.3.0/LICENSE"
-__version__ = "1.3.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.4.0/LICENSE"
+__version__ = "1.4.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -70,41 +69,53 @@ class LoginRequiredMiddleware(MiddlewareMixin):
     """
     def process_view(self, request, view_func, args, kwargs):
         assert hasattr(request, 'user')
-        if not request.user.is_authenticated and not config.auto_login:
+        if not request.user.is_authenticated:
             path = request.path_info.lstrip('/')
             if not any(m.match(path) for m in EXEMPT_URLS):
                 return redirect(settings.LOGIN_URL)
 
 
-class AutoLoginMiddleware(MiddlewareMixin):
-    """
-    Auto login test user.
-    Create test user if needed.
-    settings should have AUTOLOGIN_TEST_USER_FORBIDDEN_URLS
-    and AUTOLOGIN_ALWAYS_OPEN_URLS
-    MIDDLEWARE_CLASSES should have 'django.contrib.auth.middleware.AuthenticationMiddleware'.
-    TEMPLATE_CONTEXT_PROCESSORS setting should include 'django.core.context_processors.auth'.
-    """
-    TEST_USER_FORBIDDEN_URLS = [
-        re_compile(str(expr)) for expr in settings.AUTOLOGIN_TEST_USER_FORBIDDEN_URLS]
-
-    def process_view(self, request, view_func, args, kwargs):
-
-        if config.auto_login:
-
-            path = request.path_info
-            if path in settings.AUTOLOGIN_ALWAYS_OPEN_URLS:
-                return
-
-            if not request.user.is_authenticated:
-                get_test_user()
-                user = authenticate(username='test_user', password='test_user')
-                request.user = user
-                login(request, user)
-
-            if request.user.username == 'test_user':
-                if any(m.search(path) for m in self.TEST_USER_FORBIDDEN_URLS):
-                    return redirect(reverse_lazy('home'))
+# class AutoLoginMiddleware(MiddlewareMixin):
+#     """
+#     Auto login test user.
+#     Create test user if needed.
+#     settings should have AUTOLOGIN_TEST_USER_FORBIDDEN_URLS
+#     and AUTOLOGIN_ALWAYS_OPEN_URLS
+#     MIDDLEWARE_CLASSES should have 'django.contrib.auth.middleware.AuthenticationMiddleware'.
+#     TEMPLATE_CONTEXT_PROCESSORS setting should include 'django.core.context_processors.auth'.
+#
+#     # settings for AutoLoginMiddleware
+#     # urls available for unauthorized users,
+#     # otherwise login as "test_user"
+#     AUTOLOGIN_ALWAYS_OPEN_URLS = [
+#         reverse_lazy('account_login'),
+#     ]
+#     # forbidden urls for "test user" (all account/* except login/logout)
+#     AUTOLOGIN_TEST_USER_FORBIDDEN_URLS = [
+#         'accounts/(?!login|logout)',
+#     ]
+#
+#     """
+#     TEST_USER_FORBIDDEN_URLS = [
+#         re_compile(str(expr)) for expr in settings.AUTOLOGIN_TEST_USER_FORBIDDEN_URLS]
+#
+#     def process_view(self, request, view_func, args, kwargs):
+#
+#         if config.auto_login:
+#
+#             path = request.path_info
+#             if path in settings.AUTOLOGIN_ALWAYS_OPEN_URLS:
+#                 return
+#
+#             if not request.user.is_authenticated:
+#                 get_test_user()
+#                 user = authenticate(username='test_user', password='test_user')
+#                 request.user = user
+#                 login(request, user)
+#
+#             if request.user.username == 'test_user':
+#                 if any(m.search(path) for m in self.TEST_USER_FORBIDDEN_URLS):
+#                     return redirect(reverse_lazy('home'))
 
 
 class HttpResponseNotAllowedMiddleware(MiddlewareMixin):
@@ -207,7 +218,8 @@ class AppEnabledRequiredMiddleware(MiddlewareMixin):
     def process_view(self, request, view_func, args, kwargs):
         if hasattr(view_func, 'view_class') and hasattr(view_func.view_class, 'sub_app'):
             current_sub_app = view_func.view_class.sub_app
-            available_locators = list(settings.REQUIRED_LOCATORS) + list(config.standard_optional_locators)
+            from apps.extract.app_vars import STANDARD_LOCATORS, OPTIONAL_LOCATORS
+            available_locators = set(STANDARD_LOCATORS.val) | set(OPTIONAL_LOCATORS.val)
             if current_sub_app not in available_locators:
                 messages.error(request, 'This locator is not enabled.')
                 if request.is_ajax() or request.META['CONTENT_TYPE'] == 'application/json':
@@ -222,28 +234,45 @@ class CookieMiddleware(MiddlewareMixin):
     1. set auth_token from AUTHORIZATION request header,
        see apps.users.authentication.CookieAuthentication
     2. set extra cookie variables
-    """
-    def process_response(self, request, response):
-        auth_token = request.COOKIES.get('auth_token', request.META.get('HTTP_AUTHORIZATION'))
 
-        # if login - set response cookie auth_token from login response - "key"
-        if request.META['PATH_INFO'] == reverse('rest_login') \
-                and hasattr(response, 'data') \
-                and response.data and response.data.get('key'):
+    Delete "auth_token" when django logout
+    """
+
+    def process_request(self, request):
+        if request.META['PATH_INFO'] == reverse('account_logout') and request.method == 'POST':
+            try:
+                request.user.auth_token.delete()
+            except (AttributeError, ObjectDoesNotExist):
+                pass
+
+    def process_response(self, request, response):
+        current_path = request.META['PATH_INFO']
+
+        # if restful login - set response cookie auth_token from login response - "key"
+        if current_path == reverse('rest_login') \
+                and getattr(response, 'data', None) and response.data.get('key'):
             response.set_cookie('auth_token', 'Token %s' % response.data['key'])
 
-        # delete token after logout via django UI
-        elif request.META['PATH_INFO'] in (reverse('account_logout'), reverse('rest_logout')) \
+        # if django login - set token in cookies
+        elif current_path == reverse('account_login') and request.method == 'POST'\
+                and request.user.is_authenticated:
+            token, _ = TokenModel.objects.get_or_create(user=request.user)
+            response.set_cookie('auth_token', 'Token %s' % token)
+
+        # delete user-specific cookies after logout
+        elif current_path in (reverse('account_logout'), reverse('rest_logout')) \
                 and request.method == 'POST':
             response.delete_cookie('auth_token')
+            response.delete_cookie('user_name')
+            response.delete_cookie('user_id')
             # INFO: token is deleted in apps.users.adapters.AccountAdapter.logout
             # because here we have AnonimousUser
 
-        # for login via django UI - set auth_token in apps.users.forms.CustomLoginForm
-
         # otherwise set auth_token from incoming headers or cookie
-        elif auth_token:
-            response.set_cookie('auth_token', auth_token)
+        else:
+            auth_token = request.COOKIES.get('auth_token', request.META.get('HTTP_AUTHORIZATION'))
+            if auth_token:
+                response.set_cookie('auth_token', auth_token)
 
         # set extra cookie variables if user exists
         if request.user and hasattr(request.user, 'get_full_name'):

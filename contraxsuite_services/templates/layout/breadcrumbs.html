@@ -1,0 +1,14 @@
+{% if user.is_authenticated %}
+<div class="page-header">
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="#">Home</a></li>
+            {% block page_header_wrapper %}
+            <li class="breadcrumb-item active" aria-current="page">
+                {% block page_header %}{% endblock %}{% block page_header_addon %}{% endblock %}
+            </li>
+            {% endblock %}
+        </ol>
+    </nav>
+</div>
+{% endif %}

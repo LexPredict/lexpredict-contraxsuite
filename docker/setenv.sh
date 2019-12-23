@@ -78,7 +78,6 @@ export DOCKER_DJANGO_DEBUG_SQL=False
 # >>> get_random_secret_key()
 export DOCKER_DJANGO_SECRET_KEY=Welcome1
 export DOCKER_DJANGO_ACCOUNT_EMAIL_VERIFICATION=optional
-export DOCKER_DJANGO_THEME_ARCHIVE=./deploy/dependencies/theme.zip
 export DOCKER_DJANGO_JQWIDGETS_ARCHIVE=./deploy/dependencies/jqwidgets.zip
 export DOCKER_DIR=/data/docker
 
@@ -143,7 +142,7 @@ export DISTR_PASSWORD=
 
 export DOCKER_BUILD_FLAGS=
 
-export PG_STATISTICS_ENABLED=false
+export PG_STATISTICS_ENABLED=true
 
 #export DOCKER_COMPOSE_FILE=docker-compose-single-master-many-workers.yml
 export DOCKER_COMPOSE_FILE=docker-compose-single-host.yml

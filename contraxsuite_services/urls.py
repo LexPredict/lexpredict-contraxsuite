@@ -31,11 +31,13 @@ from __future__ import unicode_literals
 import importlib
 
 # Third-party imports
-from django.conf.urls import url
+from allauth.account.views import confirm_email as allauth_confirm_email_view
 from filebrowser.sites import site as filebrowser_site
+from swagger_view import get_swagger_view
 
 # Django imports
 from django.conf import settings
+from django.conf.urls import url
 from django.urls import include, path
 from django.conf.urls.static import static
 from django.contrib import admin
@@ -44,9 +46,6 @@ from django.views.generic import TemplateView
 from django.views import defaults as default_views
 
 # Project imports
-from settings import REST_FRAMEWORK
-from swagger_view import get_swagger_view
-from apps.project.views import DashboardView
 from apps.common.app_vars import init_app_vars
 from apps.common.decorators import init_decorators
 from apps.document.python_coded_fields_registry import init_field_registry
@@ -54,10 +53,11 @@ from apps.document.field_type_registry import init_field_type_registry
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2019, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.3.0/LICENSE"
-__version__ = "1.3.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.4.0/LICENSE"
+__version__ = "1.4.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
+
 
 from apps.common.debug_utils import listen
 listen()
@@ -65,9 +65,8 @@ listen()
 # Manually add all standard patterns
 urlpatterns = [
     # Base pages
-    url(r'^{0}$'.format(settings.BASE_URL), DashboardView.as_view(), name='home'),
+    url(r'^{0}$'.format(settings.BASE_URL), TemplateView.as_view(template_name='home.html'), name='home'),
     url(r'^{0}'.format(settings.BASE_URL), include('django.contrib.auth.urls')),
-    # url(r'^$', TemplateView.as_view(template_name='home.html'), name='home'),
     url(r'^{0}about/$'.format(settings.BASE_URL), TemplateView.as_view(template_name='about.html'), name='about'),
     # Django Admin, use {% url 'admin:index' %}
     url(r'^{0}admin/'.format(settings.BASE_URL), admin.site.urls),
@@ -87,6 +86,7 @@ urlpatterns = [
     url(r'^{0}api-auth/'.format(settings.BASE_URL), include('rest_framework.urls')),
     url(r'^rest-auth/'.format(settings.BASE_URL), include('rest_auth.urls')),
     url(r'^rest-auth/registration/'.format(settings.BASE_URL), include('rest_auth.registration.urls')),
+    url(r"^accounts/confirm-email/(?P<key>[-:\w]+)/$", allauth_confirm_email_view, name="allauth_account_confirm_email"),
 
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
 
@@ -97,7 +97,7 @@ if settings.DEBUG:
 namespaces = {getattr(i, 'namespace', None) for i in urlpatterns}
 custom_apps = [i.replace('apps.', '') for i in settings.INSTALLED_APPS if i.startswith('apps.')]
 
-api_urlpatterns = {api_version: [] for api_version in REST_FRAMEWORK['ALLOWED_VERSIONS']}
+api_urlpatterns = {api_version: [] for api_version in settings.REST_FRAMEWORK['ALLOWED_VERSIONS']}
 
 for app_name in custom_apps:
     if app_name in namespaces:
@@ -110,7 +110,7 @@ for app_name in custom_apps:
         urlpatterns += [url(r'^' + settings.BASE_URL + app_name + '/', include_urls)]
 
     # add api urlpatterns
-    for api_version in REST_FRAMEWORK['ALLOWED_VERSIONS']:
+    for api_version in settings.REST_FRAMEWORK['ALLOWED_VERSIONS']:
         api_module_str = 'apps.{}.api.{}'.format(app_name, api_version)
         try:
             api_module = importlib.import_module(api_module_str)

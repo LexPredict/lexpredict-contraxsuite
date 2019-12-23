@@ -39,8 +39,8 @@ from apps.document.models import (
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2019, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.3.0/LICENSE"
-__version__ = "1.3.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.4.0/LICENSE"
+__version__ = "1.4.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -107,11 +107,6 @@ urlpatterns += [
         r'^document/(?P<pk>\d+)/enhanced-view/$',
         views.DocumentEnhancedView.as_view(),
         name='document-enhanced-view'
-    ),
-    url(
-        r'^document/sentiment-chart/$',
-        views.DocumentSentimentChartView.as_view(),
-        name='document-sentiment-chart'
     ),
 
     url(
@@ -196,11 +191,6 @@ urlpatterns += [
         r'^fix-document-field-codes/$',
         views.FixDocumentFieldCodesTaskView.as_view(),
         name='fix-document-field-codes',
-    ),
-    url(
-        r'^cache-document-fields/$',
-        views.CacheDocumentFieldsTaskView.as_view(),
-        name='cache-document-fields',
     ),
     url(
         r'^train-and-test/$',

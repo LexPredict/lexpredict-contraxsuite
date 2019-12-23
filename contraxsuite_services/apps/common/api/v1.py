@@ -24,11 +24,11 @@
 """
 # -*- coding: utf-8 -*-
 
-import json
+import coreapi
+import coreschema
 
 # Third-party imports
-from constance.admin import ConstanceForm, get_values
-from rest_framework import serializers, routers, viewsets
+from rest_framework import serializers, routers, viewsets, schemas
 from rest_framework.exceptions import APIException, ValidationError
 from rest_framework.response import Response
 from rest_framework.permissions import BasePermission, IsAuthenticated
@@ -39,126 +39,22 @@ from django.conf.urls import url
 from django.db.models import Q
 
 # Project imports
-from apps.common.models import Action, AppVar, ReviewStatusGroup, ReviewStatus, MenuGroup, MenuItem
 import apps.common.mixins
+from apps.common.models import Action, AppVar, ReviewStatusGroup, ReviewStatus, MenuGroup, MenuItem
 from apps.common.api.permissions import ReviewerReadOnlyPermission
 from apps.users.api.v1 import UserSerializer
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2019, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.3.0/LICENSE"
-__version__ = "1.3.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.4.0/LICENSE"
+__version__ = "1.4.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
-
-
-class AppConfigAPIView(rest_framework.views.APIView):
-    """
-    API for Settings Based on "constance" third-party application
-    """
-    permission_classes = (ReviewerReadOnlyPermission,)
-
-    def get(self, request, *args, **kwargs):
-        """
-        Retrieve App Config
-        """
-        initial = get_values()
-        initial['data'] = json.loads(initial['data'])
-        return Response(initial)
-
-    def post(self, request, *args, **kwargs):
-        """
-        Update App Config\n
-            Params:
-                - auto_login: bool
-                - standard_optional_locators: list[str], see settings.OPTIONAL_LOCATORS
-                - data: json, - custom settings for project
-        """
-        initial = get_values()
-        data = initial.copy()
-        data.update(request.data)
-        if 'data' in data:
-            data['data'] = json.dumps(data['data'])
-        form = ConstanceForm(data=data, initial=initial)
-        form.data['version'] = initial.get('version')
-        if form.is_valid():
-            form.save()
-            return Response('Application settings updated successfully.')
-        else:
-            return Response(form.errors, status=500)
-
-
-class AppConfigDataAPIView(rest_framework.views.APIView):
-    """
-    API for Settings Based on "constance" third-party application
-    for specific key-value actions
-    """
-    permission_classes = (ReviewerReadOnlyPermission,)
-
-    def get(self, request, *args, **kwargs):
-        """
-        Retrieve App Config data
-        """
-        initial = get_values()
-        result = json.loads(initial['data'])
-        param = request.GET.get('param')
-        if param:
-            result = {param: result.get(param)}
-        return Response(result)
-
-    def post(self, request, *args, **kwargs):
-        """
-        Update App Config data\n
-            Params:
-                dictionary {key1: val2, key2: val2, ...} - json, custom settings for project
-        """
-        initial_config = get_values()
-
-        data = json.loads(initial_config['data'])
-        data.update(request.data)
-
-        updated_config = initial_config.copy()
-        updated_config['data'] = json.dumps(data)
-
-        form = ConstanceForm(data=updated_config, initial=initial_config)
-        form.data['version'] = initial_config.get('version')
-        if form.is_valid():
-            form.save()
-            return Response('Application settings updated successfully.')
-        else:
-            return Response(form.errors, status=500)
-
-    def delete(self, request, *args, **kwargs):
-        """
-        Delete specific key from App Config data
-        """
-        initial_config = get_values()
-        param = request.data.get('param')
-
-        if not param:
-            raise APIException('Provide key to delete')
-
-        data = json.loads(initial_config['data'])
-        data.pop(param, None)
-        updated_config = initial_config.copy()
-        updated_config['data'] = json.dumps(data)
-
-        form = ConstanceForm(data=updated_config, initial=initial_config)
-        form.data['version'] = initial_config.get('version')
-        if form.is_valid():
-            form.save()
-            return Response('OK')
-        else:
-            return Response(form.errors, status=500)
 
 
 # --------------------------------------------------------
 # AppVar Views
 # --------------------------------------------------------
-import coreapi
-import coreschema
-from rest_framework import schemas
-
 
 class AppVarSerializer(serializers.ModelSerializer):
     class Meta:
@@ -413,10 +309,6 @@ router.register(r'menu-groups', MenuGroupViewSet, 'menu-group')
 router.register(r'menu-items', MenuItemViewSet, 'menu-item')
 
 urlpatterns = [
-    url(r'^app-config/$', AppConfigAPIView.as_view(),
-        name='app-config'),
-    url(r'^app-config-data/$', AppConfigDataAPIView.as_view(),
-        name='app-config-data'),
     url(r'^app-variables/$', AppVarAPIView.as_view(),
         name='app-variables'),
 ]

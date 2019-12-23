@@ -41,7 +41,6 @@ from psycopg2 import InterfaceError, OperationalError
 
 from apps.celery import app
 from apps.common.collection_utils import chunks
-from apps.common.errors import render_error
 from apps.common.models import ObjectStorage
 from apps.common.sql_commons import fetch_bool, SQLClause
 from apps.document.models import Document, DocumentField, DocumentType
@@ -54,6 +53,7 @@ from apps.notifications.notifications import render_digest, RenderedDigest, \
 from apps.notifications.notification_renderer import NotificationRenderer
 from apps.rawdb.field_value_tables import build_field_handlers
 from apps.rawdb.constants import FIELD_CODE_ASSIGNEE_ID
+from apps.rawdb.rawdb.rawdb_field_handlers import RawdbFieldHandler
 from apps.rawdb.signals import DocumentEvent
 from apps.task.tasks import BaseTask, ExtendedTask, call_task
 from apps.task.tasks import CeleryTaskLogger
@@ -62,8 +62,8 @@ import task_names
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2019, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.3.0/LICENSE"
-__version__ = "1.3.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.4.0/LICENSE"
+__version__ = "1.4.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -418,25 +418,20 @@ class EmailNotificationPool:
     def send_notifications_packet(ntfs: List[DocumentNotification],
                                   event: str,
                                   task: BaseTask):
-        documents_data = Document.all_objects.filter(pk__in={d.document_id for d in ntfs}).values_list(
-            'pk', 'document_type', 'project_id')
-        doc_types = list(set([d[1] for d in documents_data]))  # unique document types
-        doc_types = list(DocumentType.objects.filter(pk__in=doc_types))
-        doc_type_by_id = {d.pk: d for d in doc_types}
+        documents_data = list(Document.all_objects.filter(
+            pk__in={d.document_id for d in ntfs}))  # type: List[Document]
+        doc_type_by_id = {dt.document_type.pk:dt.document_type for dt in documents_data}
+        doc_types = [doc_type_by_id[pk] for pk in doc_type_by_id]
 
         doc_by_id = {}  # type: Dict[int, Document]
-        for data in documents_data:
-            doc = Document()
-            doc.pk = data[0]
-            doc.document_type = doc_type_by_id[data[1]]
-            doc.project_id = data[2]
+        for doc in documents_data:
             doc_by_id[doc.pk] = doc
 
         users = User.objects.filter(pk__in={d.changed_by_user_id for d in ntfs})
         user_by_id = {u.pk: u for u in users}
 
         handlers_by_doctype = {d: build_field_handlers(d, include_annotation_fields=False)
-                               for d in doc_types}  # Dict[str, RawdbFieldHandler]
+                               for d in doc_types}  # type:Dict[str, RawdbFieldHandler]
 
         log = CeleryTaskLogger(task)
 
@@ -461,8 +456,6 @@ class EmailNotificationPool:
                     .select_related('specified_user', 'specified_role') \
                     .prefetch_related(Prefetch('user_fields',
                                                queryset=DocumentField.objects.all().order_by('order')))
-                # for s in subscriptions:
-                #     s.max_stack = 1  # TODO: remove
                 subscr_by_key[key] = subscriptions
                 messages_by_subscr_key[key] = [ntf]
 
@@ -474,8 +467,12 @@ class EmailNotificationPool:
             for sub in subscriptions:
                 for msg_pack in chunks(messages, sub.max_stack):
                     # render pack of notifications or just one notification
-                    if sub.max_stack < 2:
+                    if len(msg_pack) < 2:
                         # render single notification
+                        if msg_pack[0].document_id not in doc_by_id or \
+                                not doc_by_id[msg_pack[0].document_id]:
+                            raise Exception(f'Error in send_notifications_packet(1): doc '
+                                            f'with id={msg_pack[0].document_id} was not obtained')
                         document = doc_by_id[msg_pack[0].document_id]
                         handlers = handlers_by_doctype[document.document_type]
                         user = user_by_id[msg_pack[0].changed_by_user_id]
@@ -493,29 +490,35 @@ class EmailNotificationPool:
                             if notification:
                                 notifications_to_send.append(notification)
                         except Exception as e:
-                            log.error(f'Error in send_notifications_packet(), '
-                                      f'sending render_notification(): {e}')
+                            log.error(f'Error in send_notifications_packet(1), '
+                                      f'sending render_notification()', exc_info=e)
                     else:
                         not_sources = []  # List[DocumentNotificationSource
                         # render pack of notifications in a single message
                         for msg in msg_pack:
+                            if msg.document_id not in doc_by_id or \
+                                    not doc_by_id[msg.document_id]:
+                                raise Exception(f'Error in send_notifications_packet({len(msg_pack)}: doc '
+                                                f'with id={msg.document_id} was not obtained')
+
                             document = doc_by_id[msg.document_id]
                             handlers = handlers_by_doctype[document.document_type]
                             user = user_by_id[msg.changed_by_user_id]
                             not_src = DocumentNotificationSource(
                                 document=document,
                                 field_handlers=handlers,
-                                field_values=msg_pack[0].field_values,
-                                changes=msg_pack[0].changes,
+                                field_values=msg.field_values,
+                                changes=msg.changes,
                                 changed_by_user=user)
                             not_sources.append(not_src)
                         try:
                             notifications = NotificationRenderer.render_notification_pack(
-                                msg_pack[0].package_id, sub, not_sources)
+                                [m.package_id for m in msg_pack],
+                                sub, not_sources)
                             notifications_to_send += notifications
                         except Exception as e:
                             log.error(f'Error in send_notifications_packet(), '
-                                      f'sending render_notification_pack(): {e}')
+                                      f'sending render_notification_pack()', exc_info=e)
 
         log.info(f'notification.send({len(notifications_to_send)})')
         for notification in notifications_to_send:

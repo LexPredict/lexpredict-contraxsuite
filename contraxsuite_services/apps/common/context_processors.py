@@ -24,23 +24,15 @@
 """
 # -*- coding: utf-8 -*-
 
-# Third-party imports
-from constance import config
-
 # Django imports
 from django.conf import settings
 from django.template.loader import get_template
 from django.template.exceptions import TemplateDoesNotExist
 
-# Project imports
-from apps.document.models import Document
-from apps.project.models import Project, TaskQueue
-from apps.users.models import User
-
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2019, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.3.0/LICENSE"
-__version__ = "1.3.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.4.0/LICENSE"
+__version__ = "1.4.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -49,10 +41,8 @@ def common(request):
     if request.is_ajax() or hasattr(request, 'versioning_scheme'):
         return {}
 
-    available_locators = list(settings.REQUIRED_LOCATORS) + list(config.standard_optional_locators)
-    available_locator_groups = [
-        group_name for group_name, group_items in settings.LOCATOR_GROUPS.items()
-        if any(set(group_items).intersection(available_locators))]
+    from apps.extract.app_vars import STANDARD_LOCATORS, OPTIONAL_LOCATORS
+    available_locators = set(STANDARD_LOCATORS.val) | set(OPTIONAL_LOCATORS.val)
 
     custom_main_menu_item_templates = []
     custom_task_menu_item_templates = []
@@ -72,10 +62,4 @@ def common(request):
     return {'settings': settings,
             'custom_main_menu_item_templates': custom_main_menu_item_templates,
             'custom_task_menu_item_templates': custom_task_menu_item_templates,
-            'available_locators': available_locators,
-            'available_locator_groups': available_locator_groups,
-            'documents_count': Document.objects.count(),
-            'projects_count': Project.objects.count(),
-            'task_queues_count': TaskQueue.objects.count(),
-            'reviewers_count': User.objects.exclude(role__is_admin=True)
-            .exclude(role__is_manager=True).count()}
+            'available_locators': available_locators}

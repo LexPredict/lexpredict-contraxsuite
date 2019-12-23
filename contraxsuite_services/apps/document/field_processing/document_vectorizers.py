@@ -34,8 +34,8 @@ from apps.document.models import DocumentField
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2019, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.3.0/LICENSE"
-__version__ = "1.3.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.4.0/LICENSE"
+__version__ = "1.4.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -60,7 +60,7 @@ def document_feature_vector_pipeline(feature_vector_fields: List[DocumentField],
         -> FeatureUnion:
     transformer_list = []
     for field in sorted(feature_vector_fields, key=lambda f: f.pk):  # type: DocumentField
-        typed_field = TypedField.by(field)  # type: Type[TypedField]
+        typed_field = TypedField.by(field)  # type: TypedField
 
         field_vect_steps = [('sel', FieldValueExtractor(field.code if use_field_codes else field.pk))]
 

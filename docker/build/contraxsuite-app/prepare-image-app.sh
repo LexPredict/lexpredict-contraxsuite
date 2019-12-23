@@ -28,9 +28,12 @@ mkdir -p ../../../additionals
 
 # Build tika jars into contraxsuite_services/jars
 # Next they will be copied into the image together with contraxsuite_services folder
+echo "Building Tika jars"
 pushd ../../../scripts
-rm -f ../contraxsuite_services/jars/*
-./obtain_jars.sh
+rm -f ../contraxsuite_services/jars/* || true
+
+sudo ./obtain_jars.sh
+
 popd
 
 
@@ -44,7 +47,6 @@ rsync ../../../static/ ./temp/static/ -a --copy-links -v
 # Don't put licensed third-party components into the image
 rm -f -r ./temp/contraxsuite_services/staticfiles
 rm -f ./temp/contraxsuite_services/local_settings.py
-rm -r ./temp/static/theme
 rm -r ./temp/static/vendor/jqwidgets
 
 echo "LexPredict Contraxsuite App Docker Image" > ./temp/build.info

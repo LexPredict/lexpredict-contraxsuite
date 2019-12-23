@@ -24,10 +24,11 @@
 """
 # -*- coding: utf-8 -*-
 
-from typing import Generator, List, Any, Iterable
+from typing import Generator, List, Any, Iterable, Optional
 
 from celery import shared_task
 from celery.exceptions import SoftTimeLimitExceeded
+from celery.states import PENDING
 from django.db import connection
 from django.db.models import Q
 from psycopg2 import InterfaceError, OperationalError
@@ -48,8 +49,8 @@ import task_names
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2019, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.3.0/LICENSE"
-__version__ = "1.3.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.4.0/LICENSE"
+__version__ = "1.4.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -64,7 +65,7 @@ def _get_reindex_task_name():
 def there_are_non_indexed_docs_not_planned_to_index(
         document_type: DocumentType,
         log: ProcessLogger) -> bool:
-    for doc_id in non_indexed_doc_ids_not_planned_to_index(document_type, 1):
+    for doc_id in non_indexed_doc_ids_not_planned_to_index_by_doc_type(document_type, 1):
         if doc_id:
             task_name = _get_reindex_task_name()
             fields_table = doc_fields_table_name(document_type.code)
@@ -75,9 +76,29 @@ def there_are_non_indexed_docs_not_planned_to_index(
     return False
 
 
-def non_indexed_doc_ids_not_planned_to_index(
+def non_indexed_doc_ids_not_planned_to_index_by_doc_type(
         document_type: DocumentType, pack_size: int = 100) -> Generator[List[int], None, None]:
-    table_name = doc_fields_table_name(document_type.code)
+    yield from get_non_indexed_doc_ids_not_planned_to_index_by_predicate(
+        document_type.code,
+        f"dd.document_type_id = '{document_type.uid}'",
+        pack_size)
+
+
+def non_indexed_doc_ids_not_planned_to_index_by_project(
+        document_type: DocumentType,
+        project_id: int,
+        pack_size: int = 100) -> Generator[List[int], None, None]:
+    yield from get_non_indexed_doc_ids_not_planned_to_index_by_predicate(
+        document_type.code,
+        f"dd.project_id = '{project_id}'",
+        pack_size)
+
+
+def get_non_indexed_doc_ids_not_planned_to_index_by_predicate(
+        doc_type_code: str,
+        predicate: str,
+        pack_size: int = 100) -> Generator[List[int], None, None]:
+    table_name = doc_fields_table_name(doc_type_code)
 
     with connection.cursor() as cursor:
         # return documents of the specified type which
@@ -85,25 +106,14 @@ def non_indexed_doc_ids_not_planned_to_index(
         # - have no planned but not-started reindex tasks on them
         cursor.execute('select dd.id \n'
                        'from document_document dd \n'
-                       'left outer join "{table_name}" df on dd.id = df.document_id \n'
+                       f'left outer join "{table_name}" df on dd.id = df.document_id \n'
                        'left outer join lateral (select jsonb_array_elements(args->0) doc_id \n'
                        '                         from task_task \n'
-                       '                         where name = %s \n'
-                       '                         and own_status = %s\n'
+                       f"                         where name = '{_get_reindex_task_name()}' \n"
+                       "                         and own_status = 'PENDING'\n"
                        '                         and date_work_start is null) tt on tt.doc_id = to_jsonb(dd.id) \n'
-                       'where dd.document_type_id = %s and df.document_id is null and tt.doc_id is null \n'
-                       'and dd.processed is true'
-                       .format(table_name=table_name), [_get_reindex_task_name(), 'PENDING', document_type.uid])
-
-        rows = cursor.fetchmany(pack_size)
-        while rows:
-            yield [row[0] for row in rows]
-            rows = cursor.fetchmany(pack_size)
-
-
-def get_all_doc_ids(document_type_id, pack_size: int = 100) -> Generator[List[int], None, None]:
-    with connection.cursor() as cursor:
-        cursor.execute('select id from document_document where document_type_id = %s', [document_type_id])
+                       f'where {predicate} and df.document_id is null and tt.doc_id is null \n'
+                       'and dd.processed is true')
 
         rows = cursor.fetchmany(pack_size)
         while rows:
@@ -122,7 +132,7 @@ def _get_all_doc_ids_not_planned_to_index(query_filter: str, params: list, pack_
                        '                         and date_work_start is null) tt on tt.doc_id = to_jsonb(d.id) \n'
                        'where {0} and tt.doc_id is null and d.processed is true'
                        .format(query_filter),
-                       [_get_reindex_task_name(), 'PENDING'] + params)
+                       [_get_reindex_task_name(), PENDING] + params)
 
         rows = cursor.fetchmany(pack_size)
         while rows:
@@ -160,15 +170,23 @@ def get_all_doc_ids_not_planned_to_index_by_status_pk(status_pk: Any, pack_size:
              max_retries=3)
 def manual_reindex(task: ExtendedTask,
                    document_type_code: str = None,
-                   force: bool = False):
+                   force: bool = False,
+                   project_id: Optional[int] = None):
     if APP_VAR_DISABLE_RAW_DB_CACHING.val:
         task.log_info('Document caching to raw tables is disabled in Commons / App Vars')
         return
-    msg = f'manual_reindex called for {document_type_code}. ' \
-        f'Task: {task.task_name}, main id: {task.main_task_id}'
+    run_parameters = {'document type': document_type_code}
+    if project_id:
+        run_parameters['project'] = project_id
+    if force:
+        run_parameters['force'] = True
+    ptrs_str = ', '.join([f'{p}={run_parameters[p]}' for p in run_parameters])
+
+    msg = f'manual_reindex called for {ptrs_str}. ' \
+          f'Task: {task.task_name}, main id: {task.main_task_id}'
     log = CeleryTaskLogger(task)
     log.info(msg)
-    adapt_tables_and_reindex(task, document_type_code, force, True)
+    adapt_tables_and_reindex(task, document_type_code, force, True, project_id)
 
 
 def _reindex_document_ids_packets(task: ExtendedTask, ids_packets: Generator[List[int], None, None]) -> None:
@@ -231,12 +249,15 @@ def reindex_status_name_for_all_documents_in_system(task: ExtendedTask, status_p
                                   get_all_doc_ids_not_planned_to_index_by_status_pk(status_pk, DOC_NUM_PER_SUB_TASK))
 
 
-def any_other_reindex_task(self_task_id, document_type_code: str):
-    return Task.objects.unready_main_tasks() \
+def any_other_reindex_task(self_task_id, document_type_code: str, project_id: Optional[int]):
+    tasks = Task.objects.unready_main_tasks() \
         .filter(name__in={task_names.TASK_NAME_AUTO_REINDEX, task_names.TASK_NAME_MANUAL_REINDEX}) \
         .exclude(pk=self_task_id) \
         .filter(Q(kwargs__document_type_code=document_type_code) |
                 Q(kwargs__document_type_code__isnull=True))
+    if project_id:
+        tasks = tasks.filter(Q(kwargs__project_id=project_id))
+    return tasks
 
 
 @shared_task(base=ExtendedTask,
@@ -269,7 +290,7 @@ def auto_reindex_not_tracked(task: ExtendedTask,
                            task_model.user_id)
         else:
             if there_are_non_indexed_docs_not_planned_to_index(document_type, log) \
-                    and not any_other_reindex_task(task.request.id, document_type.code).exists():
+                    and not any_other_reindex_task(task.request.id, document_type.code, None).exists():
                 task.log_info(f'auto_reindex_not_tracked({document_type.code}): '
                               f'there_are_non_indexed_docs_not_planned_to_index')
                 call_task_func(manual_reindex,
@@ -280,7 +301,8 @@ def auto_reindex_not_tracked(task: ExtendedTask,
 def adapt_tables_and_reindex(task: ExtendedTask,
                              document_type_code: str = None,
                              force_recreate_tables: bool = False,
-                             force_reindex: bool = False):
+                             force_reindex: bool = False,
+                             project_id: Optional[int] = None):
     """
     "RawDB: Reindex" task
     Checks if raw table with field values of doc type needs to be altered according to the changed
@@ -293,11 +315,19 @@ def adapt_tables_and_reindex(task: ExtendedTask,
     :param document_type_code: Document type code or None to check all doc types.
     :param force_recreate_tables: Force re-creating tables and re-indexing from scratch.
     :param force_reindex: Force re-indexing of all docs even if the table was not altered.
+    :param project_id: project's filter
     :return:
     """
-    document_types = [DocumentType.objects.get(code=document_type_code)] \
-        if document_type_code is not None else DocumentType.objects.all()
+    from apps.project.models import Project
+    if project_id:
+        project = Project.objects.get(pk=project_id)
+        document_types = [project.type]
+    else:
+        document_types = [DocumentType.objects.get(code=document_type_code)] \
+            if document_type_code is not None else DocumentType.objects.all()
     log = CeleryTaskLogger(task)
+    from apps.document.repository.document_repository import DocumentRepository
+    doc_repo = DocumentRepository()
 
     for document_type in document_types:
         reindex_needed = adapt_table_structure(log,
@@ -307,9 +337,12 @@ def adapt_tables_and_reindex(task: ExtendedTask,
         if force_recreate_tables:
             # If "force" is requested - we cancel all currently planned re-index tasks
             # and plan (re-plan) reindexing for all documents of this task.
-            for prev_task in any_other_reindex_task(task.request.id, document_type.code):
+            for prev_task in any_other_reindex_task(task.request.id, document_type.code, project_id):
                 purge_task(prev_task)
-            args = [(ids,) for ids in get_all_doc_ids(document_type.uid, DOC_NUM_PER_SUB_TASK)]
+            doc_ids = doc_repo.get_doc_ids_by_project(project_id, DOC_NUM_PER_SUB_TASK) if project_id \
+                else doc_repo.get_doc_ids_by_type(document_type.uid, DOC_NUM_PER_SUB_TASK)
+
+            args = [(ids,) for ids in doc_ids]
             task.log_info(f'Initiating re-index for all documents of {document_type.code} '
                           f' - forced tables recreating.')
             task.run_sub_tasks('Reindex set of documents',
@@ -323,8 +356,11 @@ def adapt_tables_and_reindex(task: ExtendedTask,
             # If we altered the field structure then we need to re-index all docs of this type.
             # If no need to force - we plan re-index tasks only
             # for those documents for which they are not planned yet
-            args = [(ids,) for ids in get_all_doc_ids_not_planned_to_index_by_doc_type(document_type.uid,
-                                                                                       DOC_NUM_PER_SUB_TASK)]
+            doc_ids = get_all_doc_ids_not_planned_to_index_by_project_pk(
+                project_id, DOC_NUM_PER_SUB_TASK) if project_id else \
+                get_all_doc_ids_not_planned_to_index_by_doc_type(
+                    document_type.uid, DOC_NUM_PER_SUB_TASK)
+            args = [(ids,) for ids in doc_ids]
             task.run_sub_tasks('Reindex set of documents',
                                cache_document_fields_for_doc_ids_tracked, args)
         else:
@@ -338,7 +374,11 @@ def adapt_tables_and_reindex(task: ExtendedTask,
             # - have no re-index planned for them
             task.log_info(f'Initiating re-index for all documents of {document_type.code} '
                           f' - index not planned.')
-            args = [(ids,) for ids in non_indexed_doc_ids_not_planned_to_index(document_type, DOC_NUM_PER_SUB_TASK)]
+            doc_ids = non_indexed_doc_ids_not_planned_to_index_by_project(
+                document_type, project_id, DOC_NUM_PER_SUB_TASK) if project_id \
+                else non_indexed_doc_ids_not_planned_to_index_by_doc_type(
+                    document_type, DOC_NUM_PER_SUB_TASK)
+            args = [(ids,) for ids in doc_ids]
             task.run_sub_tasks('Reindex set of documents', cache_document_fields_for_doc_ids_tracked, args)
 
 

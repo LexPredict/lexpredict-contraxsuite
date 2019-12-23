@@ -29,8 +29,8 @@ from apps.common.utils import Map
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2019, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.3.0/LICENSE"
-__version__ = "1.3.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.4.0/LICENSE"
+__version__ = "1.4.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -78,17 +78,23 @@ class BulkSignalsQuerySet(models.QuerySet):
 
 class BulkSignalsManager(models.Manager):
 
-    def __init__(self, use_in_migrations=None):
+    def __init__(self, use_in_migrations=None, disallow_ignore_conflicts=True):
         super().__init__()
         if use_in_migrations is not None:
             self.use_in_migrations = use_in_migrations
+        self.disallow_ignore_conflicts = disallow_ignore_conflicts
 
     def get_queryset(self):
         qs = BulkSignalsQuerySet(self.model, using=self._db)
         qs.use_in_migrations = self.use_in_migrations
         return qs
 
-    def bulk_create(self, objs, **kwargs):
+    def bulk_create(self, objs, ignore_conflicts=False, **kwargs):
+        if ignore_conflicts and self.disallow_ignore_conflicts:
+            raise RuntimeError('Setting ignore_conflicts = True is not allowed for this model. '
+                               'Django does not return ids of the inserted objects when ignore_conflicts is True '
+                               'and this may break behaviour of the receivers of the post_save signal fired from this '
+                               'method. For example: django simple history expects ids to be set.')
         ret = super().bulk_create(objs, **kwargs)
         for obj in objs:
             models.signals.post_save.send(obj.__class__, instance=obj, created=True)

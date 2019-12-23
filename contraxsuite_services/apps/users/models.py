@@ -27,27 +27,32 @@
 # Future imports
 from __future__ import unicode_literals, absolute_import
 
+import tzlocal
+# Django imports
+from django.contrib.auth.models import AbstractUser, UserManager as AuthUserManager
+from django.db import models
+from django.db import transaction
 # Standard imports
 from django.db.models.deletion import CASCADE
-from timezone_field import TimeZoneField
-import tzlocal
-
-# Django imports
-from django.contrib.auth.models import AbstractUser
-from django.db import models
 from django.utils.encoding import python_2_unicode_compatible
 from django.utils.translation import ugettext_lazy as _
-from django.db import transaction
+from timezone_field import TimeZoneField
 
 # Project imports
 from apps.users import signals
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2019, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.3.0/LICENSE"
-__version__ = "1.3.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.4.0/LICENSE"
+__version__ = "1.4.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
+
+
+class RoleManager(models.Manager):
+
+    def qs_admins_or_managers(self) -> models.QuerySet:
+        return self.filter(models.Q(is_admin=True) | models.Q(is_manager=True))
 
 
 class Role(models.Model):
@@ -59,6 +64,8 @@ class Role(models.Model):
     order = models.PositiveSmallIntegerField()
     is_admin = models.BooleanField(default=False, db_index=True)
     is_manager = models.BooleanField(default=False, db_index=True)
+
+    objects = RoleManager()
 
     class Meta(object):
         ordering = ('order', 'name')
@@ -75,6 +82,12 @@ class Role(models.Model):
         return ''.join([w[0].upper() for w in self.name.split()])
 
 
+class UserManager(AuthUserManager):
+
+    def qs_admins_and_managers(self) -> models.QuerySet:
+        return self.filter(role__in=models.Subquery(Role.objects.qs_admins_or_managers().order_by().values_list('pk')))
+
+
 @python_2_unicode_compatible
 class User(AbstractUser):
     """User object
@@ -83,6 +96,8 @@ class User(AbstractUser):
 
     TODO: Document common patterns for User customization.
     """
+
+    objects = UserManager()
 
     # First Name and Last Name do not cover name patterns
     # around the globe.
@@ -115,7 +130,7 @@ class User(AbstractUser):
 
     def save(self, *args, **kwargs):
         if self.role is None:
-            self.role = Role.objects.filter(is_admin=False, is_manager=False).last()\
+            self.role = Role.objects.filter(is_admin=False, is_manager=False).last() \
                         or Role.objects.first()
         old_instance = User.objects.filter(pk=self.pk).first()
         res = super().save(*args, **kwargs)
@@ -124,8 +139,20 @@ class User(AbstractUser):
         return res
 
     def can_view_document(self, document):
-        return self.is_superuser or self.is_manager or self.taskqueue_set. \
-            filter(documents=document).exists()
+        # TODO: review with new user access strategies
+
+        # allow to any "power" user
+        is_able = self.is_superuser or self.is_admin or self.is_manager
+
+        # project-level perm. for reviewers
+        if not is_able and self.is_reviewer:
+            is_able = document.project.reviewers.filter(pk=self.pk).exists()
+
+        # task-queue-level perm. for reviewers
+        if not is_able and self.is_reviewer:
+            is_able = self.taskqueue_set.filter(documents=document).exists()
+
+        return is_able
 
     def get_full_name(self):
         """

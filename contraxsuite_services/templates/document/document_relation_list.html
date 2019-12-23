@@ -7,9 +7,11 @@
     $(document).ready(function () {
       var datafields = [
         { name: 'pk', type: 'int' },
+        { name: 'document_a__project__name', type: 'string' },
         { name: 'document_a__name', type: 'string' },
         { name: 'document_a__document_type', type: 'string' },
         { name: 'document_a__description', type: 'string' },
+        { name: 'document_b__project__name', type: 'string' },
         { name: 'document_b__name', type: 'string' },
         { name: 'document_b__document_type', type: 'string' },
         { name: 'document_b__description', type: 'string' },
@@ -25,7 +27,10 @@
       };
 
       var columns = [
-        { text: 'Name', datafield: 'document_a__name', width: 300,
+        { text: 'Project', datafield: 'document_a__project__name', width: 100,
+          columngroup: 'DocumentA',
+          align: 'center', cellsalign: 'center' },
+        { text: 'Name', datafield: 'document_a__name', width: 200,
           align: 'center', cellsalign: 'left', enabletooltips: true,
           columngroup: 'DocumentA',
           cellsrenderer: link_a_renderer },
@@ -36,7 +41,10 @@
           width: 'auto', enabletooltips: true,
           columngroup: 'DocumentA',
           align: 'center', cellsalign: 'center' },
-        { text: 'Name', datafield: 'document_b__name', width: 300,
+        { text: 'Project', datafield: 'document_b__project__name', width: 100,
+          columngroup: 'DocumentB',
+          align: 'center', cellsalign: 'center' },
+        { text: 'Name', datafield: 'document_b__name', width: 200,
           align: 'center', cellsalign: 'left', enabletooltips: true,
           columngroup: 'DocumentB',
           cellsrenderer: link_b_renderer },

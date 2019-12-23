@@ -30,17 +30,17 @@ from django.core.exceptions import ObjectDoesNotExist
 
 from apps.document.models import FieldValue, FieldAnnotation
 from apps.document.repository.document_field_repository import DocumentFieldRepository
+from apps.project.models import Project
 from apps.task.utils.logger import get_django_logger
 from apps.users.models import User
-from apps.websocket.channels import channel_message_types as message_types
-from apps.websocket.channels.broadcasting import ChannelBroadcasting
-from apps.websocket.channels.channel_message import ChannelMessage
-from apps.websocket.channels.channel_names import CHANNEL_FIELDS
+from apps.websocket import channel_message_types as message_types
+from apps.websocket.channel_message import ChannelMessage
+from apps.websocket.websockets import Websockets
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2019, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.3.0/LICENSE"
-__version__ = "1.3.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.4.0/LICENSE"
+__version__ = "1.4.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -84,7 +84,7 @@ def _notify_field_value_saved(instance: FieldValue, deleted=False):
                              {'field_value': field_value,
                               'annotation_stats': annotation_stats,
                               'user': _get_user_dto(instance)})
-    ChannelBroadcasting.broadcast_message_to_channel(message, CHANNEL_FIELDS)
+    notify_on_document_changes(instance.document.pk, message)
 
 
 def notify_field_value_saved(instance: FieldValue):
@@ -99,7 +99,7 @@ def notify_field_annotation_saved(instance: FieldAnnotation):
     message = ChannelMessage(message_types.CHANNEL_MSG_TYPE_FIELD_ANNOTATION_SAVED,
                              {'annotation': _annotation_to_dto(instance),
                               'user': _get_user_dto(instance)})
-    ChannelBroadcasting.broadcast_message_to_channel(message, CHANNEL_FIELDS)
+    notify_on_document_changes(instance.document.pk, message)
 
 
 def notify_field_annotation_deleted(instance: FieldAnnotation):
@@ -107,10 +107,23 @@ def notify_field_annotation_deleted(instance: FieldAnnotation):
         message = ChannelMessage(message_types.CHANNEL_MSG_TYPE_FIELD_ANNOTATION_DELETED,
                                  {'annotation': _annotation_to_dto(instance),
                                   'user': _get_user_dto(instance)})
+        notify_on_document_changes(instance.document.pk, message)
     except ObjectDoesNotExist:
         logger = get_django_logger()
         logger.warning(f'notify_field_annotation_deleted is called for '
                        f'field {instance.field_id}, that was probably deleted')
         return
 
-    ChannelBroadcasting.broadcast_message_to_channel(message, CHANNEL_FIELDS)
+
+def notify_on_document_changes(doc_id: int, message: ChannelMessage):
+    """
+    Send the websocket message to the users allowed to read the specified document.
+    :param doc_id: ID of the document.
+    :param message: Message to send.
+    :return:
+    """
+    admins_and_managers = User.objects \
+        .qs_admins_and_managers().order_by().values_list('pk')
+    reviewers_owners = Project.objects \
+        .qs_owners_reviewers_super_reviewers_by_doc_id(doc_id)
+    Websockets().send_to_users(qs_users=admins_and_managers.union(reviewers_owners), message_obj=message)

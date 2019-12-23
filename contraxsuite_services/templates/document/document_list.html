@@ -7,6 +7,7 @@
     $(document).ready(function () {
       var datafields = [
         { name: 'pk', type: 'int' },
+        { name: 'project__name', type: 'string' },
         { name: 'name', type: 'string' },
         { name: 'document_type__title', type: 'string' },
         { name: 'title', type: 'string' },
@@ -20,6 +21,8 @@
       ];
       var columns = [
         { text: 'ID', datafield: 'pk', width: 50,
+          align: 'center', cellsalign: 'center' },
+        { text: 'Project', datafield: 'project__name', width: 100,
           align: 'center', cellsalign: 'center' },
         { text: 'Name', datafield: 'name', width: 300,
           align: 'center', cellsalign: 'left',

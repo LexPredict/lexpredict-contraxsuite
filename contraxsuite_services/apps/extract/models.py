@@ -26,11 +26,13 @@
 
 from django.db import models
 from django.db.models.deletion import CASCADE
+from django.db.models.signals import post_save, pre_delete, post_delete
+from django.dispatch import receiver
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2019, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.3.0/LICENSE"
-__version__ = "1.3.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.4.0/LICENSE"
+__version__ = "1.4.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -46,6 +48,14 @@ class Usage(models.Model):
         abstract = True
 
 
+class TermManager(models.Manager):
+    def bulk_create(self, objs, **kwargs):
+        # to update global cached terms if they are loaded via fixtures
+        super().bulk_create(objs, **kwargs)
+        from apps.extract.dict_data_cache import cache_term_stems
+        cache_term_stems()
+
+
 class Term(models.Model):
     """
     Legal term/dictionary entry
@@ -53,6 +63,7 @@ class Term(models.Model):
     term = models.CharField(max_length=1024, db_index=True)
     source = models.CharField(max_length=1024, db_index=True, null=True)
     definition_url = models.CharField(max_length=1024, null=True)
+    objects = TermManager()
 
     class Meta:
         ordering = ('term', 'source')
@@ -60,6 +71,31 @@ class Term(models.Model):
     def __str__(self):
         return "Term (term={0}, source={1})" \
             .format(self.term, self.source)
+
+
+@receiver(post_save, sender=Term)
+def cache_term(instance, **kwargs):
+    from apps.extract.dict_data_cache import cache_term_stems
+    # update global cache
+    cache_term_stems()
+    for project_id in instance.projecttermconfiguration_set.values_list('project_id', flat=True):
+        # update project-term caches
+        cache_term_stems(project_id)
+
+
+@receiver(pre_delete, sender=Term)
+def delete_term_recache_projecttermconfig(instance, **kwargs):
+    # update project-term caches
+    for config in instance.projecttermconfiguration_set.all():
+        config.terms.remove(instance)
+        # this activates ProjectTermConfiguration m2m_changed signal where deleted term is handled
+
+
+@receiver(post_delete, sender=Term)
+def delete_cached_term(instance, **kwargs):
+    # update global cache
+    from apps.extract.dict_data_cache import cache_term_stems
+    cache_term_stems()
 
 
 class TermUsage(Usage):

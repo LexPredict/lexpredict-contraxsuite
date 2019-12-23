@@ -37,8 +37,8 @@ from apps.project.models import Project, TaskQueue
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2019, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.3.0/LICENSE"
-__version__ = "1.3.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.4.0/LICENSE"
+__version__ = "1.4.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -64,11 +64,11 @@ register(TaskQueue, view_types=('list', 'add', 'update'))
 
 # Add hard-coded URL mappings
 urlpatterns += [
-    url(
-        r'^dashboard/$',
-        views.DashboardView.as_view(),
-        name='dashboard'
-    ),
+    # url(
+    #     r'^dashboard/$',
+    #     views.DashboardView.as_view(),
+    #     name='dashboard'
+    # ),
     url(
         r'^task-queue/(?:(?P<task_queue_pk>\d+)/)?add/(?:(?P<document_pk>\d+)/)$',
         views.add_to_task_queue,

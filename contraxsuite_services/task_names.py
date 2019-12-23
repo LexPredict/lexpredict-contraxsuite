@@ -27,8 +27,8 @@
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2019, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.3.0/LICENSE"
-__version__ = "1.3.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.4.0/LICENSE"
+__version__ = "1.4.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -50,6 +50,8 @@ TASK_NAME_TRIGGER_DIGESTS = 'apps.notifications.tasks.trigger_digests'
 TASK_NAME_CHECK_EMAIL_POOL = 'apps.notifications.tasks.check_email_pool'
 
 TASK_NAME_TRACK_TASKS = 'advanced_celery.track_tasks'
+
+TASK_NAME_UPDATE_PARENT_TASK = 'advanced_celery.update_parent_task'
 
 TASK_NAME_CLEAN_TASKS_PERIODIC = 'advanced_celery.clean_tasks_periodic'
 
