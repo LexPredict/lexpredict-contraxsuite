@@ -254,6 +254,10 @@ class Task(models.Model):
             self.own_progress = 100
 
     def save(self, *args, **kwargs):
+        if self.own_progress > 100:
+            self.own_progress = 100
+        if self.progress > 100:
+            self.progress = 100
         if self.own_status in READY_STATES:
             self.own_progress = 100
         if self.status in READY_STATES:
