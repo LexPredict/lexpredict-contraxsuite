@@ -5,17 +5,22 @@ from apps.common.utils import dictfetchall
 
 
 def do_migrate(apps, schema_editor):
+    Document = apps.get_model('document', 'Document')
     DocumentText = apps.get_model('document', 'DocumentText')
     DocumentMetadata = apps.get_model('document', 'DocumentMetadata')
 
-    with connection.cursor() as cursor:
-        cursor.execute('SELECT id as document_id, full_text FROM document_document')
-        DocumentText.objects.bulk_create([DocumentText(**i) for i in dictfetchall(cursor)],
-                                         ignore_conflicts=True)
-    with connection.cursor() as cursor:
-        cursor.execute('SELECT id as document_id, metadata FROM document_document')
-        DocumentMetadata.objects.bulk_create([DocumentMetadata(**i) for i in dictfetchall(cursor)],
+    batch_size = 10
+
+    for n in range(0, Document.objects.count(), batch_size):
+
+        with connection.cursor() as cursor:
+            cursor.execute('SELECT id as document_id, full_text FROM document_document LIMIT {} OFFSET {}'.format(batch_size, n))
+            DocumentText.objects.bulk_create([DocumentText(**i) for i in dictfetchall(cursor)],
                                              ignore_conflicts=True)
+        with connection.cursor() as cursor:
+            cursor.execute('SELECT id as document_id, metadata FROM document_document LIMIT {} OFFSET {}'.format(batch_size, n))
+            DocumentMetadata.objects.bulk_create([DocumentMetadata(**i) for i in dictfetchall(cursor)],
+                                                 ignore_conflicts=True)
 
 
 class Migration(migrations.Migration):

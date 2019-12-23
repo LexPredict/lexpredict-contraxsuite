@@ -5,12 +5,16 @@ from apps.common.utils import dictfetchall
 
 
 def do_migrate(apps, schema_editor):
+    TextUnit = apps.get_model('document', 'TextUnit')
     TextUnitText = apps.get_model('document', 'TextUnitText')
 
+    batch_size = 1000
+
     with connection.cursor() as cursor:
-        cursor.execute('SELECT id as text_unit_id, text FROM document_textunit')
-        TextUnitText.objects.bulk_create([TextUnitText(**i) for i in dictfetchall(cursor)],
-                                         ignore_conflicts=True)
+        for n in range(0, TextUnit.objects.count(), batch_size):
+            cursor.execute('SELECT id as text_unit_id, text FROM document_textunit LIMIT {} OFFSET {}'.format(batch_size, n))
+            TextUnitText.objects.bulk_create([TextUnitText(**i) for i in dictfetchall(cursor)],
+                                             ignore_conflicts=True)
 
 
 class Migration(migrations.Migration):
