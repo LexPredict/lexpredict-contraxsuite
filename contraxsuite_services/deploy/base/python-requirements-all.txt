@@ -12,7 +12,7 @@ daphne==2.3.0
 dateparser==0.7.0
 dataclasses==0.6
 dataclasses-json==0.3.2
-django==2.2.8
+django==2.2.10
 django-allauth==0.39.1
 django-allauth-2fa==0.6
 django-autocomplete-light==3.2.10
