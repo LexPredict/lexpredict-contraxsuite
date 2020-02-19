@@ -30,10 +30,8 @@ import mimetypes
 import os
 import tarfile
 import zipfile
-from typing import BinaryIO, Union
+from typing import BinaryIO, Union, Optional
 
-import rest_framework.views
-from celery.states import PENDING, SUCCESS
 from django.conf import settings
 from django.contrib.contenttypes.models import ContentType
 from django.core.files import File
@@ -42,7 +40,11 @@ from django.db import connection, transaction
 from django.db.models import Count, Subquery
 from django.http import JsonResponse, HttpRequest
 from django.urls import path, include
+from django.utils.timezone import now
+
 # Third-party imports
+import rest_framework.views
+from celery.states import PENDING, SUCCESS
 from rest_framework import serializers, routers, viewsets
 from rest_framework import status
 from rest_framework.decorators import action
@@ -53,15 +55,16 @@ from rest_framework.response import Response
 # Project imports
 import apps.common.mixins
 from apps.analyze.models import DocumentCluster
+from apps.analyze.tasks import Cluster
 from apps.common.file_storage import get_file_storage
 from apps.common.log_utils import render_error
 from apps.common.models import ReviewStatus
 from apps.common.url_utils import as_bool
-from apps.common.utils import get_api_module
-from apps.common.utils import safe_to_int
+from apps.common.utils import get_api_module, safe_to_int, cap_words
 from apps.document.app_vars import MAX_ARCHIVE_SIZE, MAX_DOCUMENT_SIZE, FORCE_REWRITE_DOC
 from apps.document.constants import DOCUMENT_TYPE_PK_GENERIC_DOCUMENT
-from apps.document.models import Document, DocumentType, DocumentField
+from apps.document.models import Document, DocumentType, DocumentField, \
+    FieldAnnotation, FieldAnnotationStatus
 from apps.document.tasks import plan_process_documents_status_changed, \
     plan_process_documents_assignee_changed
 from apps.project.models import Project, TaskQueue, UploadSession, ProjectClustering
@@ -75,9 +78,9 @@ from apps.users.models import User
 # Django imports
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2019, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.4.0/LICENSE"
-__version__ = "1.4.0"
+__copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.5.0/LICENSE"
+__version__ = "1.5.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -315,13 +318,23 @@ class ProjectDetailSerializer(serializers.ModelSerializer):
         return project_progress(obj)
 
 
-class ProjectCreateSerializer(serializers.ModelSerializer):
+class CustomErrorMessageSerializer:
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        for field in self.fields:
+            self.fields[field].error_messages['required'] = '"{}" field is required.'.format(cap_words(field))
+            self.fields[field].error_messages['null'] = '"{}" field may not be null.'.format(cap_words(field))
+            self.fields[field].error_messages['blank'] = '"{}" field may not be blank.'.format(cap_words(field))
+
+
+class ProjectCreateSerializer(CustomErrorMessageSerializer, serializers.ModelSerializer):
     class Meta:
         model = Project
         fields = ['pk', 'name', 'description', 'type', 'send_email_notification']
 
 
-class ProjectUpdateSerializer(ProjectDetailSerializer):
+class ProjectUpdateSerializer(CustomErrorMessageSerializer, ProjectDetailSerializer):
     class Meta(ProjectDetailSerializer.Meta):
         model = Project
         fields = ['pk', 'name', 'description', 'status', 'send_email_notification',
@@ -364,7 +377,9 @@ def require_generic_contract_type(func):
 class ProjectPermissions(BasePermission):
     def has_permission(self, request, view):
         if request.user.is_reviewer:
-            if request.method == 'GET' or view.action in ['cluster', 'set_status', 'assign_documents']:
+            if request.method == 'GET' or view.action in [
+                    'cluster', 'set_status', 'assign_documents',
+                    'assign_annotations', 'set_annotation_status']:
                 return True
             return False
         return True
@@ -521,8 +536,18 @@ class ProjectViewSet(apps.common.mixins.APILoggingMixin,
             elif not project.uploadsession_set.filter(completed=True).exists():
                 raise APIException("Project hasn't completed upload sessions.")
 
+        if request.data.get('require_confirmation'):
+            cluster_params = {
+                'do_cluster_documents': True,
+                'project': project
+            }
+            count, count_limit = Cluster.estimate_reaching_limit(cluster_params)
+            if count > count_limit:
+                return Response({'message': 'Processing may take too much time',
+                                 'confirm': True})
+
         pending_clustering_task_ids = Task.objects \
-            .filter(name=ClusterProjectDocuments.name, project=project, status=PENDING)\
+            .filter(name=ClusterProjectDocuments.name, project=project, status=PENDING) \
             .values_list('pk', flat=True)
         for task_id in pending_clustering_task_ids:
             purge_task(task_id)
@@ -730,6 +755,22 @@ class ProjectViewSet(apps.common.mixins.APILoggingMixin,
         from apps.rawdb.api.v1 import DocumentsAPIView
         return DocumentsAPIView.simulate_get(user, project, return_ids=False)
 
+    def get_annotations_queryset(self):
+        """
+        Get project annotations using SavedFilter logic to filter out FieldAnnotations
+        """
+        project = self.get_object()
+
+        request = HttpRequest()
+        request.user = self.request.user
+
+        from apps.document.api.v1 import DocumentFieldAnnotationViewSet as api_view
+        view = api_view(request=request, kwargs={'project_pk': project.pk})
+
+        qs = view.filter_queryset(view.get_queryset())
+
+        return qs
+
     @action(detail=True, methods=['post'])
     def assign_documents(self, request, **kwargs):
         """
@@ -759,11 +800,39 @@ class ProjectViewSet(apps.common.mixins.APILoggingMixin,
         return Response({'success': len(document_ids)})
 
     @action(detail=True, methods=['post'])
+    def assign_annotations(self, request, **kwargs):
+        """
+        Bulk assign batch of annotations to a review team member\n
+            Params:
+                annotation_ids: list[int]
+                all: any value - update all annotations if any value
+                no_annotation_ids: list[int] - exclude those annotations from action (if "all" is set)
+                assignee_id: int
+            Returns:
+                int (number of reassigned annotations)
+        """
+        self.get_object()    # noqa: permissions check
+        assignee_id = request.data.get('assignee_id')
+
+        annotations = self.get_annotations_queryset()
+
+        if request.data.get('all'):
+            if request.data.get('no_annotation_ids'):
+                annotations = annotations.exclude(pk__in=request.data.get('no_annotation_ids'))
+        else:
+            annotations = annotations.filter(pk__in=request.data.get('annotation_ids'))
+
+        annotations = FieldAnnotation.objects.filter(id__in=annotations.values_list('pk', flat=True))
+        annotations.update(assignee=assignee_id, assign_date=now())
+        return Response({'success': annotations.count()})
+
+    @action(detail=True, methods=['post'])
     def set_status(self, request, **kwargs):
         """
         Bulk set status for batch of documents\n
             Params:
                 document_ids: list[int]
+                no_document_ids: list[int] - exclude those docs from action (if "all" is set)
                 all: any value - update all documents if any value
                 status_id: int
             Returns:
@@ -788,16 +857,55 @@ class ProjectViewSet(apps.common.mixins.APILoggingMixin,
         field_repo = dfr.DocumentFieldRepository()
 
         with transaction.atomic():
-            is_active = ReviewStatus.objects.get(pk=status_id).is_active
+            review_status = ReviewStatus.objects.get(pk=status_id)
             modified_fields = field_repo.get_modified_field_ids(
-                documents, is_active)
+                documents, review_status.is_active)
             DocumentField.objects.filter(
                 pk__in=Subquery(modified_fields)).update(dirty=True)
             ret = documents.update(status=status_id)
+            # TODO: do not hardcode doc status code
+            if review_status.code in ('completed', 'excluded'):
+                FieldAnnotation.objects.filter(document__in=documents).update(
+                    status=FieldAnnotationStatus.confirm_status())
 
         plan_process_documents_status_changed(document_ids, status_id, request.user.pk)
 
         return Response({'success': ret})
+
+    @action(detail=True, methods=['post'])
+    def set_annotation_status(self, request, **kwargs):
+        """
+        Bulk set status for batch of annotations\n
+            Params:
+                document_ids: list[int]
+                all: any value - update all annotations if any value
+                no_annotation_ids: list[int] - exclude those annotations from action (if "all" is set)
+                status_id: int - field annotation status id
+            Returns:
+                int (number of reassigned annotations)
+        """
+        self.get_object()    # noqa: permissions check
+        status_id = request.data.get('status_id')
+        ann_status = FieldAnnotationStatus.objects.get(pk=status_id)
+
+        annotations = self.get_annotations_queryset()
+
+        if request.data.get('all'):
+            if request.data.get('no_annotation_ids'):
+                annotations = annotations.exclude(pk__in=request.data.get('no_annotation_ids'))
+        else:
+            annotations = annotations.filter(pk__in=request.data.get('annotation_ids'))
+
+        if ann_status.is_deny:
+            from apps.document.repository.document_field_repository import DocumentFieldRepository
+            field_repo = DocumentFieldRepository()
+            # TODO: check if it lasts long time either move into a periodic task (deny>>FalseMatch)
+            for ant in annotations:
+                field_repo.delete_field_annotation_and_update_field_value(ant, request.user)
+        else:
+            annotations = FieldAnnotation.objects.filter(id__in=annotations.values_list('pk', flat=True))
+            annotations.update(status_id=status_id)
+        return Response({'success': annotations.count()})
 
     @action(detail=False, methods=['get'])
     def recent(self, request, **kwargs):
@@ -939,7 +1047,9 @@ class UploadSessionViewSet(UploadSessionPermissionViewMixin,
 
     @staticmethod
     @transaction.atomic
-    def can_upload_file(project: Project, file_name: str, file_size: int):
+    def can_upload_file(project: Project,
+                        file_name: str,
+                        file_size: Optional[int]):
         """
         Check whether a file is new and should be uploaded
         :param project: Project
@@ -948,39 +1058,64 @@ class UploadSessionViewSet(UploadSessionPermissionViewMixin,
         :return: bool
         """
         # 1. if a Document of file name and size already uploaded and parsed
-        if Document.objects.filter(
-                project=project,
-                name=file_name,
-                file_size=file_size,
-                documentmetadata__metadata__upload_status='DONE').exists():
+        doc_query = Document.objects.filter(
+            project=project,
+            name=file_name,
+            documentmetadata__metadata__upload_status='DONE')
+        if file_size is not None:
+            doc_query = doc_query.filter(file_size=file_size)
+        if doc_query.exists():
             return 'exists'
 
         # 2. if a Document of file name and size already uploaded and parsed BUT soft-deleted
-        if Document.all_objects.filter(
-                delete_pending=True,
-                project=project,
-                name=file_name,
-                file_size=file_size,
-                documentmetadata__metadata__upload_status='DONE').exists():
+        doc_query = Document.all_objects.filter(
+            delete_pending=True,
+            project=project,
+            name=file_name,
+            documentmetadata__metadata__upload_status='DONE')
+        if file_size is not None:
+            doc_query = doc_query.filter(file_size=file_size)
+        if doc_query.exists():
             return 'delete_pending'
 
         # 3. if a Document is not created yet or flag 'upload_status="DONE"' is not set yet
         # so parsing is in progress
         # and Task for file name and size exists with appropriate status
-        # 3.1. if task has completed at this moment and that's why step#1 was missed
-        if Task.objects.main_tasks().filter(
-                name=LoadDocuments.name,
-                upload_session__project=project,
-                metadata__file_name=file_name,
-                metadata__file_size=file_size,
-                status__in=(PENDING, SUCCESS)).exists():
+        task_query = Task.objects.main_tasks().filter(
+            name=LoadDocuments.name,
+            upload_session__project=project,
+            metadata__file_name=file_name,
+            status__in=(PENDING,))
+        if file_size is not None:
+            task_query = task_query.filter(metadata__file_size=file_size)
+        if task_query.exists():
             return 'processing'
 
-        # 4. VERY RARE: if a file of name and size already exists but LD Task is not created yet
+        # 4.1. if task has completed at this moment and that's why step#1 was missed
+        # 4.2. if Task exists but document was reassigned to another project
+        task_query = Task.objects.main_tasks().filter(
+            name=LoadDocuments.name,
+            upload_session__project=project,
+            metadata__file_name=file_name,
+            status__in=(SUCCESS,))
+        if file_size is not None:
+            task_query = task_query.filter(metadata__file_size=file_size)
+
+        if task_query.exists():
+            doc_query = Document.objects.filter(
+                project=project,
+                name=file_name,
+                documentmetadata__metadata__upload_status='DONE')
+            if file_size is not None:
+                doc_query = doc_query.filter(file_size=file_size)
+            if doc_query.exists():
+                return 'exists'
+
+        # 5. VERY RARE: if a file of name and size already exists but LD Task is not created yet
         # but LD Task object itself is created immediately after storing a file
         # So - skipping this check, load: True
 
-        # 5. Other RARE cases:
+        # 6. Other RARE cases:
         #     a) size doesn't match:
         #         - if a Document exists: it's another document, load: True
         #         - elif a Task exists: it's another document, load: True
@@ -1091,32 +1226,42 @@ class UploadSessionViewSet(UploadSessionPermissionViewMixin,
 
         project = session.project
         force_rename = force or FORCE_REWRITE_DOC.val
+        can_upload_status = self.can_upload_file(project, file_name, file_size)
 
-        if not force_rename and self.can_upload_file(project, file_name, file_size) is not True:
-            # raise APIException('File already uploaded or uploading in progress.')
+        if not force_rename and can_upload_status is not True:
             return Response(status=201, data='Loaded')
 
         try:
-            stor = get_file_storage()
+            if can_upload_status is not True:
+                file_base_name, file_ext = os.path.splitext(file_name)
+                file_copy_name_ptn = '{0} copy {1:02d}{2}'
+                for n in range(1, 999):
+                    file_copy_name = file_copy_name_ptn.format(file_base_name, n, file_ext)
+                    can_upload_copy_status = self.can_upload_file(project, file_copy_name, file_size)
+                    if can_upload_copy_status is True:
+                        file_name = file_copy_name
+                        break
 
+            stor = get_file_storage()
             source_path = stor.sub_path_join(session.pk, file_name)
 
-            # check file name is unique
-            from apps.document.sync_tasks.ensure_new_paths_unique_task import EnsureNewPathsUnique
-            en_task = EnsureNewPathsUnique(
-                lambda msg: get_django_logger().error(msg))
+            # # check file name is unique
+            # from apps.document.sync_tasks.ensure_new_paths_unique_task import EnsureNewPathsUnique
+            # en_task = EnsureNewPathsUnique(
+            #     lambda msg: get_django_logger().error(msg))
+            #
+            # try:
+            #     unique = en_task.ensure_new_file_unique(project=project,
+            #                                             source_path=source_path,
+            #                                             doc_name=file_name,
+            #                                             rename_old_document=force_rename)
+            #     if not unique:
+            #         return Response(status=status.HTTP_409_CONFLICT, data=ALREADY_EXISTS)
+            # except Exception as e:
+            #     return Response(status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            #                     data='Failed to remove files with the same name, original exception is: {}'.format(str(e)))
 
-            try:
-                unique = en_task.ensure_new_file_unique(project=project,
-                                                        source_path=source_path,
-                                                        doc_name=file_name,
-                                                        rename_old_document=force_rename)
-                if not unique:
-                    return Response(status=status.HTTP_409_CONFLICT, data=ALREADY_EXISTS)
-            except Exception as e:
-                return Response(status=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                                data='Failed to remove files with the same name, original exception is: {}'.format(str(e)))
-
+            # TODO: move this check into "stor" itself
             try:
                 stor.mk_doc_dir(session.pk)
             except:

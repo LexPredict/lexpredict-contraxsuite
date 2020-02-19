@@ -463,7 +463,7 @@
     $(document).ready(function () {
 
       // common text units nested table initialization
-      var text_units_nested_grid_data = function(nested_data_item_name){
+      var text_units_nested_grid_data = function(nested_data_item_name, url, data){
         var nested_grid_initrowdetails = function(index, parentElement, gridElement, record) {
           var grid = $($(parentElement).children()[0]);
           grid.attr('id', 'grid' + record.boundindex);
@@ -621,10 +621,10 @@
 
       // Top Term Usages table
       var terms_datafields = [
+        { name: 'term_id', type: 'int' },
         { name: 'term__term', type: 'string' },
         { name: 'count', type: 'int' },
         { name: 'term_data' }
-
       ];
       var terms_menu_renderer = function(row_number) {
         var grid = $('.jqxgrid-top-term-usages');
@@ -652,17 +652,73 @@
           buttonclick: terms_menu_renderer }
       ];
       var terms_custom_source_data = {
-        url: '{% url "extract:top-term-usage-list" %}',
+        url: '{% url "extract:top-document-term-usage-list" %}',
         data: { 'document_pk': {{ document.pk }} },
         badgeClass: 'terms-badge'
       };
+      var terms_grid_initrowdetails = function(index, parentElement, gridElement, record) {
+        var grid = $($(parentElement).children()[0]);
+        grid.attr('id', 'grid' + record.boundindex);
+        var datafields = [
+          { name: 'count', type: 'int' },
+          { name: 'text_unit__pk', type: 'int' },
+          { name: 'count', type: 'int' },
+          { name: 'text_unit__textunittext__text', type: 'string' },
+          { name: 'detail_url', type: 'string' }
+        ];
+        var menu_renderer = function(row) {
+          row = grid.jqxGrid('getrowdata', row);
+          var menu_data = [
+            { url: row.detail_url,
+              icon: 'fa fa-info-circle',
+              text: 'View Text Unit'}
+          ];
+          show_menu(menu_data, grid, row.pk);
+        };
+        var columns = [
+          { text: 'Count', datafield: 'count', width: 60,
+            align: 'center', cellsalign: 'center' },
+          { text: 'Text Unit', datafield: 'text_unit__textunittext__text', sortable: false, width: 'auto', minwidth: 200,
+            align: 'center', cellsalign: 'center' },
+          { text: 'Action', datafield: 'url', width: 60,
+            align: 'center', exportable: false,
+            columntype: 'button',
+            sortable: false, filterable: false, menu: false,
+            cellsrenderer: function(){ return 'Menu' },
+            buttonclick: menu_renderer }
+        ];
+        var custom_grid_options = {
+          width: '98%',
+          altrows: true,
+          rowsheight: 40,
+          enabletooltips: true,
+          sortable: true,
+          filterable: true,
+          height: 200
+        };
+        var custom_source_data = {
+          url: '{% url "extract:top-document-term-usage-list" %}',
+          data: { 'document_pk': {{ document.pk }}, 'term_pk': record.term_id }
+        };
+        draw_grid(grid, datafields, columns, false, custom_source_data, custom_grid_options);
+      };
+      var terms_custom_grid_opts = {
+        rowdetails: true,
+        initrowdetails: terms_grid_initrowdetails,
+        rowdetailstemplate: {
+          rowdetails: "<div id='grid' class='sub-grid' style='margin: 10px;'></div>",
+          rowdetailsheight: 550,
+          rowdetailshidden: true
+        }
+      };
       draw_grid(".jqxgrid-top-term-usages", terms_datafields, terms_columns, false,
-          terms_custom_source_data, text_units_nested_grid_data('term_data'));
+          terms_custom_source_data, terms_custom_grid_opts);
 
-      // Top Entity Usages table
+      // Top Geo Entity Usages table
       var entities_datafields = [
-        { name: 'name', type: 'string' },
-        { name: 'category', type: 'string' },
+        { name: 'entity_id', type: 'int' },
+        { name: 'entity__name', type: 'string' },
+        { name: 'entity__category', type: 'string' },
         { name: 'entity_data' },
         { name: 'count', type: 'int' }
       ];
@@ -680,9 +736,9 @@
         show_menu(menu_data, grid, row.pk, 300);
       };
       var entities_columns = [
-        { text: 'Entity Name', datafield: 'name', width: 'auto',
+        { text: 'Entity Name', datafield: 'entity__name', width: 'auto',
           align: 'center', cellsalign: 'center' },
-        { text: 'Entity Category', datafield: 'category', width: 'auto',
+        { text: 'Entity Category', datafield: 'entity__category', width: 'auto',
           align: 'center', cellsalign: 'center' },
         { text: 'Count', datafield: 'count', width: 150,
           align: 'center', cellsalign: 'center' },
@@ -698,8 +754,62 @@
         data: { 'document_pk': {{ document.pk }} },
         badgeClass: 'entities-badge'
       };
-      draw_grid(".jqxgrid-top-entity-usages", entities_datafields, entities_columns, false,
-          entities_custom_source_data, text_units_nested_grid_data('entity_data'));
+      var nested_grid_initrowdetails = function(index, parentElement, gridElement, record) {
+        var grid = $($(parentElement).children()[0]);
+        grid.attr('id', 'grid' + record.boundindex);
+        var datafields = [
+          { name: 'count', type: 'int' },
+          { name: 'text_unit__textunittext__text', type: 'string' },
+          { name: 'detail_url', type: 'string' }
+        ];
+        var menu_renderer = function(row) {
+          row = grid.jqxGrid('getrowdata', row);
+          var menu_data = [
+            { url: row.detail_url,
+              icon: 'fa fa-info-circle',
+              text: 'View Text Unit'}
+          ];
+          show_menu(menu_data, grid, row.pk);
+        };
+        var columns = [
+          { text: 'Count', datafield: 'count', width: 60,
+            align: 'center', cellsalign: 'center' },
+          { text: 'Text Unit', datafield: 'text_unit__textunittext__text', sortable: false, width: 'auto', minwidth: 200,
+            align: 'center', cellsalign: 'center' },
+          { text: 'Action', datafield: 'url', width: 60,
+            align: 'center', exportable: false,
+            columntype: 'button',
+            sortable: false, filterable: false, menu: false,
+            cellsrenderer: function(){ return 'Menu' },
+            buttonclick: menu_renderer }
+        ];
+        var custom_grid_options = {
+          width: '98%',
+          altrows: true,
+          rowsheight: 40,
+          enabletooltips: true,
+          sortable: true,
+          filterable: true,
+          height: 200
+        };
+        var custom_source_data = {
+          url: '{% url "extract:geo-entity-usage-list" %}',
+          data: { 'entity_pk': record.entity_id,
+                  'document_pk': '{{ object.pk }}' }
+        };
+        draw_grid(grid, datafields, columns, true, custom_source_data, custom_grid_options);
+      };
+      var entities_custom_grid_opts = {
+        rowdetails: true,
+        initrowdetails: nested_grid_initrowdetails,
+        rowdetailstemplate: {
+          rowdetails: "<div id='grid' class='sub-grid' style='margin: 10px;'></div>",
+          rowdetailsheight: 550,
+          rowdetailshidden: true
+        }
+      };
+      draw_grid(".jqxgrid-top-entity-usages", entities_datafields, entities_columns, true,
+          entities_custom_source_data, entities_custom_grid_opts);
 
       // Notes table
       var notes_datafields = [

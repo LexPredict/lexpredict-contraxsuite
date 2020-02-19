@@ -36,7 +36,7 @@ from typing import Tuple
 
 from celery import signature
 from celery.result import AsyncResult
-from celery.states import READY_STATES, PROPAGATE_STATES, SUCCESS, UNREADY_STATES, FAILURE, ALL_STATES, REVOKED, PENDING
+from celery.states import READY_STATES, PROPAGATE_STATES, SUCCESS, UNREADY_STATES, FAILURE, ALL_STATES, PENDING
 from django.conf import settings
 from django.db import connections, router, transaction, models
 from django.db.models import F, Q, Value
@@ -47,9 +47,9 @@ from apps.task.celery_backend.task_utils import precedence_propagating_exception
 from apps.task.celery_backend.utils import now
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2019, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.4.0/LICENSE"
-__version__ = "1.4.0"
+__copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.5.0/LICENSE"
+__version__ = "1.5.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -170,9 +170,6 @@ class TaskManager(models.Manager):
     def get_queryset(self):
         return QuerySet(self.model, using=self._db)
 
-    def filter_metadata(self, **kwargs):
-        return self.get_queryset().main_tasks().filter_metadata(**kwargs)
-
     def get_task(self, task_id):
         """Get result for task by ``task_id``.
 
@@ -214,8 +211,10 @@ class TaskManager(models.Manager):
             'args': args,
             'source_data': source_data,
             'status': PENDING,
+            'own_status': PENDING,
             'progress': 0,
             'own_progress': 0,
+            'failure_reported': False,
             'run_after_sub_tasks_finished': run_after_sub_tasks_finished,
             'run_if_parent_task_failed': run_if_parent_task_failed})
         if not created:
@@ -224,6 +223,7 @@ class TaskManager(models.Manager):
             obj.date_done = None
             obj.own_date_done = None
             obj.status = PENDING
+            obj.own_status = PENDING
             obj.progress = 0
             obj.own_progress = 0
             obj.save()
@@ -304,8 +304,8 @@ class TaskManager(models.Manager):
                 .values_list('id', 'name', 'metadata', 'main_task_id', 'title', 'priority'):
             options = metadata['options']
             options['task_id'] = task_id
-            options['parent_id'] = parent_task_id
-            options['main_task_id'] = main_task_id
+            options['parent_id'] = None
+            options['main_task_id'] = None
             options['title'] = title
             options['run_after_sub_tasks_finished'] = False
             options['run_if_parent_task_failed'] = False
@@ -323,8 +323,8 @@ class TaskManager(models.Manager):
                 .values_list('id', 'name', 'metadata', 'main_task_id', 'title', 'priority'):
             options = metadata['options']
             options['task_id'] = task_id
-            options['parent_id'] = parent_task_id
-            options['main_task_id'] = main_task_id
+            options['parent_id'] = None
+            options['main_task_id'] = None
             options['title'] = title
             options['run_after_sub_tasks_finished'] = False
             options['run_if_parent_task_failed'] = False
@@ -347,17 +347,19 @@ class TaskManager(models.Manager):
         total_progress = 0  # 0 ... 100
         total_done = True
         total_date_done = None
-        sub_tasks_finished = True
-        has_deferred_tasks = False
-        has_fail_handler = False
-        parent_task_completed = False
+        no_tasks_or_all_finished = True
+        has_non_started_deferred_tasks = False
+        has_non_started_fail_handler_tasks = False
+        has_uncompleted_deferred_tasks = False
+        has_uncompleted_fail_handler_tasks = False
 
         for task_id, \
             propagate_exceptions, \
             has_sub_tasks, \
             status, progress, date_done, \
             own_status, own_progress, own_date_done, \
-            run_after_sub_tasks_finished, run_if_parent_task_failed in all_task_info_rows \
+            task_should_be_run_after_all_main_and_sub_tasks_finished, \
+            task_should_be_run_if_parent_task_failed in all_task_info_rows \
                 .values_list('id',
                              'propagate_exceptions',
                              'has_sub_tasks',
@@ -365,16 +367,35 @@ class TaskManager(models.Manager):
                              'own_status', 'own_progress', 'own_date_done',
                              'run_after_sub_tasks_finished', 'run_if_parent_task_failed'):
             if task_id == parent_task_id:
-                parent_task_completed = status in READY_STATES
+                # The following flags make sense for calculating status of the parent task of the current parent task.
+                # If they are set on the current task (task.id == parent_task.id)
+                # then they should not be taken into account.
+                task_should_be_run_after_all_main_and_sub_tasks_finished = False
+                task_should_be_run_if_parent_task_failed = False
 
+            # if this is a sub-task of the parent task (not itself)
+            # and it also has child tasks
             if not has_sub_tasks or task_id == parent_task_id:
                 status, progress, date_done = own_status, own_progress, own_date_done
 
-            if run_if_parent_task_failed:
-                has_fail_handler = True
-                continue
+            # cleanup progress: completed tasks are assumed to have 100%, None => 0
+            progress = progress or 0
 
-            if not run_after_sub_tasks_finished or status in READY_STATES:
+            # check if there are unprocessed success/fail handlers
+            if task_should_be_run_after_all_main_and_sub_tasks_finished:
+                # status is assigned when the task is send
+                has_non_started_deferred_tasks = status is None or has_non_started_deferred_tasks
+                has_uncompleted_deferred_tasks = status not in READY_STATES or has_uncompleted_deferred_tasks
+            elif task_should_be_run_if_parent_task_failed:
+                has_non_started_fail_handler_tasks = status is None or has_non_started_fail_handler_tasks
+                has_uncompleted_fail_handler_tasks = status not in READY_STATES or has_uncompleted_fail_handler_tasks
+            else:
+                no_tasks_or_all_finished = no_tasks_or_all_finished and (status in READY_STATES)
+
+            if (not task_should_be_run_after_all_main_and_sub_tasks_finished
+                and not task_should_be_run_if_parent_task_failed) \
+                    or status in PROPAGATE_STATES:
+                # calculate total status of the parent task
                 if propagate_exceptions:
                     found_propagating_exceptions = True
                     total_status_propagating_exceptions = status \
@@ -389,16 +410,6 @@ class TaskManager(models.Manager):
                                  status,
                                  key=precedence_non_propagating_exceptions)
 
-            if run_after_sub_tasks_finished and task_id != parent_task_id:
-                has_deferred_tasks = True
-            else:
-                sub_tasks_finished = sub_tasks_finished and status in READY_STATES
-
-            if progress is None:
-                progress = 0
-            if status in READY_STATES:
-                progress = 100
-
             total_progress += progress
 
             # if there is at least one date_done = None then we are not done
@@ -412,8 +423,8 @@ class TaskManager(models.Manager):
             else:
                 total_date_done = None
 
-        total_progress = (total_progress / len(all_task_info_rows)) if len(
-            all_task_info_rows) else 100
+        # TODO: just progress
+        total_progress = (total_progress / len(all_task_info_rows)) if len(all_task_info_rows) else total_progress  # 100
 
         if total_status_propagating_exceptions in PROPAGATE_STATES:
             # we have error in an important sub-task
@@ -434,40 +445,53 @@ class TaskManager(models.Manager):
         if total_status in READY_STATES:
             total_progress = 100
 
-        if sub_tasks_finished:
-            if total_status in PROPAGATE_STATES:
-                if has_fail_handler and not parent_task_completed:
-                    self.run_if_task_failed(parent_task_id)
+        if no_tasks_or_all_finished:
+
+            def mark_main_task_completed():
+                # TODO Support "propagating exception" flag properly
+                # Parent task should not crash if the child was not marked as "propagating exception"
+                # (important/critical)
+                # For now it is made crashing always if any sub-task crashes.
+                completed = total_status in READY_STATES
+                date_done = total_date_done or (now() if completed else None)
+                self.filter(id=parent_task_id).update(date_done=date_done,
+                                                      status=total_status,
+                                                      completed=completed,
+                                                      progress=total_progress)
+                try:
+                    main_task = self.get(id=parent_task_id)  # type: Task
+                    if main_task.parent_task_id is not None:
+                        from apps.task.tasks import update_parent_task
+                        update_parent_task.apply_async((main_task.parent_task_id,))
+
+                    if total_status != SUCCESS:
+                        main_task.write_log('{0} #{1}: some/all of sub-tasks have been crashed'.format(
+                            main_task.name, parent_task_id), level='error')
+                except:
+                    import logging
+                    logging.error('Was unable to log SUCCESS/FAILURE to task log. Task id: {0}'
+                                  .format(parent_task_id))
+
+                if total_status in PROPAGATE_STATES:
+                    revoke_task(AsyncResult(parent_task_id))
+
+            if total_status in PROPAGATE_STATES:  # if something failed
+                # drop all success handlers for them to not participate in the further status calculations
                 self.filter(main_task_id=parent_task_id, run_after_sub_tasks_finished=True) \
-                    .update(status=REVOKED, date_done=total_date_done)
-            else:
-                if has_deferred_tasks and not parent_task_completed:
+                    .delete()
+                if has_non_started_fail_handler_tasks:
+                    self.run_if_task_failed(parent_task_id)
+                elif not has_uncompleted_fail_handler_tasks:
+                    mark_main_task_completed()
+
+            else:  # if everything succeeded
+                # drop all fail handlers for them to not participate in the further status calculations
+                self.filter(main_task_id=parent_task_id, run_if_parent_task_failed=True) \
+                    .delete()
+                if has_non_started_deferred_tasks:
                     self.run_after_sub_tasks(parent_task_id)
-                self \
-                    .filter(main_task_id=parent_task_id, run_if_parent_task_failed=True) \
-                    .update(status=REVOKED, date_done=total_date_done)
-
-        self.filter(id=parent_task_id).update(date_done=total_date_done,
-                                              status=total_status,
-                                              completed=total_progress == 100,
-                                              progress=total_progress)
-        if total_status in READY_STATES:
-            try:
-                main_task = self.get(id=parent_task_id)  # type: Task
-                if main_task.parent_task_id is not None:
-                    from apps.task.tasks import update_parent_task
-                    update_parent_task.apply_async((main_task.parent_task_id,))
-
-                if total_status != SUCCESS:
-                    main_task.write_log('{0} #{1}: some/all of sub-tasks have been crashed'.format(
-                        main_task.name, parent_task_id), level='error')
-            except:
-                import logging
-                logging.error('Was unable to log SUCCESS/FAILURE to task log. Task id: {0}'
-                              .format(parent_task_id))
-
-        if total_status_propagating_exceptions in PROPAGATE_STATES:
-            revoke_task(AsyncResult(parent_task_id))
+                elif not has_uncompleted_deferred_tasks:
+                    mark_main_task_completed()
 
     @classmethod
     def _prepare_task_result(cls, result):
@@ -521,7 +545,6 @@ class TaskManager(models.Manager):
                 # Main task id should be assigned in init_task or on initial store result.
                 # If the task is already initialized with main_task_id = None - here it can be rewritten
                 # with some value by Celery itself.
-
                 obj.set_own_status(status)
 
                 if obj.own_date_done is None:
@@ -531,10 +554,10 @@ class TaskManager(models.Manager):
                 obj.traceback = traceback
                 obj.celery_metadata = metadata
 
-                if not obj.has_sub_tasks:
-                    obj.status = obj.own_status
-                    obj.date_done = obj.own_date_done
-                    obj.progress = obj.own_progress
+                # if not obj.has_sub_tasks:
+                #     obj.status = obj.own_status
+                #     obj.date_done = obj.own_date_done
+                #     obj.progress = obj.own_progress
 
                 obj.save()
         except IntegrityError:

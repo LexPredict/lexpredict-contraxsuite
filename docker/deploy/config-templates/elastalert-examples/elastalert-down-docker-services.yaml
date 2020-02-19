@@ -1,0 +1,37 @@
+es_host: ${DOCKER_HOST_NAME_ELASTICSEARCH}
+es_port: ${DOCKER_ELASTICSEARCH_PORT}
+
+name: "${DOCKER_DJANGO_HOST_NAME}: Down Docker Services Alert"
+index: filebeat-*
+
+type: any
+
+realert:
+  seconds: 1
+
+filter:
+- query:
+  - query_string:
+      query: "fields.logger:docker"
+
+query_delay:
+  minutes: 1
+query_key: host
+
+alert_text_type: alert_text_only
+include : ["down_services", "down_services_count", "timestamp"]
+
+alert_text: "${DOCKER_DJANGO_HOST_NAME}:\n
+Detected {1} Down Docker Services:\n
+{0}\n
+Log time UTC: {2}
+"
+
+alert_text_args: ["down_services", "down_services_count", "timestamp"]
+
+
+alert:
+  - "email"
+
+email:
+  - "${DOCKER_DJANGO_ADMIN_EMAIL}"

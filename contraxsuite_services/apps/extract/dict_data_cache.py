@@ -32,9 +32,9 @@ from apps.extract.models import GeoEntity, GeoAlias, Court, Term
 from apps.project.models import ProjectTermConfiguration
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2019, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.4.0/LICENSE"
-__version__ = "1.4.0"
+__copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.5.0/LICENSE"
+__version__ = "1.5.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -89,7 +89,6 @@ def cache_term_stems(project_id=None):
     key = CACHE_KEY_TERM_STEMS
 
     if project_id is not None:
-        from apps.project.models import ProjectTermConfiguration
         qs = ProjectTermConfiguration.objects.filter(project_id=project_id)
         if qs.exists():
             terms_qs = qs.last().terms

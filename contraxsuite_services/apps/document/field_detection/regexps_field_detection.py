@@ -41,15 +41,16 @@ from apps.document.repository.text_unit_repository import TextUnitRepository
 from apps.document.value_extraction_hints import ValueExtractionHint
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2019, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.4.0/LICENSE"
-__version__ = "1.4.0"
+__copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.5.0/LICENSE"
+__version__ = "1.5.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
 
 class ValueExtractionFunctionThrownException(Exception):
     pass
+
 
 class CaughtErrorWhileApplyingFieldDetector(Exception):
     pass
@@ -145,12 +146,12 @@ class RegexpsOnlyFieldDetectionStrategy(FieldDetectionStrategy):
                             ants.append(ant)
                 except Exception as e:
                     raise CaughtErrorWhileApplyingFieldDetector(
-                                f'Exception caught while trying to apply field detector.\n'
-                                f'Document: {doc.name} (#{doc.pk})\n'
-                                f'Field detector: #{field_detector.detector.pk}\n'
-                                f'{field_detector.detector.include_regexps}\n'
-                                f'Text unit: #{text_unit.pk}\n'
-                                f'{text_unit.text[:300]}') from e
+                        f'Exception caught while trying to apply field detector.\n'
+                        f'Document: {doc.name} (#{doc.pk})\n'
+                        f'Field detector: #{field_detector.detector.pk}\n'
+                        f'{field_detector.detector.include_regexps}\n'
+                        f'Text unit: #{text_unit.pk}\n'
+                        f'{text_unit.text[:300]}') from e
 
             if field.detect_limit_count and field.detect_limit_unit == DocumentField.DETECT_LIMIT_CHAR:
                 units_counted += len(text_unit.text)
@@ -264,7 +265,7 @@ def apply_simple_config(log: ProcessLogger,
         includes = row.dropna()
 
         if not csv_contains_regexps:
-            includes = [i.strip().replace(' ', '\s{1,100}') for i in includes]
+            includes = [i.strip().replace(' ', r'\s{1,100}') for i in includes]
         includes = [i for i in includes if i]
 
         if len(includes) == 1:

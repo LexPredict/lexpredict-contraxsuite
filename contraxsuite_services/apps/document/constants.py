@@ -26,9 +26,9 @@
 
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2019, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.4.0/LICENSE"
-__version__ = "1.4.0"
+__copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.5.0/LICENSE"
+__version__ = "1.5.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -97,6 +97,7 @@ DOCUMENT_FIELD_CODE_ASSIGN_DATE = 'assign_date'
 DOCUMENT_FIELD_CODE_UPLOAD_SESSION = 'upload_session'
 DOCUMENT_FIELD_CODE_PROCESSED = 'processed'
 DOCUMENT_FIELD_CODE_CLUSTER_ID = 'cluster_id'
+DOCUMENT_FIELD_CODE_CLASS = 'document_class'
 
 ALL_DOCUMENT_FIELD_CODES = {
     DOCUMENT_FIELD_CODE_NAME,
@@ -125,3 +126,10 @@ ALL_DOCUMENT_FIELD_CODES = {
     DOCUMENT_FIELD_CODE_UPLOAD_SESSION,
     DOCUMENT_FIELD_CODE_PROCESSED,
     DOCUMENT_FIELD_CODE_CLUSTER_ID}
+
+# Document.metadata keys
+DOC_METADATA_DOCUMENT_CLASS_PROB = 'document_class_probability'
+
+# Field Annotation Filter names
+FA_COMMON_FILTER = 'common_filter'
+FA_USER_FILTER = 'user_filter'

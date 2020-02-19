@@ -6,6 +6,9 @@ metricbeat.modules:
     - memory
     - network
     - process
+  processors:
+    - add_docker_metadata:
+        host: "unix:///var/run/docker.sock"
   enabled: true
   period: 10s
   processes: ['.*']
@@ -14,33 +17,41 @@ metricbeat.modules:
   metricsets: ["container", "cpu", "diskio", "healthcheck", "info", "memory", "network"]
   hosts: ["unix:///var/run/docker.sock"]
   period: 10s
-- module: postgresql
-  metricsets:
-    - database
-    - bgwriter
-    - activity
-  period: 10s
-  hosts: ["postgres://${DOCKER_HOST_NAME_PG}:5432"]
-  username: ${DOCKER_PG_USER}
-  password: ${DOCKER_PG_PASSWORD}
-- module: redis
-  metricsets: ["info", "keyspace"]
-  period: 10s
-  hosts: ["${DOCKER_HOST_NAME_REDIS}:6379"]
-- module: elasticsearch
-  metricsets: ["node", "node_stats"]
-  period: 10s
-  hosts: ["http://${DOCKER_HOST_NAME_ELASTICSEARCH}:9200"]
-- module: rabbitmq
-  metricsets: ["node", "queue"]
-  period: 10s
-  hosts: ["${DOCKER_HOST_NAME_RABBITMQ}:15672"]
-  username: ${DOCKER_RABBITMQ_USER}
-  password: ${DOCKER_RABBITMQ_PASSWORD}
+
+#
+# If adding more metrics:
+# Take into account that a metricbeat instance is running at each worker machine in the cluster to produce
+# disk/cpu/other system metric logs.
+# This means that each metricbeat will send its own portion of postgres/redis/other logs producing a lot of garbage.
+#
+#
+#- module: postgresql
+#  metricsets:
+#    - database
+#    - bgwriter
+#    - activity
+#  period: 10s
+#  hosts: ["postgresql://${DOCKER_HOST_NAME_PG}:5432?sslmode=disable"]
+#  username: ${DOCKER_PG_USER}
+#  password: ${DOCKER_PG_PASSWORD}
+#- module: redis
+#  metricsets: ["info", "keyspace"]
+#  period: 10s
+#  hosts: ["${DOCKER_HOST_NAME_REDIS}:6379"]
+#- module: elasticsearch
+#  metricsets: ["node", "node_stats"]
+#  period: 10s
+#  hosts: ["http://${DOCKER_HOST_NAME_ELASTICSEARCH}:${DOCKER_ELASTICSEARCH_PORT}"]
+#- module: rabbitmq
+#  metricsets: ["node", "queue"]
+#  period: 10s
+#  hosts: ["${DOCKER_HOST_NAME_RABBITMQ}:15672"]
+#  username: ${DOCKER_RABBITMQ_USER}
+#  password: ${DOCKER_RABBITMQ_PASSWORD}
 
 output.elasticsearch:
-  hosts: ["http://${DOCKER_HOST_NAME_ELASTICSEARCH}:9200"]
-  index: "metricbeat-%{[beat.version]}-%{+yyyy.MM.dd}"
+  hosts: ["http://${DOCKER_HOST_NAME_ELASTICSEARCH}:${DOCKER_ELASTICSEARCH_PORT}"]
+  index: "metricbeat-%{[agent.version]}-%{+yyyy.MM.dd}"
 
 setup.template.name: "metricbeat"
 setup.template.pattern: "metricbeat-*"
@@ -52,3 +63,7 @@ setup.dashboards.enabled: true
 setup.kibana.host: "contrax-kibana"
 setup.kibana.protocol: "http"
 #setup.kibana.path: "${DOCKER_KIBANA_BASE_PATH}"
+
+logging.level: info
+logging.to_files: true
+logging.to_syslog: false

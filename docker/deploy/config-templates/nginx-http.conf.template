@@ -5,7 +5,7 @@ server {
     listen 8080;
 
     charset     utf-8;
-    client_max_body_size 1024M;
+    client_max_body_size 5120M;
     sendfile on;
     keepalive_timeout 0;
 

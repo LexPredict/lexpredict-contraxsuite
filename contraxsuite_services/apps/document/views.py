@@ -34,13 +34,16 @@ import os
 import urllib
 
 # Third-party imports
+from typing import Optional
+
 import magic
 import pandas as pd
 # Django imports
 from django.conf import settings
 from django.contrib.sites.models import Site
+from django.db.models.expressions import Case, When, Value
 from django.urls import reverse
-from django.db.models import Count, F, Prefetch, Subquery, OuterRef
+from django.db.models import Count, F, Prefetch, IntegerField
 from django.http import FileResponse
 from django.shortcuts import get_object_or_404, redirect
 from django.shortcuts import render
@@ -56,14 +59,13 @@ import apps.common.mixins
 from apps.common.file_storage import get_file_storage
 from apps.common.utils import cap_words
 from apps.document.forms import DetectFieldValuesForm, TrainDocumentFieldDetectorModelForm, TrainAndTestForm, \
-    LoadDocumentWithFieldsForm, FindBrokenDocumentFieldValuesForm, \
-    FixDocumentFieldCodesForm, ExportDocumentTypeForm, ImportDocumentTypeForm
-from apps.document.forms import ImportCSVFieldDetectionConfigForm
+    LoadDocumentWithFieldsForm, FindBrokenDocumentFieldValuesForm, ImportCSVFieldDetectionConfigForm, \
+    FixDocumentFieldCodesForm, ExportDocumentTypeForm, ImportDocumentTypeForm, IdentifyContractsForm
 from apps.document.models import (
     Document, DocumentProperty, DocumentRelation, DocumentNote, DocumentTag,
     TextUnit, TextUnitProperty, TextUnitNote, TextUnitTag)
 from apps.document.tasks import ImportCSVFieldDetectionConfig, FindBrokenDocumentFieldValues, ImportDocumentType, \
-    FixDocumentFieldCodes
+    FixDocumentFieldCodes, identify_contracts
 from apps.dump.app_dump import get_app_config_dump, download
 from apps.extract.models import (
     AmountUsage, CitationUsage, CopyrightUsage, Court, CourtUsage, CurrencyUsage,
@@ -73,17 +75,19 @@ from apps.extract.models import (
     RatioUsage, RegulationUsage, Term, TermUsage, TrademarkUsage, UrlUsage)
 from apps.project.models import TaskQueue
 from apps.project.views import ProjectListView, TaskQueueListView
-from apps.task.tasks import call_task
+from apps.task.tasks import call_task, call_task_func
 from apps.task.views import BaseAjaxTaskView, TaskListView, LoadFixturesView
 from apps.users.models import User
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2019, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.4.0/LICENSE"
-__version__ = "1.4.0"
+__copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.5.0/LICENSE"
+__version__ = "1.5.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
+
+from task_names import TASK_NAME_IDENTIFY_CONTRACTS
 
 python_magic = magic.Magic(mime=True)
 
@@ -132,7 +136,7 @@ class DocumentListView(apps.common.mixins.JqPaginatedListView):
                    'title', 'language',
                    # this field makes DB query significantly longer
                    # 'is_contract',
-                   'properties', 'relations', 'paragraphs', 'sentences']
+                   'properties', 'relations', 'paragraphs', 'sentences', 'is_contract']
     limit_reviewers_qs_by_field = ""
     field_types = dict(
         properties=int,
@@ -164,19 +168,17 @@ class DocumentListView(apps.common.mixins.JqPaginatedListView):
             properties=Count('documentproperty', distinct=True),
             num_relation_a=Count('document_a_set', distinct=True),
             num_relation_b=Count('document_b_set', distinct=True),
-        ).annotate(relations=F('num_relation_a') + F('num_relation_b'))
+        ).annotate(relations=F('num_relation_a') + F('num_relation_b'),
+                   is_contract=Case(When(document_class='CONTRACT', then=Value(True)),
+                                    default=Value(False),
+                                    output_field=IntegerField()))
+
         return qs
 
     def get_json_data(self, **kwargs):
         data = super().get_json_data()
-        if "party_pk" in self.request.GET:
-            tu_list_view = TextUnitListView(request=self.request)
-            tu_data = tu_list_view.get_json_data()['data']
         for item in data['data']:
             item['url'] = reverse('document:document-detail', args=[item['pk']])
-            if "party_pk" in self.request.GET:
-                item['text_unit_data'] = [i for i in tu_data
-                                          if i['document__pk'] == item['pk']]
         return data
 
     def get_context_data(self, **kwargs):
@@ -229,7 +231,7 @@ class DocumentPropertyListView(apps.common.mixins.JqPaginatedListView):
     template_name = 'document/document_property_list.html'
 
     def get_queryset(self):
-        qs = super().get_queryset()
+        qs = super().get_queryset().order_by('document_id', 'key')
         if "document_pk" in self.request.GET:
             qs = qs.filter(document__pk=self.request.GET['document_pk'])
 
@@ -408,10 +410,10 @@ class DocumentEnhancedView(DocumentDetailView):
             .filter(unit_type="paragraph") \
             .order_by("id") \
             .prefetch_related(
-            Prefetch(
-                'termusage_set',
-                queryset=TermUsage.objects.order_by('term__term').select_related('term'),
-                to_attr='ltu'))
+                Prefetch(
+                    'termusage_set',
+                    queryset=TermUsage.objects.order_by('term__term').select_related('term'),
+                    to_attr='ltu'))
         ctx = {"document": document,
                "party_list": list(PartyUsage.objects.filter(
                    text_unit__document=document).values_list('party__name', flat=True)),
@@ -457,7 +459,7 @@ class TextUnitListView(apps.common.mixins.JqPaginatedListView):
     template_name = 'document/text_unit_list.html'
 
     def get_queryset(self):
-        qs = super().get_queryset()
+        qs = super().get_queryset().order_by('document_id', 'unit_type')
 
         if "elastic_search" in self.request.GET:
             elastic_search = self.request.GET.get("elastic_search")
@@ -481,18 +483,21 @@ class TextUnitListView(apps.common.mixins.JqPaginatedListView):
             qs = self.filter(text_search, qs, _or_lookup='textunittext__text__icontains')
 
         if "document_pk" in self.request.GET:
-            # Document Detail view
+            # Document Detail view, Party summary view
             qs = qs.filter(document__pk=self.request.GET['document_pk']).order_by('pk')
-        elif "party_pk" in self.request.GET:
+        if "party_pk" in self.request.GET:
             qs = qs.filter(partyusage__party__pk=self.request.GET['party_pk'])
-        elif "language" in self.request.GET:
+        if "language" in self.request.GET:
             qs = qs.filter(language=self.request.GET['language'])
-        elif "text_unit_hash" in self.request.GET:
+        if "text_unit_hash" in self.request.GET:
             # Text Unit Detail identical text units tab
             qs = qs.filter(text_hash=self.request.GET['text_unit_hash']) \
                 .exclude(pk=self.request.GET['text_unit_pk'])
-        else:
-            qs = qs.filter(unit_type='paragraph')
+        if "cluster_id" in self.request.GET:
+            qs = TextUnitCluster.objects.get(pk=self.request.GET['cluster_id']).text_units.all()
+
+        # else:
+        #     qs = qs.filter(unit_type='paragraph')
         return qs
 
     def get_json_data(self, **kwargs):
@@ -537,7 +542,9 @@ class TextUnitPropertyListView(apps.common.mixins.JqPaginatedListView):
     template_name = 'document/text_unit_property_list.html'
 
     def get_queryset(self):
-        qs = super().get_queryset()
+        qs = super().get_queryset()\
+            .select_related('text_unit__document__document_type')\
+            .order_by('text_unit_id', 'key', 'value')
 
         if "text_unit_pk" in self.request.GET:
             qs = qs.filter(text_unit__pk=self.request.GET['text_unit_pk'])
@@ -588,7 +595,8 @@ class TextUnitNoteListView(apps.common.mixins.JqPaginatedListView):
     def get_json_data(self, **kwargs):
         data = super().get_json_data(keep_tags=True)
         history = list(
-            TextUnitNote.history.filter(text_unit__document_id__in=list(
+            TextUnitNote.history
+                .filter(text_unit__document_id__in=list(
                     self.get_queryset().values_list('text_unit__document__pk', flat=True)))
                 .values('id', 'text_unit_id', 'history_date', 'history_user__username', 'note'))
 
@@ -1276,3 +1284,21 @@ class ImportDocumentTypeView(BaseAjaxTaskView):
     form_class = ImportDocumentTypeForm
 
     html_form_class = 'popup-form import-document-type-form'
+
+
+class IdentifyContractsView(BaseAjaxTaskView):
+    form_class = IdentifyContractsForm
+    html_form_class = 'popup-form reindex'
+    task_name = TASK_NAME_IDENTIFY_CONTRACTS
+
+    def disallow_start(self):
+        return False
+
+    def start_task(self, data):
+        document_type = data.get('document_type', {})
+        document_type_code = document_type.code if document_type else None
+        force = data.get('recheck_contract') or False
+        proj = data.get('project') or None
+        proj_id = proj.pk if proj else None  # type:Optional[int]
+        call_task_func(identify_contracts, (document_type_code, force, proj_id),
+                       data['user_id'])

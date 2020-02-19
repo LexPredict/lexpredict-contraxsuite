@@ -1,0 +1,13 @@
+apiVersion: v1
+appVersion: 0.0.2
+description: Contraxsuite manager service
+engine: gotpl
+home: https://www.lexpredict.com
+keywords:
+- contraxsuite
+- lexpredict
+maintainers:
+- email: support@lexpredict.com
+  name: LexPredict
+name: contraxsuite-manager
+version: 0.0.2

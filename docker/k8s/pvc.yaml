@@ -1,0 +1,300 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: contraxsuite-data-media
+spec:
+  accessModes:
+  - ReadWriteMany
+  resources:
+    requests:
+      storage: 20Gi
+  storageClassName: azurefile
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: contraxsuite-internal-nginx-logs
+spec:
+  accessModes:
+  - ReadWriteMany
+  resources:
+    requests:
+      storage: 50Mi
+  storageClassName: azurefile
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: contraxsuite-logs
+spec:
+  accessModes:
+  - ReadWriteMany
+  resources:
+    requests:
+      storage: 100Mi
+  storageClassName: azurefile
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: contraxsuite-logrotate
+spec:
+  accessModes:
+  - ReadWriteMany
+  resources:
+    requests:
+      storage: 100Mi
+  storageClassName: azurefile
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: postgres-data-11
+spec:
+  accessModes:
+  - ReadWriteMany
+  resources:
+    requests:
+      storage: 100Gi
+  storageClassName: azurefile
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: redis-data
+spec:
+  accessModes:
+  - ReadWriteMany
+  resources:
+    requests:
+      storage: 25Mi
+  storageClassName: azurefile
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: backup
+spec:
+  accessModes:
+  - ReadWriteMany
+  resources:
+    requests:
+      storage: 30Gi
+  storageClassName: azurefile
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: elasticsearch-data
+spec:
+  accessModes:
+  - ReadWriteMany
+  resources:
+    requests:
+      storage: 1Gi
+  storageClassName: azurefile
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: filebeat-data
+spec:
+  accessModes:
+  - ReadWriteMany
+  resources:
+    requests:
+      storage: 25Mi
+  storageClassName: azurefile
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: metricbeat-data
+spec:
+  accessModes:
+  - ReadWriteMany
+  resources:
+    requests:
+      storage: 25Mi
+  storageClassName: azurefile
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: rabbitmq-data
+spec:
+  accessModes:
+  - ReadWriteMany
+  resources:
+    requests:
+      storage: 100Mi
+  storageClassName: azurefile
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: contraxsuite-nginx-conf
+spec:
+  accessModes:
+  - ReadWriteMany
+  resources:
+    requests:
+      storage: 10Mi
+  storageClassName: azurefile
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: contraxsuite-nginx-certs
+spec:
+  accessModes:
+  - ReadWriteMany
+  resources:
+    requests:
+      storage: 10Mi
+  storageClassName: azurefile
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: contraxsuite-frontend
+spec:
+  accessModes:
+  - ReadWriteMany
+  resources:
+    requests:
+      storage: 25Mi
+  storageClassName: azurefile
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: contraxsuite-static-files
+spec:
+  accessModes:
+  - ReadWriteMany
+  resources:
+    requests:
+      storage: 100Mi
+  storageClassName: azurefile
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: contraxsuite-nginx-server-include
+spec:
+  accessModes:
+  - ReadWriteMany
+  resources:
+    requests:
+      storage: 10Mi
+  storageClassName: azurefile
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: contraxsuite-deployment-uuid
+spec:
+  accessModes:
+  - ReadWriteMany
+  resources:
+    requests:
+      storage: 10Mi
+  storageClassName: azurefile
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: contraxsuite-third-party-dependencies
+spec:
+  accessModes:
+  - ReadWriteMany
+  resources:
+    requests:
+      storage: 25Mi
+  storageClassName: azurefile
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: contraxsuite-notebooks
+spec:
+  accessModes:
+  - ReadWriteMany
+  resources:
+    requests:
+      storage: 10Gi
+  storageClassName: azurefile
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: contraxsuite-jupyter-add-req
+spec:
+  accessModes:
+  - ReadWriteMany
+  resources:
+    requests:
+      storage: 25Mi
+  storageClassName: azurefile
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: contraxsuite-ssl-certs
+spec:
+  accessModes:
+  - ReadWriteMany
+  resources:
+    requests:
+      storage: 25Mi
+  storageClassName: azurefile
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: celery-worker-state
+spec:
+  accessModes:
+  - ReadWriteMany
+  resources:
+    requests:
+      storage: 25Mi
+  storageClassName: azurefile
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: contraxsuite-additional-fixtures
+spec:
+  accessModes:
+  - ReadWriteMany
+  resources:
+    requests:
+      storage: 25Mi
+  storageClassName: azurefile
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: contraxsuite-data-update
+spec:
+  accessModes:
+  - ReadWriteMany
+  resources:
+    requests:
+      storage: 25Mi
+  storageClassName: azurefile
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: contrax-powa-web
+spec:
+  accessModes:
+  - ReadWriteMany
+  resources:
+    requests:
+      storage: 25Mi
+  storageClassName: azurefile
+---

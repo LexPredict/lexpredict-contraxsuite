@@ -45,9 +45,9 @@ from apps.task.models import Task
 from apps.task.tasks import ExtendedTask, CeleryTaskLogger
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2019, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.4.0/LICENSE"
-__version__ = "1.4.0"
+__copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.5.0/LICENSE"
+__version__ = "1.5.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -380,8 +380,8 @@ class DeserializedDocumentField(DeserializedObjectController):
         return old_choices
 
     def _is_allow_values_not_specified_in_choices_was_unset(self, saved_field: DocumentField) -> bool:
-        return saved_field.allow_values_not_specified_in_choices and \
-               not self.object.allow_values_not_specified_in_choices
+        return saved_field.allow_values_not_specified_in_choices \
+               and not self.object.allow_values_not_specified_in_choices
 
     def _validate_choice_values_removed(self, context: dict) -> None:
         saved_field = self._get_saved_field(context)

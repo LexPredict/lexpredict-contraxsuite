@@ -28,13 +28,21 @@
 from apps.common.models import AppVar
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2019, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.4.0/LICENSE"
-__version__ = "1.4.0"
+__copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.5.0/LICENSE"
+__version__ = "1.5.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
 
 REMOVE_READY_TASKS_DELAY_IN_HOURS = AppVar.set(
-    'remove_ready_tasks_delay_in_hours', 48,
+    'Task', 'remove_ready_tasks_delay_in_hours', 48,
     'Delete ready tasks from the database after this number of hours after the task is finished')
+
+ENABLE_ALERTS = AppVar.set(
+    'Task', 'enable_alerts', False,
+    'Enable email alerts for failed / hanged tasks')
+
+ALERT_DEFAULT_INTERVAL = AppVar.set(
+    'Task', 'alert_default_interval', 60,
+    'Default interval (minutes) before notify on pending task')

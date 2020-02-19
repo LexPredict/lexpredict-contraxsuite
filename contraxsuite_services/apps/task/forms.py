@@ -28,22 +28,24 @@
 import json
 
 # Django imports
+from celery.states import PENDING, SUCCESS, FAILURE
 from django import forms
 from django.conf import settings
 
 # Project imports
-from apps.analyze.models import TextUnitClassification, TextUnitClassifier
+from django.urls import reverse
+
 from apps.common.forms import checkbox_field
 from apps.common.utils import fast_uuid
 from apps.common.widgets import LTRCheckgroupWidget
-from apps.document.models import DocumentProperty, TextUnitProperty, DocumentType
+from apps.document.models import DocumentType
 from apps.project.models import Project
 from apps.task.models import Task
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2019, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.4.0/LICENSE"
-__version__ = "1.4.0"
+__copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.5.0/LICENSE"
+__version__ = "1.5.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -55,7 +57,7 @@ Relative path to a file with {}. A file should be in "&lt;ROOT_DIR&gt;/data/"
 
 class LoadDocumentsForm(forms.Form):
     header = 'Parse documents to create Documents and Text Units.'
-    project = forms.ModelChoiceField(queryset=Project.objects.all(), required=False)
+    project = forms.ModelChoiceField(queryset=Project.objects.order_by('-pk'), required=False)
     source_data = forms.CharField(
         max_length=1000,
         required=True,
@@ -159,7 +161,7 @@ class LocateForm(forms.Form):
         required=False)
     '''
 
-    project = forms.ModelChoiceField(queryset=Project.objects.all(), required=False)
+    project = forms.ModelChoiceField(queryset=Project.objects.order_by('-pk'), required=False)
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -191,346 +193,6 @@ class LocateForm(forms.Form):
         return True
 
 
-class ExistedClassifierClassifyForm(forms.Form):
-    header = 'Classify Text Units using an existing Classifier.'
-    classifier = forms.ModelChoiceField(
-        queryset=TextUnitClassifier.objects.filter(is_active=True),
-        widget=forms.widgets.Select(attrs={'class': 'chosen'}),
-        required=True)
-    sample_size = forms.IntegerField(
-        min_value=1,
-        required=False,
-        help_text='Number of Documents to process. Leave blank to process all Documents.')
-    min_confidence = forms.IntegerField(
-        min_value=0,
-        max_value=100,
-        initial=90,
-        required=True,
-        help_text='Store values with confidence greater than (%).')
-    delete_suggestions = checkbox_field(
-        "Delete ClassifierSuggestions of Classifier specified above.")
-    project = forms.ModelChoiceField(queryset=Project.objects.all(),
-                                     required=False, label='Restrict to project')
-
-
-options_field_kwargs = dict(
-    widget=forms.CheckboxInput(attrs={
-        'class': 'bt-switch',
-        'data-on-text': 'Default',
-        'data-off-text': 'Advanced',
-        'data-on-color': 'info',
-        'data-off-color': 'success',
-        'data-size': 'small'}),
-    initial=True,
-    required=False,
-    help_text='Show advanced options.')
-
-
-class CreateClassifierClassifyForm(forms.Form):
-    header = 'Classify Text Units by creating a new Classifier.'
-    CLASSIFIER_NAME_CHOICES = (
-        ('LogisticRegressionCV', 'LogisticRegressionCV'),
-        ('MultinomialNB', 'MultinomialNB'),
-        ('ExtraTreesClassifier', 'ExtraTreesClassifier'),
-        ('RandomForestClassifier', 'RandomForestClassifier'),
-        ('SVC', 'SVC'),
-    )
-    classify_by = forms.ChoiceField(
-        choices=[('terms', 'Terms'),
-                 ('parties', 'Parties'),
-                 ('entities', 'Geo Entities')],
-        required=True,
-        help_text='Classify using terms, parties or geo entities.')
-    algorithm = forms.ChoiceField(
-        choices=CLASSIFIER_NAME_CHOICES,
-        required=True,
-        initial='LogisticRegressionCV',
-        help_text='Text Unit Classifier name')
-    class_name = forms.ChoiceField(
-        choices=[],
-        required=True,
-        help_text='Text Unit class name')
-    sample_size = forms.IntegerField(
-        min_value=1,
-        required=False,
-        help_text='Number of Documents to process. Leave blank to process all Documents.')
-    min_confidence = forms.IntegerField(
-        min_value=0,
-        max_value=100,
-        initial=90,
-        required=True,
-        help_text='Store values with confidence greater than (%).')
-    options = forms.BooleanField(**options_field_kwargs)
-    svc_c = forms.FloatField(
-        label='C',
-        min_value=0,
-        initial=1.0,
-        required=True,
-        help_text='Penalty parameter C of the error term.')
-    svc_kernel = forms.ChoiceField(
-        label='kernel',
-        choices=[('rbf', 'rbf'),
-                 ('linear', 'linear'),
-                 ('poly', 'poly'),
-                 ('sigmoid', 'sigmoid'),
-                 ('precomputed', 'precomputed')],
-        required=True,
-        initial='rbf',
-        help_text='Specifies the kernel type to be used in the algorithm.')
-    svc_gamma = forms.FloatField(
-        label='gamma',
-        min_value=0,
-        required=False,
-        help_text='Kernel coefficient for ‘rbf’, ‘poly’ and ‘sigmoid’. '
-                  'If gamma is ‘auto’ then 1/n_features will be used instead.')
-    mnb_alpha = forms.FloatField(
-        label='alpha',
-        min_value=0,
-        initial=1.0,
-        required=True,
-        help_text='Additive (Laplace/Lidstone) smoothing parameter (0 for no smoothing).')
-    rfc_etc_n_estimators = forms.IntegerField(
-        label='n_estimators',
-        min_value=1,
-        initial=10,
-        required=True,
-        help_text='The number of trees in the forest.')
-    rfc_etc_criterion = forms.ChoiceField(
-        label='criterion',
-        choices=[('gini', 'gini'),
-                 ('entropy', 'entropy')],
-        required=True,
-        initial='gini',
-        help_text='The function to measure the quality of a split.')
-    rfc_etc_max_features = forms.IntegerField(
-        label='max_features',
-        min_value=1,
-        required=False,
-        help_text='The number of features to consider when looking for the best split.'
-                  ' Integer or blank for "auto".')
-    rfc_etc_max_depth = forms.IntegerField(
-        label='max_depth',
-        min_value=1,
-        required=False,
-        help_text='The maximum depth of the tree.'
-                  ' If None, then nodes are expanded until all leaves are pure'
-                  ' or until all leaves contain less than min_samples_split samples.')
-    rfc_etc_min_samples_split = forms.IntegerField(
-        label='min_samples_split',
-        min_value=1,
-        initial=2,
-        required=True,
-        help_text='The minimum number of samples required to split an internal node.')
-    rfc_etc_min_samples_leaf = forms.IntegerField(
-        label='min_samples_leaf',
-        min_value=1,
-        initial=1,
-        required=True,
-        help_text='The minimum number of samples required to be at a leaf node.')
-    lrcv_cs = forms.IntegerField(
-        label='cs',
-        min_value=1,
-        initial=10,
-        required=True,
-        help_text='Each of the values in Cs describes the inverse of regularization strength.')
-    lrcv_fit_intercept = forms.BooleanField(
-        label='fit_intercept',
-        required=False,
-        help_text='Specifies if a constant (a.k.a. bias or intercept)'
-                  ' should be added to the decision function.')
-    lrcv_multi_class = forms.ChoiceField(
-        label='multi_class',
-        choices=[('ovr', 'ovr'),
-                 ('multinomial', 'multinomial')],
-        required=True,
-        initial='ovr',
-        help_text='If the option chosen is ‘ovr’, then a binary problem is fit for each label. '
-                  'Else the loss minimised is the multinomial loss fit across the '
-                  'entire probability distribution. '
-                  'Works only for the ‘newton-cg’, ‘sag’ and ‘lbfgs’ solver.')
-    lrcv_solver = forms.ChoiceField(
-        label='solver',
-        choices=[('lbfgs', 'lbfgs'),
-                 ('newton-cg', 'newton-cg'),
-                 ('liblinear', 'liblinear'),
-                 ('sag', 'sag')],
-        required=True,
-        initial='lbfgs',
-        help_text='Algorithm to use in the optimization problem.')
-    use_tfidf = checkbox_field(
-        "Use TF-IDF to normalize data")
-    delete_classifier = checkbox_field(
-        "Delete existing Classifiers of class name specified above.")
-    delete_suggestions = checkbox_field(
-        "Delete ClassifierSuggestions of class name specified above.")
-    project = forms.ModelChoiceField(queryset=Project.objects.all(),
-                                     required=False, label='Restrict to project')
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.fields['class_name'] = forms.ChoiceField(
-            choices=[(class_name, class_name) for class_name in
-                     set(TextUnitClassification.objects.values_list('class_name', flat=True))],
-            required=True,
-            help_text='Text Unit class name')
-
-
-class ClusterForm(forms.Form):
-    header = 'Clustering Documents and/or Text Units by Terms, Entities or Parties.'
-    do_cluster_documents = checkbox_field(
-        "Cluster Documents", initial=True, input_class='min-one-of')
-    do_cluster_text_units = checkbox_field(
-        "Cluster Text Units", input_class='min-one-of')
-    project = forms.ModelChoiceField(queryset=Project.objects.all(),
-                                     required=False, label='Restrict to project')
-    cluster_by = forms.MultipleChoiceField(
-        widget=forms.SelectMultiple(attrs={'class': 'chosen'}),
-        choices=[('date', 'Dates'),
-                 ('definition', 'Definitions'),
-                 ('duration', 'Date Durations'),
-                 ('term', 'Terms'),
-                 ('party', 'Parties'),
-                 ('entity', 'Geo Entities'),
-                 ('court', 'Courts'),
-                 ('currency_name', 'Currency Name'),
-                 ('currency_value', 'Currency Value'),
-                 ('metadata', 'Document Metadata'),
-                 ('document_type', 'Document Type'),
-                 ('source_type', 'Document Source Type')],
-        required=True,
-        help_text='Cluster by terms, parties or other fields.')
-    using = forms.ChoiceField(
-        label='Algorithm',
-        choices=[('minibatchkmeans', 'MiniBatchKMeans'),
-                 ('kmeans', 'KMeans'),
-                 ('birch', 'Birch'),
-                 ('dbscan', 'DBSCAN'),
-                 # ('LabelSpreading', 'LabelSpreading')
-                 ],
-        required=True,
-        initial='minidatchkmeans',
-        help_text='Clustering algorithm model name.')
-    name = forms.CharField(
-        max_length=100,
-        required=True)
-    description = forms.CharField(
-        max_length=200,
-        required=False)
-    options = forms.BooleanField(**options_field_kwargs)
-    n_clusters = forms.IntegerField(
-        label='n_clusters',
-        min_value=1,
-        initial=3,
-        required=True,
-        help_text='Number of clusters.')
-    kmeans_max_iter = forms.IntegerField(
-        label='max_iter',
-        min_value=1,
-        initial=100,
-        required=True,
-        help_text='Maximum number of iterations for a single run.')
-    kmeans_n_init = forms.IntegerField(
-        label='n_init',
-        min_value=1,
-        initial=10,
-        required=True,
-        help_text='Number of time the k-means algorithm will be run with different centroid seeds. '
-                  'The final results will be the best output of n_init consecutive runs in '
-                  'terms of inertia.')
-    minibatchkmeans_batch_size = forms.IntegerField(
-        label='batch_size',
-        min_value=1,
-        initial=100,
-        required=True,
-        help_text='Size of the mini batches.')
-    birch_threshold = forms.FloatField(
-        label='threshold',
-        min_value=0,
-        initial=0.5,
-        required=True,
-        help_text='The radius of the subcluster obtained by merging a new sample and the closest '
-                  'subcluster should be lesser than the threshold.'
-                  ' Otherwise a new subcluster is started.')
-    birch_branching_factor = forms.IntegerField(
-        label='branching_factor',
-        min_value=1,
-        initial=50,
-        required=True,
-        help_text='Maximum number of CF subclusters in each node.')
-    dbscan_eps = forms.FloatField(
-        label='eps',
-        min_value=0,
-        initial=0.5,
-        required=True,
-        help_text='The maximum distance between two samples for them to be considered '
-                  'as in the same neighborhood.')
-    dbscan_leaf_size = forms.IntegerField(
-        label='leaf_size',
-        min_value=1,
-        initial=30,
-        required=True,
-        help_text='Leaf size passed to BallTree or cKDTree. '
-                  'This can affect the speed of the construction and query, '
-                  'as well as the memory required to store the tree.')
-    dbscan_p = forms.FloatField(
-        label='p',
-        min_value=0,
-        required=False,
-        help_text='Leaf size passed to BallTree or cKDTree. '
-                  'This can affect the speed of the construction and query, '
-                  'as well as the memory required to store the tree.')
-    # ls_documents_property = forms.Field()
-    # ls_text_units_property = forms.Field()
-    # ls_max_iter = forms.IntegerField(
-    #     label='max_iter',
-    #     min_value=1,
-    #     initial=5,
-    #     required=True,
-    #     help_text='Maximum number of iterations allowed.')
-
-    # delete_type = checkbox_field(
-    #     'Delete existed Clusters of the "Cluster By" and "Algorithm" specified above',
-    #     input_class='max-one-of')
-    # delete = checkbox_field("Delete all existed Clusters", input_class='max-one-of')
-
-    # def __init__(self, *args, **kwargs):
-    #     super().__init__(*args, **kwargs)
-    #     if TextUnitProperty.objects.exists():
-    #         choices = [(p, p) for p in sorted(
-    #             set(TextUnitProperty.objects.values_list('key', flat=True)),
-    #             key=lambda i: i.lower())]
-    #         self.fields['ls_text_units_property'] = forms.ChoiceField(
-    #             label='Text Unit Property Name',
-    #             widget=forms.widgets.Select(attrs={'class': 'chosen'}),
-    #             choices=choices,
-    #             required=True,
-    #             initial=choices[0][0])
-    #     else:
-    #         del self.fields['ls_text_units_property']
-    #     if DocumentProperty.objects.exists():
-    #         choices = [(p, p) for p in sorted(
-    #             set(DocumentProperty.objects.values_list('key', flat=True)),
-    #             key=lambda i: i.lower())]
-    #         self.fields['ls_documents_property'] = forms.ChoiceField(
-    #             label='Document Property Name',
-    #             widget=forms.widgets.Select(attrs={'class': 'chosen'}),
-    #             choices=choices,
-    #             required=True,
-    #             initial=choices[0][0])
-    #     else:
-    #         del self.fields['ls_documents_property']
-    #     if not DocumentProperty.objects.exists() and not TextUnitProperty.objects.exists():
-    #         self.fields['using'].choices = self.fields['using'].choices[:-1]
-
-    def clean(self):
-        cleaned_data = super().clean()
-        do_cluster_documents = cleaned_data.get("do_cluster_documents")
-        do_cluster_text_units = cleaned_data.get("do_cluster_text_units")
-        if not any([do_cluster_documents, do_cluster_text_units]):
-            self.add_error('do_cluster_documents', 'Please choose either Documents or Text Units')
-            self.add_error('do_cluster_text_units', 'Please choose either Documents or Text Units')
-
-
 class UpdateElasticSearchForm(forms.Form):
     header = 'The update index command will freshen all of the content ' \
              'in Elasticsearch index. Use it after loading new documents.'
@@ -541,17 +203,63 @@ class TotalCleanupForm(forms.Form):
 
 
 class TaskDetailForm(forms.Form):
-    name = forms.CharField(disabled=True)
+    task = forms.CharField(disabled=True)
+    parents = forms.CharField(disabled=True)
+    child_tasks = forms.CharField(disabled=True)
     log = forms.CharField(widget=forms.Textarea, disabled=True)
+    COLOR_BY_STATUS = {PENDING: '#ca3', SUCCESS: '#190', FAILURE: '#900', 'default': '#666'}
 
     def __init__(self, prefix, instance: Task, initial):
         super().__init__()
-        self.fields['name'].initial = instance.name
+        display_name = instance.display_name or instance.name
+        if display_name != instance.name:
+            display_name += f' ({instance.name})'
+        if instance.status != SUCCESS:
+            display_name += f' STATUS: {instance.status}'
+        if instance.progress < 100:
+            display_name += f' ({instance.progress}%)'
+
+        self.fields['task'].initial = display_name
+        self.fields['parents'].initial = ''
+        self.fields['child_tasks'].initial = ''
 
         logs = list()
         # on this stage it was quite hard to implement proper formatting in templates
         # so putting some html/js right here.
         # TODO: Refactor, put formatting to the templates
+
+        # list ancestors (parent tasks) up to the root
+        parents_markup = []
+        this_task = instance
+        while this_task.parent_task_id:
+            parent = this_task.parent_task
+            task_name = parent.display_name or parent.name
+            url = reverse('task:task-detail', args=[parent.pk])
+            color = self.COLOR_BY_STATUS.get(parent.status) or self.COLOR_BY_STATUS['default']
+            link_name = task_name if parent.progress == 100 else f'{task_name} ({parent.progress}%)'
+            parents_markup.append(f'<a style="{color}" href="{url}">{link_name}</a>')
+            this_task = this_task.parent_task
+
+        markup = ''
+        if parents_markup:
+            markup = ' &lt;- '.join(parents_markup)
+        self.fields['parents'].initial = markup
+
+        # list child tasks
+        child_query = Task.objects.filter(parent_task_id=instance.pk)
+        children_count = child_query.count()
+        children = list(child_query.values_list(
+            'pk', 'name', 'display_name', 'status', 'progress')[:30])
+        children_markup = []
+        for pk, name, display_name, status, progress in children:
+            url = reverse('task:task-detail', args=[pk])
+            color = self.COLOR_BY_STATUS.get(status) or self.COLOR_BY_STATUS['default']
+            task_name = display_name or name
+            link_name = task_name if progress == 100 else f'{task_name} ({progress}%)'
+            children_markup.append(f'<a style="{color}" href="{url}">{link_name}</a>')
+        if children_count > len(children):
+            children_markup.append(f' ... and {children_count - len(children)} more')
+        self.fields['child_tasks'].initial = ', '.join(children_markup)
 
         # Main problem is that this form's template uses some base template which replaces \n with <br />
         for record in instance.get_task_log_from_elasticsearch():
@@ -595,7 +303,7 @@ class TaskDetailForm(forms.Form):
 
 class CleanProjectForm(forms.Form):
     header = 'Clean Project (delete project content or project itself as well.'
-    _project = forms.ModelChoiceField(queryset=Project.objects.all(), required=True)
+    _project = forms.ModelChoiceField(queryset=Project.objects.order_by('-pk'), required=True)
     delete = checkbox_field("Delete Project itself as well.", initial=True)
 
     def clean(self):

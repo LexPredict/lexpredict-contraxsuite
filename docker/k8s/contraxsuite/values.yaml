@@ -1,0 +1,25 @@
+domain_name:
+docker_image:
+namespace:
+letsencryptenv:
+powa:
+pg_host_name: contrax-db
+pg_db_name: contrax1
+pg_user: contrax1
+pg_password: contrax1
+celery_replicas: 15
+celery_cpu_request: 3
+celery_cpu_limit: 3
+celery_target_cpu_usage: 25
+celery_doc_load_replicas: 25
+celery_doc_load_cpu_request: 3
+celery_doc_load_cpu_limit: 3
+celery_doc_load_target_cpu_usage: 25
+uwsgi_cpu_request: 2
+uwsgi_memory_request: 4Gi
+uwsgi_cpu_limit: 4
+uwsgi_memory_limit: 8Gi
+rabbitmq_cpu_request: 1
+rabbitmq_memory_request: 1Gi
+postgres_memory_request: 1Gi
+postgres_memory_limit: 8Gi

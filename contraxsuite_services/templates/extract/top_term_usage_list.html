@@ -5,9 +5,32 @@
 
 {% block page_header %}Top {{ model_name|capwords }} List{% endblock %}
 
+{% block content_top_addon %}
+<a href="#" onclick="syncDocumentTasks(); return false;" class="btn btn-primary">
+  Synchronize Document Term Usage
+</a>
+{% endblock %}
+
 {% block js_extra %}
   {{ block.super }}
   <script type="text/javascript">
+    window.syncDocumentTasks = function() {
+        if (!confirm('Re-calculating document term usage may take several minutes ' +
+              'and will be running in background. Continue?'))
+          return;
+        url = "{% url 'extract:term-usage-sync' %}";
+        $.ajax({
+          url: url,
+          data: {},
+          success: function(data) {
+            $.alert({
+              'title': 'Operation is started',
+              'content': 'You can check task status here: <a href="' + data + '">here</a>'
+            });
+          }
+        });
+    }
+
     $(document).ready(function () {
       var datafields = [
         { name: 'term__term', type: 'string' },

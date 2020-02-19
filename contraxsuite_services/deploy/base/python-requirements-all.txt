@@ -1,3 +1,4 @@
+aiomultiprocess==0.7.0
 asgi-redis==1.4.3
 asgiref==3.1.2
 asttokens==2.0.0
@@ -12,7 +13,7 @@ daphne==2.3.0
 dateparser==0.7.0
 dataclasses==0.6
 dataclasses-json==0.3.2
-django==2.2.8
+django==2.2.10
 django-allauth==0.39.1
 django-allauth-2fa==0.6
 django-autocomplete-light==3.2.10
@@ -20,6 +21,7 @@ django-bulk-update==2.2.0
 django-celery-beat==1.4.0
 django-celery-results==1.0.1
 django-ckeditor==5.7.1
+django-constance==2.0.0
 django-cors-headers==2.5.3
 django-crispy-forms==1.7.2
 django-debug-toolbar==1.11
@@ -61,11 +63,12 @@ kombu==4.2.1
 langid==1.1.6
 luqum==0.7.4
 matplotlib==2.1.2
-markdown==2.6.11
+markdown==3.0.1
+mlflow==1.5.0
 networkx==2.2
 nltk==3.4.5
 nose==1.3.7
-numpy==1.15.1
+numpy==1.18.0
 
 # openpyxl 3.0.2 has a bug in generating Excel pages.
 # If updating to the newer versions - ensure that doc grid export to Excel works.
@@ -87,17 +90,22 @@ python-logstash==0.4.6
 python-Levenshtein==0.12.0
 python-magic==0.4.15
 pytz==2016.7
+recommonmark==0.6.0
 regex==2017.9.23
 requests==2.21.0
-scikit-learn==0.21.3
+scikit-learn==0.22.1
 scikit-multilearn==0.0.5
-scipy==1.0.0
-Sphinx==2.2.1
+scipy==1.1.0
+Sphinx==2.2.2
+sphinx-markdown-tables==0.0.10
+sphinx-rtd-theme==0.4.3
 tabula-py==1.2.0
 tabulate==0.8.2
+textblob==0.12.0
 textract==1.5.0
 tika==1.15
 tornado==6.0.3
+tqdm==4.42.1
 us==1.0.0
 uWSGI==2.0.15
 WeasyPrint==0.42.3

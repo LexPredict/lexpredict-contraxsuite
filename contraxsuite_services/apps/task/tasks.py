@@ -31,7 +31,6 @@ import importlib
 import json
 import mimetypes
 import os
-import pickle
 import regex as re
 import string
 import sys
@@ -44,19 +43,18 @@ from typing import List, Dict, Tuple, Any, Callable, Optional
 # Third-party imports
 import magic
 import nltk
-import numpy as np
 import pandas as pd
-from celery import app
 from celery import shared_task
 from celery.exceptions import SoftTimeLimitExceeded, Retry
 from celery.result import AsyncResult
-from celery.states import SUCCESS, FAILURE, PENDING
+from celery.states import SUCCESS, FAILURE, UNREADY_STATES
 from celery.utils.log import get_task_logger
 from celery.utils.time import get_exponential_backoff_interval
+
 # Django imports
 from django.conf import settings
-from django.db import transaction, connection
-from django.db.models import Sum, Q, Case, Value, When, IntegerField, QuerySet
+from django.db import transaction, connection, IntegrityError
+from django.db.models import QuerySet
 from django.utils.timezone import now
 from elasticsearch import Elasticsearch
 from elasticsearch.exceptions import RequestError
@@ -67,20 +65,9 @@ from lexnlp.nlp.en.segments.sections import get_section_spans
 from lexnlp.nlp.en.segments.sentences import get_sentence_span_list, pre_process_document
 from lexnlp.nlp.en.segments.titles import get_titles
 from psycopg2 import InterfaceError, OperationalError
-from sklearn.cluster import Birch, DBSCAN, KMeans, MiniBatchKMeans
-from sklearn.ensemble import ExtraTreesClassifier, RandomForestClassifier
-from sklearn.feature_extraction.text import TfidfTransformer
-from sklearn.linear_model import LogisticRegressionCV
-from sklearn.naive_bayes import MultinomialNB
-from sklearn.semi_supervised import LabelSpreading
-from sklearn.svm import SVC
 
 # Project imports
 import task_names
-from apps.analyze.ml.cluster import ClusterDocuments, ClusterTextUnits
-from apps.analyze.models import (
-    DocumentCluster, TextUnitCluster,
-    TextUnitClassification, TextUnitClassifier, TextUnitClassifierSuggestion)
 from apps.celery import app
 from apps.common.errors import find_cause_of_type
 from apps.common.file_storage import get_file_storage
@@ -88,7 +75,9 @@ from apps.common.log_utils import ProcessLogger
 from apps.common.utils import fast_uuid
 from apps.deployment.app_data import load_geo_entities, load_terms, load_courts
 from apps.document import signals
-from apps.document.constants import DOCUMENT_TYPE_PK_GENERIC_DOCUMENT
+from apps.document.constants import DOCUMENT_TYPE_PK_GENERIC_DOCUMENT, \
+    DOC_METADATA_DOCUMENT_CLASS_PROB, DOCUMENT_FIELD_CODE_CLASS
+from apps.document.document_class import DocumentClass
 from apps.document.field_detection.field_detection import detect_and_cache_field_values_for_document
 from apps.document.models import (
     Document, DocumentText, DocumentMetadata, DocumentProperty, DocumentType,
@@ -98,24 +87,25 @@ from apps.document.sync_tasks.document_files_cleaner import DocumentFilesCleaner
 from apps.extract import dict_data_cache
 from apps.extract import models as extract_models
 from apps.extract.locators import LOCATORS, LocationResults
-from apps.extract.models import (
-    Court, GeoAlias, GeoEntity, GeoRelation, Party, Term)
+from apps.extract.models import Court, GeoAlias, GeoEntity, GeoRelation, Term
 from apps.project.models import Project, UploadSession
 from apps.task.celery_backend.task_utils import revoke_task
 from apps.task.models import Task, TaskConfig
 from apps.task.parsing_tasks import ParsingTaskParams, XmlWordxDocumentParser, \
-    TikaDocumentParser, TextractDocumentParser, PlainTextDocumentParser
+    TikaDocumentParser, TextractDocumentParser, PlainTextDocumentParser, DocumentParsingResults
+from apps.task.task_monitor import TaskMonitor
 from apps.task.utils.nlp.heading_heuristics import HeadingHeuristics
 from apps.task.utils.nlp.lang import get_language
 from apps.task.utils.nlp.parsed_text_corrector import ParsedTextCorrector
 from apps.task.utils.task_utils import TaskUtils, pre_serialize
 from apps.users.models import User
 from contraxsuite_logging import write_task_log
+from apps.document.app_vars import DETECT_CONTRACT
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2019, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.4.0/LICENSE"
-__version__ = "1.4.0"
+__copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.5.0/LICENSE"
+__version__ = "1.5.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -135,6 +125,8 @@ remove_punctuation_map = dict((ord(char), None) for char in string.punctuation)
 python_magic = magic.Magic(mime=True)
 
 es = Elasticsearch(hosts=settings.ELASTICSEARCH_CONFIG['hosts'])
+
+REG_EXTRA_SPACE = re.compile(r'<[\s/]*(?:[A-Za-z]+|[Hh]\d)[\s/]*>')
 
 
 def _get_or_create_task_config(celery_task) -> TaskConfig:
@@ -259,6 +251,8 @@ class ExtendedTask(app.Task):
                     source_data=self.task.source_data,
                     title=func.name,
                     run_if_parent_task_failed=True,
+                    status=None,  # None statuses are used in apps/task/celery_backend/managers.py
+                    own_status=None,  # for checking for unprocessed tasks
                     metadata={
                         'args': args,
                         'options': {
@@ -267,9 +261,10 @@ class ExtendedTask(app.Task):
                         }
                     },
                     priority=priority,
-                    call_stack=call_stack
-                    )
+                    call_stack=call_stack)
         task.save()
+        self.task.has_sub_tasks = True
+        self.task.save(update_fields=['has_sub_tasks'])
 
     def run_after_sub_tasks_finished(self,
                                      tasks_group_title: str,
@@ -294,6 +289,8 @@ class ExtendedTask(app.Task):
                 source_data=source_data[index] if source_data is not None else self.task.source_data,
                 run_after_sub_tasks_finished=True,
                 title=tasks_group_title,
+                status=None,  # None statuses are used in apps/task/celery_backend/managers.py
+                own_status=None,  # for checking for unprocessed tasks
                 metadata={
                     'args': args,
                     'options': {
@@ -302,9 +299,13 @@ class ExtendedTask(app.Task):
                     }
                 },
                 priority=priority,
-                call_stack=call_stack
+                call_stack=call_stack,
+                failure_reported=False
             ))
         Task.objects.bulk_create(tasks)
+        if tasks and not self.task.has_sub_tasks:
+            self.task.has_sub_tasks = True
+            self.task.save(update_fields=['has_sub_tasks'])
 
     def run_sub_tasks(self,
                       sub_tasks_group_title: str,
@@ -348,6 +349,9 @@ class ExtendedTask(app.Task):
             ss.apply_async(countdown=countdown,
                            priority=priority,
                            queue=queue)
+        if sub_tasks and not self.task.has_sub_tasks:
+            self.task.has_sub_tasks = True
+            self.task.save(update_fields=['has_sub_tasks'])
 
     def run_sub_tasks_class_based(self,
                                   sub_tasks_group_title: str,
@@ -387,6 +391,23 @@ class ExtendedTask(app.Task):
             priority = get_task_priority(ss)
             ss.apply_async(priority=priority,
                            queue=get_queue_by_task_priority(priority))
+        if sub_tasks and not self.task.has_sub_tasks:
+            self.task.has_sub_tasks = True
+            self.task.save(update_fields=['has_sub_tasks'])
+
+    def on_success(self, retval, task_id, args, kwargs):
+        task = self.task
+        if task:
+            task.on_task_completed(True)
+
+    def on_failure(self, exc, task_id, args, kwargs, einfo):
+        task = self.task
+        if task:
+            try:
+                task.on_task_completed(False)
+            except IntegrityError:
+                # task object might have been deleted
+                pass
 
     def prepare_task_execution(self):
         TaskUtils.prepare_task_execution()
@@ -531,9 +552,10 @@ def call_task_func(task_func: Callable,
     if parent_stack:
         call_stack = f'{parent_stack}\n{call_stack}'
 
+    task_name = (task_func.name if hasattr(task_func, 'name') else '') or task_func.__name__
     task = Task.objects.create(
         id=celery_task_id,
-        name=task_func.__name__,
+        name=task_name,
         user_id=user_id,
         args=task_args,
         source_data=source_data,
@@ -543,7 +565,8 @@ def call_task_func(task_func: Callable,
         run_if_parent_task_failed=run_if_parent_task_failed,
         main_task_id=main_task_id,
         priority=priority,
-        call_stack=call_stack
+        call_stack=call_stack,
+        failure_reported=False
     )
 
     task.write_log('Celery task id: {}\n'.format(celery_task_id))
@@ -605,7 +628,8 @@ def call_task(task_name, **options):
         project=Project.all_objects.get(pk=project_id) if project_id else None,
         upload_session=UploadSession.objects.get(pk=session_id) if session_id else None,
         priority=priority,
-        call_stack=call_stack
+        call_stack=call_stack,
+        failure_reported=False
     )
 
     # updating options with the changes made in options_wo_metadata by pre_serialize()
@@ -665,9 +689,10 @@ def delete_document_on_load_failed(task: ExtendedTask, file_name: str):
     document_name = os.path.basename(file_name)
     document_source = os.path.dirname(file_name)
 
-    document_ids = list(Document.objects \
-                        .filter(name=document_name, source=document_source) \
-                        .values_list('pk', flat=True))
+    document_ids = list(
+        Document.objects
+            .filter(name=document_name, source=document_source)
+            .values_list('pk', flat=True))
 
     if document_ids:
         task.log_error(f'Loading documents task failed, deleting documents: {file_name} (ids: {document_ids})')
@@ -725,6 +750,7 @@ class LoadDocuments(BaseTask):
             del kwargs['project']
 
         load_docs_args = [(file_path, kwargs) for file_path in file_list]
+
         self.run_sub_tasks('Load Each Document',
                            LoadDocuments.create_document,
                            load_docs_args,
@@ -789,16 +815,23 @@ class LoadDocuments(BaseTask):
 
         # get plain text and metadata from file
         propagate_exceptions = kwargs.get('propagate_exception')
+        task.task.update_progress(10)  # document's just uploaded
         pars_results = LoadDocuments.get_text_from_file(file_name, file_path,
                                                         propagate_exceptions, task)
-        text = pars_results.text or ''
-        metadata = pars_results.metadata
-        parser_name = pars_results.parser
 
         # do reconnect - postgres may have already closed the connection because of long-running OCR
+        # WARN: this should be BEFORE any other interactions with DB
+        # because DB connection may be already closed due to too long session
         connection.close()
 
-        if not text:
+        task.task.update_progress(40)  # document's just uploaded + parsed
+
+        metadata = pars_results.metadata or {}
+        parse_stat = metadata.get(Document.DocumentMetadataKey.KEY_PARSING_STATISTICS) or {}
+        parse_stat['parser'] = pars_results.parser
+        parser_name = pars_results.parser
+
+        if pars_results.is_empty():
             # delete document source file
             DocumentFilesCleaner.delete_document_files([file_name])
             raise RuntimeError('No text extracted.')
@@ -818,20 +851,18 @@ class LoadDocuments(BaseTask):
 
         metadata['parsed_by'] = parser_name
 
-        # detect if document is contract
-        if kwargs.get('detect_contract'):
-            try:
-                res = is_contract(text, return_probability=True)
-                if res is not None:
-                    metadata['is_contract'], metadata['is_contract_probability'] = res
-            except ImportError:
-                task.log_warn('Cannot import lexnlp.extract.en.contracts.detector.is_contract')
+        # detect if document is contract (do detect by default)
+        detect_contract = kwargs.get('detect_contract')
+        if detect_contract is None:
+            detect_contract = DETECT_CONTRACT.val
+        if detect_contract:
+            LoadDocuments.classify_document(metadata, pars_results, task)
 
         # remove extra line breaks
-        text = LoadDocuments.preprocess_parsed_text(text)
+        LoadDocuments.preprocess_parsed_text(pars_results)
 
         # Language identification
-        language, lang_detector = get_language(text, get_parser=True)
+        language, lang_detector = get_language(pars_results.text.text, get_parser=True)
         if language:
             task.log_info('Detected language: %s' % language.upper())
             task.log_info('Language detector: %s' % lang_detector.upper())
@@ -839,7 +870,7 @@ class LoadDocuments(BaseTask):
             task.log_info('LANGUAGE IS NOT DETECTED: ' + file_name)
 
         # detect title
-        title = metadata.get('title', None) or LoadDocuments.get_title(text)
+        title = metadata.get('title', None) or LoadDocuments.get_title(pars_results.text.text)
 
         with transaction.atomic():
             upload_session = None
@@ -853,7 +884,8 @@ class LoadDocuments(BaseTask):
                     document_type = project.type
                 else:  # let it crash if document_type_id is not specified too
                     document_type = DocumentType.objects.get(pk=document_type_id)
-                task.log_info(message='Document Upload Session id={}'.format(upload_session.pk))
+                document_type_str = f'{document_type.code} ({project.name})' if project else document_type.code
+                task.log_info(message=f'Document Upload Session id={upload_session.pk}, {document_type_str}')
             elif project_id:
                 project = Project.objects.get(pk=project_id)
                 document_type = project.type
@@ -876,8 +908,9 @@ class LoadDocuments(BaseTask):
                 language=language,
                 title=title,
                 file_size=file_size,
-                folder=kwargs.get('directory_path'))
-            DocumentText.objects.create(document=document, full_text=text)
+                folder=kwargs.get('directory_path'),
+                document_class=metadata.get(DOCUMENT_FIELD_CODE_CLASS) or DocumentClass.GENERIC)
+            DocumentText.objects.create(document=document, full_text=pars_results.text.text)
             DocumentMetadata.objects.create(document=document, metadata=metadata)
 
             task.log_extra['log_document_id'] = document.pk
@@ -895,7 +928,8 @@ class LoadDocuments(BaseTask):
             # create text units
             paragraph_list = []  # type: List[TextUnit]
 
-            paragraphs = LoadDocuments.safely_get_paragraphs(text)
+            # for now we ignore paragraphs obtained from parser
+            paragraphs = LoadDocuments.safely_get_paragraphs(pars_results.text.text)
             for paragraph, pos_start, post_end in paragraphs:
                 if not paragraph:
                     task.log_error(f'Paragraph text is null:\n'
@@ -927,9 +961,9 @@ class LoadDocuments(BaseTask):
             TextUnitText.objects.bulk_create(paragraph_text_list)
 
             sentence_list = []
-            sentence_spans = get_sentence_span_list(text)
+            sentence_spans = get_sentence_span_list(pars_results.text.text)
             for span in sentence_spans:
-                sentence = text[span[0]:span[1]]
+                sentence = pars_results.text.text[span[0]:span[1]]
                 text_unit = TextUnit(
                     document=document,
                     location_start=span[0],
@@ -943,7 +977,7 @@ class LoadDocuments(BaseTask):
 
             sentence_text_list = []  # type: List[TextUnitText]
             for text_unit, span in zip(sentence_tu_objects, sentence_spans):
-                sentence = text[span[0]:span[1]]
+                sentence = pars_results.text.text[span[0]:span[1]]
                 tu_text_obj = TextUnitText(
                     text_unit=text_unit,
                     text=sentence
@@ -957,10 +991,7 @@ class LoadDocuments(BaseTask):
             document.save()
 
             # detect sections
-            sections = list(get_section_spans(text, use_ml=False, return_text=False,
-                                              skip_empty_headers=True))
-            LoadDocuments.find_section_titles(sections, paragraph_list, sentence_list, text)
-            metadata['sections'] = sections
+            LoadDocuments.find_document_sections(metadata, pars_results, sentence_list)
 
             if pars_results.tables:
                 doc_tables = []
@@ -1026,11 +1057,34 @@ class LoadDocuments(BaseTask):
             return json.dumps(ret) if ret else None
 
     @staticmethod
-    def find_section_titles(
-        sections: List[Dict[str, Any]],
-        paragraphs: List[TextUnit],
-        sentences: List[TextUnit],
-        full_text: str) -> None:
+    def classify_document(metadata: Dict[str, Any],
+                          pars_results: DocumentParsingResults,
+                          task):
+        try:
+            res = is_contract(pars_results.text.text, return_probability=True)
+            if res is not None:
+                metadata[DOCUMENT_FIELD_CODE_CLASS] = \
+                    DocumentClass.CONTRACT if res[0] else DocumentClass.GENERIC
+                metadata[DOC_METADATA_DOCUMENT_CLASS_PROB] = [res[1]]
+        except ImportError:
+            task.log_warn('Cannot import lexnlp.extract.en.contracts.detector.is_contract')
+
+    @staticmethod
+    def find_document_sections(metadata, pars_results, sentence_list):
+
+        sections = [s.to_dict() for s in pars_results.text.find_sections()]
+        if not sections:
+            sections = list(get_section_spans(pars_results.text.text,
+                                              use_ml=False, return_text=False,
+                                              skip_empty_headers=True))
+            LoadDocuments.find_section_titles(sections, sentence_list,
+                                              pars_results.text.text)
+        metadata['sections'] = sections
+
+    @staticmethod
+    def find_section_titles(sections: List[Dict[str, Any]],
+                            sentences: List[TextUnit],
+                            full_text: str) -> None:
         """
         Methods tries to pick section titles as first sentences of
         referenced paragraphs
@@ -1068,7 +1122,7 @@ class LoadDocuments(BaseTask):
     def get_text_from_file(file_name: str,
                            file_path: str,
                            propagate_exceptions: bool,
-                           task: ExtendedTask):
+                           task: ExtendedTask) -> DocumentParsingResults:
         """
         extract text from file using either Tika or Textract
         """
@@ -1116,28 +1170,34 @@ class LoadDocuments(BaseTask):
         for parsr in parse_functions:
             if not parsr:
                 continue
-            results = parsr.try_parse_document(parse_ptrs)
+            try:
+                results = parsr.try_parse_document(parse_ptrs)
+            except Exception as e:
+                parser_name = parsr.__class__.__name__
+                raise RuntimeError(f'Error parsing {file_name} ({file_path}) by {parser_name}') from e
             if not results.is_empty():
                 break
 
         if results and not results.is_empty():
-            text = results.text
-            text = pre_process_document(text)
             # TODO: migrate it in lexnlp if it works good
-            text = re.sub(r'<[\s/]*(?:[A-Za-z]+|[Hh]\d)[\s/]*>', '', text)
-            results.text = text.replace('\r\n', '\n')
+            results.text.text = pre_process_document(results.text.text)
+            results.text.replace_by_regex(REG_EXTRA_SPACE, '')
+            results.text.replace_by_string('\r\n', '\n')
         return results
 
     @staticmethod
-    def preprocess_parsed_text(text: str):
+    def preprocess_parsed_text(pars_result: DocumentParsingResults):
         from apps.document.app_vars import PREPROCESS_DOCTEXT_LINEBREAKS, PREPROCESS_DOCTEXT_PUNCT
         if PREPROCESS_DOCTEXT_LINEBREAKS.val:
             # fix extra line breaks
             corrector = ParsedTextCorrector()
-            text = corrector.correct_if_corrupted(text)
+            transformations = []
+            pars_result.text.text = corrector.correct_if_corrupted(
+                pars_result.text.text, transformations=transformations)
+            if transformations:
+                pars_result.text.apply_transformations(transformations)
         if PREPROCESS_DOCTEXT_PUNCT.val:
-            text = TextBeautifier.unify_quotes_braces(text)
-        return text
+            pars_result.text.text = TextBeautifier.unify_quotes_braces(pars_result.text.text)
 
     @staticmethod
     def safely_get_paragraphs(text: str) -> List[Tuple[str, int, int]]:
@@ -1551,272 +1611,64 @@ class Locate(BaseTask):
         location_results.save(log, user_id)
 
 
-class Classify(BaseTask):
-    """
-    Classify Text Units
-    """
-    name = 'Classify'
-    classifier_map = {
-        'LogisticRegressionCV': LogisticRegressionCV,
-        'MultinomialNB': MultinomialNB,
-        'ExtraTreesClassifier': ExtraTreesClassifier,
-        'RandomForestClassifier': RandomForestClassifier,
-        'SVC': SVC,
-    }
-    classify_by_map = {
-        'terms': {
-            'term_model': Term,
-            'term_set_name': 'termusage_set',
-            'term_field': 'term'},
-        'parties': {
-            'term_model': Party,
-            'term_set_name': 'partyusage_set',
-            'term_field': 'party'},
-        'entities': {
-            'term_model': GeoEntity,
-            'term_set_name': 'geoentityusage_set',
-            'term_field': 'entity'}
-    }
-
-    def process(self, **kwargs):
-        """
-        Classify Text Units
-        :param kwargs: dict, form data
-        :return:
-        """
-
-        self.set_push_steps(3)
-
-        classifier_selection = kwargs.get('classifier')
-        classifier_id = classifier_selection['pk'] if classifier_selection else None
-
-        class_name = kwargs.get('class_name') or ''
-        if not classifier_id and not class_name:
-            raise RuntimeError(f'Either "class_name" or "classifier" should be passed')
-
-        min_confidence = kwargs['min_confidence'] / 100
-
-        if classifier_id is None and kwargs.get('delete_classifier') and class_name:
-            TextUnitClassifier.objects.filter(class_name=class_name).delete()
-
-        if kwargs['delete_suggestions']:
-            if classifier_id is None:
-                filter_opts = {'class_name': class_name}
-            else:
-                filter_opts = {'classifier_id': classifier_id}
-            TextUnitClassifierSuggestion.objects.filter(**filter_opts).delete()
-
-        self.push()  # 1
-
-        clf, clf_model = self.get_classifier(kwargs, classifier_id)
-
-        self.push()  # 2
-
-        # Apply to other documents
-        tf_idf_transformer = TfidfTransformer()
-        run_date = datetime.datetime.now()
-
-        doc_query = Document.objects.all()
-        if 'project' in kwargs and kwargs['project']:
-            project_id = kwargs['project']['pk']
-            doc_query = doc_query.filter(project_id=project_id)
-
-        for d in doc_query[:kwargs['sample_size']]:
-            # Build document feature matrix
-            d_text_units = d.textunit_set.all()
-            text_unit_ids = d_text_units.values_list('id', flat=True)
-            text_unit_count = len(text_unit_ids)
-            test_features = np.zeros((text_unit_count,
-                                      len(clf_model.term_index)))
-
-            # TODO: check for using db, especially text_unit.text
-            for i in range(text_unit_count):
-                for tu in getattr(d_text_units[i], clf_model.term_set_name).all():
-                    term_id = clf_model.term_index.index(getattr(tu, clf_model.term_field).id)
-                    test_features[i, term_id] = tu.count
-
-            if clf_model.use_tfidf:
-                test_features = tf_idf_transformer.fit_transform(test_features)
-
-            proba_scores = clf_model.predict_proba(test_features)
-            predicted = clf_model.predict(test_features)
-            tucs_list = []
-
-            for item_no, _ in enumerate(test_features):
-                confidence = max(proba_scores[item_no])
-                if confidence < min_confidence:
-                    continue
-                tucs = TextUnitClassifierSuggestion()
-                tucs.classifier = clf
-                tucs.classifier_run = run_date.isoformat()
-                tucs.classifier_confidence = max(proba_scores[item_no])
-                tucs.text_unit_id = text_unit_ids[item_no]
-                tucs.class_name = clf.class_name
-                tucs.class_value = predicted[item_no]
-                tucs_list.append(tucs)
-            TextUnitClassifierSuggestion.objects.bulk_create(tucs_list)
-
-        self.push()  # 3
-
-    def get_classifier(self, kwargs, classifier_id):
-        """
-        Get Classifier by id or create it using form data
-        :param kwargs: dict, form data
-        :param classifier_id: str or None, Classifier id
-        :return: Classifier
-        """
-
-        if classifier_id is not None:
-            clf = TextUnitClassifier.objects.get(pk=classifier_id)
-            clf_model = pickle.loads(clf.model_object)
-            return clf, clf_model
-
-        algorithm = kwargs['algorithm']
-        class_name = kwargs['class_name']
-        use_tfidf = kwargs['use_tfidf']
-        classify_by = kwargs['classify_by']
-        classify_by_class = self.classify_by_map[classify_by]
-        term_model = classify_by_class['term_model']
-        term_set_name = classify_by_class['term_set_name']
-        term_field = classify_by_class['term_field']
-
-        # Iterate through all classifications
-        tucs = TextUnitClassification.objects \
-            .filter(class_name=class_name,
-                    text_unit__unit_type__in=['paragraph'])
-        training_text_units = [t.text_unit for t in tucs]
-        training_targets = tucs.values_list('class_value', flat=True)
-
-        # Create feature matrix
-        term_index = list(term_model.objects.values_list('id', flat=True))
-        training_features = np.zeros((len(training_text_units),
-                                      len(term_index)))
-
-        # Create matrix
-        for i, _ in enumerate(training_text_units):
-            for tu in getattr(training_text_units[i], term_set_name).all():
-                training_features[i, term_index.index(getattr(tu, term_field).id)] = tu.count
-
-        # get classifier options
-        if algorithm == 'SVC':
-            gamma = kwargs.get('svc_gamma', 'auto')
-            classifier_opts = {
-                'C': kwargs['svc_c'],
-                'kernel': kwargs['svc_kernel'],
-                'gamma': gamma,
-                'probability': True
-            }
-        elif algorithm == 'MultinomialNB':
-            classifier_opts = {
-                'alpha': kwargs['mnb_alpha']
-            }
-        elif algorithm in ('ExtraTreesClassifier', 'RandomForestClassifier'):
-            classifier_opts = {
-                'n_estimators': kwargs['rfc_etc_n_estimators'],
-                'criterion': kwargs['rfc_etc_criterion'],
-                'max_features': kwargs.get('rfc_etc_max_features', 'auto'),
-                'max_depth': kwargs['rfc_etc_max_depth'],
-                'min_samples_split': kwargs['rfc_etc_min_samples_split'],
-                'min_samples_leaf': kwargs['rfc_etc_min_samples_leaf'],
-            }
-        else:  # if algorithm == 'LogisticRegressionCV'
-            classifier_opts = {
-                'Cs': kwargs['lrcv_cs'],
-                'fit_intercept': kwargs['lrcv_fit_intercept'],
-                'multi_class': kwargs['lrcv_multi_class'],
-                'solver': kwargs['lrcv_solver']
-            }
-
-        if use_tfidf:
-            tf_idf_transformer = TfidfTransformer()
-            training_features = tf_idf_transformer.fit_transform(training_features)
-
-        clf_model = self.classifier_map[algorithm](**classifier_opts)
-        clf_model.fit(training_features, training_targets)
-        clf_model.use_tfidf = use_tfidf
-        clf_model.term_index = term_index
-        clf_model.term_set_name = term_set_name
-        clf_model.term_field = term_field
-
-        # Create suggestions
-        run_date = datetime.datetime.now()
-
-        # Create classifier object
-        clf = TextUnitClassifier()
-        clf.class_name = class_name
-        clf.version = run_date.isoformat()
-        clf.name = "model:{}, by:{}, class_name:{}, scheduled:{}".format(
-            algorithm, classify_by, class_name, run_date.strftime('%Y-%m-%d.%H:%M'))
-        clf.model_object = pickle.dumps(clf_model, protocol=pickle.HIGHEST_PROTOCOL)
-        clf.save()
-
-        return clf, clf_model
-
-
-class Cluster(BaseTask):
-    """
-    Cluster Documents, Text Units
-    """
-    # TODO: cluster by expanded entity aliases
-
-    name = 'Cluster'
-
-    def process(self, **kwargs):
-
-        do_cluster_documents = kwargs.pop('do_cluster_documents')
-        do_cluster_text_units = kwargs.pop('do_cluster_text_units')
-
-        project = kwargs.pop('project')
-        project_id = project['pk'] if project else None
-        cluster_name = kwargs.pop('name')
-        cluster_desc = kwargs.pop('description')
-        cluster_algorithm = kwargs.pop('using', 'kmeans')
-        n_clusters = kwargs.pop('n_clusters', 3)
-        cluster_by = kwargs.pop('cluster_by', 'term')
-        use_tfidf = kwargs.pop('use_tfidf', True)
-        unit_type = kwargs.pop('unit_type', 'sentence')
-
-        # get cluster-algorithm-specific cluster options from form data
-        cluster_options = dict()
-        for option_name, option_value in kwargs.items():
-            if option_name.startswith(cluster_algorithm + '_'):
-                option_name = option_name.replace(cluster_algorithm + '_', '')
-                cluster_options[option_name] = option_value
-
-        cluster_classes = []
-        if do_cluster_documents:
-            cluster_classes.append(ClusterDocuments)
-        if do_cluster_text_units:
-            cluster_classes.append(ClusterTextUnits)
-
-        for cluster_class in cluster_classes:
-            cluster_model = cluster_class(project_id=project_id,
-                                          cluster_algorithm=cluster_algorithm,
-                                          n_clusters=n_clusters,
-                                          cluster_by=cluster_by,
-                                          name=cluster_name,
-                                          description=cluster_desc,
-                                          use_tfidf=use_tfidf,
-                                          unit_type=unit_type,
-                                          **cluster_options)
-            cluster_model.run()
-
-
 @shared_task(base=ExtendedTask,
              bind=True,
              soft_time_limit=3600,
              default_retry_delay=10,
              retry_backoff=True,
              autoretry_for=(SoftTimeLimitExceeded, InterfaceError, OperationalError),
-             max_retries=3)
+             max_retries=3,
+             priority=9)
 def clean_tasks(this_task: ExtendedTask):
+    all_tasks = list(Task.objects.all().exclude(id=this_task.request.id))
+    executing_tasks = [t for t in all_tasks if t.status in UNREADY_STATES]
+    all_tasks = [t for t in all_tasks if t.status not in UNREADY_STATES]
+    executing_tasks = order_tasks_by_hierarchy(executing_tasks)
+    this_task.set_push_steps(len(executing_tasks) + 3)
+
+    if not executing_tasks:
+        return
+    purge_tasks(this_task, executing_tasks, True)
+
+    # while we were purging tasks new sub tasks might have been started
+    root_ids = [t.pk for t in executing_tasks]
+    tasks_to_purge = []
+    for i in range(3):
+        child_tasks = list(Task.objects.filter(parent_task_id__in=root_ids))
+        if not child_tasks:
+            break
+        tasks_to_purge = child_tasks + tasks_to_purge
+        root_ids = [t.pk for t in child_tasks]
+
+    if tasks_to_purge:
+        purge_tasks(this_task, tasks_to_purge, False)
+    this_task.push()
+    purge_tasks(this_task, all_tasks, False)
+    this_task.push()
+    this_task.task.date_done = now()
+    this_task.task.save()
+
+
+def order_tasks_by_hierarchy(tasks: List[Task]) -> List[Task]:
+    # children first, parents last
+    task_by_id = {t.pk: (t, 0,) for t in tasks}
+    for task in tasks:
+        weight = 0
+        parent_id = task.parent_task_id
+        while parent_id:
+            weight += 1
+            parent = task_by_id.get(parent_id)
+            parent_id = parent[0].parent_task_id if parent else None
+        task_by_id[task.pk] = (task, weight)
+    tasks_weighted = [t for _, t in task_by_id.items()]
+    tasks_weighted.sort(key=lambda t: t[1], reverse=True)
+    return [t for t, _ in tasks_weighted]
+
+
+def purge_tasks(this_task: ExtendedTask, tasks: List[Task], log_progress: bool):
     purged_pending_tasks = 0
 
-    qr = Task.objects.main_tasks().filter(status=PENDING).exclude(id=this_task.request.id)  # type: QuerySet
-
-    this_task.set_push_steps(qr.count() + 1)
-
-    for task_to_purge in qr:
+    for task_to_purge in tasks:
         this_task.log_info('Purging: Task="{}", status="{}", date_start="{}"'.format(
             task_to_purge.name, task_to_purge.status, task_to_purge.date_start))
         try:
@@ -1825,10 +1677,13 @@ def clean_tasks(this_task: ExtendedTask):
         except Exception as e:
             # if we were unable to purge a task - log error and proceed to the next one, don't break
             this_task.log_error(f'Unable to purge task {task_to_purge.name} (#{task_to_purge.id})', exc_info=e)
-        this_task.push()
+        if log_progress:
+            this_task.push()
 
-    deleted_tasks, _unused = Task.objects.all().exclude(id=this_task.request.id).delete()
-    this_task.push()
+    deleted_tasks, _unused = Task.objects.filter(pk__in=[t.pk for t in tasks]).delete()
+
+    if log_progress:
+        this_task.push()
 
     ret = f'Purged {purged_pending_tasks} pending main tasks. Deleted {deleted_tasks} tasks after purging main tasks.'
     this_task.log_info(ret)
@@ -1839,6 +1694,11 @@ def track_tasks(_celery_task):
     TaskUtils.prepare_task_execution()
     for task_id in Task.objects.unready_parent_tasks().values_list('pk', flat=True):
         Task.objects.update_parent_task(task_id)
+
+
+@app.task(name=task_names.TASK_NAME_TRACK_FAILED_TASKS, bind=True, queue=settings.CELERY_QUEUE_SERIAL)
+def track_failed_tasks(_celery_task):
+    TaskMonitor.report_on_failed_tasks()
 
 
 @app.task(name=task_names.TASK_NAME_UPDATE_PARENT_TASK, bind=True, queue=settings.CELERY_QUEUE_SERIAL)
@@ -1978,5 +1838,3 @@ app.register_task(Locate())
 # Register all update/cluster/classify tasks
 app.register_task(UpdateElasticsearchIndex())
 app.register_task(TotalCleanup())
-app.register_task(Classify())
-app.register_task(Cluster())

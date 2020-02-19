@@ -27,6 +27,7 @@
 # Standard imports
 import pickle
 import sys
+from typing import Dict, Any
 
 import pandas as pd
 from rest_framework_tracking.models import APIRequestLog
@@ -46,9 +47,9 @@ from apps.users.models import User
 from apps.common import signals
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2019, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.4.0/LICENSE"
-__version__ = "1.4.0"
+__copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.5.0/LICENSE"
+__version__ = "1.5.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -64,10 +65,25 @@ is_migrating = is_migration_in_process()
 
 
 class AppVar(models.Model):
-    """Storage for application variables"""
+    DEFAULT_CATEGORY = 'general'
+    COMMON_CATEGORY = 'Common'
+    DEPLOYMENT_CATEGORY = 'Deployment'
+    DOCUMENT_CATEGORY = 'Document'
+    EXTRACT_CATEGORY = 'Extract'
+    NOTIFICATIONS_CATEGORY = 'Notifications'
+    RAWDB_CATEGORY = 'RawDB'
+    TASK_CATEGORY = 'Task'
+    MAIL_CATEGORY = 'Mail server'
 
-    # variable name
-    name = models.CharField(max_length=100, db_index=True, unique=True)
+    """Storage for application variables"""
+    class Meta:
+        unique_together = (('category', 'name'),)
+
+    # variable category, unique together with name
+    category = models.CharField(max_length=100, db_index=True, default=DEFAULT_CATEGORY)
+
+    # variable name, unique together with category
+    name = models.CharField(max_length=100, db_index=True)
 
     # variable data
     value = JSONField(blank=True, null=True)
@@ -83,18 +99,34 @@ class AppVar(models.Model):
         User, related_name="created_%(class)s_set", null=True, blank=True, db_index=True, on_delete=CASCADE)
 
     def __str__(self):
-        return "App Variable (name={})".format(self.name)
+        return f"App Variable (category={self.category} name={self.name})"
 
     @classmethod
-    def set(cls, name, value, description='', overwrite=False) -> 'AppVar':
+    def get_values_by_category(cls, category: str) -> Dict[str, Any]:
+        if is_migrating:
+            return {}
+        cat_vals = {}
+        for name, value in AppVar.objects.filter(category=category).values_list('name', 'value'):
+            cat_vals[name] = value
+        return cat_vals
+
+    def get_cached_value(self, cache: Dict[str, Any]) -> Any:
+        if self.name in cache:
+            return cache[self.name]
+        return self.val
+
+    @classmethod
+    def set(cls, category: str, name: str, value, description='', overwrite=False) -> 'AppVar':
         if is_migrating:
             mock = AppVar()
+            mock.category = category
             mock.name = name
             mock.value = value
             mock.description = description
             return mock
 
         obj, created = cls.objects.get_or_create(
+            category=category,
             name=name,
             defaults={"value": value, "description": description})
         if not created and overwrite:
@@ -103,8 +135,9 @@ class AppVar(models.Model):
         return obj
 
     @classmethod
-    def get(cls, name, default=None):
-        for v in cls.objects.filter(name=name).values_list('value', flat=True):
+    def get(cls, category: str, name: str, default=None):
+        qs = cls.objects.filter(name=name, category=category)
+        for v in qs.values_list('value', flat=True):
             return v
         return default
 
@@ -117,8 +150,8 @@ class AppVar(models.Model):
         return self.value
 
     @classmethod
-    def clear(cls, name):
-        return cls.objects.get(name=name).delete()
+    def clear(cls, name: str, category: str):
+        return cls.objects.filter(name=name, category=category).delete()
 
 
 @receiver(models.signals.post_save, sender=AppVar)

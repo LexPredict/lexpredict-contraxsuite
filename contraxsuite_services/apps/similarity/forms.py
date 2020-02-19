@@ -24,9 +24,12 @@
 """
 # -*- coding: utf-8 -*-
 
+from scipy.spatial.distance import _METRICS
+
 from django import forms
 from django.utils.translation import ugettext_lazy as _
 
+from apps.analyze.ml.features import DocumentFeatures
 from apps.common.forms import checkbox_field
 from apps.common.widgets import LTRRadioField
 from apps.document.field_types import LinkedDocumentsField
@@ -34,9 +37,9 @@ from apps.document.models import DocumentField
 from apps.project.models import Project
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2019, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.4.0/LICENSE"
-__version__ = "1.4.0"
+__copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.5.0/LICENSE"
+__version__ = "1.5.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -59,8 +62,50 @@ class SimilarityForm(forms.Form):
     )
     use_idf = checkbox_field("Use TF-IDF to normalize data")
     delete = checkbox_field("Delete existing Similarity objects.", initial=True)
-    project = forms.ModelChoiceField(queryset=Project.objects.all(),
-                                     required=False, label='Restrict to project')
+    project = forms.ModelChoiceField(
+        queryset=Project.objects.order_by('-pk'),
+        widget=forms.widgets.Select(attrs={'class': 'chosen'}),
+        required=False,
+        label='Restrict to project')
+
+
+class SimilarityByFeaturesForm(forms.Form):
+    header = 'Identify similar Documents or Text Units by extracted features.'
+    search_similar_documents = checkbox_field(
+        "Identify similar Documents.",
+        input_class='max-one-of',
+        initial=True)
+    search_similar_text_units = checkbox_field(
+        "Identify similar Text Units.",
+        input_class='max-one-of')
+    similarity_threshold = forms.IntegerField(
+        min_value=50,
+        max_value=100,
+        initial=75,
+        required=True,
+        help_text=_("Min. Similarity Value 50-100%")
+    )
+    use_tfidf = checkbox_field("Use TF-IDF to normalize data")
+    delete = checkbox_field("Delete existing Similarity objects.", initial=True)
+    project = forms.ModelChoiceField(
+        queryset=Project.objects.order_by('-pk'),
+        widget=forms.widgets.Select(attrs={'class': 'chosen'}),
+        required=False,
+        label='Restrict to project')
+    feature_source = forms.MultipleChoiceField(
+        widget=forms.SelectMultiple(attrs={'class': 'chosen'}),
+        choices=[(i, i) for i in DocumentFeatures.source_fields],
+        initial='term',
+        required=True,
+        help_text='Cluster by terms, parties or other fields.')
+    unit_type = forms.ChoiceField(
+        choices=[('sentence', 'sentence'), ('paragraph', 'paragraph')],
+        initial='sentence',
+        required=True)
+    distance_type = forms.ChoiceField(
+        choices=[(i, i) for i in _METRICS],
+        initial='cosine',
+        required=True)
 
 
 class ChunkSimilarityForm(forms.Form):
@@ -81,8 +126,11 @@ class ChunkSimilarityForm(forms.Form):
     use_idf = checkbox_field("Use TF-IDF to normalize data", initial=True)
     ignore_case = checkbox_field("Ignore case", initial=True)
     delete = checkbox_field("Delete existing Similarity objects.", initial=True)
-    project = forms.ModelChoiceField(queryset=Project.objects.all(),
-                                     required=False, label='Restrict to project')
+    project = forms.ModelChoiceField(
+        queryset=Project.objects.order_by('-pk'),
+        widget=forms.widgets.Select(attrs={'class': 'chosen'}),
+        required=False,
+        label='Restrict to project')
     term_type = LTRRadioField(
         choices=(('CHAR_NGRAMS', 'Compare text by char ngrams'),
                  ('WORDS', 'Compare text by words'),

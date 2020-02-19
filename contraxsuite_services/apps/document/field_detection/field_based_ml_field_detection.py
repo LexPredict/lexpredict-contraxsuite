@@ -45,9 +45,9 @@ from apps.document.repository.document_field_repository import DocumentFieldRepo
 from apps.document.repository.dto import FieldValueDTO
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2019, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.4.0/LICENSE"
-__version__ = "1.4.0"
+__copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.5.0/LICENSE"
+__version__ = "1.5.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -101,8 +101,9 @@ class FieldBasedMLOnlyFieldDetectionStrategy(FieldDetectionStrategy):
         return init_classifier_impl(field.code, init_script)
 
     @classmethod
-    def build_pipeline(cls, field: DocumentField, depends_on_fields: List[Tuple[str, str]]) -> Tuple[
-        Pipeline, List[Callable[[], List[str]]]]:
+    def build_pipeline(cls,
+                       field: DocumentField,
+                       depends_on_fields: List[Tuple[str, str]]) -> Tuple[Pipeline, List[Callable[[], List[str]]]]:
 
         transformer_list = []
         feature_names_funcs = []
@@ -110,7 +111,7 @@ class FieldBasedMLOnlyFieldDetectionStrategy(FieldDetectionStrategy):
         fields = list(DocumentField.objects.filter(code__in={code for code, _type in depends_on_fields}))
         fields_by_code = {f.code: f for f in fields}
 
-        for field_code, field_type in sorted(depends_on_fields, key=lambda t: t[1]):  # type: str, str
+        for field_code, field_type in sorted(depends_on_fields, key=lambda t: t[1]):    # type: str, str
             field_type = TypedField.by(fields_by_code[field_code])  # type: TypedField
 
             field_vect_steps = [('sel', FieldValueExtractor(field_code))]
@@ -381,8 +382,8 @@ class FieldBasedMLWithUnsureCatFieldDetectionStrategy(FieldBasedMLOnlyFieldDetec
             if predicted_value is None:
                 target_name = field.unsure_choice_value
             else:
-                threshold = (field.unsure_thresholds_by_value or {}) \
-                                .get(predicted_value) or DocumentField.DEFAULT_UNSURE_THRESHOLD
+                threshold = (field.unsure_thresholds_by_value or {}).get(predicted_value) \
+                            or DocumentField.DEFAULT_UNSURE_THRESHOLD
 
                 target_name = predicted_value if target_probability >= threshold else field.unsure_choice_value
 

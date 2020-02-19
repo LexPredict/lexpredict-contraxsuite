@@ -1,4 +1,7 @@
 filebeat.modules:
+- module: system
+  syslog:
+    var.paths: ["/hostfs/var/log/syslog*"]
 - module: nginx
   access:
     enabled: true
@@ -10,7 +13,7 @@ filebeat.modules:
   log:
     enabled: true
     var.paths: ["/data/pg_data/pg_log/*.log*"]
-filebeat.prospectors:
+filebeat.inputs:
 - type: log
   paths:
     - /data/logs/celery-*.log_json
@@ -43,14 +46,41 @@ filebeat.prospectors:
   json.keys_under_root: true
   json.add_error_key: true
   json.overwrite_keys: true
+- type: log
+  paths:
+    - /data/logs/docker-services-*.log_json
+  fields:
+    logger: docker
+  json.keys_under_root: true
+  json.add_error_key: true
+  json.overwrite_keys: true
+- type: container
+  paths:
+    # if changing this path - change "match_source_index"
+    - '/hostfs/var/lib/docker/containers/*/*.log'
+  containers.ids: '*'
+  processors:
+  - add_docker_metadata:
+      # this sets the number of the path component split by slashes with the container id
+      match_source_index: 5
+- type: container
+  paths:
+    # if changing this path - change "match_source_index"
+    - '/hostfs/data/docker/containers/*/*.log'
+  containers.ids: '*'
+  processors:
+  - add_docker_metadata:
+      # this sets the number of the path component split by slashes with the container id
+      match_source_index: 4
+
 
 # If changing index names here - don't forget to change them in settings.py.
 # Celery task logs are loaded in Django UI by requesting Elasticsearch
 # with index pattern specified in settings.LOGGING_ELASTICSEARCH_INDEX_TEMPLATE
 
 output.elasticsearch:
-  hosts: ["http://${DOCKER_HOST_NAME_ELASTICSEARCH}:9200"]
-  index: "filebeat-%{[beat.version]}-%{+yyyy.MM.dd}"
+  hosts: ["http://${DOCKER_HOST_NAME_ELASTICSEARCH}:${DOCKER_ELASTICSEARCH_PORT}"]
+  index: "filebeat-%{[agent.version]}-%{+yyyy.MM.dd}"
 
 setup.template.name: "filebeat"
 setup.template.pattern: "filebeat-*"
@@ -62,3 +92,7 @@ setup.dashboards.enabled: true
 setup.kibana.host: "contrax-kibana"
 setup.kibana.protocol: "http"
 #setup.kibana.path: "${DOCKER_KIBANA_BASE_PATH}"
+
+logging.level: info
+logging.to_files: true
+logging.to_syslog: false

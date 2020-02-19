@@ -35,13 +35,15 @@ RUN echo "deb mirror://mirrors.ubuntu.com/mirrors.txt bionic main restricted uni
 	locale-gen --purge  en_US en_US.UTF-8 && \
 	echo -e \'LANG="en_US.UTF-8"\nLANGUAGE="en_US:en"\n\' > /etc/default/locale && \
 	npm -g install yuglify && \
+	apt-get install -y git && \
+	apt-get install -y curl && \
+	apt-get install -y htop && \
 	virtualenv -p /usr/bin/python3 /contraxsuite_services/venv && chmod ug+x /contraxsuite_services/venv/bin/activate && \
 	. /contraxsuite_services/venv/bin/activate && python --version && pip install -r /contraxsuite_services/python-requirements-additional.txt && pip install -r /contraxsuite_services/deploy/base/python-requirements-all.txt && pip uninstall -y -r /contraxsuite_services/deploy/base/python-unwanted-requirements.txt && deactivate && \
 	if [ -f  /contraxsuite_services/deploy/base/customer-requirements.txt ]; then \
     . /contraxsuite_services/venv/bin/activate && \
     pip install -r /contraxsuite_services/deploy/base/customer-requirements.txt && deactivate; fi && \
     . /contraxsuite_services/venv/bin/activate && python -m nltk.downloader averaged_perceptron_tagger punkt stopwords words maxent_ne_chunker wordnet && deactivate && \
-    apt-get install -y curl && \
     cat /build.info && cat /build.uuid && ls /static -l && \
     apt-get install -y tesseract-ocr tesseract-ocr-eng tesseract-ocr-ita tesseract-ocr-fra tesseract-ocr-spa tesseract-ocr-deu tesseract-ocr-rus && \
     apt-get purge -y gcc-5 build-essential linux-headers* && \
@@ -55,5 +57,8 @@ RUN echo "deb mirror://mirrors.ubuntu.com/mirrors.txt bionic main restricted uni
 	chmod +x /usr/bin/tini
 
 RUN echo $(date) > /build.date
+
+# should match SHARED_USER_ID and name in setenv.sh
+RUN adduser -u 82 --disabled-password --gecos "" contraxsuite_docker_user
 
 ENTRYPOINT ["/usr/bin/tini", "--"]

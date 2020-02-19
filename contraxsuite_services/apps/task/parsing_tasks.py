@@ -25,22 +25,24 @@
 # -*- coding: utf-8 -*-
 
 from subprocess import CalledProcessError
-from typing import Any, List
+from typing import Any, List, Optional
 
 import tabula
 from pandas import DataFrame
 
 import settings
+from apps.document.app_vars import TIKA_PARSE_MODE
+from apps.task.utils.marked_up_text import MarkedUpText
+from apps.task.utils.text_extraction.tika.tika_parsing_wrapper import tika_parsing_wrapper
 from apps.task.utils.text_extraction.xml_wordx.xml_wordx_extractor import XmlWordxExtractor
 from apps.task.utils.text_extraction.textract import textract2text
-from apps.task.utils.text_extraction.tika import parametrized_tika_parser
 from apps.common.log_utils import ProcessLogger
 from traceback import format_exc
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2019, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.4.0/LICENSE"
-__version__ = "1.4.0"
+__copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.5.0/LICENSE"
+__version__ = "1.5.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -72,17 +74,20 @@ class ParsingTaskParams:
 class DocumentParsingResults:
 
     def __init__(self,
-                 text: str = None,
-                 parser: str = None,
+                 text: Optional[MarkedUpText] = None,
+                 parser: Optional[str] = None,
                  metadata: Any = None,
-                 tables: List[DataFrame] = None):
+                 tables: Optional[List[DataFrame]] = None):
         self.text = text
         self.parser = parser
         self.metadata = metadata
         self.tables = tables
 
     def is_empty(self):
-        return not self.text
+        return not self.text or not self.text.text
+
+    def get_text(self):
+        return self.text.text if self.text else ''
 
 
 class BaseDocumentParser:
@@ -116,6 +121,8 @@ class BaseDocumentParser:
 
 
 class TikaDocumentParser(BaseDocumentParser):
+    METADATA_OLD_NEW_KEY = {'dc:title': 'title'}
+
     def __init__(self):
         super().__init__()
 
@@ -146,24 +153,30 @@ class TikaDocumentParser(BaseDocumentParser):
                 if ptrs.logger:
                     ptrs.logger.info(f'TIKA server endpoint: {tika_server_endpoint}')
                 # call Tika as server
-                data = parametrized_tika_parser.parse_file_on_server(
+                data = tika_parsing_wrapper.parse_file_on_server(
                     'all', ptrs.file_path, tika_server_endpoint,
                     enable_ocr=ptrs.enable_ocr)
             else:
                 # or execute Tika jar
-                data = parametrized_tika_parser.parse_file_local(
+                parse_function = tika_parsing_wrapper.parse_file_local_xhtml \
+                    if TIKA_PARSE_MODE.val == 'xhtml' else tika_parsing_wrapper.parse_file_local_plain_text
+
+                data = parse_function(
                     local_path=ptrs.file_path,
                     original_file_name=ptrs.original_file_name,
                     timeout=timeout,
                     logger=ptrs.logger,
                     enable_ocr=ptrs.enable_ocr)
 
-            parsed = data.get('content')
-            metadata = data.get('metadata')
-            if parsed and len(parsed) >= 100:
-                self.parse_pdf_tables(ptrs)
-                return DocumentParsingResults(
-                    parsed, 'tika', metadata, self.tables)
+            if data and len(data.text) >= 100:
+                if data.tables:
+                    self.tables = [t.serialize_in_dataframe(data.text) for t in data.tables]
+                else:
+                    self.parse_pdf_tables(ptrs)
+                pars_result = DocumentParsingResults(
+                    data, 'tika', data.meta, self.tables)
+                self.post_process_metadata(pars_result)
+                return pars_result
             else:
                 ptrs.logger.error('TIKA returned too small text for file: ' +
                                   ptrs.original_file_name)
@@ -175,6 +188,21 @@ class TikaDocumentParser(BaseDocumentParser):
             if ptrs.propagate_exceptions:
                 raise ex
             return DocumentParsingResults()
+
+    @staticmethod
+    def post_process_metadata(result: DocumentParsingResults) -> None:
+        """
+        Unify some parameter names in metadata
+        """
+        if not result.metadata:
+            return
+        for old_key in TikaDocumentParser.METADATA_OLD_NEW_KEY:
+            if old_key not in result.metadata:
+                continue
+            new_key = TikaDocumentParser.METADATA_OLD_NEW_KEY[old_key]
+            if new_key not in result.metadata:
+                result.metadata[new_key] = result.metadata[old_key]
+                del result.metadata[old_key]
 
 
 class TextractDocumentParser(BaseDocumentParser):
@@ -189,7 +217,7 @@ class TextractDocumentParser(BaseDocumentParser):
             text = textract2text(ptrs.file_path, ext=ptrs.ext)
             self.parse_pdf_tables(ptrs)
             return DocumentParsingResults(
-                text, 'textract', None, self.tables)
+                MarkedUpText(text), 'textract', None, self.tables)
         except Exception as ex:
             if ptrs.logger:
                 ptrs.logger.error('Caught exception while trying to parse file '
@@ -219,8 +247,8 @@ class XmlWordxDocumentParser(BaseDocumentParser):
                                  ptrs.original_file_name)
 
             return DocumentParsingResults(
-                xtractor.parse_file(ptrs.file_path), 'msword', None,
-                xtractor.tables)
+                MarkedUpText(xtractor.parse_file(ptrs.file_path)),
+                'msword', None, xtractor.tables)
         except Exception as ex:
             if ptrs.logger:
                 ptrs.logger.info('Caught exception while trying to parse file '
@@ -255,7 +283,7 @@ class PlainTextDocumentParser(BaseDocumentParser):
                 enc_data = chardet.detect(bytes)
                 if enc_data['confidence'] > 0.9:
                     txt = bytes.decode(enc_data['encoding'])
-                    rst = DocumentParsingResults(text=txt, parser='plain text')
+                    rst = DocumentParsingResults(text=MarkedUpText(txt), parser='plain text')
                     return rst
         except Exception as ex:
             if ptrs.logger:

@@ -28,17 +28,16 @@ from apps.common.singleton import Singleton
 from apps.project.models import Project
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2019, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.4.0/LICENSE"
-__version__ = "1.4.0"
+__copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.5.0/LICENSE"
+__version__ = "1.5.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
 
 @Singleton
 class ProjectRepository:
-    def get_projects_by_doc_type_qs(self,
-                                    document_type):
-        queryset=Project.objects.filter(document_type=document_type) if document_type \
+    def get_projects_by_doc_type_qs(self, document_type):
+        queryset = Project.objects.filter(document_type=document_type) if document_type \
             else Project.objects.filter()
         return queryset

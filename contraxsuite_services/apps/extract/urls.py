@@ -40,9 +40,9 @@ from apps.extract.models import (
     RegulationUsage, TermUsage, TrademarkUsage, UrlUsage)
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2019, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.4.0/LICENSE"
-__version__ = "1.4.0"
+__copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.5.0/LICENSE"
+__version__ = "1.5.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -145,6 +145,17 @@ urlpatterns += [
         r'^geo-entity-usage-map/$',
         views.GeoEntityUsageGoogleMapView.as_view(),
         name='geo-entity-usage-map',
+    ),
+    url(
+        r'^term-usage-sync/$',
+        views.TopTermUsageSyncView.as_view(),
+        name='term-usage-sync'
+    ),
+
+    url(
+        r'^top-document-term-usage-list/$',
+        views.DocumentTopTermUsageListView.as_view(),
+        name='top-document-term-usage-list',
     ),
 
 ]

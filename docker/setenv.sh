@@ -40,12 +40,21 @@ export DOCKER_HOST_NAME_RABBITMQ=contrax-rabbitmq
 export DOCKER_HOST_NAME_ELASTICSEARCH=contrax-elasticsearch
 export DOCKER_HOST_NAME_UWSGI=contrax-uwsgi
 export DOCKER_HOST_NAME_KIBANA=contrax-kibana
+export DOCKER_HOST_NAME_ELASTALERT_SERVER=contrax-elastalert
+export DOCKER_ELASTALERT_SERVER_PORT=3030
+export DOCKER_ELASTALERT_EMAIL_SSL=False
 
+
+export DOCKER_ELASTICSEARCH_REPLICAS=1
+export DOCKER_ELASTICSEARCH_PORT=9200
+
+export DOCKER_PG_REPLICAS=1
 export DOCKER_PG_USER=contrax1
 export DOCKER_PG_PASSWORD=contrax1
 export DOCKER_PG_DB_NAME=contrax1
 export DOCKER_PG_MAX_BACKUP_NUMBER=3
 
+export DOCKER_RABBITMQ_REPLICAS=1
 export DOCKER_RABBITMQ_VHOST=contrax1_vhost
 export DOCKER_RABBITMQ_USER=contrax1
 export DOCKER_RABBITMQ_PASSWORD=contrax1
@@ -96,10 +105,12 @@ export DOCKER_FLOWER_BASE_PATH=flower
 export DOCKER_HOST_NAME_FLOWER=contrax-flower
 export FLOWER_REPLICAS=0
 
+
+
+# Must match user id/name in Dockerfile
 # This is required to be the same user id as WebDAV storage reads/writes with.
 # For bytemark/webdav:2.4 its id is 82
 export SHARED_USER_ID=82
-
 export SHARED_USER_NAME=contraxsuite_docker_user
 
 export SHARED_USER_LOG_READER_ID=65431
@@ -128,8 +139,10 @@ export DOCKER_JUPYTER_CPUS=$(( ${CPU_CORES}/5  ))
 export DOCKER_JUPYTER_MEMORY=$(( ${RAM_MB}/5  ))M
 export DOCKER_FLOWER_CPUS=1
 export DOCKER_FLOWER_MEMORY=2G
-export DOCKER_ELASTICSEARCH_CPU=2
+export DOCKER_ELASTICSEARCH_CPUS=2
 export DOCKER_ELASTICSEARCH_MEMORY=4G
+export DOCKER_ELASTALERT_CPU=1
+export DOCKER_ELASTALERT_MEMORY=2G
 export DOCKER_TIKA_CPU=2
 export DOCKER_TIKA_MEMORY=4G
 
@@ -139,6 +152,19 @@ export DISTR_DEPLOY_SCRIPTS_URL=
 export DISTR_USER=
 export DISTR_PASSWORD=
 
+
+export DOCKER_MINIO_BASE_URL=/minio
+export DOCKER_MINIO_HOST_NAME=contrax-minio
+export DOCKER_MINIO_PORT=9000
+
+export DOCKER_MLFLOW_TRACKING_BASE_URL=/mlflow_tracking
+export DOCKER_MLFLOW_TRACKING_HOST_NAME=contrax-mlflow-tracking
+export DOCKER_MLFLOW_TRACKING_PORT=5000
+
+export MLFLOW_S3_ENDPOINT_URL=http://contrax-minio:9000
+export MLFLOW_AWS_BUCKET=contraxmlflowartifacts
+export MLFLOW_AWS_ACCESS_KEY=${DOCKER_DJANGO_ADMIN_NAME}
+export MLFLOW_AWS_SECRET_KEY=${DOCKER_DJANGO_ADMIN_PASSWORD}
 
 export DOCKER_BUILD_FLAGS=
 

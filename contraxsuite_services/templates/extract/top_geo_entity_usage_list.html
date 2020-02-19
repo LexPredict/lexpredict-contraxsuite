@@ -10,23 +10,21 @@
   <script type="text/javascript">
     $(document).ready(function () {
       var datafields = [
-        { name: 'name', type: 'string' },
-        { name: 'category', type: 'string' },
+        { name: 'entity__name', type: 'string' },
+        { name: 'entity__category', type: 'string' },
         { name: 'count', type: 'int' },
         { name: 'url', type: 'string' }
       ];
       var columns = [
-        { text: 'Entity Name', datafield: 'name', width: '34%',
+        { text: 'Entity Name', datafield: 'entity__name', width: '34%',
           align: 'center', cellsalign: 'center',
           cellsrenderer: defaultLinkFormatter },
-        { text: 'Entity Category', datafield: 'category', width: '33%',
+        { text: 'Entity Category', datafield: 'entity__category', width: '33%',
           align: 'center', cellsalign: 'center' },
         { text: 'Count', datafield: 'count', width: '33%',
           align: 'center', cellsalign: 'center' }
       ];
-      // DISABLED server-side pagination because filtering/sorting on server-side
-      // IS NOT IMPLEMENTED
-      draw_grid(".jqxgrid", datafields, columns, false);
+      draw_grid(".jqxgrid", datafields, columns, true);
     });
   </script>
 {% endblock %}

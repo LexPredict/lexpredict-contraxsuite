@@ -7,6 +7,13 @@
 </li>
 <li class="dropdown-item">
     <a class="task" href="#"
+       data-href="{% url "similarity:similarity_by_features" %}"
+       data-btn-text="Search">
+        <i class="fa fa-copy"></i>
+        Similarity: Identify Similar Documents/Text Units Based on Extracted Features</a>
+</li>
+<li class="dropdown-item">
+    <a class="task" href="#"
        data-href="{% url "similarity:chunk_similarity" %}"
        data-btn-text="Search">
         <i class="fa fa-copy"></i>

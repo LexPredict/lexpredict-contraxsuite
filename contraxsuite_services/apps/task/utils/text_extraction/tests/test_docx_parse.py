@@ -24,16 +24,17 @@
 """
 # -*- coding: utf-8 -*-
 
+from tests.django_test_case import *
 import os
 from unittest import TestCase
 
+from apps.task.utils.text_extraction.tika.tika_parsing_wrapper import TikaParsingWrapper
 from tests.testutils import TEST_RESOURCE_DIRECTORY
-from apps.task.utils.text_extraction.tika import TikaParametrizedParser
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2019, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.4.0/LICENSE"
-__version__ = "1.4.0"
+__copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.5.0/LICENSE"
+__version__ = "1.5.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -42,6 +43,6 @@ class TestDocxParse(TestCase):
     def test_parse_table_tex_tika(self):
         file_path = os.path.join(TEST_RESOURCE_DIRECTORY,
                                  'documents/parsing/word_table.docx')
-        parser = TikaParametrizedParser()
-        text_tika = parser.parse_file_local(file_path, 'word_table.docx')
+        parser = TikaParsingWrapper()
+        text_tika = parser.parse_file_local_plain_text(file_path, 'word_table.docx')
         self.assertIsNotNone(text_tika)

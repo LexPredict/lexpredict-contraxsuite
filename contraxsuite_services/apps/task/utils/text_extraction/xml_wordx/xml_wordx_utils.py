@@ -24,14 +24,14 @@
 """
 # -*- coding: utf-8 -*-
 
-from typing import Any, List
+from typing import Any, List, Optional
 
 import regex as re
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2019, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.4.0/LICENSE"
-__version__ = "1.4.0"
+__copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.5.0/LICENSE"
+__version__ = "1.5.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -140,3 +140,25 @@ class NumberConverter:
         a = num // NumberConverter.chars_count
         b = num % NumberConverter.chars_count
         return chr(ord(start) + a - 1) + chr(ord(start) + b)
+
+    @staticmethod
+    def roman_to_int(text: str) -> Optional[int]:
+        """ Convert a Roman numeral to an integer. """
+        text = text.upper()
+        nums = {'M': 1000, 'D': 500, 'C': 100, 'L': 50, 'X': 10, 'V': 5, 'I': 1}
+        num_sum = 0
+        for i in range(len(text)):
+            try:
+                value = nums[text[i]]
+                # If the next place holds a larger number, this value is negative
+                if i + 1 < len(text) and nums[text[i + 1]] > value:
+                    num_sum -= value
+                else:
+                    num_sum += value
+            except KeyError:
+                return None
+        # easiest test for validity...
+        if NumberConverter.int_to_roman(num_sum) == text:
+            return num_sum
+        else:
+            return None

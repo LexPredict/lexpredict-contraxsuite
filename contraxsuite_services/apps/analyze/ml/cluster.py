@@ -38,9 +38,9 @@ from apps.document.models import Document, TextUnit
 from apps.analyze.ml.features import DocumentFeatures, TextUnitFeatures
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2019, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.4.0/LICENSE"
-__version__ = "1.4.0"
+__copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.5.0/LICENSE"
+__version__ = "1.5.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -48,7 +48,7 @@ __email__ = "support@contraxsuite.com"
 class ClusterEngine:
     """
     Base class to configure Cluster algorithm with default options
-    and callable methods depending of algorighm class itself
+    and callable methods depending of algorithm class itself
     :Example:
         >>> engine_wrapper = Birch()
         >>> clustering = engine_wrapper(
@@ -62,7 +62,7 @@ class ClusterEngine:
 
     def __init__(self):
         """
-        Inject class instance instance attributes to return after clustering
+        Inject class instance attributes to return after clustering
         """
         self.cluster_labels = None
         self.cluster_label_set = None
@@ -238,7 +238,7 @@ class ClusterDocuments:
     :Example:
         >>> model = ClusterDocuments(project_id=29, cluster_algorithm='birch', n_clusters=3, some_param=some_val)
         >>> clustering = model.run()
-        >>> clustering.cluster_data
+        >>> clustering.metadata
 
     """
     features_model = DocumentFeatures
@@ -314,7 +314,7 @@ class ClusterDocuments:
         self.start_date = datetime.datetime.now()
 
         # Get term frequency matrix and indexes
-        feature_data = self.features_model(
+        feature_obj = self.features_model(
             queryset=self.queryset,
             project_id=self.project_id,
             feature_source=self.cluster_by,
@@ -322,8 +322,8 @@ class ClusterDocuments:
 
         # Run cluster model - the magic is here!
         clustering = self.engine_wrapper(
-            features=feature_data.term_frequency_matrix,
-            term_index=feature_data.feature_names,
+            features=feature_obj.feature_df,
+            term_index=feature_obj.feature_names,
             use_tfidf=self.use_tfidf,
             **self.cluster_options)
 
@@ -339,8 +339,8 @@ class ClusterDocuments:
             clusters_data=dict(),
             points_data=list(),
             cluster_obj_ids=list(),
-            unclustered_item_ids=feature_data.unqualified_item_ids,
-            unclustered_item_names=feature_data.unqualified_item_names,
+            unclustered_item_ids=feature_obj.unqualified_item_ids,
+            unclustered_item_names=feature_obj.unqualified_item_names,
         )
 
         # TODO: consider some unification here to avoid duplication
@@ -351,12 +351,12 @@ class ClusterDocuments:
         all_points_data = metadata['points_data']
         # collect per-cluster points data to store in Cluster db object
         cluster_items_points_data = dict()
-        item_names = feature_data.item_names
+        item_names = feature_obj.item_names
 
         if clustering.data2d is not None:
             if item_names is None:
-                item_names = feature_data.item_index
-            mapped_vals = zip(clustering.cluster_labels, feature_data.item_index, item_names, clustering.data2d)
+                item_names = feature_obj.item_index
+            mapped_vals = zip(clustering.cluster_labels, feature_obj.item_index, item_names, clustering.data2d)
             for cluster_label_id, item_id, item_name, coord in mapped_vals:
                 item_data = dict(coord=coord.tolist(), cluster_id=cluster_label_id)
                 item_data[self.point_item_name_field] = item_name
@@ -375,7 +375,7 @@ class ClusterDocuments:
         for n, cluster_label_id in enumerate(clustering.cluster_label_set):
 
             # Lookup doc-id in index
-            cluster_item_id_list = [feature_data.item_index[n] for n, label in enumerate(clustering.cluster_labels)
+            cluster_item_id_list = [feature_obj.item_index[n] for n, label in enumerate(clustering.cluster_labels)
                                     if label == cluster_label_id]
 
             cluster_terms = clustering.cluster_terms[n] if clustering.cluster_terms else None

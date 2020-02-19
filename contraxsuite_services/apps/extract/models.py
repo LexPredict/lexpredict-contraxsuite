@@ -30,9 +30,9 @@ from django.db.models.signals import post_save, pre_delete, post_delete
 from django.dispatch import receiver
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2019, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.4.0/LICENSE"
-__version__ = "1.4.0"
+__copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.5.0/LICENSE"
+__version__ = "1.5.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -42,6 +42,17 @@ class Usage(models.Model):
     Base usage model
     """
     text_unit = models.ForeignKey('document.TextUnit', db_index=True, on_delete=CASCADE)
+    count = models.IntegerField(null=False, default=0, db_index=True)
+
+    class Meta:
+        abstract = True
+
+
+class DocumentUsage(models.Model):
+    """
+    Base usage model on document level
+    """
+    document = models.ForeignKey('document.Document', db_index=True, on_delete=CASCADE)
     count = models.IntegerField(null=False, default=0, db_index=True)
 
     class Meta:
@@ -111,8 +122,25 @@ class TermUsage(Usage):
         ordering = ['-count']
 
     def __str__(self):
-        return "TermUsage (term={0}, text_unit={1}, count={2})" \
+        return "DocumentTermUsage (term={0}, text_unit={1}, count={2})" \
             .format(self.term, self.text_unit, self.count)
+
+
+class DocumentTermUsage(DocumentUsage):
+    """
+    Legal term/dictionary usage
+    """
+    term = models.ForeignKey(Term, db_index=True, on_delete=CASCADE)
+
+    class Meta:
+        unique_together = (("document", "term"),)
+        # Warning: ordering on non-indexed fields or on multiple fields in joined tables
+        # catastrophically slows down queries on large tables
+        ordering = ['-count']
+
+    def __str__(self):
+        return "TermUsage (term={0}, document={1}, count={2})" \
+            .format(self.term, self.document, self.count)
 
 
 class GeoEntity(models.Model):

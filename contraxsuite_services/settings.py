@@ -395,6 +395,11 @@ CELERY_BEAT_SCHEDULE = {
         'schedule': 10.0,
         'options': {'queue': CELERY_QUEUE_SERIAL, 'expires': 10},
     },
+    'advanced_celery.track_failed_tasks': {
+        'task': task_names.TASK_NAME_TRACK_FAILED_TASKS,
+        'schedule': 10.0,
+        'options': {'queue': CELERY_QUEUE_SERIAL, 'expires': 10},
+    },
     'advanced_celery.clean_tasks_periodic': {
         'task': task_names.TASK_NAME_CLEAN_TASKS_PERIODIC,
         'schedule': 60.0,
@@ -449,6 +454,7 @@ CELERY_BEAT_SCHEDULE = {
 
 EXCLUDE_FROM_TRACKING = {
     task_names.TASK_NAME_TRACK_TASKS,
+    task_names.TASK_NAME_TRACK_FAILED_TASKS,
     task_names.TASK_NAME_TRACK_SESSION_COMPLETED,
     task_names.TASK_NAME_UPDATE_MAIN_TASK,
     task_names.TASK_NAME_UPDATE_PARENT_TASK,
@@ -476,6 +482,7 @@ CELERY_CHORD_UNLOCK_DELAY_BETWEEN_RETRIES_IN_SEC = 3
 
 CELERY_TASK_ACKS_LATE = True
 CELERY_TASK_REJECT_ON_WORKER_LOST = True
+CELERY_WORKER_PREFETCH_MULTIPLIER = 1
 
 # this needed on production. check
 CELERY_IMPORTS = ('apps.task.tasks',)
@@ -513,6 +520,13 @@ ELASTICSEARCH_CONFIG = {
     'hosts': [{'host': '127.0.0.1', 'port': 9200}],
     'index': 'contraxsuite'
 }
+
+# can be set to something like /anaconda3/bin/conda if needed to override conda env var used by mlflow
+MLFLOW_S3_ENDPOINT_URL = 'http://localhost:19000'
+MLFLOW_PIP_ENV = None
+MLFLOW_LOGGER_NAME = 'apps.task.tasks'
+AWS_ACCESS_KEY_ID = 'minio_access_key'
+AWS_SECRET_ACCESS_KEY = 'minio_secret_key'
 
 # django-ckeditor
 CKEDITOR_CONFIGS = {
@@ -590,6 +604,7 @@ REST_FRAMEWORK = {
 REST_AUTH_SERIALIZERS = {
     'TOKEN_SERIALIZER': 'apps.users.authentication.TokenSerializer',
     'PASSWORD_CHANGE_SERIALIZER': 'apps.users.authentication.CustomPasswordChangeSerializer',
+    'PASSWORD_RESET_CONFIRM_SERIALIZER': 'apps.users.authentication.CustomPasswordResetConfirmSerializer',
 }
 
 # rest auth token settings
@@ -773,7 +788,7 @@ NOTEBOOK_ARGUMENTS = [
 # CORS_ALLOW_CREDENTIALS = False
 # CORS_URLS_REGEX = r'^.*$'
 
-VERSION_NUMBER = '1.4.0'
+VERSION_NUMBER = '1.5.0'
 VERSION_COMMIT = 'cdd28414'
 
 NOTIFICATION_EMBEDDED_TEMPLATES_PATH = 'apps/notifications/notification_templates'

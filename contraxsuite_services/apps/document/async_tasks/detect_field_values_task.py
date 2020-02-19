@@ -26,7 +26,6 @@
 
 from billiard.exceptions import SoftTimeLimitExceeded
 from celery import shared_task
-from django.db.models import Subquery
 from psycopg2._psycopg import InterfaceError, OperationalError
 
 import settings
@@ -36,9 +35,9 @@ from apps.document.models import DocumentType, Document
 from apps.task.tasks import BaseTask, ExtendedTask, call_task_func, CeleryTaskLogger
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2019, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.4.0/LICENSE"
-__version__ = "1.4.0"
+__copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.5.0/LICENSE"
+__version__ = "1.5.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -63,7 +62,9 @@ class DetectFieldValues(BaseTask):
         from apps.rawdb.tasks import auto_reindex_not_tracked
         doc_type_code = document_type.code \
             if document_type and hasattr(document_type, 'code') else None
-        call_task_func(auto_reindex_not_tracked, (doc_type_code,), None,
+        call_task_func(auto_reindex_not_tracked,
+                       (doc_type_code,),
+                       None,
                        queue=settings.CELERY_QUEUE_SERIAL,
                        run_after_sub_tasks_finished=True,
                        main_task_id=self.request.id)
@@ -71,7 +72,7 @@ class DetectFieldValues(BaseTask):
         document_id = kwargs.get('document_id')
         if document_id:
             self.set_push_steps(1)
-            dcptrs = DocDetectFieldValuesParams(document_id, False, True)
+            dcptrs = DocDetectFieldValuesParams(document_id, False, kwargs.get('clear_old_values') or True)
             self.run_sub_tasks('Detect Field Values For Single Document',
                                DetectFieldValues.detect_field_values_for_document,
                                [(dcptrs,)])
@@ -100,16 +101,11 @@ class DetectFieldValues(BaseTask):
         elif document_type_pks:
             qs = qs.filter(document_type_id__in=document_type_pks)
 
-        # filter out modified documents
-        import apps.document.repository.document_field_repository as dfr
-        field_repo = dfr.DocumentFieldRepository()
-
-        if do_not_run_for_modified_documents:
-            modified_document_ids = field_repo.get_removed_fieldvals_doc_ids()
-            qs = qs.exclude(pk__in=Subquery(modified_document_ids))
-
         for doc_id, source, name in qs.values_list('id', 'source', 'name'):
-            dcptrs = DocDetectFieldValuesParams(doc_id, do_not_write, True)
+            dcptrs = DocDetectFieldValuesParams(doc_id,
+                                                do_not_write,
+                                                kwargs.get('clear_old_values') or True,
+                                                skip_modified_values=do_not_run_for_modified_documents)
             detect_field_values_for_document_args.append((dcptrs,))
             if source:
                 source_data.append('{0}/{1}'.format(source, name))
@@ -147,7 +143,8 @@ class DetectFieldValues(BaseTask):
                                                         changed_by_user=task.task.user,
                                                         save=not detect_ptrs.do_not_write,
                                                         clear_old_values=detect_ptrs.clear_old_values,
-                                                        updated_field_codes=detect_ptrs.updated_field_codes)
+                                                        updated_field_codes=detect_ptrs.updated_field_codes,
+                                                        skip_modified_values=detect_ptrs.skip_modified_values)
 
         task.log_info(f'Detected {len(dfvs)} field values for document ' +
                       f'#{detect_ptrs.document_id} ({doc.name})')

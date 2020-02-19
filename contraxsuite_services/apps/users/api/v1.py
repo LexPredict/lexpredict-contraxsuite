@@ -24,8 +24,13 @@
 """
 # -*- coding: utf-8 -*-
 
+from django.conf.urls import url
+
 # Third-party imports
-from rest_framework import routers, viewsets, serializers
+import coreapi
+import coreschema
+from rest_framework import routers, viewsets, serializers, views, schemas
+from rest_framework.response import Response
 
 # Project imports
 from apps.common.api.permissions import ReviewerReadOnlyPermission
@@ -33,9 +38,9 @@ from apps.common.mixins import JqListAPIMixin, SimpleRelationSerializer
 from apps.users.models import User, Role
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2019, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.4.0/LICENSE"
-__version__ = "1.4.0"
+__copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.5.0/LICENSE"
+__version__ = "1.5.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -101,6 +106,40 @@ class UserViewSet(JqListAPIMixin, viewsets.ModelViewSet):
     permission_classes = (ReviewerReadOnlyPermission,)
 
 
+class VerifyAuthTokenAPIView(views.APIView):
+
+    authentication_classes = []
+    permission_classes = []
+    http_method_names = ['post']
+
+    @property
+    def schema(self):
+        fields = [
+            coreapi.Field(
+                "auth_token",
+                required=True,
+                location="form",
+                schema=coreschema.String(max_length=40),
+            )]
+        return schemas.ManualSchema(fields=fields)
+
+    def post(self, request, *args, **kwargs):
+        auth_token = request.POST.get('auth_token') or request.data.get('auth_token')
+        from apps.users.authentication import CookieAuthentication
+
+        try:
+            CookieAuthentication().authenticate_credentials(auth_token)
+        except Exception as e:
+            raise e
+
+        return Response()
+
+
 router = routers.DefaultRouter()
 router.register(r'users', UserViewSet, 'user')
 router.register(r'roles', RoleViewSet, 'role')
+
+
+urlpatterns = [
+    url(r'verify-token/$', VerifyAuthTokenAPIView.as_view(), name='verify-token'),
+]

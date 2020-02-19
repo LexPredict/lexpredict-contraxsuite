@@ -43,9 +43,9 @@ from apps.task.views import BaseAjaxTaskView
 import apps.common.mixins
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2019, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.4.0/LICENSE"
-__version__ = "1.4.0"
+__copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.5.0/LICENSE"
+__version__ = "1.5.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -104,7 +104,7 @@ class ProvisionListView(apps.common.mixins.JqPaginatedListView):
         if "employee__pk" in self.request.GET:
             qs = qs.filter(employee__pk=self.request.GET['employee__pk'])
         if "type" in self.request.GET:
-            qs = qs.filter(type= self.request.GET['type'])
+            qs = qs.filter(type=self.request.GET['type'])
         return qs.select_related('text_unit', 'text_unit__textunittext')
 
 

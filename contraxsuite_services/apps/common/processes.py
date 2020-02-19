@@ -24,16 +24,19 @@
 """
 # -*- coding: utf-8 -*-
 
+import asyncio
+import os
 import subprocess
 import sys
+import time
 from io import StringIO
 from threading import Thread
 from typing import List, Callable, TextIO, Optional
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2019, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.4.0/LICENSE"
-__version__ = "1.4.0"
+__copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.5.0/LICENSE"
+__version__ = "1.5.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -50,8 +53,11 @@ class ProcessReturnedErrorCode(Exception):
 
 
 def io_pipe_lines(src: TextIO, dst: Callable[[str], None]):
-    for buf in iter(src.readline, ''):
-        dst(buf)
+    try:
+        for buf in iter(src.readline, ''):
+            dst(buf)
+    except ValueError:
+        pass
 
 
 def exec(cmd: List[str],
@@ -69,12 +75,33 @@ def exec(cmd: List[str],
 
         if stderr:
             Thread(target=io_pipe_lines, args=(ps.stderr, stderr), daemon=True).start()
+
         try:
             return ps.wait(timeout=timeout_sec)
         except subprocess.TimeoutExpired:
             ps.kill()
             ps.wait(timeout=5)
             raise ProcessKilledByTimeout()
+
+
+def start_process(cmd: List[str],
+                  stdout: Callable[[str], None] = None,
+                  stderr: Callable[[str], None] = None,
+                  encoding: str = sys.getdefaultencoding(),
+                  cwd: str = None) -> subprocess.Popen:
+    ps = subprocess.Popen(cmd,
+                          stdout=subprocess.PIPE,
+                          stderr=subprocess.PIPE,
+                          universal_newlines=True,
+                          encoding=encoding,
+                          cwd=cwd)
+    if stdout:
+        Thread(target=io_pipe_lines, args=(ps.stdout, stdout), daemon=True).start()
+
+    if stderr:
+        Thread(target=io_pipe_lines, args=(ps.stderr, stderr), daemon=True).start()
+
+    return ps
 
 
 def read_output(cmd: List[str],
@@ -110,3 +137,41 @@ def read_output(cmd: List[str],
                                        f'{stderr.getvalue()}')
     else:
         return stdout.getvalue()
+
+
+async def async_read_pipe(pipe, dst: Callable[[str], None]):
+    while True:
+        buf = await pipe.read()
+        if not buf:
+            break
+        dst(buf)
+
+
+async def async_exec(program: str, args: List[str], stdout: Callable[[str], None] = None,
+                     stderr: Callable[[str], None] = None):
+    proc = await asyncio.create_subprocess_exec(program, *args,
+                                                stdin=asyncio.subprocess.PIPE,
+                                                stdout=asyncio.subprocess.PIPE,
+                                                stderr=asyncio.subprocess.PIPE)
+
+    io_tasks = list()
+    if stderr:
+        io_tasks.append(async_read_pipe(proc.stderr, stderr))
+    if stdout:
+        io_tasks.append(async_read_pipe(proc.stdout, stdout))
+
+    if not io_tasks:
+        return await proc.communicate()
+    else:
+        await asyncio.gather(*io_tasks)
+
+
+async def async_wait_for_file(file_path, timeout_interval_sec: float = 30, check_interval_sec: float = 0.3):
+    start = time.time()
+    while True:
+        if time.time() - start > timeout_interval_sec:
+            raise TimeoutError(f'Timeout waiting for file creation: {file_path}')
+        if not os.path.exists(file_path):
+            await asyncio.sleep(check_interval_sec)
+        else:
+            break

@@ -33,9 +33,9 @@ from django.conf.urls import url
 from apps.task import views
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2019, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.4.0/LICENSE"
-__version__ = "1.4.0"
+__copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.5.0/LICENSE"
+__version__ = "1.5.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -68,25 +68,11 @@ urlpatterns = [
         views.LocateTaskView.as_view(),
         name='locate',
     ),
-    url(
-        r'^existed-classifier-classify/$',
-        views.ExistedClassifierClassifyView.as_view(),
-        name='existed-classifier-classify',
-    ),
-    url(
-        r'^create-classifier-classify/$',
-        views.CreateClassifierClassifyView.as_view(),
-        name='create-classifier-classify',
-    ),
+
     url(
         r'^update-elasticsearch-index/$',
         views.UpdateElasticsearchIndexView.as_view(),
         name='update-elasticsearch-index',
-    ),
-    url(
-        r'^total-cleanup/$',
-        views.TotalCleanupView.as_view(),
-        name='total-cleanup',
     ),
 
     url(
@@ -100,16 +86,6 @@ urlpatterns = [
         name='purge-task',
     ),
 
-    url(
-        r'^cluster/$',
-        views.ClusterView.as_view(),
-        name='cluster',
-    ),
-    url(
-        r'^clean-project/$',
-        views.CleanProjectView.as_view(),
-        name='clean-project',
-    ),
     url(
         r'^load-fixtures/$',
         views.LoadFixturesView.as_view(),

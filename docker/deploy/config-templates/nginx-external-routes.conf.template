@@ -72,6 +72,47 @@ location ${DOCKER_JUPYTER_BASE_URL} {
     auth_basic_user_file /etc/nginx/.kibana_htpasswd;
 }
 
+
+# Minio bucket for storing mlflow artifacts
+# Minio is compatible with S3 client API and requires itself to be bound to the root (/) of the server.
+# The following config is a workaround to pass access to "${MLFLOW_AWS_BUCKET}" bucket.
+# A similar entry should be added for each S3 bucket we need to serve.
+location /${MLFLOW_AWS_BUCKET} {
+    set ${DOLLAR}target http://contrax-minio:9000;
+    error_page 502 /404.html;
+    proxy_pass ${DOLLAR}target;
+    proxy_set_header X-Forwarded-For ${DOLLAR}proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto ${DOLLAR}scheme;
+    proxy_set_header X-Real-IP ${DOLLAR}remote_addr;
+    proxy_set_header Upgrade ${DOLLAR}http_upgrade;
+    proxy_set_header Connection 'upgrade';
+    proxy_set_header Host ${DOLLAR}http_host;
+    proxy_cache_bypass ${DOLLAR}http_upgrade;
+    proxy_connect_timeout  300;
+    # Default is HTTP/1, keepalive is only enabled in HTTP/1.1
+    proxy_http_version 1.1;
+    proxy_set_header Connection "";
+}
+
+rewrite ^/mlflow${DOLLAR} /mlflow/ redirect;
+location ~ ^/mlflow/(.*)${DOLLAR} {
+    # workaround to start nginx, if host is unreachable
+    set ${DOLLAR}target http://contrax-mlflow-tracking:5000;
+    error_page 502 /404.html;
+    rewrite /mlflow/(.*) /${DOLLAR}1 break;
+    proxy_pass ${DOLLAR}target;
+    proxy_set_header X-Forwarded-For ${DOLLAR}proxy_add_x_forwarded_for;
+    proxy_set_header X-Real-IP ${DOLLAR}remote_addr;
+    proxy_http_version 1.1;
+    proxy_set_header Upgrade ${DOLLAR}http_upgrade;
+    proxy_set_header Connection 'upgrade';
+    proxy_set_header Host ${DOLLAR}host;
+    proxy_cache_bypass ${DOLLAR}http_upgrade;
+    auth_basic "Contraxsuite";
+    auth_basic_user_file /etc/nginx/.kibana_htpasswd;
+}
+
+
 rewrite ^/kibana$ /kibana/ redirect;
 
 location ~ ^/kibana/(.*)${DOLLAR} {
@@ -86,7 +127,7 @@ location ~ ^/kibana/(.*)${DOLLAR} {
     proxy_set_header Connection 'upgrade';
     proxy_set_header Host ${DOLLAR}host;
     proxy_cache_bypass ${DOLLAR}http_upgrade;
-    auth_basic "Contraxsuite Kibana";
+    auth_basic "Contraxsuite";
     auth_basic_user_file /etc/nginx/.kibana_htpasswd;
 }
 

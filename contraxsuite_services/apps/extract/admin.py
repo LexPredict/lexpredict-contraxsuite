@@ -26,6 +26,7 @@
 
 # Django imports
 from django.contrib import admin
+from django.db.models import F
 
 # Project imports
 from apps.extract.models import (
@@ -33,14 +34,22 @@ from apps.extract.models import (
     DateDurationUsage, DateUsage, DefinitionUsage, DistanceUsage,
     GeoAlias, GeoAliasUsage, GeoEntity, GeoEntityUsage, GeoRelation,
     Party, PartyUsage, PercentUsage, RatioUsage, RegulationUsage,
-    Term, TermUsage, TrademarkUsage, UrlUsage)
+    Term, TermUsage, TrademarkUsage, UrlUsage, DocumentTermUsage)
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2019, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.4.0/LICENSE"
-__version__ = "1.4.0"
+__copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.5.0/LICENSE"
+__version__ = "1.5.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
+
+
+class TextUnitUsageAdminBase(admin.ModelAdmin):
+    raw_id_fields = ('text_unit',)
+
+    def get_queryset(self, request):
+        qs = super().get_queryset(request)
+        return qs.select_related('text_unit', 'text_unit__document', 'text_unit__textunittext')
 
 
 class CourtAdmin(admin.ModelAdmin):
@@ -48,62 +57,66 @@ class CourtAdmin(admin.ModelAdmin):
     search_fields = ('name', 'alias')
 
 
-class CourtUsageAdmin(admin.ModelAdmin):
+class CourtUsageAdmin(TextUnitUsageAdminBase):
     list_display = ('text_unit', 'court', 'count')
     search_fields = ('text_unit__textunittext__text', 'court__name')
 
+    def get_queryset(self, request):
+        qs = super().get_queryset(request)
+        return qs.select_related('court')
 
-class CitationUsageAdmin(admin.ModelAdmin):
+
+class CitationUsageAdmin(TextUnitUsageAdminBase):
     list_display = ('text_unit', 'citation_str', 'count')
     search_fields = ('text_unit__textunittext__text', 'citation_str')
 
 
-class CopyrightUsageAdmin(admin.ModelAdmin):
+class CopyrightUsageAdmin(TextUnitUsageAdminBase):
     list_display = ('text_unit', 'copyright_str', 'count')
     search_fields = ('text_unit__textunittext__text', 'copyright_str')
 
 
-class CurrencyUsageAdmin(admin.ModelAdmin):
+class CurrencyUsageAdmin(TextUnitUsageAdminBase):
     list_display = ('text_unit', 'usage_type', 'currency', 'amount')
     search_fields = ('currency',)
 
 
-class DateDurationUsageAdmin(admin.ModelAdmin):
+class DateDurationUsageAdmin(TextUnitUsageAdminBase):
     list_display = ('text_unit', 'amount', 'amount_str', 'count')
     search_fields = ('amount', 'amount_str')
 
 
-class DateUsageAdmin(admin.ModelAdmin):
+class DateUsageAdmin(TextUnitUsageAdminBase):
     list_display = ('text_unit', 'date', 'format', 'count')
     search_fields = ('date', 'format')
 
 
-class AmountUsageAdmin(admin.ModelAdmin):
+class AmountUsageAdmin(TextUnitUsageAdminBase):
     list_display = ('text_unit', 'amount', 'amount_str', 'count')
     search_fields = ('amount', 'amount_str')
 
 
-class DistanceUsageAdmin(admin.ModelAdmin):
+class DistanceUsageAdmin(TextUnitUsageAdminBase):
     list_display = ('text_unit', 'distance_type', 'amount', 'count')
     search_fields = ('definition',)
 
 
-class PercentUsageAdmin(admin.ModelAdmin):
+class PercentUsageAdmin(TextUnitUsageAdminBase):
     list_display = ('text_unit', 'amount', 'unit_type', 'count')
     search_fields = ('amount', 'unit_type')
 
 
-class RatioUsageAdmin(admin.ModelAdmin):
+class RatioUsageAdmin(TextUnitUsageAdminBase):
     list_display = ('text_unit', 'amount', 'amount2', 'count')
     search_fields = ('amount', 'amount2')
 
 
-class DefinitionUsageAdmin(admin.ModelAdmin):
+class DefinitionUsageAdmin(TextUnitUsageAdminBase):
     list_display = ('text_unit', 'definition', 'count')
     search_fields = ('definition',)
 
 
-class RegulationUsageAdmin(admin.ModelAdmin):
+class RegulationUsageAdmin(TextUnitUsageAdminBase):
     list_display = ('text_unit', 'regulation_name', 'regulation_type', 'count')
     search_fields = ('regulation_name',)
 
@@ -113,9 +126,13 @@ class GeoAliasAdmin(admin.ModelAdmin):
     search_fields = ('alias', 'type')
 
 
-class GeoAliasUsageAdmin(admin.ModelAdmin):
+class GeoAliasUsageAdmin(TextUnitUsageAdminBase):
     list_display = ('text_unit', 'alias', 'count')
     search_fields = ('text_unit__textunittext__text', 'alias__alias')
+
+    def get_queryset(self, request):
+        qs = super().get_queryset(request)
+        return qs.select_related('alias', 'alias__entity')
 
 
 class GeoEntityAdmin(admin.ModelAdmin):
@@ -123,14 +140,22 @@ class GeoEntityAdmin(admin.ModelAdmin):
     search_fields = ('name', 'category')
 
 
-class GeoEntityUsageAdmin(admin.ModelAdmin):
+class GeoEntityUsageAdmin(TextUnitUsageAdminBase):
     list_display = ('text_unit', 'entity', 'count')
     search_fields = ('text_unit__textunittext__text', 'entity__name')
+
+    def get_queryset(self, request):
+        qs = super().get_queryset(request)
+        return qs.select_related('entity')
 
 
 class GeoRelationAdmin(admin.ModelAdmin):
     list_display = ('entity_a', 'entity_b', 'relation_type')
     search_fields = ('entity_a__name', 'entity_b__name', 'relation_type')
+
+    def get_queryset(self, request):
+        qs = super().get_queryset(request)
+        return qs.select_related('entity_a', 'entity_b')
 
 
 class TermAdmin(admin.ModelAdmin):
@@ -138,19 +163,48 @@ class TermAdmin(admin.ModelAdmin):
     search_fields = ('term', 'source', 'definition_url')
 
 
-class TermUsageAdmin(admin.ModelAdmin):
+class TermUsageAdmin(TextUnitUsageAdminBase):
     list_display = ('term', 'count')
     search_fields = ('term', 'count')
 
+    def get_queryset(self, request):
+        qs = admin.ModelAdmin.get_queryset(self, request)
+        qs = qs.only('id', 'text_unit_id', 'count', 'term').select_related('term')
+        return qs
 
-class TrademarkUsageAdmin(admin.ModelAdmin):
+
+class DocumentTermUsageAdmin(admin.ModelAdmin):
+    list_display = ('term', 'document', 'count')
+    search_fields = ('term', 'document')
+
+    def get_queryset(self, request):
+        qs = admin.ModelAdmin.get_queryset(self, request)
+        qs = qs.only('id', 'document_id', 'count', 'term').select_related('term')
+        return qs
+
+
+class TrademarkUsageAdmin(TextUnitUsageAdminBase):
     list_display = ('text_unit', 'trademark', 'count')
     search_fields = ('text_unit__textunittext__text', 'trademark')
 
 
-class UrlUsageAdmin(admin.ModelAdmin):
+class UrlUsageAdmin(TextUnitUsageAdminBase):
     list_display = ('text_unit', 'source_url', 'count')
     search_fields = ('text_unit__textunittext__text', 'source_url')
+
+
+class PartyUsageAdmin(TextUnitUsageAdminBase):
+    list_display = ('text_unit', 'party_name', 'count')
+    search_fields = ('text_unit__textunittext__text', 'party__name')
+
+    @staticmethod
+    def party_name(obj):
+        return obj.party_name
+
+    def get_queryset(self, request):
+        qs = super().get_queryset(request)
+        qs = qs.annotate(party_name=F('party__name'))
+        return qs.select_related('party')
 
 
 admin.site.register(AmountUsage, AmountUsageAdmin)
@@ -169,11 +223,12 @@ admin.site.register(GeoEntity, GeoEntityAdmin)
 admin.site.register(GeoEntityUsage, GeoEntityUsageAdmin)
 admin.site.register(GeoRelation, GeoRelationAdmin)
 admin.site.register(Party)
-admin.site.register(PartyUsage)
+admin.site.register(PartyUsage, PartyUsageAdmin)
 admin.site.register(PercentUsage, PercentUsageAdmin)
 admin.site.register(RatioUsage, RatioUsageAdmin)
 admin.site.register(RegulationUsage, RegulationUsageAdmin)
 admin.site.register(Term, TermAdmin)
 admin.site.register(TermUsage, TermUsageAdmin)
+admin.site.register(DocumentTermUsage, DocumentTermUsageAdmin)
 admin.site.register(TrademarkUsage, TrademarkUsageAdmin)
 admin.site.register(UrlUsage, UrlUsageAdmin)

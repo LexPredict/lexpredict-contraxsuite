@@ -40,9 +40,9 @@ from apps.common.file_storage.file_storage import ContraxsuiteFileStorage, Unabl
 from apps.common.singleton import Singleton
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2019, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.4.0/LICENSE"
-__version__ = "1.4.0"
+__copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.5.0/LICENSE"
+__version__ = "1.5.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -90,8 +90,9 @@ class ContraxsuiteWebDAVFileStorage(ContraxsuiteFileStorage):
             raise Exception(msg)
 
     @classmethod
-    def parse_propfind_response(cls, exclude_path: Optional[str], propfind_xml: str) -> Generator[
-        Tuple[str, bool], None, None]:
+    def parse_propfind_response(cls,
+                                exclude_path: Optional[str],
+                                propfind_xml: str) -> Generator[Tuple[str, bool], None, None]:
         # see tests/webdav_propfind_response_example.xml
         root = ElementTree.fromstring(propfind_xml)  # type: ElementTree.Element
         for response in root:  # type: ElementTree.Element

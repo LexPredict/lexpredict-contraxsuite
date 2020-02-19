@@ -14,9 +14,19 @@ ignore =
     H404,
     # H405: multi line docstring summary not separated with an empty line
     H405,
+    # E722 - bare except
+    E722,
+    # F403
+    F403 - wildcard imports via *
+    # F405,
+    F405 - wildcard imports via *
+    # E501 - line size
+    E501,
+    # W291 - trailing whitespace (usually we have in text strings
+    W291,
 
 # maximum length that any line (with some exceptions) may be
-max-line-length = 100
+max-line-length = 130
 
 # comma-separated list of glob patterns to exclude from checks
 exclude =

@@ -42,9 +42,9 @@ import apps.common.mixins
 from apps.common.models import MethodStats
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2019, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.4.0/LICENSE"
-__version__ = "1.4.0"
+__copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.5.0/LICENSE"
+__version__ = "1.5.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -129,7 +129,7 @@ class DBStatsView(apps.common.mixins.TechAdminRequiredMixin,
                     WHEN p.contype = 'f' THEN g.relname
                 END AS foreignkey,
                 CASE
-                    WHEN f.atthasdef = 't' THEN d.adsrc
+                    WHEN f.atthasdef = 't' THEN pg_get_expr(d.adbin, d.adrelid)
                 END AS default
             FROM pg_attribute f
                 JOIN pg_class c ON c.oid = f.attrelid
@@ -157,7 +157,8 @@ class DBStatsView(apps.common.mixins.TechAdminRequiredMixin,
         sql_indexes = '''
             SELECT
                 indexname,
-                pg_relation_size(quote_ident(indexname)::text) as size
+                pg_relation_size(quote_ident(indexname)::text) as size,
+                indexdef
             FROM
                 pg_indexes
             WHERE

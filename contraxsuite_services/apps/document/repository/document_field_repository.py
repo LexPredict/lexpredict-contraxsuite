@@ -24,7 +24,6 @@
 """
 # -*- coding: utf-8 -*-
 
-import datetime
 import difflib
 from collections import defaultdict
 from typing import List, Dict, Any, Generator, Union, Iterable, Tuple
@@ -34,6 +33,7 @@ from bulk_update.helper import bulk_update
 from django.conf import settings
 from django.db import connection, transaction
 from django.db.models import QuerySet, Q, Subquery, F
+from django.utils.timezone import now
 from rest_framework.exceptions import APIException, NotFound
 
 from apps.common.collection_utils import chunks
@@ -55,9 +55,9 @@ from apps.rawdb.constants import FIELD_CODE_DOC_FULL_TEXT, \
 from apps.users.models import User
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2019, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.4.0/LICENSE"
-__version__ = "1.4.0"
+__copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.5.0/LICENSE"
+__version__ = "1.5.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -234,13 +234,15 @@ class DocumentFieldRepository:
         return data
 
     def get_filtered_field_values_count(self, field_id: int) -> int:
-        user_values_number = FieldAnnotation.filter(field_id=field_id) \
-                                 .filter(Q(modified_by__isnull=False)) \
-                                 .count() + \
-                             FieldAnnotationFalseMatch.filter(field_id=field_id) \
-                                 .filter(Q(modified_by__isnull=False)) \
-                                 .count()
-        return user_values_number
+        fa_count = FieldAnnotation.objects \
+            .filter(field_id=field_id) \
+            .filter(Q(modified_by__isnull=False)) \
+            .count()
+        fm_count = FieldAnnotationFalseMatch.objects \
+            .filter(field_id=field_id) \
+            .filter(Q(modified_by__isnull=False)) \
+            .count()
+        return fa_count + fm_count
 
     def get_doc_field_ids_with_values(self, doc_id: int) -> QuerySet:
         return FieldValue.objects \
@@ -678,6 +680,10 @@ class DocumentFieldRepository:
                     break
 
             if new_annotations:
+                # left unique new_annotations only
+                if len(new_annotations) > 1:
+                    dc = {str((a.value, a.location_start, a.location_end,)): a for a in new_annotations}
+                    new_annotations = list(dc.values())
                 FieldAnnotation.objects.bulk_create(new_annotations)
 
             if not isinstance(typed_field, MultiValueField):
@@ -749,7 +755,11 @@ class DocumentFieldRepository:
 
             field = ant_model.field
             ant_model.delete()
-            FieldAnnotationFalseMatch.objects.bulk_create([FieldAnnotationFalseMatch.make_from_annotation(ant_model)])
+
+            # fail silently if such false match already exists
+            # (f.e. user already deleted such annotation before)
+            FieldAnnotationFalseMatch.objects.bulk_create(
+                [FieldAnnotationFalseMatch.make_from_annotation(ant_model)], ignore_conflicts=True)
 
             typed_field = TypedField.by(field)
 
@@ -954,8 +964,11 @@ class DocumentFieldRepository:
             Document.objects.filter(project__pk=project_pk, pk__in=document_ids) if project_pk \
                 else Document.objects.filter(pk__in=document_ids)
 
-        ret = documents.update(assignee=assignee_id,
-                               assign_date=datetime.datetime.now())
+        ret = documents.update(assignee=assignee_id, assign_date=now())
+
+        FieldAnnotation.objects.filter(document__in=documents) \
+            .update(assignee=assignee_id, assign_date=now())
+
         return ret
 
     def replace_wrong_choice_options(self,
@@ -1128,3 +1141,19 @@ class DocumentFieldRepository:
                     wrong_vals[i] = (doc_name, doc_url, wrong_vals[i][2], wrong_vals[i][3],)
 
         return has_more_values, wrong_vals
+
+    def delete_document_field_values(self,
+                                     document_id: int,
+                                     field_codes_to_skip: List[int] = None,
+                                     field_codes_to_include: List[int] = None) -> None:
+        ants = FieldAnnotation.objects.filter(document_id=document_id)
+        vals = FieldValue.objects.filter(document_id=document_id)
+        if field_codes_to_include:
+            ants = ants.filter(field__code__in=field_codes_to_skip)
+            vals = vals.filter(field__code__in=field_codes_to_skip)
+        if field_codes_to_skip:
+            ants = ants.exclude(field__code__in=field_codes_to_skip)
+            vals = vals.exclude(field__code__in=field_codes_to_skip)
+
+        ants.delete()
+        vals.delete()

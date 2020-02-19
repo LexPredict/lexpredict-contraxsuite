@@ -6,11 +6,6 @@
   <link rel="stylesheet" href="{% static "css/components/radio-checkbox.css" %}" type="text/css" />
 {% endblock %}
 
-{% block content_list_top_addon %}
-  <input class="checkbox-style" id="collapse_aliases" name="collapse_aliases" type="checkbox" disabled="disabled" checked="checked">
-  <label for="collapse_aliases" class="checkbox-style-3-label">Collapse Aliases</label>
-{% endblock %}
-
 {% block js_extra %}
   {{ block.super }}
   <script type="text/javascript">
@@ -19,12 +14,8 @@
         { name: 'text_unit__document__project__name', type: 'string' },
         { name: 'text_unit__document__name', type: 'string' },
         { name: 'text_unit__document__document_type__title', type: 'string' },
-        { name: 'text_unit__document__description', type: 'string' },
         { name: 'entity__name', type: 'string' },
         { name: 'entity__category', type: 'string' },
-        { name: 'alias__alias', type: 'string' },
-        { name: 'alias__locale', type: 'string' },
-        { name: 'alias__type', type: 'string' },
         { name: 'count', type: 'int' },
         { name: 'text_unit__textunittext__text', type: 'string' },
         { name: 'url', type: 'string' },
@@ -51,22 +42,14 @@
           cellsrenderer: defaultLinkFormatter, columngroup: 'Document' },
         { text: 'Type', datafield: 'text_unit__document__document_type__title', width: 100,
           align: 'center', cellsalign: 'center', columngroup: 'Document' },
-        { text: 'Description', datafield: 'text_unit__document__description',
-          width: 200, enabletooltips: true, columngroup: 'Document',
-          align: 'center', cellsalign: 'center' },
         { text: 'Name', datafield: 'entity__name', width: 120,
           align: 'center', cellsalign: 'center', columngroup: 'Entity' },
         { text: 'Category', datafield: 'entity__category', width: 120,
           align: 'center', cellsalign: 'center', columngroup: 'Entity' },
-        { text: 'Name', datafield: 'alias__alias', width: 80,
-          align: 'center', cellsalign: 'center', columngroup: 'Alias' },
-        { text: 'Locale', datafield: 'alias__locale', width: 80,
-          align: 'center', cellsalign: 'center', columngroup: 'Alias' },
-        { text: 'Type', datafield: 'alias__type', width: 80,
-          align: 'center', cellsalign: 'center', columngroup: 'Alias' },
         { text: 'Count', datafield: 'count', width: 60,
           align: 'center', cellsalign: 'center' },
-        { text: 'Text Unit', datafield: 'text_unit__textunittext__text', sortable: false, width: 'auto', minwidth: 200,
+        { text: 'Text Unit', datafield: 'text_unit__textunittext__text',
+          sortable: false, width: 'auto', minwidth: 200,
           align: 'center', cellsalign: 'center' },
         { text: 'Action', datafield: 'url', width: 60,
           align: 'center', exportable: false,
@@ -76,44 +59,13 @@
           buttonclick: menu_renderer }
       ];
       var custom_grid_options = {
-        ready: function(){
-          $('#collapse_aliases').attr('disabled', false);
-        },
         columngroups: [
           { text: 'Document', name: 'Document', align: 'center' },
-          { text: 'Entity', name: 'Entity', align: 'center' },
-          { text: 'Alias', name: 'Alias', align: 'center' }
+          { text: 'Entity', name: 'Entity', align: 'center' }
         ]
       };
+      draw_grid(".jqxgrid", datafields, columns, true, null, custom_grid_options);
 
-      var draw_the_grid = function(){
-        var collapse_aliases = $('#collapse_aliases').is(':checked')
-        if (collapse_aliases) {
-          columns[0].hidden = false;
-          columns[5].hidden = true;
-          columns[6].hidden = true;
-          columns[7].hidden = true;
-        }
-        else {
-          columns[0].hidden = true;
-          columns[5].hidden = false;
-          columns[6].hidden = false;
-          columns[7].hidden = false;
-        }
-        var custom_source_data = {
-          data: { 'collapse_aliases': collapse_aliases },
-          id: null
-        };
-        $(".jqxgrid-container").empty().append($('<div class="jqxgrid col-md-12"></div>'));
-        draw_grid(".jqxgrid", datafields, columns, true, custom_source_data, custom_grid_options);
-      };
-
-      draw_the_grid();
-
-      $('#collapse_aliases').click(function(){
-        $('#collapse_aliases').attr('disabled', true);
-        draw_the_grid()
-      })
     });
   </script>
 {% endblock %}

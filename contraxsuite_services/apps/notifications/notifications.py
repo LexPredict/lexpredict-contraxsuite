@@ -37,7 +37,7 @@ from jinja2 import Template
 
 from apps.common.contraxsuite_urls import doc_editor_url, root_url
 from apps.common.file_storage import get_file_storage
-from apps.common.log_utils import ProcessLogger, render_error
+from apps.common.log_utils import ProcessLogger
 from apps.document.models import Document
 from apps.rawdb.field_value_tables import EmptyDocumentQueryResults
 from apps.rawdb.constants import FIELD_CODE_DOC_NAME, FIELD_CODE_DOC_ID, FIELD_CODE_PROJECT_ID
@@ -47,9 +47,9 @@ from apps.notifications.models import DocumentDigestConfig, DocumentDigestSendDa
     DIGEST_PERIODS_BY_CODE, DOC_FILTERS_BY_CODE
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2019, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.4.0/LICENSE"
-__version__ = "1.4.0"
+__copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.5.0/LICENSE"
+__version__ = "1.5.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -92,11 +92,14 @@ def send_email(log: ProcessLogger, dst_user, subject: str, txt: str, html: str, 
         return
 
     try:
+        from apps.notifications.mail_server_config import MailServerConfig
+        backend = MailServerConfig.make_connection_config()
         email = EmailMultiAlternatives(subject=subject,
                                        body=txt,
                                        cc=list(cc) if cc else None,
                                        from_email=settings.DEFAULT_FROM_EMAIL,
-                                       to=['"{0}" <{1}>'.format(dst_user.get_full_name(), dst_user.email)])
+                                       to=['"{0}" <{1}>'.format(dst_user.get_full_name(), dst_user.email)],
+                                       connection=backend)
         if html:
             images = [m.group(3) for m in RE_SRC_ATTACHMENT.finditer(html)]
             email_html = RE_SRC_ATTACHMENT.sub(r'\1cid:\3\4', html)

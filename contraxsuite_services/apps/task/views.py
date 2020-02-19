@@ -38,26 +38,23 @@ from django.shortcuts import redirect
 from django.urls import reverse
 from django.views.generic.edit import FormView
 
-import apps.common.mixins
 # Project imports
-from apps.analyze.models import TextUnitClassifier
+import apps.common.mixins
+from apps.analyze.models import TextUnitClassifier, DocumentClassifier
 from apps.common.utils import get_api_module
 from apps.deployment.app_data import DICTIONARY_DATA_URL_MAP
 from apps.document.models import DocumentProperty, TextUnitProperty, DocumentType
 from apps.dump.app_dump import get_model_fixture_dump, load_fixture_from_dump, download
+from apps.task.forms import LoadDocumentsForm, LoadFixtureForm, LocateForm,\
+    UpdateElasticSearchForm, DumpFixtureForm, TaskDetailForm
 from apps.project.models import Project
-from apps.task.forms import (
-    LoadDocumentsForm, LocateForm, ExistedClassifierClassifyForm, CreateClassifierClassifyForm,
-    ClusterForm, CleanProjectForm,
-    UpdateElasticSearchForm, TaskDetailForm, TotalCleanupForm,
-    LoadFixtureForm, DumpFixtureForm)
 from apps.task.models import Task
 from apps.task.tasks import call_task, clean_tasks, purge_task, call_task_func, LoadDocuments
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2019, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.4.0/LICENSE"
-__version__ = "1.4.0"
+__copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.5.0/LICENSE"
+__version__ = "1.5.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -124,6 +121,10 @@ class BaseAjaxTaskView(apps.common.mixins.AdminRequiredMixin, apps.common.mixins
         data['user_id'] = request.user.pk
         data['metadata'] = self.get_metadata()
         data['module_name'] = getattr(self, 'module_name', None) or self.__module__.replace('views', 'tasks')
+        data['skip_confirmation'] = request.POST.get('skip_confirmation') or False
+        return self.start_task_and_return(data)
+
+    def start_task_and_return(self, data):
         self.start_task(data)
         return self.json_response('The task is started. It can take a while.')
 
@@ -276,64 +277,9 @@ class LocateTaskView(BaseAjaxTaskView):
         return self.json_response(response_text)
 
 
-class ExistedClassifierClassifyView(BaseAjaxTaskView):
-    task_name = 'Classify'
-    form_class = ExistedClassifierClassifyForm
-
-    def get_metadata(self):
-        return dict(
-            description='classifier:%s' % self.request.POST.get('classifier'),
-            result_links=[{'name': 'View Text Unit Classification Suggestion List',
-                           'link': 'analyze:text-unit-classifier-suggestion-list'}])
-
-
-class CreateClassifierClassifyView(BaseAjaxTaskView):
-    task_name = 'Classify'
-    form_class = CreateClassifierClassifyForm
-    html_form_class = 'popup-form classify-form'
-
-    def get_metadata(self):
-        return dict(
-            description='classify_by:{}, algorithm:{}, class_name:{}'.format(
-                self.request.POST.get('classify_by'),
-                self.request.POST.get('algorithm'),
-                self.request.POST.get('class_name')),
-            result_links=[{'name': 'View Text Unit Classification List',
-                           'link': 'analyze:text-unit-classifier-suggestion-list'},
-                          {'name': 'View Text Unit Classifier List',
-                           'link': 'analyze:text-unit-classifier-list'}])
-
-
 class UpdateElasticsearchIndexView(BaseAjaxTaskView):
     task_name = 'Update Elasticsearch Index'
     form_class = UpdateElasticSearchForm
-
-
-class ClusterView(BaseAjaxTaskView):
-    task_name = 'Cluster'
-    form_class = ClusterForm
-    html_form_class = 'popup-form cluster-form'
-
-    def get_metadata(self):
-        cluster_items = []
-        result_links = []
-        do_cluster_documents = self.request.POST.get('do_cluster_documents')
-        if do_cluster_documents:
-            cluster_items.append('documents')
-            result_links.append({'name': 'View Document Cluster List',
-                                 'link': 'analyze:document-cluster-list'})
-        do_cluster_text_units = self.request.POST.get('do_cluster_text_units')
-        if do_cluster_text_units:
-            cluster_items.append('text units')
-            result_links.append({'name': 'View Text Unit Cluster List',
-                                 'link': 'analyze:text-unit-cluster-list'})
-        return dict(
-            description='cluster:{}; by:{}; algorithm:{}; name:{}'.format(
-                ', '.join(cluster_items),
-                self.request.POST.get('cluster_by'),
-                self.request.POST.get('using'),
-                self.request.POST.get('name')),
-            result_links=result_links)
 
 
 class TaskDetailView(apps.common.mixins.CustomDetailView):
@@ -360,7 +306,7 @@ class PurgeTaskView(apps.common.mixins.TechAdminRequiredMixin, apps.common.mixin
 class TaskListView(apps.common.mixins.AdminRequiredMixin, apps.common.mixins.JqPaginatedListView):
     model = Task
     ordering = '-date_start'
-    json_fields = ['name', 'date_start', 'username', 'metadata',
+    json_fields = ['name', 'display_name', 'date_start', 'username', 'metadata',
                    'date_done', 'status', 'progress', 'time', 'date_work_start', 'work_time', 'worker', 'description']
 
     db_time = Coalesce(F('date_done') - F('date_start'), Now() - F('date_start'))
@@ -377,6 +323,7 @@ class TaskListView(apps.common.mixins.AdminRequiredMixin, apps.common.mixins.JqP
     def get_json_data(self, **kwargs):
         data = super().get_json_data()
         for item in data['data']:
+            item['display_name'] = item['display_name'] or item['name']
             item['url'] = reverse('task:task-detail', args=[item['pk']])
             item['purge_url'] = reverse('task:purge-task')
             item['result_links'] = []
@@ -395,7 +342,8 @@ class TaskListView(apps.common.mixins.AdminRequiredMixin, apps.common.mixins.JqP
         ctx = super().get_context_data(**kwargs)
         ctx['projects'] = \
             [(p.pk, p.name) for p in Project.objects.filter(type__code=DocumentType.GENERIC_TYPE_CODE)]
-        ctx['active_classifiers'] = TextUnitClassifier.objects.filter(is_active=True).exists()
+        ctx['active_text_unit_classifiers'] = TextUnitClassifier.objects.filter(is_active=True).exists()
+        ctx['active_document_classifiers'] = DocumentClassifier.objects.filter(is_active=True).exists()
         if DocumentProperty.objects.exists():
             ctx['ls_document_properties'] = DocumentProperty.objects.order_by('key') \
                 .values_list('key', flat=True).distinct()
@@ -403,17 +351,6 @@ class TaskListView(apps.common.mixins.AdminRequiredMixin, apps.common.mixins.JqP
             ctx['ls_text_unit_properties'] = TextUnitProperty.objects.order_by('key') \
                 .values_list('key', flat=True).distinct()
         return ctx
-
-
-class TotalCleanupView(BaseAjaxTaskView):
-    task_name = 'Total Cleanup'
-    form_class = TotalCleanupForm
-
-
-class CleanProjectView(BaseAjaxTaskView):
-    task_name = 'Clean Project'
-    module_name = 'apps.project.tasks'
-    form_class = CleanProjectForm
 
 
 class LoadFixturesView(BaseAjaxTaskView):

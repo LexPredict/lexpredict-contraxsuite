@@ -29,9 +29,9 @@ import unittest
 from apps.common.log_utils import render_exception
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2019, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.4.0/LICENSE"
-__version__ = "1.4.0"
+__copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.5.0/LICENSE"
+__version__ = "1.5.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -47,7 +47,7 @@ class TestLogUtils(unittest.TestCase):
         except Exception as ve:
             raise RuntimeError('runtime_cause2\nnew line') from ve
 
-    def f_cause3(self, raise_in_context = False):
+    def f_cause3(self, raise_in_context=False):
         try:
             self.f_cause2()
         except RuntimeError as re:

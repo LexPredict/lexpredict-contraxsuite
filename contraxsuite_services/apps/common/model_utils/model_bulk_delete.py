@@ -24,20 +24,23 @@
 """
 # -*- coding: utf-8 -*-
 
-from typing import List, Dict
+from typing import List, Dict, Set
 from django.db import connection
 from apps.common.model_utils.table_deps import TableDeps
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2019, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.4.0/LICENSE"
-__version__ = "1.4.0"
+__copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.5.0/LICENSE"
+__version__ = "1.5.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
 
 class ModelBulkDelete:
-    def __init__(self, deps: List[TableDeps]):
+    def __init__(self,
+                 deps: List[TableDeps],
+                 safe_mode: bool = True,
+                 unsafe_tables: Set[str] = None):
         # records like
         # document_documentnote.field_value_id -> document_documentfieldvalue.id,
         #   document_documentfieldvalue.text_unit_id -> document_textunit.id,
@@ -45,6 +48,8 @@ class ModelBulkDelete:
         self.deps = deps
         self.table_name = deps[0].deps[-1].ref_table
         self.key_column = deps[0].deps[-1].ref_table_pk
+        self.safe_mode = safe_mode
+        self.unsafe_tables = unsafe_tables
 
     def build_get_deleted_count_queries(self) -> List[str]:
         # dep like
@@ -100,6 +105,10 @@ class ModelBulkDelete:
             for i in range(len(self.deps)):
                 try:
                     query = queries[i] + ' ' + where_suffix
+                    table = self.deps[i].deps[0].own_table
+                    if not self.safe_mode and table in self.unsafe_tables:
+                        query = f'ALTER TABLE "{table}" DISABLE TRIGGER ALL;\n' + query
+                        query += f'\nALTER TABLE "{table}" ENABLE TRIGGER ALL;'
                     cursor.execute(query)
                     count = cursor.rowcount
                     table_name = self.deps[i].deps[0].own_table

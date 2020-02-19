@@ -30,7 +30,6 @@ from typing import Optional, List, Dict, Any, Iterable
 
 from apps.common.log_utils import ProcessLogger
 from apps.common.script_utils import eval_script, ScriptError
-from apps.common.utils import fetchone
 from apps.document.field_detection.fields_detection_abstractions import FieldDetectionStrategy
 from apps.document.field_detection.stop_words import detect_with_stop_words_by_field_and_full_text
 from apps.document.field_types import TypedField
@@ -39,9 +38,9 @@ from apps.document.models import DocumentField, Document
 from apps.document.repository.dto import FieldValueDTO
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2019, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.4.0/LICENSE"
-__version__ = "1.4.0"
+__copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.5.0/LICENSE"
+__version__ = "1.5.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 

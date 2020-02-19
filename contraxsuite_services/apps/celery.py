@@ -32,12 +32,15 @@ import os
 
 # Celery imports
 import django
+from celery import signals
 from celery.app import trace
 
+from apps import celery_worker_roles
+
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2019, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.4.0/LICENSE"
-__version__ = "1.4.0"
+__copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.5.0/LICENSE"
+__version__ = "1.5.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -52,11 +55,19 @@ except RuntimeError:
     WAS_INIT = True
     pass
 
-if True: # not WAS_INIT:
+if True:  # not WAS_INIT:
     # advanced_celery adds workarounds for celery issue which requires specific import order
     from apps.task.celery_backend.advanced_celery import AdvancedCelery  # noqa
 
     app = AdvancedCelery('apps')
+
+    def add_preload_options(parser):
+        parser.add_argument(
+            '-R', '--role', default=None,
+            help='Celery worker role.',
+        )
+
+    app.user_options['preload'].add(add_preload_options)
 
     app.config_from_object('django.conf:settings', namespace='CELERY')
     app.autodiscover_tasks(force=True)
@@ -84,3 +95,7 @@ if True: # not WAS_INIT:
     @app.task(bind=True)
     def debug_task(self):
         print('Request: {0!r}'.format(self.request))  # pragma: no cover
+
+    @signals.user_preload_options.connect
+    def on_preload_parsed(options, **kwargs):
+        app.user_options[celery_worker_roles.WORKER_ROLE] = options.get(celery_worker_roles.WORKER_ROLE)

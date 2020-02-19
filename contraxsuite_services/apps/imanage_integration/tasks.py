@@ -42,7 +42,6 @@ from apps.celery import app
 from apps.common.collection_utils import chunks
 from apps.common.file_storage import get_file_storage
 from apps.common.sql_commons import fetch_int, SQLClause
-from apps.common.errors import render_error
 from apps.common.streaming_utils import buffer_contents_into_temp_file
 from apps.imanage_integration.models import IManageConfig, IManageDocument
 from apps.task.models import Task
@@ -51,9 +50,9 @@ from apps.task.tasks import CeleryTaskLogger
 from apps.users.user_utils import get_main_admin_user
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2019, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.4.0/LICENSE"
-__version__ = "1.4.0"
+__copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.5.0/LICENSE"
+__version__ = "1.5.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -165,8 +164,8 @@ class IManageSynchronization(BaseTask):
                                 '(imanage_config_id, imanage_doc_id, imanage_doc_number, imanage_doc_data, ' \
                                 ' import_problem) ' \
                                 'values {values_place_holders} on conflict do nothing'.format(
-                    table_name=IManageDocument._meta.db_table,
-                    values_place_holders=', '.join(['(%s, %s, %s, %s, %s)'] * len(docs_chunk)))
+                                    table_name=IManageDocument._meta.db_table,
+                                    values_place_holders=', '.join(['(%s, %s, %s, %s, %s)'] * len(docs_chunk)))
                 params = list(chain(*[(imanage_config.pk,
                                        str(doc['id']),
                                        str(doc.get('document_number')) if 'document_number' in doc else None,

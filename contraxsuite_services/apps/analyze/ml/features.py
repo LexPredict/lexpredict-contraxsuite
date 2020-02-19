@@ -25,6 +25,7 @@
 # -*- coding: utf-8 -*-
 
 import pandas as pd
+import psutil
 import numpy as np
 
 from django.db.models import Sum, Value, Q, Case, When, IntegerField
@@ -32,9 +33,9 @@ from django.db.models import Sum, Value, Q, Case, When, IntegerField
 from apps.document.models import Document, TextUnit
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2019, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.4.0/LICENSE"
-__version__ = "1.4.0"
+__copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.5.0/LICENSE"
+__version__ = "1.5.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -52,19 +53,25 @@ class Features:
     """
     def __init__(self,
                  feature_df: pd.DataFrame,
-                 term_frequency_matrix: np.array,
-                 item_index: list,
-                 feature_names: list,
                  item_names: list,
                  unqualified_item_ids: list,
                  unqualified_item_names: list):
         self.feature_df = feature_df
-        self.term_frequency_matrix = term_frequency_matrix
-        self.item_index = item_index
-        self.feature_names = feature_names
         self.item_names = item_names
         self.unqualified_item_ids = unqualified_item_ids
         self.unqualified_item_names = unqualified_item_names
+
+    @property
+    def term_frequency_matrix(self):
+        return self.feature_df.values
+
+    @property
+    def item_index(self):
+        return self.feature_df.index.tolist()
+
+    @property
+    def feature_names(self):
+        return self.feature_df.columns.tolist()
 
 
 class DocumentFeatures:
@@ -116,27 +123,31 @@ class DocumentFeatures:
                  project_id=None,
                  unit_type='sentence',
                  feature_source='term',
-                 skip_unqualified_values=True):
+                 drop_empty_rows=True,
+                 drop_empty_columns=True,
+                 external_feature_names=None):
         """
         :param queryset: Document/TextUnit queryset
         :param project_id: int
         :param unit_type: str - one of "sentence", "paragraph"
         :param feature_source: str or list[str] - source name - e.g. "term", or ["term", "date"]
-        :param skip_unqualified_values: bool - whether skip empty rows from resulted queryset
+        :param drop_empty_rows: bool - whether skip empty rows from resulted queryset
+        :param drop_empty_columns: bool - whether skip empty columns in resulted dataframe
+        :param external_feature_names: list of feature names to compose final matrix according with
         """
         self.queryset = queryset
         self.project_id = project_id
         self.unit_type = unit_type
         self.feature_source = [feature_source] if isinstance(feature_source, str) else feature_source
-        self.skip_unqualified_values = skip_unqualified_values
+        self.drop_empty_rows = drop_empty_rows
+        self.drop_empty_columns = drop_empty_columns
+        self.external_feature_names = external_feature_names
         self.check()
 
     def check(self):
         """
         Validate incoming data
         """
-        if self.queryset is None and self.project_id is None:
-            raise RuntimeError('Provide either "queryset" or "project_id" argument.')
         if self.unit_type not in ('sentence', 'paragraph'):
             raise RuntimeError('The "unit_type" argument should be one of "sentence", "paragraph".')
         if not isinstance(self.feature_source, (list, tuple)):
@@ -160,13 +171,20 @@ class DocumentFeatures:
             raise EmptyDataSetError(msg, feature_source=self.feature_source)
         return target_qs.distinct()
 
+    def get_chunk_size(self, row_cost, memory_use=0.1, zeros=3):
+        free_memory = psutil.virtual_memory().free
+        chunk_size = free_memory * memory_use / row_cost
+        len_chunk_size = len(str(int(chunk_size)))
+        zeros = min([zeros, len_chunk_size - 1])
+        return int(str(chunk_size)[0:len_chunk_size - zeros] + '0' * zeros)
+
     def get_feature_df(self):
         """
         Transform incoming data into pandas dataframe
         :return: tuple(features pandas.DataFrame, unqualified item id list)
         """
         # prepare features dataframe
-        df = pd.DataFrame()
+        df = pd.SparseDataFrame()
 
         target_qs = self.get_queryset()
         target_id_field = 'id'
@@ -190,10 +208,11 @@ class DocumentFeatures:
             term_source_qs = target_qs \
                 .order_by(target_id_field, source_field) \
                 .values(target_id_field, source_field) \
-                .annotate(**aggregation)
+                .annotate(**aggregation) \
+                .exclude(**{counter: None})
 
             # skip unqualified rows with zeros
-            if self.skip_unqualified_values:
+            if self.drop_empty_rows:
                 term_source_qs = term_source_qs.filter(**{counter + '__gt': 0})
 
             if not term_source_qs.exists():
@@ -205,26 +224,70 @@ class DocumentFeatures:
                     {'id': item['id'], source_field: '%s: %s' % (k, str(v)), counter: 1} for item in
                     term_source_qs for k, v in item[source_field].items()]
 
-            # feature_source_item-specific dataframe
-            df_ = pd.DataFrame(list(term_source_qs)).dropna()
-
+            # FIXME: leave it just commented out - seems it doesn't work properly
             # use number of days since min value as feature value
-            if feature_source_item == 'date':
-                min_value = df_[source_field].min().toordinal() - 1
-                df_[counter] = df_.apply(lambda x: x[source_field].toordinal() - min_value, axis=1)
+            # if feature_source_item == 'date':
+            #     min_value = df_[source_field].min().toordinal() - 1
+            #     df_[counter] = df_.apply(lambda x: x[source_field].toordinal() - min_value, axis=1)
 
+            # FIXME: leave it just commented out - seems it doesn't work properly
             # use amount value as feature value
-            elif feature_source_item in ['duration', 'currency_value']:
-                df_[counter] = df_.apply(lambda x: x[source_field], axis=1)
+            # elif feature_source_item in ['duration', 'currency_value']:
+            #     df_[counter] = df_.apply(lambda x: x[source_field], axis=1)
 
-            # transform dataframe
-            dft = df_.pivot(index=target_id_field, columns=source_field, values=counter)
+            # try to decrease memory usage iterating over chunks and using sparse dataframes
+            # Note: pivot_table takes extra memory so use lower memory limits
+            ids = list(set(target_qs.values_list(target_id_field, flat=True)))
+            id_count = len(ids)
+            terms = sorted(list(term_source_qs.order_by(source_field)
+                                .values_list(source_field, flat=True).distinct()))
+            term_count = len(terms)
+
+            print('id_count: ', id_count)
+            print('term_count: ', term_count)
+
+            chunk_size = self.get_chunk_size(term_count * 2)    # np.uint16 - 2 bytes
+
+            print('chunk_size: ', chunk_size)
+
+            # FIXME: pandas 0.25 has another way:
+            # https://pandas.pydata.org/pandas-docs/stable/user_guide/sparse.html#sparse-migration
+            df_ = pd.SparseDataFrame()
+
+            for step in range(0, id_count, chunk_size):
+
+                print('process range: {}-{}'.format(step, step + chunk_size))
+
+                chunk_qs = term_source_qs.filter(
+                    **{target_id_field + '__in': ids[step:step + chunk_size]})
+                chunk_df = pd.DataFrame.from_records(list(chunk_qs))
+                chunk_df[counter] = chunk_df[counter].astype(np.uint16)
+                chunk_dft = chunk_df.pivot_table(
+                    index=target_id_field, columns=source_field,
+                    values=counter, aggfunc=sum)
+                missed_columns = list(set(terms) - set(chunk_dft.columns))
+                chunk_dft = chunk_dft.reindex(chunk_dft.columns.tolist() + missed_columns, axis=1) \
+                    .fillna(0).astype(np.uint16)
+                chunk_dfts = chunk_dft.fillna(0).to_sparse(fill_value=0)
+                df_ = df_.append(chunk_dfts).fillna(0)
+
+                print('chunk_df size: ', chunk_df.memory_usage().sum())
+                print('chunk_dft size: ', chunk_dft.memory_usage().sum())
+                print('chunk_dfts size: ', chunk_dfts.memory_usage().sum())
+                print('df_ size: ', df_.memory_usage().sum())
+                print('df_ shape: ', df_.shape)
+
+            if self.drop_empty_columns:
+                df_ = df_.dropna(axis=1, how='all')
 
             # name columns by feature_source item like "term(account)", "duration(30)"
-            dft.columns = ["%s(%s)" % (feature_source_item, str(i)) for i in dft.columns]
+            df_.columns = ["%s(%s)" % (feature_source_item, str(i)) for i in df_.columns]
 
             # join  feature_source_item-specific dataframe into results dataframe
-            df = df.join(dft, how='outer')
+            df = df.join(df_, how='outer')
+
+            print('df size: ', df.memory_usage().sum())
+            print('df shape: ', df.shape)
 
         if df.empty:
             msg = 'No features of chosen "feature_source" options {} detected. ' \
@@ -236,9 +299,18 @@ class DocumentFeatures:
         feature_id_set = set(df.index.tolist())
         unqualified_item_ids = sorted(list(initial_id_set.difference(feature_id_set)))
 
-        if not self.skip_unqualified_values and unqualified_item_ids:
-            unqualified_items_df = pd.DataFrame(index=unqualified_item_ids)
+        print('count unqualified_item_ids: ', len(unqualified_item_ids))
+
+        if not self.drop_empty_rows and unqualified_item_ids:
+            unqualified_items_df = pd.SparseDataFrame(index=unqualified_item_ids, columns=df.columns).fillna(0)
+
+            print('unqualified_items_df size: ', unqualified_items_df.memory_usage().sum())
+            print('unqualified_items_df shape: ', unqualified_items_df.shape)
+
             df = df.join(unqualified_items_df, how='outer')
+
+            print('df size: ', df.memory_usage().sum())
+            print('df shape: ', df.shape)
 
         return df, unqualified_item_ids
 
@@ -249,16 +321,32 @@ class DocumentFeatures:
         """
         feature_df, unqualified_item_ids = self.get_feature_df()
 
-        term_frequency_matrix = feature_df.fillna(0).values
+        if self.external_feature_names is not None:
+            feature_df = self.force_use_external_feature_names(feature_df)
+
+        feature_df = feature_df.reindex(sorted(feature_df.columns), axis=1).fillna(0)
+
         item_index = feature_df.index.tolist()
-        feature_names = feature_df.columns.tolist()
         item_names = self.get_item_names(item_index)
         unqualified_item_names = self.get_item_names(unqualified_item_ids)
 
-        res = Features(feature_df, term_frequency_matrix, item_index, feature_names, item_names,
-                       unqualified_item_ids, unqualified_item_names)
+        res = Features(feature_df, item_names, unqualified_item_ids, unqualified_item_names)
 
         return res
+
+    def force_use_external_feature_names(self, feature_df):
+        """
+        Resize curren feature_df according to provided external_feature_names list, -
+        final feature_df will have the same columns
+        :param feature_df: initial feature df
+        :return: updated feature df
+        """
+        # delete extra columns from feature_df
+        feature_df = feature_df.filter(self.external_feature_names, axis=1)
+        # add new columns from external_feature_names
+        new_columns = set(self.external_feature_names) - set(feature_df.columns)
+        feature_df = feature_df.reindex(feature_df.columns.tolist() + list(new_columns), axis=1)
+        return feature_df
 
     def get_item_names(self, item_index):
         """
@@ -305,7 +393,7 @@ class TextUnitFeatures(DocumentFeatures):
         currency_name=Sum('currencyusage__count'),
         currency_value=Sum('currencyusage__count'),
         term=Sum('termusage__count'),
-        party=Sum('_partyusage__count'),
+        party=Sum('partyusage__count'),
         geoentity=Sum('geoentityusage__count'))
 
     def get_item_names(self, item_index):
@@ -314,5 +402,19 @@ class TextUnitFeatures(DocumentFeatures):
         :param item_index: list(id)
         :return: list(str)
         """
-        text_unit_id_to_name = dict([(tu.id, str(tu)) for tu in TextUnit.objects.filter(id__in=item_index)])
-        return [text_unit_id_to_name[i] for i in item_index]
+        return item_index
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        qs = qs.filter(unit_type=self.unit_type)
+        return qs
+
+    def check(self):
+        """
+        Validate incoming data
+        """
+        super().check()
+        if self.queryset is None and self.project_id is None:
+            raise RuntimeError(
+                '''Without providing either "queryset" or "project_id"
+                argument executing the task may be impossible.''')

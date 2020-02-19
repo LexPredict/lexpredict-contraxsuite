@@ -40,9 +40,10 @@ import icalendar
 # Django imports
 from django.urls import reverse
 from django.contrib.auth import authenticate
-from django.db.models import Count, F, Max, Min, Sum, Q, Value, IntegerField
+from django.db.models import Count, F, Max, Min, Sum, Q, Value
 from django.db.models.functions import TruncMonth, TruncYear, Left, Concat
 from django.http import Http404, HttpResponseForbidden, HttpResponse
+from django.views import View
 from django.views.generic import DetailView, TemplateView
 
 # Project imports
@@ -52,14 +53,19 @@ from apps.extract.models import (
     AmountUsage, CitationUsage, CopyrightUsage, CourtUsage, CurrencyUsage,
     DateDurationUsage, DateUsage, DefinitionUsage, DistanceUsage,
     GeoAliasUsage, GeoAlias, GeoEntity, GeoEntityUsage, Party, PartyUsage, PercentUsage,
-    RatioUsage, RegulationUsage, TermUsage, TrademarkUsage, UrlUsage)
+    RatioUsage, RegulationUsage, TermUsage, TrademarkUsage, UrlUsage, DocumentTermUsage)
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2019, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.4.0/LICENSE"
-__version__ = "1.4.0"
+__copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.5.0/LICENSE"
+__version__ = "1.5.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
+
+
+from apps.extract.tasks import SyncDocTermUsageModel
+
+from apps.task.tasks import call_task
 
 
 class BaseUsageListView(apps.common.mixins.JqPaginatedListView):
@@ -81,7 +87,7 @@ class BaseUsageListView(apps.common.mixins.JqPaginatedListView):
                 'document:document-detail', args=[item['text_unit__document__pk']])
             item['detail_url'] = reverse(
                 'document:text-unit-detail', args=[item['text_unit__pk']]) + \
-                '?highlight=' + item.get(self.highlight_field, '')
+                '?highlight=' + (item.get(self.highlight_field) or '')
             for field_name, field_lambda in self.extra_item_map.items():
                 item[field_name] = field_lambda(item)
         return data
@@ -99,10 +105,45 @@ class BaseUsageListView(apps.common.mixins.JqPaginatedListView):
         return ctx
 
 
+class BaseDocTermUsageListView(apps.common.mixins.JqPaginatedListView):
+    json_fields = ['document__pk',
+                   'document__project__name',
+                   'document__name',
+                   'document__description', 'document__document_type__title']
+    limit_reviewers_qs_by_field = 'document'
+    field_types = dict(count=int)
+    highlight_field = ''
+    extra_item_map = dict()
+    search_field = ''
+
+    def get_json_data(self, **kwargs):
+        data = super().get_json_data()
+        for item in data['data']:
+            item['url'] = reverse(
+                'document:document-detail', args=[item['document__pk']])
+            item['detail_url'] = item['url']
+            for field_name, field_lambda in self.extra_item_map.items():
+                item[field_name] = field_lambda(item)
+        return data
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        if "document_pk" in self.request.GET:
+            qs = qs.filter(document__pk=self.request.GET['document_pk'])
+        return qs
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        if self.search_field:
+            ctx[self.search_field] = self.request.GET.get(self.search_field, "")
+        return ctx
+
+
 class BaseTopUsageListView(apps.common.mixins.JqPaginatedListView):
     deep_processing = False
     limit_reviewers_qs_by_field = 'text_unit__document'
     sort_by = None
+    document_filter_key = 'text_unit__document__pk'
 
     def get_json_data(self, **kwargs):
         data = super().get_json_data(**kwargs)
@@ -119,13 +160,13 @@ class BaseTopUsageListView(apps.common.mixins.JqPaginatedListView):
     def get_queryset(self):
         qs = super().get_queryset()
         if "document_pk" in self.request.GET:
-            qs = qs.filter(text_unit__document__pk=self.request.GET['document_pk'])
+            qs = qs.filter(**{self.document_filter_key: self.request.GET['document_pk']})
         return qs
 
 
-class TermUsageListView(BaseUsageListView):
+class TermUsageListView(BaseDocTermUsageListView):
     sub_app = 'term'
-    model = TermUsage
+    model = DocumentTermUsage  # TermUsage
     extra_json_fields = ['term__term', 'count']
     highlight_field = 'term__term'
     search_field = 'term_search'
@@ -136,21 +177,16 @@ class TermUsageListView(BaseUsageListView):
         term_search = self.request.GET.get("term_search", "")
 
         if term_search:
-            # qs = self.filter(term_search, qs,
-            #                  _or_lookup='term__term__exact',
-            #                  _and_lookup='text_unit__textunittext__text__icontains',
-            #                  _not_lookup='text_unit__textunittext__text__icontains')
             qs = qs.filter(term__term__icontains=term_search)
-        # filter out duplicated Terms (equal terms, but diff. term sources)
-        # qs = qs.order_by('term__term').distinct('term__term', 'text_unit__pk')
         return qs
 
 
 class TopTermUsageListView(BaseTopUsageListView):
     sub_app = 'term'
-    model = TermUsage
+    model = DocumentTermUsage
     parent_list_view = TermUsageListView
     template_name = 'extract/top_term_usage_list.html'
+    document_filter_key = 'document__pk'
 
     def get_item_data(self, item, parent_data=None):
         item['url'] = reverse('extract:term-usage-list') + '?term_search=' + item['term__term']
@@ -164,6 +200,43 @@ class TopTermUsageListView(BaseTopUsageListView):
             .annotate(count=Sum('count')) \
             .order_by('-count')
         return qs
+
+
+class DocumentTopTermUsageListView(apps.common.mixins.JSONResponseView):
+
+    def get_json_data(self, request, *args, **kwargs):
+        document_id = request.GET.get('document_pk')
+        term_id = request.GET.get('term_pk')
+
+        qs = TermUsage.objects.filter(text_unit__unit_type='sentence').order_by('term_id')
+        if document_id:
+            qs = qs.filter(text_unit__document_id=document_id)
+
+        if term_id:
+            qs = qs.filter(term_id=term_id)
+            res = list(qs.values('term__term', 'text_unit__textunittext__text', 'text_unit__pk', 'count').order_by('-count'))
+            for item in res:
+                text_unit__pk = item.pop('text_unit__pk')
+                item['detail_url'] = reverse(
+                    'document:text-unit-detail', args=[text_unit__pk]) + \
+                                     '?highlight=' + item['term__term']
+        else:
+            top = qs \
+                .values('term_id', 'term__term') \
+                .annotate(count=Sum('count')) \
+                .order_by('-count')
+            res = list(top)
+
+        return {'data': res, 'total_records': len(res)}
+
+
+class TopTermUsageSyncView(View):
+    def get(self, request, **kwargs):
+        task_id = call_task(
+            SyncDocTermUsageModel,
+            user_id=request.user.id)
+        task_url = reverse('task:task-detail', args=[task_id])
+        return HttpResponse(content=task_url, content_type='text/plain', status=200)
 
 
 class GeoEntityListView(apps.common.mixins.JqPaginatedListView):
@@ -197,99 +270,59 @@ class GeoEntityUsageListView(BaseUsageListView):
     search_field = 'entity_search'
     template_name = 'extract/geo_entity_usage_list.html'
 
-    def get_json_data(self, **kwargs):
-        entity_data = super().get_json_data()['data']
-        alias_data = GeoAliasUsageListView(request=self.request).get_json_data()['data']
-        collapse_aliases = json.loads(self.request.GET.get('collapse_aliases', 'true'))
-
-        if collapse_aliases:
-            for alias in alias_data:
-                added = False
-                for entity in entity_data:
-                    if entity['text_unit__pk'] == alias['text_unit__pk'] and \
-                                    entity['entity__name'] == alias['alias__entity__name']:
-                        entity['count'] += alias['count']
-                        added = True
-                if not added:
-                    alias['entity__name'] = alias['alias__entity__name']
-                    alias['entity__category'] = alias['alias__entity__category']
-                    alias['url'] = reverse('document:document-detail',
-                                           args=[alias['text_unit__document__pk']])
-                    alias['detail_url'] = '{}?highlight={}'.format(
-                        reverse('document:text-unit-detail', args=[alias['text_unit__pk']]),
-                        alias['alias__alias'])
-                    entity_data.append(alias)
-        else:
-            for alias in alias_data:
-                alias['entity__name'] = alias['alias__entity__name']
-                alias['entity__category'] = alias['alias__entity__category']
-            entity_data.extend(alias_data)
-
-        return {'data': entity_data,
-                'total_records': len(entity_data),
-                'collapse_aliases': collapse_aliases}
-
     def get_queryset(self):
-        qs = super().get_queryset()
+        qs = super().get_queryset().filter(text_unit__unit_type='sentence')
+
         entity_search = self.request.GET.get("entity_search")
+        document_id = self.request.GET.get("document_pk")
+        party_id = self.request.GET.get("party_pk")
+        entity_id = self.request.GET.get("entity_pk")
+
+        if document_id:
+            qs = qs.filter(text_unit__document_id=document_id)
         if entity_search:
             entity_search_list = entity_search.split(",")
             qs = qs.filter(entity__name__in=entity_search_list)
-        if "party_pk" in self.request.GET:
-            qs = qs.filter(
-                text_unit__document__textunit__partyusage__party__pk=self.request.GET['party_pk']) \
-                .distinct()
+        if party_id:
+            doc_ids = Document.objects.filter(textunit__partyusage__party_id=party_id)\
+                .values_list('pk', flat=True).distinct()
+            qs = qs.filter(text_unit__document_id__in=doc_ids)
+        if entity_id:
+            qs = qs.filter(entity_id=entity_id)
         return qs
 
 
-class TopGeoEntityUsageListView(GeoEntityUsageListView):
+class TopGeoEntityUsageListView(BaseTopUsageListView):
     sub_app = 'geoentity'
+    model = GeoEntityUsage
+    parent_list_view = GeoEntityUsageListView
     template_name = "extract/top_geo_entity_usage_list.html"
 
-    def get_json_data(self, **kwargs):
+    def get_item_data(self, item, parent_data):
+        item['url'] = '{}?entity_search={}'.format(
+            reverse('extract:geo-entity-usage-list'), item['entity__name'])
+        if "document_pk" in self.request.GET:
+            item['entity_data'] = [i for i in parent_data if i['entity__name'] == item['entity__name']]
+        return item
+
+    def get_queryset(self):
         document_id = self.request.GET.get("document_pk")
         party_id = self.request.GET.get("party_pk")
+        entity_id = self.request.GET.get("entity_pk")
 
-        entities = {i['name']: i for i in GeoEntity.objects.values('name', 'category').annotate(
-            count=Value(0, output_field=IntegerField()))}
-        entites_filter_opts = dict(geoentityusage__isnull=False)
-        aliases_filter_opts = dict(geoalias__geoaliasusage__isnull=False)
+        qs = super().get_queryset().filter(text_unit__unit_type='sentence')
 
         if document_id:
-            entites_filter_opts['geoentityusage__text_unit__document_id'] = document_id
-            aliases_filter_opts['geoalias__geoaliasusage__text_unit__document_id'] = document_id
-        elif party_id:
-            entites_filter_opts[
-                'geoentityusage__text_unit__document__textunit__partyusage__party__pk'] = party_id
-            aliases_filter_opts[
-                'geoalias__geoaliasusage__text_unit__document__textunit__partyusage__party__pk'] = party_id
-
-        entities_data = list(GeoEntity.objects
-                             .filter(**entites_filter_opts)
-                             .values('name', 'category')
-                             .annotate(count=Sum('geoentityusage__count')))
-        aliases_data = list(GeoEntity.objects
-                            .filter(**aliases_filter_opts)
-                            .values('name', 'category')
-                            .annotate(count=Sum('geoalias__geoaliasusage__count')))
-        for i in entities_data:
-            entities[i['name']]['count'] += i['count']
-        for i in aliases_data:
-            entities[i['name']]['count'] += i['count']
-
-        if document_id or party_id:
-            entities_data = super().get_json_data()['data']
-            for entity in entities_data:
-                entity_data = entities[entity['entity__name']].get('entity_data', [])
-                entity_data.append(entity)
-                entities[entity['entity__name']]['entity_data'] = entity_data
-
-        entities = sorted([i for i in entities.values() if i['count']], key=lambda i: -i['count'])
-        for i in entities:
-            i['url'] = '{}?entity_search={}'.format(
-                reverse('extract:geo-entity-usage-list'), i['name'])
-
-        return {'data': entities, 'total_records': len(entities)}
+            qs = qs.filter(text_unit__document_id=document_id)
+        if party_id:
+            doc_ids = Document.objects.filter(textunit__partyusage__party_id=party_id).values_list('pk', flat=True).distinct()
+            qs = qs.filter(text_unit__document_id__in=doc_ids)
+        if entity_id:
+            qs = qs.filter(entity_id=entity_id)
+        qs = qs.values('entity_id', 'entity__name', 'entity__category') \
+            .annotate(count=Sum("count")) \
+            .order_by("-count")
+        return qs
 
 
 class GeoAliasUsageListView(BaseUsageListView):
@@ -309,6 +342,8 @@ class GeoAliasUsageListView(BaseUsageListView):
             qs = qs.filter(
                 text_unit__document__textunit__partyusage__party__pk=self.request.GET['party_pk']) \
                 .distinct()
+        if 'entity_pk' in self.request.GET:
+            qs = qs.filter(alias__entity_id=self.request.GET['entity_pk'])
         return qs
 
 

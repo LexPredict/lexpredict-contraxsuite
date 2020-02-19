@@ -42,9 +42,9 @@ from apps.rawdb.rawdb.query_parsing import SortDirection
 from apps.users.models import User, Role
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2019, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.4.0/LICENSE"
-__version__ = "1.4.0"
+__copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.5.0/LICENSE"
+__version__ = "1.5.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -439,8 +439,9 @@ class SpecifiedUser(NotificationRecipients):
     code = 'specified_user'
     title = 'Specified user'
 
-    def resolve(self, subscription: 'DocumentNotificationSubscription', document_fields: Dict[str, Any]) -> Optional[
-        List[User]]:
+    def resolve(self,
+                subscription: 'DocumentNotificationSubscription',
+                document_fields: Dict[str, Any]) -> Optional[List[User]]:
         return [subscription.specified_user]
 
 
