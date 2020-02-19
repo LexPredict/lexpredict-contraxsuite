@@ -226,8 +226,8 @@ services:
       - contrax-elasticsearch
       - contrax-kibana
     deploy:
-      # mode: global
-      replicas: 0 # by default we disable mertricbeat for single-host configs to free more resources
+      mode: global
+      # replicas: 0 # by default we disable mertricbeat for single-host configs to free more resources
       resources:
         limits:
           cpus: '1'
