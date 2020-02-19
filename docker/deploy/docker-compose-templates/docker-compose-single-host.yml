@@ -636,6 +636,10 @@ services:
         protocol: tcp
         published: 443
         target: 4443
+      - mode: host
+        protocol: tcp
+        published: ${DOLLAR}{POWA_NGINX_PORT}
+        target: 4444
     depends_on:
       - contrax-uwsgi
       - contrax-jupyter
