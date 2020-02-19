@@ -638,7 +638,7 @@ services:
         target: 4443
       - mode: host
         protocol: tcp
-        published: 444
+        published: ${DOLLAR}{POWA_NGINX_PORT}
         target: 4444
     depends_on:
       - contrax-uwsgi
