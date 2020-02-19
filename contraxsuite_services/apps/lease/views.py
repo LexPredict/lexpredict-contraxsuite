@@ -44,9 +44,9 @@ from apps.lease.models import LeaseDocument
 from apps.task.views import BaseAjaxTaskView
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2019, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.4.0/LICENSE"
-__version__ = "1.4.0"
+__copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.5.0/LICENSE"
+__version__ = "1.5.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -88,8 +88,8 @@ class LeaseMapDataView(apps.common.mixins.JSONResponseView):
             q = LeaseDocument.objects \
                 .values('address_country') \
                 .annotate(
-                leases_number=models.Count('address_country') if not lessor else models.Count(
-                    models.Case(models.When(lessor=lessor, then=1)))) \
+                    leases_number=models.Count('address_country') if not lessor else models.Count(
+                        models.Case(models.When(lessor=lessor, then=1)))) \
                 .order_by('-leases_number', 'address_country')
 
             return [{'address_country': row['address_country'],
@@ -100,13 +100,13 @@ class LeaseMapDataView(apps.common.mixins.JSONResponseView):
             q = LeaseDocument.objects \
                 .values('address_country', 'address_state_province') \
                 .annotate(
-                leases_number_country=models.Count(
-                    'address_country') if not lessor else models.Count(
-                    models.Case(models.When(lessor=lessor, then=1)))) \
+                    leases_number_country=models.Count(
+                        'address_country') if not lessor else models.Count(
+                        models.Case(models.When(lessor=lessor, then=1)))) \
                 .annotate(
-                leases_number=models.Count(
-                    'address_state_province') if not lessor else models.Count(
-                    models.Case(models.When(lessor=lessor, then=1)))) \
+                    leases_number=models.Count(
+                        'address_state_province') if not lessor else models.Count(
+                        models.Case(models.When(lessor=lessor, then=1)))) \
                 .order_by('-leases_number', 'address_state_province')
 
             if country != 'all':
@@ -259,10 +259,10 @@ class LeaseDocumentDetailView(DocumentDetailView):
             .filter(unit_type='paragraph') \
             .order_by('id') \
             .prefetch_related(
-            models.Prefetch(
-                'termusage_set',
-                queryset=TermUsage.objects.order_by('term__term').select_related('term'),
-                to_attr='ltu'))
+                models.Prefetch(
+                    'termusage_set',
+                    queryset=TermUsage.objects.order_by('term__term').select_related('term'),
+                    to_attr='ltu'))
         ctx = {'document': document,
                'party_list': list(PartyUsage.objects.filter(
                    text_unit__document=document).values_list('party__name', flat=True)),

@@ -41,8 +41,8 @@ from django.core.exceptions import ValidationError
 from django.core.serializers.json import DjangoJSONEncoder
 from django.core.validators import MinValueValidator
 from django.db import models, transaction
-from django.db.models import Count, F, Value, QuerySet
-from django.db.models.deletion import CASCADE
+from django.db.models import Count, F, Value, QuerySet, Index
+from django.db.models.deletion import CASCADE, SET_NULL
 from django.db.models.functions import Concat
 from django.dispatch import receiver
 from django.utils.html import format_html
@@ -62,9 +62,9 @@ from apps.users.models import User
 # When RawdbFieldHandler of a field is required - use RawdbFieldHandler.of() in the client code.
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2019, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.4.0/LICENSE"
-__version__ = "1.4.0"
+__copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.5.0/LICENSE"
+__version__ = "1.5.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -186,7 +186,7 @@ class DocumentField(TimeStampedModel):
     type = models.CharField(max_length=30, default='string', db_index=True)
 
     # Type of the text unit to parse.
-    text_unit_type = models.CharField(max_length=10, choices=UNIT_TYPES, default='sentence', db_index=True)
+    text_unit_type = models.CharField(max_length=10, choices=UNIT_TYPES, default='sentence')
 
     DETECT_LIMIT_UNIT = 'UNIT'
     DETECT_LIMIT_SENTENCE = 'SENTENCE'
@@ -238,6 +238,8 @@ class DocumentField(TimeStampedModel):
 
     VD_FIELD_BASED_REGEXPS = 'field_based_regexps'
 
+    VD_MLFLOW_MODEL = 'mlflow_model'
+
     VALUE_DETECTION_TRAINABLE = {
         VD_REGEXPS_AND_TEXT_BASED_ML,
         VD_TEXT_BASED_ML_ONLY,
@@ -263,7 +265,8 @@ class DocumentField(TimeStampedModel):
                                          'Use pre-trained field-based ML with "Unsure" category.'),
                                         (VD_PYTHON_CODED_FIELD, 'Use python class for value detection.'),
                                         (VD_FIELD_BASED_REGEXPS, 'Apply regexp field detectors to '
-                                                                 'depends-on field values')]
+                                                                 'depends-on field values'),
+                                        (VD_MLFLOW_MODEL, 'Use pre-trained mlflow model to find matching text units.')]
 
     value_detection_strategy = models.CharField(max_length=50,
                                                 choices=VALUE_DETECTION_STRATEGY_CHOICES,
@@ -286,7 +289,15 @@ class DocumentField(TimeStampedModel):
     or the choice value specified in "Unsure choice value" field. Format: { "value1": 0.9, "value2": 0.5, ...}.
      Default: ''' + str(DEFAULT_UNSURE_THRESHOLD))
 
-    python_coded_field = models.CharField(max_length=100, db_index=True, null=True, blank=True)
+    python_coded_field = models.CharField(max_length=100, null=True, blank=True)
+
+    mlflow_model_uri = models.CharField(max_length=1024, null=True, blank=True, help_text='''MLFlow model URI 
+    understandable by the MLFlow artifact downloading routines.''')
+
+    mlflow_detect_on_document_level = models.BooleanField(null=False, blank=False, default=False,
+                                                          help_text='''If true - whole 
+    document text will be sent to the MLFlow model and the field value will be returned for the whole text with no
+    annotations. If false - each text unit will be sent separately.''')
 
     classifier_init_script = models.TextField(null=True, blank=True)
 
@@ -300,7 +311,7 @@ class DocumentField(TimeStampedModel):
     depends_on_fields = models.ManyToManyField('self', blank=True, related_name='affects_fields', symmetrical=False)
 
     confidence = models.CharField(max_length=100, choices=CONFIDENCE_CHOICES, default=None,
-                                  blank=True, null=True, db_index=True)
+                                  blank=True, null=True)
 
     requires_text_annotations = models.BooleanField(default=True, null=False, blank=False)
 
@@ -368,12 +379,14 @@ class DocumentField(TimeStampedModel):
 
     class Meta:
         unique_together = (('code', 'document_type'), ('code', 'document_type', 'modified_by', 'modified_date'),)
-        indexes = [
-            models.Index(fields=['dirty']),
-            models.Index(fields=['training_finished']),
-            models.Index(fields=['modified_date']),
-        ]
         ordering = ('long_code',)
+        indexes = [
+            Index(fields=['dirty']),
+            Index(fields=['training_finished']),
+            Index(fields=['modified_date']),
+            Index(fields=['text_unit_type']),
+            Index(fields=['confidence']),
+            Index(fields=['python_coded_field'])]
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -472,7 +485,10 @@ class DocumentType(TimeStampedModel):
     uid = StringUUIDField(primary_key=True, default=uuid.uuid4, editable=False)
 
     # Short name for field.
-    code = models.CharField(max_length=50, db_index=True, unique=True)
+    code = models.CharField(max_length=50, db_index=True, unique=True,
+                            help_text='Field codes must be lowercase, should start with a latin '
+                                      'letter and contain only latin letters, digits, '
+                                      'and underscores')
 
     # Verbose name for field.
     title = models.CharField(max_length=100, db_index=True)
@@ -547,6 +563,13 @@ class Document(models.Model):
     flexible metadata about the document per se.
     """
 
+    class DocumentMetadataKey:
+        KEY_SECTIONS = 'sections'
+        KEY_DEFINITIONS = 'definitions'
+        KEY_TABLES = 'tables'
+        KEY_UPLOAD_STATUS = 'upload_status'
+        KEY_PARSING_STATISTICS = 'parsing_statistics'
+
     # Name of document, as presented in most views and exports.
     name = models.CharField(max_length=1024, db_index=True, null=True)
 
@@ -604,6 +627,8 @@ class Document(models.Model):
                                        db_index=True, on_delete=CASCADE)
 
     processed = models.BooleanField(default=False, null=False)
+
+    document_class = models.CharField(max_length=256, db_index=True, null=True)
 
     class Meta:
         ordering = ('name',)
@@ -787,8 +812,9 @@ class DocumentProperty(TimeStampedModel):
     value = models.TextField()
 
     class Meta:
-        ordering = ('document__name', 'key', 'value')
+        ordering = ('document', 'key')
         verbose_name_plural = 'Document Properties'
+        indexes = [Index(fields=['document', 'key'])]
 
     def __str__(self):
         return "DocumentProperty (document={0}, key={1}, value={2})" \
@@ -922,20 +948,24 @@ class TextUnit(models.Model):
     document = models.ForeignKey(Document, db_index=True, on_delete=CASCADE)
 
     # Text unit type, e.g., sentence, paragraph, section
-    unit_type = models.CharField(max_length=128, db_index=True)
+    unit_type = models.CharField(max_length=128)
 
     # Language,  as detected upon ingestion and stored via ISO code
-    language = models.CharField(max_length=3, db_index=True)
+    language = models.CharField(max_length=3)
 
     location_start = models.IntegerField(null=True, blank=True)
 
     location_end = models.IntegerField(null=True, blank=True)
 
     # Cryptographic hash of raw text for identical de-duplication
-    text_hash = models.CharField(max_length=1024, null=True, db_index=True)
+    text_hash = models.CharField(max_length=1024, null=True)
 
     class Meta:
-        ordering = ('document__name', 'unit_type')
+        ordering = ('document', 'unit_type')
+        indexes = [Index(fields=['text_hash']),
+                   Index(fields=['unit_type']),
+                   Index(fields=['document', 'unit_type']),
+                   Index(fields=['language'])]
 
     def __str__(self):
         return "TextUnit (id={4}, document={0}, unit_type={1}, language={2}, len(text)={3})" \
@@ -1027,8 +1057,9 @@ class TextUnitProperty(TimeStampedModel):
     value = models.CharField(max_length=1024, db_index=True)
 
     class Meta:
-        ordering = ('text_unit__document__name', 'key', 'value')
+        ordering = ('text_unit', 'key', 'value')
         verbose_name_plural = 'Text Unit Properties'
+        indexes = [Index(fields=['text_unit', 'key', 'value'])]
 
     def __str__(self):
         return "TextUnitProperty (text_unit_pk={0}, key={1}, value={2})" \
@@ -1369,6 +1400,63 @@ class FieldValue(models.Model):
             value = value[:252] + '...'
         return f'doc: "{doc_name}", field: "{field_code}", value: "{value}"'
 
+    @property
+    def python_value(self):
+        from apps.document.field_types import TypedField
+        try:
+            typed_field = TypedField.by(self.field)
+            return typed_field.field_value_json_to_python(self.value)
+        except:
+            pass
+
+
+class FieldAnnotationStatus(models.Model):
+    """
+    FieldAnnotationStatus object model
+    """
+    # Status verbose name
+    name = models.CharField(unique=True, max_length=100, db_index=True)
+
+    # Status code
+    code = models.CharField(unique=True, max_length=100, db_index=True, blank=True, null=True)
+
+    # Status order number
+    order = models.PositiveSmallIntegerField()
+
+    # flag to detect f.e. whether we should recalculate fields for a document
+    is_active = models.BooleanField(default=True, db_index=True)
+
+    # flag - to set it automatically if a document has "completed" status
+    is_confirm = models.BooleanField(default=False, db_index=True)
+
+    # flag - to transform annotation into FalseMatch
+    is_deny = models.BooleanField(default=False, db_index=True)
+
+    class Meta:
+        ordering = ['order', 'name', 'code']
+        verbose_name_plural = 'Field Annotation Statuses'
+
+    def __str__(self):
+        return "FieldAnnotationStatus (pk={}, name={})".format(self.pk, self.name)
+
+    @classmethod
+    def initial_status(cls):
+        return cls.objects.first()
+
+    @classmethod
+    def initial_status_pk(cls):
+        status = cls.initial_status()
+        return status.pk if status else None
+
+    @classmethod
+    def confirm_status(cls):
+        return cls.objects.filter(is_confirm=True).first()
+
+    @classmethod
+    def confirm_status_pk(cls):
+        status = cls.confirm_status()
+        return status.pk if status else None
+
 
 class FieldAnnotation(models.Model):
     modified_date = models.DateTimeField(auto_now=True, db_index=True)
@@ -1390,8 +1478,16 @@ class FieldAnnotation(models.Model):
                                   on_delete=CASCADE, related_name='annotations_matches')
 
     extraction_hint = models.CharField(max_length=30, choices=EXTRACTION_HINT_CHOICES,
-                                       default=EXTRACTION_HINT_CHOICES[0][0], db_index=True,
+                                       default=EXTRACTION_HINT_CHOICES[0][0],
                                        blank=True, null=True)
+
+    assignee = models.ForeignKey(User, blank=True, null=True, db_index=True, on_delete=SET_NULL,
+                                 related_name='field_annotations')
+
+    assign_date = models.DateTimeField(blank=True, null=True)
+
+    status = models.ForeignKey(FieldAnnotationStatus, default=FieldAnnotationStatus.initial_status,
+                               blank=True, null=True, db_index=True, on_delete=SET_NULL)
 
     history = HistoricalRecords()
 
@@ -1399,6 +1495,12 @@ class FieldAnnotation(models.Model):
 
     class Meta:
         unique_together = ['document', 'field', 'value', 'location_start', 'location_end']
+        indexes = [
+            Index(fields=['extraction_hint'])]
+
+    @property
+    def available_assignees(self):
+        return self.document.project.owners.all().union(self.document.project.reviewers.all()).distinct()
 
     @property
     def is_user_value(self):
@@ -1414,6 +1516,15 @@ class FieldAnnotation(models.Model):
         coords = f'({self.location_start}, {self.location_end})'
         return f'doc: "{doc_name}", field: "{field_code}", value: "{value}", ' + \
                f'coords: {coords}'
+
+    @property
+    def python_value(self):
+        from apps.document.field_types import TypedField
+        try:
+            typed_field = TypedField.by(self.field)
+            return typed_field.field_value_json_to_python(self.value)
+        except:
+            pass
 
 
 class FieldAnnotationFalseMatch(models.Model):
@@ -1449,6 +1560,40 @@ class FieldAnnotationFalseMatch(models.Model):
         fa.location_text = ant.location_text
         fa.text_unit = ant.text_unit
         return fa
+
+
+class FieldAnnotationSavedFilter(models.Model):
+    FILTER_TYPE_CHOICES = [
+        (constants.FA_COMMON_FILTER, 'Common Filter'),
+        (constants.FA_USER_FILTER, 'User Project Annotations Grid Config')
+    ]
+
+    filter_type = models.CharField(max_length=50, blank=False, null=False,
+                                   default=constants.FA_COMMON_FILTER, choices=FILTER_TYPE_CHOICES)
+
+    title = models.CharField(max_length=256, blank=True, null=True)
+
+    display_order = models.PositiveSmallIntegerField(default=0)
+
+    project = models.ForeignKey('project.Project', null=True, blank=True, db_index=True, on_delete=CASCADE)
+
+    document_type = models.ForeignKey(DocumentType, null=False, blank=False, db_index=True, on_delete=CASCADE)
+
+    user = models.ForeignKey(User, blank=True, null=True, db_index=True, on_delete=CASCADE)
+
+    columns = JSONField(blank=True, null=True, encoder=DjangoJSONEncoder)
+
+    column_filters = JSONField(blank=True, null=True, encoder=DjangoJSONEncoder)
+
+    order_by = JSONField(blank=True, null=True, encoder=DjangoJSONEncoder)
+
+    class Meta:
+        ordering = ['filter_type', 'user__username', 'project_id']
+        verbose_name_plural = 'Field Annotation Saved Filters'
+
+    def __str__(self):
+        return "FieldAnnotationSavedFilter (pk={}, user={}, project={})".format(
+            self.pk, self.user.username, self.project_id)
 
 
 class DocumentTable(models.Model):

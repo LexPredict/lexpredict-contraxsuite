@@ -25,14 +25,29 @@
 # -*- coding: utf-8 -*-
 
 from apps.common.models import AppVar
+from django.conf import settings
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2019, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.4.0/LICENSE"
-__version__ = "1.4.0"
+__copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.5.0/LICENSE"
+__version__ = "1.5.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
 
 APP_VAR_DISABLE_EVENT_NOTIFICATIONS = AppVar.set(
-    'disable_event_notifications', False, '''Disables sending any notifications bound to document events.''')
+    'Notifications', 'disable_event_notifications', False,
+    '''Disables sending any notifications bound to document events.''')
+
+APP_VAR_EMAIL_BACKEND = AppVar.set('Mail server', 'email_backend', settings.EMAIL_BACKEND,
+                                "Email backend class")
+APP_VAR_EMAIL_HOST = AppVar.set('Mail server', 'email_host', settings.EMAIL_HOST,
+                                "Email host")
+APP_VAR_EMAIL_PORT = AppVar.set('Mail server', 'email_port', settings.EMAIL_PORT,
+                                "Email port")
+APP_VAR_EMAIL_USE_TLS = AppVar.set('Mail server', 'email_use_tls', settings.EMAIL_USE_TLS,
+                                "Use TLS")
+APP_VAR_EMAIL_HOST_USER = AppVar.set('Mail server', 'email_host_user', settings.EMAIL_HOST_USER,
+                                "Email user")
+APP_VAR_EMAIL_HOST_PASSWORD = AppVar.set('Mail server', 'email_host_password', settings.EMAIL_HOST_PASSWORD,
+                                "Email password")

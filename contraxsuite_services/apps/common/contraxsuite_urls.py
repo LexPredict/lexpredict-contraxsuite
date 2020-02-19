@@ -29,9 +29,9 @@ from django.conf import settings
 from apps.document.constants import DOCUMENT_TYPE_CODE_GENERIC_DOCUMENT
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2019, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.4.0/LICENSE"
-__version__ = "1.4.0"
+__copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.5.0/LICENSE"
+__version__ = "1.5.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -48,6 +48,23 @@ def root_url():
         return attach_proto(frontend_root_url)
     backend_root_url = settings.HOST_NAME.strip('/') + '/' + settings.BASE_URL.strip('/')
     return attach_proto(backend_root_url)
+
+
+def kibana_root_url(record_id: str, log_index: str, add_protocol: bool = True) -> str:
+    """
+    Get URL pointing to specific Kibana record like
+    https://feature.contraxsuite.com/kibana/app/kibana#/doc/filebeat-*/filebeat-7.5.2-2020.02.07?id=ZFg3H3ABoxS5n-gxBP86&_g=()
+    :param record_id: 'ZFg3H3ABoxS5n'
+    :param log_index: 'filebeat-6.3.0-2020.02.07'
+    :param add_protocol: with or without http(s)://
+    :return: full URL
+    """
+    frontend_root_url = settings.FRONTEND_ROOT_URL
+    root_url = attach_proto(frontend_root_url) if add_protocol else frontend_root_url
+    root_url = root_url.strip('/')
+    template_name = 'filebeat-*'
+    url = f"{root_url}/kibana/app/kibana#/doc/{template_name}/{log_index}?id={record_id}&_g=()"
+    return url
 
 
 def doc_editor_url(document_type_code: str, project_id: int, document_id: int) -> str:

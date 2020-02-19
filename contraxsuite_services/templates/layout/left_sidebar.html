@@ -25,6 +25,9 @@
                 <li class="divider"></li>
                 <li><a href="{% url "analyze:document-cluster-list" %}">Document Clusters</a></li>
                 <li><a href="{% url "analyze:document-similarity-list" %}">Document Similarity</a></li>
+                <li><a href="{% url "analyze:document-classifier-list" %}">Document Classifiers</a></li>
+                <li><a href="{% url "analyze:document-classification-list" %}">Document Classifications</a></li>
+                <li><a href="{% url "analyze:document-classifier-suggestion-list" %}">Document Classification Suggestions</a></li>
                 <li class="divider"></li>
                 <li><a href="{% url "extract:geo-entity-usage-chart" "country" %}">Document Geography</a></li>
             </ul>
@@ -47,7 +50,8 @@
                 <li class="divider"></li>
                 <li><a href="{% url "analyze:text-unit-cluster-list" %}">Text Unit Clusters</a></li>
                 <li><a href="{% url "analyze:text-unit-similarity-list" %}">Text Unit Similarity</a></li>
-                <li><a href="{% url "analyze:text-unit-classification-list" %}">Text Unit Classification</a></li>
+                <li><a href="{% url "analyze:text-unit-classifier-list" %}">Text Unit Classifiers</a></li>
+                <li><a href="{% url "analyze:text-unit-classification-list" %}">Text Unit Classifications</a></li>
                 <li><a href="{% url "analyze:text-unit-classifier-suggestion-list" %}">Text Unit Classification Suggestions</a></li>
             </ul>
         </li>
@@ -88,7 +92,7 @@
             </a>
         </li>
         <li>
-            <a href="https://lexpredict.com/blog" class="blog-link" target="_blank">
+            <a href="https://www.lexpredict.com/blog/" class="blog-link" target="_blank">
                 <i class="icon fa fa-rss"></i> {% trans "Blog" %} <i class="fa fa-external-link"></i>
             </a>
         </li>

@@ -26,7 +26,7 @@
 
 import datetime
 from collections import defaultdict
-from typing import List, Set, Dict, Type, Optional
+from typing import List, Set, Dict, Type, Optional, Tuple
 
 from django.db import transaction
 from lexnlp.extract.en import (
@@ -35,7 +35,7 @@ from lexnlp.extract.en import (
 from lexnlp.extract.en.entities.nltk_maxent import get_companies
 from lexnlp.nlp.en.tokens import get_stems, get_token_list
 
-from apps.common.log_utils import ProcessLogger, render_error
+from apps.common.log_utils import ProcessLogger
 from apps.document.app_vars import STRICT_PARSE_DATES
 from apps.document.models import TextUnitTag
 from apps.extract import dict_data_cache
@@ -43,13 +43,13 @@ from apps.extract.models import (
     AmountUsage, CitationUsage, CopyrightUsage, CourtUsage, CurrencyUsage,
     DateDurationUsage, DateUsage, DefinitionUsage, DistanceUsage,
     GeoAliasUsage, GeoEntityUsage, PercentUsage, RatioUsage, RegulationUsage,
-    Party, PartyUsage, TermUsage, TrademarkUsage, UrlUsage, Usage)
+    Party, PartyUsage, TermUsage, TrademarkUsage, UrlUsage, Usage, DocumentTermUsage)
 from settings import DEFAULT_FLOAT_PRECIZION
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2019, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.4.0/LICENSE"
-__version__ = "1.4.0"
+__copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.5.0/LICENSE"
+__version__ = "1.5.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -115,6 +115,33 @@ class LocationResults:
             log.error(f'Unable to store location results.\n'
                       f'Text unit ids: {self.processed_text_unit_ids}\n'
                       f'Usage models caused the problem:\n{entities_str}', exc_info=e)
+        self.save_summary(log, user_id)
+
+    def save_summary(self, log: ProcessLogger, user_id):
+        # save DocumentTermUsage
+        if self.located_usage_entities and TermUsage in self.located_usage_entities:
+            term_usages = self.located_usage_entities[TermUsage]
+            # update DocumentTermUsage records
+            doc_term_usgs = {}  # type: Dict[Tuple[int, int], DocumentTermUsage]
+            for tu in term_usages:  # type: TermUsage
+                key = (tu.text_unit.document_id, tu.term.pk,)
+                doc_usg = doc_term_usgs.get(key)
+                if doc_usg:
+                    doc_usg.count += 1
+                else:
+                    doc_usg = DocumentTermUsage()
+                    doc_usg.document_id = tu.text_unit.document_id
+                    doc_usg.term_id = tu.term.pk
+                    doc_usg.count = 1
+                    doc_term_usgs[key] = doc_usg
+            if doc_term_usgs:
+                doc_term_usgs_lst = [v for _, v in doc_term_usgs.items()]
+                try:
+                    with transaction.atomic():
+                        DocumentTermUsage.objects.bulk_create(doc_term_usgs_lst, ignore_conflicts=True)
+                except Exception as e:
+                    log.error(f'Unable to store {len(doc_term_usgs)} DocumentTermUsage records.\n',
+                              exc_info=e)
 
 
 class Locator:

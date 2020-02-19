@@ -26,12 +26,14 @@
 
 import re
 from enum import Enum
+from typing import List
+
 from apps.task.utils.nlp.line_processor import LineProcessor, LineOrPhrase
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2019, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.4.0/LICENSE"
-__version__ = "1.4.0"
+__copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.5.0/LICENSE"
+__version__ = "1.5.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -72,7 +74,7 @@ class ParsedTextQualityEstimator:
 
     def __init__(self):
         self.estimate = ParsedTextQualityEstimate()
-        self.lines = []
+        self.lines = []  # type: List[TypedLineOrPhrase]
 
     def estimate_text(self, text: str) -> ParsedTextQualityEstimate:
         self.split_text_on_lines(text)
@@ -104,10 +106,10 @@ class ParsedTextQualityEstimator:
 
         for indx in range(0, len(self.lines)):
             if self.check_line_followed_by_unnecessary_break(indx):
-                    total_extra_breaks += 1
-                    current_seq += 1
-                    longest_seq = max(current_seq, longest_seq)
-                    continue
+                total_extra_breaks += 1
+                current_seq += 1
+                longest_seq = max(current_seq, longest_seq)
+                continue
             current_seq = 0
 
         if total_extra_breaks > 1:
@@ -152,6 +154,6 @@ class ParsedTextQualityEstimator:
             return 100
 
         if len(line) < self.estimate.avg_line_length * 0.6:
-            return 65 # 65% chance the line is a header
+            return 65    # 65% chance the line is a header
 
         return 35

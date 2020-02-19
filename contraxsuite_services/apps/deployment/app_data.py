@@ -34,9 +34,9 @@ import settings
 from apps.extract.models import GeoEntity, GeoAlias, Term, Court
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2019, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.4.0/LICENSE"
-__version__ = "1.4.0"
+__copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.5.0/LICENSE"
+__version__ = "1.5.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -44,42 +44,42 @@ __email__ = "support@contraxsuite.com"
 # TODO: parse github repo?
 # f.e.: https://api.github.com/repos/LexPredict/lexpredict-legal-dictionary/contents/en
 DEFAULT_DICTIONARY_DATA_URL_MAP = dict(
-        terms_accounting_4='accounting/us_gaap.csv',
-        terms_financial_1='financial/financial.csv',
-        terms_legal_4='legal/common_US_terms_top1000.csv',
-        terms_legal_5='legal/common_top_law_terms.csv',
-        courts_1='legal/ca_courts.csv',
-        courts_2='legal/us_courts.csv',
-        geoentities_1='geopolitical/geopolitical_divisions.csv',
-    )
+    terms_accounting_4='accounting/us_gaap.csv',
+    terms_financial_1='financial/financial.csv',
+    terms_legal_4='legal/common_US_terms_top1000.csv',
+    terms_legal_5='legal/common_top_law_terms.csv',
+    courts_1='legal/ca_courts.csv',
+    courts_2='legal/us_courts.csv',
+    geoentities_1='geopolitical/geopolitical_divisions.csv',
+)
 
 DICTIONARY_DATA_URL_MAP = dict(
-        terms_accounting_1='accounting/ifrs_iasb.csv',
-        terms_accounting_2='accounting/uk_gaap.csv',
-        terms_accounting_3='accounting/us_fasb.csv',
-        terms_accounting_4='accounting/us_gaap.csv',
-        terms_accounting_5='accounting/us_gasb.csv',
-        terms_financial_1='financial/financial.csv',
-        terms_legal_1='legal/common_law.csv',
-        terms_legal_2='legal/us_cfr.csv',
-        terms_legal_3='legal/us_usc.csv',
-        terms_legal_4='legal/common_US_terms_top1000.csv',
-        terms_legal_5='legal/common_top_law_terms.csv',
-        terms_scientific_1='scientific/us_hazardous_waste.csv',
-        courts_1='legal/ca_courts.csv',
-        courts_2='legal/us_courts.csv',
-        geoentities_1='geopolitical/geopolitical_divisions.csv',
-    )
+    terms_accounting_1='accounting/ifrs_iasb.csv',
+    terms_accounting_2='accounting/uk_gaap.csv',
+    terms_accounting_3='accounting/us_fasb.csv',
+    terms_accounting_4='accounting/us_gaap.csv',
+    terms_accounting_5='accounting/us_gasb.csv',
+    terms_financial_1='financial/financial.csv',
+    terms_legal_1='legal/common_law.csv',
+    terms_legal_2='legal/us_cfr.csv',
+    terms_legal_3='legal/us_usc.csv',
+    terms_legal_4='legal/common_US_terms_top1000.csv',
+    terms_legal_5='legal/common_top_law_terms.csv',
+    terms_scientific_1='scientific/us_hazardous_waste.csv',
+    courts_1='legal/ca_courts.csv',
+    courts_2='legal/us_courts.csv',
+    geoentities_1='geopolitical/geopolitical_divisions.csv',
+)
 
 
 LOCALES_MAP = (
-        ('German Name', 'de', 'German Name'),
-        ('Spanish Name', 'es', 'Spanish Name'),
-        ('French Name', 'fr', 'French Name'),
-        ('ISO-3166-2', 'en', 'iso-3166-2'),
-        ('ISO-3166-3', 'en', 'iso-3166-3'),
-        ('Alias', 'en', 'abbreviation'),
-    )
+    ('German Name', 'de', 'German Name'),
+    ('Spanish Name', 'es', 'Spanish Name'),
+    ('French Name', 'fr', 'French Name'),
+    ('ISO-3166-2', 'en', 'iso-3166-2'),
+    ('ISO-3166-3', 'en', 'iso-3166-3'),
+    ('Alias', 'en', 'abbreviation'),
+)
 
 
 def fake_progress() -> None:

@@ -32,9 +32,9 @@ from apps.task.models import Task  # noqa
 from apps.task.utils.task_utils import TaskUtils  # noqa
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2019, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.4.0/LICENSE"
-__version__ = "1.4.0"
+__copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.5.0/LICENSE"
+__version__ = "1.5.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -66,7 +66,8 @@ class AdvancedCelery(Celery):
                                    source_data=source_data,
                                    run_after_sub_tasks_finished=run_after_sub_tasks_finished,
                                    run_if_parent_task_failed=run_if_parent_task_failed)  # type: Task
-            Task.objects.filter(id=parent_id).update(has_sub_tasks=True)
+            if parent_id is not None:
+                Task.objects.filter(id=parent_id).update(has_sub_tasks=True)
 
         return super().send_task(name, args, kwargs, countdown, eta, task_id, producer, connection,
                                  router, result_cls, expires, publisher, link, link_error,

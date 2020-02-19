@@ -29,7 +29,7 @@ import datetime
 import io
 import json
 import re
-from typing import Any, List, Dict, Iterable, Tuple, Union
+from typing import Any, List, Dict, Iterable, Tuple, Union, Optional
 
 import jiphy
 from celery import shared_task
@@ -37,8 +37,10 @@ from celery.exceptions import SoftTimeLimitExceeded
 from django.conf import settings
 from django.contrib.contenttypes.models import ContentType
 from django.db import transaction
+from django.db.models import Q
 from django.urls import reverse
 from django.utils.timezone import now
+from lexnlp.extract.en.contracts.detector import is_contract
 from psycopg2 import InterfaceError, OperationalError
 
 import task_names
@@ -52,7 +54,8 @@ from apps.document import signals
 from apps.document.async_tasks.detect_field_values_task import DetectFieldValues
 from apps.document.constants import DOCUMENT_FIELD_CODE_MAX_LEN, \
     DOC_NUMBER_PER_SUB_TASK, DOC_NUMBER_PER_MAIN_TASK, \
-    FieldSpec, DocumentSystemField
+    FieldSpec, DocumentSystemField, DOC_METADATA_DOCUMENT_CLASS_PROB
+from apps.document.document_class import DocumentClass
 from apps.document.field_detection import field_detection
 from apps.document.field_detection.field_detection import detect_and_cache_field_values_for_document
 from apps.document.field_detection.field_detection_repository import FieldDetectionRepository
@@ -74,11 +77,12 @@ from apps.task.tasks import BaseTask, ExtendedTask, CeleryTaskLogger, call_task
 from apps.task.tasks import call_task_func
 from apps.task.utils.task_utils import TaskUtils
 from apps.users.models import User
+from apps.rawdb.field_value_tables import cache_document_fields
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2019, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.4.0/LICENSE"
-__version__ = "1.4.0"
+__copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.5.0/LICENSE"
+__version__ = "1.5.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -877,9 +881,11 @@ class DeleteDocuments(BaseTask):
 
     def process(self, **kwargs):
         doc_ids = kwargs.get('_document_ids')
+        safe_mode = kwargs.get('_safe_mode')
+        safe_mode = safe_mode if safe_mode is not None else True
         file_paths = self.document_repository.get_all_document_source_paths(doc_ids)
-        get_document_bulk_delete().delete_documents(doc_ids)
-        DocumentFilesCleaner.delete_document_files(file_paths)
+        get_document_bulk_delete(safe_mode).delete_documents(doc_ids)
+        DocumentFilesCleaner.delete_document_files(file_paths, self.log_error)
 
 
 @shared_task(base=ExtendedTask,
@@ -1026,6 +1032,86 @@ def plan_process_documents_assignee_changed(doc_ids: Iterable, new_assignee_id: 
         call_task_func(process_documents_assignee_changed,
                        (doc_ids_chunk, new_assignee_id, changed_by_user_id),
                        changed_by_user_id)
+
+
+@shared_task(base=ExtendedTask,
+             name=task_names.TASK_NAME_IDENTIFY_CONTRACTS,
+             bind=True,
+             soft_time_limit=6000,
+             default_retry_delay=10,
+             retry_backoff=True,
+             autoretry_for=(SoftTimeLimitExceeded, InterfaceError, OperationalError,),
+             max_retries=3)
+def identify_contracts(task: ExtendedTask,
+                       document_type_code: Optional[str] = None,
+                       force: Optional[bool] = False,
+                       project_id: Optional[int] = None):
+    run_parameters = {'document type': document_type_code}
+    if project_id:
+        run_parameters['project'] = project_id
+    if force:
+        run_parameters['force'] = True
+    ptrs_str = ', '.join([f'{p}={run_parameters[p]}' for p in run_parameters])
+
+    msg = f'identify_contracts called for {ptrs_str}. ' \
+          f'Task: {task.task_name}, main id: {task.main_task_id}'
+    log = CeleryTaskLogger(task)
+    log.info(msg)
+    identify_document_classes(task, document_type_code, force, project_id)
+
+
+def identify_document_classes(task: ExtendedTask,
+                              document_type_code: str = None,
+                              force_recheck: bool = False,
+                              project_id: Optional[int] = None):
+    docs = Document.objects.all()
+    if not force_recheck:
+        docs = docs.filter(Q(document_class='') | Q(document_class__isnull=True))
+    if document_type_code:
+        docs = docs.filter(document_type__code=document_type_code)
+    if project_id:
+        docs = docs.filter(project__id=project_id)
+
+    total = docs.count()
+    log = CeleryTaskLogger(task)
+    log.info(f'identify_document_classes: {total}')
+    counter = 0
+    total_contracts, total_generics = (0, 0)
+
+    for doc in docs:  # type: Document
+        # doc_pk, doc_text in docs.values_list('pk', 'documenttext__full_text'):
+        new_task_progress = round(counter * 100 / total)
+        if new_task_progress != task.task.progress:
+            task.task.progress = new_task_progress
+            task.task.save()
+        counter += 1
+
+        doc_text = doc.full_text or ''
+        try:
+            res = is_contract(doc_text, return_probability=True)
+        except Exception as e:
+            log.error(f'Error in is_contract() call for document #{doc.pk}, {len(doc_text)} characters',
+                      exc_info=e)
+            continue
+        if not res:
+            log.info(f'Contract flag was not obtained for doc #{doc.pk} ({doc.name})')
+            continue
+
+        if res[0]:
+            total_contracts += 1
+        else:
+            total_generics += 1
+        meta = DocumentMetadata.objects.get(document_id=doc.pk)
+        if not meta:
+            meta = DocumentMetadata(document=doc, metadata={})
+        doc.document_class = DocumentClass.CONTRACT if res[0] else DocumentClass.GENERIC
+        meta.metadata[DOC_METADATA_DOCUMENT_CLASS_PROB] = res[1]
+        meta.save()
+
+        # caching ...
+        cache_document_fields(log, doc, cache_generic_fields=False, cache_user_fields=False)
+
+    log.info(f'{total} documents are processed ({total_contracts} contracts, {total_generics} general docs)')
 
 
 app.register_task(DetectFieldValues())

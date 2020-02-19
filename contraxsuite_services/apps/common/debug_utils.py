@@ -32,9 +32,9 @@ from contraxsuite_logging import HumanReadableTraceBackException
 from django.conf import settings
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2019, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.4.0/LICENSE"
-__version__ = "1.4.0"
+__copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.5.0/LICENSE"
+__version__ = "1.5.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -55,7 +55,6 @@ def print_stack(f=None, limit=None) -> str:
 
 def print_stack_traces(sig, frame):
     try:
-        import faulthandler
         import platform
         from datetime import datetime
         import os
@@ -78,7 +77,6 @@ def print_stack_traces(sig, frame):
         dump_str = StringIO()
 
         import threading
-        import traceback
         import sys
         for th in threading.enumerate():
             dump_str.write(str(th) + '\n')

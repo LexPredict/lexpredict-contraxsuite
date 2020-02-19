@@ -29,15 +29,18 @@ import json
 from django import forms
 from django.conf import settings
 
+from apps.common.widgets import FilterableProjectSelectField, FiltrableProjectSelectWidget
+from apps.document.constants import DOCUMENT_TYPE_PK_GENERIC_DOCUMENT
 from apps.document.models import DocumentType, DocumentField
 from apps.document.tasks import FindBrokenDocumentFieldValues, FixDocumentFieldCodes, MODULE_NAME
 from apps.project.models import Project
 from apps.document.tasks import ImportCSVFieldDetectionConfig
+from task_names import TASK_NAME_IDENTIFY_CONTRACTS
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2019, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.4.0/LICENSE"
-__version__ = "1.4.0"
+__copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.5.0/LICENSE"
+__version__ = "1.5.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -61,10 +64,12 @@ class PatchedForm(forms.Form):
 class DetectFieldValuesForm(PatchedForm):
     header = 'Detect Field Values'
 
-    document_type = forms.ModelChoiceField(queryset=DocumentType.objects.all(), required=False)
+    document_type = forms.ModelChoiceField(queryset=DocumentType.objects.exclude(pk=DOCUMENT_TYPE_PK_GENERIC_DOCUMENT),
+                                           required=False)
 
     project_ids = ProjectModelMultipleChoiceField(
-        queryset=Project.objects.all().order_by('-pk').values_list('pk', 'name'),
+        queryset=Project.objects.exclude(type_id=DOCUMENT_TYPE_PK_GENERIC_DOCUMENT).order_by(
+            '-pk').values_list('pk', 'name'),
         label='Projects',
         widget=forms.SelectMultiple(attrs={'class': 'chosen compact'}),
         required=False)
@@ -214,3 +219,27 @@ class ImportDocumentTypeForm(forms.Form):
         label='Documents: Cache document fields after import finished',
         initial=True,
         required=False)
+
+
+class IdentifyContractsForm(forms.Form):
+    header = TASK_NAME_IDENTIFY_CONTRACTS
+
+    document_type = forms.ModelChoiceField(
+        queryset=DocumentType.objects.all(),
+        label='Document Type',
+        required=False)
+
+    recheck_contract = forms.BooleanField(required=False)
+
+    project = FilterableProjectSelectField(queryset=Project.objects.all(),
+                                           required=False,
+                                           label='Restrict to project',
+                                           widget=FiltrableProjectSelectWidget)
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['project'].widget.master_id = 'id_document_type'
+
+    def _post_clean(self):
+        super()._post_clean()
+        self.cleaned_data['module_name'] = MODULE_NAME

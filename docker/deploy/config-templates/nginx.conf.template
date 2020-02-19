@@ -36,7 +36,10 @@ http {
 	# Logging Settings
 	##
 
-	log_format with_real_ip  '${DOLLAR}http_x_real_ip - ${DOLLAR}remote_user [${DOLLAR}time_local] '
+    # Log format should match grok expression in filebeat nginx module
+    # https://github.com/elastic/beats/blob/6.5/filebeat/module/nginx/access/ingest/default.json
+    # (check the proper filebeat version)
+	log_format with_real_ip  '${DOLLAR}remote_addr - ${DOLLAR}remote_user [${DOLLAR}time_local] '
                              '"${DOLLAR}request" ${DOLLAR}status ${DOLLAR}body_bytes_sent '
                              '"${DOLLAR}http_referer" "${DOLLAR}http_user_agent"';
 

@@ -32,7 +32,7 @@ from typing import Generator
 
 # Third-party imports
 from celery import states
-from celery.states import PENDING, READY_STATES
+from celery.states import PENDING, READY_STATES, FAILURE, REVOKED, IGNORED, SUCCESS
 from dataclasses import dataclass
 from dateutil import parser as date_parser
 
@@ -40,7 +40,7 @@ from dateutil import parser as date_parser
 from django.conf import settings
 from django.contrib.postgres.fields import JSONField
 from django.core.serializers.json import DjangoJSONEncoder
-from django.db import models
+from django.db import models, DatabaseError
 from django.db.models.deletion import CASCADE
 from django.utils.translation import ugettext_lazy as _
 from elasticsearch import Elasticsearch
@@ -55,12 +55,13 @@ from apps.users.models import User
 from contraxsuite_logging import write_task_log
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2019, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.4.0/LICENSE"
-__version__ = "1.4.0"
+__copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.5.0/LICENSE"
+__version__ = "1.5.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
+from task_names import TASK_FRIENDLY_NAME
 
 logger = logging.getLogger(__name__)
 es = Elasticsearch(hosts=settings.ELASTICSEARCH_CONFIG['hosts'])
@@ -71,14 +72,22 @@ class TaskConfig(models.Model):
 
     soft_time_limit = models.PositiveIntegerField(blank=True, null=True)
 
+    notify_on_fail = models.BooleanField(default=False, db_index=True)
+
+    watchdog_minutes = models.PositiveIntegerField(blank=True, null=False, default=60)
+
 
 ALL_STATES = sorted(states.ALL_STATES)
 ALL_STATES_SET = set(ALL_STATES)
 TASK_STATE_CHOICES = sorted(zip(ALL_STATES, ALL_STATES))
 
+FAIL_READY_STATES = frozenset({FAILURE, REVOKED, IGNORED})
+
 
 @dataclass
 class TaskLogEntry:
+    file_index: str
+    record_id: str
     message: str
     timestamp: datetime = None
     log_level: str = None
@@ -102,6 +111,7 @@ class Task(models.Model):
     parent_task = models.ForeignKey('self', blank=True, null=True, on_delete=CASCADE, related_name='straight_sub_tasks')
 
     name = models.CharField(max_length=100, db_index=True, null=True, blank=True)
+    display_name = models.CharField(max_length=100, null=True, blank=True)
     description = models.CharField(max_length=1024, db_index=False, null=True, blank=True)
     date_start = models.DateTimeField(default=now, db_index=True)
     date_work_start = models.DateTimeField(blank=True, null=True, db_index=True)
@@ -158,13 +168,15 @@ class Task(models.Model):
 
     call_stack = TruncatingCharField(max_length=1024, db_index=True, null=True, blank=True)
 
+    failure_reported = models.BooleanField(null=False, default=False, db_index=True)
+
     objects = TaskManager()
 
     def __str__(self):
         return "Task (name={}, celery_id={})" \
             .format(self.name, self.id)
 
-    def is_suагаb_task(self):
+    def is_sub_task(self):
         return self.parent_task_id and self.parent_task_id != self.id
 
     @property
@@ -226,7 +238,7 @@ class Task(models.Model):
                     }
                 },
                 '_source': ['@timestamp', 'level', 'message', 'log_main_task_id',
-                            'log_task_id', 'log_task_name', 'log_stack_trace']
+                            'log_task_id', 'log_task_name', 'log_stack_trace', '_id']
             }
             es_res = es.search(size=10000,
                                index=settings.LOGGING_ELASTICSEARCH_INDEX_TEMPLATE,
@@ -234,7 +246,9 @@ class Task(models.Model):
             for hit in es_res['hits']['hits']:
                 doc = hit['_source']
 
-                yield TaskLogEntry(timestamp=date_parser.parse(doc['@timestamp']),
+                yield TaskLogEntry(file_index=hit['_index'],
+                                   record_id=hit['_id'],
+                                   timestamp=date_parser.parse(doc['@timestamp']),
                                    log_level=doc.get('level'),
                                    task_name=doc.get('log_task_name'),
                                    task_id=doc.get('log_task_id'),
@@ -253,9 +267,71 @@ class Task(models.Model):
         if status in READY_STATES:
             self.own_progress = 100
 
+    def on_task_completed(self, succeeded: bool):
+        if self.has_sub_tasks:
+            self.own_progress = 100
+            self.own_status = SUCCESS if succeeded else FAILURE
+            self.own_date_done = self.own_date_done or now()
+            self.save()
+            return
+        self.update_progress(100, succeeded)
+
+    def update_progress(self,
+                        new_progress: int,
+                        succeeded: bool = True):
+        new_progress = self.ensure_correct_progress(new_progress)
+        if new_progress == self.progress:
+            return
+        self.progress = min(new_progress, 100)
+        if self.progress == 100:
+            self.status = SUCCESS if succeeded else FAILURE
+            if self.own_status not in READY_STATES:
+                self.own_status = self.status
+
+            now_time = now()
+            self.own_date_done = self.own_date_done or now_time
+            self.date_done = self.date_done or now_time
+        try:
+            self.save(update_fields=['progress', 'own_progress', 'status', 'own_status',
+                                     'date_done', 'own_date_done'])
+        except DatabaseError:
+            # task itself might have been deleted
+            pass
+
+        # propagate changes to parent tasks
+        parent_task = self.parent_task  # type: Task
+        if not parent_task:
+            return
+
+        progresses = [p for p in Task.objects.filter(
+            parent_task_id=parent_task.pk).values_list('progress', flat=True)]
+        if progresses:
+            parent_progress = int((sum(progresses) + parent_task.own_progress) / (len(progresses) + 1))
+            parent_task.update_progress(parent_progress)
+
     def save(self, *args, **kwargs):
+        if not self.display_name:
+            self.display_name = TASK_FRIENDLY_NAME.get(self.name) or self.name
+        if self.progress > 100:
+            self.progress = 100
+        if self.status in FAIL_READY_STATES:
+            self.progress = 100
+            self.own_status = self.status
+            self.date_done = self.date_done or now()
+
+        if self.status in READY_STATES:
+            self.own_status = self.status
+            self.progress = 100
+            self.date_done = self.date_done or now()
         if self.own_status in READY_STATES:
             self.own_progress = 100
-        if self.status in READY_STATES:
-            self.progress = 100
+            self.own_date_done = self.own_date_done or now()
+
         super().save(*args, **kwargs)
+
+    def ensure_correct_progress(self, new_progress: int) -> int:
+        if new_progress > 100:
+            new_progress = 100
+        if self.status in FAIL_READY_STATES or self.own_status in FAIL_READY_STATES:
+            new_progress = 100
+        return new_progress

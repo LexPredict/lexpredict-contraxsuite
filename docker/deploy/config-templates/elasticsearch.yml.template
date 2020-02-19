@@ -1,15 +1,15 @@
-cluster.name: "docker-cluster"
-network.host: 0.0.0.0
+cluster.name: docker_cluster
+node.name: ${DOLLAR}{HOSTNAME}
+node.master: true
+node.data: true
+node.ingest: true
+node.max_local_storage_nodes: 1
+path.data: /usr/share/elasticsearch/data
+network.host: ${DOLLAR}{HOSTNAME}
+network.bind_host: 0.0.0.0
+transport.tcp.port: 9300
+http.port: 9200
+cluster.initial_master_nodes: ["${DOLLAR}{HOSTNAME}"]
 
-# minimum_master_nodes need to be explicitly set when bound on a public IP
-# set to 1 to allow single node clusters
-# Details: https://github.com/elastic/elasticsearch/pull/17288
-discovery.zen.minimum_master_nodes: 1
 
-thread_pool:
-    search:
-        size: 25
-        queue_size: 6000
-        min_queue_size: 4000
-        max_queue_size: 6000
-        target_response_time: 1s
+

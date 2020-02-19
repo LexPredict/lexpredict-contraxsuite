@@ -38,9 +38,9 @@ from apps.document.models import Document
 from apps.rawdb.rawdb.errors import FilterSyntaxError, FilterValueParsingError
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2019, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.4.0/LICENSE"
-__version__ = "1.4.0"
+__copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.5.0/LICENSE"
+__version__ = "1.5.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -124,6 +124,9 @@ class TextSearchColumnDesc(ColumnDesc):
         elif field_filter == '*':
             return SQLClause('"{output_column}" is not Null'.format(output_column=self.name), [])
         else:
+            # NOTE: to_tsquery works with single words, to search phrases use "<->" operator
+            # either "tsquery_phrase(to_tsquery('fat'), to_tsquery('cat'))"
+            field_filter = ' <-> '.join(field_filter.split())
             return SQLClause('"{tsvector_column}" @@ to_tsquery(%s, %s)'
                              .format(tsvector_column=self.tsvector_column),
                              [PG_DEFAULT_LANGUAGE, field_filter])
@@ -820,7 +823,7 @@ class BooleanRawdbFieldHandler(RawdbFieldHandler):
     pg_type = PgTypes.BOOLEAN
 
     def python_value_to_indexed_field_value(self, python_value) -> Any:
-        python_value = python_value or self.default_value
+        python_value = python_value if python_value is not None else self.default_value
         return bool(python_value) if python_value is not None else False
 
     def get_client_column_descriptions(self) -> List[ColumnDesc]:

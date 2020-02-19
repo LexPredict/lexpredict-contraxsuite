@@ -27,15 +27,15 @@
 import regex as re
 import itertools
 
-from typing import Pattern
+from typing import Pattern, Optional, List, Tuple
 
 from apps.task.utils.nlp.line_processor import LineOrPhrase
 from apps.task.utils.nlp.parsed_text_quality_estimator import ParsedTextQualityEstimator
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2019, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.4.0/LICENSE"
-__version__ = "1.4.0"
+__copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.5.0/LICENSE"
+__version__ = "1.5.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -72,29 +72,45 @@ class ParsedTextCorrector:
         return text
 
     # check the text and correct if corrupted
-    def correct_if_corrupted(self, text: str) -> str:
+    def correct_if_corrupted(self,
+                             text: str,
+                             transformations: Optional[List[Tuple[Tuple[int, int], Tuple[int, int]]]] = None
+                             ) -> str:
         estimator = ParsedTextQualityEstimator()
         estim = estimator.estimate_text(text)
         if estim.corrupted_prob < 50:
             return text
         if estim.extra_line_breaks_prob > 50:
-            text = self.correct_line_breaks(text, estimator)
+            text = self.correct_line_breaks(text, estimator, transformations=transformations)
         return text
 
     # remove all double (triple ...) line breaks
-    def correct_line_breaks(self, text: str,
-                            estimator: ParsedTextQualityEstimator = None) -> str:
+    def correct_line_breaks(self,
+                            text: str,
+                            estimator: ParsedTextQualityEstimator = None,
+                            transformations: Optional[List[Tuple[Tuple[int, int], Tuple[int, int]]]] = None
+                            ) -> str:
         if estimator is None:
             estimator = ParsedTextQualityEstimator()
             estimator.split_text_on_lines(text)
 
         resulted = ''
         lines = estimator.lines
+        total_len = 0
 
         for indx in range(0, len(lines)):
-            line = lines[indx]
+            line = lines[indx]  # TypedLineOrPhrase
+            ending_len = len(line.ending)
+
             if estimator.check_line_followed_by_unnecessary_break(indx):
                 self.normalize_line_ending(line)
+
+            if transformations is not None and ending_len != len(line.ending):
+                line_start = total_len + len(line.text)
+                old_end = line_start + ending_len
+                new_end = line_start + len(line.ending)
+                transformations.append(((line_start, old_end), (line_start, new_end)))
+
             resulted += line.text
             resulted += line.ending
         return resulted

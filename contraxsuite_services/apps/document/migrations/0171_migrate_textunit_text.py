@@ -4,7 +4,6 @@ from django.db import migrations, connection
 
 
 def do_migrate(apps, schema_editor):
-
     with connection.cursor() as cursor:
         cursor.execute('INSERT INTO document_textunittext (text_unit_id, text) SELECT id as text_unit_id, text FROM document_textunit')
 

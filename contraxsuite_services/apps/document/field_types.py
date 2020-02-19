@@ -43,16 +43,16 @@ from lexnlp.extract.en.percents import get_percents
 from lexnlp.extract.en.ratios import get_ratios
 from sklearn.feature_extraction.text import CountVectorizer, TfidfTransformer
 from sklearn.pipeline import FeatureUnion, Pipeline
-from sklearn.feature_extraction.stop_words import ENGLISH_STOP_WORDS
+from sklearn.feature_extraction.text import ENGLISH_STOP_WORDS
 
 from apps.document.field_processing import vectorizers
 from apps.document.value_extraction_hints import ValueExtractionHint
 from apps.document.models import DocumentField, TextUnit
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2019, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.4.0/LICENSE"
-__version__ = "1.4.0"
+__copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.5.0/LICENSE"
+__version__ = "1.5.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -498,7 +498,7 @@ class BooleanField(TypedField):
     value_extracting = False
 
     def is_json_field_value_ok(self, val: Any):
-        return val is None or isinstance(val, bool)
+        return val is None or isinstance(val, bool) or val in {0, 1}
 
     def extract_from_possible_value(self, possible_value):
         if not possible_value:
@@ -1095,7 +1095,7 @@ class RelatedInfoField(MultiValueField):
         return True
 
     def is_json_field_value_ok(self, val: Any):
-        return val is None or isinstance(val, bool)
+        return val is None or isinstance(val, bool) or val in {0, 1}
 
     def build_json_field_value_from_json_ant_values(self, ant_values: List) -> Any:
         return bool(ant_values)

@@ -36,13 +36,14 @@ from sklearn.metrics.pairwise import cosine_similarity
 from typing import List, Set, Tuple, Optional, Dict, Generator, Iterable
 
 from apps.analyze.models import DocumentSimilarity, TextUnitSimilarity
-from apps.document.models import TextUnit, Document
+from apps.document.models import Document
 from apps.task.tasks import BaseTask, ExtendedTask
+from apps.similarity.similarity_metrics import make_text_units_query
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2019, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.4.0/LICENSE"
-__version__ = "1.4.0"
+__copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.5.0/LICENSE"
+__version__ = "1.5.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -79,6 +80,22 @@ class ChunkSimilarity(BaseTask):
             similarity_threshold, use_idf, term_type, ngram_len, ignore_case)
         proc.process_pack()
 
+    def estimate_time(self, **kwargs) -> float:
+        project = kwargs.get('project')
+        proj_id = project.id if project else None
+        search_target = kwargs['search_target']
+
+        if search_target == 'document':
+            count = Document.objects.all().count() if not proj_id \
+                else Document.objects.filter(project_id=proj_id).count()
+            estimated_time = 0.0005 * count * count + 0.0527 * count + 0.0054
+        else:
+            # unit_text_regex = DocumentChunkSimilarityProcessor.unit_text_regex
+            unit_query = make_text_units_query(proj_id)
+            count = unit_query.count()
+            estimated_time = 0.0006 * count**1.2446
+        return estimated_time
+
 
 class DocumentChunkSimilarityProcessor:
     """
@@ -90,11 +107,12 @@ class DocumentChunkSimilarityProcessor:
     TERM_TYPE_WORDS = 'WORDS'
     TERM_TYPE_CHAR_NGRAM = 'CHAR_NGRAMS'
 
+    LOG_FLOOD_INTERVAL_SECONDS = 60 * 5
+
     n_features = 100
     doc_vocabulary_chunk_size = 100
     unit_vocabulary_chunk_size = 100 * 60
     step = 2000
-    unit_text_regex = r'.{100}.*'
     reg_wordsplit = re.compile(r'[\s\.,;:-\?)(\[\]''"]+')
 
     def __init__(self,
@@ -143,16 +161,15 @@ class DocumentChunkSimilarityProcessor:
         self.timings = []  # type:List[Tuple[str, datetime.datetime]]
         # used when search_similar_documents is True - all documents or
         # just the documents of the specified project
-        self.doc_query = Document.objects.all() if not self.project_id \
-            else Document.objects.filter(project_id=self.project_id)
+        self.doc_query = Document.objects.all().order_by('pk') if not self.project_id \
+            else Document.objects.filter(project_id=self.project_id).order_by('pk')
         # used when search_similar_text_units is True - all text units or
         # just the text units of the specified project
         self.text_unit_query = None
+        # time_logged prevents logging to frequent
+        self.time_logged = {}  # type: Dict[str, time]
         if search_similar_text_units:
-            filters = dict(unit_type='paragraph', textunittext__text__regex=self.unit_text_regex)
-            if self.project_id:
-                filters['document__project_id'] = project_id
-            self.text_unit_query = TextUnit.objects.filter(**filters)
+            self.text_unit_query = make_text_units_query(self.project_id)
 
     def process_pack(self) -> None:
         """
@@ -182,22 +199,32 @@ class DocumentChunkSimilarityProcessor:
         self.push_time('deleting')
 
         vocabulary = self.build_doclevel_vocabulary()
+        self.task.task.update_progress(33)
         self.push_time('build_vocabulary')
         if not vocabulary:
             return
 
         dtm_chunked = self.build_doclevel_matrices(vocabulary)
         self.push_time('build_matricies')
+        self.task.task.update_progress(60)
 
+        self.log_check_flood('vstack', 'matrices are being stacked')
         X = sparse.vstack(dtm_chunked)
+        self.log_check_flood('vstack', 'matrices are stacked')
         self.push_time('sparse.vstack(matricies)')
 
         # step #4
+        self.log_check_flood('cosine_similarity', 'cosine_similarity is being executed')
         similarity_matrix = cosine_similarity(X) * 100
+        self.task.task.update_progress(66)
+        self.log_check_flood('cosine_similarity', 'cosine_similarity is executed')
         pks = list(self.doc_query.values_list('pk', flat=True))
         self.push_time('post-process matrix')
-        for x in range(len(pks) - 1):
+
+        docs_sim_range = len(pks) - 1
+        for x in range(docs_sim_range):
             document_a = pks[x]
+            self.log_check_flood('similarity check', f'similarity({x} of {docs_sim_range})')
             # use it to search for unique a<>b relations
             # for y, document_b in enumerate(Document.objects.all()[x + 1:], start=x + 1):
             for y in range(x + 1, len(pks)):
@@ -231,32 +258,45 @@ class DocumentChunkSimilarityProcessor:
             TextUnitSimilarity.objects.all().delete()
         self.push_time('deleting')
 
+        self.log_check_flood('vocabulary', 'building vocabulary')
         vocabulary = self.build_unitlevel_vocabulary()
+        self.log_check_flood('vocabulary', 'completed building vocabulary')
+        self.task.task.update_progress(33)
+
         self.push_time('build_vocabulary')
         if not vocabulary:
             return
 
+        self.log_check_flood('matrices', 'building matrices')
         dtm_chunked = self.build_unitlevel_matrices(vocabulary)
+        self.task.task.update_progress(60)
+        self.log_check_flood('matrices', 'completed building matrices')
         self.push_time('build_matricies')
 
+        self.log_check_flood('vstack', 'staking matrices')
         X = sparse.vstack(dtm_chunked)
+        self.task.task.update_progress(66)
+        self.log_check_flood('vstack', 'completed staking matrices')
         self.push_time('sparse.vstack(matricies)')
 
         for i in range(0, self.units_count, self.step):
-            for j in range(0, self.units_count, self.step):
+            self.log_check_flood('sim_matrix',
+                                 f'building similiarity matrix: ({i} of {self.units_count} are completed)')
+            for j in range(i + 1, self.units_count, self.step):
                 similarity_matrix = cosine_similarity(
                     X[i:min([i + self.step, self.units_count])],
                     X[j:min([j + self.step, self.units_count])]) * 100
                 for g in range(similarity_matrix.shape[0]):
-                    tu_sim = [
-                        TextUnitSimilarity(
+                    similarities = []
+                    for h in range(g + 1, similarity_matrix.shape[1]):
+                        if similarity_matrix[g, h] < self.similarity_threshold:
+                            continue
+                        similarities.append(TextUnitSimilarity(
                             text_unit_a_id=pks[i + g],
                             text_unit_b_id=pks[j + h],
-                            similarity=similarity_matrix[g, h])
-                        for h in range(similarity_matrix.shape[1])
-                        if i + g != j + h and
-                            similarity_matrix[g, h] >= self.similarity_threshold]
-                    self.store_unit_similarity_issues(tu_sim)
+                            similarity=similarity_matrix[g, h]))
+                    if similarities:
+                        self.store_unit_similarity_issues(similarities)
 
         self.store_unit_similarity_issues([], True)
         self.push_time('searching by matrix')
@@ -391,6 +431,8 @@ class DocumentChunkSimilarityProcessor:
             dtm_chunked.append(model.fit_transform(texts_set))
             start = end
             self.task.push()
+            self.log_check_flood('build_matrices',
+                                 f'build_matrices({start} of {total} processed)')
 
         return dtm_chunked
 
@@ -512,3 +554,13 @@ class DocumentChunkSimilarityProcessor:
             delta = self.timings[i][1] - self.timings[i - 1][1]
             text += f'\n{self.timings[i][0]} - {delta}'
         self.task.log_debug(text)
+
+    def log_check_flood(self, log_key: str, log_msg: str) -> None:
+        now = datetime.datetime.now()
+        last_logged = self.time_logged.get(log_key)
+        if last_logged:
+            seconds_passed = (now - last_logged).total_seconds()
+            if seconds_passed < self.LOG_FLOOD_INTERVAL_SECONDS:
+                return
+        self.time_logged[log_key] = now
+        self.task.log_info(log_msg)

@@ -120,6 +120,13 @@
     input[type="file"] {
       height: 100% !important;
     }
+    .task-form-loader {
+      margin: 10px auto;
+      text-align: center;
+    }
+    div.jconfirm-content-pane {
+      overflow: visible !important;
+    }
   </style>
 {% endblock %}
 
@@ -188,27 +195,47 @@
           <i class="fa fa-object-group"></i> Analyze</a>
         <ul class="dropdown-menu">
           <li class="dropdown-item">
-            <a class="task-cluster" href="#"
-               data-href="{% url "task:cluster" %}"
+            <a class="task" href="#"
+               data-href="{% url "analyze:cluster" %}"
                data-btn-text="Cluster">
               <i class="fa fa-object-group"></i>
               Cluster Documents/Text Units</a>
           </li>
-          {% if active_classifiers %}
+          <li class="divider"></li>
+          {% if active_text_unit_classifiers %}
             <li class="dropdown-item">
               <a class="task" href="#"
-                 data-href="{% url "task:existed-classifier-classify" %}"
+                 data-href="{% url "analyze:run-text-unit-classifier" %}"
                  data-btn-text="Classify">
                 <i class="fa fa-object-group"></i>
                 Classify Text Units (Use Existing Classifier)</a>
             </li>
           {% endif %}
+          {% if active_document_classifiers %}
+            <li class="dropdown-item">
+              <a class="task" href="#"
+                 data-href="{% url "analyze:run-document-classifier" %}"
+                 data-btn-text="Classify">
+                <i class="fa fa-object-group"></i>
+                Classify Documents (Use Existing Classifier)</a>
+            </li>
+          {% endif %}
+          {% if active_document_classifiers or active_text_unit_classifiers %}
+            <li class="divider"></li>
+          {% endif %}
           <li class="dropdown-item">
             <a class="task" href="#"
-               data-href="{% url "task:create-classifier-classify" %}"
+               data-href="{% url "analyze:train-text-unit-classifier" %}"
                data-btn-text="Classify">
               <i class="fa fa-object-group"></i>
-              Classify Text Units (Create New Classifier)</a>
+              Train Text Units Classifier</a>
+          </li>
+          <li class="dropdown-item">
+            <a class="task" href="#"
+               data-href="{% url "analyze:train-document-classifier" %}"
+               data-btn-text="Classify">
+              <i class="fa fa-object-group"></i>
+              Train Documents Classifier</a>
           </li>
         </ul>
       </li>
@@ -257,35 +284,15 @@
         </ul>
       </li>
       <li class="divider"></li>
-      <li class="dropdown-submenu">
-        <a class="dropdown-item" href="#" tabindex="-1">
-          <i class="fa fa-database"></i> Cleanup</a>
-        <ul class="dropdown-menu">
-          <li class="dropdown-item">
-            <a class="task" href="#"
-               data-href="{% url "task:clean-project" %}"
-               data-btn-text="Go">
-              <i class="fa fa-trash"></i>
-              Clean Project</a>
-          </li>
-          <li class="dropdown-item">
-            <a class="task" href="#"
-               data-href="{% url "task:total-cleanup" %}"
-               data-btn-text="Go">
-              <i class="fa fa-trash"></i>
-              Total Cleanup</a>
-          </li>
-          <li class="dropdown-item">
-            <a class="task" href="#"
-               data-href="{% url "task:clean-tasks" %}"
-               data-btn-text="Clean"
-               data-type="red"
-               data-btn-class="btn-u btn-sm btn-d"
-               data-content="Are you sure you want to purge all tasks and clear the task list?<br />
-              <i class="fa fa-trash"></i>
-              Clean Task List</a>
-          </li>
-        </ul>
+      <li class="dropdown-item">
+        <a class="task" href="#"
+           data-href="{% url "task:clean-tasks" %}"
+           data-btn-text="Clean"
+           data-type="red"
+           data-btn-class="btn-u btn-sm btn-d"
+           data-content="Are you sure you want to purge all tasks and clear the task list?<br />">
+          <i class="fa fa-trash"></i>
+          Clean Task List</a>
       </li>
     </ul>
   </div>
@@ -293,138 +300,6 @@
 
 {% block js_extra %}
   
-  <form class="popup-form cluster-form-template">
-    <p class="header">Clustering Documents and/or Text Units by Terms, Entities or Parties.</p>
-    <p class="checkbox-ltr-full-width">
-      <input checked="checked" class="checkbox-style min-one-of" id="_id_do_cluster_documents" name="do_cluster_documents" type="checkbox">
-      <label for="_id_do_cluster_documents" class="checkbox-style-3-label "> Cluster Documents</label>
-    </p>
-    <p class="checkbox-ltr-full-width">
-      <input class="checkbox-style min-one-of" id="_id_do_cluster_text_units" name="do_cluster_text_units" type="checkbox">
-      <label for="_id_do_cluster_text_units" class="checkbox-style-3-label "> Cluster Text Units</label>
-    </p>
-    <p>
-      <label for="_id_project">Project:</label>
-      <select name="project" id="_id_project" class="chosen" required="">
-        <option value="" selected=""> ---------- </option>
-        {% for id, name in projects %}
-          <option value="{{ id }}">{{ name }}</option>
-        {% endfor %}
-      </select>
-    </p>
-    <p>
-      <label for="_id_cluster_by">Cluster by:</label>
-      <select name="cluster_by" id="_id_cluster_by" multiple="multiple" class="chosen" required="">
-        <option value="date">Dates</option>
-        <option value="definition">Definitions</option>
-        <option value="duration">Date Durations</option>
-        <option value="term">Terms</option>
-        <option value="party">Parties</option>
-        <option value="entity">Geo Entities</option>
-        <option value="court">Courts</option>
-        <option value="currency_name">Currency Name</option>
-        <option value="currency_value">Currency Value</option>
-        <option value="metadata">Document Metadata</option>
-        <option value="document_type">Document Type</option>
-        <option value="source_type">Document Source Type</option>
-      </select>
-      <span class="helptext">Cluster by terms, parties or other fields.</span></p>
-    <p>
-      <label for="_id_using">Algorithm:</label>
-      <select name="using" id="_id_using">
-        <option value="minibatchkmeans" selected="">MiniBatchKMeans</option>
-        <option value="kmeans">KMeans</option>
-        <option value="birch">Birch</option>
-        <option value="dbscan">DBSCAN</option>
-{#        <option value="LabelSpreading">LabelSpreading</option>#}
-      </select>
-      <span class="helptext">Clustering algorithm model name.</span>
-    </p>
-    <p>
-      <label for="_id_name">Name:</label>
-      <input type="text" name="name" id="_id_name" maxlength="100" required="" style="background-image: url(&quot;data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAABHklEQVQ4EaVTO26DQBD1ohQWaS2lg9JybZ+AK7hNwx2oIoVf4UPQ0Lj1FdKktevIpel8AKNUkDcWMxpgSaIEaTVv3sx7uztiTdu2s/98DywOw3Dued4Who/M2aIx5lZV1aEsy0+qiwHELyi+Ytl0PQ69SxAxkWIA4RMRTdNsKE59juMcuZd6xIAFeZ6fGCdJ8kY4y7KAuTRNGd7jyEBXsdOPE3a0QGPsniOnnYMO67LgSQN9T41F2QGrQRRFCwyzoIF2qyBuKKbcOgPXdVeY9rMWgNsjf9ccYesJhk3f5dYT1HX9gR0LLQR30TnjkUEcx2uIuS4RnI+aj6sJR0AM8AaumPaM/rRehyWhXqbFAA9kh3/8/NvHxAYGAsZ/il8IalkCLBfNVAAAAABJRU5ErkJggg==&quot;); background-repeat: no-repeat; background-attachment: scroll; background-size: 16px 18px; background-position: 98% 50%;">
-    </p>
-    <p>
-      <label for="_id_description">Description:</label>
-      <input type="text" name="description" id="_id_description" maxlength="200">
-    </p>
-
-    <p>
-      <label for="_id_options">Options:</label>
-      <input type="checkbox" name="options" data-on-color="info" data-off-text="Advanced" data-off-color="success" id="_id_options" checked data-on-text="Default" class="bt-switch" data-size="small" />
-      <span class="helptext">Show advanced options.</span>
-    </p>
-
-    <p>
-      <label for="_id_n_clusters">n_clusters:</label>
-      <input type="number" name="n_clusters" value="3" id="_id_n_clusters" min="1" required="">
-      <span class="helptext">Number of clusters.</span>
-    </p>
-    <p style="display: none;">
-      <label for="_id_kmeans_max_iter">max_iter:</label>
-      <input type="number" name="kmeans_max_iter" value="100" id="_id_kmeans_max_iter" min="1" required="">
-      <span class="helptext">Maximum number of iterations for a single run.</span>
-    </p>
-    <p style="display: none;"><label for="_id_kmeans_n_init">n_init:</label>
-      <input type="number" name="kmeans_n_init" value="10" id="_id_kmeans_n_init" min="1" required="">
-      <span class="helptext">Number of time the k-means algorithm will be run with different centroid seeds. The final results will be the best output of n_init consecutive runs in terms of inertia.</span>
-    </p>
-    <p style="display: none;"><label for="_id_minibatchkmeans_batch_size">batch_size:</label>
-      <input type="number" name="minibatchkmeans_batch_size" value="100" id="_id_minibatchkmeans_batch_size" min="1" required="">
-      <span class="helptext">Size of the mini batches.</span>
-    </p>
-    <p style="display: none;"><label for="_id_birch_threshold">threshold:</label>
-      <input type="number" name="birch_threshold" value="0.5" id="_id_birch_threshold" min="0" required="" step="any">
-      <span class="helptext">The radius of the subcluster obtained by merging a new sample and the closest subcluster should be lesser than the threshold. Otherwise a new subcluster is started.</span>
-    </p>
-    <p style="display: none;"><label for="_id_birch_branching_factor">branching_factor:</label>
-      <input type="number" name="birch_branching_factor" value="50" id="_id_birch_branching_factor" min="1" required="">
-      <span class="helptext">Maximum number of CF subclusters in each node.</span>
-    </p>
-    <p style="display: none;">
-      <label for="_id_dbscan_eps">eps:</label>
-      <input type="number" name="dbscan_eps" value="0.5" id="_id_dbscan_eps" min="0" required="" step="any">
-      <span class="helptext">The maximum distance between two samples for them to be considered as in the same neighborhood.</span>
-    </p>
-    <p style="display: none;">
-      <label for="_id_dbscan_leaf_size">leaf_size:</label>
-      <input type="number" name="dbscan_leaf_size" value="30" id="_id_dbscan_leaf_size" min="1" required=""> <span class="helptext">Leaf size passed to BallTree or cKDTree. This can affect the speed of the construction and query, as well as the memory required to store the tree.</span>
-    </p>
-    <p style="display: none;">
-      <label for="_id_dbscan_p">p:</label>
-      <input type="number" name="dbscan_p" id="_id_dbscan_p" min="0" step="any">
-      <span class="helptext">Leaf size passed to BallTree or cKDTree. This can affect the speed of the construction and query, as well as the memory required to store the tree.</span>
-    </p>
-{#    <p style="">#}
-{#      <label for="_id_ls_documents_property">Document Property Name:</label>#}
-{#      <select name="ls_documents_property" id="_id_ls_documents_property" class="chosen">#}
-{#        {% for prop in ls_document_properties %}#}
-{#          <option value="{{ prop }}" selected="">{{ prop }}</option>#}
-{#        {% endfor %}#}
-{#      </select>#}
-{#    </p>#}
-{#    <p style="">#}
-{#      <label for="_id_ls_text_units_property">Text Unit Property Name:</label>#}
-{#      <select name="ls_text_units_property" id="_id_ls_text_units_property" class="chosen">#}
-{#        {% for prop in ls_text_unit_properties %}#}
-{#          <option value="{{ prop }}" selected="">{{ prop }}</option>#}
-{#        {% endfor %}#}
-{#      </select>#}
-{#    </p>#}
-{#    <p style="display: none;"><label for="_id_ls_max_iter">max_iter:</label>#}
-{#      <input type="number" name="ls_max_iter" value="5" id="_id_ls_max_iter" min="1" required="">#}
-{#      <span class="helptext">Maximum number of iterations allowed.</span>#}
-{#    </p>#}
-{#    <p class="checkbox-ltr-full-width">#}
-{#      <input class="checkbox-style max-one-of" id="_id_delete_type" name="delete_type" type="checkbox">#}
-{#      <label for="_id_delete_type" class="checkbox-style-3-label "> Delete existing Clusters of the "Cluster By" and "Algorithm" specified above</label>#}
-{#    </p>#}
-{#    <p class="checkbox-ltr-full-width">#}
-{#      <input class="checkbox-style max-one-of" id="_id_delete" name="delete" type="checkbox">#}
-{#      <label for="_id_delete" class="checkbox-style-3-label "> Delete all existing Clusters</label>#}
-{#    </p>#}
-  </form>
-
   <form class="popup-form ltr load-form-template">
 
     <div class="fancy-title title-bottom-border">
@@ -636,7 +511,8 @@
       if ($('.cluster-form').length) {
         $form.find('[name="do_cluster_documents"], [name="do_cluster_text_units"]').parent('p').show();
         var using =  $form.find('select[name="using"]').val();
-        var is_simple =  $form.find('input[name="options"]').is(':checked');
+        var is_simple = $('.bootstrap-switch-id-id_options.bootstrap-switch-on').length;
+        // is_simple = $('input[name="options"]').is(':checked');
         if (using == 'minibatchkmeans') {
           var advanced = ', [name="kmeans_max_iter"], [name^="minibatchkmeans_"]';
           var hidden_advanced = is_simple ? advanced : '';
@@ -692,10 +568,11 @@
         {#  }#}
         {#}#}
       }
-          {# classify form #}
+      {# classify form #}
       else if ($('.classify-form').length){
         var algorithm = $('select[name="algorithm"]').val();
-        is_simple = $('input[name="options"]').is(':checked');
+        var is_simple = $('.bootstrap-switch-id-id_options.bootstrap-switch-on').length;
+        // is_simple = $('input[name="options"]').is(':checked');
         if (algorithm == 'SVC') {
           hidden_advanced = is_simple ? ', [name^="svc_"]' : '';
           if (!is_simple) {
@@ -728,8 +605,9 @@
     };
     var onLoadJC = function(jc){
       var $form = jc.$content;
+      $form.find('.task-form-loader').remove();
       {# activate chosen plugin #}
-      $form.find('select.chosen:enabled').chosen();
+      $form.find('select.chosen:enabled').chosen({search_contains: true});
       $form.find('form > p:visible:last:has(select)').css('height', '80px');
       $form.find('.chosen-single').css({'height': '34px', 'padding-top': '3px'});
       {# activate bt-switch plugin #}
@@ -822,8 +700,9 @@
         backgroundDismiss: true,
         content: $that.data('content') || function(){
           var self = this;
+          var loader_el = '<h2 class="task-form-loader"><i class="fa fa-spinner fa-spin"></i> FORM IS LOADING</h2>';
           $.get($that.data('href')).done(function(data){
-            var content = '<form class="' + data.form_class + '" enctype="multipart/form-data">' +
+            var content = loader_el + '<form class="' + data.form_class + '" enctype="multipart/form-data">' +
                 '<p class="header">' + data.header + '</p>' +
                 data.form_data + '</form>';
             var $content = $(content);
@@ -857,7 +736,7 @@
         onContentReady: function(){
           setTimeout(function() {
             onLoadJC(jc);
-          }, 1000);
+          }, 5000);
         },
         columnClass: 'col-md-8',
         type: $that.data('type') || 'blue',
@@ -871,49 +750,66 @@
               var form = jc.$content.find('form');
               form.find('.error').remove();
               var formdata = false;
-              if (window.FormData){
+              if (window.FormData)
                 formdata = new FormData(form[0]);
-              }
-              $.ajax({
-                url: $that.data('href'),
-                type: 'POST',
-                data: formdata ? formdata : form.serialize(),
-                contentType: false,
-                processData: false,
-                success: function(data, status, xhr){
-                  console.log(xhr);
-                  //window.xxhr = xhr;
-                  jc.close();
 
-                  if (xhr.getResponseHeader('content-disposition') && xhr.getResponseHeader('content-disposition').startsWith('attachment')){
-                    data = JSON.stringify(data);
-                    var blob = new Blob([data], {type: xhr.getResponseHeader('content-type')});
-                    var url  = URL.createObjectURL(blob);
-                    var a = document.createElement('a');
-                    a.download = xhr.getResponseHeader('filename');
-                    a.href = url;
-                    a.click();
-                    URL.revokeObjectURL(url);
-                    data = 'Downloaded ' + xhr.getResponseHeader('filename') + ' file'
+              onSuccess = function(data, status, xhr){
+                console.log(xhr);
+
+                if (data.confirm) {
+                  if (confirm(data.message)) {
+                     console.log('Start over from here');
+                     // start over skipping confirmation
+                     post_data = formdata ? formdata : form.serialize();
+                     console.log(post_data);
+                     post_data.append('skip_confirmation', true);
+                     $.ajax({
+                        url: $that.data('href'),
+                        type: 'POST',
+                        data: post_data,
+                        contentType: false,
+                        processData: false,
+                        success: onSuccess,
+                        error: onError});
+                     return;
                   }
-                  if ($.isPlainObject(data)){
-                    data = data.result
+                  data = data.message;
+                  return;
+                }
+
+                //window.xxhr = xhr;
+                jc.close();
+
+                if (xhr.getResponseHeader('content-disposition') && xhr.getResponseHeader('content-disposition').startsWith('attachment')){
+                  data = JSON.stringify(data);
+                  var blob = new Blob([data], {type: xhr.getResponseHeader('content-type')});
+                  var url  = URL.createObjectURL(blob);
+                  var a = document.createElement('a');
+                  a.download = xhr.getResponseHeader('filename');
+                  a.href = url;
+                  a.click();
+                  URL.revokeObjectURL(url);
+                  data = 'Downloaded ' + xhr.getResponseHeader('filename') + ' file'
+                }
+                if ($.isPlainObject(data)){
+                  data = data.result
+                }
+
+                $.alert({
+                  icon: 'fa fa-spinner fa-spin text-warning',
+                  title: 'Working!',
+                  type: 'orange',
+                  content: data,
+                  columnClass: 'col-md-4',
+                  onClose: function(){
+                    $('.jqxgrid').jqxGrid('updatebounddata')
                   }
 
-                  $.alert({
-                    icon: 'fa fa-spinner fa-spin text-warning',
-                    title: 'Working!',
-                    type: 'orange',
-                    content: data,
-                    columnClass: 'col-md-4',
-                    onClose: function(){
-                      $('.jqxgrid').jqxGrid('updatebounddata')
-                    }
+                });
+              };
 
-                  });
-                },
-                error: function(data){
-                  if ('status' in data.responseJSON){
+              onError = function(data) {
+                  if ('status' in data.responseJSON) {
                     $.alert({
                       icon: 'fa fa-warning text-danger',
                       title: 'Something went wrong',
@@ -922,82 +818,30 @@
                       columnClass: 'col-md-4',
                       onClose: function(){
                         $('.jqxgrid').jqxGrid('updatebounddata')
-                      }
-                    });
-                    return false
-                  }
-                  $.each(data.responseJSON, function(field, error){
-                    var error_p = '<p class="error">' + error[0] + '</p>';
-                    form.find('#id_' + field).before(error_p)
-                  })
-                }});
-              return false
-            }
-          },
-          cancel: {
-            btnClass: 'btn-u btn-sm btn-l'
-          }
-        }
-      });
-    });
+                      } // onClose
+                    }); // $.alert
+                    return false;
+                  } // if ('status'
 
-    $('.task-cluster').click(function(){
-      var $that = $(this);
-      var jc = $.confirm({
-        title: 'Are you sure?',
-        backgroundDismiss: true,
-        content: function(){
-          var $form = $('.cluster-form-template').clone().toggleClass('cluster-form-template cluster-form');
-          $form.find('input').each(function(n, el){
-            $(el).attr('id', $(el).attr('id').replace('_id', 'id'))
-          });
-          $form.find('select').each(function(n, el){
-            $(el).attr('id', $(el).attr('id').replace('_id', 'id'))
-          });
-          $form.find('label').each(function(n, el){
-            $(el).attr('for', $(el).attr('for').replace('_id', 'id'))
-          });
-          $form.find('input[type="checkbox"]:not(.bt-switch)').prop("disabled", true);
-          $form.addClass('disabled');
-          return $form[0].outerHTML;
-        },
-        onContentReady: function(){
-          setTimeout(function() {
-            onLoadJC(jc);
-          }, 1000);
-        },
-        columnClass: 'col-md-8',
-        type: $that.data('type') || 'blue',
-        icon: 'fa fa-warning text-warning',
-        buttons: {
-          confirm: {
-            text: $that.data('btn-text'),
-            btnClass: $that.data('btn-class') || 'btn-u btn-sm',
-            action: function(){
-              var jc = this;
-              var form = jc.$content.find('form');
-              form.find('.error').remove();
-              $.post($that.data('href'), form.serialize())
-                  .done(function(data){
-                    jc.close();
-                    $.alert({
-                      icon: 'fa fa-spinner fa-spin text-warning',
-                      title: 'Working!',
-                      type: 'orange',
-                      content: data,
-                      columnClass: 'col-md-4',
-                      onClose: function(){
-                        $('.jqxgrid').jqxGrid('updatebounddata')
-                      }
-                    });
-                  })
-                  .fail(function(data){
-                    $.each(data.responseJSON, function(field, error){
-                      var error_p = '<p class="error">' + error[0] + '</p>';
-                      form.find('[name=' + field + ']').parent().prepend(error_p)
-                    })
-                  });
-              return false
+                  $.each(data.responseJSON, function(field, error) {
+                    var error_p = '<p class="error">' + error[0] + '</p>';
+                    form.find('#id_' + field).before(error_p);
+                  }); // $.each
+                  return false;
+              };
+
+              post_data = formdata ? formdata : form.serialize();
+              console.log('post data is: ');
+              console.log(post_data)
+
+              $.ajax({
+                url: $that.data('href'),
+                type: 'POST',
+                data: post_data,
+                contentType: false,
+                processData: false,
+                success: onSuccess,
+                error: onError});
             }
           },
           cancel: {
@@ -1093,7 +937,7 @@
     $(document).ready(function () {
       var datafields = [
         { name: 'pk', type: 'string' },
-        { name: 'name', type: 'string' },
+        { name: 'display_name', type: 'string' },
         { name: 'description', type: 'string' },
         { name: 'username', type: 'string' },
         { name: 'date_start', type: 'date' },
@@ -1139,7 +983,7 @@
         return renderCell(defaulthtml, new_value);
       };
       var columns = [
-        { text: 'Task Name', datafield: 'name', width: 'auto',
+        { text: 'Task Name', datafield: 'display_name', width: 'auto',
           align: 'center', cellsalign: 'left',
           cellsrenderer: defaultLinkFormatter },
         { text: 'Description', datafield: 'description', width: 80,

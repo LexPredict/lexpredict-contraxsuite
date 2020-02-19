@@ -1,0 +1,40 @@
+es_host: ${DOCKER_HOST_NAME_ELASTICSEARCH}
+es_port: ${DOCKER_ELASTICSEARCH_PORT}
+
+name: "${DOCKER_DJANGO_HOST_NAME}: Task Failed Alert"
+index: filebeat-*
+
+type: any
+
+realert:
+  seconds: 1
+
+filter:
+- query:
+  - query_string:
+      query: "log_elastalert:task_failed"
+
+query_delay:
+  minutes: 1
+query_key: host
+
+alert_text_type: alert_text_only
+include : ["log_task_id", "log_task_name", "log_message", "log_task_status", "log_task_started",
+ "log_task_started", "log_task_ended", "log_user_id", "log_stack_trace", "log_kibana_ref", "error_message"]
+
+alert_text: "${DOCKER_DJANGO_HOST_NAME}: Task {1} {2}\n
+Task {0} was started by user #{7} at {5}.\n\n
+See details here: {9}.\n
+Error: {10}\n
+Stack: {8}
+"
+
+alert_text_args: ["log_task_id", "log_task_name", "log_message", "log_task_status", "log_task_started",
+ "log_task_started", "log_task_ended", "log_user_id", "log_stack_trace", "log_kibana_ref", "error_message"]
+
+
+alert:
+  - "email"
+
+email:
+  - "${DOCKER_DJANGO_ADMIN_EMAIL}"

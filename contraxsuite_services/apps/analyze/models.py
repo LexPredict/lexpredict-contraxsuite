@@ -39,9 +39,9 @@ from apps.extract.models import Party
 from apps.users.models import User
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2019, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.4.0/LICENSE"
-__version__ = "1.4.0"
+__copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.5.0/LICENSE"
+__version__ = "1.5.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -164,18 +164,16 @@ class DocumentVector(BaseVector):
             .format(self.document, self.vector_name, self.timestamp)
 
 
-class TextUnitClassification(models.Model):
-    """
-    TextUnitClassification object model
-    TextUnitClassification is a class used to record the assignment of one or more labels
-    to one or more text units.  This assignment can be done by a human manually, through the
-    "approval" of a TextUnitClassifierSuggestion, through Jupyter notebooks, or through the API.
-    This object supports names and values up to 1024 characters, and includes user and
-    timestamp auditing.
-    """
-    # Text unit
-    text_unit = models.ForeignKey(TextUnit, db_index=True, on_delete=CASCADE)
+# --------------------------------------------------------------------------
+# Classifier models
+# --------------------------------------------------------------------------
 
+
+class BaseClassification(models.Model):
+    """
+    BaseClassification object model
+    Base model for TextUnitClassification and DocumentClassification models
+    """
     # Class name/label name
     class_name = models.CharField(max_length=1024, db_index=True)
 
@@ -189,6 +187,21 @@ class TextUnitClassification(models.Model):
     user = models.ForeignKey(User, db_index=True, null=True, on_delete=CASCADE)
 
     class Meta:
+        abstract = True
+
+
+class TextUnitClassification(BaseClassification):
+    """
+    TextUnitClassification object model
+    TextUnitClassification is a class used to record the assignment of one or more labels
+    to one or more text units.  This assignment can be done by a human manually, through the
+    "approval" of a TextUnitClassifierSuggestion, through Jupyter notebooks, or through the API.
+    This object supports names and values up to 1024 characters, and includes user and
+    timestamp auditing.
+    """
+    text_unit = models.ForeignKey(TextUnit, db_index=True, on_delete=CASCADE)
+
+    class Meta(BaseClassification.Meta):
         ordering = ('text_unit', 'class_name', 'timestamp')
 
     def __str__(self):
@@ -196,10 +209,29 @@ class TextUnitClassification(models.Model):
             .format(self.text_unit, self.class_name, self.class_value)
 
 
-class TextUnitClassifier(models.Model):
+class DocumentClassification(BaseClassification):
     """
-    TextUnitClassifier object model
-    TextUnitClassifier is a class used to store a trained classifier.  Classifiers may be trained
+    DocumentClassification object model
+    DocumentClassification is a class used to record the assignment of one or more labels
+    to one or more documents.  This assignment can be done by a human manually, through the
+    "approval" of a DocumentClassifierSuggestion, through Jupyter notebooks, or through the API.
+    This object supports names and values up to 1024 characters, and includes user and
+    timestamp auditing.
+    """
+    document = models.ForeignKey(Document, db_index=True, on_delete=CASCADE)
+
+    class Meta(BaseClassification.Meta):
+        ordering = ('document', 'class_name', 'timestamp')
+
+    def __str__(self):
+        return "DocumentClassification (document={0}, class_name={1}, class_value={2}" \
+            .format(self.document, self.class_name, self.class_value)
+
+
+class BaseClassifier(models.Model):
+    """
+    Base class for TextUnitClassifier and DocumentClassifier object model
+    Classifier is a class used to store a trained classifier.  Classifiers may be trained
     through the UI, through Jupyter notebooks, or through the API.
     # TODO: Mainline filesystem storage of very large models.
     # TODO: Mainline calibration/post-processing, e.g., isotonic/sigmoid.
@@ -222,32 +254,37 @@ class TextUnitClassifier(models.Model):
     class Meta:
         unique_together = (("name", "version"),)
         ordering = ('name', 'class_name')
+        abstract = True
 
     def __str__(self):
-        return "TextUnitClassifier (name={0}, version={1}, class_name={2}" \
-            .format(self.name, self.version, self.class_name)
+        return "{} (name={}, version={}, class_name={}" \
+            .format(self.__class__.__name__, self.name, self.version, self.class_name)
 
 
-class TextUnitClassifierSuggestion(models.Model):
+class TextUnitClassifier(BaseClassifier):
     """
-    TextUnitClassifierSuggestion object model
-    TextUnitClassifierSuggestion is a class used to record the suggested classifications
-    produced by a trained TextUnitClassifier.  These suggestions can be "approved" either
-    automatically through workflows or with human review.
-
-    #TODO: Mainline OvR/OvO assessment.
+    TextUnitClassifier object model
     """
-    # Classifier object
-    classifier = models.ForeignKey(TextUnitClassifier, db_index=True, on_delete=CASCADE)
+    pass
 
+
+class DocumentClassifier(BaseClassifier):
+    """
+    DocumentClassifier object model
+    """
+    pass
+
+
+class BaseClassifierSuggestion(models.Model):
+    """
+    BaseClassifierSuggestion object model
+    Base for TextUnitClassifierSuggestion and DocumentClassifierSuggestion models
+    """
     # Run timestamp
     classifier_run = models.DateTimeField(default=now, db_index=True)
 
     # Classifier confidence/score/probability, depending on model and calibration
     classifier_confidence = models.FloatField(default=0.0)
-
-    # Text unit
-    text_unit = models.ForeignKey(TextUnit, db_index=True, on_delete=CASCADE)
 
     # Class name
     class_name = models.CharField(max_length=1024, db_index=True)
@@ -255,13 +292,94 @@ class TextUnitClassifierSuggestion(models.Model):
     # Class value
     class_value = models.CharField(max_length=1024, db_index=True)
 
-    def __str__(self):
-        return "TextUnitClassifierSuggestion (classifier={0}, classifier_run={1}, text_unit={2}" \
-            .format(self.classifier, self.classifier_run, self.text_unit)
+    class Meta:
+        abstract = True
 
     @property
     def classifier_confidence_format(self):
         return "{0:2d}%".format(int(100 * self.classifier_confidence))
+
+
+class TextUnitClassifierSuggestion(BaseClassifierSuggestion):
+    """
+    TextUnitClassifierSuggestion object model
+    TextUnitClassifierSuggestion is a class used to record the suggested classifications
+    produced by a trained TextUnitClassifier.  These suggestions can be "approved" either
+    automatically through workflows or with human review.
+    TODO: Mainline OvR/OvO assessment.
+    """
+    # Classifier object
+    classifier = models.ForeignKey(TextUnitClassifier, db_index=True, on_delete=CASCADE)
+
+    # Text unit
+    text_unit = models.ForeignKey(TextUnit, db_index=True, on_delete=CASCADE)
+
+    def __str__(self):
+        return "TextUnitClassifierSuggestion (classifier={0}, classifier_run={1}, text_unit={2}" \
+            .format(self.classifier, self.classifier_run, self.text_unit)
+
+
+class DocumentClassifierSuggestion(BaseClassifierSuggestion):
+    """
+    DocumentClassifierSuggestion object model
+    DocumentClassifierSuggestion is a class used to record the suggested classifications
+    produced by a trained DocumentClassifier.  These suggestions can be "approved" either
+    automatically through workflows or with human review.
+    TODO: Mainline OvR/OvO assessment.
+    """
+    # Classifier object
+    classifier = models.ForeignKey(DocumentClassifier, db_index=True, on_delete=CASCADE)
+
+    # Text unit
+    document = models.ForeignKey(Document, db_index=True, on_delete=CASCADE)
+
+    def __str__(self):
+        return "DocumentClassifierSuggestion (classifier={0}, classifier_run={1}, document={2}" \
+            .format(self.classifier, self.classifier_run, self.document)
+
+
+class BaseClassifierAssessment(models.Model):
+    """
+    BaseClassifierAssessment object model
+    Base model for TextUnitClassifierAssessment and DocumentClassifierAssessment models
+    """
+    # Assessment name/label
+    assessment_name = models.CharField(max_length=1024, db_index=True)
+
+    # Score/assessment value
+    assessment_value = models.FloatField(default=0.0, db_index=True)
+
+    # Assessment timestamp
+    assessment_run = models.DateTimeField(default=now, db_index=True)
+
+    class Meta:
+        abstract = True
+
+    def __str__(self):
+        return "{} (classifier={}, assessment={1}, value={}" \
+            .format(self.__class__.__name__, self.classifier,
+                    self.assessment_name, self.assessment_value)
+
+
+class TextUnitClassifierAssessment(BaseClassifierAssessment):
+    """
+    TextUnitClassifierAssessment object model
+    TextUnitClassifierAssessment is a class used to store an assessment of a trained classifier,
+    for example, an F1-score or precision metric.
+    TODO: Decide if we create full replication support through TextUnit FK table; expensive on TU delete.
+    """
+    # Classifier object
+    classifier = models.ForeignKey(TextUnitClassifier, db_index=True, on_delete=CASCADE)
+
+
+class DocumentClassifierAssessment(BaseClassifierAssessment):
+    """
+    DocumentClassifierAssessment object model
+    DocumentClassifierAssessment is a class used to store an assessment of a trained classifier,
+    for example, an F1-score or precision metric.
+    """
+    # Classifier object
+    classifier = models.ForeignKey(DocumentClassifier, db_index=True, on_delete=CASCADE)
 
 
 # --------------------------------------------------------------------------
@@ -328,6 +446,10 @@ class TextUnitCluster(BaseCluster):
         return '%s: %s' % (self.name, self.self_name)
 
 
+# --------------------------------------------------------------------------
+# Similarity models
+# --------------------------------------------------------------------------
+
 class DocumentSimilarity(models.Model):
     """
     DocumentSimilarity object model
@@ -356,10 +478,6 @@ class DocumentSimilarity(models.Model):
     def __str__(self):
         return '{}-{}: {}'.format(str(self.document_a), str(self.document_b), self.similarity)
 
-
-# --------------------------------------------------------------------------
-# Similarity models
-# --------------------------------------------------------------------------
 
 class TextUnitSimilarity(models.Model):
     """

@@ -121,7 +121,7 @@
   <script type="text/javascript">
 
     function prettify_bytes(value){
-      if (!value) return 0
+      if (!value) return 0;
       var unit_list = ['bytes', 'kB', 'MB', 'GB', 'TB'];
       for (var i = 0; i < unit_list.length; i++){
         var unit = unit_list[i];
@@ -300,7 +300,8 @@
             datafields: [
               { name: 'indexname', type: 'string' },
               { name: 'size', type: 'int' },
-              { name: 'size_pretty', type: 'string', map: 'size' }
+              { name: 'size_pretty', type: 'string', map: 'size' },
+              { name: 'indexdef', type: 'str' }
             ],
             url: window.location.href,
             datatype: "json",
@@ -325,13 +326,15 @@
               columns: [
                 { text: 'Index Name', datafield: 'indexname', width: 'auto',
                   align: 'center', cellsalign: 'left' },
-                { text: 'Size bytes', datafield: 'size', width: 200, cellsformat: 'd',
+                { text: 'Size bytes', datafield: 'size', width: 150, cellsformat: 'd',
                   aggregates: ['sum'], aggregatesrenderer: aggregatesSumRenderer,
                   align: 'center', cellsalign: 'right' },
-                { text: 'Size Pretty', datafield: 'size_pretty', width: 200,
+                { text: 'Size Pretty', datafield: 'size_pretty', width: 150,
                   cellsrenderer: prettySizeRenderer,
                   aggregates: ['sum'], aggregatesrenderer: aggregatesPrettySumRenderer,
-                  align: 'center', cellsalign: 'right' }
+                  align: 'center', cellsalign: 'right' },
+                { text: 'Index Definition', datafield: 'indexdef', width: 'auto',
+                  align: 'center', cellsalign: 'left' }
               ]
             });
           }

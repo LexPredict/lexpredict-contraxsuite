@@ -35,9 +35,9 @@ import apps.common.mixins
 from apps.task.views import *
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2019, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.4.0/LICENSE"
-__version__ = "1.4.0"
+__copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.5.0/LICENSE"
+__version__ = "1.5.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -187,55 +187,9 @@ class LocateTaskAPIVIew(rest_framework.views.APIView, LocateTaskView):
     http_method_names = ["get", "post"]
 
 
-class ExistingClassifierClassifyAPIView(rest_framework.views.APIView, ExistedClassifierClassifyView):
-    """
-    "Classify using existing classifier" admin task\n
-    POST params:
-        - classifier_id: int
-        - sample_size: int
-        - min_confidence: int
-        - delete_suggestions: bool
-    """
-    http_method_names = ["get", "post"]
-
-
-class NewClassifierClassifyAPIView(rest_framework.views.APIView, CreateClassifierClassifyView):
-    """
-    "Classify using new classifier" admin task\n
-    POST params:
-        - classify_by: str[]
-        - algorithm: str[]
-        - class_name: str
-        - sample_size: int
-        - min_confidence: int
-        - options: huge amount of options
-        - use_tfidf: bool
-        - delete_classifier: bool
-        - delete_suggestions: bool
-    """
-    http_method_names = ["get", "post"]
-
-
 class UpdateElasticsearchIndexAPIView(rest_framework.views.APIView, UpdateElasticsearchIndexView):
     """
     "Update ElasticSearch Index" admin task\n
-    """
-    http_method_names = ["get", "post"]
-
-
-class ClusterAPIView(rest_framework.views.APIView, ClusterView):
-    """
-    "Cluster" admin task\n
-    POST params:
-        - do_cluster_documents: bool
-        - do_cluster_text_units: bool
-        - cluster_by: str[]
-        - using: str[]
-        - name: str
-        - description: str
-        - options: huge amount of options
-        - delete_type: bool
-        - delete: bool
     """
     http_method_names = ["get", "post"]
 
@@ -289,14 +243,8 @@ urlpatterns = [
         name='locate'),
     url(r'^locate/$', LocateTaskAPIVIew.as_view(),
         name='locate'),
-    url(r'^classify/$', ExistingClassifierClassifyAPIView.as_view(),
-        name='classify'),
-    url(r'^classify/new/$', NewClassifierClassifyAPIView.as_view(),
-        name='classify-new'),
     url(r'^update-elastic-index/$', UpdateElasticsearchIndexAPIView.as_view(),
         name='update-elastic-index'),
-    url(r'^cluster/$', ClusterAPIView.as_view(),
-        name='cluster'),
     url(r'^clean-tasks/$', CleanTasksAPIView.as_view(),
         name='clean-tasks'),
     url(r'^purge-task/$', PurgeTaskAPIView.as_view(),

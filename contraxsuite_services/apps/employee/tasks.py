@@ -39,9 +39,9 @@ from apps.task.tasks import BaseTask, ExtendedTask
 from apps.task.utils.text.segment import segment_sentences
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2019, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.4.0/LICENSE"
-__version__ = "1.4.0"
+__copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.5.0/LICENSE"
+__version__ = "1.5.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -129,8 +129,7 @@ class LocateEmployees(BaseTask):
                 if employee_dict.get('annual_salary') is None:
                     get_salary_result = get_salary(text)
                     if get_salary_result is not None:
-                        employee_dict['annual_salary'] = get_salary_result[0][0] * \
-                                                         get_salary_result[1]
+                        employee_dict['annual_salary'] = get_salary_result[0][0] * get_salary_result[1]
                         employee_dict['salary_currency'] = get_salary_result[0][1]
                 if employee_dict.get('effective_date') is None:
                     employee_dict['effective_date'] = get_effective_date(text)

@@ -32,14 +32,15 @@ from django.conf import settings
 from django.db import connection, transaction, IntegrityError
 from django.db.models import Q
 
-from apps.common.log_utils import ProcessLogger, render_error
+from apps.common.log_utils import ProcessLogger
 from apps.common.sql_commons import fetch_int, escape_column_name, sum_list, SQLClause, \
     SQLInsertClause, join_clauses, format_clause, fetch_dicts
 from apps.document import field_types
-from apps.document.constants import DOCUMENT_FIELD_CODE_MAX_LEN, DocumentGenericField, DocumentSystemField, FieldSpec
-from apps.document.models import DocumentType, Document, DocumentField
-from apps.document.models import FieldAnnotation
-from apps.extract.models import DefinitionUsage
+from apps.document.constants import DOCUMENT_FIELD_CODE_MAX_LEN, DocumentGenericField, DocumentSystemField, FieldSpec, \
+    DOC_METADATA_DOCUMENT_CLASS_PROB
+from apps.document.document_class import DocumentClass
+from apps.document.models import DocumentType, Document, DocumentField, FieldAnnotation
+from apps.extract.models import DefinitionUsage, GeoEntityUsage, CurrencyUsage
 from apps.rawdb.constants import TABLE_NAME_PREFIX, FIELD_CODE_DOC_NAME, FIELD_CODE_DOC_TITLE, FIELD_CODE_DOC_FULL_TEXT, \
     FIELD_CODE_DOC_FULL_TEXT_LENGTH, FIELD_CODE_DOC_ID, FIELD_CODE_CREATE_DATE, FIELD_CODE_IS_REVIEWED, \
     FIELD_CODE_IS_COMPLETED, FIELD_CODE_PROJECT_ID, FIELD_CODE_PROJECT_NAME, FIELD_CODE_ASSIGNEE_ID, \
@@ -47,7 +48,8 @@ from apps.rawdb.constants import TABLE_NAME_PREFIX, FIELD_CODE_DOC_NAME, FIELD_C
     FIELD_CODE_NOTES, FIELD_CODE_DEFINITIONS, FIELD_CODE_HIDDEN_COLUMNS, FIELD_CODE_CLUSTER_ID, FIELD_CODE_PARTIES, \
     FIELD_CODE_EARLIEST_DATE, FIELD_CODE_LATEST_DATE, FIELD_CODE_LARGEST_CURRENCY, FIELD_CODES_SYSTEM, \
     FIELD_CODES_GENERIC, FIELD_CODE_ANNOTATION_SUFFIX, INDEX_NAME_PREFIX, DEFAULT_ORDER_BY, FIELD_CODE_FOLDER, \
-    CACHE_FIELD_TO_DOC_FIELD
+    CACHE_FIELD_TO_DOC_FIELD, FIELD_CODE_DOCUMENT_CLASS, FIELD_CODE_DOCUMENT_CLASS_PROB, FIELD_CODE_IS_CONTRACT, \
+    FIELD_CODE_GEOGRAPHIES, FIELD_CODE_CURRENCY_TYPES
 from apps.rawdb.models import SavedFilter
 from apps.rawdb.notifications import UserNotifications
 from apps.rawdb.rawdb.rawdb_field_handlers import PgTypes, RawdbFieldHandler, ColumnDesc, StringRawdbFieldHandler, \
@@ -62,9 +64,9 @@ from apps.task.utils.logger import get_django_logger
 from apps.users.models import User
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2019, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.4.0/LICENSE"
-__version__ = "1.4.0"
+__copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.5.0/LICENSE"
+__version__ = "1.5.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -206,8 +208,28 @@ def _build_system_field_handlers(table_name: str, include_system_fields: FieldSp
                                    'Text Length', table_name))
         res.append(DateTimeFieldHandler(FIELD_CODE_CREATE_DATE, field_types.DateTimeField.type_code,
                                         'Load Date', table_name))
+
+        # append common fields for all types
+        res.append(StringRawdbFieldHandler(FIELD_CODE_PARTIES, field_types.StringField.type_code,
+                                           'Parties', table_name))
+        res.append(DateFieldHandler(FIELD_CODE_EARLIEST_DATE, field_types.DateField.type_code,
+                                    'Earliest Date', table_name))
+        res.append(DateFieldHandler(FIELD_CODE_LATEST_DATE, field_types.DateField.type_code,
+                                    'Latest Date', table_name))
+        res.append(MoneyRawdbFieldHandler(FIELD_CODE_LARGEST_CURRENCY, field_types.MoneyField.type_code,
+                                          'Largest Currency', table_name))
         res.append(StringRawdbFieldHandler(FIELD_CODE_DEFINITIONS, field_types.StringField.type_code,
                                            'Definitions', table_name))
+        res.append(StringRawdbFieldHandler(FIELD_CODE_GEOGRAPHIES, field_types.StringField.type_code,
+                                           'Geographies', table_name))
+        res.append(StringRawdbFieldHandler(FIELD_CODE_CURRENCY_TYPES, field_types.StringField.type_code,
+                                           'Currency Types', table_name))
+        res.append(StringRawdbFieldHandler(FIELD_CODE_DOCUMENT_CLASS, field_types.StringField.type_code,
+                                           'Document Class', table_name))
+        res.append(StringRawdbFieldHandler(FIELD_CODE_DOCUMENT_CLASS_PROB, field_types.StringField.type_code,
+                                           'Document Class Vector', table_name))
+        res.append(BooleanRawdbFieldHandler(FIELD_CODE_IS_CONTRACT, field_types.BooleanField.type_code,
+                                           'Is Contract', table_name))
 
     if DocumentSystemField.project.specified_in(include_system_fields):
         res.append(IntFieldHandler(FIELD_CODE_PROJECT_ID, field_types.IntField.type_code,
@@ -257,16 +279,6 @@ def _build_generic_field_handlers(table_name: str,
     if DocumentGenericField.cluster_id.specified_in(include_generic_fields):
         res.append(IntFieldHandler(FIELD_CODE_CLUSTER_ID, field_types.IntField.type_code,
                                    'Cluster Id', table_name))
-
-    if include_generic_fields is True:
-        res.append(StringRawdbFieldHandler(
-            FIELD_CODE_PARTIES, field_types.StringField.type_code, 'Parties', table_name))
-        res.append(DateFieldHandler(
-            FIELD_CODE_EARLIEST_DATE, field_types.DateField.type_code, 'Earliest Date', table_name))
-        res.append(DateFieldHandler(
-            FIELD_CODE_LATEST_DATE, field_types.DateField.type_code, 'Latest Date', table_name))
-        res.append(MoneyRawdbFieldHandler(
-            FIELD_CODE_LARGEST_CURRENCY, field_types.MoneyField.type_code, 'Largest Currency', table_name))
     return res
 
 
@@ -583,12 +595,28 @@ def _fill_system_fields_to_python_values(document: Document,
         field_to_python_values[FIELD_CODE_DOC_FULL_TEXT] = \
             document.full_text[:settings.RAW_DB_FULL_TEXT_SEARCH_CUT_ABOVE_TEXT_LENGTH] if document.full_text else None
         field_to_python_values[FIELD_CODE_DOC_FULL_TEXT_LENGTH] = len(document.full_text) if document.full_text else 0
+
         field_to_python_values[FIELD_CODE_CREATE_DATE] = document.history.last().history_date \
             if document.history.exists() else document.upload_session.created_date \
             if document.upload_session else None
+
+        if document.metadata:
+            field_to_python_values[FIELD_CODE_IS_CONTRACT] = \
+                document.document_class == DocumentClass.CONTRACT
+            field_to_python_values[FIELD_CODE_DOCUMENT_CLASS] = \
+                document.document_class or DocumentClass.GENERIC
+            field_to_python_values[FIELD_CODE_DOCUMENT_CLASS_PROB] = \
+                document.metadata.get(DOC_METADATA_DOCUMENT_CLASS_PROB) or [0]
+
         field_to_python_values[FIELD_CODE_DEFINITIONS] = '; '.join(
             DefinitionUsage.objects.filter(text_unit__document=document)
                 .values_list('definition', flat=True)) or None
+        field_to_python_values[FIELD_CODE_GEOGRAPHIES] = '; '.join(
+            GeoEntityUsage.objects.filter(text_unit__document=document)
+                .values_list('entity__name', flat=True).order_by('entity__name').distinct()) or None
+        field_to_python_values[FIELD_CODE_CURRENCY_TYPES] = '; '.join(
+            CurrencyUsage.objects.filter(text_unit__document=document)
+                .values_list('currency', flat=True).order_by('currency').distinct()) or None
 
     if DocumentSystemField.status.specified_in(include_system_fields):
         field_to_python_values[FIELD_CODE_IS_REVIEWED] = document.is_reviewed()
@@ -1262,6 +1290,7 @@ def format_error_msg(doc_ids: List[int],
 
 
 def format_docs_ids_str(doc_ids: List[int]) -> str:
+    doc_ids = list(doc_ids)
     return ','.join([str(i) for i in doc_ids]) \
         if len(doc_ids) < 6 \
         else ','.join([str(i) for i in doc_ids[:4]]) + \

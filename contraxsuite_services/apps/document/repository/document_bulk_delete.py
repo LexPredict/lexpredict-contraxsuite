@@ -28,26 +28,29 @@ import os
 import settings
 from typing import List, Dict
 from apps.common.model_utils.model_bulk_delete import ModelBulkDelete
-from apps.document.models import Document
+from apps.document.models import Document, TextUnit
 from apps.document.repository.base_document_repository import BaseDocumentRepository
 from apps.document.repository.document_repository import DocumentRepository
+from apps.extract.models import TermUsage
 from apps.task.models import Task
 from apps.task.tasks import purge_task
 from apps.common.model_utils.table_deps_builder import TableDepsBuilder
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2019, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.4.0/LICENSE"
-__version__ = "1.4.0"
+__copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.5.0/LICENSE"
+__version__ = "1.5.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
 
 class DocumentBulkDelete:
-    def __init__(self, document_repository: BaseDocumentRepository):
+    def __init__(self,
+                 document_repository: BaseDocumentRepository,
+                 safe_mode: bool = True):
         self.model_class = Document.objects.model._meta.db_table
         self.document_repository = document_repository
-        self.bulk_del = self.build_model_bulk_delete()
+        self.bulk_del = self.build_model_bulk_delete(safe_mode)
 
     def calculate_deleting_count(self, ids: List[int], remove_empty: bool = True) -> Dict[str, int]:
         if len(ids) == 0:
@@ -103,10 +106,13 @@ class DocumentBulkDelete:
             if file_task.metadata.get('file_name') in doc_names_hash:
                 purge_task(file_task.id)
 
-    def build_model_bulk_delete(self):
+    def build_model_bulk_delete(self,
+                                safe_mode: bool = True):
         deps = TableDepsBuilder.build_table_dependences(self.model_class)
-        return ModelBulkDelete(deps)
+        return ModelBulkDelete(deps, safe_mode,
+                               {TermUsage.objects.model._meta.db_table,
+                                TextUnit.objects.model._meta.db_table})
 
 
-def get_document_bulk_delete():
-    return DocumentBulkDelete(DocumentRepository())
+def get_document_bulk_delete(safe_mode: bool = True):
+    return DocumentBulkDelete(DocumentRepository(), safe_mode)

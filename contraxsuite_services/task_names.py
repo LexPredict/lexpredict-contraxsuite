@@ -26,9 +26,9 @@
 
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2019, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.4.0/LICENSE"
-__version__ = "1.4.0"
+__copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.5.0/LICENSE"
+__version__ = "1.5.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -51,6 +51,8 @@ TASK_NAME_CHECK_EMAIL_POOL = 'apps.notifications.tasks.check_email_pool'
 
 TASK_NAME_TRACK_TASKS = 'advanced_celery.track_tasks'
 
+TASK_NAME_TRACK_FAILED_TASKS = 'advanced_celery.track_failed_tasks'
+
 TASK_NAME_UPDATE_PARENT_TASK = 'advanced_celery.update_parent_task'
 
 TASK_NAME_CLEAN_TASKS_PERIODIC = 'advanced_celery.clean_tasks_periodic'
@@ -70,3 +72,35 @@ TASK_NAME_NOTIFICATIONS_ON_DOCUMENT_CHANGE = 'apps.notifications.tasks.process_n
 TASK_NAME_DELETE_METHOD_STATS = 'apps.common.tasks.delete_method_stats'
 
 TASK_NAME_INIT_METHOD_STATS_COLLECTORS = 'apps.common.tasks.init_method_stats_collectors'
+
+TASK_NAME_IDENTIFY_CONTRACTS = 'Identify Contracts'
+
+TASK_FRIENDLY_NAME = {
+    TASK_NAME_CLEAN_TASKS_PERIODIC: 'Clean Tasks Periodically',
+    TASK_NAME_RETRAIN_DIRTY_TASKS: 'Retrain Dirty Fields',
+    TASK_NAME_TRACK_FAILED_TASKS: 'Track Failed Tasks',
+    TASK_NAME_TRACK_SESSION_COMPLETED: 'Track Session Completed',
+    TASK_NAME_TRACK_TASKS: 'Track Tasks',
+    TASK_NAME_DELETE_METHOD_STATS: 'Delete Method Stats',
+    TASK_NAME_INIT_METHOD_STATS_COLLECTORS: 'Init Method Stats Collectors',
+    'apps.document.async_tasks.detect_field_values_task.detect_field_values_for_document': 'Detect Field Values On Document (async)',
+    'apps.document.tasks.detect_field_values_for_document': 'Detect Field Values On Document',
+    TASK_NAME_IMANAGE_TRIGGER_SYNC: 'IManage: Trigger Sync',
+    TASK_NAME_CHECK_EMAIL_POOL: 'Check Email Pool',
+    'manual_reindex': 'Manual Reindex',
+    'index_documents': 'Index Documents',
+    'detect_field_values_for_document': 'Detect Field Values',
+    'apps.task.tasks.create_document': 'Create Document',
+    'apps.task.tasks.parse_text_units': 'Parse Text Units',
+    'auto_reindex_not_tracked': 'Auto Reindex Not Tracked',
+    'process_document_changed': 'Process Document Changed',
+    'process_documents_status_changed': 'Process Document Status Changed',
+    TASK_NAME_NOTIFICATIONS_ON_DOCUMENT_CHANGE: 'Notify On Document Changed',
+    'process_notifications_on_document_change': 'Notify On Document Changed',
+    TASK_NAME_AUTO_REINDEX: 'Auto Reindex',
+    TASK_NAME_TRIGGER_DIGESTS: 'Trigger Digests',
+    'apps.task.tasks.on_locate_finished': 'On Locate Finished',
+    'apps.task.tasks.delete_document_on_load_failed': 'Delete Document On Load Failed',
+    'apps.rawdb.tasks.cache_document_fields_for_doc_ids_tracked': 'Cache Document Fields (for doc ids tracked)',
+    'apps.task.tasks.clean_tasks': 'Clean All Tasks'
+}

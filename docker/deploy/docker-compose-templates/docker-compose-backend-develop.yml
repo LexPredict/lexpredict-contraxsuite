@@ -1,8 +1,8 @@
-version: "3.3"
+version: "3.7"
 services:
-# Service names should comply with the rules of building DNS names - they will be available
-# under these domain names inside the cluster virtual network.
-# (Service names should not contain underscores.)
+  # Service names should comply with the rules of building DNS names - they will be available
+  # under these domain names inside the cluster virtual network.
+  # (Service names should not contain underscores.)
 
   contrax-webdav:
     image: bytemark/webdav:2.4
@@ -21,6 +21,53 @@ services:
     ports:
       - 8090:80
 
+  contrax-minio:
+    hostname: contrax-minio
+    image: minio/minio:RELEASE.2020-01-03T19-12-21Z
+    volumes:
+      - contraxsuite_minio:/data
+    networks:
+      - contrax_net
+    entrypoint: sh
+    # Here we create a bucket dir for the mlflow models and drop minio config for the case we changed access/secret key.
+    # Minio encrypts its config with access/secret keys and if they are changed it won't start until manual handling.
+    command: -c "mkdir -p /data/${MLFLOW_AWS_BUCKET} && rm -rf /data/.minio.sys && /usr/bin/minio server /data"
+    deploy:
+      replicas: 1
+      placement:
+        constraints: [node.role == manager]
+    ports:
+      - 19000:9000
+    environment:
+      - "MINIO_ACCESS_KEY=${DOLLAR}{MLFLOW_AWS_ACCESS_KEY}"
+      - "MINIO_SECRET_KEY=${DOLLAR}{MLFLOW_AWS_SECRET_KEY}"
+      - "MINIO_BROWSER=off"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+
+  contrax-mlflow-tracking:
+    image: foxrider/mlflow-tracking-server:0.2.0
+    volumes:
+      - contraxsuite_mlflow_tracking:/mlflow
+    networks:
+      - contrax_net
+    deploy:
+      replicas: 1
+      placement:
+        constraints: [node.role == manager]
+    ports:
+      - 15000:5000
+    environment:
+      - "PORT=5000"
+      - "FILE_DIR=/mlflow"
+      - "MLFLOW_S3_ENDPOINT_URL=${DOLLAR}{MLFLOW_S3_ENDPOINT_URL}"
+      - "AWS_BUCKET=${DOLLAR}{MLFLOW_AWS_BUCKET}"
+      - "AWS_ACCESS_KEY_ID=${DOLLAR}{MLFLOW_AWS_ACCESS_KEY}"
+      - "AWS_SECRET_ACCESS_KEY=${DOLLAR}{MLFLOW_AWS_SECRET_KEY}"
+
   contrax-redis:
     image: redis
     volumes:
@@ -34,8 +81,50 @@ services:
     ports: #
       - 127.0.0.1:63790:6379 #
 
+  contrax-curator_filebeat:
+    image: lexpredict/es-curator-cron:5.8.1-1
+    networks:
+      - contrax_net
+    environment:
+      - "PERIOD=15min"
+      - "KEEP_DAYS=30"
+      - "INDEX_PREFIX=filebeat-"
+    command: "--host ${DOLLAR}{DOCKER_HOST_NAME_ELASTICSEARCH} --port ${DOLLAR}{DOCKER_ELASTICSEARCH_PORT}"
+    depends_on:
+      - contrax-rabbitmq
+      - contrax-db
+      - contrax-redis
+      - contrax-elasticsearch
+      - contrax-uwsgi
+      - contrax-celery
+    deploy:
+      replicas: 1
+      placement:
+        constraints: [node.role == manager]
+
+  contrax-curator_metricbeat:
+    image: lexpredict/es-curator-cron:5.8.1-1
+    networks:
+      - contrax_net
+    environment:
+      - "PERIOD=15min"
+      - "KEEP_DAYS=3"
+      - "INDEX_PREFIX=metricbeat-"
+    command: "--host ${DOLLAR}{DOCKER_HOST_NAME_ELASTICSEARCH} --port ${DOLLAR}{DOCKER_ELASTICSEARCH_PORT}"
+    depends_on:
+      - contrax-rabbitmq
+      - contrax-db
+      - contrax-redis
+      - contrax-elasticsearch
+      - contrax-uwsgi
+      - contrax-celery
+    deploy:
+      replicas: 1
+      placement:
+        constraints: [node.role == manager]
+
   contrax-elasticsearch:
-    image: docker.elastic.co/elasticsearch/elasticsearch-oss:6.3.0
+    image: docker.elastic.co/elasticsearch/elasticsearch-oss:7.5.2
     volumes:
       - elasticsearch_data:/usr/share/elasticsearch/data
     configs:
@@ -44,7 +133,7 @@ services:
     networks:
       - contrax_net
     deploy:
-      replicas: 1
+      replicas: ${DOCKER_ELASTICSEARCH_REPLICAS}
       resources:
         limits:
           cpus: '${DOLLAR}{DOCKER_ELASTICSEARCH_CPUS}'
@@ -53,29 +142,66 @@ services:
         constraints: [node.role == manager]
     ports: #
       - 127.0.0.1:19200:9200 #
+    environment:
+      # this is to stop ES from printing some related error message every few seconds
+      - "ES_JAVA_OPTS=-Des.transport.cname_in_publish_address=true"
+
+  contrax-elastalert:
+    # 2020-02-03.
+    # Current "latest" version is 2.0.1 and it has an error fixed in 3.0.0-beta.1
+    # and there is no release (non-beta) image yet.
+    image: bitsensor/elastalert:3.0.0-beta.1
+    user: root
+    volumes:
+      - elastalert_rules:/rules
+      - elastalert_rule_templates:/rule_templates
+    configs:
+      - source: elastalert_conf_${ELASTALERT_CONFIG_VERSION}
+        target: /opt/elastalert/config.yaml
+      - source: elastalert_conf_${ELASTALERT_CONFIG_VERSION}
+        target: /opt/elastalert-server/config/elastalert.yaml
+      - source: elastalertsrv_conf_${ELASTALERT_SERVER_CONFIG_VERSION}
+        target: /opt/elastalert-server/config/config.json
+      - source: elastalert_smtp_${ELASTALERT_SMTP_AUTH_VERSION}
+        target: /elastalert-smtp-auth.yaml
+    networks:
+      - contrax_net
+    deploy:
+      replicas: 1
+      resources:
+        limits:
+          cpus: '${DOLLAR}{DOCKER_ELASTALERT_CPUS}'
+          memory: ${DOLLAR}{DOCKER_ELASTALERT_MEMORY}
+      placement:
+        constraints: [node.role == manager]
+    ports:
+      - 127.0.0.1:3030:3030
+      - 127.0.0.1:3333:3333
 
   contrax-kibana:
-    image: docker.elastic.co/kibana/kibana-oss:6.3.0
+    image: lexpredict/lexpredict-kibana:7.5.0
     networks:
       - contrax_net
     depends_on:
       - contrax-elasticsearch
-    environment:
-      - "ELASTICSEARCH_URL=http://${DOLLAR}{DOCKER_HOST_NAME_ELASTICSEARCH}:9200"
-      - "SERVER_BASEPATH=${DOLLAR}{DOCKER_KIBANA_BASE_PATH}"
     ports:
       - 127.0.0.1:5601:5601
+    configs:
+      - source: kibana_${KIBANA_CONFIG_VERSION}
+        target: /usr/share/kibana/config/kibana.yml
     deploy:
       replicas: 1
 
   contrax-filebeat:
-    image: docker.elastic.co/beats/filebeat:6.3.0
+    image: docker.elastic.co/beats/filebeat-oss:7.5.2
     user: root
     volumes:
       - postgres_data_11:/data/pg_data
       - contraxsuite_logs:/data/logs
       - filebeat_data:/usr/share/filebeat/data
       - contraxsuite_internal_nginx_logs:/data/nginx_logs
+      - /:/hostfs:ro
+      - /var/run/docker.sock:/var/run/docker.sock
     configs:
       - source: filebeat_${FILEBEAT_CONFIG_VERSION}
         target: /usr/share/filebeat/filebeat.yml
@@ -86,6 +212,34 @@ services:
       - contrax-kibana
     deploy:
       mode: global
+      resources:
+        limits:
+          cpus: '1'
+          memory: 2GB
+      restart_policy:
+        condition: on-failure
+
+  contrax-metricbeat:
+    image: docker.elastic.co/beats/metricbeat-oss:7.5.2
+    volumes:
+      - metricbeat_data:/usr/share/metricbeat/data
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /proc:/hostfs/proc:ro
+      - /sys/fs/cgroup:/hostfs/sys/fs/cgroup:ro
+      - /:/hostfs:ro
+    command: -e -system.hostfs=/hostfs
+    user: root
+    configs:
+      - source: metricbeat_${METRICBEAT_CONFIG_VERSION}
+        target: /usr/share/metricbeat/metricbeat.yml
+    networks:
+      - contrax_net
+    depends_on:
+      - contrax-elasticsearch
+      - contrax-kibana
+    deploy:
+      #mode: global
+      replicas: 1 # by default we disable mertricbeat for single-host configs to free more resources
       resources:
         limits:
           cpus: '1'
@@ -107,8 +261,16 @@ services:
       - source: nginx_cust_${NGINX_CUSTOMER_CONF_VERSION}
         target: /etc/nginx/nginx-customer.conf
     ports:
-      - 0.0.0.0:80:8080
-      - 0.0.0.0:443:4443
+      # ports are configured this way to make Nginx running inside Docker Swarm receiving the real remote client address
+      # https://stackoverflow.com/questions/49415595/docker-swarm-get-real-ip-client-host-in-nginx
+      - mode: host
+        protocol: tcp
+        published: 80
+        target: 8080
+      - mode: host
+        protocol: tcp
+        published: 443
+        target: 4443
     depends_on:
       - contrax-uwsgi
       - contrax-jupyter
@@ -127,13 +289,13 @@ services:
       - "RABBITMQ_DEFAULT_PASS=${DOLLAR}{DOCKER_RABBITMQ_PASSWORD}"
       - "RABBITMQ_DEFAULT_VHOST=${DOLLAR}{DOCKER_RABBITMQ_VHOST}"
     deploy:
-      replicas: 1
+      replicas: ${DOCKER_RABBITMQ_REPLICAS}
       placement:
         constraints: [node.role == manager]
     volumes:
       - rabbitmq_data:/var/lib/rabbitmq
     ports: #
-     - 127.0.0.1:56720:5672 #
+      - 127.0.0.1:56720:5672 #
 
   contrax-db:
     image: postgres:11.5
@@ -157,7 +319,7 @@ services:
       - contrax_net
     read_only: false
     deploy:
-      replicas: 1
+      replicas: ${DOCKER_PG_REPLICAS}
       resources:
         limits:
           cpus: '${DOLLAR}{DOCKER_POSTGRES_CPUS}'
@@ -190,6 +352,10 @@ volumes:
   contraxsuite_additional_fixtures:
   contraxsuite_jupyter_add_req:
   contraxsuite_ssl_certs:
+  contraxsuite_minio:
+  contraxsuite_mlflow_tracking:
+  elastalert_rules:
+  elastalert_rule_templates:
 
 networks:
   contrax_net:
@@ -201,6 +367,14 @@ configs:
     file: ./metricbeat.yml
   elasticsearch_${ELASTICSEARCH_CONFIG_VERSION}:
     file: ./elasticsearch.yml
+  elastalert_conf_${ELASTALERT_CONFIG_VERSION}:
+    file: ./elastalert-config.yaml
+  elastalertsrv_conf_${ELASTALERT_SERVER_CONFIG_VERSION}:
+    file: ./elastalert-server-config.json
+  elastalert_smtp_${ELASTALERT_SMTP_AUTH_VERSION}:
+    file: ./elastalert-smtp-auth.yaml
+  kibana_${KIBANA_CONFIG_VERSION}:
+    file: ./kibana.yml
   pg_${PG_CONFIG_VERSION}:
     file: ./postgresql.conf
   pg_init_sql_${PG_INIT_SQL_CONFIG_VERSION}:

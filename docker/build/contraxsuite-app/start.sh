@@ -47,7 +47,6 @@ chown -R -v ${SHARED_USER_NAME}:${SHARED_USER_NAME} /static || true
 chown -R -v ${SHARED_USER_NAME}:${SHARED_USER_NAME} /contraxsuite_services/jars || true
 chmod -R -v ug+rw /data/media/data/documents || true
 
-
 echo "Preparing configuration based on env variables..."
 pushd /config-templates
 
@@ -243,7 +242,7 @@ elif [ $1 == "celery-beat" ]; then
 
     su - ${SHARED_USER_NAME} -c "${ACTIVATE_VENV} && \
         ulimit -n 1000000 && \
-        celery -A apps worker -B -Q serial --concurrency=1 -Ofair -n beat@%h --statedb=/data/celery_worker_state/worker.state"
+        celery -A apps worker -B -Q serial --concurrency=1 -Ofair -n beat@%h --statedb=/data/celery_worker_state/worker.state --role=beat"
 elif [ $1 == "celery-high-prio" ]; then
     echo "Sleeping 30 seconds to let Postgres start and Django migrate"
     sleep 30
@@ -251,7 +250,7 @@ elif [ $1 == "celery-high-prio" ]; then
 
     su - ${SHARED_USER_NAME} -c "${ACTIVATE_VENV} && \
         ulimit -n 1000000 && \
-        celery -A apps worker -Q high_priority --concurrency=4 -Ofair -n high_priority@%h --statedb=/data/celery_worker_state/worker.state"
+        celery -A apps worker -Q high_priority --concurrency=4 -Ofair -n high_priority@%h --statedb=/data/celery_worker_state/worker.state --role=high_prio"
 
 elif [ $1 == "celery-load" ]; then
     echo "Sleeping 30 seconds to let Postgres start and Django migrate"
@@ -260,7 +259,7 @@ elif [ $1 == "celery-load" ]; then
 
     su - ${SHARED_USER_NAME} -c "${ACTIVATE_VENV} && \
         ulimit -n 1000000 && \
-        celery -A apps worker -Q doc_load --concurrency=1 -Ofair -n default_priority@%h --statedb=/data/celery_worker_state/worker.state"
+        celery -A apps worker -Q doc_load --concurrency=1 -Ofair -n default_priority@%h --statedb=/data/celery_worker_state/worker.state --role=doc_load"
 
 elif [ $1 == "celery-master" ]; then
     echo "Sleeping 30 seconds to let Postgres start and Django migrate"
@@ -269,7 +268,7 @@ elif [ $1 == "celery-master" ]; then
 
     su - ${SHARED_USER_NAME} -c "${ACTIVATE_VENV} && \
         ulimit -n 1000000 && \
-        celery -A apps worker -Q default,high_priority --concurrency=2 -Ofair -n master@%h --statedb=/data/celery_worker_state/worker.state"
+        celery -A apps worker -Q default,high_priority --concurrency=2 -Ofair -n master@%h --statedb=/data/celery_worker_state/worker.state --role=default_worker"
 elif [ $1 == "celery-single" ]; then
     echo "Sleeping 30 seconds to let Postgres start and Django migrate"
     sleep 30
@@ -278,7 +277,7 @@ elif [ $1 == "celery-single" ]; then
     su - ${SHARED_USER_NAME} -c "${ACTIVATE_VENV} && \
         ulimit -n 1000000 && \
         python manage.py check && \
-        celery -A apps worker -Q default,high_priority --concurrency=${DOCKER_CELERY_CONCURRENCY} -Ofair -n default_priority@%h --statedb=/data/celery_worker_state/worker.state"
+        celery -A apps worker -Q default,high_priority --concurrency=${DOCKER_CELERY_CONCURRENCY} -Ofair -n default_priority@%h --statedb=/data/celery_worker_state/worker.state --role=default_worker"
     sleep 20
 else
     echo "Sleeping 30 seconds to let Postgres start and Django migrate"
@@ -288,6 +287,6 @@ else
     su - ${SHARED_USER_NAME} -c "${ACTIVATE_VENV} && \
         ulimit -n 1000000 && \
         python manage.py check && \
-        celery -A apps worker -Q default --concurrency=${DOCKER_CELERY_CONCURRENCY} -Ofair -n default_priority@%h --statedb=/data/celery_worker_state/worker.state"
+        celery -A apps worker -Q default --concurrency=${DOCKER_CELERY_CONCURRENCY} -Ofair -n default_priority@%h --statedb=/data/celery_worker_state/worker.state --role=default_worker"
     sleep 20
 fi

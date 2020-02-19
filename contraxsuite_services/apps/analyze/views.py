@@ -35,21 +35,18 @@ from django.urls import reverse
 from django.db.models import Count
 
 # Project imports
-from apps.analyze.models import (
-    DocumentCluster, DocumentSimilarity, PartySimilarity,
-    TextUnitClassification, TextUnitClassifier, TextUnitClassifierSuggestion,
-    TextUnitSimilarity, TextUnitCluster)
-from apps.analyze.forms import TrainDocumentDoc2VecTaskForm, TrainTextUnitDoc2VecTaskForm
-from apps.analyze.tasks import TrainDoc2VecModel
+from apps.analyze.models import *
+from apps.analyze.forms import *
+from apps.analyze.tasks import TrainDoc2VecModel, TrainClassifier, RunClassifier, Cluster
 from apps.common.contraxsuite_urls import doc_editor_url, project_documents_url
 from apps.document.views import SubmitTextUnitTagView
 from apps.task.views import BaseAjaxTaskView
 import apps.common.mixins
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2019, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.4.0/LICENSE"
-__version__ = "1.4.0"
+__copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.5.0/LICENSE"
+__version__ = "1.5.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -92,7 +89,7 @@ class TextUnitClassificationListView(apps.common.mixins.JqPaginatedListView):
 
         text_unit_id = self.request.GET.get('text_unit_id')
         if text_unit_id:
-            qs = qs.filter(text_unit__id=text_unit_id)
+            qs = qs.filter(text_unit_id=text_unit_id)
 
         qs = qs.select_related('text_unit', 'text_unit__document', 'user')
         return qs
@@ -114,6 +111,66 @@ class TextUnitClassificationDeleteView(apps.common.mixins.CustomDeleteView):
         return self.request.user.can_view_document(document)
 
 
+class DocumentClassificationListView(apps.common.mixins.JqPaginatedListView):
+    """DocumentClassificationListView
+
+    CBV for list of DocumentClassification records
+    """
+    model = DocumentClassification
+    json_fields = ['document__pk',
+                   'document__project__name',
+                   'document__name',
+                   'document__document_type__title',
+                   'class_name', 'class_value', 'user__username', 'timestamp']
+    # limit_reviewers_qs_by_field = 'document'
+    template_name = 'analyze/document_classification_list.html'
+
+    def get_json_data(self, **kwargs):
+        data = super().get_json_data()
+        for item in data['data']:
+            item['url'] = reverse('document:document-detail',
+                                  args=[item['document__pk']])
+            item['detail_url'] = reverse('document:document-detail', args=[item['pk']])
+            item['delete_url'] = reverse('analyze:document-classification-delete',
+                                         args=[item['pk']])
+        return data
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+
+        class_name = self.request.GET.get("class_name")
+        if class_name is not None and len(class_name.strip()) > 0:
+            qs = qs.filter(class_name=class_name)
+
+        class_value = self.request.GET.get("class_value")
+        if class_value is not None and len(class_value.strip()) > 0:
+            qs = qs.filter(class_value=class_value)
+
+        document_id = self.request.GET.get('document_id')
+        if document_id:
+            qs = qs.filter(document_id=document_id)
+
+        qs = qs.select_related('document', 'document__document_type', 'document__project', 'user') \
+            .only(*self.json_fields)
+        return qs
+
+
+class DocumentClassificationDeleteView(apps.common.mixins.CustomDeleteView):
+    """DocumentClassificationDeleteView
+
+    CBV for deletion of DocumentClassification records
+    """
+    model = DocumentClassification
+
+    def get_success_url(self):
+        return reverse('analyze:document-classification-list')
+
+    # TODO: Mainline granular deletion permissions.
+    def has_permission(self):
+        document = self.get_object().document
+        return self.request.user.can_view_document(document)
+
+
 class TextUnitClassifierListView(apps.common.mixins.JqPaginatedListView):
     """TextUnitClassifierListView
 
@@ -129,7 +186,6 @@ class TextUnitClassifierListView(apps.common.mixins.JqPaginatedListView):
         for item in data['data']:
             item['suggestions_url'] = '{}?class_name={}'.format(
                 reverse('analyze:text-unit-classifier-suggestion-list'), item['class_name'])
-            item['retrain_url'] = '#'
             item['delete_url'] = reverse('analyze:text-unit-classifier-delete', args=[item['pk']])
         return data
 
@@ -146,6 +202,39 @@ class TextUnitClassifierDeleteView(apps.common.mixins.AdminRequiredMixin, apps.c
     # TODO: Mainline delete or de-activate for audit trail
     def get_success_url(self):
         return reverse('analyze:text-unit-classifier-list')
+
+
+class DocumentClassifierListView(apps.common.mixins.JqPaginatedListView):
+    """DocumentClassifierListView
+
+    CBV for list of DocumentClassifier records
+    """
+    model = DocumentClassifier
+    json_fields = ['name', 'version', 'class_name', 'is_active']
+    annotate = {'suggestions': Count('documentclassifiersuggestion')}
+    template_name = 'analyze/document_classifier_list.html'
+
+    def get_json_data(self, **kwargs):
+        data = super().get_json_data()
+        for item in data['data']:
+            item['suggestions_url'] = '{}?class_name={}'.format(
+                reverse('analyze:document-classifier-suggestion-list'), item['class_name'])
+            item['delete_url'] = reverse('analyze:document-classifier-delete', args=[item['pk']])
+        return data
+
+
+class DocumentClassifierDeleteView(apps.common.mixins.AdminRequiredMixin, apps.common.mixins.CustomDeleteView):
+    """DocumentClassifierListView
+
+    CBV for deletion of DocumentClassifier records
+    """
+
+    model = DocumentClassifier
+
+    # TODO: Mainline granular deletion permissions.
+    # TODO: Mainline delete or de-activate for audit trail
+    def get_success_url(self):
+        return reverse('analyze:document-classifier-list')
 
 
 class TextUnitClassifierSuggestionListView(apps.common.mixins.JqPaginatedListView):
@@ -199,6 +288,57 @@ class TextUnitClassifierSuggestionDeleteView(apps.common.mixins.CustomDeleteView
 
     def has_permission(self):
         document = self.get_object().text_unit.document
+        return self.request.user.can_view_document(document)
+
+
+class DocumentClassifierSuggestionListView(apps.common.mixins.JqPaginatedListView):
+    """DocumentClassifierSuggestionListView
+
+    CBV for list of DocumentClassifierSuggestion records
+    """
+    model = DocumentClassifierSuggestion
+    ordering = "-classifier_confidence"
+    json_fields = ['document__pk',
+                   'document__project__name',
+                   'document__name',
+                   'document__document_type__title',
+                   'class_name', 'class_value', 'classifier_run', 'classifier_confidence']
+    limit_reviewers_qs_by_field = 'document'
+    template_name = 'analyze/document_classifier_suggestion_list.html'
+
+    def get_json_data(self, **kwargs):
+        data = super().get_json_data()
+        for item in data['data']:
+            item['detail_url'] = reverse('document:document-detail', args=[item['document__pk']])
+            item['delete_url'] = reverse('analyze:document-classifier-suggestion-delete',
+                                         args=[item['pk']])
+        return data
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        class_name = self.request.GET.get('class_name')
+        if class_name is not None and len(class_name.strip()) > 0:
+            qs = qs.filter(class_name=class_name)
+
+        class_value = self.request.GET.get("class_value")
+        if class_value is not None and len(class_value.strip()) > 0:
+            qs = qs.objects.filter(class_value=class_value)
+
+        return qs.select_related('document', 'document__project', 'document__document_type').only(*self.json_fields)
+
+
+class DocumentClassifierSuggestionDeleteView(apps.common.mixins.CustomDeleteView):
+    """DocumentClassifierSuggestionDeleteView
+
+    CBV for deletion of DocumentClassifierSuggestion records
+    """
+    model = DocumentClassifierSuggestion
+
+    def get_success_url(self):
+        return reverse('analyze:document-classifier-suggestion-list')
+
+    def has_permission(self):
+        document = self.get_object().document
         return self.request.user.can_view_document(document)
 
 
@@ -357,22 +497,6 @@ class TextUnitClusterListView(apps.common.mixins.JqPaginatedListView):
     limit_reviewers_qs_by_field = 'text_units__document'
     extra_json_fields = ['count']
 
-    def get_json_data(self, **kwargs):
-        data = super().get_json_data(**kwargs)
-        for item in data['data']:
-            cluster = TextUnitCluster.objects.get(pk=item['pk'])
-            text_units = cluster.text_units.values(
-                'pk', 'unit_type', 'textunittext__text', 'language',
-                'document__pk', 'document__name',
-                'document__description', 'document__project__name', 'document__document_type')
-            for text_unit in text_units:
-                text_unit['document_url'] = reverse('document:document-detail',
-                                                    args=[text_unit['document__pk']]),
-                text_unit['text_unit_url'] = reverse('document:text-unit-detail',
-                                                     args=[text_unit['pk']])
-            item['text_units'] = list(text_units)
-        return data
-
     def get_queryset(self):
         qs = super().get_queryset()
 
@@ -426,3 +550,71 @@ class TrainDocumentDoc2VecModelView(BaseAjaxTaskView):
 
 class TrainTextUnitDoc2VecModelView(TrainDocumentDoc2VecModelView):
     form_class = TrainTextUnitDoc2VecTaskForm
+
+
+class RunDocumentClassifierView(BaseAjaxTaskView):
+    task_class = RunClassifier
+    module_name = 'apps.analyze.tasks'
+    form_class = RunDocumentClassifierForm
+
+
+class RunTextUnitClassifierView(BaseAjaxTaskView):
+    task_class = RunClassifier
+    module_name = 'apps.analyze.tasks'
+    form_class = RunTextUnitClassifierForm
+
+
+class TrainTextUnitClassifierView(BaseAjaxTaskView):
+    task_class = TrainClassifier
+    module_name = 'apps.analyze.tasks'
+    form_class = TrainTextUnitClassifierForm
+    html_form_class = 'popup-form classify-form'
+
+
+class TrainDocumentClassifierView(BaseAjaxTaskView):
+    task_class = TrainClassifier
+    module_name = 'apps.analyze.tasks'
+    form_class = TrainDocumentClassifierForm
+    html_form_class = 'popup-form classify-form'
+
+
+class ClusterView(BaseAjaxTaskView):
+    task_class = Cluster
+    module_name = 'apps.analyze.tasks'
+    form_class = ClusterForm
+    html_form_class = 'popup-form cluster-form'
+
+    def get_metadata(self):
+        cluster_items = []
+        result_links = []
+        do_cluster_documents = self.request.POST.get('do_cluster_documents')
+        if do_cluster_documents:
+            cluster_items.append('documents')
+            result_links.append({'name': 'View Document Cluster List',
+                                 'link': 'analyze:document-cluster-list'})
+        do_cluster_text_units = self.request.POST.get('do_cluster_text_units')
+        if do_cluster_text_units:
+            cluster_items.append('text units')
+            result_links.append({'name': 'View Text Unit Cluster List',
+                                 'link': 'analyze:text-unit-cluster-list'})
+        return dict(
+            description='cluster:{}; by:{}; algorithm:{}; name:{}'.format(
+                ', '.join(cluster_items),
+                self.request.POST.get('cluster_by'),
+                self.request.POST.get('using'),
+                self.request.POST.get('name')),
+            result_links=result_links)
+
+    def start_task_and_return(self, data):
+        if data.get('skip_confirmation'):
+            self.start_task(data)
+            return self.json_response('The task is started. It can take a while.')
+
+        count, count_limit = Cluster.estimate_reaching_limit(data)
+        # if we don't have to cluster too many units ...
+        if count < count_limit:
+            self.start_task(data)
+            return self.json_response('The task is started. It can take a while.')
+        message = 'Executing the task may take too much time.'
+        return self.json_response({'message': message,
+                                   'confirm': True})

@@ -24,21 +24,36 @@
 """
 # -*- coding: utf-8 -*-
 
-from typing import List
+from typing import List, Any, Callable
 
 from apps.common.file_storage import get_file_storage
+from apps.task.utils.logger import get_django_logger
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2019, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.4.0/LICENSE"
-__version__ = "1.4.0"
+__copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.5.0/LICENSE"
+__version__ = "1.5.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
 
 class DocumentFilesCleaner:
+    logger = get_django_logger()
+
     @staticmethod
-    def delete_document_files(paths: List[str]):
+    def delete_document_files(paths: List[str], logger: Callable = None) -> None:
         stor = get_file_storage()
         for path in paths:
-            stor.delete_document(path)
+            try:
+                stor.delete_document(path)
+            except Exception as e:
+                msg = f'Unable to delete file "{path}" in {type(stor).__name__}'
+                DocumentFilesCleaner.log_error(msg, e, logger)
+
+    @staticmethod
+    def log_error(msg: str, e: Any = None, logger: Callable = None) -> None:
+        if logger:
+            logger(msg, e)
+            return
+        task_logger = DocumentFilesCleaner.logger
+        task_logger.error(msg, e)

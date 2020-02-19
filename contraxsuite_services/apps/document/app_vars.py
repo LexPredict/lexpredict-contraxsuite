@@ -29,65 +29,74 @@ from apps.common.models import AppVar
 from django.conf import settings
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2019, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.4.0/LICENSE"
-__version__ = "1.4.0"
+__copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.5.0/LICENSE"
+__version__ = "1.5.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
 
 ADMIN_RUNNING_TASKS_VALIDATION_ENABLED = AppVar.set(
-    'admin_running_tasks_validation_enabled', True,
+    'Document', 'admin_running_tasks_validation_enabled', True,
     'Prevents critical changes if user tasks running')
 
 TIKA_SERVER_ENDPOINT = AppVar.set(
-    'tika_remote_server_endpoint', None,
+    'Document', 'tika_remote_server_endpoint', None,
     'TIKA server endpoint. Example: http://contrax-tika:9998')
 
 TIKA_TIMEOUT = AppVar.set(
-    'tika_timeout', settings.TIKA_TIMEOUT,
+    'Document', 'tika_timeout', settings.TIKA_TIMEOUT,
     'TIKA timeout (default = 3600 s)')
 
+TIKA_PARSE_MODE = AppVar.set(
+    'Document', 'tika_parse_mode', 'plain',
+    'TIKA parse mode ("xhtml" or "plain")')
+
 MAX_DOCUMENT_SIZE = AppVar.set(
-    'max_document_size', 50,
+    'Document', 'max_document_size', 50,
     'Enables maximum document file size for uploading, Mb')
 
 MAX_ARCHIVE_SIZE = AppVar.set(
-    'max_archive_size', 100,
+    'Document', 'max_archive_size', 100,
     'Enables maximum archive file size for uploading, Mb')
 
 PREPROCESS_DOCTEXT_LINEBREAKS = AppVar.set(
-    'preprocess_doctext_linebreaks', True,
+    'Document', 'preprocess_doctext_linebreaks', True,
     'Enables / disables removing extra line breaks in uploaded document')
 
 PREPROCESS_DOCTEXT_PUNCT = AppVar.set(
-    'preprocess_doctext_punct', False,
+    'Document', 'preprocess_doctext_punct', False,
     'Fix anomalies in quotes and spaces in uploaded document')
 
 LOCATE_TEXTUNITTAGS = AppVar.set(
-    'locate_text_unit_tags', False,
+    'Document', 'locate_text_unit_tags', False,
     'Enables storing text unit tags during parsing a document')
 
 LOCATE_TEXTUNITPROPERTIES = AppVar.set(
-    'locate_text_unit_properties', False,
+    'Document', 'locate_text_unit_properties', False,
     'Enables storing text unit properties during parsing a document')
 
 OCR_ENABLE = AppVar.set(
-    'ocr_enable', True,
+    'Document', 'ocr_enable', True,
     'Enables / disables documents OCR by Tika os Textract')
 
 OCR_FILE_SIZE_LIMIT = AppVar.set(
-    'ocr_file_size_limit', 100,
+    'Document', 'ocr_file_size_limit', 100,
     'Max file size enabled (MB) for OCR')
 
 MSWORD_TO_TEXT_ENABLE = AppVar.set(
-    'msword_to_text_enable', True,
+    'Document', 'msword_to_text_enable', True,
     'Enables / disables parsing MS Word documents with python-docx')
 
 FORCE_REWRITE_DOC = AppVar.set(
-    'force_rewrite_doc', True,
+    'Document', 'force_rewrite_doc', True,
     'Enables / disables rewriting existing documents')
 
 STRICT_PARSE_DATES = AppVar.set(
-    'strict_parse_dates', True,
+    'Document', 'strict_parse_dates', True,
     'Skip values like "C-4-30" if strict mode (True) is on')
+
+DETECT_CONTRACT = AppVar.set(
+    'Document', 'detect_contract', True,
+    'Check if document is a contract'
+)

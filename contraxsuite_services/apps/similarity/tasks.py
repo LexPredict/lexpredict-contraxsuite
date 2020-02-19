@@ -32,10 +32,11 @@ import fuzzywuzzy.fuzz
 import nltk
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
+from apps.celery import app
 
+from apps.analyze.ml.similarity import DocumentSimilarityEngine, TextUnitSimilarityEngine
 from apps.analyze.models import (
     DocumentSimilarity, TextUnitSimilarity, PartySimilarity as PartySimilarityModel)
-from apps.celery import app
 from apps.document import signals
 from apps.document.field_processing.document_vectorizers import document_feature_vector_pipeline
 from apps.document.models import DocumentField, TextUnit, Document
@@ -46,9 +47,9 @@ from apps.similarity.models import DocumentSimilarityConfig, DST_FIELD_SIMILARIT
 from apps.task.tasks import BaseTask, remove_punctuation_map, CeleryTaskLogger
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2019, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.4.0/LICENSE"
-__version__ = "1.4.0"
+__copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.5.0/LICENSE"
+__version__ = "1.5.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -231,7 +232,7 @@ class Similarity(BaseTask):
 
             # step #4
             for i in range(0, len_tu_set, self.step):
-                for j in range(0, len_tu_set, self.step):
+                for j in range(i + 1, len_tu_set, self.step):
                     similarity_matrix = cosine_similarity(
                         X[i:min([i + self.step, len_tu_set])],
                         X[j:min([j + self.step, len_tu_set])]) * 100
@@ -245,6 +246,57 @@ class Similarity(BaseTask):
                             if i + g != j + h and similarity_matrix[g, h] >= similarity_threshold]
                         TextUnitSimilarity.objects.bulk_create(tu_sim)
                     self.push()
+
+
+class SimilarityByFeatures(BaseTask):
+    """
+    Find Similar Documents, Text Units by extracted features
+    """
+    name = 'Similarity By Features'
+
+    def process(self, **kwargs):
+        search_similar_documents = kwargs['search_similar_documents']
+        search_similar_text_units = kwargs['search_similar_text_units']
+
+        project = kwargs['project']
+        project_id = project['pk'] if project else None
+        unit_type = kwargs['unit_type']
+        feature_source = kwargs['feature_source']
+        use_tfidf = kwargs['use_tfidf']
+        distance_type = kwargs['distance_type']
+        similarity_threshold = kwargs['similarity_threshold'] / 100
+
+        self.log_info('Min similarity: {}'.format(similarity_threshold))
+        self.set_push_steps(2)
+
+        if search_similar_documents:
+            db_model = DocumentSimilarity
+            engine_class = DocumentSimilarityEngine
+        elif search_similar_text_units:
+            db_model = TextUnitSimilarity
+            engine_class = TextUnitSimilarityEngine
+        else:
+            self.log_error("Classify task target (documents or text units) is not specified.")
+            return
+
+        if kwargs['delete']:
+            # TODO: delete all Similarity db objects OR filter by unit_type/project_id
+            deleted = db_model.objects.filter().delete()
+            self.log_info('Deleted "{}"'.format(deleted[1]))
+
+        self.push()
+
+        engine = engine_class(
+            project_id=project_id,
+            unit_type=unit_type,
+            feature_source=feature_source,
+            use_tfidf=use_tfidf,
+            distance_type=distance_type,
+            threshold=similarity_threshold
+        )
+        count = engine.get_similarity()
+        self.log_info('Created: %d similarity objects.' % count)
+        self.push()
 
 
 class PreconfiguredDocumentSimilaritySearch(BaseTask):
@@ -346,5 +398,6 @@ class PreconfiguredDocumentSimilaritySearch(BaseTask):
 
 app.register_task(PreconfiguredDocumentSimilaritySearch())
 app.register_task(Similarity())
+app.register_task(SimilarityByFeatures())
 app.register_task(ChunkSimilarity())
 app.register_task(PartySimilarity())

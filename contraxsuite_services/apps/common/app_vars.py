@@ -33,9 +33,9 @@ from django.conf import settings
 from apps.common.models import AppVar
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2019, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.4.0/LICENSE"
-__version__ = "1.4.0"
+__copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.5.0/LICENSE"
+__version__ = "1.5.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -56,22 +56,22 @@ def init_app_vars():
 
 
 TRACK_API = AppVar.set(
-    'track_api', False,
+    'Common', 'track_api', False,
     'Enables/disables tracking API request processing time. Values: true / false.')
 TRACK_API_GREATER_THAN = AppVar.set(
-    'track_api_greater_than', 250,
+    'Common', 'track_api_greater_than', 250,
     'If API request processing time is enabled then the requests '
     'longer than this value in ms will be tracked. Values: milliseconds')
 TRACK_API_SAVE_SQL_LOG = AppVar.set(
-    'track_api_save_sql_log', False,
+    'Common', 'track_api_save_sql_log', False,
     'If API request processing time is enabled then save sql logs')
 ENABLE_AUTH_TOKEN_IN_QUERY_STRING = AppVar.set(
-    'enable_auth_token_in_query_string', False,
+    'Common', 'enable_auth_token_in_query_string', False,
     'Enables/disables ability to authenticate via query string param auth_token in query string'
     'in API calls. WARNING: this is insecure setting for DEV purposes only!!!')
 CUSTOM_LINKS_HEADER = AppVar.set(
-    'custom_links_header', 'Custom Links',
-    'Title for Custom Links menu item on left sidebar..')
+    'Common', 'custom_links_header', 'Custom Links',
+    '', 'Title for Custom Links menu item on left sidebar..')
 CUSTOM_LOGO_URL = AppVar.set(
-    'custom_logo_url', None,
+    'Common', 'custom_logo_url', None,
     'Url to custom logo.')

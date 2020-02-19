@@ -1,0 +1,38 @@
+[
+{
+    "model": "document.fieldannotationstatus",
+    "pk": 1,
+    "fields": {
+        "name": "Unreviewed",
+        "code": "unreviewed",
+        "order": 1,
+        "is_active": true,
+        "is_confirm": false,
+        "is_deny": false
+    }
+},
+{
+    "model": "document.fieldannotationstatus",
+    "pk": 2,
+    "fields": {
+        "name": "Confirm",
+        "code": "confirm",
+        "order": 2,
+        "is_active": true,
+        "is_confirm": true,
+        "is_deny": false
+    }
+},
+{
+    "model": "document.fieldannotationstatus",
+    "pk": 3,
+    "fields": {
+        "name": "Deny",
+        "code": "deny",
+        "order": 3,
+        "is_active": true,
+        "is_confirm": false,
+        "is_deny": true
+    }
+}
+]

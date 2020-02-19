@@ -7,13 +7,12 @@
     $(document).ready(function () {
       var datafields = [
         { name: 'pk', type: 'int' },
-        { name: 'text_unit__document__project__name', type: 'string' },
-        { name: 'text_unit__document__name', type: 'string' },
-        { name: 'text_unit__document__document_type__title', type: 'string' },
-        { name: 'text_unit__document__description', type: 'string' },
+        { name: 'document__project__name', type: 'string' },
+        { name: 'document__name', type: 'string' },
+        { name: 'document__document_type__title', type: 'string' },
+        { name: 'document__description', type: 'string' },
         { name: 'term__term', type: 'string' },
         { name: 'count', type: 'int' },
-        { name: 'text_unit__textunittext__text', type: 'string' },
         { name: 'url', type: 'string' },
         { name: 'detail_url', type: 'string' }
       ];
@@ -31,21 +30,19 @@
         show_menu(menu_data, grid, row.pk);
       };
       var columns = [
-        { text: 'Project', datafield: 'text_unit__document__project__name', width: 70,
+        { text: 'Project', datafield: 'document__project__name', width: 120,
           align: 'center', cellsalign: 'center', columngroup: 'Document' },
-        { text: 'Name', datafield: 'text_unit__document__name', width: 200,
+        { text: 'Name', datafield: 'document__name', width: 'auto', minwidth: 250,
           align: 'center', cellsalign: 'left', enabletooltips: true,
           cellsrenderer: defaultLinkFormatter, columngroup: 'Document' },
-        { text: 'Type', datafield: 'text_unit__document__document_type__title', width: 100,
+        { text: 'Type', datafield: 'document__document_type__title', width: 150,
           align: 'center', cellsalign: 'center', columngroup: 'Document' },
-        { text: 'Description', datafield: 'text_unit__document__description',
-          width: 165, enabletooltips: true, columngroup: 'Document',
+        { text: 'Description', datafield: 'document__description',
+          width: 'auto', enabletooltips: true, columngroup: 'Document',
           align: 'center', cellsalign: 'center' },
         { text: 'Term', datafield: 'term__term', width: 120,
           align: 'center', cellsalign: 'center' },
         { text: 'Count', datafield: 'count', width: 80,
-          align: 'center', cellsalign: 'center' },
-        { text: 'Text Unit', datafield: 'text_unit__textunittext__text', sortable: false, width: 'auto', minwidth: 265,
           align: 'center', cellsalign: 'center' },
         { text: 'Action', datafield: 'url', width: 60,
           align: 'center', exportable: false,

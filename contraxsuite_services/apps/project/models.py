@@ -53,9 +53,9 @@ from apps.task.models import Task
 from apps.users.models import User
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2019, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.4.0/LICENSE"
-__version__ = "1.4.0"
+__copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.5.0/LICENSE"
+__version__ = "1.5.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -388,7 +388,8 @@ class Project(models.Model):
         # delete ProjectClustering
         project.projectclustering_set.exclude(id=exclude_project_clustering_id).delete()
         # delete ClusterProjectDocuments Tasks
-        to_delete_qr = project.project_tasks.filter(name=ClusterProjectDocuments.name)  # type: QuerySet
+        to_delete_qr = project.project_tasks.filter(name=ClusterProjectDocuments.name,
+                                                    status__in=[SUCCESS, PENDING])  # type: QuerySet
         if exclude_task_ids:
             to_delete_qr = to_delete_qr.exclude(pk__in=exclude_task_ids)
         to_delete_qr.delete()
@@ -588,8 +589,10 @@ class UploadSession(models.Model):
         subject = 'ContraxSuite: Batch upload job is started'
         text_message = render_to_string("email/notify_upload_started.txt", ctx)
         html_message = render_to_string("email/notify_upload_started.html", ctx)
+        from apps.notifications.mail_server_config import MailServerConfig
+        backend = MailServerConfig.make_connection_config()
         send_mail(subject=subject, message=text_message, from_email=settings.DEFAULT_FROM_EMAIL,
-                  recipient_list=to, html_message=html_message)
+                  recipient_list=to, html_message=html_message, connection=backend)
         self.notified_upload_started = True
         self.save()
 
@@ -601,8 +604,10 @@ class UploadSession(models.Model):
         subject = 'ContraxSuite: Batch upload job is completed'
         text_message = render_to_string("email/notify_upload_completed.txt", ctx)
         html_message = render_to_string("email/notify_upload_completed.html", ctx)
+        from apps.notifications.mail_server_config import MailServerConfig
+        backend = MailServerConfig.make_connection_config()
         send_mail(subject=subject, message=text_message, from_email=settings.DEFAULT_FROM_EMAIL,
-                  recipient_list=to, html_message=html_message)
+                  recipient_list=to, html_message=html_message, connection=backend)
         self.notified_upload_completed = True
         self.save()
 

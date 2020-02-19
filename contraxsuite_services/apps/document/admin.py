@@ -29,7 +29,7 @@ import inspect
 import json
 import re
 import traceback
-from typing import List, Dict, Any, Tuple
+from typing import List, Dict, Any
 
 # Django imports
 from django import forms
@@ -39,6 +39,7 @@ from django.contrib.admin.options import TO_FIELD_VAR
 from django.contrib.admin.utils import get_deleted_objects, unquote
 from django.contrib.admin.widgets import FilteredSelectMultiple
 from django.contrib.postgres import fields
+from django.contrib.postgres.forms.jsonb import JSONField, JSONString
 from django.db import transaction
 from django.http import HttpResponse
 from django.shortcuts import render, redirect
@@ -47,7 +48,6 @@ from django.urls import reverse
 from django.utils.html import format_html_join
 from django.utils.safestring import mark_safe
 from django.utils.translation import ugettext_lazy as _
-
 # Third-party imports
 from django_json_widget.widgets import JSONEditorWidget
 from simple_history.admin import SimpleHistoryAdmin
@@ -70,7 +70,8 @@ from apps.document.field_processing.field_processing_utils import order_field_de
 from apps.document.field_types import RelatedInfoField, TypedField, ChoiceField
 from apps.document.models import (
     Document, DocumentText, DocumentMetadata,
-    DocumentField, DocumentType, FieldValue, FieldAnnotation,
+    DocumentField, DocumentType, FieldValue,
+    FieldAnnotationStatus, FieldAnnotation, FieldAnnotationFalseMatch, FieldAnnotationSavedFilter,
     DocumentProperty, DocumentRelation, DocumentNote,
     DocumentFieldDetector, ExternalFieldValue,
     ClassifierModel, TextUnit, TextUnitProperty, TextUnitNote, TextUnitTag, TextUnitText,
@@ -81,12 +82,16 @@ from apps.rawdb.constants import FIELD_CODE_ANNOTATION_SUFFIX, FIELD_CODE_HIDE_U
 from apps.task.models import Task
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2019, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.4.0/LICENSE"
-__version__ = "1.4.0"
+__copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.5.0/LICENSE"
+__version__ = "1.5.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
+
+MLFLOW_DETECT_ON_DOCUMENT_LEVEL = 'mlflow_detect_on_document_level'
+
+REQUIRES_TEXT_ANNOTATIONS = 'requires_text_annotations'
 
 VALUE_DETECTION_STRATEGY = 'value_detection_strategy'
 
@@ -523,6 +528,17 @@ class DocumentFieldForm(ModelFormWithUnchangeableFields):
 
     UNCHANGEABLE_FIELDS = ('code', 'long_code', 'document_type', 'type', 'hide_until_js')
 
+    class DefaultValueField(JSONField):
+        def to_python(self, value):
+            try:
+                return super().to_python(value)
+            except forms.ValidationError as e:
+                if isinstance(value, str):
+                    return JSONString(value)
+                raise e
+
+    default_value = DefaultValueField(required=False)
+
     depends_on_fields = forms.ModelMultipleChoiceField(
         queryset=DocumentField.objects.all(),
         required=False,
@@ -556,12 +572,15 @@ class DocumentFieldForm(ModelFormWithUnchangeableFields):
         required=False,
         help_text='Display Yes if Related Info Text Found, otherwise No')
 
-    classifier_init_script = forms.Field(required=False, widget=forms.Textarea,
-                                         help_text=mark_safe('''Classifier initialization script. 
-    Here is how it used: <br /><br />
-    ''' + '<br />'.join(inspect.getsource(init_classifier_impl)
-                        .replace(' ', '&nbsp;').replace('\t', '&nbsp;&nbsp;&nbsp;&nbsp;')
-                        .split('\n'))))
+    classifier_init_script = forms.Field(
+        required=False, widget=forms.Textarea,
+        help_text=mark_safe(
+            'Classifier initialization script. '
+            'Here is how it used: <br /><br />' + '<br />'.join(
+                inspect.getsource(init_classifier_impl)
+                    .replace(' ', '&nbsp;')
+                    .replace('\t', '&nbsp;&nbsp;&nbsp;&nbsp;')
+                    .split('\n'))))
 
     class Meta:
         model = DocumentField
@@ -722,7 +741,12 @@ class DocumentFieldForm(ModelFormWithUnchangeableFields):
         unsure_choice_value = self.cleaned_data[self.UNSURE_CHOICE_VALUE]
         choice_values = DocumentField.parse_choice_values(self.cleaned_data['choices'])
         unsure_thresholds_by_value = self.cleaned_data.get(self.UNSURE_THRESHOLDS)
+        requires_text_annotations = self.cleaned_data.get(REQUIRES_TEXT_ANNOTATIONS)
+        mlflow_detect_on_document_level = self.cleaned_data.get(MLFLOW_DETECT_ON_DOCUMENT_LEVEL)
 
+        if requires_text_annotations and mlflow_detect_on_document_level:
+            self.add_error(MLFLOW_DETECT_ON_DOCUMENT_LEVEL, 'The field requires text annotations, detection '
+                                                            'can be done on text unit level only.')
         if choice_values:
             choice_errors = ChoiceField.check_choice_values_list(choice_values)
             for ch_err in choice_errors:
@@ -861,6 +885,9 @@ class DocumentFieldAdmin(FieldValuesValidationAdmin):
         ('Field Detection: Python-coded Fields', {
             'fields': ('python_coded_field',),
         }),
+        ('Field Detection: MLFlow', {
+            'fields': ('mlflow_model_uri', 'mlflow_detect_on_document_level'),
+        }),
         ('Metadata', {
             'fields': ('metadata',),
         }),
@@ -877,7 +904,7 @@ class DocumentFieldAdmin(FieldValuesValidationAdmin):
     def save_model(self, request, obj: DocumentField, form, change: bool):
         typed = TypedField.by(obj)
         if change and \
-            (typed.is_choice_field and not obj.allow_values_not_specified_in_choices):
+                (typed.is_choice_field and not obj.allow_values_not_specified_in_choices):
             # don't save here, prompt user if there are values other than in choices list
             return
         # check formula errors
@@ -969,7 +996,7 @@ class DocumentFieldAdmin(FieldValuesValidationAdmin):
                 return redirect('admin:document_documentfield_changelist')
             # "Save and Continue"
             else:
-                return redirect(return_url)    # request.path?
+                return redirect(return_url)  # request.path?
 
         context = {
             'field_name': new_field.title,
@@ -1013,15 +1040,12 @@ class DocumentFieldAdmin(FieldValuesValidationAdmin):
         :param check_return_value: if True, check return value against field type
         :return: was calculated or is empty; calc. result; errors' list
         """
-        result = FormulaCheckResult(calculated=False)
         form.is_valid()
         document_field = form.instance  # type: DocumentField
         formula = form.data.get(formula_field) or ''
         if not formula or formula.isspace():
-            return result
+            return FormulaCheckResult(calculated=False)
 
-        type_code = document_field.type
-        field_code = document_field.code
         dependent_fields = []
         if formula_field == FIELD_CODE_HIDE_UNTIL_PYTHON:
             # check "hide until Python" formula on all fields' values
@@ -1045,27 +1069,35 @@ class DocumentFieldAdmin(FieldValuesValidationAdmin):
             fields_to_values = {field.code: TypedField.by(field).example_python_value()
                                 for field in dependent_fields}
 
+        return self.calculate_formula_result_on_values(check_return_value,
+                                                       document_field,
+                                                       fields_to_values,
+                                                       formula)
+
+    @staticmethod
+    def calculate_formula_result_on_values(check_return_value: bool,
+                                           document_field: DocumentField,
+                                           fields_to_values: Dict[str, Any],
+                                           formula: str):
+        result = FormulaCheckResult(calculated=False)
         try:
             typed_field = TypedField.by(document_field)
         except KeyError:
-            result.errors.append(f'Unknown field type "{type_code}".')
+            result.errors.append(f'Unknown field type "{document_field.type}".')
             return result
-
         try:
             result.value = FormulaBasedFieldDetectionStrategy.calc_formula(
-                field_code, formula, fields_to_values)
+                document_field.code, formula, fields_to_values)
             result.calculated = True
         except Exception as e:
             msg = str(e.base_error) if hasattr(e, 'base_error') and \
-                                       formula_field == FIELD_CODE_HIDE_UNTIL_PYTHON else str(e)
+                document_field.code == FIELD_CODE_HIDE_UNTIL_PYTHON else str(e)
             result.errors.append(msg)
-
         if result.calculated:
             checker = PythonExpressionChecker(formula)
             checker.test_expression()
             if checker.warnings:
                 result.warnings += checker.warnings
-
         if check_return_value:
             if result.calculated and not typed_field.is_python_field_value_ok(result.value):
                 result.errors.append(f'Formula returned value not suitable for this field:\n{result.value}')
@@ -1172,14 +1204,20 @@ class FieldValueAdmin(admin.ModelAdmin):
         return obj.modified_by.username if obj.modified_by else None
 
 
+class FieldAnnotationStatusAdmin(admin.ModelAdmin):
+    list_display = ('name', 'code', 'is_active', 'is_confirm', 'is_deny')
+    search_fields = ['name', 'code']
+
+
 class FieldAnnotationAdmin(admin.ModelAdmin):
     raw_id_fields = ('document', 'text_unit',)
     list_display = ('document_type', 'document', 'field', 'value', 'location_start',
-                    'location_end', 'location_text', 'extraction_hint', 'user')
+                    'location_end', 'location_text', 'extraction_hint', 'user', 'status', 'assignee')
     search_fields = ['document__document_type__code', 'document__document_type__title',
                      'document__name', 'field__code', 'field__title', 'value', 'location_text',
                      'extraction_hint', 'modified_by__username', 'modified_by__first_name',
-                     'modified_by__last_name']
+                     'modified_by__last_name', 'status__name',
+                     'assignee__username', 'assignee__first_name', 'assignee__last_name']
 
     @staticmethod
     def document_type(obj):
@@ -1190,8 +1228,37 @@ class FieldAnnotationAdmin(admin.ModelAdmin):
         return obj.field.code if obj.field else None
 
     @staticmethod
+    def status(obj):
+        return obj.status.name
+
+    @staticmethod
+    def assignee(obj):
+        return obj.assignee.username if obj.assignee else None
+
+    @staticmethod
     def user(obj):
         return obj.modified_by.username if obj.modified_by else None
+
+
+class FieldAnnotationFalseMatchAdmin(admin.ModelAdmin):
+    raw_id_fields = ('document', 'text_unit',)
+    list_display = ('document_type', 'document', 'field', 'value', 'location_start',
+                    'location_end', 'location_text')
+    search_fields = ['document__document_type__code', 'document__document_type__title',
+                     'document__name', 'field__code', 'field__title', 'value', 'location_text']
+
+    @staticmethod
+    def document_type(obj):
+        return obj.document.document_type if obj.document else None
+
+    @staticmethod
+    def field_code(obj):
+        return obj.field.code if obj.field else None
+
+
+class FieldAnnotationSavedFilterAdmin(admin.ModelAdmin):
+    list_display = ('filter_type', 'project', 'document_type', 'user', 'title', 'display_order')
+    search_fields = ['filter_type', 'project__name', 'document_type__code', 'user__username', 'title']
 
 
 class ExternalFieldValueAdmin(admin.ModelAdmin):
@@ -1303,6 +1370,7 @@ class DocumentFieldInlineAdmin(admin.TabularInline):
 
 class DocumentTypeForm(ModelFormWithUnchangeableFields):
     UNCHANGEABLE_FIELDS = ('code',)
+    CODE_RE = re.compile(r'^[a-z][a-z0-9_]*$')
 
     search_fields = forms.ModelMultipleChoiceField(
         label='Default Grid Column Headers',
@@ -1314,6 +1382,16 @@ class DocumentTypeForm(ModelFormWithUnchangeableFields):
         model = DocumentType
         fields = '__all__'
         readonly_fields = ('created_by', 'modified_by')
+
+    def clean_code(self):
+        field_code = self.cleaned_data['code']
+
+        # validate only new records, skip already existing ones
+        if not DocumentType.objects.filter(pk=self.instance.pk).exists() and not self.CODE_RE.match(field_code):
+            raise forms.ValidationError('''Field codes must be lowercase, should start with a latin letter and contain 
+            only latin letters, digits, and underscores.'''.format(field_code))
+
+        return field_code
 
 
 class DocumentTypeAdmin(ModelAdminWithPrettyJsonField, UsersTasksValidationAdmin):
@@ -1361,11 +1439,6 @@ class DocumentPropertyAdmin(admin.ModelAdmin):
     search_fields = ['document__name', 'key', 'value']
 
 
-class TextUnitPropertyAdmin(admin.ModelAdmin):
-    list_display = ('pk', 'text_unit', 'key', 'value')
-    search_fields = ['key', 'value']
-
-
 class DocumentRelationAdmin(admin.ModelAdmin):
     list_display = ('document_a', 'document_b', 'relation_type')
     search_fields = ['document_a__name', 'document_a__name', 'relation_type']
@@ -1381,16 +1454,30 @@ class TextUnitAdmin(admin.ModelAdmin):
     inlines = [TextUnitTextInline]
 
 
-class TextUnitTextAdmin(admin.ModelAdmin):
+class TextUnitRelatedAdmin(admin.ModelAdmin):
+    raw_id_fields = ('text_unit',)
+
+    def get_queryset(self, request):
+        qs = super().get_queryset(request)
+        qs = qs.select_related('text_unit', 'text_unit__document', 'text_unit__textunittext')
+        return qs
+
+
+class TextUnitTextAdmin(TextUnitRelatedAdmin):
     search_fields = ('text_unit__id', 'text_unit__unit_type')
 
 
-class TextUnitTagAdmin(admin.ModelAdmin):
+class TextUnitPropertyAdmin(TextUnitRelatedAdmin):
+    list_display = ('pk', 'text_unit', 'key', 'value')
+    search_fields = ['key', 'value']
+
+
+class TextUnitTagAdmin(TextUnitRelatedAdmin):
     list_display = ('text_unit', 'tag')
     search_fields = ('text_unit__unit_type', 'tag')
 
 
-class TextUnitNoteAdmin(SimpleHistoryAdmin):
+class TextUnitNoteAdmin(TextUnitRelatedAdmin, SimpleHistoryAdmin):
     list_display = ('text_unit', 'timestamp')
     search_fields = ('text_unit__unit_type', 'timestamp', 'note')
 
@@ -1448,7 +1535,10 @@ admin.site.register(SoftDeleteDocument, SoftDeleteDocumentAdmin)
 admin.site.register(DocumentField, DocumentFieldAdmin)
 admin.site.register(DocumentFieldDetector, DocumentFieldDetectorAdmin)
 admin.site.register(FieldValue, FieldValueAdmin)
+admin.site.register(FieldAnnotationStatus, FieldAnnotationStatusAdmin)
 admin.site.register(FieldAnnotation, FieldAnnotationAdmin)
+admin.site.register(FieldAnnotationFalseMatch, FieldAnnotationFalseMatchAdmin)
+admin.site.register(FieldAnnotationSavedFilter, FieldAnnotationSavedFilterAdmin)
 admin.site.register(ExternalFieldValue, ExternalFieldValueAdmin)
 admin.site.register(ClassifierModel, ClassifierModelAdmin)
 admin.site.register(DocumentType, DocumentTypeAdmin)

@@ -24,16 +24,20 @@
 """
 # -*- coding: utf-8 -*-
 
+from apps.document.models import Document
 from apps.similarity.chunk_similarity_task import ChunkSimilarity
 from apps.similarity.forms import (
-    PreconfiguredDocumentSimilaritySearchForm, SimilarityForm, PartySimilarityForm, ChunkSimilarityForm)
-from apps.similarity.tasks import PreconfiguredDocumentSimilaritySearch, Similarity, PartySimilarity
+    PreconfiguredDocumentSimilaritySearchForm, SimilarityForm,
+    PartySimilarityForm, ChunkSimilarityForm, SimilarityByFeaturesForm)
+from apps.similarity.similarity_metrics import make_text_units_query, SimilarityLimits
+from apps.similarity.tasks import (
+    PreconfiguredDocumentSimilaritySearch, Similarity, PartySimilarity, SimilarityByFeatures)
 from apps.task.views import BaseAjaxTaskView
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2019, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.4.0/LICENSE"
-__version__ = "1.4.0"
+__copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.5.0/LICENSE"
+__version__ = "1.5.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -59,6 +63,40 @@ class SimilarityView(BaseAjaxTaskView):
                 self.request.POST.get('similarity_threshold')),
             result_links=result_links)
 
+    def start_task_and_return(self, data):
+        if data.get('skip_confirmation'):
+            self.start_task(data)
+            return self.json_response('The task is started. It can take a while.')
+
+        project = data.get('project')
+        proj_id = project.id if project else None
+        search_target = data.get('search_target')
+        if not search_target:
+            search_target = 'document' if data.get('search_similar_documents') else 'unit'
+
+        if search_target == 'document':
+            count = Document.objects.all().count() if not proj_id \
+                else Document.objects.filter(project_id=proj_id).count()
+            count_limit = SimilarityLimits.WARN_MAX_DOCUMENTS
+            unit_type = 'documents'
+        else:
+            # unit_text_regex = DocumentChunkSimilarityProcessor.unit_text_regex
+            unit_query = make_text_units_query(proj_id)
+            count = unit_query.count()
+            count_limit = SimilarityLimits.WARN_MAX_TEXT_UNITS
+            unit_type = 'paragraphs'
+
+        if count < count_limit:
+            self.start_task(data)
+            return self.json_response('The task is started. It can take a while.')
+        return self.json_response({'message': f'Processing {count} {unit_type} may take too much time.',
+                                   'confirm': True})
+
+
+class SimilarityByFeaturesView(BaseAjaxTaskView):
+    task_class = SimilarityByFeatures
+    form_class = SimilarityByFeaturesForm
+
 
 class ChunkSimilarityView(SimilarityView):
     task_class = ChunkSimilarity
@@ -81,6 +119,23 @@ class ChunkSimilarityView(SimilarityView):
                 ', '.join(similarity_items),
                 self.request.POST.get('similarity_threshold')),
             result_links=result_links)
+
+    def start_task_and_return(self, data):
+        if data.get('skip_confirmation'):
+            self.start_task(data)
+            return self.json_response('The task is started. It can take a while.')
+
+        sm = ChunkSimilarity()
+        estimation = sm.estimate_time(**data)
+        # if estimated task duration is less than 1 hour:
+        if estimation < SimilarityLimits.WARN_CHUNK_SIMILARITY_SECONDS:
+            self.start_task(data)
+            return self.json_response('The task is started. It can take a while.')
+        min, sec = divmod(estimation, 60)
+        hour, min = divmod(min, 60)
+        estim_str = "%d:%02d:%02d" % (hour, min, sec)
+        return self.json_response({'message': f'Processing may take about {estim_str}.',
+                                   'confirm': True})
 
 
 class PartySimilarityView(BaseAjaxTaskView):

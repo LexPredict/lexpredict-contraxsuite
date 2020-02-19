@@ -33,15 +33,12 @@ from django.conf.urls import url
 # Project imports
 from apps.common.utils import create_standard_urls
 from apps.analyze import views
-from apps.analyze.models import (
-    DocumentCluster, DocumentSimilarity, PartySimilarity,
-    TextUnitClassification, TextUnitClassifier, TextUnitClassifierSuggestion,
-    TextUnitSimilarity, TextUnitCluster)
+from apps.analyze.models import *
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2019, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.4.0/LICENSE"
-__version__ = "1.4.0"
+__copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.5.0/LICENSE"
+__version__ = "1.5.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -70,6 +67,9 @@ register(TextUnitCluster, view_types=('list',))
 register(TextUnitClassifier, view_types=('list', 'delete'))
 register(TextUnitClassification, view_types=('list', 'delete'))
 register(TextUnitClassifierSuggestion, view_types=('list', 'delete'))
+register(DocumentClassifier, view_types=('list', 'delete'))
+register(DocumentClassification, view_types=('list', 'delete'))
+register(DocumentClassifierSuggestion, view_types=('list', 'delete'))
 
 # Add hard-coded URL mappings
 urlpatterns += [
@@ -98,4 +98,31 @@ urlpatterns += [
         views.TrainTextUnitDoc2VecModelView.as_view(),
         name='train-text-unit-doc2vec-model',
     ),
+
+    url(
+        r'^run-text-unit-classifier/$',
+        views.RunTextUnitClassifierView.as_view(),
+        name='run-text-unit-classifier',
+    ),
+    url(
+        r'^run-document-classifier/$',
+        views.RunDocumentClassifierView.as_view(),
+        name='run-document-classifier',
+    ),
+    url(r'^train-document-classifier/$',
+        views.TrainDocumentClassifierView.as_view(),
+        name='train-document-classifier',
+    ),
+    url(
+        r'^train-text-unit-classifier/$',
+        views.TrainTextUnitClassifierView.as_view(),
+        name='train-text-unit-classifier',
+    ),
+
+    url(
+        r'^cluster/$',
+        views.ClusterView.as_view(),
+        name='cluster',
+    ),
+
 ]

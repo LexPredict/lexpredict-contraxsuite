@@ -39,10 +39,10 @@ popd
 
 
 echo "Contraxsuite additional files" > ../../../additionals/additionals
-rsync ../../../additionals/ ./temp/additionals/ -a --copy-links -v
+rsync --exclude='.git/' --exclude='lexnlpprivate/' ../../../additionals/ ./temp/additionals/ -a --copy-links -v
 
-rsync ../../../contraxsuite_services/ ./temp/contraxsuite_services/ -a --copy-links -v
-rsync ../../../static/ ./temp/static/ -a --copy-links -v
+rsync --exclude='.git/' ../../../contraxsuite_services/ ./temp/contraxsuite_services/ -a --copy-links -v
+rsync --exclude='.git/' ../../../static/ ./temp/static/ -a --copy-links -v
 
 # Don't put licensed third-party components into the image
 rm -f -r ./temp/contraxsuite_services/staticfiles

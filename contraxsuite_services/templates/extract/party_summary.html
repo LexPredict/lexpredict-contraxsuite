@@ -145,60 +145,57 @@
         badgeClass: 'documents-badge'
       };
       var nested_grid_initrowdetails = function(index, parentElement, gridElement, record) {
-        var grid = $($(parentElement).children()[0]);
-        grid.attr('id', 'grid' + record.boundindex);
-        var details_source = {
-          datafields: [
-            { name: 'unit_type', type: 'string' },
-            { name: 'language', type: 'string' },
-            { name: 'textunittext__text', type: 'string' },
-            { name: 'detail_url', type: 'string' }
-          ],
-          localdata: record.text_unit_data
+        var text_units_grid = $($(parentElement).children()[0]);
+        text_units_grid.attr('id', 'grid' + record.boundindex);
+
+        // Document Text Units containing that party sub-table
+        var text_unit_datafields = [
+          { name: 'pk', type: 'int' },
+          { name: 'unit_type', type: 'string' },
+          { name: 'language', type: 'string' },
+          { name: 'textunittext__text', type: 'string' },
+          { name: 'detail_url', type: 'string' }
+        ];
+        var text_units_menu_renderer = function(row) {
+          row = text_units_grid.jqxGrid('getrowdata', row);
+          var menu_data = [
+            { url: row.detail_url,
+              icon: 'fa fa-file-text-o',
+              text: 'View Text Unit Details' }
+          ];
+          show_menu(menu_data, text_units_grid, row.pk, 300);
         };
-        var nestedGridAdapter = new $.jqx.dataAdapter(details_source);
-        if (grid != null) {
-          var menu_renderer = function(row) {
-            row = grid.jqxGrid('getrowdata', row);
-            var menu_data = [
-              { url: row.detail_url,
-                icon: 'fa fa-info-circle',
-                text: 'View Text Unit' }
-            ];
-            show_menu(menu_data, grid, row.pk);
-          };
-          grid.jqxGrid({
-            source: nestedGridAdapter,
-            altrows: true,
-            rowsheight: 40,
-            enabletooltips: true,
-            sortable: true,
-            filterable: true,
-            width: '98%',
-            height: 200,
-            columns: [
-              { text: 'Unit Type', datafield: 'unit_type', width: 80,
-                align: 'center', cellsalign: 'center' },
-              { text: 'Language', datafield: 'language', width: 80,
-                align: 'center', cellsalign: 'center' },
-              { text: 'Text', datafield: 'textunittext__text', width: 'auto', minwidth: 'auto',
-                align: 'center', cellsalign: 'center' },
-              { text: 'Action', datafield: 'url', width: 60,
-                align: 'center', exportable: false,
-                columntype: 'button',
-                sortable: false, filterable: false, menu: false,
-                cellsrenderer: function(){ return 'Menu' },
-                buttonclick: menu_renderer }
-            ]
-          });
-        }
+        var text_unit_columns = [
+          { text: 'Unit Type', datafield: 'unit_type', width: 80,
+            align: 'center', cellsalign: 'center' },
+          { text: 'Language', datafield: 'language', width: 80,
+            align: 'center', cellsalign: 'center', },
+          { text: 'Text', datafield: 'textunittext__text', width: 'auto',
+            align: 'center', cellsalign: 'center' },
+          { text: 'Action', datafield: 'edit_url', width: 60,
+            align: 'center', exportable: false,
+            columntype: 'button',
+            sortable: false, filterable: false, menu: false,
+            cellsrenderer: function(){return 'Menu'},
+            buttonclick: text_units_menu_renderer }
+        ];
+        var text_unit_custom_grid_options = {
+          width: '95%'
+        };
+        var text_units_custom_source_data = {
+          url: '{% url "document:text-unit-list" %}',
+          data: { 'document_pk': record.pk,
+                  'party_pk': '{{ object.pk }}' }
+        };
+        draw_grid(text_units_grid, text_unit_datafields, text_unit_columns, true,
+                  text_units_custom_source_data, text_unit_custom_grid_options);
       };
       var documents_custom_grid_opts = {
         rowdetails: true,
         initrowdetails: nested_grid_initrowdetails,
         rowdetailstemplate: {
           rowdetails: "<div id='grid' class='sub-grid' style='margin: 10px;'></div>",
-          rowdetailsheight: 220,
+          rowdetailsheight: 575,
           rowdetailshidden: true
         }
       };
@@ -267,8 +264,9 @@
 
       // Top Entity Usages table
       var entities_datafields = [
-        { name: 'name', type: 'string' },
-        { name: 'category', type: 'string' },
+        { name: 'entity_id', type: 'int' },
+        { name: 'entity__name', type: 'string' },
+        { name: 'entity__category', type: 'string' },
         { name: 'entity_data' },
         { name: 'count', type: 'int' }
       ];
@@ -280,15 +278,15 @@
             onclick: "expand_row(event, '.jqxgrid-entities', " + row_number + ")",
             text: 'Show Details' },
           { icon: 'fa fa-search',
-            url:  '{% url "extract:geo-entity-usage-list" %}?entity_search=' + row.name,
+            url:  '{% url "extract:geo-entity-usage-list" %}?entity_search=' + row.entity__name,
             text: 'View All Similar Entity Usages' }
         ];
         show_menu(menu_data, grid, row.pk, 300);
       };
       var entities_columns = [
-        { text: 'Entity Name', datafield: 'name', width: 'auto',
+        { text: 'Entity Name', datafield: 'entity__name', width: 'auto',
           align: 'center', cellsalign: 'center' },
-        { text: 'Entity Category', datafield: 'category', width: 'auto',
+        { text: 'Entity Category', datafield: 'entity__category', width: 'auto',
           align: 'center', cellsalign: 'center' },
         { text: 'Count', datafield: 'count', width: 150,
           align: 'center', cellsalign: 'center' },
@@ -307,82 +305,82 @@
       var nested_grid_initrowdetails = function(index, parentElement, gridElement, record) {
         var grid = $($(parentElement).children()[0]);
         grid.attr('id', 'grid' + record.boundindex);
-        var details_source = {
-          datafields: [
-            { name: 'text_unit__document__name', type: 'string' },
-            { name: 'text_unit__document__document_type__title', type: 'string' },
-            { name: 'text_unit__document__description', type: 'string' },
-            { name: 'entity__name', type: 'string' },
-            { name: 'entity__category', type: 'string' },
-            { name: 'count', type: 'int' },
-            { name: 'text_unit__textunittext__text', type: 'string' },
-            { name: 'url', type: 'string' },
-            { name: 'detail_url', type: 'string' }          ],
-          localdata: record.entity_data
+        var datafields = [
+          { name: 'text_unit__document__name', type: 'string' },
+          { name: 'text_unit__document__document_type__title', type: 'string' },
+          { name: 'text_unit__document__description', type: 'string' },
+          { name: 'entity__name', type: 'string' },
+          { name: 'entity__category', type: 'string' },
+          { name: 'count', type: 'int' },
+          { name: 'text_unit__textunittext__text', type: 'string' },
+          { name: 'url', type: 'string' },
+          { name: 'detail_url', type: 'string' }
+        ];
+        var menu_renderer = function(row) {
+          row = grid.jqxGrid('getrowdata', row);
+          var menu_data = [
+            { url: row.url,
+              icon: 'fa fa-file-text-o',
+              text: 'View Document'},
+            { url: row.detail_url,
+              icon: 'fa fa-info-circle',
+              text: 'View Text Unit'}
+          ];
+          show_menu(menu_data, grid, row.pk);
         };
-        var nestedGridAdapter = new $.jqx.dataAdapter(details_source);
-        if (grid != null) {
-          var menu_renderer = function(row) {
-            row = grid.jqxGrid('getrowdata', row);
-            var menu_data = [
-              { url: row.url,
-                icon: 'fa fa-file-text-o',
-                text: 'View Document'},
-              { url: row.detail_url,
-                icon: 'fa fa-info-circle',
-                text: 'View Text Unit'}
-            ];
-            show_menu(menu_data, grid, row.pk);
-          };
-          grid.jqxGrid({
-            source: nestedGridAdapter,
-            altrows: true,
-            rowsheight: 40,
-            enabletooltips: true,
-            sortable: true,
-            filterable: true,
-            width: '98%',
-            height: 200,
-            columns: [
-              { text: 'Name', datafield: 'text_unit__document__name', width: 200,
-                align: 'center', cellsalign: 'left', enabletooltips: true,
-                cellsrenderer: defaultLinkFormatter, columngroup: 'Document' },
-              { text: 'Type', datafield: 'text_unit__document__document_type__title', width: 100,
-                align: 'center', cellsalign: 'center', columngroup: 'Document' },
-              { text: 'Description', datafield: 'text_unit__document__description',
-                width: 200, enabletooltips: true, columngroup: 'Document',
-                align: 'center', cellsalign: 'center' },
-              { text: 'Name', datafield: 'entity__name', width: 120,
-                align: 'center', cellsalign: 'center', columngroup: 'Entity' },
-              { text: 'Category', datafield: 'entity__category', width: 120,
-                align: 'center', cellsalign: 'center', columngroup: 'Entity' },
-              { text: 'Count', datafield: 'count', width: 60,
-                align: 'center', cellsalign: 'center' },
-              { text: 'Text Unit', datafield: 'text_unit__textunittext__text', sortable: false, width: 'auto', minwidth: 200,
-                align: 'center', cellsalign: 'center' },
-              { text: 'Action', datafield: 'url', width: 60,
-                align: 'center', exportable: false,
-                columntype: 'button',
-                sortable: false, filterable: false, menu: false,
-                cellsrenderer: function(){ return 'Menu' },
-                buttonclick: menu_renderer }
-            ]
-          });
-        }
+        var columns = [
+          { text: 'Name', datafield: 'text_unit__document__name', width: 200,
+            align: 'center', cellsalign: 'left', enabletooltips: true,
+            cellsrenderer: defaultLinkFormatter, columngroup: 'Document' },
+          { text: 'Type', datafield: 'text_unit__document__document_type__title', width: 100,
+            align: 'center', cellsalign: 'center', columngroup: 'Document' },
+          { text: 'Description', datafield: 'text_unit__document__description',
+            width: 200, enabletooltips: true, columngroup: 'Document',
+            align: 'center', cellsalign: 'center' },
+          { text: 'Name', datafield: 'entity__name', width: 120,
+            align: 'center', cellsalign: 'center', columngroup: 'Entity' },
+          { text: 'Category', datafield: 'entity__category', width: 120,
+            align: 'center', cellsalign: 'center', columngroup: 'Entity' },
+          { text: 'Count', datafield: 'count', width: 60,
+            align: 'center', cellsalign: 'center' },
+          { text: 'Text Unit', datafield: 'text_unit__textunittext__text', sortable: false, width: 'auto', minwidth: 200,
+            align: 'center', cellsalign: 'center' },
+          { text: 'Action', datafield: 'url', width: 60,
+            align: 'center', exportable: false,
+            columntype: 'button',
+            sortable: false, filterable: false, menu: false,
+            cellsrenderer: function(){ return 'Menu' },
+            buttonclick: menu_renderer }
+        ];
+        var custom_grid_options = {
+          width: '98%',
+          altrows: true,
+          rowsheight: 40,
+          enabletooltips: true,
+          sortable: true,
+          filterable: true,
+          height: 200
+        };
+        var custom_source_data = {
+          url: '{% url "extract:geo-entity-usage-list" %}',
+          data: { 'entity_pk': record.entity_id,
+                  'party_pk': '{{ object.pk }}' }
+        };
+        draw_grid(grid, datafields, columns, true, custom_source_data, custom_grid_options);
       };
       var entities_custom_grid_opts = {
         rowdetails: true,
         initrowdetails: nested_grid_initrowdetails,
         rowdetailstemplate: {
           rowdetails: "<div id='grid' class='sub-grid' style='margin: 10px;'></div>",
-          rowdetailsheight: 220,
+          rowdetailsheight: 550,
           rowdetailshidden: true
         }
       };
-      draw_grid(".jqxgrid-entities", entities_datafields, entities_columns, false,
+      draw_grid(".jqxgrid-entities", entities_datafields, entities_columns, true,
                 entities_custom_source_data, entities_custom_grid_opts);
 
-      // Parties table
+      // Parties Similarity table
       var parties_datafields = [
         { name: 'party_b__name', type: 'string' },
         { name: 'party_b__type_abbr', type: 'string' },

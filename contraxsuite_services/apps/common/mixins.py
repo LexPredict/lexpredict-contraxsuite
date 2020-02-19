@@ -42,7 +42,7 @@ import rest_framework.filters
 import rest_framework.response
 import rest_framework.generics
 from django.http.response import StreamingHttpResponse
-from rest_framework import serializers, status
+from rest_framework import status
 from rest_framework.decorators import action
 from rest_framework.fields import empty as EMPTY
 from rest_framework.response import Response
@@ -75,9 +75,9 @@ from apps.common.streaming_utils import csv_gen_from_dicts
 from apps.common.utils import cap_words, export_qs_to_file, download
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2019, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.4.0/LICENSE"
-__version__ = "1.4.0"
+__copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.5.0/LICENSE"
+__version__ = "1.5.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -309,7 +309,7 @@ class CustomDeleteView(AddModelNameMixin, PermissionRequiredMixin, DeleteView):
 class AjaxResponseMixin:
 
     def render_to_response(self, *args, **kwargs):
-        if self.request.is_ajax():
+        if self.request.is_ajax() or self.request.GET.get('to_json') == 'true':
             data = self.get_json_data(**kwargs)
             return JsonResponse(data, encoder=DjangoJSONEncoder, safe=False)
         return super().render_to_response(*args, **kwargs)
@@ -1164,7 +1164,7 @@ class APILoggingMixin(LoggingMixin):
         if TRACK_API_SAVE_SQL_LOG.val:
             self.log['sql_log'] = '\n'.join(['({}) {}'.format(
                 q.get('time') or q.get('duration', 0) / 1000, q.get('sql') or '')
-                                             for q in connection.queries])
+                for q in connection.queries])
         CustomAPIRequestLog(**self.log).save()
 
 

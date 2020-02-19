@@ -78,9 +78,27 @@ sudo cp ./temp/default.conf ${VOLUME_NGINX_CONF}/conf.d/default.conf
 envsubst < ./config-templates/metricbeat.yml.template > ./temp/metricbeat.yml
 envsubst < ./config-templates/filebeat.yml.template > ./temp/filebeat.yml
 envsubst < ./config-templates/elasticsearch.yml.template > ./temp/elasticsearch.yml
+envsubst < ./config-templates/elastalert-config.yaml.template > ./temp/elastalert-config.yaml
+envsubst < ./config-templates/elastalert-smtp-auth.yaml > ./temp/elastalert-smtp-auth.yaml
+envsubst < ./config-templates/elastalert-server-config.json.template > ./temp/elastalert-server-config.json
+envsubst < ./config-templates/kibana.yml.template > ./temp/kibana.yml
 envsubst < ./config-templates/db-backup.sh.template > ./temp/db-backup.sh
 envsubst < ./config-templates/postgres_init.sql.template > ./temp/postgres_init.sql
 envsubst < ./config-templates/powa-web.conf.template > ./temp/powa-web.conf
+
+envsubst < ./config-templates/elastalert-examples/elastalert-disk-usage.yaml > ./temp/elastalert-disk-usage.yaml
+envsubst < ./config-templates/elastalert-examples/elastalert-task-failed.yaml > ./temp/elastalert-task-failed.yaml
+envsubst < ./config-templates/elastalert-examples/elastalert-down-docker-services.yaml > ./temp/elastalert-down-docker-services.yaml
+
+if [ ! -f ${VOLUME_ELASTALERT_RULES}/elastalert-disk-usage.yaml ]; then
+    sudo cp ./temp/elastalert-disk-usage.yaml ${VOLUME_ELASTALERT_RULES}/
+fi
+if [ ! -f ${VOLUME_ELASTALERT_RULES}/elastalert-task-failed.yaml ]; then
+    sudo cp ./temp/elastalert-task-failed.yaml ${VOLUME_ELASTALERT_RULES}/
+fi
+if [ ! -f ${VOLUME_ELASTALERT_RULES}/elastalert-down-docker-services.yaml ]; then
+    sudo cp ./temp/elastalert-down-docker-services.yaml ${VOLUME_ELASTALERT_RULES}/
+fi
 
 NGINX_CUSTOMER_TEMPLATE=./config-templates/nginx-customer.conf.template
 NGINX_CUSTOMER_CONF=./temp/nginx-customer.conf
@@ -97,6 +115,10 @@ cp ./config-templates/*.conf ./temp/
 export FILEBEAT_CONFIG_VERSION=`md5sum ./temp/filebeat.yml | awk '{ print $1 }'`
 export METRICBEAT_CONFIG_VERSION=`md5sum ./temp/metricbeat.yml | awk '{ print $1 }'`
 export ELASTICSEARCH_CONFIG_VERSION=`md5sum ./temp/elasticsearch.yml | awk '{ print $1 }'`
+export KIBANA_CONFIG_VERSION=`md5sum ./temp/kibana.yml | awk '{ print $1 }'`
+export ELASTALERT_CONFIG_VERSION=`md5sum ./temp/elastalert-config.yaml | awk '{ print $1 }'`
+export ELASTALERT_SERVER_CONFIG_VERSION=`md5sum ./temp/elastalert-server-config.json | awk '{ print $1 }'`
+export ELASTALERT_SMTP_AUTH_VERSION=`md5sum ./temp/elastalert-smtp-auth.yaml | awk '{ print $1 }'`
 export LOGROTATE_CONFIG_VERSION=`md5sum ./temp/logrotate.conf | awk '{ print $1 }'`
 export LOGS_CRON_CONFIG_VERSION=`md5sum ./temp/logs-cron.conf | awk '{ print $1 }'`
 export PG_CONFIG_VERSION=`md5sum ./temp/postgresql.conf | awk '{ print $1 }'`
@@ -122,9 +144,11 @@ sudo crontab -l > crontemp && cat crontemp | grep "sudo docker system prune -af"
 sudo crontab -l > crontemp && cat crontemp | grep "sudo bash es_recovery.sh" >/dev/null || echo "0,15,30,45 * * * * cd /data/deploy/contraxsuite-deploy/docker/util && sudo bash es_recovery.sh ${SLACK_WEBHOOK_URL} > /dev/null 2>&1" >> crontemp && cat crontemp | sudo crontab - && rm crontemp
 sudo crontab -l > crontemp && cat crontemp | grep "docker node inspect NODE_ID" >/dev/null || echo "* * * * * sudo docker node ls | cut -c 1-24 | grep -v ID | paste -sd ' ' | xargs -I'NODE_ID' sh -c 'sudo docker node inspect NODE_ID' >> ~/docker_nodes.txt && sudo mv ~/docker_nodes.txt ${VOLUME_DATA_MEDIA}/data/docker_nodes.txt > /dev/null 2>&1" >> crontemp && cat crontemp | sudo crontab - && rm crontemp
 sudo crontab -l > crontemp && cat crontemp | grep "docker service inspect SERVICE_ID" >/dev/null || echo "* * * * * sudo docker service ls | cut -c 1-12 | grep -v ID | paste -sd ' ' | xargs -I'SERVICE_ID' sh -c 'sudo docker service inspect SERVICE_ID' >> ~/docker_services.txt && sudo mv ~/docker_services.txt ${VOLUME_DATA_MEDIA}/data/docker_services.txt > /dev/null 2>&1" >> crontemp && cat crontemp | sudo crontab - && rm crontemp
+sudo crontab -l > crontemp && cat crontemp | grep "sudo bash remove_down_nodes.sh" >/dev/null || echo "1,11,21,31,41,51 * * * * cd /data/deploy/contraxsuite-deploy/docker/util && sudo bash remove_down_nodes.sh > /dev/null 2>&1" >> crontemp && cat crontemp | sudo crontab - && rm crontemp
+sudo crontab -l > crontemp && cat crontemp | grep "sudo bash monitor_docker_services.sh" >/dev/null || echo "0,15,30,45 * * * * cd /data/deploy/contraxsuite-deploy/docker/util && sudo bash monitor_docker_services.sh | sudo tee -a ${VOLUME_LOGS}/docker-services-`date +'\%Y\%m\%d'`.log_json > /dev/null 2>&1" >> crontemp && cat crontemp | sudo crontab - && rm crontemp
 
 echo "Starting with image: ${CONTRAXSUITE_IMAGE_FULL_NAME}:${CONTRAXSUITE_IMAGE_VERSION}"
 
 echo "Starting with docker-compose config: ${DOCKER_COMPOSE_FILE}"
 
-sudo -E docker stack deploy --compose-file ./temp/${DOCKER_COMPOSE_FILE} contraxsuite
+sudo -E docker stack deploy --with-registry-auth --compose-file ./temp/${DOCKER_COMPOSE_FILE} contraxsuite

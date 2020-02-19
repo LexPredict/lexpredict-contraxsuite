@@ -28,7 +28,6 @@
 import datetime
 import importlib
 import io
-import random
 import re
 import sys
 import uuid
@@ -41,6 +40,7 @@ import pdfkit as pdf
 from django.conf import settings
 from django.conf.urls import url
 from django.core.serializers.json import DjangoJSONEncoder
+from django.db.models import Aggregate, CharField, Value
 from django.http import HttpResponse
 from django.urls import reverse
 from django.utils import numberformat
@@ -52,9 +52,9 @@ from weasyprint import HTML
 from apps.users.models import User, Role
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2019, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.4.0/LICENSE"
-__version__ = "1.4.0"
+__copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.5.0/LICENSE"
+__version__ = "1.5.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -465,3 +465,18 @@ def safe_to_int(s: str) -> int:
         return int(s)
     except ValueError:
         return None
+
+
+class GroupConcat(Aggregate):
+    function = 'GROUP_CONCAT'
+    template = '%(function)s(%(expressions)s)'
+
+    def __init__(self, expression, delimiter, **extra):
+        output_field = extra.pop('output_field', CharField())
+        delimiter = Value(delimiter)
+        super(GroupConcat, self).__init__(
+            expression, delimiter, output_field=output_field, **extra)
+
+    def as_postgresql(self, compiler, connection):
+        self.function = 'STRING_AGG'
+        return super(GroupConcat, self).as_sql(compiler, connection)

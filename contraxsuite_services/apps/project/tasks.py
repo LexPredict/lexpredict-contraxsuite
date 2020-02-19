@@ -33,10 +33,9 @@ import time
 import zipfile
 
 # Third-party imports
-from typing import Optional
+from typing import Optional, Set, Callable
 from celery import shared_task
 from celery.exceptions import SoftTimeLimitExceeded
-from celery.states import FAILURE, PENDING, SUCCESS
 from psycopg2 import InterfaceError, OperationalError
 
 # Django imports
@@ -63,9 +62,9 @@ from apps.task.utils.task_utils import TaskUtils
 from apps.users.models import User
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2019, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.4.0/LICENSE"
-__version__ = "1.4.0"
+__copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.5.0/LICENSE"
+__version__ = "1.5.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -178,6 +177,7 @@ class ReassignProjectClusterDocuments(BaseTask):
     Reassign Project Cluster Documents
     """
     name = 'Reassign Project Cluster Documents'
+    reg_name_copy_part = re.compile(r'\scopy\s\d{2,2}$')
 
     def process(self, **kwargs):
         project_id = kwargs.get('project_id')
@@ -186,7 +186,7 @@ class ReassignProjectClusterDocuments(BaseTask):
         new_project = Project.objects.get(pk=new_project_id)
 
         documents = Document.objects.filter(documentcluster__pk__in=cluster_ids)
-        documents.update(project_id=new_project, document_type=new_project.type)
+        self.ensure_document_unique_names(documents, new_project, new_project.type)
 
         self.run_if_task_or_sub_tasks_failed(
             ReassignProjectClusterDocuments.rollback,
@@ -201,8 +201,51 @@ class ReassignProjectClusterDocuments(BaseTask):
             'Finalize Reassigning Cluster Documents',
             ReassignProjectClusterDocuments.finalize,
             [(new_project_id, cluster_ids)])
-
         # TODO: metadata[project_id] in tasks related with reassigned documents
+
+    def ensure_document_unique_names(self,
+                                     documents,
+                                     new_project: Project,
+                                     new_doc_type: DocumentType) -> None:
+
+        def strict_check_unique_name(doc_new_name: str) -> bool:
+            from apps.project.api.v1 import UploadSessionViewSet
+            return UploadSessionViewSet.can_upload_file(new_project, doc_new_name, None) is True
+
+        project_doc_names = set(Document.all_objects.filter(
+            project_id=new_project.pk).values_list('name', flat=True))
+        for doc_id, doc_name in documents.values_list('pk', 'name'):
+            new_name = self.make_doc_unique_name(
+                doc_name, project_doc_names, strict_check_unique_name)
+            if new_name != doc_name:
+                Document.all_objects.filter(pk=doc_id).update(name=new_name)
+        documents.update(project_id=new_project.pk, document_type=new_doc_type)
+
+    @staticmethod
+    def make_doc_unique_name(doc_name: str,
+                             project_doc_names: Set[str],
+                             unique_strict_check: Optional[Callable[[str], bool]] = None):
+
+        def new_name_is_unique(new_name: str) -> bool:
+            if new_name in project_doc_names:
+                return False
+            if unique_strict_check and not unique_strict_check(new_name):
+                return False
+            return True
+
+        if new_name_is_unique(doc_name):
+            return doc_name
+
+        # make document a unique name
+        name, ext = os.path.splitext(doc_name)
+        # ... try filename w/o " copy 01"
+        name = ReassignProjectClusterDocuments.reg_name_copy_part.sub('', name)
+        new_name = name + ext
+        counter = 1
+        while not new_name_is_unique(new_name):
+            new_name = f'{name} copy {counter:02d}{ext}'
+            counter += 1
+        return new_name
 
     @staticmethod
     @shared_task(base=ExtendedTask,
@@ -312,6 +355,9 @@ class CleanProject(BaseTask):
     def process(self, **kwargs):
         project_id = kwargs.get('_project_id')
         delete = bool(kwargs.get('delete'))
+        safe_delete = kwargs.get('safe_delete')
+        if safe_delete is None:
+            safe_delete = True
         project = Project.all_objects.get(pk=project_id)
 
         # get doc ids and remove docs' source files
@@ -326,18 +372,19 @@ class CleanProject(BaseTask):
         # delete documents
         from apps.document.repository.document_bulk_delete \
             import get_document_bulk_delete
-        get_document_bulk_delete().delete_documents(proj_doc_ids)
+        get_document_bulk_delete(safe_delete).delete_documents(proj_doc_ids)
 
         # delete project itself
         project.cleanup(delete=delete)
 
         # store data about cleanup in ProjectCleanup Task
-        task_model = self.task
-        task_model.metadata = {
-            'task_name': 'clean-project',
-            '_project_id': project_id  # added "_" to avoid detecting task as project task
-        }
-        task_model.save()
+        if not kwargs.get('skip_task_updating'):
+            task_model = self.task
+            task_model.metadata = {
+                'task_name': 'clean-project',
+                '_project_id': project_id  # added "_" to avoid detecting task as project task
+            }
+            task_model.save()
 
 
 class CleanProjects(BaseTask):

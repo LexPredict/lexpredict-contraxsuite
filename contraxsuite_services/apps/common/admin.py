@@ -34,22 +34,71 @@ from apps.common.decorators import get_function_from_str
 from apps.common.models import AppVar, ReviewStatusGroup, ReviewStatus, Action, \
     CustomAPIRequestLog, APIRequestLog, MethodStats, MethodStatsCollectorPlugin, \
     MenuGroup, MenuItem, ThreadDumpRecord, ObjectStorage
-from apps.document.admin import ModelAdminWithPrettyJsonField
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2019, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.4.0/LICENSE"
-__version__ = "1.4.0"
+__copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.5.0/LICENSE"
+__version__ = "1.5.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
 
-class AppVarAdmin(ModelAdminWithPrettyJsonField):
-    list_display = ('name', 'value', 'user', 'description', 'date')
-    search_fields = ('name', 'description')
+class AppVarListFilter(admin.SimpleListFilter):
+    # Human-readable title which will be displayed in the
+    # right admin sidebar just above the filter options.
+    title = 'Category'
 
-    def save_model(self, request, obj: AppVar, form, change: bool):
-        super().save_model(request, obj, form, change)
+    # Parameter for the filter that will be used in the URL query.
+    parameter_name = 'category'
+
+    default_value = 'All'
+
+    def lookups(self, request, model_admin):
+        """
+        Returns a list of tuples. The first element in each
+        tuple is the coded value for the option that will
+        appear in the URL query. The second element is the
+        human-readable name for the option that will appear
+        in the right sidebar.
+        """
+        cats = set([v for v in AppVar.objects.all().values_list('category', flat=True)])
+        return sorted([(c, c) for c in cats], key=lambda c: c[0])
+        # return [('Common', 'Common'), ('Document', 'Document'), ('Extract', 'Extract')]
+
+    def queryset(self, request, queryset):
+        """
+        Returns the filtered queryset based on the value
+        provided in the query string and retrievable via
+        `self.value()`.
+        """
+        if not self.value() or self.value() == 'All':
+            return queryset
+        return queryset.filter(category=self.value())
+
+
+class AppVarAdminForm(forms.ModelForm):
+
+    class Meta:
+        model = AppVar
+        fields = ['category', 'name', 'value', 'user', 'description']
+        widgets = {
+            'value': forms.Textarea(
+                attrs={
+                    'rows': '2', 'cols': '95'
+                }
+            )
+        }
+
+
+class AppVarAdmin(admin.ModelAdmin):
+    list_display = ['category', 'name', 'value', 'description']
+    search_fields = ['name', 'description']
+    list_editable = ['value']
+    list_display_links = ['category']
+    list_filter = (AppVarListFilter, )
+
+    def get_changelist_form(self, request, **kwargs):
+        return AppVarAdminForm
 
 
 class ReviewStatusGroupAdmin(admin.ModelAdmin):

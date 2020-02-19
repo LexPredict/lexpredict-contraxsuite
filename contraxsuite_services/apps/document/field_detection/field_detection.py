@@ -24,7 +24,8 @@
 """
 # -*- coding: utf-8 -*-
 
-from typing import Optional, List, Dict, Set, Any
+import sys
+from typing import Optional, List, Dict, Set, Any, Tuple
 
 from django.db.models import Prefetch
 
@@ -44,16 +45,17 @@ from apps.document.field_detection.regexps_field_detection import RegexpsOnlyFie
     FieldBasedRegexpsDetectionStrategy
 from apps.document.field_processing.field_processing_utils import order_field_detection, get_dependent_fields
 from apps.document.field_types import TypedField
-from apps.document.models import Document, DocumentType, DocumentField, ClassifierModel
+from apps.document.models import Document, DocumentType, DocumentField, ClassifierModel, FieldValue
 from apps.document.repository.document_field_repository import DocumentFieldRepository
 from apps.document.repository.dto import FieldValueDTO
 from apps.document.signals import fire_document_changed
 from apps.users.models import User
+from apps.document.field_detection.mlflow_field_detection import MLFlowModelBasedFieldDetectionStrategy
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2019, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.4.0/LICENSE"
-__version__ = "1.4.0"
+__copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.5.0/LICENSE"
+__version__ = "1.5.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -69,6 +71,7 @@ _FIELD_DETECTION_STRATEGIES = [FieldBasedMLOnlyFieldDetectionStrategy(),
                                TextBasedMLFieldDetectionStrategy(),
                                PythonCodedFieldDetectionStrategy(),
                                FieldBasedRegexpsDetectionStrategy(),
+                               MLFlowModelBasedFieldDetectionStrategy(),
                                STRATEGY_DISABLED]
 
 FIELD_DETECTION_STRATEGY_REGISTRY = {st.code: st
@@ -134,7 +137,8 @@ def detect_and_cache_field_values_for_document(log: ProcessLogger,
                                                generic_fields_changed: bool = False,
                                                document_initial_load: bool = False,
                                                ignore_field_codes: Set[str] = None,
-                                               updated_field_codes: List[str] = None):
+                                               updated_field_codes: List[str] = None,
+                                               skip_modified_values: bool = True):
     """
     Detects field values for a document and stores their DocumentFieldValue objects as well as Document.field_value.
     These two should always be consistent.
@@ -148,6 +152,7 @@ def detect_and_cache_field_values_for_document(log: ProcessLogger,
     :param ignore_field_codes
     :param document_initial_load
     :param updated_field_codes - if set, we search for changed and dependent fields only
+    :param skip_modified_values - don't overwrite field values overwritten by user
     :return:
     """
     import apps.document.repository.document_field_repository as dfr
@@ -195,9 +200,25 @@ def detect_and_cache_field_values_for_document(log: ProcessLogger,
     res = list()
 
     detecting_field_status = []  # type:List[str]
+    detection_errors = []  # type:List[Tuple[str, str, Exception, Any]]
+
+    # do not touch field values modified by user
+    skip_codes = set()
+    if skip_modified_values:
+        skip_codes = set(list(FieldValue.objects.filter(
+            modified_by__isnull=False, document_id=document.pk).values_list('field__code', flat=True)))
+        if updated_field_codes:  # these fields have to be deleted despite being set by user
+            # updated_field_ids = DocumentField.objects.filter(code__in=updated_field_codes).values_list('pk', flat=True)
+            skip_codes -= set(updated_field_codes)
+
+    if clear_old_values:
+        field_repo.delete_document_field_values(document.pk,
+                                                list(skip_codes),
+                                                updated_field_codes)
 
     for field_code in sorted_codes:
-
+        if field_code in skip_codes:
+            continue
         field = all_fields_code_to_field[field_code]  # type: DocumentField
         typed_field = TypedField.by(field)  # type: TypedField
         field_detection_strategy = FIELD_DETECTION_STRATEGY_REGISTRY[
@@ -233,12 +254,10 @@ def detect_and_cache_field_values_for_document(log: ProcessLogger,
             # Most likely in this case we detect only few requested fields and trying to comply the dependency
             # tree makes no big sense.
         except Exception as e:
-            msg = f'Unable to detect field value.\n' \
-                f'Document type: {document_type.code}\n' \
-                f'Document: {document.name} (#{document.pk})\n' \
-                f'Field: {field.code}\n' \
-                f'Field type: {typed_field.type_code}'
-            raise FieldDetectionError(msg) from e
+            # Additionally logging here because the further compound exception will not contain the full stack trace.
+            log.error(f'Exception caught while detecting value of field {field.code} ({typed_field.type_code})',
+                      exc_info=e)
+            detection_errors.append((field.code, typed_field.type_code, e, sys.exc_info()))
 
     if save:
         if updated_field_codes:
@@ -266,6 +285,14 @@ def detect_and_cache_field_values_for_document(log: ProcessLogger,
             msg += '.\n\nCalculation results:\n'
             msg += '\n'.join(detecting_field_status)
             log.info(msg)
+
+    if detection_errors:
+        fields_str = ', '.join([f'{e[0]} ({e[1]})' for e in detection_errors])
+        msg = f'There were errors while detecting fields:\n{fields_str}\n' + \
+              f'for document {document.name} (#{document.pk}, type {document_type.code})\n'
+        for f_code, f_type, ex, ex_stack in detection_errors:
+            msg += f'\n{f_code}, {f_type}: {ex}'
+        raise FieldDetectionError(msg)
 
     return res
 

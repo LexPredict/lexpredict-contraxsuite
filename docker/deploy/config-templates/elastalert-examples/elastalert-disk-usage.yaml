@@ -1,0 +1,43 @@
+es_host: ${DOCKER_HOST_NAME_ELASTICSEARCH}
+es_port: ${DOCKER_ELASTICSEARCH_PORT}
+
+name: "${DOCKER_DJANGO_HOST_NAME}: Disk Usage Alert"
+index: metricbeat-*
+
+type: any
+
+realert:
+  minutes: 15
+
+filter:
+- query:
+  - query_string:
+      query: "NOT system.filesystem.type: squashfs AND ((system.filesystem.used.pct:[0.8 TO 1.0] AND system.filesystem.total: <2000000000001) OR (system.filesystem.used.pct:[0.95 TO 1.0] AND system.filesystem.total: >2000000000000))"
+
+query_delay:
+  minutes: 1
+query_key: host
+
+alert_text_type: alert_text_only
+include : ["system.filesystem.used.pct","host","system.filesystem.mount_point", "system.filesystem.total", "system.filesystem.used.bytes"]
+
+alert_text: "${DOCKER_DJANGO_HOST_NAME}: Disk Usage Alert\n
+Total         : {3}\n
+Used          : {4}\n
+Used %        : {0}\n
+Mount Point   : {2}\n
+Host          : {1}\n
+"
+
+alert_text_args: ["system.filesystem.used.pct","host","system.filesystem.mount_point", "system.filesystem.total", "system.filesystem.used.bytes"]
+
+
+alert:
+  - "email"
+# - "slack"
+
+# slack_webhook_url: https://hooks.slack.com/services/xyz/abc/mno
+# slack_emoji_override: ":heavy_exclamation_mark:"
+
+email:
+  - "${DOCKER_DJANGO_ADMIN_EMAIL}"
