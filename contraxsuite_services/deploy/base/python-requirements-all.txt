@@ -77,7 +77,7 @@ openpyxl==3.0.1
 pandas==0.23.4
 pdfkit==0.6.1
 pillow==6.2.1
-psutil==5.6.3
+psutil==5.6.6
 psycopg2-binary==2.8.3
 pyap==0.1
 pycountry==18.5.26
