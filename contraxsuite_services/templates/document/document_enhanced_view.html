@@ -11,6 +11,8 @@
 
 {% block page_header %}Document Enhanced View{% endblock %}
 
+{% block project_selection %}{% endblock %}
+
 {% block content %}
   <h3>Document</h3>
   <table class="table table-bordered table-striped">
@@ -52,12 +54,11 @@
     <div class="tab-content clearfix" id="tab-1">
       <div class="pull-right header-search-form highlight-container">
         <div class="input-group">
-            <span class="input-group-btn">
-              <button class="btn btn-warning" type="button">Highlight</button>
-            </span>
+<!--            <span class="input-group-btn">-->
+<!--              <button class="btn btn-warning" type="button">Highlight</button>-->
+<!--            </span>-->
           <input type="text" class="form-control" id="highlight_term" name="highlight_term"
-                 value="{{ highlight|default:"" }}"
-                 placeholder="Term">
+                 placeholder="Highlight terms" value="{{ highlight|default:"" }}" >
         </div>
       </div>
       <div class="well well-lg" style="clear: both;">

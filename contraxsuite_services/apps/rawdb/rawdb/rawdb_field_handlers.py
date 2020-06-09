@@ -39,8 +39,8 @@ from apps.rawdb.rawdb.errors import FilterSyntaxError, FilterValueParsingError
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.5.0/LICENSE"
-__version__ = "1.5.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.6.0/LICENSE"
+__version__ = "1.6.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -167,13 +167,15 @@ class RelatedInfoColumnDesc(ColumnDesc):
 
 
 class StringColumnDesc(ColumnDesc):
-    __slots__ = ['field_code', 'name', 'title', 'value_type', 'choices', 'limit_output_char_num']
+    __slots__ = ['field_code', 'name', 'title', 'value_type', 'choices', 'limit_output_char_num', 'explicit_text_conversion']
 
     def __init__(self, field_code: str, name: str, title: str, value_type: ValueType,
                  choices: Optional[List] = None,
-                 limit_output_char_num: int = None) -> None:
+                 limit_output_char_num: int = None,
+                 explicit_text_conversion: bool = False) -> None:
         super().__init__(field_code, name, title, value_type, choices)
         self.limit_output_char_num = limit_output_char_num
+        self.explicit_text_conversion = explicit_text_conversion
 
     def get_output_column_sql_spec(self) -> str:
         return '(case when length("{col}") > {len} then substring("{col}" for {len}) || \'...\' else "{col}" end)' \
@@ -181,14 +183,15 @@ class StringColumnDesc(ColumnDesc):
             if self.limit_output_char_num else '"{col}"'.format(col=self.name)
 
     def get_where_sql_clause(self, field_filter: str) -> Optional[SQLClause]:
+        column = f'"{self.name}"::text' if self.explicit_text_conversion is True else f'"{self.name}"'
         if not field_filter:
-            return SQLClause('"{column}" is Null'.format(column=self.name), [])
+            return SQLClause('{column} is Null'.format(column=column), [])
         elif field_filter == '*':
-            return SQLClause('"{column}" is not Null'.format(column=self.name), [])
+            return SQLClause('{column} is not Null'.format(column=column), [])
         elif field_filter.startswith('!'):
-            return SQLClause('"{column}" not ilike %s'.format(column=self.name), ['%' + field_filter[1:] + '%'])
+            return SQLClause('{column} not ilike %s'.format(column=column), ['%' + field_filter[1:] + '%'])
         else:
-            return SQLClause('"{column}" ilike %s'.format(column=self.name), ['%' + field_filter + '%'])
+            return SQLClause('{column} ilike %s'.format(column=column), ['%' + field_filter + '%'])
 
     def get_field_filter_syntax_hint(self) -> List[Tuple[str, str]]:
         return [
@@ -414,10 +417,8 @@ class StringWithTextSearchRawdbFieldHandler(RawdbFieldHandler):
 
     def get_pg_index_definitions(self) -> Optional[List[str]]:
         return [
-            'using GIN ("{column}" tsvector_ops)'.format(
-                table_name=self.table_name, column=self.text_search_column),
-            'using GIN ("{column}" gin_trgm_ops)'.format(
-                table_name=self.table_name, column=self.output_column)
+            'using GIN ("{column}" tsvector_ops)'.format(column=self.text_search_column),
+            'using GIN ("{column}" gin_trgm_ops)'.format(column=self.output_column)
         ]
 
     def get_pg_column_definitions(self) -> Dict[str, PgTypes]:
@@ -475,10 +476,12 @@ class StringRawdbFieldHandler(RawdbFieldHandler):
                  table_name: str,
                  default_value: str = None,
                  field_column_name_base: str = None,
-                 column_output_char_limit: int = None) -> None:
+                 column_output_char_limit: int = None,
+                 explicit_text_conversion: bool = False) -> None:
         super().__init__(field_code, field_type, field_title, table_name, default_value, field_column_name_base)
         self.column = escape_column_name(self.field_column_name_base)
         self.column_output_char_limit = column_output_char_limit
+        self.explicit_text_conversion = explicit_text_conversion
 
     def python_value_to_indexed_field_value(self, python_value):
         return python_value or self.default_value
@@ -487,11 +490,11 @@ class StringRawdbFieldHandler(RawdbFieldHandler):
         return [StringColumnDesc(self.field_code,
                                  self.column,
                                  self.field_title, ValueType.STRING,
-                                 limit_output_char_num=self.column_output_char_limit)]
+                                 limit_output_char_num=self.column_output_char_limit,
+                                 explicit_text_conversion=self.explicit_text_conversion)]
 
     def get_pg_index_definitions(self) -> Optional[List[str]]:
-        return ['using GIN ("{column}" gin_trgm_ops)'.format(
-            table_name=self.table_name, column=self.column)]
+        return ['using GIN ("{column}" gin_trgm_ops)'.format(column=self.column)]
 
     def get_pg_column_definitions(self) -> Dict[str, PgTypes]:
         return {
@@ -763,7 +766,7 @@ class RelatedInfoRawdbFieldHandler(RawdbFieldHandler):
         self.text_column = escape_column_name(self.field_column_name_base) + '_txt'
 
     def get_pg_index_definitions(self) -> Optional[List[str]]:
-        return ['using GIN ("{column}" gin_trgm_ops)'.format(table_name=self.table_name, column=self.text_column)]
+        return ['using GIN ("{column}" gin_trgm_ops)'.format(column=self.text_column)]
 
     def get_pg_column_definitions(self) -> Dict[str, PgTypes]:
         return {
@@ -945,10 +948,8 @@ class LinkedDocumentsRawdbFieldHandler(RawdbFieldHandler):
 
     def get_pg_index_definitions(self) -> Optional[List[str]]:
         return [
-            'using GIN ("{column}" gin_trgm_ops)'.format(
-                table_name=self.table_name, column=self.document_ids_column),
-            'using GIN ("{column}" gin_trgm_ops)'.format(
-                table_name=self.table_name, column=self.document_links_column)
+            'using GIN ("{column}" gin_trgm_ops)'.format(column=self.document_ids_column),
+            'using GIN ("{column}" gin_trgm_ops)'.format(column=self.document_links_column)
         ]
 
     def column_names_for_field_values(self) -> Set[str]:

@@ -31,25 +31,30 @@ from typing import Dict, Any
 
 import pandas as pd
 from rest_framework_tracking.models import APIRequestLog
+from simple_history.models import HistoricalRecords
 
 # Django imports
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
 from django.contrib.postgres.fields import JSONField
-from django.db import models, transaction
+from django.contrib.postgres.search import SearchVectorField
+from django.db import models, transaction, connection
 from django.db.models import Count, Avg, Max, Case, When, IntegerField
+from django.db.models.base import ModelBase
 from django.db.models.deletion import CASCADE, DO_NOTHING
+from django.db.models.lookups import IContains, Contains, Lookup
 from django.dispatch import receiver
 from django.utils.timezone import now
 
 # Project imports
 from apps.users.models import User
 from apps.common import signals
+from apps.common import redis
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.5.0/LICENSE"
-__version__ = "1.5.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.6.0/LICENSE"
+__version__ = "1.6.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -98,6 +103,8 @@ class AppVar(models.Model):
     user = models.ForeignKey(
         User, related_name="created_%(class)s_set", null=True, blank=True, db_index=True, on_delete=CASCADE)
 
+    history = HistoricalRecords()
+
     def __str__(self):
         return f"App Variable (category={self.category} name={self.name})"
 
@@ -114,6 +121,13 @@ class AppVar(models.Model):
         if self.name in cache:
             return cache[self.name]
         return self.val
+
+    @property
+    def cache_key(self):
+        return f'app_var:{self.category}:{self.name}'
+
+    def cache(self):
+        redis.push(self.cache_key, self.value)
 
     @classmethod
     def set(cls, category: str, name: str, value, description='', overwrite=False) -> 'AppVar':
@@ -132,6 +146,9 @@ class AppVar(models.Model):
         if not created and overwrite:
             obj.value = value
             obj.save()
+
+        # force renew cached value
+        obj.cache()
         return obj
 
     @classmethod
@@ -143,11 +160,21 @@ class AppVar(models.Model):
 
     @property
     def val(self):
+        # if redis.exists(self.cache_key) is True:
+        value = redis.pop(self.cache_key)
+        if value is not None:
+            return value
         try:
             self.refresh_from_db()
         except AppVar.DoesNotExist:
             self.save()
+        self.cache()
         return self.value
+
+    def save(self, **kwargs):
+        res = super().save(**kwargs)
+        self.cache()
+        return res
 
     @classmethod
     def clear(cls, name: str, category: str):
@@ -301,8 +328,9 @@ class Action(models.Model):
     def save(self, **kwargs):
         self.model_name = self.content_type.model_class().__name__
         self.app_label = self.content_type.app_label
-        obj = self.object
-        self.object_str = str(obj) if obj else None
+        self.object_str = None
+        if self.object_pk:
+            self.object_str = str(self.object)
         return super().save(**kwargs)
 
 
@@ -510,3 +538,128 @@ def save_menu_item(sender, instance, created, **kwargs):
             instance.user = instance.request_user
             instance.save()
         models.signals.post_save.connect(save_menu_item, sender=sender)
+
+
+########################
+#     Model utils      #
+########################
+
+
+def approx_count(db_table_of_model):
+    """
+    Return approx db table total record count.
+    Good enough if you don’t need the exact count.
+    This value is updated by both autovacuum and autoanalyze,
+    so it should never be much more than 10% off.
+    :param db_table_of_model: str OR Model class
+    :return: int
+    """
+    if isinstance(db_table_of_model, ModelBase):
+        db_table = db_table_of_model._meta.db_table
+    elif isinstance(db_table_of_model, str):
+        db_table = db_table_of_model
+    else:
+        raise ValueError('Provide either str table name ot Model class.')
+    with connection.cursor() as cursor:
+        cursor.execute(
+            f"SELECT reltuples::bigint FROM pg_catalog.pg_class WHERE relname = '{db_table}';")
+        return cursor.fetchone()[0]
+
+
+class PostgresILike(IContains):
+    """
+    Make {column} ILIKE {value} query instead of default UPPER(column) LIKE UPPER(value)
+    """
+    lookup_name = 'ilike'
+
+    def as_postgresql(self, compiler, connection):
+        lhs, lhs_params = self.process_lhs(compiler, connection)
+        rhs, rhs_params = self.process_rhs(compiler, connection)
+        params = lhs_params + rhs_params
+        return '%s ILIKE %s' % (lhs, rhs), params
+
+
+class FullTextSearch(Lookup):
+    """
+    Query {text column} having corresponding {text column}_tsvector column
+    Note: that {column}_tsvector should have GIN index for better performance
+    """
+    lookup_name = 'full_text_search'
+    tsvector_column_suffix = '_tsvector'
+
+    def get_fts_lookup(self, qn, connection):
+        lhs, lhs_params = self.process_lhs(qn, connection)
+        rhs, rhs_params = self.process_rhs(qn, connection)
+
+        # patch column name representation
+        column_name = lhs[:-1] + self.tsvector_column_suffix + lhs[-1:]
+
+        # patch value representation
+        query_value = ' & '.join(['<->'.join(i.strip('%').split()) for i in rhs_params])
+
+        from apps.common.app_vars import PG_FULL_TEXT_SEARCH_LOCALE
+        locale = PG_FULL_TEXT_SEARCH_LOCALE.val
+        return f"{column_name} @@ to_tsquery('pg_catalog.{locale}', '{query_value}')", []
+
+    def as_postgresql(self, qn, connection):
+        source_field = self.lhs.field
+        model = source_field.model
+        tsv_column_name = source_field.name + self.tsvector_column_suffix
+        model_fields = {i.name: i for i in model._meta.fields}
+        tsv_field = model_fields.get(tsv_column_name)
+
+        if tsv_field is None or not isinstance(tsv_field, SearchVectorField):
+            # raise RuntimeError('Model "{}" should have "{}" field.'.format(model, tsv_column_name))
+
+            # fail silently - use insensitive contains search
+            return IContains(self.lhs, self.rhs).as_sql(qn, connection)
+
+        if source_field.name not in getattr(self.lhs.field.model, 'full_text_search_fields', []):
+            # raise RuntimeError('Model "{}" should have "{}" in "{}" class atribute (List).'.format(
+            #     model, 'full_text_search_fields', tsv_column_name))
+
+            # fail silently - use insensitive contains search
+            return IContains(self.lhs, self.rhs).as_sql(qn, connection)
+
+        return self.get_fts_lookup(qn, connection)
+
+
+class ContainsOrFullTextSearch(FullTextSearch):
+    """
+    Query {text column} having corresponding {text column}_tsvector column OR usual LIKE
+    if USE_FULL_TEXT_SEARCH is False
+    Note: that {column}_tsvector should have GIN index for better performance
+    """
+    lookup_name = 'contains'
+    base_lookup_class = Contains
+
+    def as_postgresql(self, qn, connection):
+        if self.enable_full_text_search(qn) is True:
+            try:
+                return super().as_postgresql(qn, connection)
+            except:
+                # fail silently - get default lookup
+                pass
+        return self.base_lookup_class(self.lhs, self.rhs).as_sql(qn, connection)
+
+    def enable_full_text_search(self, qn):
+        from apps.common.app_vars import USE_FULL_TEXT_SEARCH, AUTO_FULL_TEXT_SEARCH_CUTOFF
+        if USE_FULL_TEXT_SEARCH.val == 'auto':
+            target = qn.klass_info['model'] if qn.klass_info is not None else self.lhs.alias
+            approx_table_rows = approx_count(target)
+            return approx_table_rows > AUTO_FULL_TEXT_SEARCH_CUTOFF.val
+        return USE_FULL_TEXT_SEARCH.val
+
+
+class IContainsOrFullTextSearch(ContainsOrFullTextSearch):
+    lookup_name = 'icontains'
+    base_lookup_class = IContains
+
+
+models.CharField.register_lookup(PostgresILike)
+models.CharField.register_lookup(FullTextSearch)
+
+models.TextField.register_lookup(PostgresILike)
+models.TextField.register_lookup(FullTextSearch)
+models.TextField.register_lookup(ContainsOrFullTextSearch)
+models.TextField.register_lookup(IContainsOrFullTextSearch)

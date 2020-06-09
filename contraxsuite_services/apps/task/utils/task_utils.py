@@ -24,6 +24,7 @@
 """
 # -*- coding: utf-8 -*-
 
+import inspect
 import json
 import sys
 
@@ -36,8 +37,8 @@ from apps.common.db_cache.db_cache import DbCache
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.5.0/LICENSE"
-__version__ = "1.5.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.6.0/LICENSE"
+__version__ = "1.6.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -122,3 +123,49 @@ def pre_serialize(task_id, key, obj):
         else:
             normalize(task_id, key, obj)
         return obj
+
+
+def check_blocks(raise_error=True, error_message=None):
+    """
+    If any blocks exist raise error or return error message
+    Otherwise return False
+    :param raise_error: bool - raise error if needed
+    :param error_message: str
+    :return:
+    """
+    from apps.task.app_vars import DISK_USAGE_BLOCK_TASKS, MIN_FREE_DISK_BLOCK_TASKS, DISK_USAGE, FREE_DISK_SPACE
+
+    # blocks exist
+    if DISK_USAGE.val > DISK_USAGE_BLOCK_TASKS.val and FREE_DISK_SPACE.val < MIN_FREE_DISK_BLOCK_TASKS.val:
+
+        base_error_message = 'Current Disk Usage {}% is greater than limit {}% AND ' \
+                             'current Free Disk space {} Gb is less than limit {} Gb.'.format(
+                                 DISK_USAGE.val, DISK_USAGE_BLOCK_TASKS.val,
+                                 FREE_DISK_SPACE.val, MIN_FREE_DISK_BLOCK_TASKS.val)
+        if error_message:
+            base_error_message += ' {}'.format(error_message)
+        if raise_error:
+            error = RuntimeError(base_error_message)
+            error.as_api_exception = True
+            error.status_code = 403
+            raise error
+        return base_error_message
+
+    # no blocks
+    return False
+
+
+def check_blocks_decorator(raise_error=True, error_message=None):
+    def outer(func):
+        def inner(*args, **kwargs):
+            check_blocks(raise_error=raise_error, error_message=error_message)
+            if inspect.ismethod(func):
+                if len(args) <= 1:
+                    res = func(**kwargs)
+                else:
+                    res = func(args[1:], **kwargs)
+            else:
+                res = func(*args, **kwargs)
+            return res
+        return inner
+    return outer

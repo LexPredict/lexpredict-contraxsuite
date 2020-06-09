@@ -26,12 +26,14 @@
 
 import os
 import django
-from channels.routing import get_default_application
+
+from django.conf.urls import url
+from channels.routing import ProtocolTypeRouter, URLRouter
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.5.0/LICENSE"
-__version__ = "1.5.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.6.0/LICENSE"
+__version__ = "1.6.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -44,4 +46,16 @@ defined in the ASGI_APPLICATION setting.
 
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "settings")
 django.setup()
-application = get_default_application()
+
+
+from apps.websocket.websockets import ContraxsuiteWSConsumer
+from channels.auth import AuthMiddlewareStack
+
+
+application = ProtocolTypeRouter({
+    "websocket": AuthMiddlewareStack(
+        URLRouter([
+             url(r"^websocket/subscription/$", ContraxsuiteWSConsumer)
+        ])
+    ),
+})

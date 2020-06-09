@@ -55,12 +55,11 @@
       <div class="tab-content clearfix" id="tab-1">
         <div class="pull-right header-search-form highlight-container">
           <div class="input-group">
-              <span class="input-group-btn">
-                <button class="btn btn-warning" type="button">Highlight</button>
-              </span>
+<!--              <span class="input-group-btn">-->
+<!--                <button class="btn btn-warning" type="button">Highlight</button>-->
+<!--              </span>-->
             <input type="text" class="form-control" id="highlight_term" name="highlight_term"
-                   value="{{ highlight|default:"" }}"
-                   placeholder="Term">
+                   placeholder="Highlight terms" value="{{ highlight|default:"" }}" >
           </div>
         </div>
         <a href="{% url "document:document-enhanced-view" document.id %}#text_unit_{{ text_unit.id }}"

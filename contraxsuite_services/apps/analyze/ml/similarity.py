@@ -34,8 +34,8 @@ from apps.analyze.ml.features import DocumentFeatures, TextUnitFeatures
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.5.0/LICENSE"
-__version__ = "1.5.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.6.0/LICENSE"
+__version__ = "1.6.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -152,43 +152,45 @@ class DocumentSimilarityEngine:
         # get Feature object, see real signature in features.py module
         features = self.get_features()
 
-        df = features.feature_df
+        feature_df = features.feature_df
 
         counter = 0
-        for block_i_start in range(0, df.shape[0], self.block_step):
+        for block_i_start in range(0, feature_df.shape[0], self.block_step):
 
-            for block_j_start in range(0, df.shape[0], self.block_step):
+            for block_j_start in range(0, feature_df.shape[0], self.block_step):
+                df1 = feature_df.iloc[block_i_start:block_i_start + self.block_step, :]
+                df2 = feature_df.iloc[block_j_start:block_j_start + self.block_step, :]
+                counter += self.calc_block_similarity(df1, df2)
 
-                df1 = df.iloc[block_i_start:block_i_start + self.block_step, :]
-                df1_index = df1.index.tolist()
-
-                df2 = df.iloc[block_j_start:block_j_start + self.block_step, :]
-                df2_index = df2.index.tolist()
-
-                block_df = df1.append(df2)
-                block_matrix = block_df.to_dense().values
-
-                sim_matrix = self.get_similarity_matrix(block_matrix)
-
-                len_df1_index = len(df1_index)
-                sim_matrix = sim_matrix[:len_df1_index, len_df1_index:]
-
-                # Create records based on threshold
-                sim_obj_list = []
-                for i in range(sim_matrix.shape[0]):
-                    for j in range(sim_matrix.shape[1]):
-                        if df1_index[i] != df2_index[j] and sim_matrix[i, j] <= (1.0 - self.threshold):
-                            sim_obj = self.similarity_model()
-                            setattr(sim_obj, self.similarity_model_field_a, df1_index[i])
-                            setattr(sim_obj, self.similarity_model_field_b, df2_index[j])
-                            sim_obj.similarity = 100 * (1.0 - sim_matrix[i, j])
-                            sim_obj.similarity_type = self.distance_type
-                            sim_obj_list.append(sim_obj)
-
-                # Bulk create
-                self.similarity_model.objects.bulk_create(sim_obj_list)
-                counter += len(sim_obj_list)
         return counter
+
+    def calc_block_similarity(self, df1, df2):
+        df1_index = df1.index.tolist()
+        df2_index = df2.index.tolist()
+
+        block_df = df1.append(df2)
+        block_matrix = block_df.to_dense().values
+
+        sim_matrix = self.get_similarity_matrix(block_matrix)
+
+        len_df1_index = len(df1_index)
+        sim_matrix = sim_matrix[:len_df1_index, len_df1_index:]
+
+        # Create records based on threshold
+        sim_obj_list = []
+        for i in range(sim_matrix.shape[0]):
+            for j in range(sim_matrix.shape[1]):
+                if df1_index[i] != df2_index[j] and sim_matrix[i, j] <= (1.0 - self.threshold):
+                    sim_obj = self.similarity_model()
+                    setattr(sim_obj, self.similarity_model_field_a, df1_index[i])
+                    setattr(sim_obj, self.similarity_model_field_b, df2_index[j])
+                    sim_obj.similarity = 100 * (1.0 - sim_matrix[i, j])
+                    sim_obj.similarity_type = self.distance_type
+                    sim_obj_list.append(sim_obj)
+
+        # Bulk create
+        self.similarity_model.objects.bulk_create(sim_obj_list)
+        return len(sim_obj_list)
 
 
 class TextUnitSimilarityEngine(DocumentSimilarityEngine):

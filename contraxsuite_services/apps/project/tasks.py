@@ -31,18 +31,18 @@ import re
 import tarfile
 import time
 import zipfile
-
 # Third-party imports
-from typing import Optional, Set, Callable
+from typing import Optional, Set, Callable, Dict, Any
+
 from celery import shared_task
 from celery.exceptions import SoftTimeLimitExceeded
-from psycopg2 import InterfaceError, OperationalError
-
-# Django imports
 from celery.states import FAILURE, PENDING, SUCCESS
+# Django imports
 from django.core.files.uploadedfile import TemporaryUploadedFile
+from django.db.models import Q
 from django.http import HttpRequest
 from django.utils.timezone import now
+from psycopg2 import InterfaceError, OperationalError
 
 # Project imports
 import task_names
@@ -57,14 +57,15 @@ from apps.document.models import Document, DocumentType
 from apps.document.repository.base_document_repository import BaseDocumentRepository
 from apps.document.repository.document_repository import DocumentRepository
 from apps.project.models import Project, ProjectClustering, UploadSession
-from apps.task.tasks import BaseTask, CeleryTaskLogger, Task, purge_task, call_task_func, ExtendedTask
+from apps.project.notifications import notify_active_upload_sessions, notify_cancelled_upload_session
+from apps.task.tasks import BaseTask, CeleryTaskLogger, Task, purge_task, _call_task_func, ExtendedTask
 from apps.task.utils.task_utils import TaskUtils
 from apps.users.models import User
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.5.0/LICENSE"
-__version__ = "1.5.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.6.0/LICENSE"
+__version__ = "1.6.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -79,9 +80,21 @@ class ClusterProjectDocuments(BaseTask):
     """
     name = 'Cluster Project Documents'
 
+    soft_time_limit = 3 * 3600
+    default_retry_delay = 10
+    retry_backoff = True
+    autoretry_for = (SoftTimeLimitExceeded, InterfaceError, OperationalError)
+    max_retries = 3
+
     queue = 'high_priority'
 
     project_clustering_id = None
+
+    min_log_interval_seconds = 60 * 5
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.log_times = {}  # type: Dict[str, Any]
 
     def process(self, **kwargs):
 
@@ -114,7 +127,8 @@ class ClusterProjectDocuments(BaseTask):
                                          cluster_algorithm=method,
                                          n_clusters=n_clusters,
                                          cluster_by=cluster_by,
-                                         use_default_name=True)
+                                         use_default_name=True,
+                                         log_message=self.log_wo_flooding)
         result = cluster_model.run()
 
         project_clustering.metadata = result.metadata
@@ -171,6 +185,16 @@ class ClusterProjectDocuments(BaseTask):
 
         super().on_failure(exc, task_id, args, kwargs, exc_traceback)
 
+    def log_wo_flooding(self, msg: str, msg_key='') -> None:
+        if msg_key:
+            last_call = self.log_times.get(msg_key)
+            if last_call:
+                if (datetime.datetime.now() - last_call).total_seconds() < self.min_log_interval_seconds:
+                    return
+        self.log_info(msg)
+        if msg_key:
+            self.log_times[msg_key] = datetime.datetime.now()
+
 
 class ReassignProjectClusterDocuments(BaseTask):
     """
@@ -181,16 +205,24 @@ class ReassignProjectClusterDocuments(BaseTask):
 
     def process(self, **kwargs):
         project_id = kwargs.get('project_id')
-        cluster_ids = kwargs.get('cluster_ids')
+        project_clustering_id = kwargs.get('project_clustering_id')
+        reassign_cluster_ids = kwargs.get('cluster_ids')
         new_project_id = kwargs.get('new_project_id')
         new_project = Project.objects.get(pk=new_project_id)
 
-        documents = Document.objects.filter(documentcluster__pk__in=cluster_ids)
+        p_cl = ProjectClustering.objects.get(id=project_clustering_id)
+
+        documents = Document.objects.filter(documentcluster__pk__in=reassign_cluster_ids)
+        # if reassign unclustered
+        if 0 in reassign_cluster_ids:
+            documents = Document.objects.filter(Q(documentcluster__pk__in=reassign_cluster_ids) |
+                                                Q(id__in=p_cl.metadata['unclustered_item_ids']))
+
         self.ensure_document_unique_names(documents, new_project, new_project.type)
 
         self.run_if_task_or_sub_tasks_failed(
             ReassignProjectClusterDocuments.rollback,
-            (project_id, cluster_ids, new_project_id))
+            (project_clustering_id, project_id, new_project_id, reassign_cluster_ids))
 
         self.run_sub_tasks(
             'Reassign Each Document from Cluster',
@@ -200,7 +232,7 @@ class ReassignProjectClusterDocuments(BaseTask):
         self.run_after_sub_tasks_finished(
             'Finalize Reassigning Cluster Documents',
             ReassignProjectClusterDocuments.finalize,
-            [(new_project_id, cluster_ids)])
+            [(project_clustering_id, new_project_id, reassign_cluster_ids)])
         # TODO: metadata[project_id] in tasks related with reassigned documents
 
     def ensure_document_unique_names(self,
@@ -210,7 +242,8 @@ class ReassignProjectClusterDocuments(BaseTask):
 
         def strict_check_unique_name(doc_new_name: str) -> bool:
             from apps.project.api.v1 import UploadSessionViewSet
-            return UploadSessionViewSet.can_upload_file(new_project, doc_new_name, None) is True
+            return UploadSessionViewSet.can_upload_file(new_project,
+                                                        doc_new_name, 1) is True
 
         project_doc_names = set(Document.all_objects.filter(
             project_id=new_project.pk).values_list('name', flat=True))
@@ -276,27 +309,45 @@ class ReassignProjectClusterDocuments(BaseTask):
                  retry_backoff=True,
                  autoretry_for=(SoftTimeLimitExceeded, InterfaceError, OperationalError),
                  max_retries=3)
-    def rollback(task, project_id, cluster_ids, new_project_id):
-
+    def rollback(task, project_clustering_id, project_id, new_project_id, reassign_cluster_ids):
+        """
+        Undo reassigning, update ProjectClustering.metadata
+        """
         task.log_error('Rollback Reassigning Document Cluster documents.')
         log = CeleryTaskLogger(task)
 
-        documents = Document.objects.filter(documentcluster__pk__in=cluster_ids)
+        p_cl = ProjectClustering.objects.get(id=project_clustering_id)
 
+        # get reassigned documents queryset
+        documents = Document.objects.filter(documentcluster__pk__in=reassign_cluster_ids)
+        # if reassign unclustered
+        if 0 in reassign_cluster_ids:
+            documents = Document.objects.filter(Q(documentcluster__pk__in=reassign_cluster_ids) |
+                                                Q(id__in=p_cl.metadata['unclustered_item_ids']))
+
+        # update rawdb cache for target doc type
         for document in documents:
             signals.document_deleted.send(task.__name__, user=None, document=document)
 
+        # get back Doc Type to Generic Doc Type
         documents.update(project_id=project_id, document_type=DocumentType.generic())
 
+        # update rawdb cache forGeneric Doc Type
         for document in documents:
             signals.document_changed.send(task.__name__, log=log, document=document)
 
-        p_cl = ProjectClustering.objects.get(document_clusters__pk=cluster_ids[0])
+        # if reassign unclustered - update info about unclustered documents
+        if 0 in reassign_cluster_ids:
+            unclustered_documents = Document.objects.filter(project_id=project_id, documentcluster=None)
+            p_cl.metadata['unclustered_item_ids'] = list(unclustered_documents.values_list('pk', flat=True))
+            p_cl.metadata['unclustered_item_names'] = list(unclustered_documents.values_list('name', flat=True))
+
+        # update info about reassignings in metadata
         reassignings = p_cl.metadata.get('reassigning', [])
         reassigning = {
             'date': now().isoformat(),
             'new_project_id': new_project_id,
-            'cluster_ids': cluster_ids,
+            'cluster_ids': reassign_cluster_ids,
             'status': FAILURE,
         }
         reassignings.append(reassigning)
@@ -312,30 +363,52 @@ class ReassignProjectClusterDocuments(BaseTask):
                  autoretry_for=(SoftTimeLimitExceeded, InterfaceError, OperationalError),
                  max_retries=3,
                  priority=9)
-    def finalize(self, new_project_id, cluster_ids):
+    def finalize(self, project_clustering_id, new_project_id, reassign_cluster_ids):
+        """
+        Update ProjectClustering.metadata:
+        - reassigning
+        - reassigned_cluster_ids
+        - clusters_data
+        - points_data
+        - unclustered_item_ids
+        - unclustered_item_names
+        (cluster_obj_ids remains the same to track initial clusters history)
+        """
+        p_cl = ProjectClustering.objects.get(pk=project_clustering_id)
 
-        documents = Document.objects.filter(documentcluster__pk__in=cluster_ids)
+        # get reassigned documents queryset
+        documents = Document.objects.filter(documentcluster__pk__in=reassign_cluster_ids)
+        # if reassign unclustered
+        if 0 in reassign_cluster_ids:
+            documents = Document.objects.filter(Q(documentcluster__pk__in=reassign_cluster_ids) |
+                                                Q(id__in=p_cl.metadata['unclustered_item_ids']))
 
-        p_cl = ProjectClustering.objects.get(document_clusters__pk=cluster_ids[0])
+        # set info about reassigning into metadata
         reassignings = p_cl.metadata.get('reassigning', [])
-
         reassigning = {
             'date': now().isoformat(),
             'new_project_id': new_project_id,
-            'cluster_ids': cluster_ids
+            'cluster_ids': reassign_cluster_ids,
+            'status': SUCCESS
         }
         reassignings.append(reassigning)
         p_cl.metadata['reassigning'] = reassignings
         reassigned_cluster_ids = list(set(
-            p_cl.metadata.get('reassigned_cluster_ids', []) + cluster_ids))
+            p_cl.metadata.get('reassigned_cluster_ids', []) + reassign_cluster_ids))
         p_cl.metadata['reassigned_cluster_ids'] = reassigned_cluster_ids
 
         # remove reassigned clusters from metadata
         p_cl.metadata['clusters_data'] = {i: j for i, j in p_cl.metadata['clusters_data'].items()
                                           if j['cluster_obj_id'] not in reassigned_cluster_ids}
+
+        # remove reassigned documents points from metadata
         reassigned_document_ids = documents.values_list('pk', flat=True)
         p_cl.metadata['points_data'] = [i for i in p_cl.metadata['points_data']
                                         if int(i['document_id']) not in reassigned_document_ids]
+        # if reassign unclustered
+        if 0 in reassign_cluster_ids:
+            p_cl.metadata['unclustered_item_ids'] = []
+            p_cl.metadata['unclustered_item_names'] = []
         p_cl.save()
 
 
@@ -345,6 +418,7 @@ class CleanProject(BaseTask):
     Only for "Multiple Contract Type"
     """
     name = 'Clean Project'
+    document_chunk_size = 100
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -372,10 +446,19 @@ class CleanProject(BaseTask):
         # delete documents
         from apps.document.repository.document_bulk_delete \
             import get_document_bulk_delete
-        get_document_bulk_delete(safe_delete).delete_documents(proj_doc_ids)
+
+        doc_bulk_delete = get_document_bulk_delete(safe_delete)
+        proj_doc_count = len(proj_doc_ids)
+        for start_pos in range(0, len(proj_doc_ids), self.document_chunk_size):
+            end_pos = min([proj_doc_count, start_pos + self.document_chunk_size])
+            doc_bulk_delete.delete_documents(proj_doc_ids[start_pos:end_pos])
+            self.log_info('Deleted {}-{} documents from total {} from project #{}'.format(
+                start_pos, end_pos, proj_doc_count, project_id
+            ))
 
         # delete project itself
         project.cleanup(delete=delete)
+        self.log_info('Cleaned up project #{} itself'.format(project_id))
 
         # store data about cleanup in ProjectCleanup Task
         if not kwargs.get('skip_task_updating'):
@@ -396,8 +479,11 @@ class CleanProjects(BaseTask):
     def process(self, **kwargs):
         project_ids = kwargs.get('_project_ids')
         delete = bool(kwargs.get('delete'))
+        safe_delete = bool(kwargs.get('safe_delete'))
 
-        clean_args = [{'_project_id': i, 'delete': delete} for i in project_ids]
+        clean_args = [{'_project_id': i,
+                       'delete': delete,
+                       'safe_delete': safe_delete} for i in project_ids]
 
         self.run_sub_tasks_class_based('Clean Project',
                                        CleanProject,
@@ -425,7 +511,7 @@ class CancelUpload(BaseTask):
         self.log_info(f'Purge {session_tasks.count()} session tasks.')
         for a_task in session_tasks:
             try:
-                purge_task(a_task.id)
+                purge_task(a_task.id, log_func=lambda m: self.log_info(m))
             except:
                 # case when task is already deleted as subtask
                 pass
@@ -478,12 +564,15 @@ class CancelUpload(BaseTask):
             except:
                 # TODO: removing folders through LocalStorage is not implemented
                 failed_removing += 1
-                pass
+
         self.track_timelog(f'3 - remove files ({files_removed} removed, {failed_removing} failed)')
 
         # 4. Remove Upload Session
         if not session:
             raise Exception(f"Couldn't find session by id ({session_id})")
+
+        self.log_info(f'Send WS notification that session uid="{session_id}" is cancelled.')
+        notify_cancelled_upload_session(session, kwargs.get('user_id'))
 
         self.log_info(f'Remove session uid="{session_id}".')
         project = session.project
@@ -493,7 +582,7 @@ class CancelUpload(BaseTask):
         # 5. Reindex Project
         self.log_info(f'Reindex project id="{project.id}" documents.')
         from apps.rawdb.tasks import reindex_all_project_documents
-        call_task_func(reindex_all_project_documents, (project.pk,), None)
+        _call_task_func(reindex_all_project_documents, (project.pk,), None)
         self.track_timelog('5 - reindex project')
 
     def track_timelog(self, msg: str):
@@ -514,8 +603,17 @@ def track_session_completed(_celery_task):
     filter sessions where users were not notified that a session job is completed and
     check that upload job is completed,
     send notification email.
+
+    Track uncompleted session and send WS notification.
     """
     TaskUtils.prepare_task_execution()
+
+    sessions_for_ws_notification = list(UploadSession.objects.exclude(completed=True))
+
+    if sessions_for_ws_notification:
+        for session in sessions_for_ws_notification:
+            session.check_and_set_completed()
+        notify_active_upload_sessions(sessions_for_ws_notification)
 
     for session in UploadSession.objects.filter(
             notified_upload_started=True,
@@ -530,6 +628,12 @@ class LoadArchive(BaseTask):
     """
     name = 'Load Archive'
     session_id = source_path = force = user_id = None
+
+    soft_time_limit = 6000
+    default_retry_delay = 10
+    retry_backoff = True
+    autoretry_for = (SoftTimeLimitExceeded, InterfaceError, OperationalError)
+    max_retries = 3
 
     def process(self, **kwargs):
         self.session_id = kwargs.get('session_id')

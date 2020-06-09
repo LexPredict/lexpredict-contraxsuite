@@ -1,7 +1,6 @@
 {% load static project_tags pipeline %}
 
 {% include '_jq_imports_block.html' %}
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-confirm/3.1.1/jquery-confirm.min.js"></script>
 <script type="text/javascript">
   // variables for jqwidgets
   var login_url = "{% url 'account_login' %}?next={{ request.path }}";

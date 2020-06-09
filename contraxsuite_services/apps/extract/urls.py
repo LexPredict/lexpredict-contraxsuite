@@ -41,8 +41,8 @@ from apps.extract.models import (
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.5.0/LICENSE"
-__version__ = "1.5.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.6.0/LICENSE"
+__version__ = "1.6.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -147,15 +147,18 @@ urlpatterns += [
         name='geo-entity-usage-map',
     ),
     url(
-        r'^term-usage-sync/$',
-        views.TopTermUsageSyncView.as_view(),
-        name='term-usage-sync'
-    ),
-
-    url(
         r'^top-document-term-usage-list/$',
         views.DocumentTopTermUsageListView.as_view(),
         name='top-document-term-usage-list',
     ),
-
+    url(
+        r'^text-unit-term-usage-list/$',
+        views.TextUnitTermUsageListView.as_view(),
+        name='text-unit-term-usage-list',
+    ),
+    url(
+        r'^text-unit-one-term-usage-list/(?P<term_id>\d+)/$',
+        views.TextUnitTermUsageListView.as_view(),
+        name='text-unit-one-term-usage-list',
+    ),
 ]

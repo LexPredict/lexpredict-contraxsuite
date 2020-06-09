@@ -36,14 +36,14 @@ from apps.common.sql_commons import escape_column_name
 from apps.common.utils import dictfetchone
 from apps.document.constants import DocumentGenericField, FieldSpec
 from apps.document.models import Document
-from apps.rawdb.constants import FIELD_CODE_DOC_FULL_TEXT, FIELD_CODE_DOC_ID, FIELD_CODE_ASSIGNEE_ID, \
+from apps.rawdb.constants import FIELD_CODE_DOC_ID, FIELD_CODE_ASSIGNEE_ID, \
     FIELD_CODE_ASSIGNEE_NAME, FIELD_CODE_ASSIGN_DATE, FIELD_CODE_STATUS_NAME, TABLE_NAME_PREFIX
 from apps.rawdb.repository.base_raw_db_repository import BaseRawDbRepository
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.5.0/LICENSE"
-__version__ = "1.5.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.6.0/LICENSE"
+__version__ = "1.6.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -51,7 +51,7 @@ __email__ = "support@contraxsuite.com"
 # TODO: check exclude_hidden_always_fields in build_field_handlers()
 @Singleton
 class RawDbRepository(BaseRawDbRepository):
-    DEFAULT_FIELD_CODE_FILTER = {FIELD_CODE_DOC_ID, FIELD_CODE_DOC_FULL_TEXT}
+    DEFAULT_FIELD_CODE_FILTER = {FIELD_CODE_DOC_ID}
 
     def update_documents_assignee(self,
                                   doc_ids: Iterable[int],

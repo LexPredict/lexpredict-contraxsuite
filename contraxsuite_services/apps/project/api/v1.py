@@ -39,6 +39,7 @@ from django.core.files.storage import FileSystemStorage
 from django.db import connection, transaction
 from django.db.models import Count, Subquery
 from django.http import JsonResponse, HttpRequest
+from django.http.request import QueryDict
 from django.urls import path, include
 from django.utils.timezone import now
 
@@ -56,22 +57,23 @@ from rest_framework.response import Response
 import apps.common.mixins
 from apps.analyze.models import DocumentCluster
 from apps.analyze.tasks import Cluster
+from apps.common.archive_file import ArchiveFile
 from apps.common.file_storage import get_file_storage
 from apps.common.log_utils import render_error
 from apps.common.models import ReviewStatus
 from apps.common.url_utils import as_bool
 from apps.common.utils import get_api_module, safe_to_int, cap_words
-from apps.document.app_vars import MAX_ARCHIVE_SIZE, MAX_DOCUMENT_SIZE, FORCE_REWRITE_DOC
 from apps.document.constants import DOCUMENT_TYPE_PK_GENERIC_DOCUMENT
 from apps.document.models import Document, DocumentType, DocumentField, \
-    FieldAnnotation, FieldAnnotationStatus
+    FieldAnnotation, FieldAnnotationFalseMatch, FieldAnnotationStatus
 from apps.document.tasks import plan_process_documents_status_changed, \
     plan_process_documents_assignee_changed
-from apps.project.models import Project, TaskQueue, UploadSession, ProjectClustering
+from apps.project.models import Project, TaskQueue, UploadSession, ProjectClustering, \
+    UserProjectsSavedFilter
 from apps.project.tasks import ReassignProjectClusterDocuments, ClusterProjectDocuments, \
-    CleanProject, CancelUpload, LoadArchive
+    CleanProject, CancelUpload, LoadArchive, track_session_completed
 from apps.task.models import Task
-from apps.task.tasks import call_task, purge_task, LoadDocuments
+from apps.task.tasks import call_task, purge_task, LoadDocuments, call_task_func
 from apps.task.utils.logger import get_django_logger
 from apps.users.models import User
 
@@ -79,8 +81,8 @@ from apps.users.models import User
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.5.0/LICENSE"
-__version__ = "1.5.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.6.0/LICENSE"
+__version__ = "1.6.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -246,13 +248,16 @@ class TaskQueueViewSet(apps.common.mixins.JqListAPIMixin, viewsets.ModelViewSet)
 # --------------------------------------------------------
 
 def project_progress(obj):
+    if not hasattr(obj, 'project_total_documents_count'):
+        obj.project_total_documents_count = obj.document_set.count()
     if not hasattr(obj, 'project_current_documents_count'):
-        obj.project_current_documents_count = obj.document_set.count()
+        obj.project_current_documents_count = obj.document_set.filter(processed=True, delete_pending=False).count()
     if not hasattr(obj, 'project_reviewed_documents_count'):
-        obj.project_reviewed_documents_count = obj.document_set.filter(
+        obj.project_reviewed_documents_count = obj.document_set.filter(processed=True, delete_pending=False).filter(
             status__group__is_active=False).count()
 
     stats = {
+        'project_total_documents_count': obj.project_total_documents_count,
         'project_current_documents_count': obj.project_current_documents_count,
         'project_reviewed_documents_count': obj.project_reviewed_documents_count}
 
@@ -307,7 +312,7 @@ class ProjectDetailSerializer(serializers.ModelSerializer):
     class Meta:
         model = Project
         fields = ['pk', 'name', 'description',
-                  'send_email_notification',
+                  'send_email_notification', 'hide_clause_review',
                   'status', 'status_data',
                   'owners', 'owners_data',
                   'reviewers', 'reviewers_data',
@@ -338,13 +343,19 @@ class ProjectUpdateSerializer(CustomErrorMessageSerializer, ProjectDetailSeriali
     class Meta(ProjectDetailSerializer.Meta):
         model = Project
         fields = ['pk', 'name', 'description', 'status', 'send_email_notification',
-                  'owners', 'reviewers', 'super_reviewers', 'type']
+                  'owners', 'reviewers', 'super_reviewers', 'type', 'hide_clause_review']
 
 
 class ProjectListSerializer(ProjectDetailSerializer):
-    class Meta:
+    count_of_documents = serializers.IntegerField(
+        source='document_set.count',
+        read_only=True
+    )
+
+    class Meta(ProjectDetailSerializer.Meta):
         model = Project
-        fields = ['pk', 'name', 'status', 'status_data', 'type', 'type_data']
+        fields = ['pk', 'name', 'status', 'status_data',
+                  'type', 'type_data', 'count_of_documents']
 
 
 class ProjectStatserializer(ProjectDetailSerializer):
@@ -356,10 +367,10 @@ class ProjectStatserializer(ProjectDetailSerializer):
         fields = ['pk', 'name', 'status', 'total_documents_count', 'reviewed_documents_count']
 
     def get_total_documents_count(self, obj):
-        return obj.document_set.count()
+        return obj.document_set.filter(delete_pending=False, processed=True).count()
 
     def get_reviewed_documents_count(self, obj):
-        return obj.document_set.filter(status__group__is_active=False).count()
+        return obj.document_set.filter(delete_pending=False, processed=True, status__group__is_active=False).count()
 
 
 def require_generic_contract_type(func):
@@ -445,6 +456,9 @@ class ProjectViewSet(apps.common.mixins.APILoggingMixin,
             qs = qs.prefetch_related('owners', 'owners__role',
                                      'super_reviewers', 'super_reviewers__role',
                                      'reviewers', 'reviewers__role')
+        else:
+            pass
+            # qs = qs.annotate(count_of_documents=Count('document'))
         return qs
 
     def get_extra_data(self, queryset):
@@ -543,14 +557,10 @@ class ProjectViewSet(apps.common.mixins.APILoggingMixin,
             }
             count, count_limit = Cluster.estimate_reaching_limit(cluster_params)
             if count > count_limit:
-                return Response({'message': 'Processing may take too much time',
+                return Response({'message': 'Processing large amounts of documents may take a long time.',
                                  'confirm': True})
 
-        pending_clustering_task_ids = Task.objects \
-            .filter(name=ClusterProjectDocuments.name, project=project, status=PENDING) \
-            .values_list('pk', flat=True)
-        for task_id in pending_clustering_task_ids:
-            purge_task(task_id)
+        project.drop_clusters()
 
         project_clustering = ProjectClustering.objects.create(project=project)
 
@@ -601,8 +611,10 @@ class ProjectViewSet(apps.common.mixins.APILoggingMixin,
         if not clustering:
             return Response({'details': 'Cluster session not found'}, status=404)
 
-        data = ProjectClusteringSerializer(clustering).data
+        # update project clustering status based on task status
+        clustering.set_status_by_task()
 
+        data = ProjectClusteringSerializer(clustering).data
         reassigned_cluster_ids = clustering.metadata.get('reassigned_cluster_ids', [])
         reassigning_data = clustering.metadata.get('reassigning')
 
@@ -641,7 +653,14 @@ class ProjectViewSet(apps.common.mixins.APILoggingMixin,
                 - project_id: int
         """
         project = self.get_object()
-        cluster_ids = [int(i) for i in request.POST.getlist('cluster_ids')]
+
+        # via API
+        if isinstance(request.data, QueryDict):
+            cluster_ids = [int(i) for i in request.data.getlist('cluster_ids')]
+        # via swagger
+        else:
+            cluster_ids = request.data['cluster_ids']
+
         project_clustering = project.projectclustering_set.last()
         if not project_clustering:
             raise APIException('Project Clustering object not found')
@@ -651,9 +670,10 @@ class ProjectViewSet(apps.common.mixins.APILoggingMixin,
             raise APIException('Cluster(s) id=({}) is/are already reassigned to another project'
                                .format(', '.join(str(i) for i in already_reassigned_clusters)))
 
-        new_project_id = int(request.POST.get('project_id'))
+        new_project_id = int(request.data['project_id'])
         call_task(
             ReassignProjectClusterDocuments,
+            project_clustering_id=project_clustering.id,
             cluster_ids=cluster_ids,
             project_id=project.id,
             new_project_id=new_project_id,
@@ -676,6 +696,23 @@ class ProjectViewSet(apps.common.mixins.APILoggingMixin,
             user_id=request.user.id)
 
         return Response('OK')
+
+    @action(detail=False, methods=['post'])
+    def select_projects(self, request, **kwargs):
+        """
+        Select projects for review in Explorer UI
+        """
+        project_ids = request.data.get('project_ids')
+        obj, _ = UserProjectsSavedFilter.objects.get_or_create(user=request.user)
+        obj.projects.set(project_ids)
+
+        ret = dict(
+            saved_filter_id=obj.id,
+            user_id=request.user.id,
+            project_ids=obj.projects.values_list('id', flat=True),
+            show_warning=not obj.projects.exists()
+        )
+        return Response(ret)
 
     @action(detail=True, methods=['post'])
     def mark_delete(self, request, **kwargs):
@@ -755,22 +792,6 @@ class ProjectViewSet(apps.common.mixins.APILoggingMixin,
         from apps.rawdb.api.v1 import DocumentsAPIView
         return DocumentsAPIView.simulate_get(user, project, return_ids=False)
 
-    def get_annotations_queryset(self):
-        """
-        Get project annotations using SavedFilter logic to filter out FieldAnnotations
-        """
-        project = self.get_object()
-
-        request = HttpRequest()
-        request.user = self.request.user
-
-        from apps.document.api.v1 import DocumentFieldAnnotationViewSet as api_view
-        view = api_view(request=request, kwargs={'project_pk': project.pk})
-
-        qs = view.filter_queryset(view.get_queryset())
-
-        return qs
-
     @action(detail=True, methods=['post'])
     def assign_documents(self, request, **kwargs):
         """
@@ -798,33 +819,6 @@ class ProjectViewSet(apps.common.mixins.APILoggingMixin,
                                                 new_assignee_id=assignee_id,
                                                 changed_by_user_id=request.user.pk)
         return Response({'success': len(document_ids)})
-
-    @action(detail=True, methods=['post'])
-    def assign_annotations(self, request, **kwargs):
-        """
-        Bulk assign batch of annotations to a review team member\n
-            Params:
-                annotation_ids: list[int]
-                all: any value - update all annotations if any value
-                no_annotation_ids: list[int] - exclude those annotations from action (if "all" is set)
-                assignee_id: int
-            Returns:
-                int (number of reassigned annotations)
-        """
-        self.get_object()    # noqa: permissions check
-        assignee_id = request.data.get('assignee_id')
-
-        annotations = self.get_annotations_queryset()
-
-        if request.data.get('all'):
-            if request.data.get('no_annotation_ids'):
-                annotations = annotations.exclude(pk__in=request.data.get('no_annotation_ids'))
-        else:
-            annotations = annotations.filter(pk__in=request.data.get('annotation_ids'))
-
-        annotations = FieldAnnotation.objects.filter(id__in=annotations.values_list('pk', flat=True))
-        annotations.update(assignee=assignee_id, assign_date=now())
-        return Response({'success': annotations.count()})
 
     @action(detail=True, methods=['post'])
     def set_status(self, request, **kwargs):
@@ -866,11 +860,78 @@ class ProjectViewSet(apps.common.mixins.APILoggingMixin,
             # TODO: do not hardcode doc status code
             if review_status.code in ('completed', 'excluded'):
                 FieldAnnotation.objects.filter(document__in=documents).update(
-                    status=FieldAnnotationStatus.confirm_status())
+                    status=FieldAnnotationStatus.accepted_status())
 
         plan_process_documents_status_changed(document_ids, status_id, request.user.pk)
 
         return Response({'success': ret})
+
+    def get_annotations_queryset(self, only_true_annotations=False):
+        """
+        Get project annotations using SavedFilter logic to filter out FieldAnnotations*
+        """
+        project = self.get_object()
+
+        request = HttpRequest()
+        request.user = self.request.user
+        request.GET = self.request.data
+
+        from apps.document.api.v1 import DocumentFieldAnnotationViewSet as api_view
+        view = api_view(request=request, kwargs={'project_pk': project.pk})
+        view.action = 'list'
+
+        qs = view.get_queryset(only_true_annotations=only_true_annotations)
+
+        return qs
+
+    @action(detail=True, methods=['get'])
+    def annotations_assignees(self, request, **kwargs):
+        """
+        Get assignees data for FieldAnnotations
+        """
+        # permissions check
+        _ = self.get_object()
+
+        # get only "true" annotations as "false" annotations don't have assignee field
+        annotation_qs = self.get_annotations_queryset(only_true_annotations=True).values('assignee_id', 'uid')
+
+        assignee_ids = set([i['assignee_id'] for i in annotation_qs if i['assignee_id']])
+
+        result = []
+        for user in User.objects.filter(pk__in=assignee_ids):
+            user_annotation_uids = [i['uid'] for i in annotation_qs if i['assignee_id'] == user.id]
+            result.append({
+                'assignee_id': user.id,
+                'assignee_name': user.get_full_name(),
+                'annotations_count': len(user_annotation_uids),
+                'annotation_uids': sorted(user_annotation_uids)})
+        return Response(result)
+
+    @action(detail=True, methods=['post'])
+    def assign_annotations(self, request, **kwargs):
+        """
+        Bulk assign batch of annotations to a review team member\n
+            Params:
+                annotation_ids: list[int]
+                all: any value - update all annotations if any value
+                no_annotation_ids: list[int] - exclude those annotations from action (if "all" is set)
+                assignee_id: int
+            Returns:
+                int (number of reassigned annotations)
+        """
+        self.get_object()    # noqa: permissions check
+        assignee_id = request.data.get('assignee_id')
+
+        annotations = self.get_annotations_queryset()
+
+        # re-fetch annotations as initial values-qs doesn't allow update
+        ant_uids = [i['uid'] for i in annotations]
+        true_annotations = FieldAnnotation.objects.filter(uid__in=ant_uids)
+        true_annotations.update(assignee=assignee_id, assign_date=now())
+        false_annotations = FieldAnnotationFalseMatch.objects.filter(uid__in=ant_uids)
+        false_annotations.update(assignee=assignee_id, assign_date=now())
+
+        return Response({'success': annotations.count()})
 
     @action(detail=True, methods=['post'])
     def set_annotation_status(self, request, **kwargs):
@@ -884,27 +945,36 @@ class ProjectViewSet(apps.common.mixins.APILoggingMixin,
             Returns:
                 int (number of reassigned annotations)
         """
-        self.get_object()    # noqa: permissions check
+        project = self.get_object()    # noqa: permissions check
         status_id = request.data.get('status_id')
         ann_status = FieldAnnotationStatus.objects.get(pk=status_id)
 
         annotations = self.get_annotations_queryset()
 
-        if request.data.get('all'):
-            if request.data.get('no_annotation_ids'):
-                annotations = annotations.exclude(pk__in=request.data.get('no_annotation_ids'))
-        else:
-            annotations = annotations.filter(pk__in=request.data.get('annotation_ids'))
+        # re-fetch annotations as initial values-qs doesn't allow update
+        ant_uids = [i['uid'] for i in annotations]
+        true_annotations = FieldAnnotation.objects.filter(uid__in=ant_uids)
+        false_annotations = FieldAnnotationFalseMatch.objects.filter(uid__in=ant_uids)
 
-        if ann_status.is_deny:
+        if ann_status.is_rejected:
             from apps.document.repository.document_field_repository import DocumentFieldRepository
             field_repo = DocumentFieldRepository()
             # TODO: check if it lasts long time either move into a periodic task (deny>>FalseMatch)
-            for ant in annotations:
+            for ant in true_annotations:
                 field_repo.delete_field_annotation_and_update_field_value(ant, request.user)
         else:
-            annotations = FieldAnnotation.objects.filter(id__in=annotations.values_list('pk', flat=True))
-            annotations.update(status_id=status_id)
+            true_annotations.update(status_id=status_id)
+            if false_annotations:
+                from apps.document.repository.document_field_repository import DocumentFieldRepository
+                field_repo = DocumentFieldRepository()
+                for false_ant in false_annotations:
+                    field_repo.restore_field_annotation_and_update_field_value(false_ant,
+                                                                               status_id,
+                                                                               request.user)
+
+        document_ids = set([i['document_id'] for i in annotations])
+        Document.reset_status_from_annotations(ann_status=ann_status, document_ids=document_ids)
+
         return Response({'success': annotations.count()})
 
     @action(detail=False, methods=['get'])
@@ -925,11 +995,15 @@ class ProjectViewSet(apps.common.mixins.APILoggingMixin,
               CASE WHEN p1.type_id = %s THEN TRUE ELSE FALSE END AS is_generic,
               (SELECT count(d1.id)
                FROM document_document d1
-               WHERE d1.project_id = p1.id) extracted_doc_count,
+               WHERE d1.delete_pending = false
+                   AND d1.processed = true 
+                   AND d1.project_id = p1.id) extracted_doc_count,
               (SELECT count(d2.id)
                FROM document_document d2
-               WHERE d2.project_id = p1.id AND
-                     d2.status_id IN (SELECT rs.id
+               WHERE d2.delete_pending = false
+                   AND d2.processed = true 
+                   AND d2.project_id = p1.id 
+                   AND d2.status_id IN (SELECT rs.id
                                         FROM common_reviewstatus rs INNER JOIN common_reviewstatusgroup rsg
                                             ON rs.group_id = rsg.id
                                         WHERE rsg.is_active = FALSE)) reviewed_doc_count
@@ -1057,6 +1131,8 @@ class UploadSessionViewSet(UploadSessionPermissionViewMixin,
         :param file_size: file size in bytes
         :return: bool
         """
+        if not file_size:
+            return 'empty'
         # 1. if a Document of file name and size already uploaded and parsed
         doc_query = Document.objects.filter(
             project=project,
@@ -1131,12 +1207,16 @@ class UploadSessionViewSet(UploadSessionPermissionViewMixin,
         project = Project.objects.get(pk=request.data.get('project'))
         response = super().create(request, *args, **kwargs)
 
+        # TODO: leave "upload_files" only / talk with FE
         upload_files = request.data.pop('upload_files', None)
+        review_files = request.data.pop('review_files', False)
 
-        if upload_files:
+        if upload_files and review_files:
 
-            force_rename = request.data.get('force')
+            force_rename = request.data.get('force') or request.META.get('HTTP_FORCE', False) == 'true'
+
             if force_rename is None:
+                from apps.document.app_vars import FORCE_REWRITE_DOC
                 force_rename = FORCE_REWRITE_DOC.val
 
             do_upload_files = dict()
@@ -1144,12 +1224,13 @@ class UploadSessionViewSet(UploadSessionPermissionViewMixin,
             exists = list()
             delete_pending = list()
             processing = list()
+            empty = []
 
             for file_path, file_size in upload_files.items():
                 file_name = os.path.basename(file_path)
                 status = self.can_upload_file(project, os.path.basename(file_path), file_size)
 
-                if (force_rename and status != 'delete_pending') or \
+                if (force_rename and status not in {'delete_pending', 'empty'}) or \
                         (status is True and (file_name, file_size) not in upload_unique_files):
                     do_upload_files[file_path] = True
                     upload_unique_files.append((file_name, file_size))
@@ -1161,14 +1242,19 @@ class UploadSessionViewSet(UploadSessionPermissionViewMixin,
                         delete_pending.append(file_path)
                     elif status == 'processing':
                         processing.append(file_path)
+                    elif status == 'empty':
+                        empty.append(file_path)
 
             data = dict(
                 upload_files=do_upload_files,
                 exists=exists,
                 delete_pending=delete_pending,
-                processing=processing
+                processing=processing,
+                empty=empty
             )
             response.data.update(data)
+
+        call_task_func(track_session_completed, (), request.user.pk)
         return response
 
     @action(detail=True, methods=['get'])
@@ -1179,9 +1265,10 @@ class UploadSessionViewSet(UploadSessionPermissionViewMixin,
         session = self.get_object()
         session.check_and_set_completed()
         document_tasks_progress = session.document_tasks_progress()
+        document_tasks_progress_total = 100 if session.completed else session.document_tasks_progress_total
         result = {'project_id': session.project.pk if session.project else None,
                   'document_tasks_progress': document_tasks_progress or None,
-                  'document_tasks_progress_total': session.document_tasks_progress_total,
+                  'document_tasks_progress_total': document_tasks_progress_total,
                   'documents_total_size': session.documents_total_size,
                   'session_status': session.status}
         return Response(result)
@@ -1213,7 +1300,21 @@ class UploadSessionViewSet(UploadSessionPermissionViewMixin,
                     contents: Union[BinaryIO, HttpRequest],
                     force: bool,
                     user_id: int,
-                    directory_path: str) -> Response:
+                    directory_path: str,
+                    review_file: bool = True) -> Response:
+
+        """
+        Upload file method
+        :param file_name:
+        :param file_size:
+        :param contents:
+        :param force: force rewrite doc
+        :param user_id:
+        :param directory_path:
+        :param review_file: whether check or not for empty/exists/delete_pending/processing status
+        :return:
+        """
+        from apps.document.app_vars import MAX_DOCUMENT_SIZE
         if file_size > MAX_DOCUMENT_SIZE.val * 1024 * 1024:
             return Response(status=status.HTTP_400_BAD_REQUEST,
                             data=f'File size is greater than allowed max {MAX_DOCUMENT_SIZE.val} Mb')
@@ -1225,11 +1326,16 @@ class UploadSessionViewSet(UploadSessionPermissionViewMixin,
                             data='Wrong upload session uid.')
 
         project = session.project
+        from apps.document.app_vars import FORCE_REWRITE_DOC
         force_rename = force or FORCE_REWRITE_DOC.val
-        can_upload_status = self.can_upload_file(project, file_name, file_size)
+
+        if review_file or force_rename:
+            can_upload_status = self.can_upload_file(project, file_name, file_size)
+        else:
+            can_upload_status = True
 
         if not force_rename and can_upload_status is not True:
-            return Response(status=201, data='Loaded')
+            return Response(status=status.HTTP_400_BAD_REQUEST, data={'status': can_upload_status})
 
         try:
             if can_upload_status is not True:
@@ -1261,7 +1367,9 @@ class UploadSessionViewSet(UploadSessionPermissionViewMixin,
             #     return Response(status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             #                     data='Failed to remove files with the same name, original exception is: {}'.format(str(e)))
 
-            # TODO: move this check into "stor" itself
+            # TODO: move this check into "stor" itself | we do that check in can_upoad_file() ?
+            if not file_size:
+                return Response(data='Empty file', status=status.HTTP_204_NO_CONTENT)
             try:
                 stor.mk_doc_dir(session.pk)
             except:
@@ -1291,7 +1399,7 @@ class UploadSessionViewSet(UploadSessionPermissionViewMixin,
             return Response(status=status.HTTP_500_INTERNAL_SERVER_ERROR,
                             data=render_error('Unable to load file', caused_by=e))
 
-        return Response(status=status.HTTP_201_CREATED, data='Loaded')
+        return Response(status=status.HTTP_201_CREATED, data={'status': 'OK'})
 
     @action(detail=True, methods=['post'])
     def files(self, request: HttpRequest, pk: str):
@@ -1307,10 +1415,11 @@ class UploadSessionViewSet(UploadSessionPermissionViewMixin,
                                 file_size=safe_to_int(file_size),
                                 contents=request,
                                 user_id=request.user.id,
-                                force=as_bool(request.GET, 'force', False))
+                                force=as_bool(request.GET, 'force', False) or
+                                      request.META.get('HTTP_FORCE', False) == 'true')
 
     def upload_archive(self, request, file_, archive_type):
-
+        from apps.document.app_vars import MAX_ARCHIVE_SIZE
         if file_.size > MAX_ARCHIVE_SIZE.val * 1024 * 1024:
             return Response(status=status.HTTP_400_BAD_REQUEST,
                             data=f'Archive size is greater than allowed max {MAX_ARCHIVE_SIZE.val} Mb')
@@ -1320,6 +1429,9 @@ class UploadSessionViewSet(UploadSessionPermissionViewMixin,
         except (UploadSession.DoesNotExist, ValidationError):
             return Response(status=status.HTTP_400_BAD_REQUEST,
                             data='Wrong upload session uid.')
+
+        if not file_.size:
+            raise Exception(f'File "{file_.name}" has zero length')
 
         stor = get_file_storage()
         try:
@@ -1344,29 +1456,36 @@ class UploadSessionViewSet(UploadSessionPermissionViewMixin,
             source_path=source_path,
             user_id=request.user.id,
             session_id=session.pk,
-            force=as_bool(request.POST, 'force', False)
+            force=as_bool(request.POST, 'force', False) or request.META.get('HTTP_FORCE', False) == 'true'
         )
 
         return Response(status=status.HTTP_200_OK, data='Loaded')
 
     def is_zip(self, file_):
-        if zipfile.is_zipfile(file_) and \
-                mimetypes.guess_type(file_.name)[0] in settings.ARCHIVES['zip']['allowed_mime_types']:
-            ext = os.path.basename(file_.name).split('.', 1)
-            if len(ext) == 2 and ext[1] in settings.ARCHIVES['zip']['allowed_extensions']:
+        if zipfile.is_zipfile(file_):
+            mime_type = mimetypes.guess_type(file_.name)
+            if not mime_type or not mime_type[0]:
+                mime_type = (ArchiveFile.guess_file_mime_type(file_), None,)
+            if mime_type[0] in settings.ARCHIVES['zip']['allowed_mime_types']:
+                # I believe further checks are unnecessary even for XLS, DOCX and other archives
+                # ext = os.path.basename(file_.name).split('.', 1)
+                # if len(ext) == 2 and ext[1] in settings.ARCHIVES['zip']['allowed_extensions']:
                 return True
         return False
 
     def is_tar(self, file_):
+        mime_type = mimetypes.guess_type(file_.name)
+        if not mime_type or not mime_type[0]:
+            mime_type = (ArchiveFile.guess_file_mime_type(file_), None,)
         if (hasattr(file_, 'temporary_file_path') and tarfile.is_tarfile(file_.temporary_file_path())) or \
-                mimetypes.guess_type(file_.name)[0] in settings.ARCHIVES['tar']['allowed_mime_types']:
-            ext = os.path.basename(file_.name).split('.', 1)
-            if len(ext) == 2 and ext[1] in settings.ARCHIVES['tar']['allowed_extensions']:
-                return True
+                mime_type[0] in settings.ARCHIVES['tar']['allowed_mime_types']:
+            # ext = os.path.basename(file_.name).split('.', 1)
+            # if len(ext) == 2 and ext[1] in settings.ARCHIVES['tar']['allowed_extensions']:
+            return True
         return False
 
     @action(detail=True, methods=['post'])
-    def upload(self, request, pk: str):
+    def upload(self, request, pk: str, review_file=True):
         """
         Upload a File\n
             Params:
@@ -1388,8 +1507,10 @@ class UploadSessionViewSet(UploadSessionPermissionViewMixin,
                                 file_size=file_.size,
                                 contents=file_.file,
                                 user_id=request.user.id,
-                                force=as_bool(request.POST, 'force', False),
-                                directory_path=request.POST.get('directory_path'))
+                                force=request.POST.get('force') == 'true' or
+                                      request.META.get('HTTP_FORCE') == 'true',
+                                directory_path=request.POST.get('directory_path'),
+                                review_file=review_file)
 
         # workaround for old frontend usage which checks status based on string constants in response data
         # and not on the status codes
@@ -1524,19 +1645,21 @@ class UploadSessionViewSet(UploadSessionPermissionViewMixin,
 # Project Clustering Views
 # --------------------------------------------------------
 
-analyze_api_module = get_api_module('analyze')
-
-
 class ProjectSerializer(ProjectDetailSerializer):
     class Meta(ProjectDetailSerializer.Meta):
         model = Project
         fields = ['pk', 'name', 'progress']
 
 
-class DocumentClusterSerializer(analyze_api_module.DocumentClusterSerializer):
-    class Meta(analyze_api_module.DocumentClusterSerializer.Meta):
+class DocumentClusterSerializer(serializers.ModelSerializer):
+    documents_count = serializers.SerializerMethodField()
+
+    class Meta:
         model = DocumentCluster
-        fields = ['pk', 'cluster_id', 'self_name', 'name', 'documents_count']
+        fields = ['pk', 'cluster_id', 'name', 'documents_count']
+
+    def get_documents_count(self, obj):
+        return obj.documents.count()
 
 
 class ProjectClusteringSerializer(serializers.ModelSerializer):

@@ -39,8 +39,8 @@ from apps.document.repository.dto import FieldValueDTO
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.5.0/LICENSE"
-__version__ = "1.5.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.6.0/LICENSE"
+__version__ = "1.6.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -52,12 +52,11 @@ class DocumentFieldFormulaError(RuntimeError):
         self.line_number = traceback.extract_tb(exc_tb)[-1].lineno
         self.field_values = field_values
         self.field_code = field_code
-        msg = '{0} in formula of field \'{1}\'\n' \
-              'Formula:' \
-              '\n{2}\n' \
-              'At line: {3}\n' \
-              'Field values:\n' \
-              '{4}'.format(exc_type.__name__, field_code, formula, self.line_number, field_values)
+        msg = f'{exc_type.__name__} in formula of field \'{field_code}\'\n' \
+              f'{self.base_error}' \
+              f'Formula:\n{formula}\n' \
+              f'At line: {self.line_number}\n' \
+              f'Field values:\n{field_values}'
         super(RuntimeError, self).__init__(msg)
 
 
@@ -102,7 +101,7 @@ class FormulaBasedFieldDetectionStrategy(FieldDetectionStrategy):
         formula = field.formula
 
         if not formula:
-            raise ValueError('No formula specified for field {0} (#{1})'.format(field.code, field.uid))
+            raise ValueError(f'No formula specified for field {field.code} (#{field.uid})')
 
         depends_on_field_codes = field.get_depends_on_codes() or set()
 
@@ -110,11 +109,16 @@ class FormulaBasedFieldDetectionStrategy(FieldDetectionStrategy):
 
         if field.stop_words:
             depends_on_full_text = '\n'.join([str(v) for v in field_code_to_value.values()])
+            log.debug('detect_field_value: formula_based_field_detection, checking stop words, ' +
+                      f'field {field.code}({field.pk}), document #{doc.pk}')
             detected_with_stop_words, detected_values \
                 = detect_with_stop_words_by_field_and_full_text(field,
                                                                 depends_on_full_text)
             if detected_with_stop_words:
                 return detected_values or list()
+        else:
+            log.debug('detect_field_value: formula_based_field_detection, ' +
+                      f'field {field.code}({field.pk}), document #{doc.pk}')
 
         v = cls.calc_formula(field_code=field.code, formula=formula, depends_on_field_to_value=field_code_to_value)
         typed_field = TypedField.by(field)

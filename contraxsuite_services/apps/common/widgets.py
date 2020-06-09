@@ -25,20 +25,22 @@
 # -*- coding: utf-8 -*-
 
 # Django imports
+import html
 from typing import Optional
+import pandas as pd
 
 from django import forms
 from django.forms.fields import BooleanField, ChoiceField
 from django.forms.utils import flatatt
-from django.forms.widgets import PasswordInput, Select
+from django.forms.widgets import PasswordInput, Select, Textarea
 from django.utils.encoding import force_text
 from django.utils.html import format_html
 from django.utils.safestring import SafeText
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.5.0/LICENSE"
-__version__ = "1.5.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.6.0/LICENSE"
+__version__ = "1.6.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -195,3 +197,34 @@ class FriendlyPasswordInput(PasswordInput):
         if not self.render_value:
             value = self.empty_password_value
         return super(PasswordInput, self).get_context(name, value, attrs)
+
+
+class EditableTableWidget(Textarea):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+    def render(self, name, value, attrs=None, renderer=None):
+        from apps.document.models import DocumentFieldMultilineRegexDetector
+        df = DocumentFieldMultilineRegexDetector.get_csv_as_pandas_df(value)
+        if df is None:
+            df = pd.DataFrame(columns=['value', 'pattern'])
+        df.sort_values('value', inplace=True)
+
+        # build an HTML table
+        markup = f'<table name="{name}_table" ' +\
+                 'class="table table-striped table-bordered table-hover table-condensed">' +\
+                 '<tr><th>Value</th><th>Pattern</th></tr>\n'
+        for i, row in df.iterrows():
+            cell_value = html.escape(row[0])
+            cell_pattern = html.escape(row[1])
+            markup += f'<tr><td>{cell_value}</td><td>{cell_pattern}</td></tr>'
+        markup += '<tr><td data-row="new-row"><a href="#">Add row...</a></td>' + \
+                  '<td data-row="new-row"><a href="#">Add row...</a></td></tr>'
+        markup += '</table>\n'
+
+        html_value = html.escape(value or '', quote=True)
+        markup += f'<input name="{name}" type="hidden" value="{html_value}" />\n'
+        return markup
+
+    def value_from_datadict(self, data, files, name):
+        return super().value_from_datadict(data, files, name)

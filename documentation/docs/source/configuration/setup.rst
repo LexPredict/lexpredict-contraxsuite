@@ -1,6 +1,9 @@
 Prerequisites
 =========================
 
+.. note:: This documentation is under active development. 
+   As such, pages like this one are currently incomplete.
+
 Installing ContraxSuite requires the following technologies:
 
 * git

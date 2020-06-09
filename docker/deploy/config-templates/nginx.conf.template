@@ -43,8 +43,8 @@ http {
                              '"${DOLLAR}request" ${DOLLAR}status ${DOLLAR}body_bytes_sent '
                              '"${DOLLAR}http_referer" "${DOLLAR}http_user_agent"';
 
-	access_log /var/log/nginx/access.log with_real_ip;
-	error_log /var/log/nginx/error.log;
+	access_log /dev/stdout with_real_ip;
+	error_log stderr;
 
 	##
 	# Gzip Settings

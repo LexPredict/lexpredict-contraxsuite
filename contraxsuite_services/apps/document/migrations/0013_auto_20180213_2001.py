@@ -5,6 +5,7 @@ from __future__ import unicode_literals
 import django.contrib.postgres.fields.jsonb
 import django.core.serializers.json
 from django.db import migrations, models
+from apps.common.model_utils.improved_django_json_encoder import ImprovedDjangoJSONEncoder
 
 
 class Migration(migrations.Migration):
@@ -17,7 +18,7 @@ class Migration(migrations.Migration):
         migrations.AlterField(
             model_name='document',
             name='data',
-            field=django.contrib.postgres.fields.jsonb.JSONField(blank=True, encoder=django.core.serializers.json.DjangoJSONEncoder, null=True),
+            field=django.contrib.postgres.fields.jsonb.JSONField(blank=True, encoder=ImprovedDjangoJSONEncoder, null=True),
         ),
         migrations.AlterField(
             model_name='documentfield',
@@ -27,6 +28,6 @@ class Migration(migrations.Migration):
         migrations.AlterField(
             model_name='historicaldocument',
             name='data',
-            field=django.contrib.postgres.fields.jsonb.JSONField(blank=True, encoder=django.core.serializers.json.DjangoJSONEncoder, null=True),
+            field=django.contrib.postgres.fields.jsonb.JSONField(blank=True, encoder=ImprovedDjangoJSONEncoder, null=True),
         ),
     ]

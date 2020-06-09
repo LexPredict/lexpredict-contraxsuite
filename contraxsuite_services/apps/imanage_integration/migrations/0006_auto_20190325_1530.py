@@ -7,6 +7,7 @@ import django.contrib.postgres.fields.jsonb
 import django.core.serializers.json
 from django.db import migrations, models
 import django.db.models.deletion
+from apps.common.model_utils.improved_django_json_encoder import ImprovedDjangoJSONEncoder
 
 
 class Migration(migrations.Migration):
@@ -19,7 +20,7 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='imanageconfig',
             name='imanage_to_contraxsuite_field_binding',
-            field=django.contrib.postgres.fields.jsonb.JSONField(blank=True, encoder=django.core.serializers.json.DjangoJSONEncoder, help_text='JSON mapping of iManage field codes to Contraxsuite \n                                                      field codes. Example: { "custom1": "field_code_1" }', null=True),
+            field=django.contrib.postgres.fields.jsonb.JSONField(blank=True, encoder=ImprovedDjangoJSONEncoder, help_text='JSON mapping of iManage field codes to Contraxsuite \n                                                      field codes. Example: { "custom1": "field_code_1" }', null=True),
         ),
         migrations.AlterField(
             model_name='imanageconfig',

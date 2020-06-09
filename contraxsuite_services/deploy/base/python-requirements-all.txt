@@ -13,7 +13,7 @@ daphne==2.3.0
 dateparser==0.7.0
 dataclasses==0.6
 dataclasses-json==0.3.2
-django==2.2.10
+django==2.2.13
 django-allauth==0.39.1
 django-allauth-2fa==0.6
 django-autocomplete-light==3.2.10
@@ -41,7 +41,9 @@ django-test-plus==1.0.19
 djangorestframework==3.9.2
 drf-nested-routers==0.90.0
 drf-tracking==1.5.0
+drf-tus==1.21.2
 elasticsearch==6.0.0
+exchangelib==3.1.1
 gensim==3.4.0
 geocoder==1.23.1
 Fabric3==1.13.1.post1
@@ -76,10 +78,12 @@ openpyxl==3.0.1
 
 pandas==0.23.4
 pdfkit==0.6.1
-pillow==6.2.1
-psutil==5.6.3
+pillow==6.2.2
+psutil==5.6.6
 psycopg2-binary==2.8.3
 pyap==0.1
+pyasn1==0.4.8
+pyasn1-modules==0.2.8
 pycountry==18.5.26
 pydash==4.7.4
 pyexcel-xlsx==0.3.0
@@ -96,6 +100,7 @@ requests==2.21.0
 scikit-learn==0.22.1
 scikit-multilearn==0.0.5
 scipy==1.1.0
+service_identity==18.1.0
 Sphinx==2.2.2
 sphinx-markdown-tables==0.0.10
 sphinx-rtd-theme==0.4.3
@@ -109,6 +114,7 @@ tqdm==4.42.1
 us==1.0.0
 uWSGI==2.0.15
 WeasyPrint==0.42.3
+webdavclient3==3.14.1
 Werkzeug==0.16.0
 python-tds==1.9.1
 pyOpenSSL==18.0.0

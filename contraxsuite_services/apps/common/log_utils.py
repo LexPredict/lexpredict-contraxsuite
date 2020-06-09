@@ -32,8 +32,8 @@ from contraxsuite_logging import HumanReadableTraceBackException
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.5.0/LICENSE"
-__version__ = "1.5.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.6.0/LICENSE"
+__version__ = "1.6.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -65,13 +65,20 @@ class ProcessLogger:
     def step_progress(self):
         pass
 
-    def info(self, message: str):
-        logger.info(message)
+    def info(self, message: str, **kwargs):
+        logger.info(message, **kwargs)
 
-    def error(self, message: str, field_code: str = None, exc_info: Exception = None):
+    def debug(self, message: str, **kwargs):
+        logger.debug(message, **kwargs)
+
+    def error(self,
+              message: str,
+              field_code: str = None,
+              exc_info: Exception = None,
+              **kwargs):
         if field_code:
             message = f'{field_code}: {message or "error"}'
-        logger.error(message, exc_info=exc_info)
+        logger.error(message, exc_info=exc_info, **kwargs)
 
 
 class ErrorCollectingLogger(ProcessLogger):

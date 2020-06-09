@@ -1,0 +1,3 @@
+#!/usr/bin/env bash
+
+psql -d ${DOCKER_PG_DB_NAME} -U ${DOCKER_PG_USER} -c 'REINDEX DATABASE ${DOCKER_PG_DB_NAME}; VACUUM ANALYZE;'

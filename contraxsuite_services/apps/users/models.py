@@ -27,24 +27,25 @@
 # Future imports
 from __future__ import unicode_literals, absolute_import
 
+# Standard imports
 import tzlocal
+from timezone_field import TimeZoneField
+
 # Django imports
 from django.contrib.auth.models import AbstractUser, UserManager as AuthUserManager
-from django.db import models
-from django.db import transaction
-# Standard imports
+from django.db import models, transaction
 from django.db.models.deletion import CASCADE
 from django.utils.encoding import python_2_unicode_compatible
 from django.utils.translation import ugettext_lazy as _
-from timezone_field import TimeZoneField
 
 # Project imports
+from apps.common.file_storage import get_media_file_storage
 from apps.users import signals
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.5.0/LICENSE"
-__version__ = "1.5.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.6.0/LICENSE"
+__version__ = "1.6.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -105,7 +106,8 @@ class User(AbstractUser):
     role = models.ForeignKey(Role, blank=True, null=True, on_delete=CASCADE)
     organization = models.CharField(_('Organization'), max_length=100, blank=True, null=True)
     timezone = TimeZoneField(blank=True, null=True)
-    photo = models.ImageField(upload_to='photos/', max_length=100, blank=True, null=True)
+    photo = models.ImageField(upload_to='photo', max_length=100, blank=True, null=True,
+                              storage=get_media_file_storage(folder='media'))
 
     class Meta(object):
         ordering = ('username',)

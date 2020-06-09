@@ -1,0 +1,319 @@
+#contrax-minio
+
+apiVersion: v1
+kind: Service
+metadata:
+  annotations:
+    kompose.cmd: ./kompose convert --file yml
+    kompose.version: 1.19.0 (f63a961c)
+  creationTimestamp: null
+  name: contrax-minio
+spec:
+  ports:
+  - name: "19000"
+    port: 19000
+    targetPort: 9000
+  selector:
+    app: contrax-minio
+status:
+  loadBalancer: {}
+
+---
+
+#contrax-mlflow-tracking
+
+apiVersion: v1
+kind: Service
+metadata:
+  annotations:
+    kompose.cmd: ./kompose convert --file yml
+    kompose.version: 1.19.0 (f63a961c)
+  creationTimestamp: null
+  name: contrax-mlflow-tracking
+spec:
+  ports:
+  - name: "15000"
+    port: 15000
+    targetPort: 5000
+  selector:
+    app: contrax-mlflow-tracking
+status:
+  loadBalancer: {}
+
+---
+
+#contrax-webdav
+
+apiVersion: v1
+kind: Service
+metadata:
+  annotations:
+    kompose.cmd: ./kompose convert --file test2.yml
+      -o output/ -c
+    kompose.version: 1.17.0 (a74acad)
+  creationTimestamp: null
+  name: contrax-webdav
+spec:
+  ports:
+    - port: 80
+      protocol: TCP
+  selector:
+    app: contrax-webdav
+status:
+  loadBalancer: {}
+
+---
+
+#contrax-redis
+
+apiVersion: v1
+kind: Service
+metadata:
+  annotations:
+    kompose.cmd: ./kompose convert --file docker-compose-single-host-db-open-afterdeploy.yml
+      -o output/ -c
+    kompose.version: 1.17.0 (a74acad)
+  creationTimestamp: null
+  name: contrax-redis
+spec:
+  ports:
+    - port: 6379
+      protocol: TCP
+  selector:
+    app: contrax-redis
+status:
+  loadBalancer: {}
+
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  annotations:
+    kompose.cmd: ./kompose convert --file docker-compose-single-host-db-open-afterdeploy.yml
+      -o output/ -c
+    kompose.version: 1.17.0 (a74acad)
+  creationTimestamp: null
+  name: contrax-tika
+spec:
+  ports:
+    - port: 9998
+      protocol: TCP
+  selector:
+    app: contrax-tika
+status:
+  loadBalancer: {}
+
+---
+{{ if eq .Values.pg_host_name "contrax-db" }}
+#contrax-db
+
+apiVersion: v1
+kind: Service
+metadata:
+  annotations:
+    kompose.cmd: ./kompose convert --file docker-compose-single-host-db-open-afterdeploy.yml
+      -o output/ -c
+    kompose.version: 1.17.0 (a74acad)
+  creationTimestamp: null
+  name: contrax-db
+spec:
+  ports:
+  - name: "54320"
+    port: 54320
+    targetPort: 5432
+  - name: "5432"
+    port: 5432
+    targetPort: 5432
+  selector:
+    app: contrax-db
+status:
+  loadBalancer: {}
+
+---
+{{ end }}
+
+#contrax-elasticsearch
+
+apiVersion: v1
+kind: Service
+metadata:
+  annotations:
+    kompose.cmd: ./kompose convert --file docker-compose-single-host-db-open-afterdeploy.yml
+      -o output/ -c
+    kompose.version: 1.17.0 (a74acad)
+  creationTimestamp: null
+  name: contrax-elasticsearch
+spec:
+  ports:
+    - port: 9200
+      protocol: TCP
+  selector:
+    app: contrax-elasticsearch
+status:
+  loadBalancer: {}
+
+---
+
+#contrax-elastalert
+
+apiVersion: v1
+kind: Service
+metadata:
+  annotations:
+    kompose.cmd: ./kompose convert --file yml
+    kompose.version: 1.19.0 (f63a961c)
+  creationTimestamp: null
+  name: contrax-elastalert
+spec:
+  ports:
+  - name: "3030"
+    port: 3030
+    targetPort: 3030
+  - name: "3333"
+    port: 3333
+    targetPort: 3333
+  selector:
+    app: contrax-elastalert
+status:
+  loadBalancer: {}
+---
+
+#contrax-kibana
+
+apiVersion: v1
+kind: Service
+metadata:
+  annotations:
+    kompose.cmd: ./kompose convert --file docker-compose-single-host-db-open-afterdeploy.yml
+      -o output/ -c
+    kompose.version: 1.17.0 (a74acad)
+  creationTimestamp: null
+  name: contrax-kibana
+spec:
+  ports:
+    - port: 5601
+      protocol: TCP
+  selector:
+    app: contrax-kibana
+status:
+  loadBalancer: {}
+
+---
+
+#contrax-rabbitmq
+
+apiVersion: v1
+kind: Service
+metadata:
+  annotations:
+    kompose.cmd: ./kompose convert --file docker-compose-single-host-db-open-afterdeploy.yml
+      -o output/ -c
+    kompose.version: 1.17.0 (a74acad)
+  creationTimestamp: null
+  name: contrax-rabbitmq
+spec:
+  ports:
+    - port: 5672
+      protocol: TCP
+  selector:
+    app: contrax-rabbitmq
+status:
+  loadBalancer: {}
+
+---
+
+#contrax-nginx
+
+apiVersion: v1
+kind: Service
+metadata:
+  annotations:
+    kompose.cmd: ./kompose convert --file docker-compose-single-host-db-open-afterdeploy.yml
+      -o output/ -c
+    kompose.version: 1.17.0 (a74acad)
+  creationTimestamp: null
+  name: contrax-nginx
+spec:
+  ports:
+  - name: "80"
+    port: 80
+    targetPort: 8080
+  - name: "443"
+    port: 443
+    targetPort: 4443
+  - name: "4444"
+    port: 4444
+    targetPort: 4444
+  selector:
+    app: contrax-nginx
+  #externalIPs:
+  #- 172.31.28.126
+status:
+  loadBalancer: {}
+
+---
+
+#contrax-jupyter
+
+apiVersion: v1
+kind: Service
+metadata:
+  annotations:
+    kompose.cmd: ./kompose convert --file docker-compose-single-host-db-open-afterdeploy.yml
+      -o output/ -c
+    kompose.version: 1.17.0 (a74acad)
+  creationTimestamp: null
+  name: contrax-jupyter
+spec:
+  ports:
+    - port: 8888
+      protocol: TCP
+  selector:
+    app: contrax-jupyter
+status:
+  loadBalancer: {}
+
+---
+
+#contrax-uwsgi
+
+apiVersion: v1
+kind: Service
+metadata:
+  annotations:
+    kompose.cmd: ./kompose convert --file docker-compose-single-host-db-open-afterdeploy.yml
+      -o output/ -c
+    kompose.version: 1.17.0 (a74acad)
+  creationTimestamp: null
+  name: contrax-uwsgi
+spec:
+  ports:
+    - port: 3031
+      protocol: TCP
+  selector:
+    app: contrax-uwsgi
+status:
+  loadBalancer: {}
+
+---
+
+#contrax-daphne
+
+apiVersion: v1
+kind: Service
+metadata:
+  annotations:
+    kompose.cmd: ./kompose convert --file test2.yml
+      -o output/ -c
+    kompose.version: 1.17.0 (a74acad)
+  creationTimestamp: null
+  name: contrax-daphne
+spec:
+  ports:
+    - port: 3355
+      protocol: TCP
+  selector:
+    app: contrax-daphne
+status:
+  loadBalancer: {}

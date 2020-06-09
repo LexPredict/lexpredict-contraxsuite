@@ -38,10 +38,11 @@ from rest_framework.exceptions import APIException, NotFound
 
 from apps.common.collection_utils import chunks
 from apps.common.contraxsuite_urls import doc_editor_url
+from apps.common.log_utils import ProcessLogger
 from apps.common.script_utils import eval_script
 from apps.common.singleton import Singleton
 from apps.common.sql_commons import sql_query
-from apps.document.constants import ALL_DOCUMENT_FIELD_CODES
+from apps.document.constants import ALL_DOCUMENT_FIELD_CODES, DOCUMENT_FIELD_CODE_ASSIGN_DATE
 from apps.document.field_types import TypedField, MultiValueField
 from apps.document.models import Document
 from apps.document.models import DocumentType, DocumentField
@@ -50,14 +51,13 @@ from apps.document.models import FieldValue, FieldAnnotation, \
 from apps.document.models import TextUnit
 from apps.document.repository.dto import FieldValueDTO, AnnotationDTO
 from apps.document.signals import fire_hidden_fields_cleared
-from apps.rawdb.constants import FIELD_CODE_DOC_FULL_TEXT, \
-    FIELD_CODE_DOC_ID, FIELD_CODE_HIDE_UNTIL_PYTHON
+from apps.rawdb.constants import FIELD_CODE_DOC_ID, FIELD_CODE_HIDE_UNTIL_PYTHON, FIELD_CODE_ASSIGNEE_ID
 from apps.users.models import User
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.5.0/LICENSE"
-__version__ = "1.5.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.6.0/LICENSE"
+__version__ = "1.6.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -91,7 +91,7 @@ class ChangingFieldNotPermitted(APIException):
 
 @Singleton
 class DocumentFieldRepository:
-    DEFAULT_FIELD_CODE_FILTER = {FIELD_CODE_DOC_ID, FIELD_CODE_DOC_FULL_TEXT}
+    DEFAULT_FIELD_CODE_FILTER = {FIELD_CODE_DOC_ID}
 
     # =========================================================================
     # Readonly methods
@@ -272,6 +272,11 @@ class DocumentFieldRepository:
         res = dict()
 
         for field_code, value in qr.values_list('field__code', 'value'):
+            if field_code not in field_code_to_field:
+                codes_str = f'{len(field_code_to_field)} items total' \
+                    if field_code_to_field else str(field_code_to_field)
+                raise Exception(f'Error in get_field_code_to_python_value(#{doc_id}): code "{field_code}" ' +
+                                f'is not in field_code_to_field ({codes_str})')
             field = field_code_to_field[field_code]
             typed_field = TypedField.by(field)
             res[field_code] = typed_field.field_value_json_to_python(value)
@@ -376,8 +381,8 @@ class DocumentFieldRepository:
         filters = (Q(field_id=field_id),)
         if filter_by_modified:
             filters = filters + (Q(modified_by__isnull=False),)
-        # user_values_count = FieldValue.objects.filter(filters).count()
-        user_values_count = FieldAnnotation.objects.filter(filters).count()
+        # user_values_count = FieldValue.objects.filter(*filters).count()
+        user_values_count = FieldAnnotation.objects.filter(*filters).count()
         return user_values_count
 
     def get_count_by_field(self, field_id: int) -> int:
@@ -722,8 +727,9 @@ class DocumentFieldRepository:
                 field_value_model.modified_by = user
                 field_value_model.save(update_fields={'value', 'modified_date', 'modified_by'})
 
-            DocumentField.objects.set_dirty_for_value(field.pk,
-                                                      document.document_type_id)
+            if not field.dirty:
+                field.dirty = True
+                field.save(update_fields={'dirty'})
 
             # return the actual value
             return field_value_model, good_annotations
@@ -754,6 +760,9 @@ class DocumentFieldRepository:
             self.lock_document(cursor, doc.pk)  # will unlock on transaction end
 
             field = ant_model.field
+
+            # refresh field-annotation object to avoid DoesntExist error
+            ant_model = FieldAnnotation.objects.get(pk=ant_model.pk)
             ant_model.delete()
 
             # fail silently if such false match already exists
@@ -778,7 +787,74 @@ class DocumentFieldRepository:
                 for a in ants:
                     a.delete()  # just a cleanup
                 self._store_field_value(doc, field, field_value, user)
+
+            # update rawdb
+            from apps.rawdb.field_value_tables import cache_document_fields
+            cache_document_fields(log=ProcessLogger(),
+                                  document=doc,
+                                  cache_system_fields=False,
+                                  cache_generic_fields=False,
+                                  cache_user_fields=[field.code],
+                                  changed_by_user=user)
+
         return doc, field, ant_model
+
+    @transaction.atomic
+    def restore_field_annotation_and_update_field_value(self,
+                                                        false_ant: FieldAnnotationFalseMatch,
+                                                        status_id: int,
+                                                        user: User) -> Tuple[Document, DocumentField, FieldAnnotation]:
+        with connection.cursor() as cursor:
+            doc = false_ant.document
+            self.lock_document(cursor, doc.pk)  # will unlock on transaction end
+
+            field = false_ant.field
+
+            # refresh field-annotation object to avoid DoesntExist error
+            false_ant = FieldAnnotationFalseMatch.objects.get(pk=false_ant.pk)
+            false_ant.delete()
+
+            # fail silently if such false match already exists
+            # (f.e. user already deleted such annotation before)
+
+            true_ant = FieldAnnotation.objects.create(
+                document=false_ant.document,
+                field=false_ant.field,
+                value=false_ant.value,
+                location_start=false_ant.location_start,
+                location_end=false_ant.location_end,
+                location_text=false_ant.location_text,
+                text_unit=false_ant.text_unit,
+                status_id=status_id,
+                assignee=false_ant.assignee
+            )
+
+            typed_field = TypedField.by(field)
+
+            ants = FieldAnnotation.objects.filter(document=doc, field=field)
+            if isinstance(typed_field, MultiValueField):
+                current_ant_values = [a.value for a in ants]
+                self._update_multi_value_field_by_changing_annotations(doc=doc,
+                                                                       typed_field=typed_field,
+                                                                       current_ant_values=current_ant_values,
+                                                                       added_ant_value=true_ant.value,
+                                                                       removed_ant_value=None,
+                                                                       modified_by=user)
+
+            else:
+                field_value = true_ant.value if not field.requires_text_annotations else None
+                self._store_field_value(doc, field, field_value, user)
+
+            # update rawdb
+            from apps.rawdb.field_value_tables import cache_document_fields
+            cache_document_fields(log=ProcessLogger(),
+                                  document=doc,
+                                  cache_system_fields=False,
+                                  cache_generic_fields=False,
+                                  cache_user_fields=[field.code],
+                                  changed_by_user=user)
+
+        return doc, field, true_ant
 
     @transaction.atomic
     def store_field_annotation_and_update_field_value(self,
@@ -963,13 +1039,35 @@ class DocumentFieldRepository:
         documents = \
             Document.objects.filter(project__pk=project_pk, pk__in=document_ids) if project_pk \
                 else Document.objects.filter(pk__in=document_ids)
-
-        ret = documents.update(assignee=assignee_id, assign_date=now())
-
-        FieldAnnotation.objects.filter(document__in=documents) \
-            .update(assignee=assignee_id, assign_date=now())
-
+        document_ids_filtered = list(documents.values_list('pk', flat=True))
+        assign_date = now()
+        ret = documents.update(assignee=assignee_id, assign_date=assign_date)
+        assignee_id_str = str(assignee_id) if assignee_id else 'null'
+        self.update_field_annotations(document_ids_filtered,
+                                 [(f'{FIELD_CODE_ASSIGNEE_ID}', assignee_id_str),
+                                  (f'{DOCUMENT_FIELD_CODE_ASSIGN_DATE}', f"'{assign_date}'")])
         return ret
+
+    def update_field_annotations(self,
+                                 document_ids: Iterable[int],
+                                 field_data: Iterable[Tuple[str, str]]):
+        if not document_ids or not field_data:
+            return
+
+        tables = [FieldAnnotation.objects.model._meta.db_table,
+                  FieldAnnotation.history.model._meta.db_table]
+        set_clause = ', '.join([f'"{col}" = {val}' for col, val in field_data])
+        where_clause = ','.join([str(id) for id in document_ids])
+        where_clause = f'WHERE {FIELD_CODE_DOC_ID} in ({where_clause})'
+
+        try:
+            with connection.cursor() as cursor:
+                for table in tables:
+                    query = f'UPDATE {table} SET {set_clause} {where_clause};'
+                    cursor.execute(query)
+        except Exception as e:
+            ids_str = ','.join([f'{id}' for id in document_ids[:10]])
+            raise RuntimeError(f'Error in update_field_annotations({ids_str} ..., {set_clause})') from e
 
     def replace_wrong_choice_options(self,
                                      field_id: int,

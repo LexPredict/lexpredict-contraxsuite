@@ -7,6 +7,7 @@ import django.contrib.postgres.fields.jsonb
 import django.core.serializers.json
 from django.db import migrations, models
 import django.db.models.deletion
+from apps.common.model_utils.improved_django_json_encoder import ImprovedDjangoJSONEncoder
 
 
 class Migration(migrations.Migration):
@@ -28,7 +29,7 @@ class Migration(migrations.Migration):
                 ('recipients', models.CharField(choices=[('current_assignee', 'Current assignee'), ('specified_role', 'Specified role'), ('specified_user', 'Specified user')], max_length=100)),
                 ('subject', models.CharField(blank=True, help_text='Template of the email subject in \n        Jinja2 syntax. Leave empty for using the default. The following items are passed to the context: to_user: User, event_initiator: User, documents: List[Dict[str, Any]], \n    period_start: datetime, period_end: datetime.', max_length=1024, null=True)),
                 ('header', models.CharField(blank=True, help_text='Template of the header\n        in Jinja2 syntax. Leave empty for using the default. The following items are passed to the context: to_user: User, event_initiator: User, documents: List[Dict[str, Any]], \n    period_start: datetime, period_end: datetime.\n        ', max_length=2048, null=True)),
-                ('generic_fields', django.contrib.postgres.fields.jsonb.JSONField(default=['status_name'], encoder=django.core.serializers.json.DjangoJSONEncoder)),
+                ('generic_fields', django.contrib.postgres.fields.jsonb.JSONField(default=['status_name'], encoder=ImprovedDjangoJSONEncoder)),
                 ('document_type', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='document.DocumentType')),
                 ('specified_role', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.CASCADE, to='users.Role')),
                 ('specified_user', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.CASCADE, to=settings.AUTH_USER_MODEL)),

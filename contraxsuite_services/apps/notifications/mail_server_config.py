@@ -28,12 +28,11 @@ from importlib import import_module
 from typing import Dict, Any
 
 from django.core.mail.backends.base import BaseEmailBackend
-from apps.notifications.app_vars import APP_VAR_EMAIL_BACKEND
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.5.0/LICENSE"
-__version__ = "1.5.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.6.0/LICENSE"
+__version__ = "1.6.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -48,6 +47,7 @@ class MailServerConfig:
         from apps.common.models import AppVar
 
         cache_vars = AppVar.get_values_by_category(AppVar.MAIL_CATEGORY)
+        from apps.notifications.app_vars import APP_VAR_EMAIL_BACKEND
         backend_class = APP_VAR_EMAIL_BACKEND.get_cached_value(cache_vars)
         ctor = MailServerConfig.import_class(backend_class)
 

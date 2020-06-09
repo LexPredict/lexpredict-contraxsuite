@@ -40,8 +40,8 @@ from apps.analyze.models import *
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.5.0/LICENSE"
-__version__ = "1.5.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.6.0/LICENSE"
+__version__ = "1.6.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -61,7 +61,8 @@ class TextUnitClassificationSerializer(apps.common.mixins.SimpleRelationSerializ
 
 class TextUnitClassificationCreateSerializer(serializers.ModelSerializer):
     text_unit_id = serializers.PrimaryKeyRelatedField(
-        source='text_unit', queryset=TextUnit.objects.all())
+        source='text_unit',
+        queryset=TextUnit.objects.all())
     user_id = serializers.SerializerMethodField()
 
     class Meta:

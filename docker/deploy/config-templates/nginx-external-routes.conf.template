@@ -15,50 +15,46 @@ location /frontend/ {
     allow all;
 }
 
-location ${DOCKER_DJANGO_BASE_PATH}media/ {
-    rewrite  ^${DOCKER_DJANGO_BASE_PATH}media/(.*) /$1 break;
-    root /data/media/;
-    auth_basic "Contraxsuite";
-    auth_basic_user_file /etc/nginx/.kibana_htpasswd;
-}
+rewrite ^/advanced(.*) ${DOCKER_DJANGO_BASE_PATH_STRIPPED}${DOLLAR}1 redirect;
 
 location ${DOCKER_DJANGO_BASE_PATH_STRIPPED} {
-    uwsgi_pass  ${DOCKER_HOST_NAME_UWSGI}:3031;
+    # workaround to start nginx, if host is unreachable
+    set ${DOLLAR}target ${DOCKER_HOST_NAME_DAPHNE}:3355;
+    proxy_pass http://${DOCKER_HOST_NAME_DAPHNE}:3355;
     uwsgi_read_timeout 300;
+
+    include /etc/nginx/${DOCKER_NGINX_CORS_CONFIG};
     include /etc/nginx/uwsgi_params;
+    try_files $uri $uri/ $uri.html =404;
 }
 
 location /api {
-    include /etc/nginx/${DOCKER_NGINX_CORS_CONFIG};
-    uwsgi_pass  ${DOCKER_HOST_NAME_UWSGI}:3031;
+    # workaround to start nginx, if host is unreachable
+    set ${DOLLAR}target ${DOCKER_HOST_NAME_DAPHNE}:3355;
+    proxy_pass http://${DOCKER_HOST_NAME_DAPHNE}:3355;
     uwsgi_read_timeout 300;
+
+    include /etc/nginx/${DOCKER_NGINX_CORS_CONFIG};
     include /etc/nginx/uwsgi_params;
 }
 
 location /rest-auth {
-    include /etc/nginx/${DOCKER_NGINX_CORS_CONFIG};
-    uwsgi_pass  ${DOCKER_HOST_NAME_UWSGI}:3031;
+    # workaround to start nginx, if host is unreachable
+    set ${DOLLAR}target ${DOCKER_HOST_NAME_DAPHNE}:3355;
+    proxy_pass http://${DOCKER_HOST_NAME_DAPHNE}:3355;
+    # uwsgi_pass ${DOLLAR}target;
     uwsgi_read_timeout 300;
+
+    include /etc/nginx/${DOCKER_NGINX_CORS_CONFIG};
     include /etc/nginx/uwsgi_params;
-}
-
-location ${DOCKER_DJANGO_BASE_PATH}static/ {
-    rewrite  ^${DOCKER_DJANGO_BASE_PATH}static/(.*) /$1 break;
-    root /contraxsuite_services/staticfiles/;
-}
-
-location /media {
-    root /data;
-    auth_basic "Contraxsuite";
-    auth_basic_user_file /etc/nginx/.kibana_htpasswd;
 }
 
 location ${DOCKER_JUPYTER_BASE_URL} {
     # workaround to start nginx, if host is unreachable
     set ${DOLLAR}target http://${DOCKER_JUPYTER_HOST_NAME}:${DOCKER_JUPYTER_PORT};
-    error_page 502 /404.html;
-
     proxy_pass ${DOLLAR}target;
+
+    error_page 502 /404.html;
 	proxy_set_header X-Forwarded-For ${DOLLAR}proxy_add_x_forwarded_for;
     proxy_set_header X-Real-IP ${DOLLAR}remote_addr;
     proxy_set_header Host ${DOLLAR}http_host;
@@ -72,6 +68,10 @@ location ${DOCKER_JUPYTER_BASE_URL} {
     auth_basic_user_file /etc/nginx/.kibana_htpasswd;
 }
 
+#location ${DOCKER_DJANGO_BASE_PATH}static/ {
+#    rewrite  ^${DOCKER_DJANGO_BASE_PATH}static/(.*) /$1 break;
+#    root /contraxsuite_services/staticfiles/;
+#}
 
 # Minio bucket for storing mlflow artifacts
 # Minio is compatible with S3 client API and requires itself to be bound to the root (/) of the server.
@@ -152,7 +152,7 @@ location /flower {
 }
 
 location /websocket/ {
-    proxy_pass http://contrax-daphne:3355/websocket/;
+    proxy_pass http://${DOCKER_HOST_NAME_DAPHNE}:3355/websocket/;
     proxy_ssl_server_name on;
     proxy_http_version 1.1;
     proxy_set_header Upgrade ${DOLLAR}http_upgrade;

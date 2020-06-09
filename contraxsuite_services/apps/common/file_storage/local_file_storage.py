@@ -37,8 +37,8 @@ from apps.common.streaming_utils import copy_data
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.5.0/LICENSE"
-__version__ = "1.5.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.6.0/LICENSE"
+__version__ = "1.6.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -54,6 +54,10 @@ class ContraxsuiteLocalFileStorage(ContraxsuiteFileStorage):
     def __init__(self) -> None:
         super().__init__()
         self.root_dir = settings.CONTRAX_FILE_STORAGE_LOCAL_ROOT_DIR
+        try:
+            self.mkdir(self.documents_path)
+        except:
+            pass
 
     @classmethod
     def sub_path_join(cls, parent_path: str, relative_path: str) -> str:

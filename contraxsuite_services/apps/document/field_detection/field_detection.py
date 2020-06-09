@@ -31,6 +31,7 @@ from django.db.models import Prefetch
 
 from apps.common.log_utils import ProcessLogger, ErrorCollectingLogger
 from apps.document.constants import FieldSpec
+from apps.document.field_detection.csv_regexps_field_detection_strategy import CsvRegexpsFieldDetectionStrategy
 from apps.document.field_detection.field_based_ml_field_detection import \
     FieldBasedMLOnlyFieldDetectionStrategy, FieldBasedMLWithUnsureCatFieldDetectionStrategy
 from apps.document.field_detection.fields_detection_abstractions import \
@@ -54,8 +55,8 @@ from apps.document.field_detection.mlflow_field_detection import MLFlowModelBase
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.5.0/LICENSE"
-__version__ = "1.5.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.6.0/LICENSE"
+__version__ = "1.6.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -72,6 +73,7 @@ _FIELD_DETECTION_STRATEGIES = [FieldBasedMLOnlyFieldDetectionStrategy(),
                                PythonCodedFieldDetectionStrategy(),
                                FieldBasedRegexpsDetectionStrategy(),
                                MLFlowModelBasedFieldDetectionStrategy(),
+                               CsvRegexpsFieldDetectionStrategy(),
                                STRATEGY_DISABLED]
 
 FIELD_DETECTION_STRATEGY_REGISTRY = {st.code: st
@@ -138,7 +140,8 @@ def detect_and_cache_field_values_for_document(log: ProcessLogger,
                                                document_initial_load: bool = False,
                                                ignore_field_codes: Set[str] = None,
                                                updated_field_codes: List[str] = None,
-                                               skip_modified_values: bool = True):
+                                               skip_modified_values: bool = True,
+                                               field_codes_to_detect: Optional[List[str]] = None):
     """
     Detects field values for a document and stores their DocumentFieldValue objects as well as Document.field_value.
     These two should always be consistent.
@@ -153,6 +156,7 @@ def detect_and_cache_field_values_for_document(log: ProcessLogger,
     :param document_initial_load
     :param updated_field_codes - if set, we search for changed and dependent fields only
     :param skip_modified_values - don't overwrite field values overwritten by user
+    :param field_codes_to_detect - optional list of fields codes - only these fields are to be detected
     :return:
     """
     import apps.document.repository.document_field_repository as dfr
@@ -211,6 +215,10 @@ def detect_and_cache_field_values_for_document(log: ProcessLogger,
             # updated_field_ids = DocumentField.objects.filter(code__in=updated_field_codes).values_list('pk', flat=True)
             skip_codes -= set(updated_field_codes)
 
+    if field_codes_to_detect:
+        all_codes = set([f.code for f in all_fields])
+        skip_codes = skip_codes.union(all_codes - set(field_codes_to_detect))
+
     if clear_old_values:
         field_repo.delete_document_field_values(document.pk,
                                                 list(skip_codes),
@@ -225,10 +233,9 @@ def detect_and_cache_field_values_for_document(log: ProcessLogger,
             field.value_detection_strategy]  # type: FieldDetectionStrategy
 
         try:
-            new_field_value_dto = field_detection_strategy.detect_field_value(log=log,
-                                                                              doc=document,
-                                                                              field=field,
-                                                                              field_code_to_value=current_field_values)
+            new_field_value_dto = field_detection_strategy.detect_field_value(
+                log=log, doc=document, field=field,
+                field_code_to_value=current_field_values)
 
             if not new_field_value_dto:
                 detecting_field_status.append(f"No new value's gotten for '{field.code}'")
@@ -256,7 +263,8 @@ def detect_and_cache_field_values_for_document(log: ProcessLogger,
         except Exception as e:
             # Additionally logging here because the further compound exception will not contain the full stack trace.
             log.error(f'Exception caught while detecting value of field {field.code} ({typed_field.type_code})',
-                      exc_info=e)
+                      exc_info=e,
+                      extra={Document.LOG_FIELD_DOC_ID, str(document.pk)})
             detection_errors.append((field.code, typed_field.type_code, e, sys.exc_info()))
 
     if save:
@@ -284,7 +292,7 @@ def detect_and_cache_field_values_for_document(log: ProcessLogger,
                               for k in current_field_values])
             msg += '.\n\nCalculation results:\n'
             msg += '\n'.join(detecting_field_status)
-            log.info(msg)
+            log.info(msg, extra={Document.LOG_FIELD_DOC_ID, str(document.pk)})
 
     if detection_errors:
         fields_str = ', '.join([f'{e[0]} ({e[1]})' for e in detection_errors])

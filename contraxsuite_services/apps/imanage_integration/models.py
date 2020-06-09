@@ -31,7 +31,7 @@ import psycopg2
 import pytds
 import requests
 from django.contrib.postgres.fields import JSONField
-from django.core.serializers.json import DjangoJSONEncoder
+from apps.common.model_utils.improved_django_json_encoder import ImprovedDjangoJSONEncoder
 from django.db import models
 from django.db.models.deletion import CASCADE
 
@@ -43,8 +43,8 @@ from apps.users.models import User
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.5.0/LICENSE"
-__version__ = "1.5.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.6.0/LICENSE"
+__version__ = "1.6.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -69,7 +69,7 @@ class IManageConfig(models.Model):
 
     auth_password = models.CharField(max_length=100, blank=True, null=True)
 
-    requests_proxies = JSONField(blank=True, null=True, encoder=DjangoJSONEncoder)
+    requests_proxies = JSONField(blank=True, null=True, encoder=ImprovedDjangoJSONEncoder)
 
     requests_verify_ssl_certs = models.BooleanField(default=True, null=False, blank=False)
 
@@ -88,7 +88,7 @@ class IManageConfig(models.Model):
     assignee_resolving_code = models.TextField(blank=True, null=True, help_text='''Python code returning assignee user 
         based on the provided iManage document data in the form of dict.''')
 
-    imanage_to_contraxsuite_field_binding = JSONField(encoder=DjangoJSONEncoder,
+    imanage_to_contraxsuite_field_binding = JSONField(encoder=ImprovedDjangoJSONEncoder,
                                                       null=True, blank=True,
                                                       help_text='''JSON mapping of iManage field codes to Contraxsuite 
                                                       field codes. Example: { "custom1": "field_code_1" }''')
@@ -97,7 +97,7 @@ class IManageConfig(models.Model):
 
     sync_frequency_minutes = models.PositiveIntegerField(default=120, null=False, blank=False)
 
-    search_request_params = JSONField(blank=True, null=True, encoder=DjangoJSONEncoder,
+    search_request_params = JSONField(blank=True, null=True, encoder=ImprovedDjangoJSONEncoder,
                                       default=search_request_params_default)
 
     class Meta:
@@ -152,7 +152,7 @@ class IManageConfig(models.Model):
                             proxies=self.requests_proxies,
                             verify=self.requests_verify_ssl_certs)
         if resp.status_code != 200:
-            raise Exception('Unable to login to iManage at {0}\nStatus code: {1}\nResponse text:\n{1}'
+            raise Exception('Unable to login to iManage at {0}\nStatus code: {1}\nResponse text:\n{2}'
                             .format(url, resp.status_code, resp.text or resp.json()))
         r_imanage_auth = resp.json()
         return r_imanage_auth["X-Auth-Token"]
@@ -194,7 +194,7 @@ class IManageDocument(models.Model):
 
     imanage_doc_number = models.CharField(max_length=1024, null=True, blank=True, db_index=True)
 
-    imanage_doc_data = JSONField(blank=True, null=True, encoder=DjangoJSONEncoder)
+    imanage_doc_data = JSONField(blank=True, null=True, encoder=ImprovedDjangoJSONEncoder)
 
     document = models.ForeignKey(Document, null=True, blank=True, on_delete=CASCADE)
 

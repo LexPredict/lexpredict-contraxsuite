@@ -25,7 +25,7 @@
 # -*- coding: utf-8 -*-
 
 # Django imports
-from django.forms import CharField
+from django.forms import CharField, Form
 from django.utils.translation import ugettext_lazy as _
 
 # Project imports
@@ -34,8 +34,8 @@ from apps.common.widgets import FriendlyPasswordInput
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.5.0/LICENSE"
-__version__ = "1.5.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.6.0/LICENSE"
+__version__ = "1.6.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -79,3 +79,10 @@ class FriendlyPasswordField(CharField):
         if value and not value.strip():
             return False
         return super().clean(value)
+
+
+class ReindexDBForm(Form):
+    header = 'Reindex Database and run VACUUM ANALYZE. Warning: this may take a while,' \
+             ' please do not do inserts/updates/deletes in DB while the task is running.'
+    reindex = checkbox_field("Run REINDEX DATABASE", initial=True)
+    vacuum = checkbox_field("Run VACUUM ANALYZE")

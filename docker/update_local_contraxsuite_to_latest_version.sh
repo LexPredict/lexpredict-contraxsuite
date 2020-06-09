@@ -8,7 +8,7 @@ echo "=== Assume Contraxsuite is configured in ./setenv_local.sh file."
 
 source ./setenv.sh
 
-if [ ! -z "${DISTR_DOCKER_IMAGE_URL}" ]; then
+if [ ! -z "${DISTR_DOCKER_IMAGE_URL}" ] && [ -z "$DOCKER_EXTERNAL_REGISTRY" ] ; then
     # Let the script exit immediately if any error occurs with pushing the image to the local repo.
     # Otherwise we can have the cluster partially working and experience errors on worker machine connections.
     set -e

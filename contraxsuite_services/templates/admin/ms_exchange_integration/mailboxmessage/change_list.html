@@ -1,0 +1,16 @@
+{% extends 'admin/change_list.html' %}
+
+{% block object-tools %}
+    <div style="display: inline-block">
+        <form action="delete_mail_messages/" method="POST">
+            {% csrf_token %}
+            <button type="submit">Delete mail messages</button>
+        </form>
+    </div>
+    <br />
+    {{ block.super }}
+{% endblock %}
+
+<script>
+
+</script>

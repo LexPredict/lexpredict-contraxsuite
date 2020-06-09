@@ -5,6 +5,20 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/jquery-confirm/3.0.3/jquery-confirm.min.css" type="text/css" />
 {% endblock %}
 
+{% block submit_buttons_bottom %}
+  {% if clone %}
+    <div class="submit-row clearfix">
+      <button type="submit" class="btn btn-high btn-info" name="_save">Clone</button>
+      <a href="{% url "admin:document_documentfield_change" object_id %}"><button class="btn btn-high" type="button">Cancel</button></a>
+    </div>
+  {% else %}
+    {{ block.super }}
+    <div class="submit-row" style="margin-top: 10px;">
+      <a href="{% url "admin:clone_document_field" object_id %}"><button class="btn btn-high btn-warning" type="button">Clone</button></a>
+    </div>
+  {% endif %}
+{% endblock %}
+
 {% block extrajs %}
   {{ block.super }}
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-cookie/1.4.1/jquery.cookie.min.js" style="text/javascrypt"></script>

@@ -1,0 +1,150 @@
+# SECURITY WARNING: keep the secret key used in production secret!
+# use django's builtin method to create a key eithe any random string
+# >>> from django.core.management.utils import get_random_secret_key
+# >>> get_random_secret_key()
+SECRET_KEY = '${DOCKER_DJANGO_SECRET_KEY}'
+
+AUTOLOGIN = False
+
+HOST_NAME = '${DOCKER_DJANGO_HOST_NAME}'
+FRONTEND_ROOT_URL = '${DOCKER_FRONTEND_ROOT_URL}'
+BASE_URL = '${DOCKER_DJANGO_BASE_PATH}'
+DEBUG_SQL = ${DOCKER_DJANGO_DEBUG_SQL}
+DEBUG_TEMPLATE = False
+DEBUG_TRACE_UPDATE_PARENT_TASK = ${DEBUG_TRACE_UPDATE_PARENT_TASK}
+
+# email backend
+#EMAIL_BACKEND = 'smtp.CustomEmailBackend'
+#EMAIL_USE_TLS = True
+#EMAIL_HOST = 'smtp.sendgrid.net'
+#EMAIL_HOST_USER = 'your-user'
+#EMAIL_HOST_PASSWORD = 'your-password'
+#EMAIL_PORT = 587
+
+EMAIL_HOST = '${DOCKER_DJANGO_EMAIL_HOST}'
+EMAIL_BACKEND = '${DOCKER_DJANGO_EMAIL_BACKEND}'
+EMAIL_USE_TLS = ${DOCKER_DJANGO_EMAIL_USE_TLS}
+EMAIL_PORT = ${DOCKER_DJANGO_EMAIL_PORT}
+EMAIL_HOST_USER = '${DOCKER_DJANGO_EMAIL_HOST_USER}'
+EMAIL_HOST_PASSWORD = '${DOCKER_DJANGO_EMAIL_HOST_PASSWORD}'
+
+
+ADMINS = (
+    ('${DOCKER_DJANGO_ADMIN_NAME}', '${DOCKER_DJANGO_ADMIN_EMAIL}')
+)
+
+DATABASES = {
+    'default': {
+        'ENGINE': 'django.db.backends.postgresql_psycopg2',
+        'NAME': '${DJANGO_CELERY_DB_NAME}',
+        'USER': '${DJANGO_CELERY_DB_USER}',
+        'PASSWORD': '${DJANGO_CELERY_DB_PASSWORD}',
+        'HOST': '${DJANGO_CELERY_DB_HOST}',
+        'PORT': '${DJANGO_CELERY_DB_PORT}',
+        'CONN_MAX_AGE': ${DJANGO_CELERY_CONN_MAX_AGE}
+    },
+}
+
+ALLOWED_HOSTS = (
+    '*'
+)
+
+INTERNAL_IPS = (
+    '127.0.0.1',
+    'localhost'
+)
+
+DEBUG = ${DOCKER_DJANGO_DEBUG}
+PIPELINE_ENABLED = False
+
+CELERY_BROKER_URL = 'amqp://${DOCKER_RABBITMQ_USER}:${DOCKER_RABBITMQ_PASSWORD}@${DOCKER_HOST_NAME_RABBITMQ}:5672/${DOCKER_RABBITMQ_VHOST}'
+CELERY_CACHE_REDIS_URL = 'redis://${DOCKER_HOST_NAME_REDIS}:6379/0'
+ELASTICSEARCH_CONFIG = {
+    'hosts': [{'host': '${DOCKER_HOST_NAME_ELASTICSEARCH}', 'port': ${DOCKER_ELASTICSEARCH_PORT}}],
+    'index': 'contraxsuite'
+}
+
+STATICFILES_DIRS = (
+    '/static',
+)
+
+MEDIA_ROOT = '/data/media'
+DATA_ROOT = '/data/data'
+
+import platform
+import sys
+
+from contraxsuite_logging import ContraxsuiteJSONFormatter
+
+DEBUG_STACK_DUMP_DIR = '/data/logs'
+
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'verbose': {
+            '()': 'contraxsuite_logging.ContraxsuiteTextFormatter',
+            'format': '%(levelname)-7s %(asctime)s | %(message)s'
+        },
+        'json': {
+            '()': 'contraxsuite_logging.ContraxsuiteJSONFormatter'
+        }
+    },
+    'handlers': {
+        'console': {
+            'level': 'DEBUG',
+            'filters': [],
+            'class': 'logging.StreamHandler',
+            'formatter': 'json',
+            'stream': sys.stdout,
+        },
+    },
+    'loggers': {
+        'apps.task.models': {
+            'handlers': ['console'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+        'apps.task.tasks': {
+            'handlers': ['console'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+        'django': {
+            'handlers': ['console'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+        'celery.app.trace': {
+            'handlers': ['console'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+        'django.db.backends': {
+            'handlers': (['console'] if DEBUG_SQL else []),  # Quiet by default!
+            'propagate': False,
+            'level': 'DEBUG' if DEBUG_SQL else 'ERROR',
+        },
+        'frontend': {
+            'handlers': ['console'],
+            'level': 'INFO',
+            'propagate': False,
+        }
+    },
+}
+
+CONTRAX_FILE_STORAGE_TYPE = 'WebDAV'
+CONTRAX_FILE_STORAGE_WEBDAV_ROOT_URL = 'http://${DOCKER_WEBDAV_SERVER_NAME}:80'
+CONTRAX_FILE_STORAGE_WEBDAV_USERNAME = '${DOCKER_WEBDAV_AUTH_USER}'
+CONTRAX_FILE_STORAGE_WEBDAV_PASSWORD = '${DOCKER_WEBDAV_AUTH_PASSWORD}'
+
+ACCOUNT_EMAIL_VERIFICATION='${DOCKER_DJANGO_ACCOUNT_EMAIL_VERIFICATION}'
+
+TIKA_SERVER_ENDPOINT = ''
+TIKA_JAR_BASE_PATH = '/contraxsuite_services/jars'
+TIKA_PARSE_MODE = 'plain'
+
+MLFLOW_PIP_ENV = '/contraxsuite_services/venv'
+MLFLOW_S3_ENDPOINT_URL = '${MLFLOW_S3_ENDPOINT_URL}' or None
+AWS_ACCESS_KEY_ID = '${MLFLOW_AWS_ACCESS_KEY}'
+AWS_SECRET_ACCESS_KEY = '${MLFLOW_AWS_SECRET_KEY}'

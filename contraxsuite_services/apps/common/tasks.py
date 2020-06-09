@@ -24,16 +24,20 @@
 """
 # -*- coding: utf-8 -*-
 
+from django.conf import settings
+from django.db import connection
+
 # Project imports
 import task_names
 from apps.celery import app
 from apps.common.models import MethodStats, MethodStatsCollectorPlugin
 from apps.common.decorators import collect_stats, decorate
+from apps.task.tasks import BaseTask
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.5.0/LICENSE"
-__version__ = "1.5.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.6.0/LICENSE"
+__version__ = "1.6.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -53,3 +57,26 @@ def init_method_stats_collectors(_celery_task):
     """
     for instance_values in MethodStatsCollectorPlugin.objects.values():
         decorate(collect_stats, **instance_values)
+
+
+class ReindexDB(BaseTask):
+    """
+    Reindex DB and run VACUUM ANALYZE
+    """
+    name = 'Reindex DB'
+    priority = 9
+
+    def process(self, **kwargs):
+        do_reindex = kwargs.get('reindex')
+        do_vacuum = kwargs.get('vacuum')
+
+        if do_reindex:
+            with connection.cursor() as cursor:
+                cursor.execute('REINDEX DATABASE {};'.format(settings.DATABASES['default']['NAME']))
+
+        if do_vacuum:
+            with connection.cursor() as cursor:
+                cursor.execute('VACUUM ANALYZE;')
+
+
+app.register_task(ReindexDB())

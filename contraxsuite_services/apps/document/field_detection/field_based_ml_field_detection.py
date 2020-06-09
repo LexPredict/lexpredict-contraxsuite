@@ -46,8 +46,8 @@ from apps.document.repository.dto import FieldValueDTO
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.5.0/LICENSE"
-__version__ = "1.5.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.6.0/LICENSE"
+__version__ = "1.6.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -316,6 +316,8 @@ class FieldBasedMLOnlyFieldDetectionStrategy(FieldDetectionStrategy):
                            doc: Document,
                            field: DocumentField,
                            field_code_to_value: Dict[str, Any]) -> Optional[FieldValueDTO]:
+        log.debug('detect_field_value: field_based_ml_field_detection, ' +
+                  f'field {field.code}({field.pk}), document #{doc.pk}')
         dto = cls.maybe_detect_with_stop_words(field, field_code_to_value)
         if dto is not None:
             return dto

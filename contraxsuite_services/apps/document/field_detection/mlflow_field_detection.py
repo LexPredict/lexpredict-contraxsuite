@@ -40,8 +40,8 @@ from apps.mlflow.mlflow_model_manager import MLFlowModelManager
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.5.0/LICENSE"
-__version__ = "1.5.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.6.0/LICENSE"
+__version__ = "1.6.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -71,8 +71,8 @@ class MLFlowModelBasedFieldDetectionStrategy(FieldDetectionStrategy):
             return None
         except Exception as e:
             from apps.common.errors import render_error
-            render_error(f'MLFlow model has thrown exception when testing '
-                         f'(input = 1-row DataFrame with text = "Hello World")', e)
+            render_error('MLFlow model has thrown exception when testing '
+                         '(input = 1-row DataFrame with text = "Hello World")', e)
 
     @classmethod
     def train_document_field_detector_model(cls,
@@ -91,6 +91,8 @@ class MLFlowModelBasedFieldDetectionStrategy(FieldDetectionStrategy):
         typed_field = TypedField.by(field)  # type: TypedField
 
         if field.mlflow_detect_on_document_level:
+            log.debug('detect_field_value: mlflow_field_detection on doc level, ' +
+                      f'field {field.code}({field.pk}), document #{doc.pk}')
             text = doc.text
             model_input = dict(field_code_to_value)
             model_input['text'] = text
@@ -114,9 +116,12 @@ class MLFlowModelBasedFieldDetectionStrategy(FieldDetectionStrategy):
             .filter(document=doc) \
             .filter(unit_type=field.text_unit_type) \
             .select_related('textunittext') \
-            .order_by('location_start', 'pk')
+            .order_by('location_start', 'pk') \
+            .defer('textunittext__text_tsvector')
 
         units_counted = 0
+        log.debug('detect_field_value: mlflow_field_detection on text unit level, ' +
+                  f'field {field.code}({field.pk}), document #{doc.pk}')
         for text_unit in qs_text_units.iterator():
             if field.detect_limit_count:
                 units_counted = FieldDetectionStrategy.update_units_counted(

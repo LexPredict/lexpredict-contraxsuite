@@ -41,8 +41,8 @@ from apps.common.utils import fast_uuid
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.5.0/LICENSE"
-__version__ = "1.5.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.6.0/LICENSE"
+__version__ = "1.6.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -110,25 +110,51 @@ def lpush_or_pop(key, value, limit):
 
 def push(key, value, pickle_value=True):
     """
-    Push pickled value to redis store
+    Push pickled key value
     """
     if pickle_value:
         value = pickle.dumps(value)
     return r.set(key, value)
 
 
-def pop(key, unpickle_value=True, delete=True):
+def pop(key, unpickle_value=True):
     """
-    Get unpickled value to redis store, delete it if needed
+    Get unpickled value to redis store
     """
     value = r.get(key)
     if value is None:
         return None
     if unpickle_value:
         value = unpickle(value)
-    if delete:
-        r.delete(key)
     return value
+
+
+def popd(key, unpickle_value=True):
+    """
+    Get unpickled key value and delete it
+    """
+    value = pop(key, unpickle_value=unpickle_value)
+    r.delete(key)
+    return value
+
+
+def exists(key):
+    """
+    Check a key exists
+    """
+    return bool(r.exists(key))
+
+
+def list_keys(pattern='*', as_list=True, sort=True):
+    """
+    List keys by pattern
+    """
+    res = r.scan_iter(pattern)
+    if as_list:
+        res = list(res)
+        if sort:
+            res = sorted(res)
+    return res
 
 
 @lock
@@ -147,7 +173,7 @@ def push_or_pop(key, value,
     if (batch_size is not None and len(existing_keys) >= batch_size - 1) or \
             (batch_time is not None and time_cached_sec is not None
              and time_now_sec - float(time_cached_sec) >= batch_time):
-        res = [pop(k) for k in existing_keys]
+        res = [popd(k) for k in existing_keys]
         res.append(value)
         r.delete(batch_time_key)
         resume = True

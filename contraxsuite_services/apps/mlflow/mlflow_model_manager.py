@@ -46,14 +46,12 @@ from mlflow.tracking.artifact_utils import _download_artifact_from_uri
 
 from apps.common.processes import start_process
 from apps.mlflow import mlflow_socket_server_script
-from apps.mlflow.app_vars import MLFLOW_MODEL_SERVER_STARTUP_TIMEOUT_SEC, MLFLOW_PREDICT_TIMEOUT_SEC, \
-    MLFLOW_MODEL_SERVER_IDLE_TIMEOUT_SEC
 from apps.mlflow.mlflow_model_client import predict_on_server
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.5.0/LICENSE"
-__version__ = "1.5.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.6.0/LICENSE"
+__version__ = "1.6.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -154,6 +152,8 @@ class MLFlowModelManager:
         os.environ[MLFLOW_S3_ENDPOINT_URL] = settings.MLFLOW_S3_ENDPOINT_URL
 
     def _update_app_vars(self):
+        from apps.mlflow.app_vars import MLFLOW_MODEL_SERVER_STARTUP_TIMEOUT_SEC, MLFLOW_PREDICT_TIMEOUT_SEC, \
+            MLFLOW_MODEL_SERVER_IDLE_TIMEOUT_SEC
         self.predict_timeout = MLFLOW_PREDICT_TIMEOUT_SEC.val
         self.server_init_timeout = MLFLOW_MODEL_SERVER_STARTUP_TIMEOUT_SEC.val
         self.server_idle_timeout = MLFLOW_MODEL_SERVER_IDLE_TIMEOUT_SEC.val

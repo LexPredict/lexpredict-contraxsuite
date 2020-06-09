@@ -37,7 +37,6 @@ from apps.common.collection_utils import chunks
 from apps.common.log_utils import ProcessLogger
 from apps.document.models import Document, DocumentType
 from apps.document.constants import FieldSpec
-from apps.rawdb.app_vars import APP_VAR_DISABLE_RAW_DB_CACHING
 from apps.rawdb.constants import DOC_NUM_PER_SUB_TASK, DOC_NUM_PER_MAIN_TASK
 from apps.rawdb.field_value_tables import (
     adapt_table_structure)
@@ -49,8 +48,8 @@ import task_names
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.5.0/LICENSE"
-__version__ = "1.5.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.6.0/LICENSE"
+__version__ = "1.6.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -172,6 +171,7 @@ def manual_reindex(task: ExtendedTask,
                    document_type_code: str = None,
                    force: bool = False,
                    project_id: Optional[int] = None):
+    from apps.rawdb.app_vars import APP_VAR_DISABLE_RAW_DB_CACHING
     if APP_VAR_DISABLE_RAW_DB_CACHING.val:
         task.log_info('Document caching to raw tables is disabled in Commons / App Vars')
         return
@@ -209,6 +209,7 @@ def _reindex_document_ids_packets(task: ExtendedTask, ids_packets: Generator[Lis
              autoretry_for=(SoftTimeLimitExceeded, InterfaceError, OperationalError,),
              max_retries=3)
 def reindex_all_project_documents(task: ExtendedTask, project_pk: Any) -> None:
+    from apps.rawdb.app_vars import APP_VAR_DISABLE_RAW_DB_CACHING
     if APP_VAR_DISABLE_RAW_DB_CACHING.val:
         task.log_info('Document caching to raw tables is disabled in Commons / App Vars')
         return
@@ -225,6 +226,7 @@ def reindex_all_project_documents(task: ExtendedTask, project_pk: Any) -> None:
              autoretry_for=(SoftTimeLimitExceeded, InterfaceError, OperationalError,),
              max_retries=3)
 def reindex_assignee_for_all_documents_in_system(task: ExtendedTask, assignee_pk: Any) -> None:
+    from apps.rawdb.app_vars import APP_VAR_DISABLE_RAW_DB_CACHING
     if APP_VAR_DISABLE_RAW_DB_CACHING.val:
         task.log_info('Document caching to raw tables is disabled in Commons / App Vars')
         return
@@ -242,6 +244,7 @@ def reindex_assignee_for_all_documents_in_system(task: ExtendedTask, assignee_pk
              autoretry_for=(SoftTimeLimitExceeded, InterfaceError, OperationalError,),
              max_retries=3)
 def reindex_status_name_for_all_documents_in_system(task: ExtendedTask, status_pk: Any) -> None:
+    from apps.rawdb.app_vars import APP_VAR_DISABLE_RAW_DB_CACHING
     if APP_VAR_DISABLE_RAW_DB_CACHING.val:
         task.log_info('Document caching to raw tables is disabled in Commons / App Vars')
         return
@@ -271,6 +274,7 @@ def any_other_reindex_task(self_task_id, document_type_code: str, project_id: Op
 def auto_reindex_not_tracked(task: ExtendedTask,
                              document_type_code: str = None,
                              force: bool = False):
+    from apps.rawdb.app_vars import APP_VAR_DISABLE_RAW_DB_CACHING
     if APP_VAR_DISABLE_RAW_DB_CACHING.val:
         return
     document_types = [DocumentType.objects.get(code=document_type_code)] \
@@ -287,7 +291,8 @@ def auto_reindex_not_tracked(task: ExtendedTask,
                           f'for {document_type}{force_fmt}')
             call_task_func(manual_reindex,
                            (document_type.code, False),
-                           task_model.user_id)
+                           task_model.user_id,
+                           caller_task=task)
         else:
             if there_are_non_indexed_docs_not_planned_to_index(document_type, log) \
                     and not any_other_reindex_task(task.request.id, document_type.code, None).exists():
@@ -382,7 +387,9 @@ def adapt_tables_and_reindex(task: ExtendedTask,
             task.run_sub_tasks('Reindex set of documents', cache_document_fields_for_doc_ids_tracked, args)
 
 
-def cache_document_fields_for_doc_ids(task: ExtendedTask, doc_ids: Iterable, changed_by_user_id: int = None,
+def cache_document_fields_for_doc_ids(task: ExtendedTask,
+                                      doc_ids: Iterable,
+                                      changed_by_user_id: int = None,
                                       cache_system_fields: FieldSpec = True,
                                       cache_generic_fields: FieldSpec = True,
                                       cache_user_fields: bool = True):
@@ -407,7 +414,8 @@ def cache_document_fields_for_doc_ids(task: ExtendedTask, doc_ids: Iterable, cha
              retry_backoff=True,
              autoretry_for=(SoftTimeLimitExceeded, InterfaceError, OperationalError,),
              max_retries=3)
-def cache_document_fields_for_doc_ids_not_tracked(task: ExtendedTask, doc_ids: List,
+def cache_document_fields_for_doc_ids_not_tracked(task: ExtendedTask,
+                                                  doc_ids: List,
                                                   changed_by_user_id: int = None,
                                                   cache_system_fields: FieldSpec = True,
                                                   cache_generic_fields: FieldSpec = True,
@@ -429,13 +437,15 @@ def cache_document_fields_for_doc_ids_not_tracked(task: ExtendedTask, doc_ids: L
              retry_backoff=True,
              autoretry_for=(SoftTimeLimitExceeded, InterfaceError, OperationalError,),
              max_retries=3)
-def cache_document_fields_for_doc_ids_tracked(task: ExtendedTask, doc_ids: List, changed_by_user_id: int = None,
+def cache_document_fields_for_doc_ids_tracked(task: ExtendedTask,
+                                              doc_ids: List,
+                                              changed_by_user_id: int = None,
                                               cache_system_fields: FieldSpec = True,
                                               cache_generic_fields: FieldSpec = True,
                                               cache_user_fields: bool = True):
     """
     Cache document fields in a loop, not parallel.
-    "Tracked" - means if it is startedfrom apps.rawdb.field_value_tables import cache_document_fields
+    "Tracked" - means if it is started from apps.rawdb.field_value_tables import cache_document_fields
     """
     cache_document_fields_for_doc_ids(task, doc_ids, changed_by_user_id,
                                       cache_system_fields=cache_system_fields,
@@ -451,7 +461,9 @@ def cache_document_fields_for_doc_ids_tracked(task: ExtendedTask, doc_ids: List,
              retry_backoff=True,
              autoretry_for=(SoftTimeLimitExceeded, InterfaceError, OperationalError,),
              max_retries=3)
-def index_documents(task: ExtendedTask, doc_ids: List, changed_by_user_id,
+def index_documents(task: ExtendedTask,
+                    doc_ids: List,
+                    changed_by_user_id: int = None,
                     cache_system_fields: FieldSpec = True,
                     cache_generic_fields: FieldSpec = True,
                     cache_user_fields: bool = True):
@@ -464,7 +476,8 @@ def index_documents(task: ExtendedTask, doc_ids: List, changed_by_user_id,
     task.run_sub_tasks('Reindex documents', cache_document_fields_for_doc_ids_tracked, args)
 
 
-def plan_reindex_tasks_in_chunks(all_doc_ids: Iterable, changed_by_user_id: int,
+def plan_reindex_tasks_in_chunks(all_doc_ids: Iterable,
+                                 changed_by_user_id: int = None,
                                  cache_system_fields: FieldSpec = True,
                                  cache_generic_fields: FieldSpec = True,
                                  cache_user_fields: bool = True):

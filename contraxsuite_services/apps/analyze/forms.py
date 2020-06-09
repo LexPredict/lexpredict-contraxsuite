@@ -31,14 +31,14 @@ from django.core.validators import MinValueValidator, MaxValueValidator
 # Project imports
 from apps.analyze.ml.features import DocumentFeatures
 from apps.analyze.models import DocumentClassifier, TextUnitClassifier, \
-    DocumentClassification, TextUnitClassification
+    DocumentClassification, TextUnitClassification, TextUnitTransformer, DocumentTransformer
 from apps.common.forms import checkbox_field
 from apps.project.models import Project
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.5.0/LICENSE"
-__version__ = "1.5.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.6.0/LICENSE"
+__version__ = "1.6.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -47,17 +47,20 @@ class TrainDocumentDoc2VecTaskForm(forms.Form):
     header = 'Train doc2vec model from Document queryset.'
 
     source = forms.CharField(initial='document', widget=forms.HiddenInput())
+    project = forms.ModelMultipleChoiceField(
+        queryset=Project.objects.all().order_by('-pk'),
+        widget=forms.SelectMultiple(
+            attrs={'class': 'chosen compact'}),
+        required=False)
+
     transformer_name = forms.CharField(max_length=200, required=False)
     vector_size = forms.IntegerField(initial=100, required=False)
     window = forms.IntegerField(initial=10, required=False)
     min_count = forms.IntegerField(initial=10, required=False)
     dm = forms.IntegerField(initial=1, required=False, validators=(MinValueValidator(0),
                                                                    MaxValueValidator(1)))
-    project = forms.ModelMultipleChoiceField(
-        queryset=Project.objects.all(),
-        widget=forms.SelectMultiple(
-            attrs={'class': 'chosen compact'}),
-        required=False)
+    build_vectors = forms.BooleanField(initial=True, required=False,
+                                       help_text='Build and store feature vectors')
 
     def clean(self):
         cleaned_data = super().clean()
@@ -75,6 +78,61 @@ class TrainTextUnitDoc2VecTaskForm(TrainDocumentDoc2VecTaskForm):
                                        required=True)
 
 
+build_features_kwargs = dict(
+    label='Data Source',
+    widget=forms.CheckboxInput(attrs={
+        'class': 'bt-switch',
+        'data-on-text': 'Document',
+        'data-off-text': 'Text Unit',
+        'data-on-color': 'info',
+        'data-off-color': 'success',
+        'data-size': 'small'}),
+    initial=True,
+    required=False,
+    help_text='Show advanced options.')
+
+
+class BuildFeatureVectorsTaskForm(forms.Form):
+    header = 'Build doc2vec feature vectors.'
+
+    source_select = forms.BooleanField(**build_features_kwargs)
+
+    project = forms.ModelMultipleChoiceField(
+        queryset=Project.objects.all().order_by('-pk'),
+        widget=forms.SelectMultiple(attrs={'class': 'chosen compact'}),
+        required=False,
+        label='Restrict to projects')
+
+    txt_unit_type = forms.ChoiceField(
+        choices=[('sentence', 'sentence'), ('paragraph', 'paragraph')],
+        required=True,
+        initial='sentence',
+        help_text='Text Unit type.')
+
+    delete_existing = forms.BooleanField(
+        required=True,
+        initial=True,
+        help_text='Delete existing vectors')
+
+    field_order = ['project', 'source_select', 'doc_transformer',
+                   'txt_unit_type', 'txt_transformer', 'delete_existing']
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        doc_transformers = DocumentTransformer.objects.order_by('-pk').values_list('pk', 'name')
+        self.fields['doc_transformer'] = forms.ChoiceField(
+            choices=[(pk, f'#{pk} {name}') for pk, name in list(doc_transformers)],
+            required=True,
+            help_text='Document Transformer trained model')
+
+        txt_transformers = TextUnitTransformer.objects.order_by('-pk').values_list('pk', 'name')
+        self.fields['txt_transformer'] = forms.ChoiceField(
+            choices=[(pk, f'#{pk} {name}') for pk, name in list(txt_transformers)],
+            required=True,
+            help_text='Text Unit Transformer trained model')
+
+
 class BaseRunClassifierForm(forms.Form):
     min_confidence = forms.IntegerField(
         min_value=0,
@@ -84,11 +142,19 @@ class BaseRunClassifierForm(forms.Form):
         help_text='Store values with confidence greater than (%).')
     delete_suggestions = checkbox_field(
         "Delete ClassifierSuggestions of Classifier specified above.")
-    project = forms.ModelChoiceField(queryset=Project.objects.order_by('-pk'),
-                                     widget=forms.widgets.Select(attrs={'class': 'chosen'}),
-                                     required=True,
-                                     label='Restrict to project')
-    field_order = ['classifier', 'project', 'min_confidence', 'delete_suggestions']
+    project = forms.ModelMultipleChoiceField(
+        queryset=Project.objects.all().order_by('-pk'),
+        widget=forms.SelectMultiple(
+            attrs={'class': 'chosen compact'}),
+        required=False,
+        label='Restrict to project')
+    project_name_filter = forms.CharField(
+        max_length=100,
+        required=False,
+        help_text='Project name filter as an alternative to "Project" option. Use "%" as a wildcard symbol.')
+
+    field_order = ['classifier', 'project', 'project_name_filter',
+                   'min_confidence', 'delete_suggestions']
 
 
 class RunTextUnitClassifierForm(BaseRunClassifierForm):
@@ -109,7 +175,7 @@ class RunDocumentClassifierForm(BaseRunClassifierForm):
     header = 'Classify Documents using an existing Classifier.'
     target = forms.CharField(max_length=20, initial='document', widget=forms.HiddenInput())
     classifier = forms.ModelChoiceField(
-        queryset=DocumentClassifier.objects.filter(is_active=True),
+        queryset=DocumentClassifier.objects.filter(is_active=True).order_by('name'),
         widget=forms.widgets.Select(attrs={'class': 'chosen'}),
         required=True)
 
@@ -249,11 +315,15 @@ class BaseTrainClassifierForm(forms.Form):
         "Use TF-IDF to normalize data")
     delete_classifier = checkbox_field(
         "Delete existing Classifiers of class name specified above.")
-    project = forms.ModelChoiceField(
-        queryset=Project.objects.order_by('-pk'),
-        widget=forms.widgets.Select(attrs={'class': 'chosen'}),
-        required=True,
+    project = forms.ModelMultipleChoiceField(
+        queryset=Project.objects.all().order_by('-pk'),
+        widget=forms.SelectMultiple(attrs={'class': 'chosen compact'}),
+        required=False,
         label='Restrict to project')
+    project_name_filter = forms.CharField(
+        max_length=100,
+        required=False,
+        help_text='Project name filter as an alternative to "Project" option. Use "%" as a wildcard symbol.')
     classify_by = forms.MultipleChoiceField(
         widget=forms.SelectMultiple(attrs={'class': 'chosen'}),
         choices=[(i, i) for i in DocumentFeatures.source_fields],
@@ -274,7 +344,7 @@ class BaseTrainClassifierForm(forms.Form):
         required=True,
         initial='sentence',
         help_text='Text Unit type.')
-    field_order = ['project', 'unit_type', 'algorithm', 'use_tfidf', 'class_name',
+    field_order = ['project', 'project_name_filter', 'unit_type', 'algorithm', 'use_tfidf', 'class_name',
                    'classify_by', 'classifier_name', 'metric_pos_label', 'delete_classifier']
 
     def __init__(self, *args, **kwargs):

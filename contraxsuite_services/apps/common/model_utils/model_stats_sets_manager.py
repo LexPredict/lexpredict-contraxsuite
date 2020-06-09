@@ -33,8 +33,8 @@ from apps.common.models import MethodStatsCollectorPlugin, MethodStats
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.5.0/LICENSE"
-__version__ = "1.5.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.6.0/LICENSE"
+__version__ = "1.6.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -56,7 +56,7 @@ class ModelStatsSetsManager:
         methods = [func for func in dir(cls_obj)
                    if callable(getattr(cls_obj, func))
                    and not func.startswith('_')
-                   and not func in ModelStatsSetsManager.deprecated_methods]
+                   and func not in ModelStatsSetsManager.deprecated_methods]
         return methods
 
     @staticmethod
@@ -79,6 +79,10 @@ class ModelStatsSetsManager:
 
         path = 'apps.document.field_detection.regexps_field_detection'
         cls = ['RegexpsOnlyFieldDetectionStrategy', 'FieldBasedRegexpsDetectionStrategy']
+        methods += [f'{path}.{c}.detect_field_value' for c in cls]
+
+        path = 'apps.document.field_detection.csv_regexps_field_detection_strategy'
+        cls = ['CsvRegexpsFieldDetectionStrategy']
         methods += [f'{path}.{c}.detect_field_value' for c in cls]
         return methods
 

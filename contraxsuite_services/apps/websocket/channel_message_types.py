@@ -27,8 +27,8 @@
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.5.0/LICENSE"
-__version__ = "1.5.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.6.0/LICENSE"
+__version__ = "1.6.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -40,3 +40,6 @@ CHANNEL_MSG_TYPE_FIELDS_UPDATED = 'fields_updated'
 CHANNEL_MSG_TYPE_FIELD_VALUE_SAVED = 'field_value_saved'
 CHANNEL_MSG_TYPE_FIELD_ANNOTATION_SAVED = 'field_annotation_saved'
 CHANNEL_MSG_TYPE_FIELD_ANNOTATION_DELETED = 'field_annotation_deleted'
+CHANNEL_MSG_TYPE_ACTIVE_UPLOAD_SESSIONS = 'active_upload_sessions'
+CHANNEL_MSG_TYPE_CANCELLED_UPLOAD_SESSION = 'cancelled_upload_session'
+CHANNEL_MSG_TYPE_FAILED_LOAD_DOCUMENT = 'failed_load_document'

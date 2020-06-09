@@ -25,14 +25,14 @@
 # -*- coding: utf-8 -*-
 
 from django.db import models
-from django.db.models.deletion import CASCADE
+from django.db.models.deletion import CASCADE, DO_NOTHING
 from django.db.models.signals import post_save, pre_delete, post_delete
 from django.dispatch import receiver
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.5.0/LICENSE"
-__version__ = "1.5.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.6.0/LICENSE"
+__version__ = "1.6.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -42,10 +42,23 @@ class Usage(models.Model):
     Base usage model
     """
     text_unit = models.ForeignKey('document.TextUnit', db_index=True, on_delete=CASCADE)
+    document = models.ForeignKey('document.Document', null=True, blank=True, db_index=True, on_delete=CASCADE)
+    # document_name = models.CharField(max_length=1024, db_index=True, null=True)
+    project = models.ForeignKey('project.Project', null=True, blank=True, db_index=True, on_delete=CASCADE)
+    # project_name = models.CharField(max_length=100, db_index=True, null=True)
     count = models.IntegerField(null=False, default=0, db_index=True)
 
     class Meta:
         abstract = True
+
+
+class ProjectUsage(models.Model):
+    project = models.ForeignKey('project.Project', db_index=True, on_delete=DO_NOTHING)
+    count = models.IntegerField(null=False, default=0, db_index=True)
+
+    class Meta:
+        abstract = True
+        managed = False
 
 
 class DocumentUsage(models.Model):
@@ -143,6 +156,12 @@ class DocumentTermUsage(DocumentUsage):
             .format(self.term, self.document, self.count)
 
 
+class ProjectTermUsage(ProjectUsage):
+    # to be filled with a trigger
+
+    term = models.OneToOneField(Term, db_index=True, on_delete=DO_NOTHING, primary_key=True)
+
+
 class GeoEntity(models.Model):
     """
     Entity, e.g., geographic or political
@@ -209,6 +228,12 @@ class GeoEntityUsage(Usage):
             .format(self.entity, self.text_unit, self.count)
 
 
+class ProjectGeoEntityUsage(ProjectUsage):
+    # to be filled with a trigger
+
+    entity = models.OneToOneField(GeoEntity, db_index=True, on_delete=DO_NOTHING, primary_key=True)
+
+
 class GeoAliasUsage(Usage):
     """
     Geo Alias usage
@@ -265,6 +290,12 @@ class PartyUsage(Usage):
             .format(self.party, self.role, self.text_unit)
 
 
+class ProjectPartyUsage(ProjectUsage):
+    # to be filled with a trigger
+
+    party = models.OneToOneField(Party, db_index=True, on_delete=DO_NOTHING, primary_key=True)
+
+
 class DateUsage(Usage):
     """
     Date usage
@@ -309,6 +340,29 @@ class DefinitionUsage(Usage):
     def __str__(self):
         return "DefinitionUsage (definition={0}, text_unit={1})" \
             .format(self.definition, self.text_unit)
+
+
+class DocumentDefinitionUsage(DocumentUsage):
+    """
+    Definition usage
+    """
+    definition = models.TextField(db_index=True)
+
+    class Meta:
+        unique_together = (("document", "definition"),)
+        # Warning: ordering on non-indexed fields or on multiple fields in joined tables
+        # catastrophically slows down queries on large tables
+        ordering = ('-count',)
+
+    def __str__(self):
+        return "DefinitionUsage (definition={0}, document={1})" \
+            .format(self.definition, self.document)
+
+
+class ProjectDefinitionUsage(ProjectUsage):
+    # to be filled with a trigger
+
+    definition = models.TextField(db_index=True, unique=True, primary_key=True)
 
 
 class CopyrightUsage(Usage):
@@ -442,6 +496,7 @@ class AmountUsage(BaseAmountUsage):
     """
     Amount usage
     """
+
     def __str__(self):
         return "AmountUsage (amount={})" \
             .format(self.amount)

@@ -37,8 +37,8 @@ from apps.document.repository.dto import FieldValueDTO
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.5.0/LICENSE"
-__version__ = "1.5.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.6.0/LICENSE"
+__version__ = "1.6.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -83,6 +83,8 @@ class PythonCodedFieldDetectionStrategy(FieldDetectionStrategy):
                                f'for fields of type {python_coded_field.type} and field {field.code} '
                                f'is of type {typed_field.type_code}')
 
+        log.debug('detect_field_value: python_coded_field_detection, ' +
+                  f'field {field.code}({field.pk}), document #{doc.pk}')
         field_value_dto = python_coded_field.get_value(log=log, field=field, doc=doc,
                                                        cur_field_code_to_value=field_code_to_value)
         if not typed_field.is_json_field_value_ok(field_value_dto.field_value):

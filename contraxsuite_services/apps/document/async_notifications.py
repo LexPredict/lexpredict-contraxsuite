@@ -39,8 +39,8 @@ from apps.websocket.websockets import Websockets
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.5.0/LICENSE"
-__version__ = "1.5.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.6.0/LICENSE"
+__version__ = "1.6.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -67,6 +67,8 @@ def _get_user_dto(instance):
 
 
 def _notify_field_value_saved(instance: FieldValue, deleted=False):
+    if not instance.document.processed:
+        return
     try:
         field_value = {'document': instance.document_id,
                        'project_id': instance.document.project_id,
@@ -96,6 +98,8 @@ def notify_field_value_deleted(instance: FieldValue):
 
 
 def notify_field_annotation_saved(instance: FieldAnnotation):
+    if not instance.document.processed:
+        return
     message = ChannelMessage(message_types.CHANNEL_MSG_TYPE_FIELD_ANNOTATION_SAVED,
                              {'annotation': _annotation_to_dto(instance),
                               'user': _get_user_dto(instance)})
@@ -103,6 +107,8 @@ def notify_field_annotation_saved(instance: FieldAnnotation):
 
 
 def notify_field_annotation_deleted(instance: FieldAnnotation):
+    if not instance.document.processed:
+        return
     try:
         message = ChannelMessage(message_types.CHANNEL_MSG_TYPE_FIELD_ANNOTATION_DELETED,
                                  {'annotation': _annotation_to_dto(instance),

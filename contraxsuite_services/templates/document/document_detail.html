@@ -25,6 +25,8 @@
 
 {% block page_header %}Document Detail{% endblock %}
 
+{% block project_selection %}{% endblock %}
+
 {% block content %}
   <div>
     <a class="btn-u btn-sm" id="button_view_raw_document"
@@ -150,12 +152,11 @@
       <div class="tab-pane clearfix active" id="tab-1">
         <div class="pull-right header-search-form highlight-container">
           <div class="input-group">
-            <span class="input-group-btn">
-              <button class="btn btn-warning" type="button">Highlight</button>
-            </span>
+<!--            <span class="input-group-btn">-->
+<!--              <button class="btn btn-warning" type="button">Highlight</button>-->
+<!--            </span>-->
             <input type="text" class="form-control" id="highlight_term" name="highlight_term"
-                   value="{{ highlight|default:"" }}"
-                   placeholder="Term">
+                   placeholder="Highlight terms" value="{{ highlight|default:"" }}" >
           </div>
         </div>
         <div class="pull-right grid-controls">
@@ -392,6 +393,7 @@
       <li><a data-toggle="tab" href="#tab-32">Clusters<span class="badge badge-s clusters-badge"></span></a></li>
       <li><a data-toggle="tab" href="#tab-33">Document Similarity<span class="badge badge-s similarity-badge"></span></a></li>
       <li><a data-toggle="tab" href="#tab-34">Extracted Tables<span class="badge badge-s tables-badge">{{ document.metadata.tables|length }}</span></a></li>
+      <li><a data-toggle="tab" href="#tab-35">Document Log<span class="badge badge-s tables-badge"></span></a></li>
     </ul>
 
     <div class="tab-content">
@@ -442,6 +444,10 @@
         {% include 'document/_document_tables.html' %}
       </div>
 
+      <div class="tab-pane clearfix" id="tab-35">
+        {% include 'document/_document_tasks.html' %}
+      </div>
+
    </div>
   </div>
 
@@ -459,6 +465,14 @@
   {% include "document/_document_property_popup_js.html" %}
 
   <script type="text/javascript">
+    var draw_patched_grid = function (selector, datafields, columns, server_pagination,
+                           custom_source_data, custom_grid_options) {
+        columns.records = [];
+        draw_grid(selector, datafields, columns, server_pagination,
+                  custom_source_data, custom_grid_options);
+        window.renderedGrid = $(selector);
+        // var row = grid.jqxGrid('getrowdata', row_number);
+    }
 
     $(document).ready(function () {
 
@@ -564,7 +578,7 @@
         data: {'document_pk': {{ document.pk }} },
         badgeClass: 'text-units-badge'
       };
-      draw_grid(".jqxgrid-text-units", text_units_datafields, text_units_columns, true, text_units_custom_source_data);
+      draw_patched_grid(".jqxgrid-text-units", text_units_datafields, text_units_columns, true, text_units_custom_source_data);
 
       // Parties table
       var parties_datafields = [
@@ -616,7 +630,7 @@
         data: { 'document_pk': {{ document.pk }} },
         badgeClass: 'parties-badge'
       };
-      draw_grid(".jqxgrid-top-party-usages", parties_datafields, parties_columns, false,
+      draw_patched_grid(".jqxgrid-top-party-usages", parties_datafields, parties_columns, false,
           parties_custom_source_data, text_units_nested_grid_data('party_data'));
 
       // Top Term Usages table
@@ -700,7 +714,7 @@
           url: '{% url "extract:top-document-term-usage-list" %}',
           data: { 'document_pk': {{ document.pk }}, 'term_pk': record.term_id }
         };
-        draw_grid(grid, datafields, columns, false, custom_source_data, custom_grid_options);
+        draw_patched_grid(grid, datafields, columns, false, custom_source_data, custom_grid_options);
       };
       var terms_custom_grid_opts = {
         rowdetails: true,
@@ -711,7 +725,7 @@
           rowdetailshidden: true
         }
       };
-      draw_grid(".jqxgrid-top-term-usages", terms_datafields, terms_columns, false,
+      draw_patched_grid(".jqxgrid-top-term-usages", terms_datafields, terms_columns, false,
           terms_custom_source_data, terms_custom_grid_opts);
 
       // Top Geo Entity Usages table
@@ -797,7 +811,7 @@
           data: { 'entity_pk': record.entity_id,
                   'document_pk': '{{ object.pk }}' }
         };
-        draw_grid(grid, datafields, columns, true, custom_source_data, custom_grid_options);
+        draw_patched_grid(grid, datafields, columns, true, custom_source_data, custom_grid_options);
       };
       var entities_custom_grid_opts = {
         rowdetails: true,
@@ -808,7 +822,7 @@
           rowdetailshidden: true
         }
       };
-      draw_grid(".jqxgrid-top-entity-usages", entities_datafields, entities_columns, true,
+      draw_patched_grid(".jqxgrid-top-entity-usages", entities_datafields, entities_columns, true,
           entities_custom_source_data, entities_custom_grid_opts);
 
       // Notes table
@@ -904,7 +918,7 @@
           rowdetailshidden: true
         }
       };
-      draw_grid(".jqxgrid-notes", notes_datafields, notes_columns, false, notes_custom_source_data, notes_custom_grid_options);
+      draw_patched_grid(".jqxgrid-notes", notes_datafields, notes_columns, false, notes_custom_source_data, notes_custom_grid_options);
 
       // Tags table
       var tags_datafields = [
@@ -949,7 +963,7 @@
         data: { 'document_id': {{ document.pk }} },
         badgeClass: 'tags-badge'
       };
-      draw_grid(".jqxgrid-tags", tags_datafields, tags_columns, false, tags_custom_source_data);
+      draw_patched_grid(".jqxgrid-tags", tags_datafields, tags_columns, false, tags_custom_source_data);
 
       // Properties table
       var properties_datafields = [
@@ -1004,7 +1018,7 @@
         data: { 'document_pk': {{ document.pk }} },
         badgeClass: 'properties-badge'
       };
-      draw_grid(".jqxgrid-properties", properties_datafields, properties_columns, false, properties_custom_source_data);
+      draw_patched_grid(".jqxgrid-properties", properties_datafields, properties_columns, false, properties_custom_source_data);
 
       // Top Date Usages table
       var dates_datafields = [
@@ -1044,7 +1058,7 @@
         data: { 'document_pk': {{ document.pk }} },
         badgeClass: 'dates-badge'
       };
-      draw_grid(".jqxgrid-dates", dates_datafields, dates_columns, false,
+      draw_patched_grid(".jqxgrid-dates", dates_datafields, dates_columns, false,
           dates_custom_source_data, text_units_nested_grid_data('date_data'));
 
       {% if 'definition' in available_locators %}
@@ -1084,7 +1098,7 @@
           data: { 'document_pk': {{ document.pk }} },
           badgeClass: 'definitions-badge'
         };
-        draw_grid(".jqxgrid-definitions", definitions_datafields, definitions_columns, false,
+        draw_patched_grid(".jqxgrid-definitions", definitions_datafields, definitions_columns, false,
             definitions_custom_source_data, text_units_nested_grid_data('definition_data'));
       {% endif %}
 
@@ -1132,7 +1146,7 @@
           data: { 'document_pk': {{ document.pk }} },
           badgeClass: 'durations-badge'
         };
-        draw_grid(".jqxgrid-durations", durations_datafields, durations_columns, false,
+        draw_patched_grid(".jqxgrid-durations", durations_datafields, durations_columns, false,
             durations_custom_source_data, text_units_nested_grid_data('duration_data'));
       {% endif %}
 
@@ -1176,7 +1190,7 @@
           data: { 'document_pk': {{ document.pk }} },
           badgeClass: 'courts-badge'
         };
-        draw_grid(".jqxgrid-courts", courts_datafields, courts_columns, false,
+        draw_patched_grid(".jqxgrid-courts", courts_datafields, courts_columns, false,
             courts_custom_source_data, text_units_nested_grid_data('court_data'));
       {% endif %}
 
@@ -1289,7 +1303,7 @@
             { text: 'Clustering info', name: 'Clustering info', align: 'center' }
           ]
         };
-        draw_grid(".jqxgrid-currencies", currencies_datafields, currencies_columns, false,
+        draw_patched_grid(".jqxgrid-currencies", currencies_datafields, currencies_columns, false,
             currencies_custom_source_data, currencies_custom_grid_options);
       {% endif %}
 
@@ -1333,7 +1347,7 @@
           data: { 'document_pk': {{ document.pk }} },
           badgeClass: 'regulations-badge'
         };
-        draw_grid(".jqxgrid-regulations", regulations_datafields, regulations_columns, false,
+        draw_patched_grid(".jqxgrid-regulations", regulations_datafields, regulations_columns, false,
             regulations_custom_source_data, text_units_nested_grid_data('regulation_data'));
       {% endif %}
 
@@ -1374,7 +1388,7 @@
           data: { 'document_pk': {{ document.pk }} },
           badgeClass: 'citations-badge'
         };
-        draw_grid(".jqxgrid-citations", citations_datafields, citations_columns, false,
+        draw_patched_grid(".jqxgrid-citations", citations_datafields, citations_columns, false,
             citations_custom_source_data, text_units_nested_grid_data('citation_data'));
       {% endif %}
 
@@ -1418,7 +1432,7 @@
           data: { 'document_pk': {{ document.pk }} },
           badgeClass: 'distances-badge'
         };
-        draw_grid(".jqxgrid-distances", distances_datafields, distances_columns, false,
+        draw_patched_grid(".jqxgrid-distances", distances_datafields, distances_columns, false,
             distances_custom_source_data, text_units_nested_grid_data('distance_data'));
       {% endif %}
 
@@ -1459,7 +1473,7 @@
           data: { 'document_pk': {{ document.pk }} },
           badgeClass: 'amounts-badge'
         };
-        draw_grid(".jqxgrid-amounts", amounts_datafields, amounts_columns, false,
+        draw_patched_grid(".jqxgrid-amounts", amounts_datafields, amounts_columns, false,
             amounts_custom_source_data, text_units_nested_grid_data('amount_data'));
       {% endif %}
 
@@ -1504,7 +1518,7 @@
           data: { 'document_pk': {{ document.pk }} },
           badgeClass: 'percents-badge'
         };
-        draw_grid(".jqxgrid-percents", percents_datafields, percents_columns, false,
+        draw_patched_grid(".jqxgrid-percents", percents_datafields, percents_columns, false,
             percents_custom_source_data, text_units_nested_grid_data('percent_data'));
       {% endif %}
 
@@ -1549,7 +1563,7 @@
           data: { 'document_pk': {{ document.pk }} },
           badgeClass: 'ratios-badge'
         };
-        draw_grid(".jqxgrid-ratios", ratios_datafields, ratios_columns, false,
+        draw_patched_grid(".jqxgrid-ratios", ratios_datafields, ratios_columns, false,
             ratios_custom_source_data, text_units_nested_grid_data('ratio_data'));
       {% endif %}
 
@@ -1590,7 +1604,7 @@
           data: { 'document_pk': {{ document.pk }} },
           badgeClass: 'copyrights-badge'
         };
-        draw_grid(".jqxgrid-copyrights", copyrights_datafields, copyrights_columns, false,
+        draw_patched_grid(".jqxgrid-copyrights", copyrights_datafields, copyrights_columns, false,
             copyrights_custom_source_data, text_units_nested_grid_data('copyright_data'));
       {% endif %}
 
@@ -1631,7 +1645,7 @@
           data: { 'document_pk': {{ document.pk }} },
           badgeClass: 'trademarks-badge'
         };
-        draw_grid(".jqxgrid-trademarks", trademarks_datafields, trademarks_columns, false,
+        draw_patched_grid(".jqxgrid-trademarks", trademarks_datafields, trademarks_columns, false,
             trademarks_custom_source_data, text_units_nested_grid_data('trademark_data'));
       {% endif %}
 
@@ -1677,7 +1691,7 @@
           data: { 'document_pk': {{ document.pk }} },
           badgeClass: 'urls-badge'
         };
-        draw_grid(".jqxgrid-urls", urls_datafields, urls_columns, false,
+        draw_patched_grid(".jqxgrid-urls", urls_datafields, urls_columns, false,
             urls_custom_source_data, text_units_nested_grid_data('url_data'));
       {% endif %}
 
@@ -1730,7 +1744,7 @@
           { text: 'Completed', name: 'Completed', align: 'center' }
         ]
       };
-      draw_grid(".jqxgrid-task-queues", task_queues_datafields, task_queues_columns, false,
+      draw_patched_grid(".jqxgrid-task-queues", task_queues_datafields, task_queues_columns, false,
           task_queues_custom_source_data, task_queues_custom_grid_options);
 
       // Clusters table
@@ -1849,7 +1863,7 @@
           { text: 'Clustering info', name: 'Clustering info', align: 'center' }
         ]
       };
-      draw_grid(".jqxgrid-clusters", clusters_datafields, clusters_columns, false,
+      draw_patched_grid(".jqxgrid-clusters", clusters_datafields, clusters_columns, false,
           clusters_custom_source_data, clusters_custom_grid_options);
 
       // Document Similarity table
@@ -1883,7 +1897,7 @@
         data: { 'document_pk': {{ document.pk }} },
         badgeClass: 'similarity-badge'
       };
-      draw_grid(".jqxgrid-similarity", similarity_datafields, similarity_columns, true, similarity_custom_source_data);
+      draw_patched_grid(".jqxgrid-similarity", similarity_datafields, similarity_columns, true, similarity_custom_source_data);
 
       if (window.location.hash.indexOf('tab') != -1 ){
         var tab_map = window.location.hash.split('-');

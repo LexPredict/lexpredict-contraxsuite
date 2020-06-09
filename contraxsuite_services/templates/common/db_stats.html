@@ -22,7 +22,9 @@
   </style>
 {% endblock %}
 
-{% block page_header %}Database and Docker Stats Overview{% endblock %}
+{% block page_header %}Database Stats Overview{% endblock %}
+
+{% block project_selection %}{% endblock %}
 
 {% block content %}
 
@@ -32,8 +34,6 @@
       <li><a data-toggle="tab" href="#tab-01" class="tab-01 active">Database Tables</a></li>
       <li><a data-toggle="tab" href="#tab-02" class="tab-02">PG Stat Statements</a></li>
       <li><a data-toggle="tab" href="#tab-03" class="tab-03">PG Stat Activity</a></li>
-      <li><a data-toggle="tab" href="#tab-04" class="tab-04">Docker Nodes</a></li>
-      <li><a data-toggle="tab" href="#tab-05" class="tab-05">Docker Services</a></li>
     </ul>
 
     <div class="tab-content">
@@ -61,26 +61,6 @@
           {% include '_base_grid_buttons_block.html' %}
         </div>
         <div class="jqxgrid-container jqxgrid-pg-stats-activity">
-          <div class="jqxgrid col-md-12"></div>
-        </div>
-      </div>
-
-      <div class="tab-pane clearfix tab-04" id="tab-04">
-        <div class="pull-right grid-controls">
-          {% include '_base_grid_buttons_block.html' %}
-        </div>
-        <span><small>* Data is updated every minute.</small></span>
-        <div class="jqxgrid-container jqxgrid-docker-nodes-data">
-          <div class="jqxgrid col-md-12"></div>
-        </div>
-      </div>
-
-      <div class="tab-pane clearfix tab-05" id="tab-05">
-        <div class="pull-right grid-controls">
-          {% include '_base_grid_buttons_block.html' %}
-        </div>
-        <span><small>* Data is updated every minute.</small></span>
-        <div class="jqxgrid-container jqxgrid-docker-services-data">
           <div class="jqxgrid col-md-12"></div>
         </div>
       </div>

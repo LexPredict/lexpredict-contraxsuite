@@ -26,8 +26,9 @@
 
 # Standard imports
 import pandas as pd
-from pandas import DataFrame
-from typing import Callable, Tuple
+from enum import Enum, unique
+from pandas import DataFrame, Series
+from typing import Callable, Tuple, Union
 
 # Project imports
 import settings
@@ -35,8 +36,8 @@ from apps.extract.models import GeoEntity, GeoAlias, Term, Court
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.5.0/LICENSE"
-__version__ = "1.5.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.6.0/LICENSE"
+__version__ = "1.6.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -146,33 +147,94 @@ def load_geo_entities(df: DataFrame, total_progress: Callable[[int], None] = Non
     return len(geo_aliases), geo_entities_count
 
 
-def load_terms(df: DataFrame) -> int:
-    df.drop_duplicates(inplace=True)
-    df.loc[df["Case Sensitive"] == False, "Term"] = df.loc[
-        df["Case Sensitive"] == False, "Term"].str.lower()
-    df = df.drop_duplicates(subset="Term").dropna(subset=["Term"])
+def load_terms(df: DataFrame, term_creation_mode: str = 'ignore') -> int:
+    """Creates Term objects from an input Pandas DataFrame and adds the newly created Terms to the database.
+    
+    Args:
+        df (pandas.DataFrame): Input data. Contains columns:
 
-    terms = []
-    for row_id, row in df.iterrows():
-        term = row["Term"].strip()
-        if not Term.objects.filter(term=term).exists():
-            lt = Term()
-            lt.term = term
-            lt.source = row["Term Category"]
-            lt.definition_url = row["Term Locale"]
-            terms.append(lt)
+            * 'Term Locale'
+            * 'Term Category'
+            * 'Term'
+            * 'Case Sensitive'.
+
+        term_creation_mode (str): A logical flag for handling duplicate Term conflicts.
+            Can be 'add', 'ignore', or 'replace'. Defaults to 'ignore'.
+            Only relevant if a Term already exists in the database.
+
+            * 'add': adds the new Terms while keeping the existing Terms.
+            * 'ignore': skips adding new Terms.
+            * 'replace': deletes the old Term(s) and then adds the new Term.
+
+    Returns:
+        int: The number of Terms added to the database.
+
+    Raises:
+        ValueError: invalid `term_creation_mode` argument.
+    """
+    @unique
+    class _TermCreationMode(Enum):
+        ADD = 'add'
+        IGNORE = 'ignore'
+        REPLACE = 'replace'
+
+        @classmethod
+        def get_modes(self, *args) -> list:
+            def _ga(mode, *args) -> tuple:
+                return tuple([getattr(mode, arg) for arg in args])
+            if len(args) == 1:
+                return [getattr(mode, *args) for mode in self]
+            elif len(args) == 0:
+                args = ('name', 'value')
+            return [_ga(mode, args) for mode in self]
+
+    def _prepare_term(dataframe_row: Series, term_creation_mode: _TermCreationMode) -> Union[Term, None]:
+        """Instantiates and returns a new Term objects based on input data.
+
+        Args:
+            dataframe_row (pandas.Series): Input data for Term creation.
+            term_creation_mode (_TermCreationMode): A logical flag; determines return behavior.
+
+        Returns:
+            new_db_term (Term): A new Term object from the input row.
+            None: if term_creation_mode is IGNORE.
+        """
+        term = dataframe_row['Term'].strip()
+        qs_terms_of_this_term = Term.objects.filter(term=term)
+
+        # instantiate a new Term
+        new_db_term = Term(
+            term=term,
+            source=dataframe_row['Term Category'],
+            definition_url=dataframe_row['Term Locale']
+        )
+
+        # handle term creation modes
+        if qs_terms_of_this_term.exists():
+            if term_creation_mode == _TermCreationMode.REPLACE:
+                qs_terms_of_this_term.delete()
+            elif term_creation_mode == _TermCreationMode.IGNORE:
+                return None
+        return new_db_term
+
+    try:  # set term creation mode
+        term_creation_mode = _TermCreationMode(term_creation_mode)
+    except ValueError:  # raise custom argument error
+        raise ValueError(f"Argument `term_creation_mode` must be one of: {_TermCreationMode.get_modes('values')}")
+
+    # preprocess DataFrame
+    df.drop_duplicates(inplace=True)
+    df.loc[df['Case Sensitive'] == False, 'Term'] = df.loc[
+        df['Case Sensitive'] == False, 'Term'].str.lower()
+    df = df.drop_duplicates(subset='Term').dropna(subset=['Term'])
+
+    # create new Terms. Filter: if _prepare_term() returns None, it is not added to this list
+    new_db_terms = list(filter(None, (_prepare_term(row, term_creation_mode) for _, row in df.iterrows())))
 
     # cache "global" term stems step - should be cached here via model manager
-    Term.objects.bulk_create(terms)
+    Term.objects.bulk_create(new_db_terms)
 
-    # update existing ProjectTermConfiguration objects for all projects across loaded terms
-    from apps.extract.dict_data_cache import cache_term_stems
-    from apps.project.models import ProjectTermConfiguration
-    for config in ProjectTermConfiguration.objects.all():
-        cache_term_stems(config.project_id)
-        config.add(terms)
-
-    return len(df)
+    return len(new_db_terms)
 
 
 def load_courts(df: DataFrame) -> int:

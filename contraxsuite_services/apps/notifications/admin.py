@@ -38,8 +38,8 @@ from apps.notifications.models import DocumentDigestConfig, DocumentDigestSendDa
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.5.0/LICENSE"
-__version__ = "1.5.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.6.0/LICENSE"
+__version__ = "1.6.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -123,8 +123,13 @@ class DocumentNotificationSubscriptionForm(ModelForm):
                  label_suffix=None, empty_permitted=False, instance=None, use_required_attribute=None):
         super().__init__(data, files, auto_id, prefix, initial, error_class, label_suffix, empty_permitted, instance,
                          use_required_attribute)
+        self.fields['document_type'].required = True
 
     def clean(self):
+        if 'document_type' not in self.cleaned_data:
+            self.add_error('document_type', 'document_type should be selected')
+            return super().clean()
+
         dt = self.cleaned_data['document_type']
         fields = self.cleaned_data['user_fields']
         cc = DocumentNotificationSubscription.get_addrs(self.cleaned_data.get('recipients_cc'))

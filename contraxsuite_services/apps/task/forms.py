@@ -44,8 +44,8 @@ from apps.task.models import Task
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.5.0/LICENSE"
-__version__ = "1.5.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.6.0/LICENSE"
+__version__ = "1.6.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -260,6 +260,13 @@ class TaskDetailForm(forms.Form):
         if children_count > len(children):
             children_markup.append(f' ... and {children_count - len(children)} more')
         self.fields['child_tasks'].initial = ', '.join(children_markup)
+
+        if this_task.result and 'exc_type' in this_task.result:
+            ex_module = this_task.result.get('exc_module') or '-'
+            ex_message = this_task.result.get('exc_message') or '-'
+            msg = f'<b><span style="color:red">ERROR</span> {this_task.result["exc_type"]} ' + \
+                  f'in {ex_module}:\n{ex_message}'
+            logs.append(msg)
 
         # Main problem is that this form's template uses some base template which replaces \n with <br />
         for record in instance.get_task_log_from_elasticsearch():

@@ -3,6 +3,7 @@
 import apps.common.model_utils.hr_django_json_encoder
 import django.contrib.postgres.fields.jsonb
 from django.db import migrations
+from apps.common.model_utils.improved_django_json_encoder import ImprovedDjangoJSONEncoder
 
 
 class Migration(migrations.Migration):
@@ -15,6 +16,6 @@ class Migration(migrations.Migration):
         migrations.AlterField(
             model_name='task',
             name='args',
-            field=django.contrib.postgres.fields.jsonb.JSONField(blank=True, encoder=apps.common.model_utils.hr_django_json_encoder.HRDjangoJSONEncoder, null=True),
+            field=django.contrib.postgres.fields.jsonb.JSONField(blank=True, encoder=ImprovedDjangoJSONEncoder, null=True),
         ),
     ]

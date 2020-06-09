@@ -29,6 +29,8 @@
 
   {% block css_extra %}
 {#    {% stylesheet "custom_css" %}#}
+    <link rel="stylesheet" type="text/css" href="https://cdnjs.cloudflare.com/ajax/libs/chosen/1.6.2/chosen.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/jquery-confirm/3.1.1/jquery-confirm.min.css">
     <link rel="stylesheet" href="{% static "css/project.css" %}" type="text/css" />
     <link rel="stylesheet" href="{% static "vendor/tagsinput/bootstrap-tagsinput.css" %}" type="text/css" />
   {% endblock %}
@@ -38,6 +40,9 @@
 </head>
 
 <body class="stretched {% block bodyclass %}{% endblock %}">
+<script type="text/javascript">
+  window.explorerURL = "{% url 'home' %}";
+</script>
 
 {% if user.is_authenticated %}
 <!-- Document Wrapper -->
@@ -53,7 +58,7 @@
         {% block breadcrumb %}
         <nav aria-label="breadcrumb">
           <ol class="breadcrumb">
-            <li class="breadcrumb-item"><a href="/advanced">LexNLP Extracted Values</a></li>
+            <li class="breadcrumb-item"><a href="{% url 'home' %}">LexNLP Extracted Values</a></li>
             {% block page_header_wrapper %}
             <li class="breadcrumb-item active" aria-current="page">
               {% block page_header %}{% endblock %}{% block page_header_addon %}{% endblock %}
@@ -62,6 +67,21 @@
           </ol>
         </nav>
         {% endblock breadcrumb %}
+
+        {% block project_selection %}
+          {% if not hide_project_selection %}
+          <div class="project_selection">
+            <label for="id_project_selection">Project Selection:</label>
+            <select name="project_selection" class="chosen" id="id_project_selection" multiple="true">
+              {% for project in user_projects %}
+                <option value="{{ project.pk }}" {% if project.pk in user_projects_selected %}selected{% endif %}>
+                  {{ project.name }} (id={{ project.pk }})</option>
+              {% endfor %}
+            </select>
+          </div>
+          {% endif %}
+        {% endblock %}
+
       </div>
       {% endif %}
 
@@ -74,7 +94,7 @@
             {% if user.is_authenticated %}
             <div class="well global-search">
               <div class="title">Global Search</div>
-              <form class="form-inline" action="{% url "document:search" %}">
+              <form id="globalSearchForm" class="form-inline" action="{% url "document:search" %}">
               <div class="form-group">
                 <input type="text" class="typeahead form-control" id="name_search" name="name_search"
                        value="{{ name_search }}"
@@ -101,14 +121,11 @@
                        value="{{ party_search }}"
                        placeholder="Party Name">
               </div>
-
-              {% if is_text_unit_list_page %}
               <div class="form-group">
-                <input type="search" class="form-control" id="elastic_search" name="elastic_search"
-                       value="{{ elastic_search }}"
-                       placeholder="Elastic Search by Text">
+                <input type="text" class="non-typeahead form-control" id="document_text_search" name="document_text_search"
+                       value="{{ document_text_search }}"
+                       placeholder="Document Text Search">
               </div>
-              {% endif %}
 
               <button type="submit" class="btn-u btn-sm button-dark">
                 <i class="fa fa-search"></i> Search
@@ -183,10 +200,44 @@
           crossorigin="anonymous"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/mark.js/8.4.0/mark.min.js"
           integrity="sha256-d4W6lnqRlQIXAoSYOnZCyDTDikGIxMs2EfQ4Qy7bgJQ=" crossorigin="anonymous"></script>
+  <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/chosen/1.6.2/chosen.jquery.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-confirm/3.1.1/jquery-confirm.min.js"></script>
 
 {#  {% javascript "custom_js" %}#}
+
+  <script type="application/javascript">
+    var $id_project_selection = $("#id_project_selection");
+    window.user_projects_selected = {{ user_projects_selected }};
+
+    $id_project_selection.chosen({search_contains: true, width: '300px'});
+    $id_project_selection.on('change', function(evt, params) {
+      $.ajax({
+        url: '{% url 'project:select-projects' %}',
+        {#url: '{% url 'v1:project-select-projects' %}',#}
+        type: 'POST',
+        data: { project_ids: $(this).val() },
+        {#data: JSON.stringify({ project_ids: $(this).val() }),#}
+        {#contentType: "application/json; charset=utf-8",#}
+        dataType: "json",
+        success: function(data, status, xhr){
+          window.user_projects_selected = data.project_ids
+          $.each(data.project_ids, function(i, val){
+            $id_project_selection.find("option[value='" + val + "']").prop("selected", true);
+            $id_project_selection.trigger("chosen:updated");
+          });
+          $('.jqxgrid').jqxGrid('updatebounddata')
+        },
+        error: function(data, status, xhr){
+          console.log(xhr);
+        }
+      });
+
+    });
+  </script>
+
   <script src="{% static 'vendor/tagsinput/bootstrap-tagsinput.js' %}" style="text/javascrypt"></script>
   <script src="{% static 'js/project.js' %}" style="text/javascrypt"></script>
+
 {% endblock %}
 
 {% csrf_token %}

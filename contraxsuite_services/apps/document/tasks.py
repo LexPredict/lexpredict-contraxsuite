@@ -34,6 +34,7 @@ from typing import Any, List, Dict, Iterable, Tuple, Union, Optional
 import jiphy
 from celery import shared_task
 from celery.exceptions import SoftTimeLimitExceeded
+from celery.utils.log import get_task_logger
 from django.conf import settings
 from django.contrib.contenttypes.models import ContentType
 from django.db import transaction
@@ -59,7 +60,7 @@ from apps.document.document_class import DocumentClass
 from apps.document.field_detection import field_detection
 from apps.document.field_detection.field_detection import detect_and_cache_field_values_for_document
 from apps.document.field_detection.field_detection_repository import FieldDetectionRepository
-from apps.document.field_detection.regexps_field_detection import apply_simple_config
+from apps.document.field_detection.regexps_field_detection import CsvDetectorImporter
 from apps.document.field_types import TypedField
 from apps.document.models import DocumentType, \
     Document, DocumentMetadata, ClassifierModel, TextUnit, DocumentField
@@ -81,13 +82,14 @@ from apps.rawdb.field_value_tables import cache_document_fields
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.5.0/LICENSE"
-__version__ = "1.5.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.6.0/LICENSE"
+__version__ = "1.6.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
 
 MODULE_NAME = __name__
+logger = get_task_logger(__name__)
 
 
 class TrainDocumentFieldDetectorModel(BaseTask):
@@ -191,6 +193,33 @@ def retrain_dirty_fields(_celery_task):
             seconds=settings.RETRAINING_TASK_EXECUTION_DELAY_IN_SEC)
         if not Task.objects.active_tasks_exist(task_name, execution_delay):
             call_task(task_name, module_name='apps.document.tasks')
+
+
+@app.task(name=task_names.TASK_NAME_CACHE_UPDATED_DOCS, bind=True)
+def cache_updated_documents(_celery_task):
+    # TODO: read these settings from AppVar
+    task_limit_seconds = 10
+    task_query_minutes = 1
+
+    TaskUtils.prepare_task_execution()
+
+    time_threshold = datetime.datetime.now() - datetime.timedelta(minutes=task_query_minutes)
+    dirty_documents = Document.objects.filter(fields_dirty__lt=time_threshold).order_by('-fields_dirty')
+    dirty_count = dirty_documents.count()
+    if not dirty_count:
+        return
+    logger.debug(f'{dirty_count} documents are to be synchronized')
+
+    started = datetime.datetime.now()
+    processed = 0
+    for doc in dirty_documents:
+        cache_document_fields(
+            logger, doc, cache_generic_fields=True, cache_user_fields=True)
+        processed += 1
+        elapsed = (datetime.datetime.now() - started).total_seconds()
+        if elapsed > task_limit_seconds:
+            logger.debug(f'Cached {processed} documents only of {dirty_count}')
+            break
 
 
 class TrainAndTest(BaseTask):
@@ -437,7 +466,10 @@ class LoadDocumentWithFields(BaseTask):
     priority = 9
 
     @staticmethod
-    def load_field_values(task: ExtendedTask, document: Document, document_fields_alias_to_value: Dict[str, Any]) \
+    def load_field_values(task: ExtendedTask,
+                          document: Document,
+                          document_fields_alias_to_value: Dict[str, Any],
+                          ignore_parsing_errors: bool = False) \
             -> Dict[DocumentField, FieldValueDTO]:
         document_type = document.document_type
         fields_to_values = dict()  # type: Dict[DocumentField, FieldValueDTO]
@@ -460,23 +492,29 @@ class LoadDocumentWithFields(BaseTask):
 
             field = field_codes_to_fields.get(field_alias.lower())  # type: DocumentField
             if not field:
-                task.log_warn(
-                    'Field alias "{0}" not found for document type {1}'.format(field_alias, document_type.code))
+                task.log_warn(f'Field alias "{field_alias}" not found for document type {document_type.code}')
                 continue
             typed_field = TypedField.by(field)  # type: TypedField
 
-            if type(field_value_text) is list:
-                for possible_value_text in list(field_value_text):
-                    maybe_value = typed_field.extract_from_possible_value_text(possible_value_text)
+            try:
+                if type(field_value_text) is list:
+                    for possible_value_text in list(field_value_text):
+                        maybe_value = typed_field.extract_from_possible_value_text(possible_value_text)
+                        if maybe_value:
+                            maybe_value = typed_field.field_value_python_to_json(maybe_value)
+                            fields_to_values[field] = FieldValueDTO(field_value=maybe_value)
+                            break
+                else:
+                    maybe_value = typed_field.extract_from_possible_value_text(field_value_text)
                     if maybe_value:
                         maybe_value = typed_field.field_value_python_to_json(maybe_value)
                         fields_to_values[field] = FieldValueDTO(field_value=maybe_value)
-                        break
-            else:
-                maybe_value = typed_field.extract_from_possible_value_text(field_value_text)
-                if maybe_value:
-                    maybe_value = typed_field.field_value_python_to_json(maybe_value)
-                    fields_to_values[field] = FieldValueDTO(field_value=maybe_value)
+            except Exception as e:
+                msg = f'Unable to cast value "{field_value_text}" to the target type of "{field.code}"'
+                if ignore_parsing_errors:
+                    task.log_warn(msg)
+                else:
+                    raise RuntimeError(msg) from e
 
         return fields_to_values
 
@@ -529,7 +567,7 @@ class LoadDocumentWithFields(BaseTask):
         file_storage = get_file_storage()
         with file_storage.get_document_as_local_fn(uri) as (fn, file_name):
             task.task.title = 'Load Document: {0}'.format(uri)
-            task.log_extra = {'log_document_name': uri}
+            task.log_extra = {Document.LOG_FIELD_DOC_NAME: uri}
 
             with open(fn, encoding='utf-8') as data_file:
                 data = json.loads(data_file.read())
@@ -550,9 +588,14 @@ class LoadDocumentWithFields(BaseTask):
                  document: Document,
                  field_values_alias_to_value: Dict[str, Any],
                  run_detect_field_values: bool,
-                 field_owners: Dict[str, User] = None):
+                 field_owners: Dict[str, User] = None,
+                 skip_modified_values: bool = False,
+                 field_codes_to_detect: Optional[List[str]] = None,
+                 clear_old_values=False,
+                 ignore_parsing_errors=False):
         field_owners = field_owners if field_owners else {}
-        fields_to_values = LoadDocumentWithFields.load_field_values(task, document, field_values_alias_to_value)
+        fields_to_values = LoadDocumentWithFields.load_field_values(
+            task, document, field_values_alias_to_value, ignore_parsing_errors)
         log = CeleryTaskLogger(task)
         import apps.document.repository.document_field_repository as dfr
         field_repo = dfr.DocumentFieldRepository()
@@ -560,7 +603,9 @@ class LoadDocumentWithFields(BaseTask):
         with transaction.atomic():
             new_document = document.pk is None
             document.save(force_insert=new_document)
-            DocumentMetadata.objects.create(document=document, metadata={'parsed_by': None})
+            # document metadata might have already been created
+            if not DocumentMetadata.objects.filter(document_id=document.pk).exists():
+                DocumentMetadata.objects.create(document=document, metadata={'parsed_by': None})
 
             for field, value_dto in fields_to_values.items():
                 field_repo.update_field_value_with_dto(document=document,
@@ -569,10 +614,13 @@ class LoadDocumentWithFields(BaseTask):
                                                        user=field_owners.get(field.code))
 
             if run_detect_field_values:
-                field_detection.detect_and_cache_field_values_for_document(log=log,
-                                                                           document=document,
-                                                                           save=True,
-                                                                           clear_old_values=False)
+                field_detection.detect_and_cache_field_values_for_document(
+                    log=log,
+                    document=document,
+                    save=True,
+                    clear_old_values=clear_old_values,
+                    skip_modified_values=skip_modified_values,
+                    field_codes_to_detect=field_codes_to_detect)
             else:
                 signals.fire_document_changed(sender=task,
                                               log=log,
@@ -583,11 +631,14 @@ class LoadDocumentWithFields(BaseTask):
                                               generic_fields_changed=True,
                                               user_fields_changed=True)
 
-        task.log_info('Loaded {0} field values for document #{1} ({2}): {3}'
-                      .format(len(fields_to_values),
-                              document.pk,
-                              document.name,
-                              ';\n'.join(f'{f}: {dto.field_value}' for f, dto in fields_to_values.items())))
+        field_values_text = ''
+        for f, dto in fields_to_values.items():
+            fval_str = str(dto.field_value)
+            fval_str = fval_str[:128] + '...' if fval_str and len(fval_str) > 128 else ''
+            field_values_text += f'{f}: {fval_str}\n'
+
+        task.log_info(f'Loaded {len(fields_to_values)} field values for document '
+                      f'#{document.pk} ({document.name}): {field_values_text}')
 
 
 class ImportCSVFieldDetectionConfig(BaseTask):
@@ -604,17 +655,24 @@ class ImportCSVFieldDetectionConfig(BaseTask):
                 drop_previous_field_detectors: bool,
                 update_field_choice_values: bool,
                 csv_contains_regexps: bool,
+                selected_columns: str = None,
+                wrap_in_wordbreaks: bool = True,
+                save_in_csv_format: bool = True,
                 **kwargs):
         try:
             self.log_info('Going to configure simple field detection config...')
             document_field = DocumentField.objects.get(pk=document_field['pk'])
             csv_bytes = DbCache.get(config_csv_file['cache_key'])
-            apply_simple_config(CeleryTaskLogger(self),
-                                document_field,
-                                csv_bytes,
-                                drop_previous_field_detectors,
-                                update_field_choice_values,
-                                csv_contains_regexps=csv_contains_regexps)
+            importer = CsvDetectorImporter(
+                CeleryTaskLogger(self),
+                document_field,
+                drop_previous_field_detectors,
+                update_field_choice_values,
+                csv_contains_regexps=csv_contains_regexps,
+                selected_columns=selected_columns,
+                wrap_in_wordbreaks=wrap_in_wordbreaks,
+                save_in_csv_format=save_in_csv_format)
+            importer.process_csv(csv_bytes)
         finally:
             DbCache.clean_cache(config_csv_file['cache_key'])
 
@@ -716,7 +774,7 @@ class ImportDocumentType(BaseTask):
     max_retries = 3
 
     def process(self,
-                document_type_config_csv_file: Dict,
+                document_type_config_json_file: Dict,
                 action: str,
                 update_cache: bool,
                 **kwargs):
@@ -741,14 +799,14 @@ class ImportDocumentType(BaseTask):
             raise RuntimeError('Unknown action')
 
         try:
-            json_bytes = DbCache.get(document_type_config_csv_file['cache_key'])
+            json_bytes = DbCache.get(document_type_config_json_file['cache_key'])
             document_type = import_document_type(json_bytes=json_bytes,
                                                  save=save,
                                                  auto_fix_validation_errors=auto_fix_validation_errors,
                                                  remove_missed_in_dump_objects=remove_missed_objects,
                                                  task=self)
         finally:
-            DbCache.clean_cache(document_type_config_csv_file['cache_key'])
+            DbCache.clean_cache(document_type_config_json_file['cache_key'])
 
         if not (save and update_cache):
             return

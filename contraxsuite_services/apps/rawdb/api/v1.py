@@ -42,8 +42,9 @@ from apps.common.streaming_utils import csv_gen, GeneratorList
 from apps.common.url_utils import as_bool, as_int, as_int_list, as_str_list
 from apps.document.models import Document, DocumentType
 from apps.project.models import Project
-from apps.rawdb.constants import FT_COMMON_FILTER, FT_USER_DOC_GRID_CONFIG, FIELD_CODES_SHOW_BY_DEFAULT_NON_GENERIC, \
-    FIELD_CODES_SHOW_BY_DEFAULT_GENERIC, FIELD_CODES_HIDE_FROM_CONFIG_API, FIELD_CODE_ANNOTATION_SUFFIX
+from apps.rawdb.constants import FT_COMMON_FILTER, FT_USER_DOC_GRID_CONFIG, \
+    FIELD_CODES_SHOW_BY_DEFAULT_NON_GENERIC, FIELD_CODES_SHOW_BY_DEFAULT_GENERIC, \
+    FIELD_CODES_HIDE_FROM_CONFIG_API, FIELD_CODE_ANNOTATION_SUFFIX
 from apps.rawdb.field_value_tables import get_columns, get_annotation_columns, \
     query_documents, DocumentQueryResults
 from apps.rawdb.models import SavedFilter
@@ -52,8 +53,8 @@ from apps.rawdb.rawdb.rawdb_field_handlers import ColumnDesc
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.5.0/LICENSE"
-__version__ = "1.5.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.6.0/LICENSE"
+__version__ = "1.6.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -276,11 +277,14 @@ class DocumentsAPIView(rest_framework.views.APIView):
                                                          else None
                                                          )
                         SavedFilter.objects.filter(user=request.user,
-                                                   document_type=document_type,
                                                    filter_type=FT_USER_DOC_GRID_CONFIG,
                                                    project_id=project_id) \
                             .exclude(pk=obj.pk) \
                             .delete()
+
+            # show_unprocessed = as_bool(request.GET, 'show_unprocessed', False)
+            # if show_unprocessed is False:
+            #     column_filters.append((FIELD_CODE_DOC_PROCESSED, 'true'))
 
             query_results = query_documents(requester=request.user,
                                             document_type=document_type,

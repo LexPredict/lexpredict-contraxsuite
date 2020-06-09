@@ -28,18 +28,23 @@
 import datetime
 
 # Third-party imports
+from typing import Tuple, Iterable, Any, List
+
 import gensim.models.doc2vec
+from django.db import transaction
 from django.db.models import F
 from lexnlp.nlp.en.tokens import get_token_list
 
 # Project imports
-from apps.analyze.models import DocumentTransformer, TextUnitTransformer, TextUnitVector, DocumentVector
+from apps.analyze.ml.utils import ModelUniqueNameBuilder
+from apps.analyze.models import DocumentTransformer, TextUnitTransformer, TextUnitVector, DocumentVector, \
+    BaseTransformer, BaseVector
 from apps.document.models import DocumentText, TextUnit
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.5.0/LICENSE"
-__version__ = "1.5.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.6.0/LICENSE"
+__version__ = "1.6.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -65,7 +70,7 @@ class Doc2VecTransformer:
         self.min_count = min_count
         self.dm = dm
 
-    def train_doc2vec_model(self, data):
+    def train_doc2vec_model(self, data) -> gensim.models.doc2vec.Doc2Vec:
         """
         Train doc2vec model from queryset values
 
@@ -74,6 +79,8 @@ class Doc2VecTransformer:
         """
         doc2vec_data = []
         for index, text in enumerate(data):
+            if not text:
+                continue
             # Get tokens with LexNLP
             text_tokens = get_token_list(text, stopword=True, lowercase=True)
             # Append gensim object
@@ -110,20 +117,25 @@ class Doc2VecTransformer:
         :param transformer_object_kwargs: additional keyword arguments for Transformer model object
         :return: TextUnitTransformer or DocumentTransformer model object
         """
-        vector_name = "{}_doc2vec_dm={}_vector={}_window={}".format(source_name, self.dm,
-                                                                    self.vector_size, self.window)
-        # keep it simple - apply default name if a user doesn't provide custom one
+
+        # apply default name if a user doesn't provide custom one
         if not transformer_object_kwargs.get('name'):
+            vector_name = f'{source_name}_doc2vec_dm={self.dm}_vector={self.vector_size}_window={self.window}'
+            vector_name = ModelUniqueNameBuilder.ensure_unique_name(vector_name, transformer_db_model)
             transformer_object_kwargs['name'] = vector_name
 
         obj = transformer_db_model.objects.create(
             version="{}".format(datetime.datetime.now().isoformat()),
-            vector_name=vector_name,
+            vector_name=transformer_object_kwargs['name'],
             model_object=doc2vec_model,
             **transformer_object_kwargs)
         return obj
 
-    def build_doc2vec_document_model(self, document_qs=None, project_ids=None, transformer_name=None):
+    def build_doc2vec_document_model(self,
+                                     document_qs=None,
+                                     project_ids=None,
+                                     transformer_name=None) -> Tuple[gensim.models.doc2vec.Doc2Vec,
+                                                                     BaseTransformer]:
         """
         Build a doc2vec model for Documents from a queryset or all documents.
 
@@ -140,7 +152,8 @@ class Doc2VecTransformer:
 
         data = text_queryset.values_list('full_text', flat=True).iterator()
 
-        doc2vec_model = self.train_doc2vec_model(data)
+        with transaction.atomic():
+            doc2vec_model = self.train_doc2vec_model(data)
 
         transformer = self.create_transformer_object(
             transformer_db_model=DocumentTransformer,
@@ -150,8 +163,12 @@ class Doc2VecTransformer:
 
         return doc2vec_model, transformer
 
-    def build_doc2vec_text_unit_model(self, text_unit_qs=None, project_ids=None,
-                                      text_unit_type="sentence", transformer_name=None):
+    def build_doc2vec_text_unit_model(self,
+                                      text_unit_qs=None,
+                                      project_ids=None,
+                                      text_unit_type="sentence",
+                                      transformer_name=None) -> Tuple[gensim.models.doc2vec.Doc2Vec,
+                                                                      BaseTransformer]:
         """
         Build a doc2vec model for TextUnits from all text units either for given text unit queryset,
         and for given text unit type.
@@ -183,7 +200,10 @@ class Doc2VecTransformer:
         return doc2vec_model, transformer
 
     @staticmethod
-    def create_vectors(transformer_obj, data, vector_db_model, vector_target_id_name):
+    def create_vectors(transformer_obj: BaseTransformer,
+                       data: Iterable[Tuple[Any, str]],
+                       vector_db_model,
+                       vector_target_id_name: str) -> List[BaseVector]:
         """
         Aggregated method to create Vector objects from arguments
 
@@ -208,7 +228,8 @@ class Doc2VecTransformer:
             vector.vector_value = doc2vec_model.infer_vector(text_tokens)
             vector_list.append(vector)
 
-        vector_db_model.objects.bulk_create(vector_list)
+        # vector_db_model.objects.bulk_create(vector_list)
+        return vector_list
 
     def run_doc2vec_text_unit_model(self, text_unit_transformer_id: int, text_unit_qs=None,
                                     project_ids=None):

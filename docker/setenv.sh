@@ -1,5 +1,21 @@
 #!/bin/bash
 
+export DOCKER_NGINX_IMAGE=nginx:1.16.1
+export DOCKER_PG_IMAGE=postgres:11.5
+export DOCKER_REDIS_IMAGE=redis:5-alpine
+export DOCKER_WEBDAV_IMAGE=bytemark/webdav:2.4
+export DOCKER_MINIO_IMAGE=minio/minio:RELEASE.2020-01-03T19-12-21Z
+export DOCKER_MLFLOW_TRACKING_IMAGE=lexpredict/mlflow-tracking-server:1.6.0-1
+export DOCKER_CURATOR_IMAGE=lexpredict/es-curator-cron:5.8.1-1
+export DOCKER_ELASTICSEARCH_IMAGE=docker.elastic.co/elasticsearch/elasticsearch-oss:7.5.2
+export DOCKER_ELASTALERT_IMAGE=bitsensor/elastalert:3.0.0-beta.1
+export DOCKER_KIBANA_IMAGE=lexpredict/lexpredict-kibana:7.5.0
+export DOCKER_FILEBEAT_IMAGE=docker.elastic.co/beats/filebeat-oss:7.5.2
+export DOCKER_METRICBEAT_IMAGE=docker.elastic.co/beats/metricbeat-oss:7.5.2
+export DOCKER_RABBITMQ_IMAGE=rabbitmq:3-management
+export DOCKER_PGBOUNCER_IMAGE=edoburu/pgbouncer:1.11.0
+
+
 export CPU_CORES=$(grep -c ^processor /proc/cpuinfo)
 export CPU_HALF_CORES=$(( ${CPU_CORES} / 2 ))
 export CPU_QUARTER_CORES=$(( ${CPU_CORES} / 4 ))
@@ -9,11 +25,17 @@ export RAM_QUARTER_MB=$(( ${RAM_MB} / 4 ))
 
 export POSTGRES_CPUS=$(( 4*${CPU_CORES}/5  ))
 export POSTGRES_RAM=$(( 3*${RAM_MB}/4  ))
-export POSTGRES_MAX_CONNECTIONS=1000
+export POSTGRES_MAX_CONNECTIONS=180
 export POSTGRES_SHARED_BUFFERS=$(( ${POSTGRES_RAM}/4 ))MB
 export POSTGRES_EFFECTIVE_CACHE_SIZE=$(( 3*${POSTGRES_RAM}/4 ))MB
 export POSTGRES_MAINTENANCE_WORK_MEM=$(( ${POSTGRES_RAM}/16 ))MB
+export CPU_WORKER_CORES=$(( (${CPU_CORES} - 6) / 2 ))
+if (( ${CPU_WORKER_CORES} < 1 )); then
+  export CPU_WORKER_CORES=1
+fi
+echo "${CPU_WORKER_CORES} worker CPU cores"
 
+export POWA_NGINX_PORT=445
 export POSTGRES_DISK=hdd
 
 if [[ ${POSTGRES_DISK} = "ssd" ]]; then
@@ -24,11 +46,23 @@ else
     export POSTGRES_EFFECTIVE_IO_CONCURRENCY=2
 fi
 
+export POSTGRES_MIN_WAL_SIZE=4GB
+export POSTGRES_MAX_WAL_SIZE=16GB
+
 export POSTGRES_PARALLEL_WORKERS_PER_GATHER=$(( (${POSTGRES_CPUS}+2-1)/2 ))  # ceil (cpus / 2)
 
-# ((RAM - shared_buffers) / (max_connections * 3) / max_parallel_workers_per_gather)
-# + some magic
-export POSTGRES_WORK_MEM=$(( 3*1024*${POSTGRES_RAM}/(2*4*${POSTGRES_MAX_CONNECTIONS}*3*((${POSTGRES_CPUS}+2-1)/2))  ))kB
+export POSTGRES_MAX_PARALLEL_MAINTENANCE_WORKERS=$(( (${POSTGRES_CPUS}+2-1)/2 ))  # ceil (cpus / 2)
+
+if (( ${POSTGRES_MAX_PARALLEL_MAINTENANCE_WORKERS} > 4 )); then
+    export POSTGRES_MAX_PARALLEL_MAINTENANCE_WORKERS=4
+fi
+
+# ((RAM - shared_buffers) / (max_connections * 3) / max_parallel_workers_per_gather / 2)
+# /2 - is for data warehouses
+# calculating with bc to avoid bad rounding on standard bash calculations
+export POSTGRES_WORK_MEM=$(echo "scale=4;1024*0.75*${POSTGRES_RAM}/(${POSTGRES_MAX_CONNECTIONS}*3)/${POSTGRES_PARALLEL_WORKERS_PER_GATHER}"|bc)
+# now rounding the end value
+export POSTGRES_WORK_MEM=$(echo ${POSTGRES_WORK_MEM%%.*})kB
 
 
 export CONTRAXSUITE_ROOT=../contraxsuite_services
@@ -40,6 +74,7 @@ export DOCKER_HOST_NAME_RABBITMQ=contrax-rabbitmq
 export DOCKER_HOST_NAME_ELASTICSEARCH=contrax-elasticsearch
 export DOCKER_HOST_NAME_UWSGI=contrax-uwsgi
 export DOCKER_HOST_NAME_KIBANA=contrax-kibana
+export DOCKER_HOST_NAME_DAPHNE=contrax-daphne
 export DOCKER_HOST_NAME_ELASTALERT_SERVER=contrax-elastalert
 export DOCKER_ELASTALERT_SERVER_PORT=3030
 export DOCKER_ELASTALERT_EMAIL_SSL=False
@@ -48,11 +83,40 @@ export DOCKER_ELASTALERT_EMAIL_SSL=False
 export DOCKER_ELASTICSEARCH_REPLICAS=1
 export DOCKER_ELASTICSEARCH_PORT=9200
 
+
 export DOCKER_PG_REPLICAS=1
 export DOCKER_PG_USER=contrax1
 export DOCKER_PG_PASSWORD=contrax1
 export DOCKER_PG_DB_NAME=contrax1
 export DOCKER_PG_MAX_BACKUP_NUMBER=3
+export DOCKER_PG_PORT=5432
+
+export DOCKER_PGBOUNCER_TRANS_HOST=contrax-pgbouncer-transaction
+export DOCKER_PGBOUNCER_SESS_HOST=contrax-pgbouncer-session
+export DOCKER_PGBOUNCER_PORT=5432
+
+
+export DOCKER_PGBOUNCER_TRANS_MAX_CLIENT_CONN=1000
+export DOCKER_PGBOUNCER_TRANS_SERVER_RESET_QUERY="DISCARD ALL"
+export DOCKER_PGBOUNCER_TRANS_DEFAULT_POOL_SIZE=150
+
+export DOCKER_PGBOUNCER_SESS_MAX_CLIENT_CONN=1000
+export DOCKER_PGBOUNCER_SESS_SERVER_RESET_QUERY="DISCARD ALL"
+export DOCKER_PGBOUNCER_SESS_DEFAULT_POOL_SIZE=20
+
+export DJANGO_CELERY_DB_NAME=${DOCKER_PG_DB_NAME}
+export DJANGO_CELERY_DB_USER=${DOCKER_PG_USER}
+export DJANGO_CELERY_DB_PASSWORD=${DOCKER_PG_PASSWORD}
+export DJANGO_CELERY_DB_HOST=
+export DJANGO_CELERY_DB_PORT=
+export DJANGO_CELERY_CONN_MAX_AGE=500
+
+export DJANGO_WEBSRV_DB_NAME=${DOCKER_PG_DB_NAME}
+export DJANGO_WEBSRV_DB_USER=${DOCKER_PG_USER}
+export DJANGO_WEBSRV_DB_PASSWORD=${DOCKER_PG_PASSWORD}
+export DJANGO_WEBSRV_DB_HOST=
+export DJANGO_WEBSRV_DB_PORT=
+export DJANGO_WEBSRV_CONN_MAX_AGE=0  # otherwise we have connection leakage in Daphne
 
 export DOCKER_RABBITMQ_REPLICAS=1
 export DOCKER_RABBITMQ_VHOST=contrax1_vhost
@@ -65,13 +129,14 @@ export DOCKER_JUPYTER_PORT=8888
 
 export DOCKER_KIBANA_BASE_PATH=/kibana
 
+export DOCKER_SLACK_WEBHOOK_URL=
+export DOCKER_SLACK_CHANNEL=
 
 export DOCKER_DJANGO_HOST_NAME=localhost
 export DOCKER_DJANGO_EMAIL_BACKEND=django.core.mail.backends.console.EmailBackend
 export DOCKER_DJANGO_EMAIL_HOST=localhost
 # Base path should start and end with slashes
-export DOCKER_DJANGO_BASE_PATH=/advanced/
-export DOCKER_DJANGO_BASE_PATH_STRIPPED=${DOCKER_DJANGO_BASE_PATH%/}
+export DOCKER_DJANGO_BASE_PATH=/explorer/
 export DOCKER_DJANGO_EMAIL_USE_TLS=False
 export DOCKER_DJANGO_EMAIL_PORT=587
 export DOCKER_DJANGO_EMAIL_HOST_USER=
@@ -90,12 +155,15 @@ export DOCKER_DJANGO_ACCOUNT_EMAIL_VERIFICATION=optional
 export DOCKER_DJANGO_JQWIDGETS_ARCHIVE=./deploy/dependencies/jqwidgets.zip
 export DOCKER_DIR=/data/docker
 
+
 export DOCKER_NGINX_SERVER_NAME=contrax-nginx
 export DOCKER_NGINX_CERTIFICATE=
 export DOCKER_NGINX_CERTIFICATE_KEY=
 export DOCKER_NGINX_CORS_CONFIG=cors_disable
 export DOCKER_NGINX_CPU_RESERVATIONS=0.5
 export DOCKER_NGINX_MEMORY_RESERVATIONS=512M
+
+
 
 export DOCKER_WEBDAV_SERVER_NAME=contrax-webdav
 export DOCKER_WEBDAV_AUTH_USER=user
@@ -106,11 +174,7 @@ export DOCKER_HOST_NAME_FLOWER=contrax-flower
 export FLOWER_REPLICAS=0
 
 
-
-# Must match user id/name in Dockerfile
-# This is required to be the same user id as WebDAV storage reads/writes with.
-# For bytemark/webdav:2.4 its id is 82
-export SHARED_USER_ID=82
+export SHARED_USER_ID=65432
 export SHARED_USER_NAME=contraxsuite_docker_user
 
 export SHARED_USER_LOG_READER_ID=65431
@@ -166,6 +230,8 @@ export MLFLOW_AWS_BUCKET=contraxmlflowartifacts
 export MLFLOW_AWS_ACCESS_KEY=${DOCKER_DJANGO_ADMIN_NAME}
 export MLFLOW_AWS_SECRET_KEY=${DOCKER_DJANGO_ADMIN_PASSWORD}
 
+export CONTRAXSUITE_IMAGE_FROM=ubuntu:18.04
+
 export DOCKER_BUILD_FLAGS=
 
 export PG_STATISTICS_ENABLED=true
@@ -178,6 +244,10 @@ export DOCKER_SWARM_ADVERTISE_ADDR=
 export CONTRAXSUITE_IMAGE_VERSION=latest
 
 export LEXNLP_TIKA_PARSER_MODE=pdf_ocr
+
+export UWSGI_PRIMARY_MIGRATIONS=
+
+export DEBUG_TRACE_UPDATE_PARENT_TASK=False
 
 
 if [ -f setenv_distr.sh ]
@@ -194,10 +264,29 @@ fi
 
 export DOCKER_FRONTEND_ROOT_URL=${DOCKER_DJANGO_HOST_NAME}
 
-if [ -z "${DOCKER_REGISTRY}" ]; then
-    export CONTRAXSUITE_IMAGE_FULL_NAME=${CONTRAXSUITE_IMAGE}
-else
+if [ "${DOCKER_REGISTRY}" ] && [ -z "${DOCKER_EXTERNAL_REGISTRY}" ]; then
     export CONTRAXSUITE_IMAGE_FULL_NAME=${DOCKER_REGISTRY}/${CONTRAXSUITE_IMAGE}
+elif [ "${DOCKER_REGISTRY}" ] && [ "${DOCKER_EXTERNAL_REGISTRY}" ]; then
+    export CONTRAXSUITE_IMAGE_FULL_NAME=${DOCKER_EXTERNAL_REGISTRY}/${CONTRAXSUITE_IMAGE}
+else
+    export CONTRAXSUITE_IMAGE_FULL_NAME=${CONTRAXSUITE_IMAGE}
 fi
 
 export DOCKER_POSTGRES_LOG_MIN_DUR_STMT=-1
+export DOCKER_DJANGO_BASE_PATH_STRIPPED=${DOCKER_DJANGO_BASE_PATH%/}
+
+if [ -z "${DJANGO_WEBSRV_DB_HOST}" ]; then
+    export DJANGO_WEBSRV_DB_HOST=${DOCKER_PGBOUNCER_SESS_HOST}
+    export DJANGO_WEBSRV_DB_PORT=${DOCKER_PGBOUNCER_PORT}
+    export DJANGO_WEBSRV_DB_NAME=${DOCKER_PG_DB_NAME}
+    export DJANGO_WEBSRV_DB_USER=${DOCKER_PG_USER}
+    export DJANGO_WEBSRV_DB_PASSWORD=${DOCKER_PG_PASSWORD}
+fi
+
+if [ -z "${DJANGO_CELERY_DB_HOST}" ]; then
+    export DJANGO_CELERY_DB_HOST=${DOCKER_PGBOUNCER_TRANS_HOST}
+    export DJANGO_CELERY_DB_PORT=${DOCKER_PGBOUNCER_PORT}
+    export DJANGO_CELERY_DB_NAME=${DOCKER_PG_DB_NAME}
+    export DJANGO_CELERY_DB_USER=${DOCKER_PG_USER}
+    export DJANGO_CELERY_DB_PASSWORD=${DOCKER_PG_PASSWORD}
+fi

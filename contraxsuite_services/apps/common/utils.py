@@ -39,7 +39,8 @@ import pdfkit as pdf
 # Django imports
 from django.conf import settings
 from django.conf.urls import url
-from django.core.serializers.json import DjangoJSONEncoder
+from django.contrib.sites.models import Site
+from django.core.handlers.wsgi import WSGIRequest
 from django.db.models import Aggregate, CharField, Value
 from django.http import HttpResponse
 from django.urls import reverse
@@ -53,21 +54,10 @@ from apps.users.models import User, Role
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.5.0/LICENSE"
-__version__ = "1.5.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.6.0/LICENSE"
+__version__ = "1.6.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
-
-
-class CustomDjangoJSONEncoder(DjangoJSONEncoder):
-    """
-    JSONEncoder subclass that knows how to encode unusual objects.
-    """
-
-    def default(self, obj):
-        if isinstance(obj, set):
-            return list(obj)
-        return super().default(obj)
 
 
 class Map(dict):
@@ -138,9 +128,36 @@ def construct_full_url(request, rel_url):
     :param rel_url: URL, beginning with slash
     :return:
     """
+    # UWSGI - Daphne migration
+    if request is WSGIRequest:
+        return request.build_absolute_uri(rel_url)
     protocol = 'https' if request.is_secure() else 'http'
     return '{protocol}://{host}{rel_url}'.format(
         protocol=protocol, host=request.get_host(), rel_url=rel_url)
+
+
+def full_reverse(*args, **kwargs):
+    """
+    Get full absolute url for a given url name
+    :param args: args for reverse
+    :param kwargs: kwargs for reverse
+    :param request: Request object
+    :return:
+    """
+    request = kwargs.pop('request', None)
+    if 'protocol' in kwargs:
+        protocol = kwargs.pop('protocol')
+    else:
+        protocol = settings.API_URL_PROTOCOL
+
+    rel_url = reverse(*args, **kwargs)
+    # UWSGI - Daphne migration
+    # if request is not None:
+    #     return construct_full_url(request, rel_url)
+    host_name = Site.objects.get_current().domain
+    # UWSGI - Daphne migration
+    abs_url = host_name.rstrip('/\\') + '/' + rel_url.lstrip('/\\')
+    return f'{protocol}://{abs_url}'
 
 
 def export_qs_to_file(request, qs, column_names=None,
@@ -460,11 +477,11 @@ def dictfetchone(cursor):
 
 def safe_to_int(s: str) -> int:
     if not s:
-        return None
+        return
     try:
         return int(s)
     except ValueError:
-        return None
+        return
 
 
 class GroupConcat(Aggregate):
@@ -480,3 +497,23 @@ class GroupConcat(Aggregate):
     def as_postgresql(self, compiler, connection):
         self.function = 'STRING_AGG'
         return super(GroupConcat, self).as_sql(compiler, connection)
+
+
+def topological_sort(items):
+    provided = set()
+    while items:
+        remaining_items = []
+        emitted = False
+
+        for item, dependencies in items:
+            if dependencies.issubset(provided):
+                yield item
+                provided.add(item)
+                emitted = True
+            else:
+                remaining_items.append((item, dependencies))
+
+        if not emitted:
+            raise ValueError("Cyclic or missing dependency detected")
+
+        items = remaining_items

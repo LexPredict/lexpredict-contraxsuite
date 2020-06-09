@@ -39,15 +39,15 @@ from apps.common.log_utils import ProcessLogger
 from apps.document.field_types import TypedField
 from apps.document.field_type_registry import FIELD_TYPE_REGISTRY
 from apps.document.models import DocumentType, DocumentFieldDetector, DocumentField, \
-    DocumentFieldCategory
+    DocumentFieldCategory, DocumentFieldFamily
 from apps.document.repository.document_field_repository import DocumentFieldRepository
 from apps.task.models import Task
 from apps.task.tasks import ExtendedTask, CeleryTaskLogger
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.5.0/LICENSE"
-__version__ = "1.5.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.6.0/LICENSE"
+__version__ = "1.6.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -313,6 +313,14 @@ class DeserializedDocumentField(DeserializedObjectController):
     def category_pk(self, category_pk: Any) -> None:
         self.object.category_id = category_pk
 
+    @property
+    def family_pk(self) -> Any:
+        return self.object.family_id
+
+    @family_pk.setter
+    def family_pk(self, family_pk: Any) -> None:
+        self.object.family_pk = family_pk
+
     def _get_save_object_context(self) -> dict:
         saved_field = None
         for document_field in DocumentField.objects.filter(pk=self.pk):
@@ -453,6 +461,8 @@ class DeserializedDocumentField(DeserializedObjectController):
         saved_field = self._get_saved_field(context)
         if self.category_pk is not None:
             self.category_pk = self.get_deserialized_object_by_source_pk(DocumentFieldCategory, self.category_pk).pk
+        if self.family_pk is not None:
+            self.family_pk = self.get_deserialized_object_by_source_pk(DocumentFieldFamily, self.family_pk).pk
 
         conflicting_field = DocumentField.objects \
             .filter(document_type_id=self.document_type_pk, code=self.object.code) \
@@ -543,6 +553,26 @@ class DeserializedDocumentFieldCategory(DeserializedObjectController):
         super()._save_deserialized_object(context)
 
 
+class DeserializedDocumentFieldFamily(DeserializedObjectController):
+
+    def __init__(self, deserialized_object, auto_fix_validation_errors: bool, logger: ProcessLogger = None):
+        super().__init__(deserialized_object, auto_fix_validation_errors, logger=logger)
+        saved_family_pk = None
+        for family_pk in DocumentFieldFamily.objects \
+                .filter(code=self.object.code) \
+                .values_list('pk', flat=True):
+            saved_family_pk = family_pk
+        self._target_object_pk = saved_family_pk
+
+    @property
+    def object(self) -> DocumentFieldFamily:
+        return super().object
+
+    def _save_deserialized_object(self, context: dict) -> None:
+        self.object.pk = self._target_object_pk
+        super()._save_deserialized_object(context)
+
+
 def import_document_type(json_bytes: bytes,
                          save: bool,
                          auto_fix_validation_errors: bool,
@@ -558,6 +588,7 @@ def import_document_type(json_bytes: bytes,
     if tasks:
         msg = 'The following user tasks are running: {0}. This import can cause their crashing because of document' \
               ' type / field structure changes.'.format(', '.join(tasks))
+
         raise RuntimeError(msg)
 
     objects = serializers.deserialize("json", json_bytes.decode("utf-8"))
@@ -591,6 +622,11 @@ def import_document_type(json_bytes: bytes,
                                                          auto_fix_validation_errors=auto_fix_validation_errors,
                                                          logger=logger)
             other_objects.append(category)
+        elif isinstance(obj, DocumentFieldFamily):
+            family = DeserializedDocumentFieldFamily(deserialized_object,
+                                                     auto_fix_validation_errors=auto_fix_validation_errors,
+                                                     logger=logger)
+            other_objects.append(family)
         else:
             raise RuntimeError('Unknown model')
 

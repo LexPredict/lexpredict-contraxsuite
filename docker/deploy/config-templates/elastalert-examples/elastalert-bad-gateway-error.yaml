@@ -1,0 +1,54 @@
+es_host: ${DOCKER_HOST_NAME_ELASTICSEARCH}
+es_port: ${DOCKER_ELASTICSEARCH_PORT}
+
+name: "${DOCKER_DJANGO_HOST_NAME}: 502 Bad Gateway Error Alert"
+index: filebeat-*
+
+is_enabled: true
+
+type: any
+
+query_key: host.name,url.original
+
+realert:
+  days: 1
+#   minutes: 1
+
+query_delay:
+  minutes: 1
+
+filter:
+- query:
+  - query_string:
+      query: "event.dataset:nginx.access AND http.response.status_code:502 AND docker.container.labels.com_docker_swarm_service_name:contraxsuite_contrax-nginx"
+
+alert_text_type: alert_text_only
+
+include : ["host.name", "docker.container.labels.com_docker_swarm_node_id",
+"http.request.referrer", "url.original", "http.request.method", "event.created"]
+
+alert_text: "${DOCKER_DJANGO_HOST_NAME}:\n
+Host: {0}\n
+Node: {1}\n
+Referrer: {2}\n
+Original URL: {3}\n
+Method: {4}\n
+Date: {5}\n
+"
+
+alert_text_args: ["host.name", "docker.container.labels.com_docker_swarm_node_id",
+"http.request.referrer", "url.original", "http.request.method", "event.created"]
+
+alert:
+  - "slack"
+#   - "email"
+
+slack_webhook_url: "${DOCKER_SLACK_WEBHOOK_URL}"
+slack_emoji_override: ":face_with_head_bandage:"
+slack_username_override: "ElastAlert"
+slack_channel_override: "#ops-notifications"
+slack_msg_color: "warning"
+slack_title: "502 Bad Gateway Error Alert"
+
+#email:
+#  - "${DOCKER_DJANGO_ADMIN_EMAIL}"

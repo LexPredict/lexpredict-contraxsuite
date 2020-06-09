@@ -25,6 +25,7 @@
 # -*- coding: utf-8 -*-
 
 import hashlib
+import time
 import traceback
 from typing import List, Dict, Optional, Tuple, Any, Generator, Set, Callable
 
@@ -41,7 +42,8 @@ from apps.document.constants import DOCUMENT_FIELD_CODE_MAX_LEN, DocumentGeneric
 from apps.document.document_class import DocumentClass
 from apps.document.models import DocumentType, Document, DocumentField, FieldAnnotation
 from apps.extract.models import DefinitionUsage, GeoEntityUsage, CurrencyUsage
-from apps.rawdb.constants import TABLE_NAME_PREFIX, FIELD_CODE_DOC_NAME, FIELD_CODE_DOC_TITLE, FIELD_CODE_DOC_FULL_TEXT, \
+from apps.rawdb.constants import TABLE_NAME_PREFIX, FIELD_CODE_DOC_NAME, FIELD_CODE_DOC_TITLE, \
+    FIELD_CODE_DOC_LANGUAGE, FIELD_CODE_DOC_PROCESSED, \
     FIELD_CODE_DOC_FULL_TEXT_LENGTH, FIELD_CODE_DOC_ID, FIELD_CODE_CREATE_DATE, FIELD_CODE_IS_REVIEWED, \
     FIELD_CODE_IS_COMPLETED, FIELD_CODE_PROJECT_ID, FIELD_CODE_PROJECT_NAME, FIELD_CODE_ASSIGNEE_ID, \
     FIELD_CODE_ASSIGNEE_NAME, FIELD_CODE_ASSIGN_DATE, FIELD_CODE_STATUS_NAME, FIELD_CODE_DELETE_PENDING, \
@@ -50,6 +52,7 @@ from apps.rawdb.constants import TABLE_NAME_PREFIX, FIELD_CODE_DOC_NAME, FIELD_C
     FIELD_CODES_GENERIC, FIELD_CODE_ANNOTATION_SUFFIX, INDEX_NAME_PREFIX, DEFAULT_ORDER_BY, FIELD_CODE_FOLDER, \
     CACHE_FIELD_TO_DOC_FIELD, FIELD_CODE_DOCUMENT_CLASS, FIELD_CODE_DOCUMENT_CLASS_PROB, FIELD_CODE_IS_CONTRACT, \
     FIELD_CODE_GEOGRAPHIES, FIELD_CODE_CURRENCY_TYPES
+from apps.common.error_explorer import retry_for_operational_error
 from apps.rawdb.models import SavedFilter
 from apps.rawdb.notifications import UserNotifications
 from apps.rawdb.rawdb.rawdb_field_handlers import PgTypes, RawdbFieldHandler, ColumnDesc, StringRawdbFieldHandler, \
@@ -65,8 +68,8 @@ from apps.users.models import User
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.5.0/LICENSE"
-__version__ = "1.5.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.6.0/LICENSE"
+__version__ = "1.6.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -180,11 +183,23 @@ RAWDB_FIELD_HANDLER_REGISTRY = {
 # Generic Fields - should match keys from the output of field_value_cache.get_generic_values(doc)
 
 
-def _build_system_field_handlers(table_name: str, include_system_fields: FieldSpec = True) \
+def _build_system_field_handlers(table_name: str,
+                                 include_system_fields: FieldSpec = True,
+                                 is_select: bool = False) \
         -> List[RawdbFieldHandler]:
     res = list()
-    id_handler = IntFieldHandler(FIELD_CODE_DOC_ID, field_types.IntField.type_code, 'Id', table_name)
-    id_handler.pg_type = PgTypes.INTEGER_PRIMARY_KEY
+
+    # Create String handler to use LIKE operator over document id column for Select clauses
+    if is_select:
+        id_handler = StringRawdbFieldHandler(
+            FIELD_CODE_DOC_ID,
+            field_types.StringField.type_code, 'Document Id', table_name,
+            explicit_text_conversion=True)
+    else:
+        id_handler = IntFieldHandler(
+            FIELD_CODE_DOC_ID,
+            field_types.IntField.type_code, 'Document Id', table_name)
+        id_handler.pg_type = PgTypes.INTEGER_PRIMARY_KEY
     res.append(id_handler)
 
     if not include_system_fields:
@@ -196,14 +211,10 @@ def _build_system_field_handlers(table_name: str, include_system_fields: FieldSp
                                     'Name', table_name))
         res.append(StringRawdbFieldHandler(FIELD_CODE_DOC_TITLE, field_types.StringField.type_code,
                                            'Title', table_name))
+        res.append(StringRawdbFieldHandler(FIELD_CODE_DOC_LANGUAGE, field_types.StringField.type_code,
+                                           'Language', table_name))
 
         lim = int(settings.RAW_DB_FULL_TEXT_SEARCH_CUT_ABOVE_TEXT_LENGTH)
-        res.append(LongTextFromRelTableFieldHandler(FIELD_CODE_DOC_FULL_TEXT, 'Text', table_name,
-                                                    select_text_sql=f'''select 
-                                                                   substring(full_text for {lim}) 
-                                                                   from document_documenttext where document_id = %s''',
-                                                    select_text_ref_id_field_code=FIELD_CODE_DOC_ID,
-                                                    output_column_char_limit=200))
         res.append(IntFieldHandler(FIELD_CODE_DOC_FULL_TEXT_LENGTH, field_types.IntField.type_code,
                                    'Text Length', table_name))
         res.append(DateTimeFieldHandler(FIELD_CODE_CREATE_DATE, field_types.DateTimeField.type_code,
@@ -229,7 +240,11 @@ def _build_system_field_handlers(table_name: str, include_system_fields: FieldSp
         res.append(StringRawdbFieldHandler(FIELD_CODE_DOCUMENT_CLASS_PROB, field_types.StringField.type_code,
                                            'Document Class Vector', table_name))
         res.append(BooleanRawdbFieldHandler(FIELD_CODE_IS_CONTRACT, field_types.BooleanField.type_code,
-                                           'Is Contract', table_name))
+                                            'Is Contract', table_name))
+
+    if DocumentSystemField.processed.specified_in(include_system_fields):
+        res.append(BooleanRawdbFieldHandler(FIELD_CODE_DOC_PROCESSED, field_types.BooleanField.type_code,
+                                            'Processed', table_name))
 
     if DocumentSystemField.project.specified_in(include_system_fields):
         res.append(IntFieldHandler(FIELD_CODE_PROJECT_ID, field_types.IntField.type_code,
@@ -287,14 +302,17 @@ def build_field_handlers(document_type: DocumentType, table_name: str = None,
                          include_generic_fields: FieldSpec = True,
                          include_user_fields: FieldSpec = True,
                          include_annotation_fields: bool = True,
-                         exclude_hidden_always_fields: bool = False) \
+                         exclude_hidden_always_fields: bool = False,
+                         is_select: bool = False) \
         -> List[RawdbFieldHandler]:
     res = list()  # type: List[RawdbFieldHandler]
 
     if not table_name:
         table_name = doc_fields_table_name(document_type.code)
 
-    res.extend(_build_system_field_handlers(table_name, include_system_fields=include_system_fields))
+    res.extend(_build_system_field_handlers(table_name,
+                                            include_system_fields=include_system_fields,
+                                            is_select=is_select))
 
     if include_generic_fields:
         res.extend(_build_generic_field_handlers(table_name, include_generic_fields=include_generic_fields))
@@ -452,6 +470,7 @@ def cleanup_saved_filters(document_type: DocumentType, should_be_column_names: S
             f.save()
 
 
+@retry_for_operational_error(retries_count=2, cooldown_interval=2.0)
 def adapt_table_structure(log: ProcessLogger,
                           document_type: DocumentType,
                           force: bool = False,
@@ -538,7 +557,7 @@ def adapt_table_structure(log: ProcessLogger,
                     except Exception:
                         actions_failed += 1
                         src_error_txt = traceback.format_exc()
-                        msg = f'adapt_table_structure: error creating index' + \
+                        msg = 'adapt_table_structure: error creating index' + \
                               f' for {table_name}:{should_be_index_name},\n' + \
                               f'{should_be_index_def}.\nOriginal error: {src_error_txt}.'
 
@@ -592,8 +611,7 @@ def _fill_system_fields_to_python_values(document: Document,
     if include_system_fields is True:
         field_to_python_values[FIELD_CODE_DOC_NAME] = document.name
         field_to_python_values[FIELD_CODE_DOC_TITLE] = document.title
-        field_to_python_values[FIELD_CODE_DOC_FULL_TEXT] = \
-            document.full_text[:settings.RAW_DB_FULL_TEXT_SEARCH_CUT_ABOVE_TEXT_LENGTH] if document.full_text else None
+        field_to_python_values[FIELD_CODE_DOC_LANGUAGE] = document.language
         field_to_python_values[FIELD_CODE_DOC_FULL_TEXT_LENGTH] = len(document.full_text) if document.full_text else 0
 
         field_to_python_values[FIELD_CODE_CREATE_DATE] = document.history.last().history_date \
@@ -617,6 +635,9 @@ def _fill_system_fields_to_python_values(document: Document,
         field_to_python_values[FIELD_CODE_CURRENCY_TYPES] = '; '.join(
             CurrencyUsage.objects.filter(text_unit__document=document)
                 .values_list('currency', flat=True).order_by('currency').distinct()) or None
+
+    if DocumentSystemField.processed.specified_in(include_system_fields):
+        field_to_python_values[FIELD_CODE_DOC_PROCESSED] = document.processed
 
     if DocumentSystemField.status.specified_in(include_system_fields):
         field_to_python_values[FIELD_CODE_IS_REVIEWED] = document.is_reviewed()
@@ -847,6 +868,7 @@ def clear_user_fields_no_events(document: Document,
             cursor.execute(sql, [document.pk])
 
 
+@retry_for_operational_error(retries_count=2, cooldown_interval=2.0)
 def cache_document_fields(log: ProcessLogger,
                           document: Document,
                           cache_system_fields: FieldSpec = True,
@@ -854,7 +876,8 @@ def cache_document_fields(log: ProcessLogger,
                           cache_user_fields: FieldSpec = True,
                           document_initial_load: bool = False,
                           changed_by_user: User = None,
-                          old_field_values: Dict[str, Any] = None):
+                          old_field_values: Dict[str, Any] = None,
+                          disable_notifications: bool = False):
     document_type = document.document_type
     table_name = doc_fields_table_name(document_type.code)
 
@@ -970,10 +993,33 @@ def cache_document_fields(log: ProcessLogger,
     document_fields_after = dict(document_fields_before) if document_fields_before else dict()
     document_fields_after.update(inserted_document_fields)
 
-    UserNotifications.notify_user_on_document_values_changed(
-        document, document_fields_before, document_fields_after,
-        handlers, changed_by_user)
+    if document.processed and not disable_notifications:
+        # send websocket notifications for the existing docs only
+        # don't send on the docs being loaded to avoid excessive traffic/cpu usage
 
+        attempts = 1    # number of attempts
+        delay = 10    # delay in seconds for the first attempt
+        multiplier = 1    # multiplier to increase time between further attempts
+
+        for attempt_n in range(1, attempts + 1):
+            try:
+                UserNotifications.notify_user_on_document_values_changed(
+                    document, document_fields_before, document_fields_after,
+                    handlers, changed_by_user)
+                break
+            # case 1. when websocket channels cannot connect to redis. CS-5065
+            except OSError:
+                if attempt_n != attempts:
+                    time.sleep(delay)
+                    delay *= multiplier
+                else:
+                    src_error_txt = traceback.format_exc()
+                    log.error('Failed to send notifications on document values changed. '
+                              'Original exception is: {}'.format(src_error_txt))
+    document.fields_dirty = None
+    document.save(update_fields=['fields_dirty'])
+    log.debug(f"Fields are cached for document {document.pk}",
+              extra={Document.LOG_FIELD_DOC_ID: str(document.pk)})
     fire_document_fields_changed(cache_document_fields,
                                  log=log,
                                  document_event=DocumentEvent.CREATED.value if document_initial_load
@@ -1089,7 +1135,9 @@ def query_documents(document_type: DocumentType,
     handlers = build_field_handlers(document_type=document_type,
                                     table_name=table_name,
                                     include_annotation_fields=include_annotation_fields,
-                                    exclude_hidden_always_fields=True)  # type: List[RawdbFieldHandler]
+                                    exclude_hidden_always_fields=True,
+                                    is_select=True)  # type: List[RawdbFieldHandler]
+
     existing_columns = _get_columns(handlers)  # type: List[ColumnDesc]
     existing_column_name_to_desc = {column.name: column
                                     for column in
@@ -1140,6 +1188,9 @@ def query_documents(document_type: DocumentType,
 
     soft_delete_clause = SQLClause('"{col_name}" = false'.format(col_name=FIELD_CODE_DELETE_PENDING))
     column_filters_clauses.append(soft_delete_clause)
+
+    processed_clause = SQLClause('"{col_name}" = true'.format(col_name=FIELD_CODE_DOC_PROCESSED))
+    column_filters_clauses.append(processed_clause)
 
     where_clause = join_clauses('\nand ', column_filters_clauses)
 
@@ -1236,30 +1287,76 @@ def set_documents_delete_status(document_ids: List[int],
         return
     doc_types = Document.all_objects.filter(id__in=document_ids).values_list(
         'document_type__code', flat=True).distinct().order_by()
-    doc_id_str = ','.join([str(id) for id in document_ids])
     total_checked = 0
+    untracked_ids = []
 
     try:
         with connection.cursor() as cursor:
             for doc_type in doc_types:
+                doc_type_doc_ids = Document.all_objects.filter(
+                    document_type__code=doc_type, pk__in=document_ids).values_list('pk', flat=True)
+                doc_type_doc_ids_str = ','.join([str(id) for id in doc_type_doc_ids])
                 table_name = doc_fields_table_name(doc_type)
                 cmd = f'UPDATE "{table_name}" set "{FIELD_CODE_DELETE_PENDING}"' + \
                       f'={delete_pending} where ' + \
-                      f'"{FIELD_CODE_DOC_ID}" in ({doc_id_str});'
+                      f'"{FIELD_CODE_DOC_ID}" in ({doc_type_doc_ids_str});'
                 cursor.execute(cmd)
+                doc_type_docs_updated = cursor.rowcount
                 total_checked += cursor.rowcount
+
+                # check if documents ids don't exist in a table at all
+                if doc_type_docs_updated < len(doc_type_doc_ids):
+                    doc_type_doc_ids_str = ','.join([f'({id})' for id in doc_type_doc_ids])
+                    sql = f"VALUES {doc_type_doc_ids_str} " \
+                          f"EXCEPT ALL " \
+                          f"SELECT document_id FROM {table_name};"
+                    cursor.execute(sql)
+                    doc_type_untracked_ids = [i[0] for i in cursor.fetchall()]
+                    untracked_ids += doc_type_untracked_ids
+
     except Exception as e:
         er_msg = format_error_msg(document_ids, delete_pending, total_checked)
         logger = get_django_logger()
         logger.error(er_msg + '\n' + str(e))
         raise e
 
-    # ensure all documents are processed
-    if total_checked != len(document_ids):
+    # Run Index task for untracked documents
+    if untracked_ids:
+        from apps.rawdb.tasks import plan_reindex_tasks_in_chunks
+        plan_reindex_tasks_in_chunks(untracked_ids)
+
+    # Otherwise if some unpredicted case - ensure all documents are processed
+    elif total_checked != len(document_ids):
         er_msg = format_error_msg(document_ids, delete_pending, total_checked)
         logger = get_django_logger()
         logger.error(er_msg)
         raise RuntimeError(er_msg)
+
+
+def delete_documents(document_ids: List[int]) -> None:
+    """
+    Completely delete document from rawdb index
+    :param document_ids:
+    :return:
+    """
+    if len(document_ids) == 0:
+        return
+    doc_types = Document.all_objects.filter(id__in=document_ids).values_list(
+        'document_type__code', flat=True).distinct().order_by()
+    try:
+        with connection.cursor() as cursor:
+            for doc_type in doc_types:
+                doc_type_doc_ids = Document.all_objects.filter(
+                    document_type__code=doc_type, pk__in=document_ids).values_list('pk', flat=True)
+                doc_type_doc_ids_str = ','.join([str(id) for id in doc_type_doc_ids])
+                table_name = doc_fields_table_name(doc_type)
+                cmd = f'DELETE FROM "{table_name}" WHERE ' + \
+                      f'"{FIELD_CODE_DOC_ID}" IN ({doc_type_doc_ids_str});'
+                cursor.execute(cmd)
+    except Exception as e:
+        logger = get_django_logger()
+        logger.error('Failed to delete documents with ids {}'.format(str(document_ids)) + '\n' + str(e))
+        raise e
 
 
 def update_document_name(doc_id: int, doc_name: str) -> None:

@@ -61,6 +61,24 @@
       // for server-side pagination
       rendergridrows: function () {
         return dataAdapter.records;
+      },
+      updatefilterconditions: function (type, defaultconditions) {
+        var stringcomparisonoperators = ['EMPTY', 'NOT_EMPTY', 'CONTAINS', 'CONTAINS_CASE_SENSITIVE', 'FULL_TEXT_SEARCH',
+          'DOES_NOT_CONTAIN', 'DOES_NOT_CONTAIN_CASE_SENSITIVE', 'STARTS_WITH', 'STARTS_WITH_CASE_SENSITIVE',
+          'ENDS_WITH', 'ENDS_WITH_CASE_SENSITIVE', 'EQUAL', 'EQUAL_CASE_SENSITIVE', 'NULL', 'NOT_NULL'];
+        var numericcomparisonoperators = ['EQUAL', 'NOT_EQUAL', 'LESS_THAN', 'LESS_THAN_OR_EQUAL', 'GREATER_THAN', 'GREATER_THAN_OR_EQUAL', 'NULL', 'NOT_NULL'];
+        var datecomparisonoperators = ['EQUAL', 'NOT_EQUAL', 'LESS_THAN', 'LESS_THAN_OR_EQUAL', 'GREATER_THAN', 'GREATER_THAN_OR_EQUAL', 'NULL', 'NOT_NULL'];
+        var booleancomparisonoperators = ['EQUAL', 'NOT_EQUAL'];
+        switch (type) {
+          case 'stringfilter':
+            return stringcomparisonoperators;
+          case 'numericfilter':
+            return numericcomparisonoperators;
+          case 'datefilter':
+            return datecomparisonoperators;
+          case 'booleanfilter':
+            return booleancomparisonoperators;
+        }
       }
     };
 
@@ -83,6 +101,36 @@
     }
 
     var opts = $.extend({}, base_jqxgrid_options, current_jqxgrid_options);
+
+    // needed to add custom filters (full text search)
+    $(selector).bind('bindingcomplete', function () {
+      var localizationObject = {};
+      filterstringcomparisonoperators = ['empty', 'not empty', 'contains', 'contains(match case)', 'full text search(or contains)',
+        'does not contain', 'does not contain(match case)', 'starts with', 'starts with(match case)',
+        'ends with', 'ends with(match case)', 'equal', 'equal(match case)', 'null', 'not null'];
+      filternumericcomparisonoperators = ['equal', 'not equal', 'less than', 'less than or equal', 'greater than', 'greater than or equal', 'null', 'not null'];
+      filterdatecomparisonoperators = ['equal', 'not equal', 'less than', 'less than or equal', 'greater than', 'greater than or equal', 'null', 'not null'];
+      filterbooleancomparisonoperators = ['equal', 'not equal'];
+      localizationObject.filterstringcomparisonoperators = filterstringcomparisonoperators;
+      localizationObject.filternumericcomparisonoperators = filternumericcomparisonoperators;
+      localizationObject.filterdatecomparisonoperators = filterdatecomparisonoperators;
+      localizationObject.filterbooleancomparisonoperators = filterbooleancomparisonoperators;
+
+      // change default message for empty data set if user_projects_selected is empty
+      if (!window.user_projects_selected.length){
+        localizationObject.emptydatastring = "Select Project(s) Above for Viewing Data";
+        $(".project_selection label")
+            .fadeOut(300)
+            .fadeIn(300)
+            .fadeOut(300)
+            .fadeIn(300)
+      }
+      else {
+        localizationObject.emptydatastring = "No data to display";
+      }
+      $(selector).jqxGrid('localizestrings', localizationObject);
+    });
+
     $(selector).jqxGrid(opts)
   };
 
@@ -223,6 +271,7 @@
 
   // remove item on "Yes" button click - send ajax request, refresh table
   function show_remove_popup(url, grid){
+    var token = jQuery("[name=csrfmiddlewaretoken]").val();
     $.confirm({
       type: 'orange',
       icon: 'fa fa-warning text-warning',
@@ -237,6 +286,7 @@
             $.ajax({
               method: 'POST',
               url: url,
+              data: { csrfmiddlewaretoken: token },
               success: function(response){
                 grid.jqxGrid('updatebounddata');
                 ajax_success_handler(response)
@@ -268,6 +318,7 @@
       url = cl_doc_tag_url;
       title = "Tag cluster's documents"
     }
+    var token = jQuery("[name=csrfmiddlewaretoken]").val();
     $.confirm({
       type: 'blue',
       icon: 'fa fa-tags',
@@ -285,6 +336,7 @@
                 method: 'POST',
                 url: url,
                 data: {
+                  csrfmiddlewaretoken: token,
                   owner_id: pk,
                   tag_pk: tag_pk,
                   tag: tag },
@@ -306,6 +358,7 @@
 
   // classify text unit popup
   function classify_text_unit_popup(pk, grid) {
+    var token = jQuery("[name=csrfmiddlewaretoken]").val();
     $.confirm({
       type: 'blue',
       icon: 'fa fa-gavel',
@@ -323,6 +376,7 @@
                 method: 'POST',
                 url: tuc_submit_url,
                 data: {
+                  csrfmiddlewaretoken: token,
                   owner_id: pk,
                   class_name: class_name,
                   class_value: class_value },
@@ -355,6 +409,7 @@
 
   // mark Document completed OR reopen
   function mark_document_completed(text, url, grid) {
+    var token = jQuery("[name=csrfmiddlewaretoken]").val();
     $.confirm({
       type: 'orange',
       icon: 'fa fa-gavel text-warning',
@@ -369,6 +424,9 @@
             $.ajax({
               method: 'POST',
               url: url,
+              data: {
+                csrfmiddlewaretoken: token
+              },
               success: function(response){
                 var is_nested = grid.hasClass('sub-grid');
                 var task_queue_grid = is_nested ? grid.parents('.jqxgrid') : grid;
@@ -392,6 +450,7 @@
 
   // remove Document from Task Queue
   function remove_document_from_task_queue(text, url, grid) {
+    var token = jQuery("[name=csrfmiddlewaretoken]").val();
     $.confirm({
       type: 'orange',
       icon: 'fa fa-remove text-warning',
@@ -408,6 +467,9 @@
             $.ajax({
               method: 'POST',
               url: url,
+              data: {
+                csrfmiddlewaretoken: token
+              },
               success: function(response){
                 var is_nested = grid.hasClass('sub-grid');
                 var task_queue_grid = is_nested ? grid.parents('.jqxgrid') : grid;
@@ -434,6 +496,7 @@
 
   // purge task
   function purge_task_popup(pk, url, grid) {
+    var token = jQuery("[name=csrfmiddlewaretoken]").val();
     $.confirm({
       type: 'orange',
       icon: 'fa fa-eraser text-warning',
@@ -448,7 +511,10 @@
             $.ajax({
               method: 'POST',
               url: url,
-              data: { task_pk: pk },
+              data: {
+                task_pk: pk,
+                csrfmiddlewaretoken: token
+              },
               success: function(response){
                 grid.jqxGrid('updatebounddata');
                 ajax_success_handler(response)

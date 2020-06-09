@@ -35,8 +35,8 @@ from apps.task.utils.text_extraction.xml_wordx.xml_wordx_serialization import Se
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.5.0/LICENSE"
-__version__ = "1.5.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.6.0/LICENSE"
+__version__ = "1.6.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -123,9 +123,10 @@ class DocParagraph(DocItem):
         list_marker = self.get_list_marker(context)
         line = list_marker + line
         # TODO: override and extra formatting here
+        is_header = self.style and self.style.lower().startswith('heading')
         context.lines.append(DocLine(line,
                                      indent=context.indent))
-        if not self.is_list_paragraph() and line:
+        if not self.is_list_paragraph() and not is_header and line:
             context.lines.append(DocLine(''))
 
     def serialize_inline(self,

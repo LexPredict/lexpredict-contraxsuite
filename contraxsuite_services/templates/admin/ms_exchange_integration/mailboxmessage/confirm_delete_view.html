@@ -1,0 +1,46 @@
+{% extends "admin/base_site.html" %}
+
+{% load i18n l10n admin_urls %}
+{% load url from suit_compat %}
+
+{% block breadcrumbs %}
+  <ul class="breadcrumb">
+    <li><a href="{% url 'admin:index' %}">{% trans 'Home' %}</a>
+      <span class="divider">&raquo;</span></li>
+    <li>
+      <a href="{% url 'admin:app_list' app_label="ms_exchange_integration" %}">Mail Message</a>
+      <span class="divider">&raquo;</span></li>
+    <li class="active">{% trans 'Delete multiple objects' %}</li>
+  </ul>
+{% endblock %}
+
+{% block content %}
+    <form action="" method="post">{% csrf_token %}
+        <div class="info-block">
+            <h4 class="alert-heading">Select Mail Boxes to purge</h4>
+             <table class="table table-bordered table-hover table-striped">
+                 <tr>
+                     <th>Project preffix</th>
+                     <th>Mail box</th>
+                     <th>Messages</th>
+                     <th>Selected</th>
+                 </tr>
+             {% for project, address, pk, count in msg_by_box %}
+                 <tr>
+                     <td>{{ project}}</td>&nbsp;
+                     <td>{{ address }}</td>
+                     <td>{{ count }}</td>
+                     <td>
+                         <input type="checkbox" name="project_{{pk}}" value="{{pk}}">
+                     </td>
+                 </tr>
+             {% endfor %}
+             </table>
+
+            <div style="padding: 20px">
+                <input type="submit" value="Purge messages" class="btn btn-danger"/>
+            </div>
+        </div>
+    </form>
+
+{% endblock %}

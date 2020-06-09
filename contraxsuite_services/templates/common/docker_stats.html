@@ -1,0 +1,339 @@
+{% extends "base_list_ajax.html" %}
+{% load static %}
+
+{%  block css_extra %}
+  {{ block.super }}
+  <style>
+    .jqx-grid-statusbar {
+      color: white;
+    }
+    .container {
+      max-width: 95%;
+    }
+    .template {
+      display: none
+    }
+    .page-tabs {
+      margin-left: 10px;
+    }
+    .boot-tabs {
+      margin-bottom: 5px !important;
+    }
+    .red {
+      color: red;
+      font-weight: bold;
+    }
+  </style>
+{% endblock %}
+
+{% block page_header %}Docker Stats Overview{% endblock %}
+
+{% block project_selection %}{% endblock %}
+
+{% block content %}
+
+  <div class="page-tabs">
+
+    <ul class="nav nav-tabs boot-tabs">
+      <li><a data-toggle="tab" href="#tab-01" class="tab-01 active">Docker Services</a></li>
+      <li><a data-toggle="tab" href="#tab-02" class="tab-02">Docker Nodes</a></li>
+      <li><a data-toggle="tab" href="#tab-03" class="tab-03">Docker Stats</a></li>
+      <li><a data-toggle="tab" href="#tab-04" class="tab-04">Redis Stats</a></li>
+      <li><a style="opacity: 1">Disk Usage <b>{{ disk_usage }}%</b></a></li>
+    </ul>
+
+    <div class="tab-content">
+
+      <div class="tab-pane clearfix tab-01 active" id="tab-01">
+        <div class="pull-right grid-controls">
+          {% include '_base_grid_buttons_block.html' %}
+        </div>
+        <span><small>* Data is updated every minute.</small></span>
+        <div class="jqxgrid-container jqxgrid-docker-services">
+          <div class="jqxgrid col-md-12"></div>
+        </div>
+      </div>
+
+      <div class="tab-pane clearfix tab-02" id="tab-02">
+        <div class="pull-right grid-controls">
+          {% include '_base_grid_buttons_block.html' %}
+        </div>
+        <span><small>* Data is updated every minute.</small></span>
+        <div class="jqxgrid-container jqxgrid-docker-nodes">
+          <div class="jqxgrid col-md-12"></div>
+        </div>
+      </div>
+
+      <div class="tab-pane clearfix tab-03" id="tab-03">
+        <div class="pull-right grid-controls">
+          {% include '_base_grid_buttons_block.html' %}
+        </div>
+        <span><small>* Data is updated every minute.</small></span>
+        <div class="jqxgrid-container jqxgrid-docker-st">
+          <div class="jqxgrid col-md-12"></div>
+        </div>
+      </div>
+
+      <div class="tab-pane clearfix tab-04" id="tab-04">
+        <div class="pull-right grid-controls">
+          {% include '_base_grid_buttons_block.html' %}
+        </div>
+        <div class="jqxgrid-container jqxgrid-redis">
+          <div class="jqxgrid col-md-12"></div>
+        </div>
+      </div>
+
+   </div>
+  </div>
+
+{% endblock %}
+
+
+{% block js_extra %}
+  {{ block.super }}
+
+  <script type="text/javascript">
+
+    function prettify_bytes(value){
+      if (!value) return 0;
+      var unit_list = ['bytes', 'kB', 'MB', 'GB', 'TB'];
+      for (var i = 0; i < unit_list.length; i++){
+        var unit = unit_list[i];
+        if (Math.abs(value) < 1024.0){
+          return value.toFixed(1) + ' ' + unit
+        }
+        value = value / 1024.0
+      }
+      return value.toFixed(value) + ' ' + unit
+    };
+
+    $(document).ready(function () {
+
+      var prettySizeRenderer = function(index, columnfield, value, defaulthtml, columnproperties, row){
+        return renderCell(defaulthtml, prettify_bytes(value));
+      };
+      var prettyNanoCPU = function(index, columnfield, value, defaulthtml, columnproperties, row){
+        return renderCell(defaulthtml, value/1000000000);
+      };
+      var zero_replicas_cellsclassrenderer = function(row, columnfield, value, data) {
+        if (data.REPLICAS.startsWith('0')||data.REPLICAS.split('/')[1].startsWith('0')){
+          return 'red'
+        }
+      };
+      var down_nodes_cellclassrenderer = function(row, columnfield, value, data) {
+        if (data.State == 'down'){
+          return 'red'
+        }
+      };
+
+     {# var portRenderer = function(index, columnfield, value, defaulthtml, columnproperties, row){#}
+     {#   if (value) {#}
+     {#     var ret = [];#}
+     {#     for (var i = 0; i < value.length; i++) {#}
+     {#       ret.push(value[i]['PublishedPort'] + '->' + value[i]['TargetPort'] + '/' + value[i]['Protocol'])#}
+     {#     }#}
+     {#     value = ret.join('; ')#}
+     {#   }#}
+     {#   return renderCell(defaulthtml, value);#}
+     {# };#}
+     {# var replicasRenderer = function(index, columnfield, value, defaulthtml, columnproperties, row){#}
+     {#   if (value && value.Replicas !== undefined) {#}
+     {#     value = value.Replicas#}
+     {#   }#}
+     {#   else if (row.Mode.Global !== undefined) {#}
+     {#     value = 1#}
+     {#   }#}
+     {#   return renderCell(defaulthtml, value);#}
+     {# };#}
+     {# var modeRenderer = function(index, columnfield, value, defaulthtml, columnproperties, row){#}
+     {#   if (value) {#}
+     {#     value = value.Replicated !== undefined ? 'Replicated' : 'Global';#}
+     {#   }#}
+     {#   return renderCell(defaulthtml, value);#}
+     {# };#}
+     {# var docker_services_datafields = [#}
+     {#   { name: 'ID', type: 'string' },#}
+     {#   { name: 'Name', type: 'string', map: 'Spec>Name' },#}
+     {#   { name: 'Mode', type: 'int', map: 'Spec>Mode' },#}
+     {#   { name: 'Replicas', type: 'int', map: 'Spec>Mode>Replicated>Replicas' },#}
+     {#   { name: 'Ports', type: 'string', map: 'Spec>EndpointSpec>Ports' },#}
+     {#   { name: 'Image', type: 'string', map: 'Spec>Labels>com.docker.stack.image' },#}
+     {#   { name: 'CreatedAt', type: 'date' }#}
+     {#];#}
+     {# var docker_services_columns = [#}
+     {#   { text: 'ID', datafield: 'ID', width: 250,#}
+     {#     align: 'center', cellsalign: 'left' },#}
+     {#   { text: 'Name', datafield: 'Name', width: 'auto',#}
+     {#     align: 'center', cellsalign: 'left' },#}
+     {#   { text: 'Mode', datafield: 'Mode', width: 100,#}
+     {#     cellsrenderer: modeRenderer,#}
+     {#     align: 'center', cellsalign: 'center' },#}
+     {#   { text: 'Replicas', datafield: 'Replicas', width: 100, cellsformat: 'd',#}
+     {#     cellsrenderer: replicasRenderer,#}
+     {#     align: 'center', cellsalign: 'center' },#}
+     {#   { text: 'Ports', datafield: 'Ports', width: 150,#}
+     {#     cellsrenderer: portRenderer,#}
+     {#     align: 'center', cellsalign: 'left' },#}
+     {#   { text: 'Image', datafield: 'Image', width: 'auto',#}
+     {#     align: 'center', cellsalign: 'left' },#}
+     {#   { text: 'CreatedAt', datafield: 'CreatedAt', width: 150, cellsformat: 'MM-dd-yyyy HH:mm',#}
+     {#     align: 'center', cellsalign: 'center' }#}
+     {# ];#}
+     {# var docker_services_custom_source_data = {#}
+     {#   url: window.location.href,#}
+     {#   datatype: "json",#}
+     {#   id: 'pk',#}
+     {#   root: 'data',#}
+     {#   data: { 'source': 'docker_services_data' }#}
+     {# };#}
+     {# var docker_services_custon_options = {#}
+     {#     pagesize: 30#}
+     {# };#}
+     {# draw_grid(".jqxgrid-docker-services .jqxgrid", docker_services_datafields, docker_services_columns, false,#}
+     {#   docker_services_custom_source_data, docker_services_custon_options);#}
+
+      var docker_services_plain_datafields = [
+        { name: 'ID', type: 'string' },
+        { name: 'NAME', type: 'string' },
+        { name: 'MODE', type: 'string' },
+        { name: 'REPLICAS', type: 'string' },
+        { name: 'IMAGE', type: 'string' },
+        { name: 'PORTS', type: 'string' }
+     ];
+      var docker_services_plain_columns = [
+        { text: 'ID', datafield: 'ID', width: 150,
+          align: 'center', cellsalign: 'left' },
+        { text: 'Name', datafield: 'NAME', width: 'auto',
+          align: 'center', cellsalign: 'left' },
+        { text: 'Mode', datafield: 'MODE', width: 100,
+          align: 'center', cellsalign: 'center' },
+        { text: 'Replicas', datafield: 'REPLICAS', width: 100,
+          cellclassname: zero_replicas_cellsclassrenderer,
+          align: 'center', cellsalign: 'center' },
+        { text: 'Ports', datafield: 'PORTS', width: 150,
+          align: 'center', cellsalign: 'left' },
+        { text: 'Image', datafield: 'IMAGE', width: 'auto',
+          align: 'center', cellsalign: 'left' }
+      ];
+      var docker_services_plain_custom_source_data = {
+        url: '{% url 'common:docker-stats' %}',
+        data: { 'source': 'docker_services_plain' },
+        datatype: "json",
+        root: 'data'
+      };
+      var docker_services_plain_custon_options = {
+        pageable: false
+      };
+      draw_grid(".jqxgrid-docker-services .jqxgrid", docker_services_plain_datafields, docker_services_plain_columns, false,
+        docker_services_plain_custom_source_data, docker_services_plain_custon_options);
+
+      var docker_nodes_datafields = [
+        { name: 'ID', type: 'string' },
+        { name: 'Hostname', type: 'string', map: 'Description>Hostname' },
+        { name: 'MemoryBytes', type: 'int', map: 'Description>Resources>MemoryBytes' },
+        { name: 'NanoCPUs', type: 'int', map: 'Description>Resources>NanoCPUs' },
+        { name: 'Availability', type: 'string', map: 'Spec>Availability' },
+        { name: 'Role', type: 'string', map: 'Spec>Role' },
+        { name: 'State', type: 'string', map: 'Status>State' },
+        { name: 'CreatedAt', type: 'date' },
+        { name: 'UpdatedAt', type: 'date' }
+      ];
+      var docker_nodes_columns = [
+        { text: 'ID', datafield: 'ID', width: 220,
+          align: 'center', cellsalign: 'center' },
+        { text: 'Hostname', datafield: 'Hostname', width: 'auto',
+          align: 'center', cellsalign: 'center' },
+        { text: 'Role', datafield: 'Role', width: 120,
+          align: 'center', cellsalign: 'center' },
+        { text: 'Availability', datafield: 'Availability', width: 120,
+          align: 'center', cellsalign: 'center' },
+        { text: 'State', datafield: 'State', width: 120,
+          cellclassname: down_nodes_cellclassrenderer,
+          align: 'center', cellsalign: 'center' },
+        { text: 'MemoryBytes', datafield: 'MemoryBytes', width: 160, cellsformat: 'd',
+          cellsrenderer: prettySizeRenderer,
+          align: 'center', cellsalign: 'center' },
+        { text: 'CPUs', datafield: 'NanoCPUs', width: 160, cellsformat: 'd',
+          cellsrenderer: prettyNanoCPU,
+          align: 'center', cellsalign: 'center' },
+        { text: 'CreatedAt', datafield: 'CreatedAt', width: 160, cellsformat: 'MM-dd-yyyy HH:mm',
+          align: 'center', cellsalign: 'center' },
+        { text: 'UpdatedAt', datafield: 'UpdatedAt', width: 160, cellsformat: 'MM-dd-yyyy HH:mm',
+          align: 'center', cellsalign: 'center' }
+      ];
+      var docker_nodes_custom_source_data = {
+        url: '{% url 'common:docker-stats' %}',
+        data: { 'source': 'docker_nodes' },
+        datatype: "json",
+        root: 'data'
+      };
+      draw_grid(".jqxgrid-docker-nodes .jqxgrid", docker_nodes_datafields, docker_nodes_columns, false, docker_nodes_custom_source_data);
+
+      var docker_st_datafields = [
+        { name: 'containerid', type: 'string' },
+        { name: 'name', type: 'string' },
+        { name: 'cpu', type: 'string' },
+        { name: 'memusagelimit', type: 'string' },
+        { name: 'mem', type: 'string' },
+        { name: 'netio', type: 'string' },
+        { name: 'blockio', type: 'string' },
+        { name: 'pid', type: 'string' }
+     ];
+      var docker_st_columns = [
+        { text: 'ID', datafield: 'containerid', width: 150,
+          align: 'center', cellsalign: 'left' },
+        { text: 'Name', datafield: 'name', width: 'auto', minwidth: 250,
+          align: 'center', cellsalign: 'left' },
+        { text: 'CPU %', datafield: 'cpu', width: 100, cellsformat: 'f2',
+          align: 'center', cellsalign: 'center' },
+        { text: 'MEM USAGE / LIMIT', datafield: 'memusagelimit', width: 200,
+          align: 'center', cellsalign: 'center' },
+        { text: 'MEM %', datafield: 'mem', width: 100, cellsformat: 'f2',
+          align: 'center', cellsalign: 'center' },
+        { text: 'NET I/O', datafield: 'netio', width: 200,
+          align: 'center', cellsalign: 'center' },
+        { text: 'BLOCK I/O', datafield: 'blockio', width: 200,
+          align: 'center', cellsalign: 'center' }
+      ];
+      var docker_st_custom_source_data = {
+        url: '{% url 'common:docker-stats' %}',
+        data: { 'source': 'docker_stats' },
+        datatype: "json",
+        root: "data"
+      };
+      var docker_st_custon_options = {
+        pageable: false,
+      };
+      draw_grid(".jqxgrid-docker-st .jqxgrid", docker_st_datafields, docker_st_columns, false,
+        docker_st_custom_source_data, docker_st_custon_options);
+
+      var undefined_value_cellclassrenderer = function(data, columnfield, value, row) {
+        if (row.value == 'unpickle error'){
+          return 'red'
+        }
+      };
+      var redis_datafields = [
+        { name: 'key', type: 'string' },
+        { name: 'value', type: 'string' }
+     ];
+      var redis_columns = [
+        { text: 'Key', datafield: 'key', width: '50%',
+          align: 'center', cellsalign: 'left' },
+        { text: 'Value', datafield: 'value', width: '50%',
+          cellclassname: undefined_value_cellclassrenderer,
+          align: 'center', cellsalign: 'left' }
+      ];
+      var redis_custom_source_data = {
+        url: '{% url 'common:redis-stats' %}',
+        datatype: "json",
+        root: "data"
+      };
+      var redis_custon_options = {
+        pageable: false
+      };
+      draw_grid(".jqxgrid-redis .jqxgrid", redis_datafields, redis_columns, false,
+        redis_custom_source_data, redis_custon_options);
+
+    });
+  </script>
+{% endblock %}

@@ -5,6 +5,7 @@ import django.contrib.postgres.fields.jsonb
 import django.core.serializers.json
 from django.db import migrations, models
 import django.db.models.deletion
+from apps.common.model_utils.improved_django_json_encoder import ImprovedDjangoJSONEncoder
 
 
 class Migration(migrations.Migration):
@@ -23,9 +24,9 @@ class Migration(migrations.Migration):
                 ('filter_type', models.CharField(choices=[('common_filter', 'Common Filter'), ('user_filter', 'User Project Annotations Grid Config')], default='common_filter', max_length=50)),
                 ('title', models.CharField(blank=True, max_length=256, null=True)),
                 ('display_order', models.PositiveSmallIntegerField(default=0)),
-                ('columns', django.contrib.postgres.fields.jsonb.JSONField(blank=True, encoder=django.core.serializers.json.DjangoJSONEncoder, null=True)),
-                ('column_filters', django.contrib.postgres.fields.jsonb.JSONField(blank=True, encoder=django.core.serializers.json.DjangoJSONEncoder, null=True)),
-                ('order_by', django.contrib.postgres.fields.jsonb.JSONField(blank=True, encoder=django.core.serializers.json.DjangoJSONEncoder, null=True)),
+                ('columns', django.contrib.postgres.fields.jsonb.JSONField(blank=True, encoder=ImprovedDjangoJSONEncoder, null=True)),
+                ('column_filters', django.contrib.postgres.fields.jsonb.JSONField(blank=True, encoder=ImprovedDjangoJSONEncoder, null=True)),
+                ('order_by', django.contrib.postgres.fields.jsonb.JSONField(blank=True, encoder=ImprovedDjangoJSONEncoder, null=True)),
                 ('document_type', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='document.DocumentType')),
                 ('project', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.CASCADE, to='project.Project')),
                 ('user', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.CASCADE, to=settings.AUTH_USER_MODEL)),

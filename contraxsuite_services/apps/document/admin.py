@@ -25,11 +25,12 @@
 # -*- coding: utf-8 -*-
 
 # Standard imports
+import html
 import inspect
 import json
 import re
 import traceback
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 
 # Django imports
 from django import forms
@@ -41,11 +42,11 @@ from django.contrib.admin.widgets import FilteredSelectMultiple
 from django.contrib.postgres import fields
 from django.contrib.postgres.forms.jsonb import JSONField, JSONString
 from django.db import transaction
-from django.http import HttpResponse
+from django.http import HttpResponse, JsonResponse, HttpResponseRedirect
 from django.shortcuts import render, redirect
 from django.template.response import TemplateResponse
-from django.urls import reverse
-from django.utils.html import format_html_join
+from django.urls import reverse, path
+from django.utils.html import format_html, format_html_join
 from django.utils.safestring import mark_safe
 from django.utils.translation import ugettext_lazy as _
 # Third-party imports
@@ -59,6 +60,7 @@ from apps.common.model_utils.model_class_dictionary import ModelClassDictionary
 from apps.common.script_utils import ScriptError
 from apps.common.url_utils import as_bool
 from apps.common.utils import fetchone
+from apps.common.widgets import EditableTableWidget
 from apps.document import signals
 from apps.document.constants import DOC_NUMBER_PER_MAIN_TASK
 from apps.document.field_detection.detector_field_matcher import DetectorFieldMatcher
@@ -75,7 +77,7 @@ from apps.document.models import (
     DocumentProperty, DocumentRelation, DocumentNote,
     DocumentFieldDetector, ExternalFieldValue,
     ClassifierModel, TextUnit, TextUnitProperty, TextUnitNote, TextUnitTag, TextUnitText,
-    DocumentFieldCategory)
+    DocumentFieldCategory, DocumentFieldFamily, DocumentFieldMultilineRegexDetector)
 from apps.document.python_coded_fields_registry import PYTHON_CODED_FIELDS_REGISTRY
 from apps.document.repository.document_field_repository import DocumentFieldRepository
 from apps.rawdb.constants import FIELD_CODE_ANNOTATION_SUFFIX, FIELD_CODE_HIDE_UNTIL_PYTHON, FIELD_CODE_FORMULA
@@ -83,8 +85,8 @@ from apps.task.models import Task
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.5.0/LICENSE"
-__version__ = "1.5.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.6.0/LICENSE"
+__version__ = "1.6.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -203,7 +205,6 @@ unmark_deleting.short_description = "Uncheck selected documents for deleting"
 def delete_checked_documents(_, request, queryset):
     ids = [d.pk for d in queryset]
     request.session['_doc_ids'] = ids
-    from django.http import HttpResponseRedirect
     return HttpResponseRedirect("./confirm_delete_view/")
 
 
@@ -213,7 +214,7 @@ delete_checked_documents.short_description = "Delete checked documents"
 class SoftDeleteDocumentAdmin(DocumentAdmin):
     list_filter = [DeletePendingFilter]
     list_display = ('get_name', 'get_project', 'document_type', 'paragraphs', 'sentences', 'delete_pending')
-    search_fields = ['name', 'document_type__code']
+    search_fields = ['name', 'project__name']
     actions = [mark_deleting, unmark_deleting, delete_checked_documents]
     change_list_template = 'admin/document/softdeletedocument/change_list.html'
 
@@ -247,10 +248,8 @@ class SoftDeleteDocumentAdmin(DocumentAdmin):
         return False
 
     def delete_all_checked(self, request):
-        self.message_user(request, "Started deleting for all checked documents")
         ids = [d.pk for d in Document.all_objects.filter(delete_pending=True)]
         request.session['_doc_ids'] = ids
-        from django.http import HttpResponseRedirect
         return HttpResponseRedirect("../confirm_delete_view/")
 
     def confirm_delete_view(self, request):
@@ -259,36 +258,42 @@ class SoftDeleteDocumentAdmin(DocumentAdmin):
         doc_ids = request.session.get('_doc_ids')
 
         if request.method == 'GET':
-            items_by_table = get_document_bulk_delete().calculate_deleting_count(doc_ids)
-            mdc = ModelClassDictionary()
-            del_count_hash = {mdc.get_model_class_name_hr(t): items_by_table[t]
-                              for t in items_by_table if t in mdc.model_by_table}
-            del_count = [(d, del_count_hash[d], False) for d in del_count_hash]
-            del_count = sorted(del_count, key=lambda x: x[0])
+            details = request.GET.get('details') == 'true'
+
+            del_count = []
+
+            if details:
+                items_by_table = get_document_bulk_delete().calculate_deleting_count(doc_ids)
+                mdc = ModelClassDictionary()
+                del_count_hash = {mdc.get_model_class_name_hr(t): items_by_table[t]
+                                  for t in items_by_table if t in mdc.model_by_table}
+                del_count = [(d, del_count_hash[d], False) for d in del_count_hash]
+                del_count = sorted(del_count, key=lambda x: x[0])
+
             del_count.insert(0, ('Documents', len(doc_ids), True))
 
             context = {
                 'deleting_count': del_count,
-                'return_url': 'admin:document_softdeletedocument_changelist'
+                'return_url': 'admin:document_softdeletedocument_changelist',
+                'details': details
             }
-            from django.shortcuts import render
-            return render(request, "admin/common/confirm_delete_view.html", context)
+            return render(request, "admin/document/softdeletedocument/confirm_delete_view.html", context)
 
         # POST: actual delete
-        from apps.task.tasks import call_task
+        from apps.task.tasks import _call_task
         from apps.document.tasks import DeleteDocuments
 
         for doc_ids_chunk in chunks(doc_ids, DOC_NUMBER_PER_MAIN_TASK):
-            call_task(
+            _call_task(
                 DeleteDocuments,
                 _document_ids=doc_ids_chunk,
                 user_id=request.user.id)
-        from django.http import HttpResponseRedirect
-        return HttpResponseRedirect("../")
+
+        self.message_user(request, "Started deleting for all checked documents")
+        return HttpResponseRedirect(reverse('admin:document_softdeletedocument_changelist'))
 
     def get_urls(self):
         urls = super().get_urls()
-        from django.urls import path
         my_urls = [
             path('delete_all_checked/', self.delete_all_checked),
             path('confirm_delete_view/', self.confirm_delete_view),
@@ -548,12 +553,12 @@ class DocumentFieldForm(ModelFormWithUnchangeableFields):
         widget=forms.Textarea,
         required=False,
         help_text="""        
-            Enter a true/false expression in python syntax. When this python 
-            results in True, this field will display. When this python results
-            in False, this field will be hidden. IF A DOCUMENT IS SET TO 
-            COMPLETED STATUS WITH THIS FIELD HIDDEN, THIS FIELD'S DATA WILL BE ERASED. 
-            Until the document is set to completed, this field could have data 
-            not reviewed by a user."""
+            Enter a boolean expression in Python syntax. If this Python expression evaluates to True, then this 
+            Document Field will be displayed in the user interface. Likewise, if this Python expression evaluates to 
+            False, then this Document Field will be hidden from view. Importantly, if a document’s status is set to 
+            complete and this Document Field remains hidden, then this Document Field’s data will be erased. Similarly, 
+            this Document Field might contain data that a user can not review if it is hidden and the document has not 
+            been set to complete."""
     )
 
     hide_until_js = forms.CharField(
@@ -595,6 +600,7 @@ class DocumentFieldForm(ModelFormWithUnchangeableFields):
         self.fields['text_unit_type'].required = False
         self.fields['value_detection_strategy'].required = False
         self.fields['trained_after_documents_number'].required = False
+        self.fields['detect_limit_count'].required = True
 
     @classmethod
     def _extract_field_and_deps(cls, base_fields: List[DocumentField], fields_buffer: dict) -> dict:
@@ -650,7 +656,7 @@ class DocumentFieldForm(ModelFormWithUnchangeableFields):
         if not self.R_FIELD_CODE.match(field_code):
             self.add_error('code', '''Field codes must be lowercase, should start with a latin letter and contain 
             only latin letters, digits, and underscores. You cannot use a field code you have already used for this 
-            document type.'''.format(field_code))
+            document type.''')
 
         reserved_suffixes = ('_sug', '_txt', FIELD_CODE_ANNOTATION_SUFFIX)
         # TODO: define reserved suffixes/names in field_value_tables.py? collect/autodetect?
@@ -658,6 +664,34 @@ class DocumentFieldForm(ModelFormWithUnchangeableFields):
             if field_code.endswith(suffix):
                 self.add_error('code', '''"{}" suffix is reserved.
                  You cannot use a field code which ends with this suffix.'''.format(suffix))
+
+    def clean_detect_limit_count(self):
+        detect_limit_count = self.cleaned_data['detect_limit_count']
+        detect_limit_unit = self.cleaned_data['detect_limit_unit']
+
+        detect_limit_unit_map = dict(DocumentField.DETECT_LIMIT_OPTIONS)
+        detect_limit_unit_name = detect_limit_unit_map[detect_limit_unit]
+
+        if detect_limit_unit == DocumentField.DETECT_LIMIT_NONE:
+            return 0
+
+        if detect_limit_unit != DocumentField.DETECT_LIMIT_NONE and detect_limit_count == 0:
+            self.add_error('detect_limit_count', '''"Detect Limit Count" must be greater than "0" if 
+            "Detect Limit Unit" is "{}".'''.format(detect_limit_unit_name))
+
+        return detect_limit_count
+
+    def clean_detect_limit_unit(self):
+        text_unit_type = self.cleaned_data['text_unit_type']
+        detect_limit_unit = self.cleaned_data['detect_limit_unit']
+
+        if (detect_limit_unit == DocumentField.DETECT_LIMIT_SENTENCE and text_unit_type == 'paragraph') or \
+                (detect_limit_unit == DocumentField.DETECT_LIMIT_PARAGRAPH and text_unit_type == 'sentence'):
+            self.add_error('detect_limit_unit', '''"Detect Limit Unit" and "Text Unit Type" fields
+             must have the same Unit Type ("sentence" or "paragraph") unless 
+             "Detect Limit Unit" is set to "No Limit".''')
+
+        return detect_limit_unit
 
     UNSURE_CHOICE_VALUE = 'unsure_choice_value'
 
@@ -845,8 +879,8 @@ class FormulaCheckResult:
 
 
 class DocumentFieldAdmin(FieldValuesValidationAdmin):
-    form = DocumentFieldForm
     change_form_template = 'admin/document/documentfield/change_form.html'
+    form = DocumentFieldForm
 
     list_display = (
         'document_type', 'code', 'category', 'order', 'title', 'description', 'type', 'formula', 'value_regexp', 'user',
@@ -859,7 +893,7 @@ class DocumentFieldAdmin(FieldValuesValidationAdmin):
         ('General', {
             'fields': (
                 'created_by', 'modified_by', 'code', 'long_code',
-                'title', 'type', 'document_type', 'category', 'order', 'description',
+                'title', 'type', 'document_type', 'category', 'family', 'order', 'description',
                 'confidence', 'requires_text_annotations', 'read_only', 'default_value'),
         }),
         ('Choice / Multi-choice Fields', {
@@ -894,14 +928,18 @@ class DocumentFieldAdmin(FieldValuesValidationAdmin):
     ]
 
     def __init__(self, *args, **kwargs):
-        super(DocumentFieldAdmin, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         self.name = 'docfield_admin'
+        self.is_clone_view = False
 
     def get_search_results(self, request, queryset, search_term):
         qs, has_duplicates = super().get_search_results(request, queryset, search_term)
         return qs.select_related('document_type', 'modified_by'), has_duplicates
 
     def save_model(self, request, obj: DocumentField, form, change: bool):
+        if self.is_clone_view is True:
+            return
+
         typed = TypedField.by(obj)
         if change and \
                 (typed.is_choice_field and not obj.allow_values_not_specified_in_choices):
@@ -940,6 +978,8 @@ class DocumentFieldAdmin(FieldValuesValidationAdmin):
         signals.document_field_changed.send(self.__class__, user=request.user, document_field=obj)
 
     def response_change(self, request, obj: DocumentField):
+        if self.is_clone_view:
+            return self.response_clone(request, obj)
         return self.process_add_or_change('CHANGE', request, obj)
 
     def response_add(self, request, obj: DocumentField,
@@ -1048,6 +1088,9 @@ class DocumentFieldAdmin(FieldValuesValidationAdmin):
 
         dependent_fields = []
         if formula_field == FIELD_CODE_HIDE_UNTIL_PYTHON:
+            if not document_field:
+                return FormulaCheckResult(calculated=False,
+                                          errors=['Before checking this field you should select Document type'])
             # check "hide until Python" formula on all fields' values
             dependent_fields = list(DocumentField.objects.filter(
                 document_type__code=document_field.document_type.code))
@@ -1098,10 +1141,39 @@ class DocumentFieldAdmin(FieldValuesValidationAdmin):
             checker.test_expression()
             if checker.warnings:
                 result.warnings += checker.warnings
+            name_error = DocumentFieldAdmin.check_formula_refs(
+                formula, document_field, fields_to_values)
+            if name_error:
+                result.warnings += [name_error]
         if check_return_value:
             if result.calculated and not typed_field.is_python_field_value_ok(result.value):
                 result.errors.append(f'Formula returned value not suitable for this field:\n{result.value}')
         return result
+
+    @staticmethod
+    def check_formula_refs(formula: str,
+                           field: DocumentField,
+                           fields_to_values: Dict[str, Any]) -> Optional[str]:
+        import ast
+        try:
+            st = ast.parse(formula)
+        except Exception as e:
+            return f'Error parsing formula: {e}'
+        var_names = []  # type:List[str]
+        for node in ast.walk(st):
+            if type(node) is ast.Name:
+                var_names.append(node.id)
+        # get field deps
+        deps = {v for v in fields_to_values}
+        if field.depends_on_fields:
+            field_deps = {f for f in field.depends_on_fields.all().values_list('code', flat=True)}
+            deps.update(field_deps)
+        missing_fields = [n for n in var_names if n not in deps]
+        if not missing_fields:
+            return None
+        return 'Formula references ' + ', '.join([f'"{v}"' for v in missing_fields]) + \
+               ' that are not found in field dependencies (' + \
+               ', '.join([f'"{v}"' for v in deps]) + ')'
 
     def on_object_deleted(self, obj):
         signals.document_field_deleted.send(self.__class__, user=None, document_field=obj)
@@ -1110,18 +1182,135 @@ class DocumentFieldAdmin(FieldValuesValidationAdmin):
     def user(obj):
         return obj.modified_by.username if obj.modified_by else None
 
+    def change_view(self, request, object_id, form_url='', extra_context=None, **kwargs):
+        extra_context = extra_context or dict()
+        extra_context.update(kwargs)
+        self.is_clone_view = 'clone' in kwargs
+        return super().change_view(request, object_id, form_url, extra_context=extra_context)
+
+    def response_clone(self, request, obj):
+        opts = self.model._meta
+        msg_dict = {
+            'name': opts.verbose_name,
+            'obj': format_html('<a href="{}">{}</a>', reverse('admin:document_documentfield_change', args=[obj.pk]), obj),
+        }
+        msg = format_html(
+            _('The {name} "{obj}" was cloned successfully.'),
+            **msg_dict
+        )
+        self.message_user(request, msg, messages.SUCCESS)
+        return self.response_post_save_change(request, obj)
+
+    def save_form(self, request, form, change):
+        if self.is_clone_view:
+            from apps.document.api.v1 import DocumentFieldViewSet
+            target_document_type = form.cleaned_data['document_type']
+            new_field = DocumentFieldViewSet.clone_field(
+                source_field=form.instance,
+                target_document_type=target_document_type,
+                new_field_code=form.cleaned_data['code'])
+            return new_field
+        return super().save_form(request, form, change)
+
+    def get_form(self, request, obj=None, **kwargs):
+        if self.is_clone_view:
+            from apps.document.forms import CloneDocumentFieldForm
+            return CloneDocumentFieldForm
+        return super().get_form(request, obj=None, **kwargs)
+
+    def get_fieldsets(self, request, obj=None):
+        if self.is_clone_view:
+            fieldsets = [
+                (f'Clone Document Field: {obj}', {'fields': ('code', 'document_type')})
+            ]
+            return fieldsets
+        return self.fieldsets
+
     def get_urls(self):
         urls = super().get_urls()
-        from django.urls import path
         my_urls = [
             path('confirm_newchoices_view/<str:object_id>/',
                  self.confirm_newchoices_view,
                  name='confirm_newchoices_view'),
             path('check_field_formula_view/<str:field>/',
                  self.check_field_formula_view,
-                 name='check_field_formula')
-        ]
+                 name='check_field_formula'),
+            path('<str:object_id>/clone/',
+                 self.change_view,
+                 kwargs={'clone': True},
+                 name='clone_document_field')]
         return my_urls + urls
+
+
+class DocumentTypeListFilter(admin.SimpleListFilter):
+    # Human-readable title which will be displayed in the
+    # right admin sidebar just above the filter options.
+    title = 'Document'
+
+    # Parameter for the filter that will be used in the URL query.
+    parameter_name = 'field__document_type__code'
+
+    default_value = 'All'
+
+    def lookups(self, request, model_admin):
+        """
+        Returns a list of tuples. The first element in each
+        tuple is the coded value for the option that will
+        appear in the URL query. The second element is the
+        human-readable name for the option that will appear
+        in the right sidebar.
+        """
+        cats = set([v for v in DocumentFieldDetector.objects.all().values_list('field__document_type__code', flat=True)])
+        return sorted([(c or '', c or '') for c in cats], key=lambda c: c[0])
+        # return [('Common', 'Common'), ('Document', 'Document'), ('Extract', 'Extract')]
+
+    def queryset(self, request, queryset):
+        """
+        Returns the filtered queryset based on the value
+        provided in the query string and retrievable via
+        `self.value()`.
+        """
+        if not self.value() or self.value() == 'All':
+            return queryset
+        return queryset.filter(field__document_type__code=self.value())
+
+
+class FieldDetectorListFilter(admin.SimpleListFilter):
+    # Human-readable title which will be displayed in the
+    # right admin sidebar just above the filter options.
+    title = 'Field'
+
+    # Parameter for the filter that will be used in the URL query.
+    parameter_name = 'field__title'
+
+    default_value = 'All'
+
+    def lookups(self, request, model_admin):
+        """
+        Returns a list of tuples. The first element in each
+        tuple is the coded value for the option that will
+        appear in the URL query. The second element is the
+        human-readable name for the option that will appear
+        in the right sidebar.
+        """
+        detector_query = DocumentFieldDetector.objects.all()
+        if 'field__document_type__code' in request.GET:
+            doc_code = request.GET['field__document_type__code']
+            if doc_code:
+                detector_query = DocumentFieldDetector.objects.filter(field__document_type__code=doc_code)
+        cats = set([v for v in detector_query.values_list('field__title', flat=True)])
+        return sorted([(c, c) for c in cats], key=lambda c: c[0])
+        # return [('Common', 'Common'), ('Document', 'Document'), ('Extract', 'Extract')]
+
+    def queryset(self, request, queryset):
+        """
+        Returns the filtered queryset based on the value
+        provided in the query string and retrievable via
+        `self.value()`.
+        """
+        if not self.value() or self.value() == 'All':
+            return queryset
+        return queryset.filter(field__title=self.value())
 
 
 class DocumentFieldDetectorForm(forms.ModelForm):
@@ -1151,6 +1340,7 @@ class DocumentFieldDetectorAdmin(admin.ModelAdmin):
         'field', 'detected_value', 'extraction_hint', 'text_part', 'definition_words_',
         'exclude_regexps_', 'include_regexps_', 'regexps_pre_process_lower')
     search_fields = ['field__long_code', 'field__title', 'detected_value', 'extraction_hint', 'include_regexps']
+    list_filter = (DocumentTypeListFilter, FieldDetectorListFilter,)
 
     @staticmethod
     def document_type_code(obj):
@@ -1183,6 +1373,131 @@ class DocumentFieldDetectorAdmin(admin.ModelAdmin):
                                  obj.definition_words.split('\n'))) if obj.field and obj.definition_words else None
 
 
+class DocumentFieldMultilineRegexDetectorForm(forms.ModelForm):
+    csv_content = forms.CharField(widget=EditableTableWidget())
+
+    class Meta:
+        model = DocumentFieldMultilineRegexDetector
+        fields = ['document_field', 'csv_content', 'extraction_hint', 'text_part', 'regexps_pre_process_lower']
+        readonly_fields = ['csv_checksum']
+
+
+class DocumentFieldMultilineRegexDetectorAdmin(admin.ModelAdmin):
+    form = DocumentFieldMultilineRegexDetectorForm
+    change_form_template = 'admin/document/documentfieldmultilineregexdetector/change_form.html'
+    list_display = ('document_field', 'csv_content_')
+    search_fields = ['document_field__long_code', 'document_field__title']
+    max_rows = 40
+
+    #class Media:
+    #    js = ('js/table_editor.js',)
+
+    @staticmethod
+    def document_type_code(obj):
+        return obj.document_type.code if obj.document_type else None
+
+    document_type_code.admin_order_field = 'document_type'
+
+    @staticmethod
+    def field_code(obj):
+        return obj.field.code if obj.field else None
+
+    field_code.admin_order_field = 'field'
+
+    @staticmethod
+    def csv_content_(obj):
+        if not obj.csv_content:
+            return None
+
+        try:
+            df = obj.get_as_pandas_df()
+        except Exception as e:
+            return f'CSV data is corrupted: {e}'
+
+        if df.shape[1] != 2:
+            return f'CSV data is corrupted: should contain 2 columns, but has got {df.shape[1]}'
+
+        max_rows = DocumentFieldMultilineRegexDetectorAdmin.max_rows
+        row_count = df.shape[0]
+        if row_count > max_rows:
+            df = df.iloc[:max_rows]
+            df = df.append({
+                'value': f'... {row_count - max_rows} more items',
+                'pattern': ''
+            }, ignore_index=True)
+
+        markup = '<table><tr><th>Value</th><th>Pattern</th></tr>\n'
+        for i, row in df.iterrows():
+            cell_value = html.escape(row[0])
+            cell_pattern = html.escape(row[1])
+            markup += f'<tr><td>{cell_value}</td><td>{cell_pattern}</td></tr>'
+        markup += '</table>'
+
+        return mark_safe(markup)
+
+    def save_model(self, request, obj, form, change):
+        obj.update_checksum()
+        super().save_model(request, obj, form, change)
+
+    def update_csv_table_row(self, request):
+        request_data = json.loads(request.body.decode('utf-8'))
+        csv_data = request_data['csvData']
+        df = DocumentFieldMultilineRegexDetector.get_csv_as_pandas_df(csv_data)
+        new_values = request_data['newValues']
+        old_values = request_data['oldValues']
+
+        # delete row
+        if request_data['isDelete']:
+            for irow, row in df.iterrows():
+                if row[0] != old_values[0] or row[1] != old_values[1]:
+                    continue
+                df.drop([irow], inplace=True)
+                df.sort_values('value', inplace=True)
+                return JsonResponse({'succeeded': True, 'data': df.to_csv()},
+                                    content_type='application/json')
+            return JsonResponse({'succeeded': False},
+                                content_type='application/json')
+
+        # edit or add or replace a row
+        if not new_values or len(new_values) != 2:
+            return JsonResponse({'succeeded': False}, content_type='application/json')
+        if not all(v for v in new_values):
+            return JsonResponse({'succeeded': False}, content_type='application/json')
+
+        # add row
+        if request_data['isNewRow']:
+            df = df.append({
+                'value': new_values[0],
+                'pattern': new_values[1]
+            }, ignore_index=True)
+            df.drop_duplicates(subset='pattern', inplace=True)
+        else:
+            for __, row in df.iterrows():
+                if row[0] != old_values[0] or row[1] != old_values[1]:
+                    continue
+                row[0] = new_values[0]
+                row[1] = new_values[1]
+                break
+            df.drop_duplicates(subset='pattern', inplace=True)
+        df.sort_values('value', inplace=True)
+
+        return JsonResponse({'succeeded': True, 'data': df.to_csv()},
+                            content_type='application/json')
+
+    def get_urls(self):
+        urls = super().get_urls()
+        my_urls = [
+            path('update_csv_table_row/',
+                 self.update_csv_table_row,
+                 name='update_csv_table_row')
+        ]
+        return my_urls + urls
+
+    def render_change_form(self, request, context, add=False, change=False, form_url='', obj=None):
+        context['update_csv_table_row_url'] = reverse('admin:update_csv_table_row')
+        return super().render_change_form(request, context, add, change, form_url, obj)
+
+
 class FieldValueAdmin(admin.ModelAdmin):
     raw_id_fields = ('document', 'field',)
     list_display = ('document_type', 'document', 'field', 'value', 'user')
@@ -1205,7 +1520,7 @@ class FieldValueAdmin(admin.ModelAdmin):
 
 
 class FieldAnnotationStatusAdmin(admin.ModelAdmin):
-    list_display = ('name', 'code', 'is_active', 'is_confirm', 'is_deny')
+    list_display = ('name', 'code', 'is_active', 'is_accepted', 'is_rejected')
     search_fields = ['name', 'code']
 
 
@@ -1389,7 +1704,7 @@ class DocumentTypeForm(ModelFormWithUnchangeableFields):
         # validate only new records, skip already existing ones
         if not DocumentType.objects.filter(pk=self.instance.pk).exists() and not self.CODE_RE.match(field_code):
             raise forms.ValidationError('''Field codes must be lowercase, should start with a latin letter and contain 
-            only latin letters, digits, and underscores.'''.format(field_code))
+            only latin letters, digits, and underscores.''')
 
         return field_code
 
@@ -1418,6 +1733,10 @@ class DocumentTypeAdmin(ModelAdminWithPrettyJsonField, UsersTasksValidationAdmin
         }),
     ]
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.is_clone_view = False
+
     @staticmethod
     def fields_num(obj):
         return obj.fields.count()
@@ -1432,6 +1751,65 @@ class DocumentTypeAdmin(ModelAdminWithPrettyJsonField, UsersTasksValidationAdmin
 
     def on_object_deleted(self, obj):
         signals.document_type_deleted.send(self.__class__, user=None, document_type=obj)
+
+    def change_view(self, request, object_id, form_url='', extra_context=None, **kwargs):
+        extra_context = extra_context or dict()
+        extra_context.update(kwargs)
+        self.is_clone_view = 'clone' in kwargs
+        return super().change_view(request, object_id, form_url, extra_context=extra_context)
+
+    def response_change(self, request, obj):
+        if self.is_clone_view:
+            opts = self.model._meta
+            msg_dict = {
+                'name': opts.verbose_name,
+                'obj': format_html('<a href="{}">{}</a>', reverse('admin:document_documenttype_change', args=[obj.pk]), obj),
+            }
+            msg = format_html(
+                _('The {name} "{obj}" was cloned successfully.'),
+                **msg_dict
+            )
+            self.message_user(request, msg, messages.SUCCESS)
+            return self.response_post_save_change(request, obj)
+        return super().response_change(request, obj)
+
+    def save_form(self, request, form, change):
+        if self.is_clone_view:
+            from apps.document.api.v1 import DocumentTypeViewSet
+            new_type = DocumentTypeViewSet.clone_type(
+                source_document_type=form.instance,
+                code=form.cleaned_data['code'],
+                title=form.cleaned_data['title'])
+            return new_type
+        return super().save_form(request, form, change)
+
+    def get_form(self, request, obj=None, **kwargs):
+        if self.is_clone_view:
+            from apps.document.forms import CloneDocumentTypeForm
+            return CloneDocumentTypeForm
+        return super().get_form(request, obj=None, **kwargs)
+
+    def get_fieldsets(self, request, obj=None):
+        if self.is_clone_view:
+            fieldsets = [
+                (f'Clone Document Type: {obj}', {'fields': ('code', 'title')})
+            ]
+            return fieldsets
+        return self.fieldsets
+
+    def get_inline_instances(self, request, obj=None):
+        if self.is_clone_view:
+            return []
+        return super().get_inline_instances(request, obj=obj)
+
+    def get_urls(self):
+        urls = super().get_urls()
+        my_urls = [
+            path('<str:object_id>/clone/',
+                 self.change_view,
+                 kwargs={'clone': True},
+                 name='clone_document_type')]
+        return my_urls + urls
 
 
 class DocumentPropertyAdmin(admin.ModelAdmin):
@@ -1528,12 +1906,76 @@ class DocumentFieldCategoryAdmin(admin.ModelAdmin):
     form = DocumentFieldCategoryForm
 
 
+class DocumentFieldFamilyInline(admin.TabularInline):
+    model = DocumentField
+
+
+class DocumentFieldFamilyForm(ModelFormWithUnchangeableFields):
+    UNCHANGEABLE_FIELDS = ('code',)
+    R_FIELD_CODE = re.compile(r'^[a-z][a-z0-9_]*$')
+    inlines = [DocumentFieldFamilyInline]
+
+    fields = forms.ModelMultipleChoiceField(
+        queryset=DocumentField.objects.all(),
+        label='Select Type Fields',
+        required=False,
+        widget=FilteredSelectMultiple('fields', False))
+
+    class Meta:
+        model = DocumentFieldFamily
+        fields = ['title', 'code']
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if self.instance.pk:
+            self.fields['fields'].initial = self.instance.documentfield_set.all()
+            self.fields['code'].help_text = 'This field is unchangable.'
+        else:
+            self.fields['fields'].initial = DocumentField.objects.none()
+            self.fields['code'].help_text = 'Leave it blank to auto-create from title.'
+
+    def save(self, *args, **kwargs):
+        # TODO: Wrap reassignments into transaction
+        # NOTE: Previously assigned DocumentFieldCategory are silently reset
+        instance = super().save(commit=True)
+        self.fields['fields'].initial.update(family=None)
+        self.cleaned_data['fields'].update(family=instance)
+        return instance
+
+    def save_m2m(self, *args, **kwargs):
+        pass
+
+    def clean_title(self):
+        title = self.cleaned_data['title']
+        if DocumentFieldFamily.objects.exclude(pk=self.instance.pk).filter(title__iexact=title):
+            self.add_error('title', 'DocumentFieldFamily with similar title already exists.')
+        return title
+
+    def clean_code(self):
+        code = self.cleaned_data['code']
+        if code:
+            if not self.R_FIELD_CODE.match(code):
+                self.add_error('code', '''Document Field Family codes must be lowercase, 
+                should start with a latin letter and contain 
+                only latin letters, digits, and underscores.''')
+            if DocumentFieldFamily.objects.exclude(pk=self.instance.pk).filter(code__iexact=code):
+                self.add_error('code', 'Document Field Family with the same code already exists.')
+        return code
+
+
+class DocumentFieldFamilyAdmin(admin.ModelAdmin):
+    list_display = ('title', 'code')
+    search_fields = ('title', 'code')
+    form = DocumentFieldFamilyForm
+
+
 admin.site.register(Document, DocumentAdmin)
 admin.site.register(DocumentMetadata, DocumentMetadataAdmin)
 admin.site.register(DocumentText, DocumentTextAdmin)
 admin.site.register(SoftDeleteDocument, SoftDeleteDocumentAdmin)
 admin.site.register(DocumentField, DocumentFieldAdmin)
 admin.site.register(DocumentFieldDetector, DocumentFieldDetectorAdmin)
+admin.site.register(DocumentFieldMultilineRegexDetector, DocumentFieldMultilineRegexDetectorAdmin)
 admin.site.register(FieldValue, FieldValueAdmin)
 admin.site.register(FieldAnnotationStatus, FieldAnnotationStatusAdmin)
 admin.site.register(FieldAnnotation, FieldAnnotationAdmin)
@@ -1551,3 +1993,4 @@ admin.site.register(TextUnitTag, TextUnitTagAdmin)
 admin.site.register(TextUnitNote, TextUnitNoteAdmin)
 admin.site.register(DocumentNote, DocumentNoteAdmin)
 admin.site.register(DocumentFieldCategory, DocumentFieldCategoryAdmin)
+admin.site.register(DocumentFieldFamily, DocumentFieldFamilyAdmin)

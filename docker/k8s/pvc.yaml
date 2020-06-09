@@ -3,298 +3,287 @@ kind: PersistentVolumeClaim
 metadata:
   name: contraxsuite-data-media
 spec:
+  storageClassName: rook-ceph-block
   accessModes:
-  - ReadWriteMany
+    - ReadWriteOnce
   resources:
     requests:
       storage: 20Gi
-  storageClassName: azurefile
 ---
-apiVersion: v1
-kind: PersistentVolumeClaim
-metadata:
-  name: contraxsuite-internal-nginx-logs
-spec:
-  accessModes:
-  - ReadWriteMany
-  resources:
-    requests:
-      storage: 50Mi
-  storageClassName: azurefile
----
-apiVersion: v1
-kind: PersistentVolumeClaim
-metadata:
-  name: contraxsuite-logs
-spec:
-  accessModes:
-  - ReadWriteMany
-  resources:
-    requests:
-      storage: 100Mi
-  storageClassName: azurefile
----
-apiVersion: v1
-kind: PersistentVolumeClaim
-metadata:
-  name: contraxsuite-logrotate
-spec:
-  accessModes:
-  - ReadWriteMany
-  resources:
-    requests:
-      storage: 100Mi
-  storageClassName: azurefile
----
+{{ if eq .Values.pg_host_name "contrax-db" }}
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
   name: postgres-data-11
 spec:
+  storageClassName: rook-ceph-block
   accessModes:
-  - ReadWriteMany
+    - ReadWriteOnce
   resources:
     requests:
       storage: 100Gi
-  storageClassName: azurefile
 ---
+{{ end }}
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
   name: redis-data
 spec:
+  storageClassName: rook-ceph-block
   accessModes:
-  - ReadWriteMany
+    - ReadWriteOnce
   resources:
     requests:
-      storage: 25Mi
-  storageClassName: azurefile
+      storage: 100Mi
 ---
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
   name: backup
 spec:
+  storageClassName: rook-ceph-block
   accessModes:
-  - ReadWriteMany
+    - ReadWriteOnce
   resources:
     requests:
       storage: 30Gi
-  storageClassName: azurefile
 ---
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
   name: elasticsearch-data
 spec:
+  storageClassName: rook-ceph-block
   accessModes:
-  - ReadWriteMany
+    - ReadWriteOnce
   resources:
     requests:
       storage: 1Gi
-  storageClassName: azurefile
 ---
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
   name: filebeat-data
 spec:
+  storageClassName: rook-ceph-block
   accessModes:
-  - ReadWriteMany
+    - ReadWriteOnce
   resources:
     requests:
-      storage: 25Mi
-  storageClassName: azurefile
+      storage: 100Mi
 ---
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
   name: metricbeat-data
 spec:
+  storageClassName: rook-ceph-block
   accessModes:
-  - ReadWriteMany
+    - ReadWriteOnce
   resources:
     requests:
-      storage: 25Mi
-  storageClassName: azurefile
+      storage: 100Mi
 ---
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
   name: rabbitmq-data
 spec:
+  storageClassName: rook-ceph-block
   accessModes:
-  - ReadWriteMany
+    - ReadWriteOnce
   resources:
     requests:
       storage: 100Mi
-  storageClassName: azurefile
 ---
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
   name: contraxsuite-nginx-conf
 spec:
+  storageClassName: rook-ceph-block
   accessModes:
-  - ReadWriteMany
+    - ReadWriteOnce
   resources:
     requests:
-      storage: 10Mi
-  storageClassName: azurefile
+      storage: 100Mi
 ---
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
   name: contraxsuite-nginx-certs
 spec:
+  storageClassName: rook-ceph-block
   accessModes:
-  - ReadWriteMany
+    - ReadWriteOnce
   resources:
     requests:
-      storage: 10Mi
-  storageClassName: azurefile
+      storage: 100Mi
 ---
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
   name: contraxsuite-frontend
 spec:
+  storageClassName: rook-ceph-block
   accessModes:
-  - ReadWriteMany
-  resources:
-    requests:
-      storage: 25Mi
-  storageClassName: azurefile
----
-apiVersion: v1
-kind: PersistentVolumeClaim
-metadata:
-  name: contraxsuite-static-files
-spec:
-  accessModes:
-  - ReadWriteMany
+    - ReadWriteOnce
   resources:
     requests:
       storage: 100Mi
-  storageClassName: azurefile
 ---
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
   name: contraxsuite-nginx-server-include
 spec:
+  storageClassName: rook-ceph-block
   accessModes:
-  - ReadWriteMany
+    - ReadWriteOnce
   resources:
     requests:
-      storage: 10Mi
-  storageClassName: azurefile
----
-apiVersion: v1
-kind: PersistentVolumeClaim
-metadata:
-  name: contraxsuite-deployment-uuid
-spec:
-  accessModes:
-  - ReadWriteMany
-  resources:
-    requests:
-      storage: 10Mi
-  storageClassName: azurefile
+      storage: 100Mi
 ---
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
   name: contraxsuite-third-party-dependencies
 spec:
+  storageClassName: rook-ceph-block
   accessModes:
-  - ReadWriteMany
+    - ReadWriteOnce
   resources:
     requests:
-      storage: 25Mi
-  storageClassName: azurefile
+      storage: 100Mi
 ---
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
   name: contraxsuite-notebooks
 spec:
+  storageClassName: rook-ceph-block
   accessModes:
-  - ReadWriteMany
+    - ReadWriteOnce
   resources:
     requests:
       storage: 10Gi
-  storageClassName: azurefile
 ---
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
   name: contraxsuite-jupyter-add-req
 spec:
+  storageClassName: rook-ceph-block
   accessModes:
-  - ReadWriteMany
+    - ReadWriteOnce
   resources:
     requests:
-      storage: 25Mi
-  storageClassName: azurefile
+      storage: 100Mi
 ---
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
   name: contraxsuite-ssl-certs
 spec:
+  storageClassName: rook-ceph-block
   accessModes:
-  - ReadWriteMany
+    - ReadWriteOnce
   resources:
     requests:
-      storage: 25Mi
-  storageClassName: azurefile
+      storage: 100Mi
 ---
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
   name: celery-worker-state
 spec:
+  storageClassName: rook-ceph-block
   accessModes:
-  - ReadWriteMany
+    - ReadWriteOnce
   resources:
     requests:
-      storage: 25Mi
-  storageClassName: azurefile
+      storage: 100Mi
 ---
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
   name: contraxsuite-additional-fixtures
 spec:
+  storageClassName: rook-ceph-block
   accessModes:
-  - ReadWriteMany
+    - ReadWriteOnce
   resources:
     requests:
-      storage: 25Mi
-  storageClassName: azurefile
+      storage: 100Mi
 ---
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
   name: contraxsuite-data-update
 spec:
+  storageClassName: rook-ceph-block
   accessModes:
-  - ReadWriteMany
+    - ReadWriteOnce
   resources:
     requests:
-      storage: 25Mi
-  storageClassName: azurefile
+      storage: 100Mi
 ---
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
   name: contrax-powa-web
 spec:
+  storageClassName: rook-ceph-block
   accessModes:
-  - ReadWriteMany
+    - ReadWriteOnce
   resources:
     requests:
-      storage: 25Mi
-  storageClassName: azurefile
+      storage: 100Mi
 ---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: contraxsuite-minio
+spec:
+  storageClassName: rook-ceph-block
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: contraxsuite-mlflow-tracking
+spec:
+  storageClassName: rook-ceph-block
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 100Mi
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: elastalert-rule-templates
+spec:
+  storageClassName: rook-ceph-block
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 100Mi
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: elastalert-rules
+spec:
+  storageClassName: rook-ceph-block
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 100Mi

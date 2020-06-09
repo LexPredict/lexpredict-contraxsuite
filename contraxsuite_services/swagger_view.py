@@ -24,9 +24,7 @@
 """
 # -*- coding: utf-8 -*-
 
-# import io
-# import pandas as pd
-# from django.http import HttpResponse
+from django.conf import settings
 
 from rest_framework import exceptions
 from rest_framework.authentication import SessionAuthentication
@@ -36,8 +34,8 @@ from rest_framework.response import Response
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.5.0/LICENSE"
-__version__ = "1.5.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.6.0/LICENSE"
+__version__ = "1.6.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -50,6 +48,14 @@ def get_swagger_view():
     from rest_framework.schemas import SchemaGenerator
 
     class CustomSchemaGenerator(SchemaGenerator):
+        def get_schema(self, request=None, public=False):
+            """
+            Generate a `coreapi.Document` representing the API schema.
+            """
+            schema = super().get_schema(request=request, public=public)
+            schema._url = f'{settings.API_URL_PROTOCOL}://{settings.HOST_NAME}{request.path}'
+            return schema
+
         def get_simple_links(self, request):
             links = []
             for path, method, callback in self.endpoints:

@@ -24,6 +24,8 @@
 """
 # -*- coding: utf-8 -*-
 
+import os
+
 from django.conf import settings
 
 from apps.common.file_storage.file_storage import ContraxsuiteFileStorage
@@ -32,8 +34,8 @@ from apps.common.file_storage.webdav_file_storage import ContraxsuiteWebDAVFileS
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.5.0/LICENSE"
-__version__ = "1.5.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.6.0/LICENSE"
+__version__ = "1.6.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -46,3 +48,40 @@ def get_file_storage() -> ContraxsuiteFileStorage:
         return ContraxsuiteWebDAVFileStorage()
     else:
         raise Exception(f'Unknown file storage type: {access_type}')
+
+
+def get_filebrowser_site(url_as_download=True):
+    from filebrowser.sites import site
+    storage = get_media_file_storage(url_as_download=url_as_download)
+    site.storage = storage
+    site.directory = ''
+    return site
+
+
+def get_media_file_storage(folder='', url_as_download=True):
+    access_type = settings.CONTRAX_FILE_STORAGE_TYPE
+    from filebrowser.sites import FileSystemStorage
+    from apps.common.file_storage.filebrowser_webdav_file_storage import FileBrowserWebdavStorage
+
+    folder = folder.strip("/")
+    base_url = settings.MEDIA_API_URL
+
+    if folder:
+        base_url = os.path.join(base_url, folder + '/')
+
+    if access_type == 'Local':
+        location = settings.CONTRAX_FILE_STORAGE_LOCAL_ROOT_DIR
+        location = location if not folder else os.path.join(location, folder + '/')
+        storage = FileSystemStorage(
+            base_url=base_url,
+            location=location)
+
+    elif access_type == 'WebDAV':
+        webdav_root = '/' if not folder else f'/{folder}/'
+        storage = FileBrowserWebdavStorage(
+            base_url=base_url,
+            url_as_download=url_as_download,
+            webdav_root=webdav_root)
+    else:
+        raise Exception(f'Unknown file storage type: {access_type}')
+    return storage

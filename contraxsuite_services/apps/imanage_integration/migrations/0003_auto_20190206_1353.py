@@ -7,6 +7,7 @@ import django.contrib.postgres.fields.jsonb
 import django.core.serializers.json
 from django.db import migrations, models
 import django.db.models.deletion
+from apps.common.model_utils.improved_django_json_encoder import ImprovedDjangoJSONEncoder
 
 
 class Migration(migrations.Migration):
@@ -47,6 +48,6 @@ class Migration(migrations.Migration):
         migrations.AlterField(
             model_name='imanageconfig',
             name='requests_proxies',
-            field=django.contrib.postgres.fields.jsonb.JSONField(blank=True, encoder=django.core.serializers.json.DjangoJSONEncoder, null=True),
+            field=django.contrib.postgres.fields.jsonb.JSONField(blank=True, encoder=ImprovedDjangoJSONEncoder, null=True),
         ),
     ]

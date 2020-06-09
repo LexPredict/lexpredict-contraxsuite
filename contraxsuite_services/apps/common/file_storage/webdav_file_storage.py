@@ -41,8 +41,8 @@ from apps.common.singleton import Singleton
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.5.0/LICENSE"
-__version__ = "1.5.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.6.0/LICENSE"
+__version__ = "1.6.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -67,9 +67,15 @@ class ContraxsuiteWebDAVFileStorage(ContraxsuiteFileStorage):
                         settings.CONTRAX_FILE_STORAGE_WEBDAV_ROOT_URL.rstrip('/')
         self.auth = HTTPBasicAuth(username or settings.CONTRAX_FILE_STORAGE_WEBDAV_USERNAME,
                                   password or settings.CONTRAX_FILE_STORAGE_WEBDAV_PASSWORD)
+        try:
+            self.mkdir(self.documents_path)
+        except:
+            pass
 
     def mkdir(self, path: str):
         url = self.sub_path_join(self.root_url, quote(path))
+        if not url.endswith('/'):
+            url = url + '/'
         resp = requests.request('MKCOL', url, auth=self.auth)
         if resp.status_code not in {200, 201}:
             msg = f'Unable to create dir at WebDAV storage: {url}\n' \

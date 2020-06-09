@@ -28,18 +28,17 @@
 import logging
 from datetime import datetime
 from traceback import format_exc
-from typing import Generator
+from typing import Generator, Dict, Any
 
 # Third-party imports
 from celery import states
-from celery.states import PENDING, READY_STATES, FAILURE, REVOKED, IGNORED, SUCCESS
+from celery.states import PENDING, FAILURE, REVOKED, IGNORED, SUCCESS
 from dataclasses import dataclass
 from dateutil import parser as date_parser
-
 # Django imports
 from django.conf import settings
 from django.contrib.postgres.fields import JSONField
-from django.core.serializers.json import DjangoJSONEncoder
+from apps.common.model_utils.improved_django_json_encoder import ImprovedDjangoJSONEncoder
 from django.db import models, DatabaseError
 from django.db.models.deletion import CASCADE
 from django.utils.translation import ugettext_lazy as _
@@ -47,7 +46,6 @@ from elasticsearch import Elasticsearch
 
 # Project imports
 from apps.common.fields import StringUUIDField, TruncatingCharField
-from apps.common.model_utils.hr_django_json_encoder import HRDjangoJSONEncoder
 from apps.common.utils import fast_uuid
 from apps.task.celery_backend.managers import TaskManager
 from apps.task.celery_backend.utils import now
@@ -56,12 +54,11 @@ from contraxsuite_logging import write_task_log
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.5.0/LICENSE"
-__version__ = "1.5.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.6.0/LICENSE"
+__version__ = "1.6.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
-from task_names import TASK_FRIENDLY_NAME
 
 logger = logging.getLogger(__name__)
 es = Elasticsearch(hosts=settings.ELASTICSEARCH_CONFIG['hosts'])
@@ -118,8 +115,11 @@ class Task(models.Model):
     user = models.ForeignKey(User, db_index=True, blank=True, null=True, on_delete=CASCADE)
     celery_metadata = JSONField(blank=True, null=True)
     metadata = JSONField(blank=True, null=True)
-    args = JSONField(blank=True, null=True, db_index=False, encoder=HRDjangoJSONEncoder)
-    kwargs = JSONField(blank=True, null=True, db_index=True)
+
+    # no DB indexes here because task args/kwargs can be quite large and do not fit into Postgres max index size
+    args = JSONField(blank=True, null=True, db_index=False, encoder=ImprovedDjangoJSONEncoder)
+    kwargs = JSONField(blank=True, null=True, db_index=False, encoder=ImprovedDjangoJSONEncoder)
+
     group_id = StringUUIDField(blank=True, null=True, db_index=True)
     source_data = models.TextField(blank=True, null=True)
     visible = models.BooleanField(default=True)
@@ -138,7 +138,7 @@ class Task(models.Model):
     )
     own_progress = models.PositiveSmallIntegerField(default=0, blank=True, null=True)
 
-    result = JSONField(blank=True, null=True, encoder=DjangoJSONEncoder)
+    result = JSONField(blank=True, null=True, encoder=ImprovedDjangoJSONEncoder)
     traceback = models.TextField(_('traceback'), blank=True, null=True)
     hidden = models.BooleanField(editable=False, default=False, db_index=True)
     propagate_exceptions = models.BooleanField(editable=False, default=False, db_index=True)
@@ -153,7 +153,7 @@ class Task(models.Model):
 
     title = models.CharField(max_length=1024, db_index=False, null=True, blank=True)
 
-    log_extra = JSONField(blank=True, null=True, encoder=DjangoJSONEncoder)
+    log_extra = JSONField(blank=True, null=True, encoder=ImprovedDjangoJSONEncoder)
     push_steps = models.IntegerField(null=True, blank=True, default=1)
     failure_processed = models.BooleanField(null=False, blank=False, default=False)
 
@@ -216,7 +216,11 @@ class Task(models.Model):
             extra.update(dict(self.log_extra))
 
         if kwargs:
-            extra.update(kwargs)
+            extra_kwargs = kwargs.pop('extra', None)
+            if extra_kwargs:
+                extra.update(extra_kwargs)
+            else:
+                extra.update(kwargs)
 
         write_task_log(self.id, message, level,
                        main_task_id=self.main_task_id or self.id,
@@ -227,20 +231,26 @@ class Task(models.Model):
                        log_extra=extra)
 
     def get_task_log_from_elasticsearch(self) -> Generator[TaskLogEntry, None, None]:
+        query = {
+                    'bool': {
+                        'must': [
+                            {'term': {'log_main_task_id': {'value': f'{self.pk}'}}},
+                        ]
+                    }
+                }
+        yield from self.get_task_log_from_elasticsearch_by_query(query)
+
+    @classmethod
+    def get_task_log_from_elasticsearch_by_query(
+            cls, query: Dict[str, Any], limit=10000) -> Generator[TaskLogEntry, None, None]:
         try:
             es_query = {
                 'sort': ['@timestamp'],
-                'query': {
-                    'bool': {
-                        'must': [
-                            {'term': {'log_main_task_id': {'value': f'{self.id}'}}},
-                        ]
-                    }
-                },
+                'query': query,
                 '_source': ['@timestamp', 'level', 'message', 'log_main_task_id',
                             'log_task_id', 'log_task_name', 'log_stack_trace', '_id']
             }
-            es_res = es.search(size=10000,
+            es_res = es.search(size=limit,
                                index=settings.LOGGING_ELASTICSEARCH_INDEX_TEMPLATE,
                                body=es_query)
             for hit in es_res['hits']['hits']:
@@ -248,90 +258,58 @@ class Task(models.Model):
 
                 yield TaskLogEntry(file_index=hit['_index'],
                                    record_id=hit['_id'],
+                                   message=doc.get('message'),
                                    timestamp=date_parser.parse(doc['@timestamp']),
                                    log_level=doc.get('level'),
                                    task_name=doc.get('log_task_name'),
                                    task_id=doc.get('log_task_id'),
                                    main_task_id=doc.get('log_main_task_id'),
-                                   stack_trace=doc.get('log_stack_trace'),
-                                   message=doc.get('message'))
-
-        except:
-            yield TaskLogEntry(message='Unable to fetch logs from ElasticSearch:\n{0}'.format(format_exc()))
-
-    def set_own_status(self, status: str) -> None:
-        if status not in ALL_STATES_SET:
-            title_str = f"{self.name}, id='{self.pk}'"
-            raise RuntimeError(f'Trying to set "{status}" for task {title_str}')
-        self.own_status = status
-        if status in READY_STATES:
-            self.own_progress = 100
-
-    def on_task_completed(self, succeeded: bool):
-        if self.has_sub_tasks:
-            self.own_progress = 100
-            self.own_status = SUCCESS if succeeded else FAILURE
-            self.own_date_done = self.own_date_done or now()
-            self.save()
+                                   stack_trace=doc.get('log_stack_trace'))
+        except GeneratorExit:
             return
-        self.update_progress(100, succeeded)
+        except:
+            yield TaskLogEntry(
+                file_index='',
+                record_id='',
+                message='Unable to fetch logs from ElasticSearch:\n{0}'.format(format_exc()))
 
     def update_progress(self,
                         new_progress: int,
                         succeeded: bool = True):
-        new_progress = self.ensure_correct_progress(new_progress)
-        if new_progress == self.progress:
-            return
-        self.progress = min(new_progress, 100)
-        if self.progress == 100:
-            self.status = SUCCESS if succeeded else FAILURE
-            if self.own_status not in READY_STATES:
-                self.own_status = self.status
-
+        new_progress = min(new_progress, 100)
+        self.own_progress = new_progress
+        if self.own_progress == 100:
+            self.own_status = SUCCESS if succeeded else FAILURE
             now_time = now()
             self.own_date_done = self.own_date_done or now_time
-            self.date_done = self.date_done or now_time
+
         try:
-            self.save(update_fields=['progress', 'own_progress', 'status', 'own_status',
-                                     'date_done', 'own_date_done'])
+            if self.has_sub_tasks:
+                self.save(update_fields=['own_progress', 'own_status', 'own_date_done'])
+            else:
+                self.status = self.own_status
+                self.progress = self.own_progress
+                self.date_done = self.own_date_done
+                self.save(update_fields=['progress', 'own_progress',
+                                         'status', 'own_status',
+                                         'date_done', 'own_date_done'])
         except DatabaseError:
             # task itself might have been deleted
             pass
 
-        # propagate changes to parent tasks
-        parent_task = self.parent_task  # type: Task
-        if not parent_task:
+    # We don't propagate changes to the parent tasks here because it is done in a serial manner
+    # in a Celery-beat task - see apps.task.celery_backend.managers.update_parent_task().
+    # update_parent_task() should be the only method to manipulate with the parent-child status updates.
+    # Otherwise we will get the logic duplication and confusion.
+    # If putting something here please take into account that we have:
+    # - sub-task hierarchy;
+    # - sub-tasks started when all other sub-tasks succeeded;
+    # - sub-tasks started when some other sub-task failed;
+    # - status of the parent task calculated based on its sub-tasks/fail-handler/success-handler;
+    # - progress of the parent task calculated based on its sub-tasks/fail-handler/success-handler.
+
+    def set_visible(self, vis: bool):
+        if vis == self.visible:
             return
-
-        progresses = [p for p in Task.objects.filter(
-            parent_task_id=parent_task.pk).values_list('progress', flat=True)]
-        if progresses:
-            parent_progress = int((sum(progresses) + parent_task.own_progress) / (len(progresses) + 1))
-            parent_task.update_progress(parent_progress)
-
-    def save(self, *args, **kwargs):
-        if not self.display_name:
-            self.display_name = TASK_FRIENDLY_NAME.get(self.name) or self.name
-        if self.progress > 100:
-            self.progress = 100
-        if self.status in FAIL_READY_STATES:
-            self.progress = 100
-            self.own_status = self.status
-            self.date_done = self.date_done or now()
-
-        if self.status in READY_STATES:
-            self.own_status = self.status
-            self.progress = 100
-            self.date_done = self.date_done or now()
-        if self.own_status in READY_STATES:
-            self.own_progress = 100
-            self.own_date_done = self.own_date_done or now()
-
-        super().save(*args, **kwargs)
-
-    def ensure_correct_progress(self, new_progress: int) -> int:
-        if new_progress > 100:
-            new_progress = 100
-        if self.status in FAIL_READY_STATES or self.own_status in FAIL_READY_STATES:
-            new_progress = 100
-        return new_progress
+        self.visible = vis
+        self.save(update_fields=['visible'])

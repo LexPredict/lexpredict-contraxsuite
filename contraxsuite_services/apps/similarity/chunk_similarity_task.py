@@ -26,6 +26,7 @@
 
 import datetime
 import math
+from typing import List, Set, Tuple, Optional, Dict, Generator, Iterable
 
 import regex as re
 from nltk import ngrams
@@ -33,7 +34,6 @@ from scipy import sparse
 from scipy.sparse import csr_matrix
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
-from typing import List, Set, Tuple, Optional, Dict, Generator, Iterable
 
 from apps.analyze.models import DocumentSimilarity, TextUnitSimilarity
 from apps.document.models import Document
@@ -42,8 +42,8 @@ from apps.similarity.similarity_metrics import make_text_units_query
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.5.0/LICENSE"
-__version__ = "1.5.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.6.0/LICENSE"
+__version__ = "1.6.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -375,7 +375,7 @@ class DocumentChunkSimilarityProcessor:
         # filter by min_df / max_df
         un_count = self.units_count if self.search_similar_text_units else self.documents_count
         up_margin = math.floor(self.max_df * un_count)
-        lw_margin = self.min_df if type(self.min_df) is int else math.ceil(self.min_df * un_count)
+        lw_margin = self.min_df if isinstance(self.min_df, int) else math.ceil(self.min_df * un_count)
         key_list = []  # type: List[str]
         for key in term_by_doc:
             count = term_by_doc[key]

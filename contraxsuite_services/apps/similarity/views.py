@@ -36,8 +36,8 @@ from apps.task.views import BaseAjaxTaskView
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.5.0/LICENSE"
-__version__ = "1.5.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.6.0/LICENSE"
+__version__ = "1.6.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -89,7 +89,7 @@ class SimilarityView(BaseAjaxTaskView):
         if count < count_limit:
             self.start_task(data)
             return self.json_response('The task is started. It can take a while.')
-        return self.json_response({'message': f'Processing {count} {unit_type} may take too much time.',
+        return self.json_response({'message': f'Processing {count} {unit_type} may take a long time.',
                                    'confirm': True})
 
 
@@ -131,9 +131,9 @@ class ChunkSimilarityView(SimilarityView):
         if estimation < SimilarityLimits.WARN_CHUNK_SIMILARITY_SECONDS:
             self.start_task(data)
             return self.json_response('The task is started. It can take a while.')
-        min, sec = divmod(estimation, 60)
-        hour, min = divmod(min, 60)
-        estim_str = "%d:%02d:%02d" % (hour, min, sec)
+        _min, sec = divmod(estimation, 60)
+        hour, _min = divmod(_min, 60)
+        estim_str = "%d:%02d:%02d" % (hour, _min, sec)
         return self.json_response({'message': f'Processing may take about {estim_str}.',
                                    'confirm': True})
 

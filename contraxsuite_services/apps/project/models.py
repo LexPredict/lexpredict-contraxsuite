@@ -29,7 +29,7 @@ import itertools
 import uuid
 from typing import Set
 
-from celery.states import UNREADY_STATES, PENDING, SUCCESS, FAILURE
+from celery.states import UNREADY_STATES, PENDING, SUCCESS, FAILURE, REVOKED
 # Django imports
 from django.conf import settings
 from django.contrib.postgres.fields import JSONField
@@ -42,6 +42,7 @@ from django.db.models.deletion import CASCADE, SET_NULL
 from django.db.models.signals import m2m_changed, post_save, post_delete
 from django.dispatch import receiver
 from django.template.loader import render_to_string
+from django.utils.timezone import now
 
 # Project imports
 from apps.common.fields import StringUUIDField
@@ -54,8 +55,8 @@ from apps.users.models import User
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.5.0/LICENSE"
-__version__ = "1.5.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.6.0/LICENSE"
+__version__ = "1.6.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -267,6 +268,9 @@ class Project(models.Model):
 
     # selected for Delete admin task
     delete_pending = models.BooleanField(default=False, null=False)
+
+    # project level setting for Hide Clause Review
+    hide_clause_review = models.BooleanField(default=True, null=False)
 
     # Document types for a Project
     type = models.ForeignKey(
@@ -511,7 +515,9 @@ class UploadSession(models.Model):
         Progress per document (avg session document tasks progress)
         """
         result = self.document_set.annotate(document_id=models.F('id')) \
-            .values('document_id', 'name', 'file_size')
+            .values('document_id', 'name', 'file_size', 'processed')
+        for i in result:
+            i['tasks_overall_status'] = SUCCESS if i['processed'] is True else None
         result = {i['name']: i for i in result}
 
         for file_name, task_progress_data in itertools.groupby(
@@ -527,7 +533,7 @@ class UploadSession(models.Model):
             else:
                 task_status = FAILURE
 
-            file_data = result.get(file_name, {'document_id': None, 'file_size': None})
+            file_data = result.get(file_name, {'document_id': None, 'file_size': None, 'processed': False})
             file_data.update({'file_name': file_name, 'tasks_overall_status': task_status,
                               'document_progress': document_progress if task_status == PENDING else 100.0})
 
@@ -545,7 +551,7 @@ class UploadSession(models.Model):
         Total Progress of session document tasks (i.e. session progress)
         """
         document_tasks_progress = self._document_tasks_progress or self.document_tasks_progress()
-        _p = [i.get('document_progress', (i.get('tasks_overall_status') != PENDING) * 100)
+        _p = [i.get('document_progress', 100 if i['processed'] is True else (i.get('tasks_overall_status') != PENDING) * 100)
               for i in document_tasks_progress.values()]
         return round(sum(_p) / float(len(_p)), 2) if _p else 0
 
@@ -576,8 +582,16 @@ class UploadSession(models.Model):
         if self.completed:
             return True
         if not self.session_tasks.exists():
-            return None
-        completed = not self.session_tasks.filter(status=PENDING).exists()
+            # session tasks already deleted but documents exist-i.e. session has ended some time ago
+            if self.document_set.exists():
+                completed = True
+            # no documents uploaded into session and more that 1 day passed
+            elif (now() - self.created_date).days >= 1:
+                completed = True
+            else:
+                return None
+        else:
+            completed = not self.session_tasks.filter(status=PENDING).exists()
         if self.completed != completed:
             self.completed = completed
             self.save()
@@ -653,6 +667,22 @@ class ProjectClustering(models.Model):
             return self.task.progress == 100
         return None
 
+    def set_status_by_task(self):
+        if not self.task:
+            return
+        new_status = self.status
+
+        if self.task.status in {FAILURE, REVOKED}:
+            new_status = FAILURE
+        elif self.status == SUCCESS:
+            new_status = SUCCESS
+        elif self.status in UNREADY_STATES:
+            new_status = PENDING
+        if new_status == self.status:
+            return
+        self.status = new_status
+        self.save(update_fields=['status'])
+
 
 class ProjectTermConfiguration(models.Model):
     """
@@ -690,3 +720,16 @@ def cache_terms(instance, action, pk_set, **kwargs):
 def delete_cached_terms_2(sender, instance, **kwargs):
     from apps.extract.dict_data_cache import CACHE_KEY_TERM_STEMS_PROJECT_PTN, DbCache
     DbCache.clean_cache(CACHE_KEY_TERM_STEMS_PROJECT_PTN.format(instance.project.pk))
+
+
+class UserProjectsSavedFilter(models.Model):
+    """
+    Selected by a User projects (saved filter)
+    Used in Explorer UI to limit Documents/other querysets
+    """
+    projects = models.ManyToManyField(Project, db_index=True)
+
+    user = models.OneToOneField('users.User', db_index=True, on_delete=CASCADE)
+
+    def __str__(self):
+        return "UserProjectsSavedFilter (user={})".format(self.user)

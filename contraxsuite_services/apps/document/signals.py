@@ -39,8 +39,8 @@ from apps.users.models import User
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.5.0/LICENSE"
-__version__ = "1.5.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.6.0/LICENSE"
+__version__ = "1.6.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -49,6 +49,8 @@ document_changed = django.dispatch.Signal(providing_args=['changed_by_user', 'lo
                                                           'generic_fields_changed', 'user_fields_changed',
                                                           'document_initial_load'])
 document_deleted = django.dispatch.Signal(providing_args=['user', 'document'])
+
+doc_full_delete = django.dispatch.Signal(providing_args=['document_ids'])
 
 document_field_changed = django.dispatch.Signal(providing_args=['user', 'document_field'])
 document_field_deleted = django.dispatch.Signal(providing_args=['user', 'document_field'])
@@ -97,6 +99,12 @@ def fire_doc_soft_delete(sender,
     doc_soft_delete.send(sender,
                          document_ids=document_ids,
                          delete_pending=delete_pending)
+
+
+def fire_doc_full_delete(sender,
+                         document_ids):
+    doc_full_delete.send(sender,
+                         document_ids=document_ids)
 
 
 def fire_documents_assignee_changed(sender,

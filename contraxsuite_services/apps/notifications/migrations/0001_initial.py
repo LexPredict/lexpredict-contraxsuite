@@ -8,6 +8,7 @@ import django.core.serializers.json
 import django.core.validators
 from django.db import migrations, models
 import django.db.models.deletion
+from apps.common.model_utils.improved_django_json_encoder import ImprovedDjangoJSONEncoder
 
 
 class Migration(migrations.Migration):
@@ -31,7 +32,7 @@ class Migration(migrations.Migration):
                 ('template', models.CharField(choices=[('document_list', 'document_list')], max_length=128)),
                 ('subject', models.CharField(blank=True, help_text='Template of the email subject in \n    Jinja2 syntax. Leave empty for using the default. The following items are passed to the context: to_user: User, event_initiator: User, documents: List[Dict[str, Any]], \n    period_start: datetime, period_end: datetime.', max_length=1024, null=True)),
                 ('header', models.CharField(blank=True, help_text='Template of the header\n    in Jinja2 syntax. Leave empty for using the default. The following items are passed to the context: to_user: User, event_initiator: User, documents: List[Dict[str, Any]], \n    period_start: datetime, period_end: datetime.\n    ', max_length=2048, null=True)),
-                ('generic_fields', django.contrib.postgres.fields.jsonb.JSONField(default=['status_name'], encoder=django.core.serializers.json.DjangoJSONEncoder)),
+                ('generic_fields', django.contrib.postgres.fields.jsonb.JSONField(default=['status_name'], encoder=ImprovedDjangoJSONEncoder)),
                 ('run_at_day_of_week', models.PositiveSmallIntegerField(blank=True, choices=[(1, 'Monday'), (2, 'Tuesday'), (3, 'Wednesday'), (4, 'Thursday'), (5, 'Friday'), (6, 'Saturday'), (7, 'Sunday')], null=True, validators=[django.core.validators.MaxValueValidator(7), django.core.validators.MinValueValidator(1)])),
                 ('run_at_hour', models.PositiveSmallIntegerField(blank=True, default=9, null=True, validators=[django.core.validators.MaxValueValidator(23), django.core.validators.MinValueValidator(0)])),
                 ('run_at_minute', models.PositiveSmallIntegerField(blank=True, default=0, null=True, validators=[django.core.validators.MaxValueValidator(59), django.core.validators.MinValueValidator(0)])),

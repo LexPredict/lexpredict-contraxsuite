@@ -9,6 +9,14 @@ $.fn.doOnce = function( func ) {
 	return this;
 };
 
+function isValidElement(element) {
+	return (
+		typeof HTMLElement === "object" ? element instanceof HTMLElement :
+			element && typeof element === "object" && true && element.nodeType === 1 &&
+			typeof element.nodeName === "string"
+	);
+}
+
 (function() {
 	var sidebar = $('#leftSidebar');
 	var content = $('#content');
@@ -31,6 +39,93 @@ $.fn.doOnce = function( func ) {
 		$('.container.clearfix').css('maxWidth', content.width());
 	});
 }());
+
+// fix `"Loading" sign on tables goes out of the screen if selecting 100 items`
+(function() {
+	var jqxGrid = $('.jqxgrid').get(0);
+
+	if (!isValidElement(jqxGrid)) {
+		return null;
+	}
+
+	var onMutationGrid = function (mutations) {
+		var lastMutation = mutations[mutations.length - 1];
+
+		if (lastMutation.attributeName !== "style") {
+			return null;
+		}
+
+		var content = $('#content').get(0);
+		var hasScrollbar = content.scrollHeight > content.clientHeight;
+		var loaderBlock = $('.jqx-position-relative.jqx-overflow-hidden.jqx-background-reset').get(0);
+		var loader = $(loaderBlock).children().first().children().first();
+
+		if (loader) {
+			var styles = {};
+
+			if (hasScrollbar) {
+				styles = { margin: "-25px -66px 0 0", position: "fixed" };
+			} else {
+				styles = { margin: "-25px 0 0 -66px", position: "relative" };
+			}
+
+			$(loader).css(styles);
+		}
+	};
+	var observer = new MutationObserver(onMutationGrid);
+
+	observer.observe(jqxGrid, { attributes: true });
+}());
+
+// LexNLP Extracted Values page - fix height of subtitles.
+(function() {
+	var handleOnResize = function() {
+		var container = $(".container.home-page").get(0);
+		var windowWidth = $(window).width();
+
+		if (!isValidElement(container)) {
+			return null;
+		}
+
+		var oddCols = $(container).find(">.col-md-6:nth-child(odd)");
+		var evenCols = $(container).find(">.col-md-6:nth-child(even)");
+		var firstCol = oddCols.length > evenCols.length ? oddCols : evenCols;
+		var secondCol = oddCols.length > evenCols.length ? evenCols : oddCols;
+
+		if (!(firstCol.length && secondCol.length)) {
+			return null;
+		}
+
+		for (let i = 0, l = firstCol.length; i < firstCol.length; i++) {
+			if (typeof firstCol[i] !== "undefined" && typeof secondCol[i] !== "undefined") {
+				var firstSubTitle = $(firstCol[i]).find(".list-subtitle").get(0);
+				var secondSubTitle = $(secondCol[i]).find(".list-subtitle").get(0);
+
+				if (isValidElement(firstSubTitle) && isValidElement(secondSubTitle)) {
+					$(firstSubTitle).height("auto");
+					$(secondSubTitle).height("auto");
+
+					if (!(windowWidth >= 1200)) {
+						continue;
+					}
+
+					var newHeight = firstSubTitle.offsetHeight > secondSubTitle.offsetHeight ?
+						firstSubTitle.offsetHeight : secondSubTitle.offsetHeight;
+
+					$(firstSubTitle).height(newHeight);
+					$(secondSubTitle).height(newHeight);
+				}
+			}
+		}
+	};
+
+	handleOnResize();
+
+	$(window).resize(function() {
+		handleOnResize();
+	});
+}());
+
 
 (function() {
 	var lastTime = 0;

@@ -62,8 +62,8 @@ import task_names
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.5.0/LICENSE"
-__version__ = "1.5.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.6.0/LICENSE"
+__version__ = "1.6.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -385,7 +385,7 @@ class EmailNotificationPool:
                         msg = pickle.loads(raw_msg.data)  # type: DocumentNotification
                         ntfs.append(msg)
                     except:
-                        log.error(f'send_notifications_packet() - error unpickling raw_msg.data')
+                        log.error('send_notifications_packet() - error unpickling raw_msg.data')
                         pass
 
                 if not ntfs:
@@ -490,8 +490,8 @@ class EmailNotificationPool:
                             if notification:
                                 notifications_to_send.append(notification)
                         except Exception as e:
-                            log.error(f'Error in send_notifications_packet(1), '
-                                      f'sending render_notification()', exc_info=e)
+                            log.error('Error in send_notifications_packet(1), '
+                                      'sending render_notification()', exc_info=e)
                     else:
                         not_sources = []  # List[DocumentNotificationSource
                         # render pack of notifications in a single message
@@ -517,8 +517,8 @@ class EmailNotificationPool:
                                 sub, not_sources)
                             notifications_to_send += notifications
                         except Exception as e:
-                            log.error(f'Error in send_notifications_packet(), '
-                                      f'sending render_notification_pack()', exc_info=e)
+                            log.error('Error in send_notifications_packet(), '
+                                      'sending render_notification_pack()', exc_info=e)
 
         log.info(f'notification.send({len(notifications_to_send)})')
         for notification in notifications_to_send:

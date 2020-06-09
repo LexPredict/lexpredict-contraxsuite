@@ -1,11 +1,11 @@
-version: "3.7"
+version: "3.8"
 services:
   # Service names should comply with the rules of building DNS names - they will be available
   # under these domain names inside the cluster virtual network.
   # (Service names should not contain underscores.)
 
   contrax-webdav:
-    image: bytemark/webdav:2.4
+    image: ${DOCKER_WEBDAV_IMAGE}
     volumes:
       - contraxsuite_data_media:/var/lib/dav
     networks:
@@ -23,7 +23,7 @@ services:
 
   contrax-minio:
     hostname: contrax-minio
-    image: minio/minio:RELEASE.2020-01-03T19-12-21Z
+    image: ${DOCKER_MINIO_IMAGE}
     volumes:
       - contraxsuite_minio:/data
     networks:
@@ -42,14 +42,9 @@ services:
       - "MINIO_ACCESS_KEY=${DOLLAR}{MLFLOW_AWS_ACCESS_KEY}"
       - "MINIO_SECRET_KEY=${DOLLAR}{MLFLOW_AWS_SECRET_KEY}"
       - "MINIO_BROWSER=off"
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
-      interval: 30s
-      timeout: 20s
-      retries: 3
 
   contrax-mlflow-tracking:
-    image: foxrider/mlflow-tracking-server:0.2.0
+    image: ${DOCKER_MLFLOW_TRACKING_IMAGE}
     volumes:
       - contraxsuite_mlflow_tracking:/mlflow
     networks:
@@ -69,7 +64,7 @@ services:
       - "AWS_SECRET_ACCESS_KEY=${DOLLAR}{MLFLOW_AWS_SECRET_KEY}"
 
   contrax-redis:
-    image: redis
+    image: ${DOCKER_REDIS_IMAGE}
     volumes:
       - redis_data:/data
     networks:
@@ -79,10 +74,10 @@ services:
       placement:
         constraints: [node.role == manager]
     ports: #
-      - 127.0.0.1:63790:6379 #
+      - 63790:6379 #
 
   contrax-curator_filebeat:
-    image: lexpredict/es-curator-cron:5.8.1-1
+    image: ${DOCKER_CURATOR_IMAGE}
     networks:
       - contrax_net
     environment:
@@ -90,20 +85,13 @@ services:
       - "KEEP_DAYS=30"
       - "INDEX_PREFIX=filebeat-"
     command: "--host ${DOLLAR}{DOCKER_HOST_NAME_ELASTICSEARCH} --port ${DOLLAR}{DOCKER_ELASTICSEARCH_PORT}"
-    depends_on:
-      - contrax-rabbitmq
-      - contrax-db
-      - contrax-redis
-      - contrax-elasticsearch
-      - contrax-uwsgi
-      - contrax-celery
     deploy:
       replicas: 1
       placement:
         constraints: [node.role == manager]
 
   contrax-curator_metricbeat:
-    image: lexpredict/es-curator-cron:5.8.1-1
+    image: ${DOCKER_CURATOR_IMAGE}
     networks:
       - contrax_net
     environment:
@@ -111,20 +99,13 @@ services:
       - "KEEP_DAYS=3"
       - "INDEX_PREFIX=metricbeat-"
     command: "--host ${DOLLAR}{DOCKER_HOST_NAME_ELASTICSEARCH} --port ${DOLLAR}{DOCKER_ELASTICSEARCH_PORT}"
-    depends_on:
-      - contrax-rabbitmq
-      - contrax-db
-      - contrax-redis
-      - contrax-elasticsearch
-      - contrax-uwsgi
-      - contrax-celery
     deploy:
       replicas: 1
       placement:
         constraints: [node.role == manager]
 
   contrax-elasticsearch:
-    image: docker.elastic.co/elasticsearch/elasticsearch-oss:7.5.2
+    image: ${DOCKER_ELASTICSEARCH_IMAGE}
     volumes:
       - elasticsearch_data:/usr/share/elasticsearch/data
     configs:
@@ -141,7 +122,7 @@ services:
       placement:
         constraints: [node.role == manager]
     ports: #
-      - 127.0.0.1:19200:9200 #
+      - 19200:9200 #
     environment:
       # this is to stop ES from printing some related error message every few seconds
       - "ES_JAVA_OPTS=-Des.transport.cname_in_publish_address=true"
@@ -150,7 +131,7 @@ services:
     # 2020-02-03.
     # Current "latest" version is 2.0.1 and it has an error fixed in 3.0.0-beta.1
     # and there is no release (non-beta) image yet.
-    image: bitsensor/elastalert:3.0.0-beta.1
+    image: ${DOCKER_ELASTALERT_IMAGE}
     user: root
     volumes:
       - elastalert_rules:/rules
@@ -175,17 +156,15 @@ services:
       placement:
         constraints: [node.role == manager]
     ports:
-      - 127.0.0.1:3030:3030
-      - 127.0.0.1:3333:3333
+      - 3030:3030
+      - 3333:3333
 
   contrax-kibana:
-    image: lexpredict/lexpredict-kibana:7.5.0
+    image: ${DOCKER_KIBANA_IMAGE}
     networks:
       - contrax_net
-    depends_on:
-      - contrax-elasticsearch
     ports:
-      - 127.0.0.1:5601:5601
+      - 5601:5601
     configs:
       - source: kibana_${KIBANA_CONFIG_VERSION}
         target: /usr/share/kibana/config/kibana.yml
@@ -193,13 +172,10 @@ services:
       replicas: 1
 
   contrax-filebeat:
-    image: docker.elastic.co/beats/filebeat-oss:7.5.2
+    image: ${DOCKER_FILEBEAT_IMAGE}
     user: root
     volumes:
-      - postgres_data_11:/data/pg_data
-      - contraxsuite_logs:/data/logs
       - filebeat_data:/usr/share/filebeat/data
-      - contraxsuite_internal_nginx_logs:/data/nginx_logs
       - /:/hostfs:ro
       - /var/run/docker.sock:/var/run/docker.sock
     configs:
@@ -207,9 +183,6 @@ services:
         target: /usr/share/filebeat/filebeat.yml
     networks:
       - contrax_net
-    depends_on:
-      - contrax-elasticsearch
-      - contrax-kibana
     deploy:
       mode: global
       resources:
@@ -220,7 +193,7 @@ services:
         condition: on-failure
 
   contrax-metricbeat:
-    image: docker.elastic.co/beats/metricbeat-oss:7.5.2
+    image: ${DOCKER_METRICBEAT_IMAGE}
     volumes:
       - metricbeat_data:/usr/share/metricbeat/data
       - /var/run/docker.sock:/var/run/docker.sock
@@ -234,9 +207,6 @@ services:
         target: /usr/share/metricbeat/metricbeat.yml
     networks:
       - contrax_net
-    depends_on:
-      - contrax-elasticsearch
-      - contrax-kibana
     deploy:
       #mode: global
       replicas: 1 # by default we disable mertricbeat for single-host configs to free more resources
@@ -246,16 +216,13 @@ services:
           memory: 2GB
 
   contrax-nginx:
-    image: nginx:stable
+    image: ${DOCKER_NGINX_IMAGE}
     networks:
       - contrax_net
     volumes:
       - contraxsuite_nginx_conf:/etc/nginx
       - contraxsuite_nginx_certs:/etc/nginx/certificates
       - contraxsuite_frontend:/contraxsuite_frontend
-      - contraxsuite_static_files:/contraxsuite_services/staticfiles
-      - contraxsuite_data_media:/data/media
-      - contraxsuite_internal_nginx_logs:/var/log/nginx
       - contraxsuite_nginx_server_include:/etc/nginx/server_include
     configs:
       - source: nginx_cust_${NGINX_CUSTOMER_CONF_VERSION}
@@ -271,16 +238,13 @@ services:
         protocol: tcp
         published: 443
         target: 4443
-    depends_on:
-      - contrax-uwsgi
-      - contrax-jupyter
     deploy:
       replicas: 1
       placement:
         constraints: [node.role == manager]
 
   contrax-rabbitmq:
-    image: rabbitmq:3-management
+    image: ${DOCKER_RABBITMQ_IMAGE}
     hostname: contrax-rabbitmq
     networks:
       - contrax_net
@@ -295,19 +259,97 @@ services:
     volumes:
       - rabbitmq_data:/var/lib/rabbitmq
     ports: #
-      - 127.0.0.1:56720:5672 #
+      - 56720:5672 #
+
+  contrax-pgbouncer-transaction:
+    image: ${DOCKER_PGBOUNCER_IMAGE}
+    environment:
+      - "DB_USER=${DOCKER_PG_USER}"
+      - "DB_PASSWORD=${DOCKER_PG_PASSWORD}"
+      - "DB_NAME=${DOCKER_PG_DB_NAME}"
+      - "DB_HOST=${DOCKER_HOST_NAME_PG}"
+      - "DB_PORT=${DOCKER_PG_PORT}"
+      - "POOL_MODE=transaction"
+      - "APPLICATION_NAME_ADD_HOST=1"
+      - "MAX_CLIENT_CONN=${DOCKER_PGBOUNCER_TRANS_MAX_CLIENT_CONN}"
+      - "SERVER_RESET_QUERY=${DOCKER_PGBOUNCER_TRANS_SERVER_RESET_QUERY}"
+      - "DEFAULT_POOL_SIZE=${DOCKER_PGBOUNCER_TRANS_DEFAULT_POOL_SIZE}"
+      - "ADMIN_USERS=${DOCKER_PG_USER}"
+      - "STATS_USERS=${DOCKER_PG_USER}"
+    networks:
+      - contrax_net
+    deploy:
+      replicas: 1
+      placement:
+        constraints: [node.role == manager]
+    ports: #
+      - 5433:5432 #
+    sysctls:
+      # Possible solution for DB connections disappearing.
+      # https://forums.docker.com/t/setting-tcp-keepalive-time-param-for-containers/41496/3
+      # Swarm Load Balancer purges idle connections after 900 seconds. Need keep-alive < 900 s.
+      net.ipv4.tcp_keepalive_time: 600
+      net.ipv4.tcp_keepalive_intvl: 60
+      net.ipv4.tcp_keepalive_probes: 3
+    healthcheck:
+      test: pg_isready -h ${DOCKER_HOST_NAME_PG} -U ${DOCKER_PG_USER} || exit 1
+      interval: 30s
+      timeout: 10s
+      retries: 1
+      start_period: 5s
+
+  contrax-pgbouncer-session:
+    image: ${DOCKER_PGBOUNCER_IMAGE}
+    environment:
+      - "DB_USER=${DOCKER_PG_USER}"
+      - "DB_PASSWORD=${DOCKER_PG_PASSWORD}"
+      - "DB_NAME=${DOCKER_PG_DB_NAME}"
+      - "DB_HOST=${DOCKER_HOST_NAME_PG}"
+      - "DB_PORT=${DOCKER_PG_PORT}"
+      - "POOL_MODE=session"
+      - "APPLICATION_NAME_ADD_HOST=1"
+      - "MAX_CLIENT_CONN=${DOCKER_PGBOUNCER_SESS_MAX_CLIENT_CONN}"
+      - "SERVER_RESET_QUERY=${DOCKER_PGBOUNCER_SESS_SERVER_RESET_QUERY}"
+      - "DEFAULT_POOL_SIZE=${DOCKER_PGBOUNCER_SESS_DEFAULT_POOL_SIZE}"
+      - "ADMIN_USERS=${DOCKER_PG_USER}"
+      - "STATS_USERS=${DOCKER_PG_USER}"
+    networks:
+      - contrax_net
+    deploy:
+      replicas: 1
+      placement:
+        constraints: [node.role == manager]
+    ports: #
+      - 5434:5432 #
+    sysctls:
+      # Possible solution for DB connections disappearing.
+      # https://forums.docker.com/t/setting-tcp-keepalive-time-param-for-containers/41496/3
+      # Swarm Load Balancer purges idle connections after 900 seconds. Need keep-alive < 900 s.
+      net.ipv4.tcp_keepalive_time: 600
+      net.ipv4.tcp_keepalive_intvl: 60
+      net.ipv4.tcp_keepalive_probes: 3
+    healthcheck:
+      test: pg_isready -h ${DOCKER_HOST_NAME_PG} -U ${DOCKER_PG_USER} || exit 1
+      interval: 30s
+      timeout: 10s
+      retries: 1
+      start_period: 5s
 
   contrax-db:
-    image: postgres:11.5
+    image: ${DOCKER_PG_IMAGE}
     environment:
       - "PGDATA=/var/lib/contraxsuite-postgres"
       - "POSTGRES_USER=${DOLLAR}{DOCKER_PG_USER}"
       - "POSTGRES_PASSWORD=${DOLLAR}{DOCKER_PG_PASSWORD}"
       - "POSTGRES_DB=${DOLLAR}{DOCKER_PG_DB_NAME}"
     command: postgres -c config_file=/contraxsuite/postgresql.conf
+    tmpfs:
+      - /tmp:size=4GB
     volumes:
       - postgres_data_11:/var/lib/contraxsuite-postgres
       - backup:/backup
+      - type: tmpfs
+        target: /dev/shm
     configs:
       - source: pg_${PG_CONFIG_VERSION}
         target: /contraxsuite/postgresql.conf
@@ -327,7 +369,7 @@ services:
       placement:
         constraints: [node.role == manager]
     ports: #
-      - 127.0.0.1:54320:5432 #
+      - 54322:5432 #
 
 volumes:
   contraxsuite_deployment_uuid:
@@ -338,8 +380,6 @@ volumes:
   contraxsuite_third_party_dependencies:
   contraxsuite_data_media:
   contraxsuite_notebooks:
-  contraxsuite_logs:
-  contraxsuite_internal_nginx_logs:
   postgres_data_11:
   rabbitmq_data:
   elasticsearch_data:
@@ -351,7 +391,6 @@ volumes:
   contraxsuite_nginx_server_include:
   contraxsuite_additional_fixtures:
   contraxsuite_jupyter_add_req:
-  contraxsuite_ssl_certs:
   contraxsuite_minio:
   contraxsuite_mlflow_tracking:
   elastalert_rules:

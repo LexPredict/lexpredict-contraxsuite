@@ -5,6 +5,7 @@ import django.contrib.postgres.fields.jsonb
 import django.core.serializers.json
 from django.db import migrations, models
 import django.db.models.deletion
+from apps.common.model_utils.improved_django_json_encoder import ImprovedDjangoJSONEncoder
 
 
 class Migration(migrations.Migration):
@@ -20,7 +21,7 @@ class Migration(migrations.Migration):
             fields=[
                 ('id', models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
                 ('modified_date', models.DateTimeField(auto_now=True, db_index=True)),
-                ('value', django.contrib.postgres.fields.jsonb.JSONField(blank=True, encoder=django.core.serializers.json.DjangoJSONEncoder, null=True)),
+                ('value', django.contrib.postgres.fields.jsonb.JSONField(blank=True, encoder=ImprovedDjangoJSONEncoder, null=True)),
                 ('document', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='document.Document')),
                 ('field', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='document.DocumentField')),
                 ('modified_by', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.CASCADE, to=settings.AUTH_USER_MODEL)),
@@ -49,7 +50,7 @@ class Migration(migrations.Migration):
             fields=[
                 ('id', models.IntegerField(auto_created=True, blank=True, db_index=True, verbose_name='ID')),
                 ('modified_date', models.DateTimeField(blank=True, db_index=True, editable=False)),
-                ('value', django.contrib.postgres.fields.jsonb.JSONField(blank=True, encoder=django.core.serializers.json.DjangoJSONEncoder, null=True)),
+                ('value', django.contrib.postgres.fields.jsonb.JSONField(blank=True, encoder=ImprovedDjangoJSONEncoder, null=True)),
                 ('history_id', models.AutoField(primary_key=True, serialize=False)),
                 ('history_change_reason', models.CharField(max_length=100, null=True)),
                 ('history_date', models.DateTimeField()),
@@ -69,7 +70,7 @@ class Migration(migrations.Migration):
             name='HistoricalFieldAnnotationFalseMatch',
             fields=[
                 ('id', models.IntegerField(auto_created=True, blank=True, db_index=True, verbose_name='ID')),
-                ('value', django.contrib.postgres.fields.jsonb.JSONField(blank=True, encoder=django.core.serializers.json.DjangoJSONEncoder, null=True)),
+                ('value', django.contrib.postgres.fields.jsonb.JSONField(blank=True, encoder=ImprovedDjangoJSONEncoder, null=True)),
                 ('location_start', models.PositiveIntegerField(blank=True, null=True)),
                 ('location_end', models.PositiveIntegerField(blank=True, null=True)),
                 ('location_text', models.TextField(blank=True, null=True)),
@@ -93,7 +94,7 @@ class Migration(migrations.Migration):
             fields=[
                 ('id', models.IntegerField(auto_created=True, blank=True, db_index=True, verbose_name='ID')),
                 ('modified_date', models.DateTimeField(blank=True, db_index=True, editable=False)),
-                ('value', django.contrib.postgres.fields.jsonb.JSONField(blank=True, encoder=django.core.serializers.json.DjangoJSONEncoder, null=True)),
+                ('value', django.contrib.postgres.fields.jsonb.JSONField(blank=True, encoder=ImprovedDjangoJSONEncoder, null=True)),
                 ('location_start', models.PositiveIntegerField(blank=True, null=True)),
                 ('location_end', models.PositiveIntegerField(blank=True, null=True)),
                 ('location_text', models.TextField(blank=True, null=True)),
@@ -118,7 +119,7 @@ class Migration(migrations.Migration):
             name='FieldAnnotationFalseMatch',
             fields=[
                 ('id', models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('value', django.contrib.postgres.fields.jsonb.JSONField(blank=True, encoder=django.core.serializers.json.DjangoJSONEncoder, null=True)),
+                ('value', django.contrib.postgres.fields.jsonb.JSONField(blank=True, encoder=ImprovedDjangoJSONEncoder, null=True)),
                 ('location_start', models.PositiveIntegerField(blank=True, null=True)),
                 ('location_end', models.PositiveIntegerField(blank=True, null=True)),
                 ('location_text', models.TextField(blank=True, null=True)),
@@ -135,7 +136,7 @@ class Migration(migrations.Migration):
             fields=[
                 ('id', models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
                 ('modified_date', models.DateTimeField(auto_now=True, db_index=True)),
-                ('value', django.contrib.postgres.fields.jsonb.JSONField(blank=True, encoder=django.core.serializers.json.DjangoJSONEncoder, null=True)),
+                ('value', django.contrib.postgres.fields.jsonb.JSONField(blank=True, encoder=ImprovedDjangoJSONEncoder, null=True)),
                 ('location_start', models.PositiveIntegerField(blank=True, null=True)),
                 ('location_end', models.PositiveIntegerField(blank=True, null=True)),
                 ('location_text', models.TextField(blank=True, null=True)),

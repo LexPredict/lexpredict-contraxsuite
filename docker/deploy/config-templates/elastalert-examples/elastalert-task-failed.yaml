@@ -4,21 +4,25 @@ es_port: ${DOCKER_ELASTICSEARCH_PORT}
 name: "${DOCKER_DJANGO_HOST_NAME}: Task Failed Alert"
 index: filebeat-*
 
+is_enabled: true
+
 type: any
 
+query_key: host
+
 realert:
-  seconds: 1
+  minutes: 1
+
+query_delay:
+  minutes: 1
 
 filter:
 - query:
   - query_string:
       query: "log_elastalert:task_failed"
 
-query_delay:
-  minutes: 1
-query_key: host
-
 alert_text_type: alert_text_only
+
 include : ["log_task_id", "log_task_name", "log_message", "log_task_status", "log_task_started",
  "log_task_started", "log_task_ended", "log_user_id", "log_stack_trace", "log_kibana_ref", "error_message"]
 
@@ -32,9 +36,16 @@ Stack: {8}
 alert_text_args: ["log_task_id", "log_task_name", "log_message", "log_task_status", "log_task_started",
  "log_task_started", "log_task_ended", "log_user_id", "log_stack_trace", "log_kibana_ref", "error_message"]
 
-
 alert:
-  - "email"
+  - "slack"
+#   - "email"
 
-email:
-  - "${DOCKER_DJANGO_ADMIN_EMAIL}"
+slack_webhook_url: "${DOCKER_SLACK_WEBHOOK_URL}"
+slack_emoji_override: ":warning:"
+slack_username_override: "ElastAlert"
+slack_channel_override: "#ops-notifications"
+slack_msg_color: "warning"
+slack_title: "Task Failed Alert"
+
+#email:
+#  - "${DOCKER_DJANGO_ADMIN_EMAIL}"

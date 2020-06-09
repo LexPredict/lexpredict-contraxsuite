@@ -41,20 +41,22 @@ from django.views.generic.edit import FormView
 # Project imports
 import apps.common.mixins
 from apps.analyze.models import TextUnitClassifier, DocumentClassifier
+from apps.common.model_utils.improved_django_json_encoder import ImprovedDjangoJSONEncoder
 from apps.common.utils import get_api_module
 from apps.deployment.app_data import DICTIONARY_DATA_URL_MAP
 from apps.document.models import DocumentProperty, TextUnitProperty, DocumentType
 from apps.dump.app_dump import get_model_fixture_dump, load_fixture_from_dump, download
-from apps.task.forms import LoadDocumentsForm, LoadFixtureForm, LocateForm,\
-    UpdateElasticSearchForm, DumpFixtureForm, TaskDetailForm
 from apps.project.models import Project
+from apps.task.forms import LoadDocumentsForm, LoadFixtureForm, LocateForm, \
+    UpdateElasticSearchForm, DumpFixtureForm, TaskDetailForm
 from apps.task.models import Task
-from apps.task.tasks import call_task, clean_tasks, purge_task, call_task_func, LoadDocuments
+from apps.task.tasks import call_task, clean_tasks, purge_task, _call_task_func, LoadDocuments
+from apps.task.utils.task_utils import check_blocks
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.5.0/LICENSE"
-__version__ = "1.5.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.6.0/LICENSE"
+__version__ = "1.6.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -67,6 +69,9 @@ class BaseTaskView(apps.common.mixins.AdminRequiredMixin, FormView):
     task_name = 'Task'
 
     def form_valid(self, form):
+        block_msg = check_blocks(raise_error=False)
+        if block_msg is not False:
+            return HttpResponseForbidden(block_msg)
         data = form.cleaned_data
         data['user_id'] = self.request.user.pk
         call_task(self.task_name, **data)
@@ -86,9 +91,12 @@ class BaseAjaxTaskView(apps.common.mixins.AdminRequiredMixin, apps.common.mixins
 
     @staticmethod
     def json_response(data, **kwargs):
-        return JsonResponse(data, encoder=apps.common.mixins.DjangoJSONEncoder, safe=False, **kwargs)
+        return JsonResponse(data, encoder=ImprovedDjangoJSONEncoder, safe=False, **kwargs)
 
     def get(self, request, *args, **kwargs):
+        block_msg = check_blocks(raise_error=False, error_message='Task is blocked.')
+        if block_msg is not False:
+            return HttpResponseForbidden(block_msg)
         if self.disallow_start():
             return HttpResponseForbidden(
                 'Forbidden. Task "%s" is already started.' % self.task_name)
@@ -109,6 +117,9 @@ class BaseAjaxTaskView(apps.common.mixins.AdminRequiredMixin, apps.common.mixins
         return Task.disallow_start(self.task_name)
 
     def post(self, request, *args, **kwargs):
+        block_msg = check_blocks(raise_error=False, error_message='Task is blocked.')
+        if block_msg is not False:
+            return HttpResponseForbidden(block_msg)
         if self.disallow_start():
             return HttpResponseForbidden('Forbidden. Such task is already started.')
         if self.form_class is None:
@@ -125,7 +136,10 @@ class BaseAjaxTaskView(apps.common.mixins.AdminRequiredMixin, apps.common.mixins
         return self.start_task_and_return(data)
 
     def start_task_and_return(self, data):
-        self.start_task(data)
+        try:
+            self.start_task(data)
+        except Exception as e:
+            return self.json_response(str(e), status=400)
         return self.json_response('The task is started. It can take a while.')
 
 
@@ -141,7 +155,7 @@ class LoadTaskView(apps.common.mixins.AdminRequiredMixin, apps.common.mixins.JSO
 
     @staticmethod
     def json_response(data, **kwargs):
-        return JsonResponse(data, encoder=apps.common.mixins.DjangoJSONEncoder, safe=False, **kwargs)
+        return JsonResponse(data, encoder=ImprovedDjangoJSONEncoder, safe=False, **kwargs)
 
     def post(self, request, *args, **kwargs):
         data = request.POST.dict()
@@ -164,11 +178,14 @@ class LoadTaskView(apps.common.mixins.AdminRequiredMixin, apps.common.mixins.JSO
             file_path = data.get('{}_file_path'.format(task_alias)) or None
             delete = '{}_delete'.format(task_alias) in data
             if any([repo_paths, file_path, delete]):
-                call_task(task_name,
-                          repo_paths=repo_paths,
-                          file_path=file_path,
-                          delete=delete,
-                          metadata=metadata)
+                try:
+                    call_task(task_name,
+                              repo_paths=repo_paths,
+                              file_path=file_path,
+                              delete=delete,
+                              metadata=metadata)
+                except Exception as e:
+                    return self.json_response(str(e), status=400)
                 started_tasks.append(task_name)
         return self.json_response('The task is started. It can take a while.')
 
@@ -243,7 +260,10 @@ class LocateTaskView(BaseAjaxTaskView):
                     locator_result_link = self.locator_result_links_map.get(task_name)
                     if locator_result_link:
                         kwargs['metadata'] = {'result_links': [locator_result_link]}
-                    call_task(task_name, **kwargs)
+                    try:
+                        call_task(task_name, **kwargs)
+                    except Exception as e:
+                        return self.json_response(str(e), status=400)
 
         # lexnlp tasks
         lexnlp_task_data = dict()
@@ -256,17 +276,21 @@ class LocateTaskView(BaseAjaxTaskView):
         if lexnlp_task_data:
             # allow to start "Locate" task anytime
             started_tasks.append('Locate({})'.format(', '.join(lexnlp_task_data.keys())))
-            call_task('Locate',
-                      tasks=lexnlp_task_data,
-                      parse=data['parse'],
-                      user_id=request.user.pk,
-                      project_id=project_id,
-                      metadata={
-                          'description': [i for i, j in lexnlp_task_data.items()
-                                          if j.get('locate')],
-                          'result_links': [self.locator_result_links_map[i]
-                                           for i, j in lexnlp_task_data.items()
-                                           if j.get('locate')]})
+            try:
+                call_task('Locate',
+                          tasks=lexnlp_task_data,
+                          parse=data['parse'],
+                          user_id=request.user.pk,
+                          project_id=project_id,
+                          metadata={
+                              'description': [i for i, j in lexnlp_task_data.items()
+                                              if j.get('locate')],
+                              'result_links': [self.locator_result_links_map[i]
+                                               for i, j in lexnlp_task_data.items()
+                                               if j.get('locate')]})
+            except Exception as e:
+                return self.json_response(str(e), status=400)
+
         response_text = ''
         if started_tasks:
             response_text += 'The Task is started. It can take a while.<br />'
@@ -292,15 +316,16 @@ class TaskDetailView(apps.common.mixins.CustomDetailView):
         return None
 
 
-class CleanTasksView(apps.common.mixins.TechAdminRequiredMixin, apps.common.mixins.JSONResponseView):
-    def get_json_data(self, request, *args, **kwargs):
-        call_task_func(clean_tasks, (), request.user.pk, queue=settings.CELERY_QUEUE_SERIAL)
-        return 'Cleaning task started.'
+class CleanTasksView(BaseAjaxTaskView):
+    def post(self, request, *args, **kwargs):
+        _call_task_func(clean_tasks, (), request.user.pk, queue=settings.CELERY_QUEUE_SERIAL)
+        return self.json_response('Cleaning task started.')
 
 
-class PurgeTaskView(apps.common.mixins.TechAdminRequiredMixin, apps.common.mixins.JSONResponseView):
-    def get_json_data(self, request, *args, **kwargs):
-        return purge_task(task_pk=request.POST.get('task_pk'))
+class PurgeTaskView(BaseAjaxTaskView):
+    def post(self, request, *args, **kwargs):
+        res = purge_task(task_pk=request.POST.get('task_pk'))
+        return JsonResponse(res)
 
 
 class TaskListView(apps.common.mixins.AdminRequiredMixin, apps.common.mixins.JqPaginatedListView):
@@ -316,7 +341,7 @@ class TaskListView(apps.common.mixins.AdminRequiredMixin, apps.common.mixins.JqP
     template_name = 'task/task_list.html'
 
     def get_queryset(self):
-        qs = Task.objects.main_tasks().order_by('-date_start')
+        qs = Task.objects.main_tasks().filter(visible=True).order_by('-date_start')
         qs = qs.annotate(time=self.db_time, work_time=self.db_work_time, username=self.db_user)
         return qs
 
@@ -324,13 +349,15 @@ class TaskListView(apps.common.mixins.AdminRequiredMixin, apps.common.mixins.JqP
         data = super().get_json_data()
         for item in data['data']:
             item['display_name'] = item['display_name'] or item['name']
-            item['url'] = reverse('task:task-detail', args=[item['pk']])
+            item['url'] = self.full_reverse('task:task-detail', args=[item['pk']])
             item['purge_url'] = reverse('task:purge-task')
             item['result_links'] = []
             if item['metadata']:
                 if isinstance(item['metadata'], dict):
                     metadata = item['metadata']
-                    item['description'] = metadata.get('description')
+                    md = metadata.get('description')
+                    if md:
+                        item['description'] = md
                     result_links = metadata.get('result_links', [])
                     for link_data in result_links:
                         link_data['link'] = reverse(link_data['link'])
@@ -340,6 +367,8 @@ class TaskListView(apps.common.mixins.AdminRequiredMixin, apps.common.mixins.JqP
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
+        from apps.task.app_vars import TASK_DIALOG_FREEZE_MS
+        ctx['task_dialog_freeze_ms'] = TASK_DIALOG_FREEZE_MS.val
         ctx['projects'] = \
             [(p.pk, p.name) for p in Project.objects.filter(type__code=DocumentType.GENERIC_TYPE_CODE)]
         ctx['active_text_unit_classifiers'] = TextUnitClassifier.objects.filter(is_active=True).exists()

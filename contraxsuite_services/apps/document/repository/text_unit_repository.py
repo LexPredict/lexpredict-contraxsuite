@@ -33,8 +33,8 @@ from apps.document.repository.base_text_unit_repository import BaseTextUnitRepos
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.5.0/LICENSE"
-__version__ = "1.5.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.6.0/LICENSE"
+__version__ = "1.6.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -45,8 +45,9 @@ class TextUnitRepository(BaseTextUnitRepository):
     # @collect_stats(name='TextUnitRepository', log_sql=False)
     def get_doc_text_units(self, doc: Document, text_unit_type: str) -> \
             Union[QuerySet, List[TextUnit]]:
-        return TextUnit.objects \
+        return TextUnit.objects.all() \
             .filter(document=doc) \
             .filter(unit_type=text_unit_type) \
             .select_related('textunittext') \
-            .order_by('location_start', 'pk')
+            .order_by('location_start', 'pk') \
+            .defer('textunittext__text_tsvector')

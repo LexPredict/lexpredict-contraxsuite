@@ -3,10 +3,12 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
+.. |version| replace:: 1.6.0
+
 Introduction to ContraxSuite Documentation |version|
 ====================================================
 
-Welcome to ContraxSuite! ContraxSuite AI is the leading open-source contract analytics and legal document review platform. We offer several tools, including a customizable web application, the legal domain-specific natural language toolkit LexNLP, as well as pre-trained contract analytics models. In this documentation guide you will find everything you need to set up and install ContraxSuite, learn how to use the software, and much more!
+Welcome to ContraxSuite! ContraxSuite is the leading open-source contract analytics and legal document review platform. We offer several tools, including a customizable web application, the legal domain-specific natural language toolkit LexNLP, as well as pre-trained contract analytics models. In this documentation guide you will find everything you need to set up and install ContraxSuite, learn how to use the software, and much more!
 
 ContraxSuite is for anyone who works with legal or financial documents: corporate legal departments, law firms, financial institutions, insurance companies, accountants, auditors, and large publicly-traded companies in any sector. ContraxSuite can identify, organize, and relate the legal material in contracts, extracting terms and locating key clauses in large sets of contracts so that you can find what is most relevant to you. ContraxSuite is also full of features and flexibility, including the ability to integrate with other software tools to visualize and export data.
 
@@ -25,14 +27,11 @@ Learn more about these and other ContraxSuite use cases by `visiting our website
    :titlesonly:
    :maxdepth: 1
    :hidden:
-   :caption: Overview
+   :caption: Introduction
 
-   introduction/lexpredict_company_overview
-   introduction/lexnlp_overview
-   introduction/solutions
+   introduction/overview
    introduction/pricing_support
    introduction/intro_legal_analytics
-
 
 .. toctree::
     :titlesonly:
@@ -40,18 +39,9 @@ Learn more about these and other ContraxSuite use cases by `visiting our website
     :hidden:
     :caption: Getting Started
 
-    cxs/use_case_doc_types
-    cxs/use_case_data_types
-    cxs/core_concepts
-    
-.. toctree::
-    :titlesonly:
-    :maxdepth: 1
-    :hidden:
-    :caption: Setup
-
     configuration/setup
     configuration/install
+    configuration/core_concepts
 
 .. toctree::
     :titlesonly:
@@ -59,9 +49,9 @@ Learn more about these and other ContraxSuite use cases by `visiting our website
     :caption: Using CxS - Reviewers
     :maxdepth: 1
 
-    guides/user/reviewers/create_manage
-    guides/user/reviewers/batch_analysis
-    guides/user/reviewers/document_review
+    user_guides/reviewers/create_manage
+    user_guides/reviewers/batch_analysis
+    user_guides/reviewers/contract_analysis
 
 .. toctree::
     :titlesonly:
@@ -69,12 +59,14 @@ Learn more about these and other ContraxSuite use cases by `visiting our website
     :caption: Using CxS - Power Users
     :maxdepth: 1
 
-    guides/user/cxs_roles
-    guides/user/power_users/create_document_type
-    guides/user/power_users/create_document_field
-    guides/user/power_users/create_field_detectors
-    guides/user/power_users/field_detection_examples
-    guides/user/power_users/writing_formulas
+    user_guides/cxs_roles
+    user_guides/power_users/import_jupyter_notebooks
+    user_guides/power_users/create_document_type
+    user_guides/power_users/create_document_field
+    user_guides/power_users/create_field_detectors
+    user_guides/power_users/field_detection_examples
+    user_guides/power_users/writing_formulas
+    user_guides/doc_type_migration
 
 .. toctree::
     :titlesonly:
@@ -82,8 +74,5 @@ Learn more about these and other ContraxSuite use cases by `visiting our website
     :hidden:
     :caption: Data Model Development
     :glob:
-
-    guides/developer/dev_guide_1
-    guides/developer/admonition
 
     api/contraxsuite_orm/*

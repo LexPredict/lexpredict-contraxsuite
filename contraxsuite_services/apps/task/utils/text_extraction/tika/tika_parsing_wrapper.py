@@ -41,8 +41,8 @@ from apps.task.utils.text_extraction.tika.tika_xhtml_parser import TikaXhtmlPars
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.5.0/LICENSE"
-__version__ = "1.5.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.6.0/LICENSE"
+__version__ = "1.6.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -81,12 +81,22 @@ class TikaParsingWrapper:
         tika_cls_name = 'org.apache.tika.cli.TikaCLI'
         tika_cp = ':'.join([os.path.join(jar_base_path, jar) for jar in settings.TIKA_JARS])
 
-        conf_full_path = os.path.join(jar_base_path, 'tika.config')
-        self.tika_start_command_list = ['java',
+        self.tika_default_command_list = ['java',
                                         '-cp', tika_cp,
                                         '-Dsun.java2d.cmm=sun.java2d.cmm.kcms.KcmsServiceProvider',
-                                        tika_cls_name,
-                                        f'--config={conf_full_path}']
+                                          tika_cls_name]
+        self.tika_lexnlp_default_command_list = [c for c in self.tika_default_command_list]
+        from apps.task.app_vars import TIKA_CUSTOM_CONFIG, TIKA_LEXNLP_CUSTOM_CONFIG
+        custom_tika_config = TIKA_LEXNLP_CUSTOM_CONFIG.val
+        if custom_tika_config:
+            conf_full_path = os.path.join(jar_base_path, custom_tika_config)
+            self.tika_default_command_list += [f'--config={conf_full_path}']
+
+        # LexNLP (plugin) Tika config path
+        custom_lexp_tika_config = TIKA_LEXNLP_CUSTOM_CONFIG.val
+        if custom_lexp_tika_config:
+            conf_full_path = os.path.join(jar_base_path, custom_lexp_tika_config)
+            self.tika_lexnlp_default_command_list += [f'--config={conf_full_path}']
 
     def parse_file_local_plain_text(self,
                                     local_path: str,
@@ -110,7 +120,7 @@ class TikaParsingWrapper:
         mode_flag = self.TIKA_MODE_OCR if enable_ocr else self.TIKA_MODE_PDF_ONLY
         os.environ[self.TIKA_ENV_VAR_FLAG_MODE] = mode_flag
 
-        cmd = self.tika_start_command_list + ['-J', '-t', f'-e{encoding_name}', local_path]
+        cmd = self.tika_default_command_list + ['-J', '-t', f'-e{encoding_name}', local_path]
 
         def err(line):
             logger.info(f'TIKA parsing {original_file_name}:\n{line}')
@@ -147,24 +157,31 @@ class TikaParsingWrapper:
         mode_flag = self.TIKA_MODE_OCR if enable_ocr else self.TIKA_MODE_PDF_ONLY
         os.environ[self.TIKA_ENV_VAR_FLAG_MODE] = mode_flag
 
-        cmd = self.tika_start_command_list + ['-x', f'-e{encoding_name}', local_path]
-
         def err(line):
             logger.info(f'TIKA parsing {original_file_name}:\n{line}')
 
-        text = read_output(cmd, stderr_callback=err, encoding=encoding_name, timeout_sec=timeout) or ''
-        try:
-            output = self.xhtml_parser.parse_text(text)
-            output.meta[Document.DocumentMetadataKey.KEY_PARSING_STATISTICS] = \
-                {
-                    'extracted_text_length': self.xhtml_parser.parse_stat.parsed_text_len,
-                    'images_text_length': self.xhtml_parser.parse_stat.parsed_ocr_text_len,
-                }
-            return output
-        except Exception as ex:
-            text_sample = text[:255] if text and isinstance(text, str) else str(text)
-            raise Exception('Error in parse_default_pdf_ocr -> _parse(). Text:\n' +
-                            text_sample) from ex
+        for cmd_list in [self.tika_default_command_list, self.tika_lexnlp_default_command_list]:
+            cmd = cmd_list + ['-x', f'-e{encoding_name}', local_path]
+
+            last_try = cmd == self.tika_lexnlp_default_command_list
+            text = read_output(cmd, stderr_callback=err, encoding=encoding_name, timeout_sec=timeout) or ''
+            try:
+                output = self.xhtml_parser.parse_text(text)
+                output_len = len(output.text) if output and output.text else 0
+                logger.info(f'parse_file_local_xhtml: {len(text)} source boiled down to {output_len}')
+                if not output_len and not last_try:
+                    continue
+
+                output.meta[Document.DocumentMetadataKey.KEY_PARSING_STATISTICS] = \
+                    {
+                        'extracted_text_length': self.xhtml_parser.parse_stat.parsed_text_len,
+                        'images_text_length': self.xhtml_parser.parse_stat.parsed_ocr_text_len,
+                    }
+                return output
+            except Exception as ex:
+                text_sample = text[:255] if text and isinstance(text, str) else str(text)
+                raise Exception('Error in parse_default_pdf_ocr -> _parse(). Text:\n' +
+                                text_sample) from ex
 
     def parse_file_on_server(self,
                              option: str,
@@ -242,6 +259,3 @@ class TikaParsingWrapper:
 
     def make_content_disposition_header(self, fn):
         return 'attachment; filename=%s' % os.path.basename(fn)
-
-
-tika_parsing_wrapper = TikaParsingWrapper()

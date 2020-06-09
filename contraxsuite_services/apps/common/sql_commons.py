@@ -25,15 +25,15 @@
 # -*- coding: utf-8 -*-
 
 import re
-from typing import Dict, List, Optional, Tuple, Generator
+from typing import Dict, List, Optional, Tuple, Generator, Set, Callable
 
 from django.db import connection
 from pydash.strings import snake_case
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.5.0/LICENSE"
-__version__ = "1.5.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.6.0/LICENSE"
+__version__ = "1.6.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -176,3 +176,156 @@ def sql_query(sql: str, params: List = None) -> Generator[Tuple, None, None]:
             for row in rows:
                 yield row
             rows = cursor.fetchmany(100)
+
+
+def drop_indexes_for_table_and_generate_restore_query(cursor,
+                                                      table_name: str,
+                                                      related_to_columns_only: Set[str] = None,
+                                                      schema_name: str = 'public') -> List[str]:
+    q = '''
+SELECT DISTINCT
+       ci.relname AS INDEX_NAME, 
+       pg_catalog.pg_get_indexdef(ci.oid)
+FROM pg_catalog.pg_class ct 
+  JOIN pg_catalog.pg_namespace n ON (ct.relnamespace = n.oid) 
+  JOIN (SELECT i.indexrelid, i.indrelid, i.indoption, 
+          i.indisunique, i.indisclustered, i.indpred, 
+          i.indexprs, 
+          information_schema._pg_expandarray(i.indkey) AS keys,
+          i.indisprimary
+        FROM pg_catalog.pg_index i) i 
+    ON (ct.oid = i.indrelid) 
+  JOIN pg_catalog.pg_class ci ON (ci.oid = i.indexrelid) 
+WHERE n.nspname = %s
+AND ct.relname = %s
+AND NOT i.indisprimary
+'''
+    params = [schema_name, table_name]
+
+    if related_to_columns_only:
+        q += '\nAND pg_catalog.pg_get_indexdef(ci.oid, (i.keys).n, false) in (%s)'
+        params.append(related_to_columns_only)
+    q += ';'
+
+    cursor.execute(q, params)
+    restore_queries = set()
+    drop_queries = set()
+
+    for index_name, indexdef in cursor.fetchall():
+        drop_queries.add(f'DROP INDEX {schema_name}."{index_name}"')
+        restore_queries.add(indexdef + ';')
+
+    for q in sorted(drop_queries):
+        cursor.execute(q)
+    return sorted(restore_queries)
+
+
+def drop_constraints_for_table_and_generate_restore_queries(cursor,
+                                                            table_name: str,
+                                                            related_to_columns_only: Set[str] = None,
+                                                            schema_name: str = 'public') -> List[str]:
+    q = '''
+SELECT DISTINCT
+       c.conname, 
+       pg_get_constraintdef(c.oid)
+FROM               pg_constraint c
+        INNER JOIN pg_namespace n
+                   ON n.oid = c.connamespace
+        CROSS JOIN LATERAL unnest(c.conkey) ak(k)
+        INNER JOIN pg_attribute a
+                   ON a.attrelid = c.conrelid
+                      AND a.attnum = ak.k
+WHERE n.nspname = %s and c.conrelid::regclass::text = %s
+    '''
+    params = [schema_name, table_name]
+
+    if related_to_columns_only:
+        q = q + ' and a.attname in (%s)'
+        params.append(related_to_columns_only)
+    q = q + ';'
+    cursor.execute(q, params)
+
+    restore_queries = set()
+    drop_queries = set()
+
+    for constraint_name, constraint_def in cursor.fetchall():
+        if 'PRIMARY KEY ' in constraint_def:
+            continue
+        restore_queries.add(f'ALTER TABLE {schema_name}."{table_name}" '
+                            f'ADD CONSTRAINT {constraint_name} {constraint_def};')
+        drop_queries.add(f'ALTER TABLE {schema_name}."{table_name}" '
+                         f'DROP CONSTRAINT {constraint_name};')
+
+    for q in sorted(drop_queries):
+        cursor.execute(q)
+    return sorted(restore_queries)
+
+
+class maintenance_work_mem:
+    def __init__(self,
+                 cursor,
+                 logger_proc: Callable[[str], None] = None) -> None:
+        super().__init__()
+        self.cursor = cursor
+        self.log = logger_proc
+
+    def __enter__(self):
+
+        self.original_work_mem = fetch_int(self.cursor, SQLClause('show work_mem;'))
+        maintenance_work_mem = fetch_int(self.cursor, SQLClause('show maintenance_work_mem;'))
+
+        if self.log:
+            self.log(f'Current work_mem is: {self.original_work_mem}\n'
+                     f'Setting to the same value as maintenance_work_mem: {maintenance_work_mem}')
+        self.cursor.execute(f'set work_mem to \'{maintenance_work_mem}\'')
+
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        if self.log:
+            self.log(f'Restoring work_mem to: {self.original_work_mem}')
+        self.cursor.execute(f'set work_mem to \'{self.original_work_mem}\'')
+
+
+class dropping_constraints_and_indexes:
+    def __init__(self,
+                 cursor,
+                 table_name: str, schema_name: str = 'public',
+                 logger_proc: Callable[[str], None] = None) -> None:
+        super().__init__()
+        self.cursor = cursor
+        self.table_name = table_name
+        self.schema_name = schema_name
+        self.log = logger_proc
+
+    def __enter__(self):
+        if self.log:
+            self.log(f'Acquiring access exclusive lock on table: {self.schema_name}."{self.table_name}"')
+        self.cursor.execute(f'LOCK TABLE {self.schema_name}."{self.table_name}" IN ACCESS EXCLUSIVE MODE;')
+
+        if self.log:
+            self.log(f'Dropping constraints for table: {self.schema_name}."{self.table_name}"')
+        self.restore_constraints = drop_constraints_for_table_and_generate_restore_queries(self.cursor,
+                                                                                           self.table_name,
+                                                                                           schema_name=self.schema_name)
+        if self.log:
+            self.log(f'Dropping indexes for table: {self.schema_name}."{self.table_name}"')
+        self.restore_indexes = drop_indexes_for_table_and_generate_restore_query(self.cursor,
+                                                                                 self.table_name,
+                                                                                 schema_name=self.schema_name)
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        if self.log:
+            self.log(f'Restoring constraints for table: {self.schema_name}."{self.table_name}"\n' + '\n'.join(
+                self.restore_constraints))
+
+        for q in self.restore_constraints:
+            self.cursor.execute(q)
+
+        if self.log:
+            self.log(f'Restoring indexes for table: {self.schema_name}."{self.table_name}"\n' + '\n'.join(
+                self.restore_indexes))
+
+        for q in self.restore_indexes:
+            self.cursor.execute(q)

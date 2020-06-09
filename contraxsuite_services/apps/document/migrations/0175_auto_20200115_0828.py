@@ -5,7 +5,9 @@ from django.core.management import call_command
 
 
 def load_annotation_statuses(apps, schema_editor):
-    call_command('load_annotation_statuses')
+    # call_command('load_annotation_statuses')
+    # see #199
+    pass
 
 
 class Migration(migrations.Migration):

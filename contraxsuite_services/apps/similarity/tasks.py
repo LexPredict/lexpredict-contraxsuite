@@ -30,13 +30,17 @@ from typing import Optional
 
 import fuzzywuzzy.fuzz
 import nltk
+from celery import shared_task
+from celery.exceptions import SoftTimeLimitExceeded
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
-from apps.celery import app
+from psycopg2 import InterfaceError, OperationalError
 
 from apps.analyze.ml.similarity import DocumentSimilarityEngine, TextUnitSimilarityEngine
 from apps.analyze.models import (
     DocumentSimilarity, TextUnitSimilarity, PartySimilarity as PartySimilarityModel)
+from apps.celery import app
+from apps.common import redis
 from apps.document import signals
 from apps.document.field_processing.document_vectorizers import document_feature_vector_pipeline
 from apps.document.models import DocumentField, TextUnit, Document
@@ -44,12 +48,12 @@ from apps.extract.models import Party
 from apps.rawdb.constants import FIELD_CODE_DOC_ID
 from apps.similarity.chunk_similarity_task import ChunkSimilarity
 from apps.similarity.models import DocumentSimilarityConfig, DST_FIELD_SIMILARITY_CONFIG_ATTR
-from apps.task.tasks import BaseTask, remove_punctuation_map, CeleryTaskLogger
+from apps.task.tasks import BaseTask, ExtendedTask, remove_punctuation_map, CeleryTaskLogger
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.5.0/LICENSE"
-__version__ = "1.5.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.6.0/LICENSE"
+__version__ = "1.6.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -267,7 +271,6 @@ class SimilarityByFeatures(BaseTask):
         similarity_threshold = kwargs['similarity_threshold'] / 100
 
         self.log_info('Min similarity: {}'.format(similarity_threshold))
-        self.set_push_steps(2)
 
         if search_similar_documents:
             db_model = DocumentSimilarity
@@ -284,9 +287,7 @@ class SimilarityByFeatures(BaseTask):
             deleted = db_model.objects.filter().delete()
             self.log_info('Deleted "{}"'.format(deleted[1]))
 
-        self.push()
-
-        engine = engine_class(
+        similarity_engine_kwargs = dict(
             project_id=project_id,
             unit_type=unit_type,
             feature_source=feature_source,
@@ -294,9 +295,70 @@ class SimilarityByFeatures(BaseTask):
             distance_type=distance_type,
             threshold=similarity_threshold
         )
-        count = engine.get_similarity()
-        self.log_info('Created: %d similarity objects.' % count)
-        self.push()
+        similarity_engine = engine_class(**similarity_engine_kwargs)
+        feature_df = similarity_engine.get_features().feature_df
+
+        subtasks_args = []
+
+        for block_i_start in range(0, feature_df.shape[0], similarity_engine.block_step):
+            for block_j_start in range(0, feature_df.shape[0], similarity_engine.block_step):
+
+                df1 = feature_df.iloc[block_i_start:block_i_start + similarity_engine.block_step, :]
+                df1_redis_key = f'{self.task.pk}_{block_i_start}_{block_i_start + similarity_engine.block_step}'
+                redis.push(key=df1_redis_key, value=df1, pickle_value=True)
+
+                df2 = feature_df.iloc[block_j_start:block_j_start + similarity_engine.block_step, :]
+                df2_redis_key = f'{self.task.pk}_{block_j_start}_{block_j_start + similarity_engine.block_step}'
+                redis.push(key=df2_redis_key, value=df2, pickle_value=True)
+
+                subtasks_args.append((
+                    df1_redis_key,
+                    df2_redis_key,
+                    search_similar_documents,
+                    similarity_engine_kwargs
+                ))
+
+        self.run_sub_tasks(
+            'Calculate similarities for feature_df blocks',
+            self.calc_block_similarity,
+            subtasks_args
+        )
+        self.run_after_sub_tasks_finished('Clear redis keys.', self.finalize, [()])
+
+    @staticmethod
+    @shared_task(base=ExtendedTask,
+                 bind=True,
+                 soft_time_limit=6000,
+                 default_retry_delay=10,
+                 retry_backoff=True,
+                 autoretry_for=(SoftTimeLimitExceeded, InterfaceError, OperationalError),
+                 max_retries=3)
+    def calc_block_similarity(task, df1_redis_key, df2_redis_key,
+                              search_similar_documents, engine_kwargs):
+        task.log_info(
+            f'Calculate similarity for feature_df blocks with keys: '
+            f'"{df1_redis_key}" and "{df2_redis_key}"')
+
+        engine_class = DocumentSimilarityEngine if search_similar_documents else TextUnitSimilarityEngine
+
+        df1 = redis.pop(df1_redis_key)
+        df2 = redis.pop(df2_redis_key)
+        engine_class(**engine_kwargs).calc_block_similarity(df1, df2)
+
+    @staticmethod
+    @shared_task(base=ExtendedTask,
+                 bind=True,
+                 soft_time_limit=6000,
+                 default_retry_delay=10,
+                 retry_backoff=True,
+                 autoretry_for=(SoftTimeLimitExceeded, InterfaceError, OperationalError),
+                 max_retries=3,
+                 priority=9)
+    def finalize(_self: ExtendedTask):
+        _self.log_info('Cleanup redis keys')
+        for k in redis.list_keys(f'{_self.main_task_id}_*'):
+            redis.r.delete(k)
+            _self.log_info(f'Deleted redis key "{k}"')
 
 
 class PreconfiguredDocumentSimilaritySearch(BaseTask):

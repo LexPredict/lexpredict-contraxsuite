@@ -31,9 +31,8 @@ import tabula
 from pandas import DataFrame
 
 import settings
-from apps.document.app_vars import TIKA_PARSE_MODE
 from apps.task.utils.marked_up_text import MarkedUpText
-from apps.task.utils.text_extraction.tika.tika_parsing_wrapper import tika_parsing_wrapper
+from apps.task.utils.text_extraction.tika.tika_parsing_wrapper import TikaParsingWrapper
 from apps.task.utils.text_extraction.xml_wordx.xml_wordx_extractor import XmlWordxExtractor
 from apps.task.utils.text_extraction.textract import textract2text
 from apps.common.log_utils import ProcessLogger
@@ -41,8 +40,8 @@ from traceback import format_exc
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.5.0/LICENSE"
-__version__ = "1.5.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.6.0/LICENSE"
+__version__ = "1.6.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -149,6 +148,7 @@ class TikaDocumentParser(BaseDocumentParser):
             # issues when tasks.py is imported in migrations before the tables for app vars are created
             from apps.document.app_vars import TIKA_SERVER_ENDPOINT
             tika_server_endpoint = TIKA_SERVER_ENDPOINT.val
+            tika_parsing_wrapper = TikaParsingWrapper()
             if tika_server_endpoint:
                 if ptrs.logger:
                     ptrs.logger.info(f'TIKA server endpoint: {tika_server_endpoint}')
@@ -157,6 +157,7 @@ class TikaDocumentParser(BaseDocumentParser):
                     'all', ptrs.file_path, tika_server_endpoint,
                     enable_ocr=ptrs.enable_ocr)
             else:
+                from apps.document.app_vars import TIKA_PARSE_MODE
                 # or execute Tika jar
                 parse_function = tika_parsing_wrapper.parse_file_local_xhtml \
                     if TIKA_PARSE_MODE.val == 'xhtml' else tika_parsing_wrapper.parse_file_local_plain_text
@@ -168,7 +169,7 @@ class TikaDocumentParser(BaseDocumentParser):
                     logger=ptrs.logger,
                     enable_ocr=ptrs.enable_ocr)
 
-            if data and len(data.text) >= 100:
+            if data and getattr(data, 'text', None) and len(data.text) >= 100:
                 if data.tables:
                     self.tables = [t.serialize_in_dataframe(data.text) for t in data.tables]
                 else:

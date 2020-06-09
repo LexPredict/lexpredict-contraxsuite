@@ -7,7 +7,6 @@ This guide aims to help documentation writers configure their local environment 
 ### Table of Contents
 - [ContraxSuite Sphinx Documentation](#contraxsuite-sphinx-documentation)
     - [Table of Contents](#table-of-contents)
-    - [Project Links](#project-links)
     - [Sphinx](#sphinx)
     - [Assumptions](#assumptions)
     - [Downloading the Documentation](#downloading-the-documentation)
@@ -22,10 +21,6 @@ This guide aims to help documentation writers configure their local environment 
     - [Resources](#resources)
     - [Style Guide](#style-guide)
     - [Work in Progress](#work-in-progress)
-
-### Project Links
-
-[CS-4402](https://lexpredict.atlassian.net/browse/CS-4402) // [Google Drive](https://drive.google.com/drive/folders/1k2VnvDqbLt7_Qy9XbzR7EhH7DHdPAmBl) // [Google Slides Presentation](https://docs.google.com/presentation/d/1D6Pj4C94m353yAkR81Y5Mfximz6hl1Frt3zVQ6WJI_I/edit)
 
 ### Sphinx
 

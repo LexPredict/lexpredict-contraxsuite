@@ -34,13 +34,16 @@ import os
 import django
 from celery import signals
 from celery.app import trace
+from celery.signals import task_failure
+from django.db import InterfaceError
 
+# Project imports
 from apps import celery_worker_roles
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.5.0/LICENSE"
-__version__ = "1.5.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.6.0/LICENSE"
+__version__ = "1.6.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -53,11 +56,24 @@ try:
     django.setup()
 except RuntimeError:
     WAS_INIT = True
-    pass
 
 if True:  # not WAS_INIT:
+
     # advanced_celery adds workarounds for celery issue which requires specific import order
     from apps.task.celery_backend.advanced_celery import AdvancedCelery  # noqa
+    from apps.task.utils.task_utils import TaskUtils
+
+    def on_failure(*args, **kwargs):
+        exc = kwargs.get('exception')
+        if not exc:
+            return
+        if isinstance(exc, InterfaceError):
+            if exc.args and 'connection already closed' in exc.args[0]:
+                print('on_failure(InterfaceError): shutting down DB connection')
+                # clear the DB connection
+                TaskUtils.prepare_task_execution()
+
+    task_failure.connect(on_failure)
 
     app = AdvancedCelery('apps')
 

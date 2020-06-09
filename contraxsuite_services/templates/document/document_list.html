@@ -38,25 +38,16 @@
         { text: 'Relations', datafield: 'relations', width: 100,
           align: 'center', cellsalign: 'center' },
         { text: 'Is Contract', datafield: 'is_contract', width: 100,
-          align: 'center', cellsalign: 'center',
+          align: 'center', cellsalign: 'center', filtertype: 'bool',
           cellsrenderer: bool_renderer },
         { text: 'Paragraphs', datafield: 'paragraphs', width: 100,
           align: 'center', cellsalign: 'center' },
         { text: 'Sentences', datafield: 'sentences', width: 100,
           align: 'center', cellsalign: 'center' }
-
       ];
       draw_grid(".jqxgrid", datafields, columns, true);
       $(".jqxgrid").bind("bindingcomplete", function(event) {
-        console.log('bound');
-        let hasContracts = false;
-        let rows = $('.jqxgrid').jqxGrid('getdisplayrows');
-        for (let i = 0; i < rows.length; i++) {
-          if (rows[i] && rows[i].is_contract) {
-            hasContracts = true;
-            break;
-          }
-        }
+        var hasContracts = $(".jqxgrid").jqxGrid("source").loadedData.has_contracts;
         if (!hasContracts)
           $(".jqxgrid").jqxGrid('hidecolumn', 'is_contract');
         else

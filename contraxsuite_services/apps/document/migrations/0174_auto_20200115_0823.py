@@ -53,7 +53,7 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='fieldannotation',
             name='status',
-            field=models.ForeignKey(blank=True, default=apps.document.models.FieldAnnotationStatus.initial_status, null=True, on_delete=django.db.models.deletion.SET_NULL, to='document.FieldAnnotationStatus'),
+            field=models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, to='document.FieldAnnotationStatus'),
         ),
         migrations.AddField(
             model_name='historicalfieldannotation',

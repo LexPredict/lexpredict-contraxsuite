@@ -27,8 +27,8 @@
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.5.0/LICENSE"
-__version__ = "1.5.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.6.0/LICENSE"
+__version__ = "1.6.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -59,6 +59,8 @@ TASK_NAME_CLEAN_TASKS_PERIODIC = 'advanced_celery.clean_tasks_periodic'
 
 TASK_NAME_RETRAIN_DIRTY_TASKS = 'advanced_celery.retrain_dirty_fields'
 
+TASK_NAME_CACHE_UPDATED_DOCS = 'advanced_celery.cache_updated_docs'
+
 TASK_NAME_TRACK_SESSION_COMPLETED = 'advanced_celery.track_session_completed'
 
 TASK_NAME_USAGE_STATS = 'deployment.usage_stats'
@@ -75,9 +77,16 @@ TASK_NAME_INIT_METHOD_STATS_COLLECTORS = 'apps.common.tasks.init_method_stats_co
 
 TASK_NAME_IDENTIFY_CONTRACTS = 'Identify Contracts'
 
+TASK_NAME_MONITOR_DISK_USAGE = 'advanced_celery.monitor_disk_usage'
+
+TASK_NAME_PLAN_REFRESHING_MATERIALIZED_VIEWS = 'apps.materialized_views.tasks.plan_refreshing_materialized_views'
+
+TASK_NAME_REFRESH_MATERIALIZED_VIEW = 'apps.materialized_views.tasks.refresh_materialized_view'
+
 TASK_FRIENDLY_NAME = {
     TASK_NAME_CLEAN_TASKS_PERIODIC: 'Clean Tasks Periodically',
     TASK_NAME_RETRAIN_DIRTY_TASKS: 'Retrain Dirty Fields',
+    TASK_NAME_CACHE_UPDATED_DOCS: 'Cache Updated Documents',
     TASK_NAME_TRACK_FAILED_TASKS: 'Track Failed Tasks',
     TASK_NAME_TRACK_SESSION_COMPLETED: 'Track Session Completed',
     TASK_NAME_TRACK_TASKS: 'Track Tasks',
@@ -91,6 +100,7 @@ TASK_FRIENDLY_NAME = {
     'index_documents': 'Index Documents',
     'detect_field_values_for_document': 'Detect Field Values',
     'apps.task.tasks.create_document': 'Create Document',
+    'apps.task.tasks.create_document_from_bytes': 'Create Document From Bytes',
     'apps.task.tasks.parse_text_units': 'Parse Text Units',
     'auto_reindex_not_tracked': 'Auto Reindex Not Tracked',
     'process_document_changed': 'Process Document Changed',
@@ -102,5 +112,6 @@ TASK_FRIENDLY_NAME = {
     'apps.task.tasks.on_locate_finished': 'On Locate Finished',
     'apps.task.tasks.delete_document_on_load_failed': 'Delete Document On Load Failed',
     'apps.rawdb.tasks.cache_document_fields_for_doc_ids_tracked': 'Cache Document Fields (for doc ids tracked)',
-    'apps.task.tasks.clean_tasks': 'Clean All Tasks'
+    'apps.task.tasks.clean_tasks': 'Clean All Tasks',
+    TASK_NAME_REFRESH_MATERIALIZED_VIEW: 'Refresh Materialized View'
 }

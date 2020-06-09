@@ -7,32 +7,32 @@
         "code": "unreviewed",
         "order": 1,
         "is_active": true,
-        "is_confirm": false,
-        "is_deny": false
+        "is_accepted": false,
+        "is_rejected": false
     }
 },
 {
     "model": "document.fieldannotationstatus",
     "pk": 2,
     "fields": {
-        "name": "Confirm",
-        "code": "confirm",
+        "name": "Accepted",
+        "code": "accepted",
         "order": 2,
         "is_active": true,
-        "is_confirm": true,
-        "is_deny": false
+        "is_accepted": true,
+        "is_rejected": false
     }
 },
 {
     "model": "document.fieldannotationstatus",
     "pk": 3,
     "fields": {
-        "name": "Deny",
-        "code": "deny",
+        "name": "Rejected",
+        "code": "rejected",
         "order": 3,
         "is_active": true,
-        "is_confirm": false,
-        "is_deny": true
+        "is_accepted": false,
+        "is_rejected": true
     }
 }
 ]

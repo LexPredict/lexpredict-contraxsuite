@@ -24,19 +24,24 @@
 """
 # -*- coding: utf-8 -*-
 
+import time
 from typing import List, Dict, Set
-from django.db import connection
+from django.db import connection, OperationalError
+
+from apps.common.error_explorer import retry_for_operational_error
 from apps.common.model_utils.table_deps import TableDeps
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.5.0/LICENSE"
-__version__ = "1.5.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.6.0/LICENSE"
+__version__ = "1.6.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
 
 class ModelBulkDelete:
+    tries_per_query = 2
+
     def __init__(self,
                  deps: List[TableDeps],
                  safe_mode: bool = True,
@@ -74,14 +79,30 @@ class ModelBulkDelete:
 
     def build_delete_all_queries(self) -> List[str]:
         queries = []  # type: List[str]
+        '''
+        DELETE FROM "document_textunit" t
+        USING (
+           SELECT "document_textunit"."id" FROM "document_textunit"
+           JOIN "document_document" ON "document_document"."id" = "document_textunit"."document_id"
+           WHERE "document_document"."id" = 161023
+           FOR UPDATE
+        ) del
+        WHERE t.id = del.id;
+        '''
         # TODO: wont work for composite primary keys
         for dep in self.deps:
-            query = f'DELETE FROM "{dep.deps[0].own_table}"'
-            query += f'\n  WHERE "{dep.deps[0].own_table}"."{dep.own_table_pk[0]}" IN'
-            query += f'\n (SELECT "{dep.deps[0].own_table}"."{dep.own_table_pk[0]}" FROM "{dep.deps[0].own_table}"'
+            query = f'DELETE FROM "{dep.deps[0].own_table}" target_table\n'
+            query += 'USING (\n'
+            query += f'  SELECT "{dep.deps[0].own_table}"."{dep.own_table_pk[0]}" FROM\n'
+            query += f'  "{dep.deps[0].own_table}"'
             for d in dep.deps:
                 query += f'\n    JOIN "{d.ref_table}" ON "{d.ref_table}"."{d.ref_table_pk}"' + \
                          f' = "{d.own_table}"."{d.ref_key}"'
+            query += '\n  {where_suffix}'
+            query += f'\n  ORDER BY "{dep.deps[0].own_table}"."{dep.own_table_pk[0]}"'
+            query += '\n  FOR UPDATE\n) table_del\n'
+            query += f'WHERE target_table."{dep.own_table_pk[0]}" = table_del."{dep.own_table_pk[0]}";'
+
             queries.append(query)
         return queries
 
@@ -97,23 +118,30 @@ class ModelBulkDelete:
                 count_to_del[table_name] = count
         return count_to_del
 
+    @retry_for_operational_error(retries_count=2, cooldown_interval=2.0)
     def delete_objects(self, where_suffix: str) -> Dict[str, int]:
         count_deleted = {}  # type: Dict[str, int]
         queries = self.build_delete_all_queries()
         with connection.cursor() as cursor:
             cursor.db.autocommit = True
-            for i in range(len(self.deps)):
-                try:
-                    query = queries[i] + ' ' + where_suffix
-                    table = self.deps[i].deps[0].own_table
-                    if not self.safe_mode and table in self.unsafe_tables:
-                        query = f'ALTER TABLE "{table}" DISABLE TRIGGER ALL;\n' + query
-                        query += f'\nALTER TABLE "{table}" ENABLE TRIGGER ALL;'
-                    cursor.execute(query)
-                    count = cursor.rowcount
-                    table_name = self.deps[i].deps[0].own_table
-                    count_deleted[table_name] = count
-                except Exception as e:
-                    raise RuntimeError(f'Error in bulk_delete.delete_objects(). Query:\n{query}') from e
-
+            for i in range(len(queries)):
+                for iteration in range(self.tries_per_query + 1):
+                    try:
+                        query = queries[i].format(where_suffix=where_suffix)
+                        table = self.deps[i].deps[0].own_table
+                        if not self.safe_mode and table in self.unsafe_tables:
+                            query = f'ALTER TABLE "{table}" DISABLE TRIGGER ALL;\n' + query
+                            query += f'\nALTER TABLE "{table}" ENABLE TRIGGER ALL;'
+                        cursor.execute(query)
+                        count = cursor.rowcount
+                        table_name = self.deps[i].deps[0].own_table
+                        count_deleted[table_name] = count
+                    except OperationalError as oe:
+                        if iteration == self.tries_per_query:
+                            raise RuntimeError(f'Error in bulk_delete.delete_objects(). Query:\n{query}') from oe
+                        # if it's a deadlock - sleep a bit and the retry
+                        time.sleep(0.5)
+                        continue
+                    except Exception as e:
+                        raise RuntimeError(f'Error in bulk_delete.delete_objects(). Query:\n{query}') from e
         return count_deleted

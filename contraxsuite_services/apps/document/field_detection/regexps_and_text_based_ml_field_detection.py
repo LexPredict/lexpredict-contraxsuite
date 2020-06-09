@@ -53,8 +53,8 @@ from apps.document.value_extraction_hints import ValueExtractionHint
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.5.0/LICENSE"
-__version__ = "1.5.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.6.0/LICENSE"
+__version__ = "1.6.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -261,6 +261,8 @@ class TextBasedMLFieldDetectionStrategy(FieldDetectionStrategy):
             return FieldValueDTO(field_value=detected_value)
 
         try:
+            log.debug('detect_field_value: regexps_and_text_based_ml_field_value, ' +
+                      f'field {field.code}({field.pk}), document #{doc.pk}')
             classifier_model = ClassifierModel.objects.get(document_field=field)
             sklearn_model = classifier_model.get_trained_model_obj()
             typed_field = TypedField.by(field)  # type: TypedField

@@ -29,8 +29,8 @@ from apps.common.models import AppVar
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.5.0/LICENSE"
-__version__ = "1.5.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.6.0/LICENSE"
+__version__ = "1.6.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -46,3 +46,33 @@ ENABLE_ALERTS = AppVar.set(
 ALERT_DEFAULT_INTERVAL = AppVar.set(
     'Task', 'alert_default_interval', 60,
     'Default interval (minutes) before notify on pending task')
+
+DISK_USAGE_PCNT_KEY = 'disk_usage_pcnt'
+
+DISK_USAGE = AppVar.set(
+    'Task', 'disk_usage', 0,
+    'Disk usage percent, should be set dynamically by CRON task.')
+
+FREE_DISK_SPACE = AppVar.set(
+    'Task', 'free_disk', 10,
+    'Free Disk space Gb, should be set dynamically by CRON task.')
+
+DISK_USAGE_BLOCK_TASKS = AppVar.set(
+    'Task', 'disk_usage_block_tasks', 85,
+    'Block starting tasks and purge existing tasks if disk usage is greater then value.')
+
+MIN_FREE_DISK_BLOCK_TASKS = AppVar.set(
+    'Task', 'min_free_disk_block_tasks', 5,
+    'Block starting tasks and purge existing tasks if free disk space is less then value.')
+
+TASK_DIALOG_FREEZE_MS = AppVar.set(
+    'Task', 'task_dialog_freeze_ms', 100,
+    'Time interval (ms) for the new task window to load.')
+
+TIKA_CUSTOM_CONFIG = AppVar.set(
+    'Task', 'tika_custom_config', 'tika.config',
+    'Tika''s custom config file from "jars" folder, like "tika.config"')
+
+TIKA_LEXNLP_CUSTOM_CONFIG = AppVar.set(
+    'Task', 'tika_lexnlp_custom_config', 'tika.lexp.config',
+    'Tika LexNLP custom config file from "jars" folder, like "tika.lexp.config"')

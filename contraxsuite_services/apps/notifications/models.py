@@ -28,23 +28,23 @@ import datetime
 from typing import Dict, List, Optional, Tuple, Any, Set
 
 from django.contrib.postgres.fields import JSONField
-from django.core.serializers.json import DjangoJSONEncoder
 from django.db import models
 from django.db.models.deletion import CASCADE
 
+from apps.common.model_utils.improved_django_json_encoder import ImprovedDjangoJSONEncoder
 from apps.common.sql_commons import SQLClause
 from apps.document.models import DocumentType, DocumentField
-from apps.rawdb.field_value_tables import query_documents, \
-    DocumentQueryResults
 from apps.rawdb.constants import FIELD_CODE_CREATE_DATE, FIELD_CODE_IS_REVIEWED, FIELD_CODE_IS_COMPLETED, \
     FIELD_CODE_ASSIGNEE_ID, FIELD_CODE_ASSIGN_DATE
+from apps.rawdb.field_value_tables import query_documents, \
+    DocumentQueryResults
 from apps.rawdb.rawdb.query_parsing import SortDirection
 from apps.users.models import User, Role
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.5.0/LICENSE"
-__version__ = "1.5.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.6.0/LICENSE"
+__version__ = "1.6.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -300,7 +300,7 @@ class DocumentDigestConfig(models.Model):
     header = models.CharField(max_length=2048, null=True, blank=True, help_text='''Template of the header
     in Jinja2 syntax. Leave empty for using the default. Example: {0}'''.format(DocFilterLoadedDocuments.header))
 
-    generic_fields = JSONField(encoder=DjangoJSONEncoder, default=document_digest_config_generic_fields_default)
+    generic_fields = JSONField(encoder=ImprovedDjangoJSONEncoder, default=document_digest_config_generic_fields_default)
 
     user_fields = models.ManyToManyField(DocumentField, blank=True, help_text='''Fields of the documents to 
     render in the email. Should match the specified document type. Leave empty for rendering all fields.
@@ -484,7 +484,7 @@ class DocumentNotificationSubscription(models.Model):
                               help_text='''Template of the header in Jinja2 syntax. Leave empty for using the default. 
                               Example: {0}'''.format(DocumentLoadedEvent.default_header))
 
-    generic_fields = JSONField(encoder=DjangoJSONEncoder,
+    generic_fields = JSONField(encoder=ImprovedDjangoJSONEncoder,
                                default=document_notification_subscription_generic_fields_default)
 
     user_fields = models.ManyToManyField(DocumentField, blank=True, help_text='''Fields of the documents to 

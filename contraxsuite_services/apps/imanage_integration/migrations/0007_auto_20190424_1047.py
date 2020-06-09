@@ -4,6 +4,7 @@ import apps.imanage_integration.models
 import django.contrib.postgres.fields.jsonb
 import django.core.serializers.json
 from django.db import migrations
+from apps.common.model_utils.improved_django_json_encoder import ImprovedDjangoJSONEncoder
 
 
 class Migration(migrations.Migration):
@@ -16,6 +17,6 @@ class Migration(migrations.Migration):
         migrations.AlterField(
             model_name='imanageconfig',
             name='search_request_params',
-            field=django.contrib.postgres.fields.jsonb.JSONField(blank=True, default=apps.imanage_integration.models.search_request_params_default, encoder=django.core.serializers.json.DjangoJSONEncoder, null=True),
+            field=django.contrib.postgres.fields.jsonb.JSONField(blank=True, default=apps.imanage_integration.models.search_request_params_default, encoder=ImprovedDjangoJSONEncoder, null=True),
         ),
     ]

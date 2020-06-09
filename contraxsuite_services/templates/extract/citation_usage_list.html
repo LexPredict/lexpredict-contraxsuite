@@ -7,9 +7,9 @@
     $(document).ready(function () {
       var datafields = [
         { name: 'pk', type: 'int' },
-        { name: 'text_unit__document__project__name', type: 'string' },
-        { name: 'text_unit__document__name', type: 'string' },
-        { name: 'text_unit__document__document_type__title', type: 'string' },
+        { name: 'project__name', type: 'string' },
+        { name: 'document__name', type: 'string' },
+        { name: 'document__document_type__title', type: 'string' },
         { name: 'volume', type: 'int' },
         { name: 'reporter', type: 'string' },
         { name: 'reporter_full_name', type: 'string' },
@@ -36,10 +36,10 @@
         show_menu(menu_data, grid, row.pk);
       };
       var columns = [
-        { text: 'Project', datafield: 'text_unit__document__project__name', width: 'auto',
+        { text: 'Project', datafield: 'project__name', width: 'auto',
           align: 'center', cellsalign: 'left', enabletooltips: true,
           cellsrenderer: defaultLinkFormatter, columngroup: 'Document' },
-        { text: 'Name', datafield: 'text_unit__document__name', width: 'auto',
+        { text: 'Name', datafield: 'document__name', width: 'auto',
           align: 'center', cellsalign: 'left', enabletooltips: true,
           cellsrenderer: defaultLinkFormatter, columngroup: 'Document' },
         { text: 'Volume', datafield: 'volume', width: 60,

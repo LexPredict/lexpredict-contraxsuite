@@ -51,8 +51,8 @@ from apps.document.models import DocumentField, TextUnit
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.5.0/LICENSE"
-__version__ = "1.5.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.6.0/LICENSE"
+__version__ = "1.6.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -157,7 +157,10 @@ class TypedField:
         :param possible_value_or_text:
         :return:
         """
-        maybe_value = self.extract_from_possible_value(possible_value_or_text)
+        try:
+            maybe_value = self.extract_from_possible_value(possible_value_or_text)
+        except Exception as e:
+            raise RuntimeError(f'Incorrect value ("{possible_value_or_text}") for field "{self.field.code}" ({self.type_code})') from e
         if maybe_value:
             return maybe_value
         variants = self._extract_variants_from_text(possible_value_or_text)

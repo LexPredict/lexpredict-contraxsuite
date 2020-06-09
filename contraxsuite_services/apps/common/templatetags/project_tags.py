@@ -27,8 +27,8 @@
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.5.0/LICENSE"
-__version__ = "1.5.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.6.0/LICENSE"
+__version__ = "1.6.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -45,6 +45,7 @@ from django.utils.safestring import mark_safe
 
 # Project imports
 from apps.common.utils import cap_words
+from apps.common.models import AppVar
 
 register = Library()
 
@@ -141,6 +142,18 @@ def settings_value(name):
     if isinstance(value, (list, tuple)):
         value = mark_safe(list(value))
     return value
+
+
+@register.simple_tag
+def app_var_value(name, category='Common'):
+    """
+    Get AppVar value by name and category
+    :return: setting value
+    """
+    value = AppVar.objects.filter(name=name, category=category)
+    if value.exists():
+        return value.last().value
+    return ''
 
 
 @register.simple_tag

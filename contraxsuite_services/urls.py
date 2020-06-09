@@ -29,38 +29,54 @@ from __future__ import unicode_literals
 
 # Standard imports
 import importlib
+import re
 
 # Third-party imports
 from allauth.account.views import confirm_email as allauth_confirm_email_view
-from filebrowser.sites import site as filebrowser_site
-from swagger_view import get_swagger_view
 
 # Django imports
 from django.conf import settings
 from django.conf.urls import url
 from django.urls import include, path
-from django.conf.urls.static import static
 from django.contrib import admin
-from django.contrib.staticfiles.urls import staticfiles_urlpatterns
+from django.core.exceptions import ImproperlyConfigured
 from django.views.generic import TemplateView
 from django.views import defaults as default_views
+from django.views.static import serve
+from django.urls import re_path
 
 # Project imports
 from apps.common.app_vars import init_app_vars
+from apps.common.debug_utils import listen
 from apps.common.decorators import init_decorators
+from apps.common.file_storage import get_filebrowser_site
+from apps.common.utils import migrating, get_api_module
 from apps.document.python_coded_fields_registry import init_field_registry
 from apps.document.field_type_registry import init_field_type_registry
+from swagger_view import get_swagger_view
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.5.0/LICENSE"
-__version__ = "1.5.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.6.0/LICENSE"
+__version__ = "1.6.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
 
-from apps.common.debug_utils import listen
 listen()
+
+
+def static(prefix, view=serve, **kwargs):
+    """
+    Unlike Django "static", this method serves static files even in production
+    (DEBUG=False) mode.
+    """
+    if not prefix:
+        raise ImproperlyConfigured("Empty static prefix not permitted")
+    return [
+        re_path(r'^%s(?P<path>.*)$' % re.escape(prefix.lstrip('/')), view, kwargs=kwargs),
+    ]
+
 
 # Manually add all standard patterns
 urlpatterns = [
@@ -82,16 +98,14 @@ urlpatterns = [
     # url(r'^project/', include('apps.project.urls', namespace='project')),
     # url(r'^task/', include('apps.task.urls', namespace='task')),
     # Custom
-    url(r'^{0}admin/filebrowser/'.format(settings.BASE_URL), filebrowser_site.urls),
+    url(r'^{0}admin/filebrowser/'.format(settings.BASE_URL), get_filebrowser_site().urls),
     url(r'^{0}api-auth/'.format(settings.BASE_URL), include('rest_framework.urls')),
-    url(r'^rest-auth/'.format(settings.BASE_URL), include('rest_auth.urls')),
-    url(r'^rest-auth/registration/'.format(settings.BASE_URL), include('rest_auth.registration.urls')),
+    url(r'^rest-auth/', include('rest_auth.urls')),
+    url(r'^rest-auth/registration/', include('rest_auth.registration.urls')),
     url(r"^accounts/confirm-email/(?P<key>[-:\w]+)/$", allauth_confirm_email_view, name="allauth_account_confirm_email"),
 
-] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
-
-if settings.DEBUG:
-    urlpatterns += staticfiles_urlpatterns()
+] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT) + \
+    static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
 
 # autodiscover urls from custom apps
 namespaces = {getattr(i, 'namespace', None) for i in urlpatterns}
@@ -151,6 +165,14 @@ urlpatterns += [
     url(r'^api/(?:(?P<group_by>version|app)/)?$', schema_view, name='swagger')
 ]
 
+# APi for media files under /media/data directory
+common_api_module = get_api_module('common')
+urlpatterns += [
+    url(r'^{}/(?P<path>.+)/$'.format(settings.MEDIA_API_URL.strip('/')),
+        common_api_module.MediaFilesAPIView.as_view(),
+        name='api-media')
+]
+
 
 # Manually add debug patterns
 if settings.DEBUG:
@@ -174,7 +196,6 @@ if settings.DEBUG:
         ]
 
 
-from apps.common.utils import migrating
 if not migrating():
     init_decorators()
     init_app_vars()

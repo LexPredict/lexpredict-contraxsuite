@@ -32,21 +32,24 @@ from django.contrib.admin import SimpleListFilter
 from django.contrib.admin.utils import NestedObjects
 from django.db import router
 from django.db.models import Count, F
-from django.urls import reverse
+from django.http import HttpResponseRedirect
+from django.shortcuts import render
+from django.urls import reverse, path
 from django.utils.safestring import mark_safe
 from django.utils.translation import ugettext_lazy as _
 
 # Project imports
 from apps.common.utils import cap_words
+from apps.document.admin import ModelAdminWithPrettyJsonField
 from apps.document.models import Document
 from apps.project.models import Project, TaskQueue, TaskQueueHistory,\
-    ProjectClustering, UploadSession, ProjectTermConfiguration
+    ProjectClustering, UploadSession, ProjectTermConfiguration, UserProjectsSavedFilter
 from apps.common.model_utils.model_class_dictionary import ModelClassDictionary
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.5.0/LICENSE"
-__version__ = "1.5.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.6.0/LICENSE"
+__version__ = "1.6.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -131,7 +134,7 @@ class ProjectAdmin(admin.ModelAdmin):
         return get_deleted_objects(objs, request, self.admin_site)
 
 
-class ProjectClusteringAdmin(admin.ModelAdmin):
+class ProjectClusteringAdmin(ModelAdminWithPrettyJsonField):
     list_display = ('pk', 'project_id', 'project_name', 'task_id', 'status', 'created_date')
     search_fields = ('pk', 'project__name')
 
@@ -200,7 +203,6 @@ unmark_deleting.short_description = "Uncheck selected projects for deleting"
 def delete_checked_projects(_, request, queryset):
     ids = [d.pk for d in queryset]
     request.session['_project_ids'] = ids
-    from django.http import HttpResponseRedirect
     return HttpResponseRedirect("./confirm_delete_view/")
 
 
@@ -241,7 +243,6 @@ class SoftDeleteProjectAdmin(ProjectAdmin):
         self.message_user(request, "Started deleting for all checked projects")
         ids = [d.pk for d in Project.all_objects.filter(delete_pending=True)]
         request.session['_project_ids'] = ids
-        from django.http import HttpResponseRedirect
         return HttpResponseRedirect("../confirm_delete_view/")
 
     def confirm_delete_view(self, request):
@@ -266,23 +267,20 @@ class SoftDeleteProjectAdmin(ProjectAdmin):
                 'deleting_count': del_count,
                 'return_url': 'admin:project_softdeleteproject_changelist'
             }
-            from django.shortcuts import render
             return render(request, "admin/common/confirm_delete_view.html", context)
 
         # POST: actual delete
-        from apps.task.tasks import call_task
-        call_task(
+        from apps.task.tasks import _call_task
+        _call_task(
             task_name='CleanProjects',
             module_name='apps.project.tasks',
             _project_ids=project_ids,
             user_id=request.user.id,
             delete=True)
-        from django.http import HttpResponseRedirect
         return HttpResponseRedirect("../")
 
     def get_urls(self):
         urls = super().get_urls()
-        from django.urls import path
         my_urls = [
             path('delete_all_checked/', self.delete_all_checked),
             path('confirm_delete_view/', self.confirm_delete_view),
@@ -308,6 +306,21 @@ class ProjectTermConfigurationAdmin(admin.ModelAdmin):
         return qs.annotate(project_name=F('project__name'), terms_count=Count('terms'))
 
 
+class UserProjectsSavedFilterAdmin(admin.ModelAdmin):
+    list_display = ('user_id', 'user_name', 'project_names')
+    search_fields = ('pk', 'user_id')
+    filter_horizontal = ('projects',)
+
+    @staticmethod
+    def user_name(obj):
+        return obj.user.get_full_name()
+
+    @staticmethod
+    def project_names(obj):
+        if obj.projects.exists():
+            return ', '.join(obj.projects.values_list('name', flat=True))
+
+
 admin.site.register(TaskQueue, TaskQueueAdmin)
 admin.site.register(TaskQueueHistory, TaskQueueHistoryAdmin)
 admin.site.register(Project, ProjectAdmin)
@@ -315,3 +328,4 @@ admin.site.register(ProjectClustering, ProjectClusteringAdmin)
 admin.site.register(UploadSession, UploadSessionAdmin)
 admin.site.register(SoftDeleteProject, SoftDeleteProjectAdmin)
 admin.site.register(ProjectTermConfiguration, ProjectTermConfigurationAdmin)
+admin.site.register(UserProjectsSavedFilter, UserProjectsSavedFilterAdmin)

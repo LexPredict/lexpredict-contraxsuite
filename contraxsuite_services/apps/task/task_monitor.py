@@ -31,14 +31,13 @@ from typing import List, Dict
 from celery.states import FAILURE, PENDING
 
 from apps.common.contraxsuite_urls import kibana_root_url
-from apps.task.app_vars import ENABLE_ALERTS, ALERT_DEFAULT_INTERVAL
 from apps.task.celery_backend.utils import now
 from apps.task.models import TaskConfig, Task
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.5.0/LICENSE"
-__version__ = "1.5.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.6.0/LICENSE"
+__version__ = "1.6.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -95,6 +94,7 @@ class TaskMonitor:
         Find top-level tasks that are not completed for a long time or are in failed state
         and report on each of these tasks by one email
         """
+        from apps.task.app_vars import ENABLE_ALERTS
         if not ENABLE_ALERTS.val:
             return
         configs = list(TaskConfig.objects.filter(notify_on_fail=True))
@@ -111,6 +111,7 @@ class TaskMonitor:
                                                 name__in=all_names,
                                                 date_done__lt=failed_before))  # type: List[Task]
 
+        from apps.task.app_vars import ALERT_DEFAULT_INTERVAL
         default_watch_mins = ALERT_DEFAULT_INTERVAL.val
         name_by_interval = {c.watchdog_minutes or default_watch_mins: c.name for c in configs}
         for interval in name_by_interval:
@@ -133,7 +134,7 @@ class TaskMonitor:
                 detail = cls.get_task_detail(task)
                 msg = f'Task "{task.name}" {detail.message}'
                 extra = detail.make_log_key_val()
-                server_logger.error(msg, extra)
+                server_logger.error(msg, extra=extra)
         finally:
             task_ids = [t.pk for t in tasks]
             Task.objects.filter(pk__in=task_ids).update(failure_reported=True)
@@ -145,12 +146,15 @@ class TaskMonitor:
                        task.date_work_start or task.date_start,
                        task.date_done or task.own_date_done,
                        task.user_id)
-        for record in task.get_task_log_from_elasticsearch():
-            r.kibana_ref = kibana_root_url(record.record_id, record.file_index, add_protocol=False)
-            if not hasattr(record, 'stack_trace') or not hasattr(record, 'message') \
-                    or record.log_level != 'ERROR':
-                continue
-            r.error_message = record.message
-            r.stack_trace = record.stack_trace
-            break
+        try:
+            for record in task.get_task_log_from_elasticsearch():
+                r.kibana_ref = kibana_root_url(record.record_id, record.file_index, add_protocol=False)
+                if not hasattr(record, 'stack_trace') or not hasattr(record, 'message') \
+                        or record.log_level != 'ERROR':
+                    continue
+                r.error_message = record.message
+                r.stack_trace = record.stack_trace
+                return r
+        except GeneratorExit:
+            return r
         return r

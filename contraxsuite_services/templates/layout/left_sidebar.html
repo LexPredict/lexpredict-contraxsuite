@@ -74,8 +74,10 @@
 
                 {% if user.is_admin %}
                 <li class="divider"></li>
+                <li><a href="{% url "common:db-stats" %}">Database Stats</a></li>
+                <li><a href="{% url "common:docker-stats" %}">Docker Stats</a></li>
                 <li><a href="{% url "common:method-stats-overview" %}">Method Stats Overview</a></li>
-                <li><a href="{% url "common:db-stats" %}">Database and Docker Stats</a></li>
+                <li class="divider"></li>
                 <li><a href="{% url "admin:index" %}">Admin Site</a></li>
                 {% endif %}
             </ul>
@@ -100,6 +102,10 @@
     <div data-for="release_version" class="version">
         <span class="version_text">Version: </span>
         <span class="version_number">{% settings_value "VERSION_NUMBER" %}</span>
+      <div>
+        <span class="build_date_text">Build date: </span>
+        <span class="build_date_value">{% app_var_value "build_date" "Common" %}</span>
+      </div>
     </div>
     <div class="copyright">
         Copyrights &copy; 2015-{% now 'Y' %}, <a href="https://contraxsuite.com">ContraxSuite, LLC</a>

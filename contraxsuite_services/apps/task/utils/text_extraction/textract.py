@@ -33,8 +33,8 @@ from textract import exceptions
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.5.0/LICENSE"
-__version__ = "1.5.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.6.0/LICENSE"
+__version__ = "1.6.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -97,7 +97,11 @@ def process(filename, encoding=DEFAULT_ENCODING, ext: str = None, **kwargs):
 
     rel_module = ext + '_parser'
     importlib.import_module('textract.parsers')
-    filetype_module = importlib.import_module(rel_module, 'textract.parsers')
+    try:
+        filetype_module = importlib.import_module(rel_module, 'textract.parsers')
+    except Exception as e:
+        raise Exception(
+            f'Textract - error importing module "{rel_module}" from "textract.parsers') from e
     parser = filetype_module.Parser()
     return parser.process(filename, encoding, **kwargs)
 

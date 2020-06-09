@@ -25,7 +25,7 @@
 # -*- coding: utf-8 -*-
 
 from django.contrib.postgres.fields import JSONField
-from django.core.serializers.json import DjangoJSONEncoder
+from apps.common.model_utils.improved_django_json_encoder import ImprovedDjangoJSONEncoder
 from django.db import models
 from django.db.models.deletion import CASCADE
 
@@ -36,8 +36,8 @@ from apps.rawdb.constants import FT_COMMON_FILTER, FT_USER_DOC_GRID_CONFIG
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.5.0/LICENSE"
-__version__ = "1.5.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.6.0/LICENSE"
+__version__ = "1.6.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -63,8 +63,8 @@ class SavedFilter(models.Model):
 
     # filter_sql = models.TextField(blank=True, null=True)
 
-    columns = JSONField(blank=True, null=True, encoder=DjangoJSONEncoder)
+    columns = JSONField(blank=True, null=True, encoder=ImprovedDjangoJSONEncoder)
 
-    column_filters = JSONField(blank=True, null=True, encoder=DjangoJSONEncoder)
+    column_filters = JSONField(blank=True, null=True, encoder=ImprovedDjangoJSONEncoder)
 
-    order_by = JSONField(blank=True, null=True, encoder=DjangoJSONEncoder)
+    order_by = JSONField(blank=True, null=True, encoder=ImprovedDjangoJSONEncoder)

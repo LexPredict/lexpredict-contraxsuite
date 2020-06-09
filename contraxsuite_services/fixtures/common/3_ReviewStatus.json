@@ -38,20 +38,31 @@
     "fields": {
         "name": "Completed",
         "code": "completed",
-        "order": 4,
+        "order": 5,
         "group_id": 3,
         "is_active": false
     }
 },
+    {
+        "model": "common.reviewstatus",
+        "pk": 5,
+        "fields": {
+            "name": "Excluded",
+            "code": "excluded",
+            "order": 6,
+            "group_id": 3,
+            "is_active": false
+    }
+},
 {
     "model": "common.reviewstatus",
-    "pk": 5,
+    "pk": 6,
     "fields": {
-        "name": "Excluded",
-        "code": "excluded",
-        "order": 5,
-        "group_id": 3,
-        "is_active": false
+        "name": "Awaiting QA",
+        "code": "awaiting_qa",
+        "order": 4,
+        "group_id": 2,
+        "is_active": true
     }
 }
 

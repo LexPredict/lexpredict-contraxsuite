@@ -25,12 +25,12 @@
 # -*- coding: utf-8 -*-
 
 import json
-
+import re
 from django import forms
 from django.conf import settings
 
 from apps.common.widgets import FilterableProjectSelectField, FiltrableProjectSelectWidget
-from apps.document.constants import DOCUMENT_TYPE_PK_GENERIC_DOCUMENT
+from apps.document.constants import DOCUMENT_TYPE_PK_GENERIC_DOCUMENT, DOCUMENT_FIELD_CODE_MAX_LEN
 from apps.document.models import DocumentType, DocumentField
 from apps.document.tasks import FindBrokenDocumentFieldValues, FixDocumentFieldCodes, MODULE_NAME
 from apps.project.models import Project
@@ -39,8 +39,8 @@ from task_names import TASK_NAME_IDENTIFY_CONTRACTS
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.5.0/LICENSE"
-__version__ = "1.5.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.6.0/LICENSE"
+__version__ = "1.6.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -114,13 +114,13 @@ class TrainAndTestForm(forms.Form):
         required=True)
 
     train_data_project_ids = ProjectModelMultipleChoiceField(
-        queryset=Project.objects.all().values_list('pk', 'name'),
+        queryset=Project.objects.all().values_list('pk', 'name').order_by('-pk'),
         label='Train Data Projects',
         widget=forms.SelectMultiple(attrs={'class': 'chosen compact'}),
         required=False)
 
     test_data_projects_ids = ProjectModelMultipleChoiceField(
-        queryset=Project.objects.all().values_list('pk', 'name'),
+        queryset=Project.objects.all().values_list('pk', 'name').order_by('-pk'),
         label='Test Data Projects',
         widget=forms.SelectMultiple(attrs={'class': 'chosen compact'}),
         required=False)
@@ -185,6 +185,23 @@ class ImportCSVFieldDetectionConfigForm(PatchedForm):
     spaces in them will be converted to \\s and maybe similar other conversions will be applied to bring them 
     to the regexp form usable in field detectors.''')
 
+    selected_columns = forms.CharField(required=False,
+                                   help_text='''Columns to get detected value / search strings.
+            Example: "A: B" means: column A contains value, column B - string to detect.\n
+            "A,C: C,D" means: column A contains value, column C values are joined and prepended to 
+            the value, search string resides in columns C and D''',
+                                   initial='')
+
+    save_in_csv_format = forms.BooleanField(
+        required=False,
+        initial=True,
+        help_text='''Save detecting settings in one record''')
+
+    wrap_in_wordbreaks = forms.BooleanField(
+        required=False,
+        initial=True,
+        help_text='''Wrap search patterns in \\b ... \\b special symbols (word break)''')
+
 
 class ExportDocumentTypeForm(forms.Form):
     header = 'Export Document Type'
@@ -195,7 +212,7 @@ class ExportDocumentTypeForm(forms.Form):
 class ImportDocumentTypeForm(forms.Form):
     header = 'Import Document Type'
 
-    document_type_config_csv_file = forms.FileField(required=True)
+    document_type_config_json_file = forms.FileField(required=True, label='Document Type JSON file')
 
     action = forms.ChoiceField(
         label='Action',
@@ -243,3 +260,105 @@ class IdentifyContractsForm(forms.Form):
     def _post_clean(self):
         super()._post_clean()
         self.cleaned_data['module_name'] = MODULE_NAME
+
+
+class CloneDocumentFieldForm(forms.Form):
+    R_FIELD_CODE = re.compile(r'^[a-z][a-z0-9_]*$')
+
+    code = forms.CharField(
+        max_length=DOCUMENT_FIELD_CODE_MAX_LEN,
+        required=True)
+    document_type = forms.ModelChoiceField(
+        queryset=DocumentType.objects.all(),
+        label='Clone to Document Type',
+        required=True)
+
+    def __init__(self, *args, **kwargs):
+        # needed to use as ModalAdmin form
+        self.instance = kwargs.pop('instance', None)
+        super().__init__(*args, **kwargs)
+        if self.instance:
+            self.fields['code'].initial = self.instance.code
+            self.fields['document_type'].initial = self.instance.document_type
+
+    class Meta:
+        fields = ['code', 'document_type']
+        readonly_fields = []
+
+    def clean(self):
+
+        code = self.cleaned_data.get('code')
+        document_type = self.cleaned_data.get('document_type')
+
+        if code:
+
+            if not self.R_FIELD_CODE.match(code):
+                self.add_error('code', '''Field codes must be lowercase, should start with a latin letter and contain 
+                only latin letters, digits, and underscores. You cannot use a field code you have already used for this 
+                document type.''')
+
+            from apps.rawdb.constants import FIELD_CODE_ANNOTATION_SUFFIX
+            reserved_suffixes = ('_sug', '_txt', FIELD_CODE_ANNOTATION_SUFFIX)
+            # TODO: define reserved suffixes/names in field_value_tables.py? collect/autodetect?
+            for suffix in reserved_suffixes:
+                if code.endswith(suffix):
+                    self.add_error('code', '''"{}" suffix is reserved.
+                     You cannot use a field code which ends with this suffix.'''.format(suffix))
+
+            if not document_type:
+                return
+
+            if DocumentField.objects.filter(document_type=document_type, code=code).exists():
+                self.add_error('code', '''You cannot use a field code you have already used for this 
+                document type.''')
+
+    def save(self, commit=False):
+        # needed to use as ModalAdmin form
+        return self.instance
+
+    def save_m2m(self):
+        # needed to use as ModalAdmin form
+        pass
+
+
+class CloneDocumentTypeForm(forms.Form):
+    R_FIELD_CODE = re.compile(r'^[a-z][a-z0-9_]*$')
+
+    code = forms.CharField(
+        max_length=DOCUMENT_FIELD_CODE_MAX_LEN,
+        required=True)
+    title = forms.CharField(
+        max_length=100,
+        required=True)
+
+    def __init__(self, *args, **kwargs):
+        # needed to use as ModalAdmin form
+        self.instance = kwargs.pop('instance', None)
+        super().__init__(*args, **kwargs)
+        if self.instance:
+            self.fields['code'].initial = self.instance.code
+            self.fields['title'].initial = self.instance.title
+
+    def clean_code(self):
+
+        code = self.cleaned_data.get('code')
+
+        if code:
+            if not self.R_FIELD_CODE.match(code):
+                self.add_error('code', '''Document Type codes must be lowercase, 
+                should start with a latin letter and contain 
+                only latin letters, digits, and underscores.''')
+
+            if DocumentType.objects.filter(code=code).exists():
+                self.add_error('code', '''You cannot use a code you have already used for  
+                Document Types.''')
+
+        return code
+
+    def save(self, commit=False):
+        # needed to use as ModalAdmin form
+        return self.instance
+
+    def save_m2m(self):
+        # needed to use as ModalAdmin form
+        pass

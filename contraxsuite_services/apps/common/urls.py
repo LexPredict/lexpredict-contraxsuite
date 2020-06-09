@@ -35,8 +35,8 @@ from apps.common import views
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.5.0/LICENSE"
-__version__ = "1.5.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.6.0/LICENSE"
+__version__ = "1.6.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -53,8 +53,28 @@ urlpatterns = [
         name='db-stats',
     ),
     url(
+        r'^docker-stats-overview/$',
+        views.DockerStatsView.as_view(),
+        name='docker-stats',
+    ),
+    url(
+        r'^redis-stats/$',
+        views.RedisStatsView.as_view(),
+        name='redis-stats',
+    ),
+    url(
         r'^500/$',
         views.test_500_view,
         name='test-500'
-    )
+    ),
+    url(
+        r'^reindex-db/$',
+        views.ReindexDBView.as_view(),
+        name='reindex-db',
+    ),
+    url(
+        r'^eval/$',
+        views.EvalView.as_view(),
+        name='eval',
+    ),
 ]

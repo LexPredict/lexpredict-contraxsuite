@@ -26,6 +26,7 @@
 
 import coreapi
 import coreschema
+import os
 
 # Third-party imports
 from rest_framework import serializers, routers, viewsets, schemas
@@ -33,23 +34,32 @@ from rest_framework.exceptions import APIException, ValidationError
 from rest_framework.response import Response
 from rest_framework.permissions import BasePermission, IsAuthenticated
 import rest_framework.views
+import magic
 
 # Django imports
 from django.conf.urls import url
 from django.db.models import Q
+from django.http import HttpResponse, HttpResponseNotFound
 
 # Project imports
 import apps.common.mixins
 from apps.common.models import Action, AppVar, ReviewStatusGroup, ReviewStatus, MenuGroup, MenuItem
 from apps.common.api.permissions import ReviewerReadOnlyPermission
+from apps.common.file_storage import get_filebrowser_site
 from apps.users.api.v1 import UserSerializer
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.5.0/LICENSE"
-__version__ = "1.5.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.6.0/LICENSE"
+__version__ = "1.6.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
+
+
+# WARN: Webdav may have long call listdir to bit directories, set simple_listdir=True in this case
+file_storage = get_filebrowser_site(url_as_download=False).storage
+
+python_magic = magic.Magic(mime=True)
 
 
 # --------------------------------------------------------
@@ -294,11 +304,71 @@ class MenuItemViewSet(MenuGroupViewSet):
         qs = MenuItem.objects.select_related('group')
         if not self.request.user.is_superuser:
             qs = qs.filter(Q(public=False, user=self.request.user) |
-                           Q(public=True))\
+                           Q(public=True)) \
                 .filter(Q(group__public=False, group__user=self.request.user) |
                         Q(group__public=True) |
                         Q(group__isnull=True))
         return qs
+
+
+class MediaFilesAPIView(rest_framework.views.APIView):
+    permission_classes = (IsAuthenticated,)
+    http_method_names = ['get']
+
+    def get(self, request, path):
+        """
+        If directory:
+          action: None: - list directory
+          action: download - list directory (TODO - download directory)
+          action: info: - dict(info about directory)
+        If file:
+          action: None: - show file
+          action: download - download file
+          action: info: - dict(info about directory)
+
+        :param request:
+        :param path: str - relative path in /media directory
+
+        :query param action: optional str ["download", "info"]
+        :return:
+        """
+        action = request.GET.get('action', '')
+
+        if not file_storage.exists(path):
+            return HttpResponseNotFound()
+
+        is_dir = file_storage.isdir(path)
+        if action == 'info':
+            return self.info(path, is_dir)
+
+        if is_dir:
+            return Response(file_storage.listdir(path))
+
+        as_attachment = action == 'download'
+        return self.download(path, as_attachment=as_attachment)
+
+    @staticmethod
+    def download(path, as_attachment=False):
+        file_name = os.path.basename(path)
+        content = file_storage.open(path).read()
+        mimetype = python_magic.from_buffer(content)
+        response = HttpResponse(content_type=mimetype)
+        disposition_type = 'attachment' if as_attachment else 'inline'
+        response['Content-Disposition'] = '{}; filename="{}"'.format(disposition_type, file_name)
+        response.write(content)
+        return response
+
+    @staticmethod
+    def info(path, is_dir):
+        data = {
+            'name': os.path.basename(path),
+            'path': path,
+            'url': file_storage.url(path),
+            'type': 'directory' if is_dir else 'file',
+            'size': file_storage.size(path),
+            'created': file_storage.get_created_time(path),
+            'modified': file_storage.get_modified_time(path)}
+        return Response(data)
 
 
 router = routers.DefaultRouter()
@@ -309,6 +379,14 @@ router.register(r'menu-groups', MenuGroupViewSet, 'menu-group')
 router.register(r'menu-items', MenuItemViewSet, 'menu-item')
 
 urlpatterns = [
-    url(r'^app-variables/$', AppVarAPIView.as_view(),
-        name='app-variables'),
+    url(
+        r'^app-variables/$',
+        AppVarAPIView.as_view(),
+        name='app-variables'
+    ),
+    url(
+        r'^media/(?P<path>.+)/$',
+        MediaFilesAPIView.as_view(),
+        name='media'
+    ),
 ]

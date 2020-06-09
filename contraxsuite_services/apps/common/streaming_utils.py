@@ -32,13 +32,13 @@ from types import GeneratorType
 from typing import BinaryIO
 from typing import Generator, Any, List
 
-from django.core.serializers.json import DjangoJSONEncoder
+from apps.common.model_utils.improved_django_json_encoder import ImprovedDjangoJSONEncoder
 from requests.models import Response
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.5.0/LICENSE"
-__version__ = "1.5.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.6.0/LICENSE"
+__version__ = "1.6.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -83,7 +83,7 @@ def csv_gen_from_dicts(rows: GeneratorType, fieldnames=None) -> Generator[str, N
 
 def json_gen(v: Any, encoder=None) -> Generator[str, None, None]:
     if not encoder:
-        encoder = DjangoJSONEncoder()
+        encoder = ImprovedDjangoJSONEncoder()
 
     yield from encoder.iterencode(v)
 

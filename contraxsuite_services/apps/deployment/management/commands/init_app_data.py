@@ -51,8 +51,8 @@ from apps.extract.models import Court, Term, GeoEntity
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.5.0/LICENSE"
-__version__ = "1.5.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.6.0/LICENSE"
+__version__ = "1.6.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -164,19 +164,22 @@ class GeoEntitiesLoader(ZipFileLoader):
 
 
 class DictionaryLoader(DataLoader):
-
     dictionary_loader_by_file_prefix = dict(
         terms=TermsLoader,
         courts=CourtsLoader,
         geoentities=GeoEntitiesLoader
     )
 
-    def __init__(self, file_patch: str):
+    def __init__(self, zip_or_dir_path: str):
         super().__init__()
-        self.file_patch = file_patch
+        self.zip_or_dir_path = zip_or_dir_path
 
     def load(self) -> None:
-        zip_file = ZipFile(self.file_patch)
+        if path.isdir(self.zip_or_dir_path):
+            print(f'Directories are not supported by {self.__class__.__name__}')
+            return None
+
+        zip_file = ZipFile(self.zip_or_dir_path)
         files_by_loader = dict()
         for file_info in zip_file.infolist():
             if file_info.filename.endswith('/'):
@@ -196,10 +199,10 @@ class DictionaryLoader(DataLoader):
 
 class DocumentDataLoader(DataLoader):
 
-    def __init__(self, file_patch: str):
+    def __init__(self, zip_or_dir_path: str):
         from apps.deployment.app_vars import DEPLOYMENT_DOCUMENT_DATA_INITIALIZED
         super().__init__(DEPLOYMENT_DOCUMENT_DATA_INITIALIZED)
-        self.file_patch = file_patch
+        self.zip_or_dir_path = zip_or_dir_path
 
     def load(self) -> None:
         initialized = False
@@ -213,15 +216,19 @@ class DocumentDataLoader(DataLoader):
             return
         print('Uploading document data...')
 
-        zip_file = ZipFile(self.file_patch)
-        for file_info in zip_file.infolist():
-            data = zip_file.read(file_info)
-            buf = io.StringIO()
-            with NamedTemporaryFile(mode='wb', suffix='.json') as tmp_file:
-                tmp_file.write(data)
-                tmp_file.seek(0)
-                call_command('loaddata', tmp_file.name, app_label='document', stdout=buf)
-                buf.seek(0)
+        if not path.isdir(self.zip_or_dir_path):
+            zip_file = ZipFile(self.zip_or_dir_path)
+            for file_info in zip_file.infolist():
+                data = zip_file.read(file_info)
+                with NamedTemporaryFile(mode='wb', suffix='.json') as tmp_file:
+                    tmp_file.write(data)
+                    tmp_file.seek(0)
+                    call_command('loaddata', tmp_file.name, app_label='document')
+        else:
+            for file in listdir(self.zip_or_dir_path):
+                full_file_path = path.join(self.zip_or_dir_path, file)
+                call_command('loaddata', full_file_path, app_label='document')
+
         DocumentField.objects.update(dirty=False, training_finished=False)
 
 
@@ -255,10 +262,10 @@ class GeoEntitiesByUrlLoader(GeoEntitiesLoader):
 class Command(BaseCommand):
     help = 'Uploads application data from specified folder'
 
-    loader_by_file_prefix = dict(
-        document_data=lambda file_patch: DocumentDataLoader(file_patch).load_once(),
-        dict_data=lambda file_patch: DictionaryLoader(file_patch).load_once()
-    )
+    loader_by_file_prefix = {
+        'document_data': lambda file_path: DocumentDataLoader(file_path).load_once(),
+        'dict_data': lambda file_path: DictionaryLoader(file_path).load_once()
+    }
 
     def get_file_loader(self, file: str) -> Optional[Callable[[str], None]]:
         for prefix, loader in self.loader_by_file_prefix.items():
@@ -272,15 +279,15 @@ class Command(BaseCommand):
         parser.add_argument('--arch-files', default=False, action='store_true')
 
     @classmethod
-    def get_proceed_dir(cls, data_dir):
-        proceed_dir = '{0}/processed/{1}'.format(data_dir, now().strftime('%Y-%m-%d_%H-%M-%S'))
-        if not path.exists(proceed_dir):
-            pathlib.Path(proceed_dir).parent.mkdir(parents=True, exist_ok=True)
-            mkdir(proceed_dir)
-        return proceed_dir
+    def get_processed_dir(cls, data_dir):
+        processed_dir = path.join(data_dir, 'processed', now().strftime('%Y-%m-%d_%H-%M-%S'))
+        if not path.exists(processed_dir):
+            pathlib.Path(processed_dir).parent.mkdir(parents=True, exist_ok=True)
+            mkdir(processed_dir)
+        return processed_dir
 
     def handle(self, *args: Tuple, **options: Dict[Any, Any]) -> None:
-        data_dir = options.get('data_dir')
+        data_dir = options.get('data_dir')  # type: str
         upload_dict_data_from_repository = options.get('upload_dict_data_from_repository')
         arch_files = options.get('arch_files')
 
@@ -288,19 +295,19 @@ class Command(BaseCommand):
             print('Uploading application data from {0}...'.format(data_dir))
             if path.exists(data_dir):
                 for file in listdir(data_dir):
-                    if not path.isdir(file) and file.endswith('.zip'):
-                        print('Processing {0}...'.format(file))
-                        file_patch = '{0}/{1}'.format(data_dir, file)
+                    file_path = path.join(data_dir, file)
+                    if path.isdir(file_path) or file.endswith('.zip'):
+                        print('Processing {0}...'.format(file_path))
                         loader = self.get_file_loader(file)
                         if loader:
-                            loader(file_patch)
-                        if arch_files:
-                            shutil.move(file_patch, '{0}/{1}'.format(self.get_proceed_dir(data_dir), file))
+                            loader(file_path)
+                            if arch_files:
+                                shutil.move(file_path, self.get_processed_dir(data_dir))
             else:
                 print('Data folder does not exist')
 
         if upload_dict_data_from_repository:
-            print('Uploading dictionary data data from repository...'.format(data_dir))
+            print('Uploading dictionary data data from repository...')
             TermsByUrlLoader().load_once()
             CourtsByUrlLoader().load_once()
             GeoEntitiesByUrlLoader().load_once()

@@ -29,6 +29,7 @@ from __future__ import absolute_import, unicode_literals
 
 # Standard imports
 import json
+import re
 
 # Third-party imports
 import pandas as pd
@@ -38,13 +39,21 @@ from django.conf import settings
 from django.db import connection
 
 # Project imports
+from django.http import JsonResponse
+from django.utils.html import escape
+from rest_framework.decorators import action
+
 import apps.common.mixins
+from apps.common import redis
 from apps.common.models import MethodStats
+from apps.common.forms import ReindexDBForm
+from apps.common.tasks import ReindexDB
+from apps.task.views import BaseAjaxTaskView
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.5.0/LICENSE"
-__version__ = "1.5.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.6.0/LICENSE"
+__version__ = "1.6.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -64,6 +73,34 @@ class MethodStatsOverviewListView(apps.common.mixins.TechAdminRequiredMixin,
         return {'data': data, 'total_records': len(data)}
 
 
+class EvalView(apps.common.mixins.TechAdminRequiredMixin, apps.common.mixins.AjaxListView):
+    template_name = 'common/eval.html'
+    model = MethodStats     # just to keep AjaxListView behavior
+
+    @action(methods=['post'], detail=True)
+    def post(self, request, *args, **kwargs):
+        script = request.POST.get('code') or ''
+        result = ''
+        eval_locals = {}
+        try:
+            exec(script, {}, eval_locals)
+            result += 'Success\n\n\n'
+        except Exception as e:
+            result += 'Exception:\n'
+            result += str(e)
+            result += '\n\n\n'
+
+        if eval_locals:
+            result += 'Locals:\n'
+            for loc in eval_locals:
+                result += f'{loc}: {eval_locals[loc]}\n\n'
+        result = escape(result).replace('\n', '<br/>')
+        data = {
+            'markup': result
+        }
+        return JsonResponse(data, safe=True)
+
+
 class DBStatsView(apps.common.mixins.TechAdminRequiredMixin,
                   apps.common.mixins.AjaxListView):
     template_name = 'common/db_stats.html'
@@ -74,10 +111,6 @@ class DBStatsView(apps.common.mixins.TechAdminRequiredMixin,
             return self.get_pg_stat_statements_data()
         if self.request.GET.get('source') == 'pg_stat_activity':
             return self.get_pg_stat_activity_data()
-        if self.request.GET.get('source') == 'docker_services_data':
-            return self.get_docker_services_data()
-        if self.request.GET.get('source') == 'docker_nodes_data':
-            return self.get_docker_nodes_data()
         if self.request.GET.get('columns_table_name'):
             return self.get_table_columns_data()
         if self.request.GET.get('indexes_table_name'):
@@ -210,20 +243,6 @@ class DBStatsView(apps.common.mixins.TechAdminRequiredMixin,
 
             return {'data': pg_stats_df.to_dict(orient='records')}
 
-    def get_docker_nodes_data(self):
-        try:
-            with open(settings.MEDIA_ROOT + '/data/docker_nodes.txt', 'r') as f:
-                return {'data': json.loads(f.read())}
-        except Exception as e:
-            return {'data': [], 'error': str(e)}
-
-    def get_docker_services_data(self):
-        try:
-            with open(settings.MEDIA_ROOT + '/data/docker_services.txt', 'r') as f:
-                return {'data': json.loads(f.read())}
-        except Exception as e:
-            return {'data': [], 'error': str(e)}
-
     @staticmethod
     def dictfetchall(cursor):
         """
@@ -239,3 +258,82 @@ class DBStatsView(apps.common.mixins.TechAdminRequiredMixin,
                 return "%3.1f %s" % (value, unit)
             value /= 1024.0
         return "%.1f %s" % (value, 'X')
+
+
+class DockerStatsView(apps.common.mixins.TechAdminRequiredMixin,
+                      apps.common.mixins.AjaxListView):
+    template_name = 'common/docker_stats.html'
+    model = MethodStats     # just to keep AjaxListView behavior
+
+    def get_json_data(self, **kwargs):
+        if self.request.GET.get('source') == 'docker_services':
+            return self.get_docker_services_data()
+        if self.request.GET.get('source') == 'docker_services_plain':
+            return self.get_docker_services_plain_data()
+        if self.request.GET.get('source') == 'docker_nodes':
+            return self.get_docker_nodes_data()
+        if self.request.GET.get('source') == 'docker_stats':
+            return self.get_docker_stats_data()
+        raise RuntimeError('Source is not specified')
+
+    def get_docker_nodes_data(self):
+        try:
+            with open(settings.DOCKER_STATS_DIR + '/docker_nodes.txt', 'r') as f:
+                return {'data': json.loads(f.read())}
+        except Exception as e:
+            return {'data': [], 'error': str(e)}
+
+    def get_docker_services_data(self):
+        try:
+            with open(settings.DOCKER_STATS_DIR + '/docker_services.txt', 'r') as f:
+                return {'data': json.loads(f.read())}
+        except Exception as e:
+            return {'data': [], 'error': str(e)}
+
+    def get_docker_services_plain_data(self):
+        try:
+            df = pd.read_csv(settings.DOCKER_STATS_DIR + '/docker_services_plain.txt',
+                             delimiter=r'\s{2,}')
+            return {'data': list(df.T.to_dict().values())}
+        except Exception as e:
+            return {'data': [], 'error': str(e)}
+
+    def get_docker_stats_data(self):
+        try:
+            df = pd.read_fwf(settings.DOCKER_STATS_DIR + '/docker_stats.txt').fillna('')
+            df['NAME'] = df['NAME'].apply(lambda i: str(i).split('.')[0])
+            df['CPU %'] = df['CPU %'].apply(lambda i: str(i).rstrip('%'))
+            df['MEM %'] = df['MEM %'].apply(lambda i: str(i).rstrip('%'))
+            df.columns = [re.sub(r'\W', '', i).lower() for i in df.columns]
+            return {'data': list(df.T.to_dict().values())}
+        except Exception as e:
+            return {'data': [], 'error': str(e)}
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        from apps.task.app_vars import DISK_USAGE
+        ctx['disk_usage'] = DISK_USAGE.val
+        return ctx
+
+
+class RedisStatsView(apps.common.mixins.TechAdminRequiredMixin,
+                     apps.common.mixins.AjaxListView):
+    template_name = 'common/redis_stats.html'
+    model = MethodStats     # just to keep AjaxListView behavior
+
+    def get_json_data(self, **kwargs):
+        # TODO: impl server-side filtering, sorting, paging if needed
+        data = []
+        for key in redis.r.scan_iter('*'):
+            key = key.decode('utf-8')
+            try:
+                value = str(redis.unpickle(redis.r.get(key)))
+            except:
+                value = 'unpickle error'
+            data.append({'key': key, 'value': value})
+        return {'data': data}
+
+
+class ReindexDBView(BaseAjaxTaskView):
+    task_class = ReindexDB
+    form_class = ReindexDBForm

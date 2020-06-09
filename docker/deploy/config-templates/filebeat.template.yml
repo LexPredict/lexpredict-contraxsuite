@@ -1,0 +1,168 @@
+filebeat:
+  autodiscover.providers:
+    - type: docker
+      templates:
+        - condition.contains.docker.container.image: "${DOCKER_NGINX_IMAGE}"
+          config:
+            - module: nginx
+              access:
+                input:
+                  type: container
+                  paths:
+                    - /hostfs/data/docker/containers/${DOLLAR}{data.docker.container.id}/*.log
+                    - /hostfs/var/lib/docker/containers/${DOLLAR}{data.docker.container.id}/*.log
+                  stream: stdout
+              error:
+                input:
+                  type: container
+                  paths:
+                    - /hostfs/data/docker/containers/${DOLLAR}{data.docker.container.id}/*.log
+                    - /hostfs/var/lib/docker/containers/${DOLLAR}{data.docker.container.id}/*.log
+                  stream: stderr
+        - condition.contains.docker.container.image: "${DOCKER_PG_IMAGE}"
+          config:
+            - module: postgresql
+              log:
+                input:
+                  type: container
+                  paths:
+                    - /hostfs/data/docker/containers/${DOLLAR}{data.docker.container.id}/*.log
+                    - /hostfs/var/lib/docker/containers/${DOLLAR}{data.docker.container.id}/*.log
+        - condition.contains.docker.container.image: "${DOCKER_REDIS_IMAGE}"
+          config:
+            - type: container
+              paths:
+                - /hostfs/data/docker/containers/${DOLLAR}{data.docker.container.id}/*.log
+                - /hostfs/var/lib/docker/containers/${DOLLAR}{data.docker.container.id}/*.log
+        - condition.contains.docker.container.image: "${DOCKER_WEBDAV_IMAGE}"
+          config:
+            - type: container
+              paths:
+                - /hostfs/data/docker/containers/${DOLLAR}{data.docker.container.id}/*.log
+                - /hostfs/var/lib/docker/containers/${DOLLAR}{data.docker.container.id}/*.log
+        - condition.contains.docker.container.image: "${DOCKER_MINIO_IMAGE}"
+          config:
+            - type: container
+              paths:
+                - /hostfs/data/docker/containers/${DOLLAR}{data.docker.container.id}/*.log
+                - /hostfs/var/lib/docker/containers/${DOLLAR}{data.docker.container.id}/*.log
+        - condition.contains.docker.container.image: "${DOCKER_MLFLOW_TRACKING_IMAGE}"
+          config:
+            - type: container
+              paths:
+                - /hostfs/data/docker/containers/${DOLLAR}{data.docker.container.id}/*.log
+                - /hostfs/var/lib/docker/containers/${DOLLAR}{data.docker.container.id}/*.log
+        - condition.contains.docker.container.image: "${DOCKER_CURATOR_IMAGE}"
+          config:
+            - type: container
+              paths:
+                - /hostfs/data/docker/containers/${DOLLAR}{data.docker.container.id}/*.log
+                - /hostfs/var/lib/docker/containers/${DOLLAR}{data.docker.container.id}/*.log
+        - condition.contains.docker.container.image: "${DOCKER_ELASTICSEARCH_IMAGE}"
+          config:
+            - type: container
+              paths:
+                - /hostfs/data/docker/containers/${DOLLAR}{data.docker.container.id}/*.log
+                - /hostfs/var/lib/docker/containers/${DOLLAR}{data.docker.container.id}/*.log
+              multiline.pattern: '^[[:space:]]'
+              multiline.negate: false
+              multiline.match: after
+        - condition.contains.docker.container.image: "${DOCKER_ELASTALERT_IMAGE}"
+          config:
+            - type: container
+              paths:
+                - /hostfs/data/docker/containers/${DOLLAR}{data.docker.container.id}/*.log
+                - /hostfs/var/lib/docker/containers/${DOLLAR}{data.docker.container.id}/*.log
+              multiline.pattern: '^[[:space:]]'
+              multiline.negate: false
+              multiline.match: after
+        - condition.contains.docker.container.image: "${DOCKER_KIBANA_IMAGE}"
+          config:
+            - type: container
+              paths:
+                - /hostfs/data/docker/containers/${DOLLAR}{data.docker.container.id}/*.log
+                - /hostfs/var/lib/docker/containers/${DOLLAR}{data.docker.container.id}/*.log
+              processors:
+                - decode_json_fields:
+                    fields: ["message"]
+                    target: ""
+                    overwrite_keys: true
+        - condition.contains.docker.container.image: "${DOCKER_FILEBEAT_IMAGE}"
+          config:
+            - type: container
+              paths:
+                - /hostfs/data/docker/containers/${DOLLAR}{data.docker.container.id}/*.log
+                - /hostfs/var/lib/docker/containers/${DOLLAR}{data.docker.container.id}/*.log
+        - condition.contains.docker.container.image: "${DOCKER_METRICBEAT_IMAGE}"
+          config:
+            - type: container
+              paths:
+                - /hostfs/data/docker/containers/${DOLLAR}{data.docker.container.id}/*.log
+                - /hostfs/var/lib/docker/containers/${DOLLAR}{data.docker.container.id}/*.log
+        - condition.contains.docker.container.image: "${DOCKER_RABBITMQ_IMAGE}"
+          config:
+            - type: container
+              paths:
+                - /hostfs/data/docker/containers/${DOLLAR}{data.docker.container.id}/*.log
+                - /hostfs/var/lib/docker/containers/${DOLLAR}{data.docker.container.id}/*.log
+              multiline.pattern: '^[[:space:]]'
+              multiline.negate: false
+              multiline.match: after
+        - condition:
+            and:
+              - not.contains.docker.container.image: "${DOCKER_NGINX_IMAGE}"
+              - not.contains.docker.container.image: "${DOCKER_PG_IMAGE}"
+              - not.contains.docker.container.image: "${DOCKER_REDIS_IMAGE}"
+              - not.contains.docker.container.image: "${DOCKER_WEBDAV_IMAGE}"
+              - not.contains.docker.container.image: "${DOCKER_MINIO_IMAGE}"
+              - not.contains.docker.container.image: "${DOCKER_MLFLOW_TRACKING_IMAGE}"
+              - not.contains.docker.container.image: "${DOCKER_CURATOR_IMAGE}"
+              - not.contains.docker.container.image: "${DOCKER_ELASTICSEARCH_IMAGE}"
+              - not.contains.docker.container.image: "${DOCKER_ELASTALERT_IMAGE}"
+              - not.contains.docker.container.image: "${DOCKER_KIBANA_IMAGE}"
+              - not.contains.docker.container.image: "${DOCKER_FILEBEAT_IMAGE}"
+              - not.contains.docker.container.image: "${DOCKER_METRICBEAT_IMAGE}"
+              - not.contains.docker.container.image: "${DOCKER_RABBITMQ_IMAGE}"
+          config:
+            - type: container
+              paths:
+                - /hostfs/data/docker/containers/${DOLLAR}{data.docker.container.id}/*.log
+                - /hostfs/var/lib/docker/containers/${DOLLAR}{data.docker.container.id}/*.log
+              multiline.pattern: '^[[:space:]]'
+              multiline.negate: false
+              multiline.match: after
+              processors:
+                - decode_json_fields:
+                    when.regexp.message: '^{"'
+                    fields: ["message"]
+                    target: ""
+                    overwrite_keys: true
+  modules:
+    - module: system
+      syslog:
+        var.paths: ["/hostfs/var/log/syslog*"]
+
+
+# If changing index names here - don't forget to change them in settings.py.
+# Celery task logs are loaded in Django UI by requesting Elasticsearch
+# with index pattern specified in settings.LOGGING_ELASTICSEARCH_INDEX_TEMPLATE
+
+output.elasticsearch:
+  hosts: ["http://${DOCKER_HOST_NAME_ELASTICSEARCH}:${DOCKER_ELASTICSEARCH_PORT}"]
+  index: "filebeat-%{[agent.version]}-%{+yyyy.MM.dd}"
+
+setup.template.name: "filebeat"
+setup.template.pattern: "filebeat-*"
+setup.dashboards.index: "filebeat-*"
+setup.template.overwrite: true
+
+setup.dashboards.enabled: true
+
+setup.kibana.host: "contrax-kibana"
+setup.kibana.protocol: "http"
+#setup.kibana.path: "${DOCKER_KIBANA_BASE_PATH}"
+
+logging.metrics.enabled: false
+logging.level: info
+logging.to_files: true
+logging.to_syslog: false

@@ -40,8 +40,8 @@ from apps.users.models import User
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.5.0/LICENSE"
-__version__ = "1.5.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.6.0/LICENSE"
+__version__ = "1.6.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -57,7 +57,7 @@ class BaseTransformer(models.Model):
     # TODO: Discuss stronger "typing" of transformers (e.g., as CHOICE field or further normalization)
     """
     # Transformer name
-    name = models.CharField(max_length=1024, db_index=True)
+    name = models.CharField(max_length=1024, db_index=True, unique=True)
 
     # Transformer version, for version-tracked transformers
     version = models.CharField(max_length=1024, db_index=True)
@@ -257,8 +257,7 @@ class BaseClassifier(models.Model):
         abstract = True
 
     def __str__(self):
-        return "{} (name={}, version={}, class_name={}" \
-            .format(self.__class__.__name__, self.name, self.version, self.class_name)
+        return self.name
 
 
 class TextUnitClassifier(BaseClassifier):
@@ -356,7 +355,7 @@ class BaseClassifierAssessment(models.Model):
         abstract = True
 
     def __str__(self):
-        return "{} (classifier={}, assessment={1}, value={}" \
+        return "{} (classifier={}, assessment={}, value={}" \
             .format(self.__class__.__name__, self.classifier,
                     self.assessment_name, self.assessment_value)
 

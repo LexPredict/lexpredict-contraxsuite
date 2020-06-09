@@ -7,10 +7,10 @@
     $(document).ready(function () {
       var datafields = [
         { name: 'pk', type: 'int' },
-        { name: 'text_unit__document__project__name', type: 'string' },
-        { name: 'text_unit__document__name', type: 'string' },
-        { name: 'text_unit__document__document_type__title', type: 'string' },
-        { name: 'text_unit__document__description', type: 'string' },
+        { name: 'project__name', type: 'string' },
+        { name: 'document__name', type: 'string' },
+        { name: 'document__document_type__title', type: 'string' },
+        { name: 'document__description', type: 'string' },
         { name: 'amount_str', type: 'string' },
         { name: 'amount', type: 'float' },
         { name: 'count', type: 'int' },
@@ -32,12 +32,12 @@
         show_menu(menu_data, grid, row.pk);
       };
       var columns = [
-        { text: 'Project', datafield: 'text_unit__document__project__name', width: 70,
+        { text: 'Project', datafield: 'project__name', width: 70,
           align: 'center', cellsalign: 'center', columngroup: 'Document' },
-        { text: 'Name', datafield: 'text_unit__document__name', width: 265,
+        { text: 'Name', datafield: 'document__name', width: 265,
           align: 'center', cellsalign: 'left', enabletooltips: true,
           cellsrenderer: defaultLinkFormatter, columngroup: 'Document' },
-        { text: 'Type', datafield: 'text_unit__document__document_type__title', width: 100,
+        { text: 'Type', datafield: 'document__document_type__title', width: 100,
           align: 'center', cellsalign: 'center', columngroup: 'Document' },
         { text: 'Amount', datafield: 'amount', width: 100,
           align: 'center', cellsalign: 'center' },

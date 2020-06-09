@@ -18,16 +18,16 @@
     <div class="list-subtitle two-rows">Date values found in documents. All date values are standardized into YYYY-MM-DD format.</div>
     <div class="row">
       <div class="col-md-6">
-        <a href="{% url "extract:date-usage-list" %}" class="list-group-item">Dates in Documents <i class="fa fa-arrow-right"></i></a>
+        <a href="{% url "extract:date-usage-list" %}" class="list-group-item">Dates in Text Units <i class="fa fa-arrow-right"></i></a>
       </div>
       <div class="col-md-6">
-        <a href="{% url "extract:date-usage-timeline" %}" class="list-group-item">Dates Timeline Chart <i class="fa fa-arrow-right"></i></a>
+        <a href="{% url "extract:date-usage-timeline" %}" class="list-group-item">Date Timeline Chart <i class="fa fa-arrow-right"></i></a>
       </div>
       <div class="col-md-6">
-        <a href="{% url "extract:top-date-usage-list" %}" class="list-group-item">Dates Counts <i class="fa fa-arrow-right"></i></a>
+        <a href="{% url "extract:top-date-usage-list" %}" class="list-group-item">Date Counts <i class="fa fa-arrow-right"></i></a>
       </div>
       <div class="col-md-6">
-        <a href="{% url "extract:date-usage-calendar" %}" class="list-group-item">Dates Calendar Chart <i class="fa fa-arrow-right"></i></a>
+        <a href="{% url "extract:date-usage-calendar" %}" class="list-group-item">Date Calendar Chart <i class="fa fa-arrow-right"></i></a>
       </div>
     </div>
   </div>
@@ -37,35 +37,36 @@
   <div class="col-md-6">
     <div class="list-title">Date Durations</div>
     <div class="list-subtitle two-rows">Lengths of time found in documents, displayed in [AMOUNT] [DAY(S)] (e.g., "25 days"). Values are standardized into number of days for easy comparisons (e.g., "one year" converts to "365 days").</div>
-    <a href="{% url "extract:date-duration-usage-list" %}" class="list-group-item">Date Durations in Documents <i class="fa fa-arrow-right"></i></a>
-    <a href="{% url "extract:top-date-duration-usage-list" %}" class="list-group-item">Date Durations Counts <i class="fa fa-arrow-right"></i></a>
+    <a href="{% url "extract:date-duration-usage-list" %}" class="list-group-item">Date Durations in Text Units <i class="fa fa-arrow-right"></i></a>
+    <a href="{% url "extract:top-date-duration-usage-list" %}" class="list-group-item">Date Duration Counts <i class="fa fa-arrow-right"></i></a>
   </div>
   {% endif %}
 
   {% if "term" in available_locators %}
     <div class="col-md-6">
       <div class="list-title">Terms</div>
-      <div class="list-subtitle">Words found in documents that match with words in our <strong>Term Dictionary.</strong></div>
+      <div class="list-subtitle">Words found in documents that match with words in our <strong>Terms Dictionary</strong>.</div>
       <a href="{% url "extract:term-usage-list" %}" class="list-group-item">Terms in Documents <i class="fa fa-arrow-right"></i></a>
       <a href="{% url "extract:top-term-usage-list" %}" class="list-group-item">Terms Counts <i class="fa fa-arrow-right"></i></a>
+      <a href="{% url "extract:text-unit-term-usage-list" %}" class="list-group-item">Terms in Text Units<i class="fa fa-arrow-right"></i></a>
     </div>
   {% endif %}
 
   {% if "definition" in available_locators %}
   <div class="col-md-6">
     <div class="list-title">Definitions</div>
-    <div class="list-subtitle">Terms defined within documents' "Definitions" sections.</div>
-    <a href="{% url "extract:definition-usage-list" %}" class="list-group-item">Definitions in Documents <i class="fa fa-arrow-right"></i></a>
-    <a href="{% url "extract:top-definition-usage-list" %}" class="list-group-item">Definitions Counts <i class="fa fa-arrow-right"></i></a>
+    <div class="list-subtitle">Defined terms found within the "Definitions" sections of documents.</div>
+    <a href="{% url "extract:definition-usage-list" %}" class="list-group-item">Definitions in Text Units <i class="fa fa-arrow-right"></i></a>
+    <a href="{% url "extract:top-definition-usage-list" %}" class="list-group-item">Definition Counts <i class="fa fa-arrow-right"></i></a>
   </div>
   {% endif %}
 
   {% if "party" in available_locators %}
     <div class="col-md-6">
       <div class="list-title">Parties</div>
-      <div class="list-subtitle">Any Person or Company found in the documents.</div>
-      <a href="{% url "extract:party-usage-list" %}" class="list-group-item">Parties in Documents <i class="fa fa-arrow-right"></i></a>
-      <a href="{% url "extract:top-party-usage-list" %}" class="list-group-item">Parties Counts <i class="fa fa-arrow-right"></i></a>
+      <div class="list-subtitle">Persons or Companies named in documents.</div>
+      <a href="{% url "extract:party-usage-list" %}" class="list-group-item">Parties in Text Units <i class="fa fa-arrow-right"></i></a>
+      <a href="{% url "extract:top-party-usage-list" %}" class="list-group-item">Party Counts <i class="fa fa-arrow-right"></i></a>
       <a href="{% url "extract:party-network-chart" %}" class="list-group-item">Party Network Chart <i class="fa fa-arrow-right"></i></a>
     </div>
   {% endif %}
@@ -73,10 +74,10 @@
   {% if "geoentity" in available_locators %}
     <div class="col-md-6">
       <div class="list-title">Geographies</div>
-      <div class="list-subtitle">Words found in documents that match with words in our <strong>Geography Entities Dictionary.</strong></div>
-      <a href="{% url "extract:geo-entity-usage-list" %}" class="list-group-item">Geographies in Documents <i class="fa fa-arrow-right"></i></a>
-      <a href="{% url "extract:top-geo-entity-usage-list" %}" class="list-group-item">Geographies Counts <i class="fa fa-arrow-right"></i></a>
-      <a href="{% url "extract:geo-entity-list" %}" class="list-group-item">Geography Entities <i class="fa fa-arrow-right"></i></a>
+      <div class="list-subtitle">Words found in documents that match with words in our <strong>Geographical Entities Dictionary</strong>.</div>
+      <a href="{% url "extract:geo-entity-usage-list" %}" class="list-group-item">Geographies in Text Units <i class="fa fa-arrow-right"></i></a>
+      <a href="{% url "extract:top-geo-entity-usage-list" %}" class="list-group-item">Geography Counts <i class="fa fa-arrow-right"></i></a>
+      <a href="{% url "extract:geo-entity-list" %}" class="list-group-item">List of Geographical Entities <i class="fa fa-arrow-right"></i></a>
     </div>
   {% endif %}
 
@@ -85,17 +86,17 @@
     <div class="col-md-6">
       <div class="list-title">Amount</div>
       <div class="list-subtitle two-rows">Numerical amounts found in documents (e.g., "350 tonnes").</div>
-      <a href="{% url "extract:amount-usage-list" %}" class="list-group-item">Amounts in Documents <i class="fa fa-arrow-right"></i></a>
-      <a href="{% url "extract:top-amount-usage-list" %}" class="list-group-item">Amounts Counts <i class="fa fa-arrow-right"></i></a>
+      <a href="{% url "extract:amount-usage-list" %}" class="list-group-item">Amounts in Text Units <i class="fa fa-arrow-right"></i></a>
+      <a href="{% url "extract:top-amount-usage-list" %}" class="list-group-item">Amount Counts <i class="fa fa-arrow-right"></i></a>
     </div>
   {% endif %}
 
   {% if "currency" in available_locators %}
     <div class="col-md-6">
       <div class="list-title">Currencies</div>
-      <div class="list-subtitle two-rows">Currency amounts found in documents. "Currencies Count" shows the number of times each Currency Type is found in a document.</div>
-      <a href="{% url "extract:currency-usage-list" %}" class="list-group-item">Currencies in Documents <i class="fa fa-arrow-right"></i></a>
-      <a href="{% url "extract:top-currency-usage-list" %}" class="list-group-item">Currencies Counts <i class="fa fa-arrow-right"></i></a>
+      <div class="list-subtitle two-rows">Currency amounts found in documents. "Currency Counts" shows the number of times each Currency Type is found in a document.</div>
+      <a href="{% url "extract:currency-usage-list" %}" class="list-group-item">Currencies in Text Units <i class="fa fa-arrow-right"></i></a>
+      <a href="{% url "extract:top-currency-usage-list" %}" class="list-group-item">Currency Counts <i class="fa fa-arrow-right"></i></a>
     </div>
   {% endif %}
 
@@ -103,8 +104,8 @@
   <div class="col-md-6">
     <div class="list-title">Citations</div>
     <div class="list-subtitle two-rows">Reporter citations to laws (e.g., "CCPA", "GDPR") and other jurisprudence (e.g., case law) found in documents.</div>
-    <a href="{% url "extract:citation-usage-list" %}" class="list-group-item">Citations in Documents <i class="fa fa-arrow-right"></i></a>
-    <a href="{% url "extract:top-citation-usage-list" %}" class="list-group-item">Citations Counts <i class="fa fa-arrow-right"></i></a>
+    <a href="{% url "extract:citation-usage-list" %}" class="list-group-item">Citations in Text Units <i class="fa fa-arrow-right"></i></a>
+    <a href="{% url "extract:top-citation-usage-list" %}" class="list-group-item">Citation Counts <i class="fa fa-arrow-right"></i></a>
   </div>
   {% endif %}
 
@@ -112,8 +113,8 @@
   <div class="col-md-6">
     <div class="list-title">Regulations</div>
     <div class="list-subtitle two-rows">Regulations from the U.S. Code, CFR, Public Laws, Statutes, cited in documents (e.g., "Title 14 of the Code of Federal Regulations, Part 97").</div>
-    <a href="{% url "extract:regulation-usage-list" %}" class="list-group-item">Regulations in Documents <i class="fa fa-arrow-right"></i></a>
-    <a href="{% url "extract:top-regulation-usage-list" %}" class="list-group-item">Regulations Counts <i class="fa fa-arrow-right"></i></a>
+    <a href="{% url "extract:regulation-usage-list" %}" class="list-group-item">Regulations in Text Units <i class="fa fa-arrow-right"></i></a>
+    <a href="{% url "extract:top-regulation-usage-list" %}" class="list-group-item">Regulation Counts <i class="fa fa-arrow-right"></i></a>
   </div>
   {% endif %}
 
@@ -121,8 +122,8 @@
   <div class="col-md-6">
     <div class="list-title">Percents</div>
     <div class="list-subtitle two-rows">Percent values found in documents. Values are standardized into "%" format (e.g., "250 basis points" converts to its percentage value of "2.5%").</div>
-    <a href="{% url "extract:percent-usage-list" %}" class="list-group-item">Percents in Documents <i class="fa fa-arrow-right"></i></a>
-    <a href="{% url "extract:top-percent-usage-list" %}" class="list-group-item">Percents Counts <i class="fa fa-arrow-right"></i></a>
+    <a href="{% url "extract:percent-usage-list" %}" class="list-group-item">Percents in Text Units <i class="fa fa-arrow-right"></i></a>
+    <a href="{% url "extract:top-percent-usage-list" %}" class="list-group-item">Percent Counts <i class="fa fa-arrow-right"></i></a>
   </div>
   {% endif %}
 
@@ -130,26 +131,26 @@
   <div class="col-md-6">
     <div class="list-title">Ratios</div>
     <div class="list-subtitle two-rows">Ratio values found in documents (e.g., "2:3").</div>
-    <a href="{% url "extract:ratio-usage-list" %}" class="list-group-item">Ratios in Documents <i class="fa fa-arrow-right"></i></a>
-    <a href="{% url "extract:top-ratio-usage-list" %}" class="list-group-item">Ratios Counts <i class="fa fa-arrow-right"></i></a>
+    <a href="{% url "extract:ratio-usage-list" %}" class="list-group-item">Ratios in Text Units <i class="fa fa-arrow-right"></i></a>
+    <a href="{% url "extract:top-ratio-usage-list" %}" class="list-group-item">Ratio Counts <i class="fa fa-arrow-right"></i></a>
   </div>
   {% endif %}
 
   {% if "trademark" in available_locators %}
   <div class="col-md-6">
     <div class="list-title">Trademarks</div>
-    <div class="list-subtitle">Trademarks found in the documents</div>
-    <a href="{% url "extract:trademark-usage-list" %}" class="list-group-item">Trademarks in Documents <i class="fa fa-arrow-right"></i></a>
-    <a href="{% url "extract:top-trademark-usage-list" %}" class="list-group-item">Trademarks Counts <i class="fa fa-arrow-right"></i></a>
+    <div class="list-subtitle">Trademarks found in documents.</div>
+    <a href="{% url "extract:trademark-usage-list" %}" class="list-group-item">Trademarks in Text Units <i class="fa fa-arrow-right"></i></a>
+    <a href="{% url "extract:top-trademark-usage-list" %}" class="list-group-item">Trademark Counts <i class="fa fa-arrow-right"></i></a>
   </div>
   {% endif %}
 
   {% if "url" in available_locators %}
   <div class="col-md-6">
     <div class="list-title">URLs</div>
-    <div class="list-subtitle">Urls found in the documents</div>
-    <a href="{% url "extract:url-usage-list" %}" class="list-group-item">Urls in Documents <i class="fa fa-arrow-right"></i></a>
-    <a href="{% url "extract:top-url-usage-list" %}" class="list-group-item">Urls Counts <i class="fa fa-arrow-right"></i></a>
+    <div class="list-subtitle">URLs found in the documents</div>
+    <a href="{% url "extract:url-usage-list" %}" class="list-group-item">URLs in Text Units <i class="fa fa-arrow-right"></i></a>
+    <a href="{% url "extract:top-url-usage-list" %}" class="list-group-item">URL Counts <i class="fa fa-arrow-right"></i></a>
   </div>
   {% endif %}
 
@@ -157,17 +158,17 @@
   <div class="col-md-6">
     <div class="list-title">Courts</div>
     <div class="list-subtitle">Courts named in documents (e.g., "Fifth U.S. Circuit Court of Appeals").</div>
-    <a href="{% url "extract:court-usage-list" %}" class="list-group-item">Courts in Documents <i class="fa fa-arrow-right"></i></a>
-    <a href="{% url "extract:top-court-usage-list" %}" class="list-group-item">Courts Counts <i class="fa fa-arrow-right"></i></a>
+    <a href="{% url "extract:court-usage-list" %}" class="list-group-item">Courts in Text Units <i class="fa fa-arrow-right"></i></a>
+    <a href="{% url "extract:top-court-usage-list" %}" class="list-group-item">Court Counts <i class="fa fa-arrow-right"></i></a>
   </div>
   {% endif %}
 
   {% if "copyright" in available_locators %}
   <div class="col-md-6">
     <div class="list-title">Copyrights</div>
-    <div class="list-subtitle">Copyrights found in documents</div>
-    <a href="{% url "extract:copyright-usage-list" %}" class="list-group-item">Copyrights in Documents <i class="fa fa-arrow-right"></i></a>
-    <a href="{% url "extract:top-copyright-usage-list" %}" class="list-group-item">Copyrights Counts <i class="fa fa-arrow-right"></i></a>
+    <div class="list-subtitle">Copyrights found in documents.</div>
+    <a href="{% url "extract:copyright-usage-list" %}" class="list-group-item">Copyrights in Text Units <i class="fa fa-arrow-right"></i></a>
+    <a href="{% url "extract:top-copyright-usage-list" %}" class="list-group-item">Copyright Counts <i class="fa fa-arrow-right"></i></a>
   </div>
   {% endif %}
 
@@ -175,8 +176,8 @@
     <div class="col-md-6">
       <div class="list-title">Distances</div>
       <div class="list-subtitle">Distance values found in documents, as well as their type (e.g., "5,280 feet").</div>
-      <a href="{% url "extract:distance-usage-list" %}" class="list-group-item">Distances in Documents <i class="fa fa-arrow-right"></i></a>
-      <a href="{% url "extract:top-distance-usage-list" %}" class="list-group-item">Distances Counts <i class="fa fa-arrow-right"></i></a>
+      <a href="{% url "extract:distance-usage-list" %}" class="list-group-item">Distances in Text Units <i class="fa fa-arrow-right"></i></a>
+      <a href="{% url "extract:top-distance-usage-list" %}" class="list-group-item">Distance Counts <i class="fa fa-arrow-right"></i></a>
     </div>
   {% endif %}
 {% endblock content %}

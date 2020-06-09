@@ -26,24 +26,25 @@
 
 # Django imports
 from django.contrib import messages
-from django.core.serializers.json import DjangoJSONEncoder
-from django.urls import reverse
+from django.contrib.auth.mixins import LoginRequiredMixin
 from django.db.models import Count, Q
 from django.http import HttpResponseForbidden, JsonResponse
 from django.shortcuts import redirect
+from django.urls import reverse
 
 # Project imports
 import apps.common.mixins
 from apps.analyze.models import DocumentCluster
+from apps.common.model_utils.improved_django_json_encoder import ImprovedDjangoJSONEncoder
 from apps.common.utils import cap_words
-from apps.project.models import Project, TaskQueue
+from apps.project.models import Project, TaskQueue, UserProjectsSavedFilter
 from apps.project.forms import (
     TaskQueueChoiceForm, TaskQueueForm, ProjectChoiceForm, ProjectForm)
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.5.0/LICENSE"
-__version__ = "1.5.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.6.0/LICENSE"
+__version__ = "1.6.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -55,7 +56,7 @@ class ProjectListView(apps.common.mixins.JqPaginatedListView):
     def get_json_data(self, **kwargs):
         data = super().get_json_data()
         for item in data['data']:
-            item['url'] = reverse('project:project-update', args=[item['pk']])
+            item['url'] = self.full_reverse('project:project-update', args=[item['pk']])
             item['progress'] = round(item['reviewed_documents_count'] / item['total_documents_count'] * 100, 1) \
                 if item['total_documents_count'] else 0
             item['completed'] = item['progress'] == 100
@@ -104,7 +105,7 @@ class TaskQueueListView(apps.common.mixins.JqPaginatedListView):
             if (only_completed and not completed) or \
                     (only_assigned and completed):
                 continue
-            item['url'] = reverse('project:task-queue-update', args=[item['pk']])
+            item['url'] = self.full_reverse('project:task-queue-update', args=[item['pk']])
             progress = queue.progress(as_dict=True)
             item.update(progress)
             item['progress'] = round(item['progress'], 1)
@@ -116,9 +117,9 @@ class TaskQueueListView(apps.common.mixins.JqPaginatedListView):
                 if complete_history:
                     item['complete_date'] = complete_history.date
                     item['complete_user'] = complete_history.user.username
-                item['open_url'] = reverse('project:mark-document-completed',
+                item['open_url'] = self.full_reverse('project:mark-document-completed',
                                            args=[queue.pk, document_pk])
-                item['remove_url'] = reverse('project:add-to-task-queue',
+                item['remove_url'] = self.full_reverse('project:add-to-task-queue',
                                              args=[queue.pk, document_pk])
             elif kwargs.get('with_documents', True):
                 documents = []
@@ -189,7 +190,7 @@ def add_to_task_queue(request, task_queue_pk, document_pk):
     full_message = 'Document successfully %s %s' % (message, str(task_queue))
     if request.is_ajax():
         data = {'message': full_message, 'status': 'success'}
-        return JsonResponse(data, encoder=DjangoJSONEncoder, safe=False)
+        return JsonResponse(data, encoder=ImprovedDjangoJSONEncoder, safe=False)
     messages.success(request, full_message)
     return redirect(reverse('document:document-detail', args=[document_pk]))
 
@@ -201,7 +202,7 @@ def mark_document_completed(request, task_queue_pk, document_pk):
     task_queue = TaskQueue.objects.get(pk=task_queue_pk)
     if not request.user.can_view_document(document_pk):
         data = {'message': 'Forbidden', 'status': 'error'}
-        return JsonResponse(data, encoder=DjangoJSONEncoder, safe=False)
+        return JsonResponse(data, encoder=ImprovedDjangoJSONEncoder, safe=False)
     if task_queue.completed_documents.filter(pk=document_pk).exists():
         task_queue.completed_documents.remove(document_pk)
         message = 'reopened'
@@ -211,7 +212,7 @@ def mark_document_completed(request, task_queue_pk, document_pk):
     full_message = 'Successfully %s in %s' % (message, str(task_queue))
     if request.is_ajax():
         data = {'message': full_message, 'status': 'success'}
-        return JsonResponse(data, encoder=DjangoJSONEncoder, safe=False)
+        return JsonResponse(data, encoder=ImprovedDjangoJSONEncoder, safe=False)
     messages.success(request, full_message)
     return redirect(reverse('document:document-detail', args=[document_pk]))
 
@@ -222,7 +223,7 @@ class TaskQueueAddClusterDocuments(apps.common.mixins.AdminRequiredMixin, apps.c
                              'task_queue_create_form': TaskQueueForm().as_p(),
                              'project_choice_form': ProjectChoiceForm().as_p(),
                              'project_create_form': ProjectForm().as_p()},
-                            encoder=DjangoJSONEncoder, safe=False)
+                            encoder=ImprovedDjangoJSONEncoder, safe=False)
 
     def post(self, request, *args, **kwargs):
         message = 'Success'
@@ -268,4 +269,22 @@ class TaskQueueAddClusterDocuments(apps.common.mixins.AdminRequiredMixin, apps.c
             if project:
                 project.task_queues.add(task_queue)
         return JsonResponse({'message': message, 'status': status},
-                            encoder=DjangoJSONEncoder, safe=False)
+                            encoder=ImprovedDjangoJSONEncoder, safe=False)
+
+
+class SelectProjectsView(LoginRequiredMixin, apps.common.mixins.JSONResponseView):
+    """
+    Select Project(s) to filter Document/TextUnit/ThingUsage views
+    """
+    def post(self, request, *args, **kwargs):
+        project_ids = request.POST.getlist('project_ids[]')
+        obj, _ = UserProjectsSavedFilter.objects.get_or_create(user=request.user)
+        obj.projects.set(project_ids)
+
+        ret = dict(
+            saved_filter_id=obj.id,
+            user_id=request.user.id,
+            project_ids=list(obj.projects.values_list('id', flat=True)),
+            show_warning=not obj.projects.exists()
+        )
+        return JsonResponse(ret)

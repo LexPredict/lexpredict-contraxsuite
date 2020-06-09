@@ -26,9 +26,9 @@
 
 import datetime
 import errno
-import sys
 import logging
 import os
+import sys
 from logging import LogRecord, Formatter
 from traceback import TracebackException, StackSummary, format_exc
 from typing import Dict, Tuple, List
@@ -38,8 +38,8 @@ import pytz
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.5.0/LICENSE"
-__version__ = "1.5.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.6.0/LICENSE"
+__version__ = "1.6.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -200,26 +200,27 @@ class ContraxsuiteJSONFormatter(json_log_formatter.JSONFormatter):
         res = {
             '@timestamp': datetime.datetime.utcfromtimestamp(record.created).replace(
                 tzinfo=pytz.utc).astimezone().isoformat(),
-            'message': message,
+            'logger': record.name,
             'level': record.levelname,
-            'level_no': record.levelno,
-            'process_name': record.processName,
-            'process_id': record.process,
-            'thread_name': record.threadName,
-            'thread_id': record.thread,
-            'file_name': record.filename,
-            'func_name': record.funcName,
-            'line_no': record.lineno,
-            'pathname': record.pathname
+            'message': message
         }
+
+        if record.levelname in {'ERROR', 'DEBUG', 'WARN'}:
+            res.update({
+                'process_name': record.processName,
+                'process_id': record.process,
+                'thread_name': record.threadName,
+                'thread_id': record.thread,
+                'file_name': record.filename,
+                'func_name': record.funcName,
+                'line_no': record.lineno,
+                'pathname': record.pathname
+            })
 
         if extra:
             for k, v in extra.items():
                 if k.startswith('log_'):
-                    res[k] = v if v is None \
-                                  or isinstance(v, str) \
-                                  or isinstance(v, bool) \
-                                  or isinstance(v, int) else str(v)
+                    res[k] = v if v is None or isinstance(v, (str, bool, int)) else str(v)
 
         if stack and LOG_STACK_TRACE not in res:
             res[LOG_STACK_TRACE] = stack

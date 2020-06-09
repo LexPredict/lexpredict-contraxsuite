@@ -4,6 +4,7 @@ import apps.notifications.models
 import django.contrib.postgres.fields.jsonb
 import django.core.serializers.json
 from django.db import migrations
+from apps.common.model_utils.improved_django_json_encoder import ImprovedDjangoJSONEncoder
 
 
 class Migration(migrations.Migration):
@@ -16,11 +17,11 @@ class Migration(migrations.Migration):
         migrations.AlterField(
             model_name='documentdigestconfig',
             name='generic_fields',
-            field=django.contrib.postgres.fields.jsonb.JSONField(default=apps.notifications.models.document_digest_config_generic_fields_default, encoder=django.core.serializers.json.DjangoJSONEncoder),
+            field=django.contrib.postgres.fields.jsonb.JSONField(default=apps.notifications.models.document_digest_config_generic_fields_default, encoder=ImprovedDjangoJSONEncoder),
         ),
         migrations.AlterField(
             model_name='documentnotificationsubscription',
             name='generic_fields',
-            field=django.contrib.postgres.fields.jsonb.JSONField(default=apps.notifications.models.document_notification_subscription_generic_fields_default, encoder=django.core.serializers.json.DjangoJSONEncoder),
+            field=django.contrib.postgres.fields.jsonb.JSONField(default=apps.notifications.models.document_notification_subscription_generic_fields_default, encoder=ImprovedDjangoJSONEncoder),
         ),
     ]

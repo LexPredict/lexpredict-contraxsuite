@@ -36,8 +36,8 @@ from apps.task.tasks import BaseTask, ExtendedTask, call_task_func, CeleryTaskLo
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.5.0/LICENSE"
-__version__ = "1.5.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.6.0/LICENSE"
+__version__ = "1.6.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -147,4 +147,6 @@ class DetectFieldValues(BaseTask):
                                                         skip_modified_values=detect_ptrs.skip_modified_values)
 
         task.log_info(f'Detected {len(dfvs)} field values for document ' +
-                      f'#{detect_ptrs.document_id} ({doc.name})')
+                      f'#{detect_ptrs.document_id} ({doc.name})',
+                      extra={Document.LOG_FIELD_DOC_ID: str(doc.pk),
+                             Document.LOG_FIELD_DOC_NAME: doc.name})

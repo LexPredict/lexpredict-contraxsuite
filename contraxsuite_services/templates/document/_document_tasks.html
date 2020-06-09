@@ -1,0 +1,14 @@
+<table class="table table-bordered table-striped">
+  <tr>
+    <th>Time</th>
+    <th>Type</th>
+    <th>Message</th>
+  </tr>
+  {% for row in log_records %}
+    <tr>
+      <td>{{row.0}}</td>
+      <td style="color:{{row.3}}">{{row.1}}</td>
+      <td>{{row.2}}</td>
+    </tr>
+  {% endfor %}
+</table>

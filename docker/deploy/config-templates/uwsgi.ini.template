@@ -1,0 +1,21 @@
+[uwsgi]
+
+# basic settings
+master = true
+vacuum = true
+
+# main settings
+socket = 0.0.0.0:3031
+plugins-dir = /usr/lib/uwsgi/plugins
+plugins = python3
+protocol = uwsgi
+buffer-size = 65535
+wsgi = wsgi:application
+
+# staticfiles settings
+static-map = ${DOCKER_DJANGO_BASE_PATH}static=/contraxsuite_services/staticfiles
+static-expires = /* 7776000
+offload-threads = %k
+
+# logging: WARN: - this disables printing logs into stdout, so logs dont go into kibana in this way, so disabled
+#logto = /contraxsuite_services/contrax-uwsgi.log

@@ -5,6 +5,7 @@ from __future__ import unicode_literals
 import apps.common.fields
 import django.core.serializers.json
 from django.db import migrations
+from apps.common.model_utils.improved_django_json_encoder import ImprovedDjangoJSONEncoder
 
 
 class Migration(migrations.Migration):
@@ -17,6 +18,6 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='documentfield',
             name='metadata',
-            field=apps.common.fields.CustomJSONField(blank=True, encoder=django.core.serializers.json.DjangoJSONEncoder, null=True),
+            field=apps.common.fields.CustomJSONField(blank=True, encoder=ImprovedDjangoJSONEncoder, null=True),
         ),
     ]

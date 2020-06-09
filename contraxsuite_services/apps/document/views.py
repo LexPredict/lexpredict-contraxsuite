@@ -34,7 +34,7 @@ import os
 import urllib
 
 # Third-party imports
-from typing import Optional
+from typing import Optional, List, Tuple
 
 import magic
 import pandas as pd
@@ -43,7 +43,7 @@ from django.conf import settings
 from django.contrib.sites.models import Site
 from django.db.models.expressions import Case, When, Value
 from django.urls import reverse
-from django.db.models import Count, F, Prefetch, IntegerField
+from django.db.models import Count, F, Prefetch, Q, BooleanField
 from django.http import FileResponse
 from django.shortcuts import get_object_or_404, redirect
 from django.shortcuts import render
@@ -75,14 +75,15 @@ from apps.extract.models import (
     RatioUsage, RegulationUsage, Term, TermUsage, TrademarkUsage, UrlUsage)
 from apps.project.models import TaskQueue
 from apps.project.views import ProjectListView, TaskQueueListView
+from apps.task.models import Task
 from apps.task.tasks import call_task, call_task_func
 from apps.task.views import BaseAjaxTaskView, TaskListView, LoadFixturesView
 from apps.users.models import User
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.5.0/LICENSE"
-__version__ = "1.5.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.6.0/LICENSE"
+__version__ = "1.6.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -142,9 +143,19 @@ class DocumentListView(apps.common.mixins.JqPaginatedListView):
         properties=int,
         relations=int,
     )
+    has_contracts = None
 
     def get_queryset(self):
         qs = super().get_queryset()
+
+        qs = qs.filter(project_id__in=self.request.user.userprojectssavedfilter.projects.all())
+
+        document_text_search = self.request.GET.get("document_text_search")
+        if document_text_search:
+            document_ids = TextUnit.objects.filter(textunittext__text__full_text_search=document_text_search)\
+                .values_list('document_id', flat=True)\
+                .distinct()
+            qs = qs.filter(id__in=document_ids)
 
         description_search = self.request.GET.get("description_search")
         if description_search:
@@ -171,14 +182,17 @@ class DocumentListView(apps.common.mixins.JqPaginatedListView):
         ).annotate(relations=F('num_relation_a') + F('num_relation_b'),
                    is_contract=Case(When(document_class='CONTRACT', then=Value(True)),
                                     default=Value(False),
-                                    output_field=IntegerField()))
+                                    output_field=BooleanField()))
+
+        self.has_contracts = qs.filter(document_class='CONTRACT').exists()
 
         return qs
 
     def get_json_data(self, **kwargs):
         data = super().get_json_data()
         for item in data['data']:
-            item['url'] = reverse('document:document-detail', args=[item['pk']])
+            item['url'] = self.full_reverse('document:document-detail', args=[item['pk']])
+        data['has_contracts'] = self.has_contracts
         return data
 
     def get_context_data(self, **kwargs):
@@ -235,6 +249,8 @@ class DocumentPropertyListView(apps.common.mixins.JqPaginatedListView):
         if "document_pk" in self.request.GET:
             qs = qs.filter(document__pk=self.request.GET['document_pk'])
 
+        qs = qs.filter(document__project_id__in=self.request.user.userprojectssavedfilter.projects.all())
+
         key_search = self.request.GET.get('key_search')
         if key_search:
             qs = qs.filter(key__icontains=key_search)
@@ -244,9 +260,9 @@ class DocumentPropertyListView(apps.common.mixins.JqPaginatedListView):
     def get_json_data(self, **kwargs):
         data = super().get_json_data()
         for item in data['data']:
-            item['url'] = reverse('document:document-detail', args=[item['document__pk']])
-            item['edit_url'] = reverse('document:document-property-update', args=[item['pk']])
-            item['delete_url'] = reverse('document:document-property-delete', args=[item['pk']])
+            item['url'] = self.full_reverse('document:document-detail', args=[item['document__pk']])
+            item['edit_url'] = self.full_reverse('document:document-property-update', args=[item['pk']])
+            item['delete_url'] = self.full_reverse('document:document-property-delete', args=[item['pk']])
         return data
 
     def get_context_data(self, **kwargs):
@@ -285,12 +301,15 @@ class DocumentRelationListView(apps.common.mixins.JqPaginatedListView):
     def get_json_data(self, **kwargs):
         data = super().get_json_data()
         for item in data['data']:
-            item['url_a'] = reverse('document:document-detail', args=[item['document_a__pk']])
-            item['url_b'] = reverse('document:document-detail', args=[item['document_b__pk']])
+            item['url_a'] = self.full_reverse('document:document-detail', args=[item['document_a__pk']])
+            item['url_b'] = self.full_reverse('document:document-detail', args=[item['document_b__pk']])
         return data
 
     def get_queryset(self):
         qs = super().get_queryset()
+        qs = qs.filter(
+            Q(document_a__project_id__in=self.request.user.userprojectssavedfilter.projects.all()) |
+            Q(document_b__project_id__in=self.request.user.userprojectssavedfilter.projects.all()))
         qs = qs.select_related('document_a', 'document_b')
         return qs
 
@@ -317,18 +336,42 @@ class DocumentDetailView(apps.common.mixins.PermissionRequiredMixin, DetailView)
         extra_task_queue_list = TaskQueue.objects.exclude(
             id__in=task_queue_list.values_list('pk', flat=True))
 
+        log_records = self.get_log_records()
+
         ctx.update({"document": document,
                     "party_list": list(party_list),
                     "extra_task_queue_list": extra_task_queue_list,
+                    'log_records': log_records,
                     "highlight": self.request.GET.get("highlight", "")})
 
+        rel_path = self.object.description or self.object.source_path or ''
         rel_url = os.path.join('/media',
                                settings.FILEBROWSER_DOCUMENTS_DIRECTORY.lstrip('/'),
-                               self.object.description.lstrip('/'))
+                               rel_path.lstrip('/'))
         ctx['document_path'] = 'https://{host}{rel_url}'.format(
             host=Site.objects.get_current().domain, rel_url=rel_url)
 
         return ctx
+
+    def get_log_records(self):
+        document_id = self.object.pk
+        query = {'bool': {
+            'must': [
+                {'term': {Document.LOG_FIELD_DOC_ID: {'value': f'{document_id}'}}},
+            ]
+        }}
+        records = []  # type: List[Tuple[str, str, str, str, datetime.datetime]]
+        for record in Task.get_task_log_from_elasticsearch_by_query(query):
+            color = 'green'
+            if record.log_level == 'WARN':
+                color = 'yellow'
+            elif record.log_level == 'ERROR':
+                color = 'red'
+            msg_type = record.log_level or 'INFO'
+            records.append((record.timestamp.strftime('%Y-%m-%d %H:%M:%S'),
+                            msg_type, record.message, color, record.timestamp,))
+        records.sort(key=lambda r: r[-1], reverse=True)
+        return records
 
 
 class DocumentSourceView(DocumentDetailView):
@@ -384,8 +427,8 @@ class DocumentNoteListView(apps.common.mixins.JqPaginatedListView):
                 .values('id', 'document_id', 'history_date', 'history_user__username', 'note'))
 
         for item in data['data']:
-            item['url'] = reverse('document:document-detail', args=[item['document__pk']])
-            item['delete_url'] = reverse('document:document-note-delete', args=[item['pk']])
+            item['url'] = self.full_reverse('document:document-detail', args=[item['document__pk']])
+            item['delete_url'] = self.full_reverse('document:document-note-delete', args=[item['pk']])
             item_history = [i for i in history if i['id'] == item['pk']]
             if item_history:
                 item['history'] = item_history
@@ -395,6 +438,8 @@ class DocumentNoteListView(apps.common.mixins.JqPaginatedListView):
 
     def get_queryset(self):
         qs = super().get_queryset()
+
+        qs = qs.filter(document__project_id__in=self.request.user.userprojectssavedfilter.projects.all())
 
         if "document_pk" in self.request.GET:
             qs = qs.filter(document__pk=self.request.GET['document_pk'])
@@ -410,10 +455,10 @@ class DocumentEnhancedView(DocumentDetailView):
             .filter(unit_type="paragraph") \
             .order_by("id") \
             .prefetch_related(
-                Prefetch(
-                    'termusage_set',
-                    queryset=TermUsage.objects.order_by('term__term').select_related('term'),
-                    to_attr='ltu'))
+            Prefetch(
+                'termusage_set',
+                queryset=TermUsage.objects.order_by('term__term').select_related('term'),
+                to_attr='ltu'))
         ctx = {"document": document,
                "party_list": list(PartyUsage.objects.filter(
                    text_unit__document=document).values_list('party__name', flat=True)),
@@ -461,6 +506,9 @@ class TextUnitListView(apps.common.mixins.JqPaginatedListView):
     def get_queryset(self):
         qs = super().get_queryset().order_by('document_id', 'unit_type')
 
+        if not "document_pk" in self.request.GET:
+            qs = qs.filter(document__project_id__in=self.request.user.userprojectssavedfilter.projects.all())
+
         if "elastic_search" in self.request.GET:
             elastic_search = self.request.GET.get("elastic_search")
             es_query = {
@@ -480,8 +528,7 @@ class TextUnitListView(apps.common.mixins.JqPaginatedListView):
             qs = TextUnit.objects.filter(pk__in=pks)
         elif "text_search" in self.request.GET:
             text_search = self.request.GET.get("text_search")
-            qs = self.filter(text_search, qs, _or_lookup='textunittext__text__icontains')
-
+            qs = qs.filter(textunittext__text__icontains=text_search).order_by('id')
         if "document_pk" in self.request.GET:
             # Document Detail view, Party summary view
             qs = qs.filter(document__pk=self.request.GET['document_pk']).order_by('pk')
@@ -503,8 +550,8 @@ class TextUnitListView(apps.common.mixins.JqPaginatedListView):
     def get_json_data(self, **kwargs):
         data = super().get_json_data()
         for item in data['data']:
-            item['url'] = reverse('document:document-detail', args=[item['document__pk']])
-            item['detail_url'] = reverse('document:text-unit-detail', args=[item['pk']])
+            item['url'] = self.full_reverse('document:document-detail', args=[item['document__pk']])
+            item['detail_url'] = self.full_reverse('document:text-unit-detail', args=[item['pk']])
         return data
 
     def get_context_data(self, **kwargs):
@@ -520,12 +567,17 @@ class TextUnitByLangListView(apps.common.mixins.JqPaginatedListView):
     template_name = 'document/text_unit_lang_list.html'
     limit_reviewers_qs_by_field = None
 
+    def get_queryset(self):
+        qs = super().get_queryset().order_by('document_id', 'unit_type')
+        qs = qs.filter(document__project_id__in=self.request.user.userprojectssavedfilter.projects.all())
+        return qs
+
     def get_json_data(self, **kwargs):
         qs = super().get_queryset()
         qs = qs.filter(unit_type='paragraph')
         data = list(qs.values('language').order_by().annotate(count=Count('pk')).order_by('-count'))
         for item in data:
-            item['url'] = reverse('document:text-unit-list') + '?language=' + item['language']
+            item['url'] = self.full_reverse('document:text-unit-list') + '?language=' + item['language']
         return {'data': data, 'total_records': len(data)}
 
 
@@ -542,9 +594,11 @@ class TextUnitPropertyListView(apps.common.mixins.JqPaginatedListView):
     template_name = 'document/text_unit_property_list.html'
 
     def get_queryset(self):
-        qs = super().get_queryset()\
-            .select_related('text_unit__document__document_type')\
+        qs = super().get_queryset() \
+            .select_related('text_unit__document__document_type') \
             .order_by('text_unit_id', 'key', 'value')
+
+        qs = qs.filter(text_unit__document__project_id__in=self.request.user.userprojectssavedfilter.projects.all())
 
         if "text_unit_pk" in self.request.GET:
             qs = qs.filter(text_unit__pk=self.request.GET['text_unit_pk'])
@@ -557,11 +611,11 @@ class TextUnitPropertyListView(apps.common.mixins.JqPaginatedListView):
     def get_json_data(self, **kwargs):
         data = super().get_json_data()
         for item in data['data']:
-            item['url'] = reverse('document:document-detail',
-                                  args=[item['text_unit__document__pk']])
-            item['text_unit_url'] = reverse('document:text-unit-detail',
-                                            args=[item['text_unit__pk']])
-            item['delete_url'] = reverse('document:text-unit-property-delete', args=[item['pk']])
+            item['url'] = self.full_reverse('document:document-detail',
+                                            args=[item['text_unit__document__pk']])
+            item['text_unit_url'] = self.full_reverse('document:text-unit-detail',
+                                                      args=[item['text_unit__pk']])
+            item['delete_url'] = self.full_reverse('document:text-unit-property-delete', args=[item['pk']])
         return data
 
     def get_context_data(self, **kwargs):
@@ -597,14 +651,14 @@ class TextUnitNoteListView(apps.common.mixins.JqPaginatedListView):
         history = list(
             TextUnitNote.history
                 .filter(text_unit__document_id__in=list(
-                    self.get_queryset().values_list('text_unit__document__pk', flat=True)))
+                self.get_queryset().values_list('text_unit__document__pk', flat=True)))
                 .values('id', 'text_unit_id', 'history_date', 'history_user__username', 'note'))
 
         for item in data['data']:
-            item['url'] = reverse('document:document-detail',
-                                  args=[item['text_unit__document__pk']])
-            item['detail_url'] = reverse('document:text-unit-detail', args=[item['text_unit__pk']])
-            item['delete_url'] = reverse('document:text-unit-note-delete', args=[item['pk']])
+            item['url'] = self.full_reverse('document:document-detail',
+                                            args=[item['text_unit__document__pk']])
+            item['detail_url'] = self.full_reverse('document:text-unit-detail', args=[item['text_unit__pk']])
+            item['delete_url'] = self.full_reverse('document:text-unit-note-delete', args=[item['pk']])
             item_history = [i for i in history if i['id'] == item['pk']]
             if item_history:
                 item['history'] = item_history
@@ -614,6 +668,8 @@ class TextUnitNoteListView(apps.common.mixins.JqPaginatedListView):
 
     def get_queryset(self):
         qs = super().get_queryset()
+        qs = qs.filter(text_unit__document__project_id__in=self.request.user.userprojectssavedfilter.projects.all())
+
         if "text_unit_pk" in self.request.GET:
             qs = qs.filter(text_unit__pk=self.request.GET['text_unit_pk'])
         return qs
@@ -654,13 +710,16 @@ class DocumentTagListView(apps.common.mixins.JqPaginatedListView):
     def get_json_data(self, **kwargs):
         data = super().get_json_data()
         for item in data['data']:
-            item['url'] = reverse('document:document-detail',
-                                  args=[item['document__pk']])
-            item['delete_url'] = reverse('document:document-tag-delete', args=[item['pk']])
+            item['url'] = self.full_reverse('document:document-detail',
+                                            args=[item['document__pk']])
+            item['delete_url'] = self.full_reverse('document:document-tag-delete', args=[item['pk']])
         return data
 
     def get_queryset(self):
         qs = super().get_queryset()
+
+        qs = qs.filter(document__project_id__in=self.request.user.userprojectssavedfilter.projects.all())
+
         tag_search = self.request.GET.get('tag_search')
         if tag_search:
             qs = qs.filter(tag=tag_search)
@@ -699,14 +758,17 @@ class TextUnitTagListView(apps.common.mixins.JqPaginatedListView):
     def get_json_data(self, **kwargs):
         data = super().get_json_data()
         for item in data['data']:
-            item['url'] = reverse('document:document-detail',
-                                  args=[item['text_unit__document__pk']])
-            item['detail_url'] = reverse('document:text-unit-detail', args=[item['text_unit__pk']])
-            item['delete_url'] = reverse('document:text-unit-tag-delete', args=[item['pk']])
+            item['url'] = self.full_reverse('document:document-detail',
+                                            args=[item['text_unit__document__pk']])
+            item['detail_url'] = self.full_reverse('document:text-unit-detail', args=[item['text_unit__pk']])
+            item['delete_url'] = self.full_reverse('document:text-unit-tag-delete', args=[item['pk']])
         return data
 
     def get_queryset(self):
         qs = super().get_queryset()
+
+        qs = qs.filter(text_unit__document__project_id__in=self.request.user.userprojectssavedfilter.projects.all())
+
         tag_search = self.request.GET.get('tag_search')
         if tag_search:
             qs = qs.filter(tag=tag_search)

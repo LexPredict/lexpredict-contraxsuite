@@ -37,8 +37,8 @@ from apps.users.models import User
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.5.0/LICENSE"
-__version__ = "1.5.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.6.0/LICENSE"
+__version__ = "1.6.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -94,7 +94,7 @@ class UserListView(apps.common.mixins.TechAdminRequiredMixin, apps.common.mixins
     def get_json_data(self, **kwargs):
         data = super().get_json_data()
         for item in data['data']:
-            item['url'] = reverse('users:user-detail', args=[item['username']]) + \
+            item['url'] = self.full_reverse('users:user-detail', args=[item['username']]) + \
                           '?next=' + self.request.path
         return data
 

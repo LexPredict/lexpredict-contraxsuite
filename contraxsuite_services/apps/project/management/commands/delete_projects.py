@@ -27,10 +27,13 @@
 import datetime
 from django.core.management import BaseCommand
 
+from apps.project.tasks import CleanProject, CleanProjects
+from apps.task.tasks import call_task
+
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.5.0/LICENSE"
-__version__ = "1.5.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.6.0/LICENSE"
+__version__ = "1.6.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -48,20 +51,36 @@ class Command(BaseCommand):
     requires_system_checks = False
 
     def add_arguments(self, parser):
-        parser.add_argument('-i', '--ids', nargs='+', type=int, required=True)
-        parser.add_argument('-s', '--safe', nargs='?', type=bool, required=False, default=False)
+        parser.add_argument('-i', '--ids', nargs='+', type=int, required=True,
+                            help='Project id list separated by space to be deleted.')
+        parser.add_argument('-d', '--delete', nargs='?', type=bool, required=False, default=True,
+                            help='Whether a project should be deleted itself.')
+        parser.add_argument('-s', '--safe', nargs='?', type=bool, required=False, default=True,
+                            help='Disable triggers on tables before deleting rows.')
+        parser.add_argument('-a', '--async', nargs='?', type=bool, required=False, default=True,
+                            help='Use async celery task VS running it synchronously.')
 
     def handle(self, *args, **options):
+
         ids = options.get('ids') or []
-        safe_delete = options.get('safe') or False
+        delete_project_itself = options.get('delete')
+        safe_delete = options.get('safe')
+        do_async = options.get('async')
 
-        from apps.project.tasks import CleanProject
-        start = datetime.datetime.now()
+        if do_async is True:
+            call_task(CleanProjects,
+                      _project_ids=ids,
+                      delete=delete_project_itself,
+                      safe_delete=safe_delete)
+        else:
+            start = datetime.datetime.now()
 
-        for id in ids:
-            delete_task = CleanProject()
-            delete_task.process(_project_id=id, delete=True,
-                                safe_delete=safe_delete, skip_task_updating=True)
+            for id in ids:
+                delete_task = CleanProject()
+                delete_task.process(_project_id=id,
+                                    delete=delete_project_itself,
+                                    safe_delete=safe_delete,
+                                    skip_task_updating=True)
 
-        time_elapsed = (datetime.datetime.now() - start).total_seconds()
-        self.stdout.write(f'Deleting {len(ids)} project(s) took {time_elapsed} s.')
+            time_elapsed = (datetime.datetime.now() - start).total_seconds()
+            self.stdout.write(f'Deleting {len(ids)} project(s) took {time_elapsed} s.')

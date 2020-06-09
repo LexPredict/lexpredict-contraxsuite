@@ -33,12 +33,13 @@ from apps.analyze.models import DocumentCluster, TextUnitCluster
 from apps.common.singleton import Singleton
 from apps.document.models import Document, TextUnitNote, DocumentNote
 from apps.document.repository.base_document_repository import BaseDocumentRepository
+from apps.document.signals import fire_doc_full_delete
 from apps.extract.models import Party
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.5.0/LICENSE"
-__version__ = "1.5.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.6.0/LICENSE"
+__version__ = "1.6.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -55,6 +56,7 @@ class DocumentRepository(BaseDocumentRepository):
         docs_query = Document.all_objects.filter(pk__in=ids)
         if docs_query.exists():
             docs_query._raw_delete(docs_query.db)
+        fire_doc_full_delete(self, ids)
 
     # @collect_stats(name='DocumentRepository', log_sql=False)
     def delete_document_history_by_ids(self, ids: List[int]) -> None:

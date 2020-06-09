@@ -35,24 +35,23 @@ from __future__ import absolute_import, unicode_literals
 
 # Standard imports
 import datetime
-import environ
-import platform
 import os
+import platform
 import re
 import sys
 import warnings
-# import importlib
 
+import environ
 # Third-party imports
 from celery.schedules import crontab
-from kombu import Queue
-
 # Django imports
 from django.urls import reverse_lazy
+from kombu import Queue
 
 # App imports
-from contraxsuite_logging import prepare_log_dirs   # ContraxsuiteJSONFormatter
-# from apps.common.db_cache.file_storage.local_file_access import ContraxsuiteLocalFileStorage
+import task_names
+from contraxsuite_logging import prepare_log_dirs  # ContraxsuiteJSONFormatter
+
 
 warnings.filterwarnings('ignore',
                         message='''Trying to unpickle estimator|The psycopg2 wheel package will be renamed|numpy.core.umath_tests''')
@@ -61,11 +60,14 @@ ROOT_DIR = environ.Path(__file__) - 2
 PROJECT_DIR = ROOT_DIR.path('contraxsuite_services')
 APPS_DIR = PROJECT_DIR.path('apps')
 
+BASE_DIR = ROOT_DIR
+
 DEBUG = False
 DEBUG_SQL = False
 DEBUG_TEMPLATE = False
 
 INTERNAL_IPS = ['127.0.0.1', '::1']
+API_URL_PROTOCOL = 'https'
 
 # APP CONFIGURATION
 # ------------------------------------------------------------------------------
@@ -77,6 +79,7 @@ INSTALLED_APPS = (
     'django.contrib.sites',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'django.contrib.postgres',
     'suit',  # Admin
     'django.contrib.admin',
 
@@ -115,6 +118,7 @@ INSTALLED_APPS = (
     'rest_framework_tracking',
 
     'channels',
+    'rest_framework_tus',
 
     # LOCAL_APPS
     # 'apps.common',
@@ -137,7 +141,6 @@ PROJECT_APPS = tuple('apps.%s' % name for name in os.listdir(apps_dir)
                      if os.path.isdir(os.path.join(apps_dir, name)) and '__' not in name)
 INSTALLED_APPS += PROJECT_APPS
 
-
 # MIDDLEWARE CONFIGURATION
 # ------------------------------------------------------------------------------
 MIDDLEWARE = (
@@ -152,6 +155,7 @@ MIDDLEWARE = (
     # simple history middleware
     'simple_history.middleware.HistoryRequestMiddleware',
     # custom middleware
+    'apps.common.middleware.AppBlocksMiddleware',
     'apps.common.middleware.LoginRequiredMiddleware',
     'apps.common.middleware.Response500ErrorMiddleware',
     'apps.common.middleware.Response404ErrorMiddleware',
@@ -169,6 +173,7 @@ MIDDLEWARE = (
     # entering two-factor credentials.
     'allauth_2fa.middleware.AllauthTwoFactorMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
+    'rest_framework_tus.middleware.TusMiddleware',
 )
 
 # FIXTURE CONFIGURATION
@@ -235,8 +240,8 @@ TEMPLATES = [
                 'django.template.context_processors.static',
                 'django.template.context_processors.tz',
                 'django.contrib.messages.context_processors.messages',
-                'apps.common.context_processors.common'
-            ],
+                'apps.common.context_processors.common',
+                'apps.project.context_processors.user_projects'],
         },
     },
 ]
@@ -285,7 +290,7 @@ MEDIA_ROOT = PROJECT_DIR('media')
 ROOT_URLCONF = 'urls'
 
 # See: https://docs.djangoproject.com/en/dev/ref/settings/#wsgi-application
-WSGI_APPLICATION = 'wsgi.application'
+#WSGI_APPLICATION = 'wsgi.application'
 ASGI_APPLICATION = 'apps.websocket.routing.application'
 
 # django-pipeline settings
@@ -387,13 +392,11 @@ CELERY_RESULT_EXPIRES = 0
 
 CELERY_QUEUE_SERIAL = 'serial'
 
-import task_names
-
 CELERY_BEAT_SCHEDULE = {
     'advanced_celery.track_tasks': {
         'task': task_names.TASK_NAME_TRACK_TASKS,
-        'schedule': 10.0,
-        'options': {'queue': CELERY_QUEUE_SERIAL, 'expires': 10},
+        'schedule': datetime.timedelta(seconds=20),
+        'options': {'queue': CELERY_QUEUE_SERIAL},
     },
     'advanced_celery.track_failed_tasks': {
         'task': task_names.TASK_NAME_TRACK_FAILED_TASKS,
@@ -410,17 +413,23 @@ CELERY_BEAT_SCHEDULE = {
         'schedule': 60.0,
         'options': {'queue': CELERY_QUEUE_SERIAL, 'expires': 60},
     },
+    'advanced_celery.cache_updated_docs': {
+        'task': task_names.TASK_NAME_CACHE_UPDATED_DOCS,
+        'schedule': 30.0,
+        'options': {'queue': CELERY_QUEUE_SERIAL,
+                    'expires': 30},
+    },
     'advanced_celery.track_session_completed': {
         'task': task_names.TASK_NAME_TRACK_SESSION_COMPLETED,
-        'schedule': 120.0,
-        'options': {'queue': CELERY_QUEUE_SERIAL, 'expires': 120},
+        'schedule': 15.0,
+        'options': {'queue': CELERY_QUEUE_SERIAL, 'expires': 15},
     },
     'deployment.usage_stats': {
         'task': task_names.TASK_NAME_USAGE_STATS,
         'schedule': 60 * 60 * 12,
         'options': {'queue': 'default', 'expires': 60 * 60 * 12},
     },
-    'apps.rawdb.tasks.adapt_table_and_reindex_doc_type': {
+    'apps.rawdb.tasks.auto_reindex_not_tracked': {
         'task': task_names.TASK_NAME_AUTO_REINDEX,
         'schedule': 60,
         'options': {'queue': CELERY_QUEUE_SERIAL, 'expires': 60},
@@ -450,6 +459,16 @@ CELERY_BEAT_SCHEDULE = {
         'schedule': 60,
         'options': {'queue': CELERY_QUEUE_SERIAL, 'expires': 60},
     },
+    'advanced_celery.monitor_disk_usage': {
+        'task': task_names.TASK_NAME_MONITOR_DISK_USAGE,
+        'schedule': 60 * 5,
+        'options': {'queue': CELERY_QUEUE_SERIAL, 'expires': 60 * 15},
+    },
+    'plan_refreshing_materialized_views': {
+        'task': task_names.TASK_NAME_PLAN_REFRESHING_MATERIALIZED_VIEWS,
+        'schedule': 30,
+        'options': {'queue': CELERY_QUEUE_SERIAL, 'expires': 30},
+    }
 }
 
 EXCLUDE_FROM_TRACKING = {
@@ -461,13 +480,16 @@ EXCLUDE_FROM_TRACKING = {
     task_names.TASK_NAME_CLEAN_TASKS_PERIODIC,
     task_names.TASK_NAME_USAGE_STATS,
     task_names.TASK_NAME_RETRAIN_DIRTY_TASKS,
+    task_names.TASK_NAME_CACHE_UPDATED_DOCS,
     task_names.TASK_NAME_CACHE_DOC_NOT_TRACKED,
     task_names.TASK_NAME_AUTO_REINDEX,
     task_names.TASK_NAME_IMANAGE_TRIGGER_SYNC,
     task_names.TASK_NAME_TRIGGER_DIGESTS,
     task_names.TASK_NAME_NOTIFICATIONS_ON_DOCUMENT_CHANGE,
     task_names.TASK_NAME_INIT_METHOD_STATS_COLLECTORS,
-    task_names.TASK_NAME_CHECK_EMAIL_POOL
+    task_names.TASK_NAME_CHECK_EMAIL_POOL,
+    task_names.TASK_NAME_MONITOR_DISK_USAGE,
+    task_names.TASK_NAME_PLAN_REFRESHING_MATERIALIZED_VIEWS
 }
 
 TASKS_DO_NOT_REMOVE_WHEN_READY = set()
@@ -483,6 +505,7 @@ CELERY_CHORD_UNLOCK_DELAY_BETWEEN_RETRIES_IN_SEC = 3
 CELERY_TASK_ACKS_LATE = True
 CELERY_TASK_REJECT_ON_WORKER_LOST = True
 CELERY_WORKER_PREFETCH_MULTIPLIER = 1
+CELERY_IGNORE_RESULT = False
 
 # this needed on production. check
 CELERY_IMPORTS = ('apps.task.tasks',)
@@ -503,7 +526,6 @@ CELERY_TASK_DEFAULT_QUEUE = 'default'
 # Redis for Celery args caching
 CELERY_CACHE_REDIS_URL = 'redis://127.0.0.1:6379/0'
 CELERY_CACHE_REDIS_KEY_PREFIX = 'celery_task'
-
 
 FILE_UPLOAD_HANDLERS = [
     'django.core.files.uploadhandler.MemoryFileUploadHandler',
@@ -545,9 +567,9 @@ FILEBROWSER_DOCUMENTS_DIRECTORY = 'data/documents/'
 STRICT_PIL = True
 # Allowed extensions for file upload
 FILEBROWSER_EXTENSIONS = {
-    'Image': ['.jpg', '.jpeg', '.png', '.tif', '.tiff'],
+    'Image': ['.jpg', '.jpeg', '.png', '.tif', '.tiff', '.svg'],
     'Document': ['.pdf', '.doc', '.docx', '.rtf', '.txt', '.xls', '.xlsx', '.csv', '.html', '.json'],
-    'Archive': ['.zip']
+    'Archive': ['.zip', '.tar', '.tar.gz', '.tar.xz']
 }
 # Max. Upload Size in Bytes
 FILEBROWSER_MAX_UPLOAD_SIZE = 300 * 1024 ** 2  # 300Mb
@@ -558,8 +580,14 @@ FILEBROWSER_NORMALIZE_FILENAME = False
 # Default sorting, options are: date, filesize, filename_lower, filetype_checked, mimetype
 FILEBROWSER_DEFAULT_SORTING_BY = 'filename_lower'
 # traverse all subdirectories when searching (this might take a while if many files)
-FILEBROWSER_SEARCH_TRAVERSE = True
+FILEBROWSER_SEARCH_TRAVERSE = False
+# Max. Entries per Page
 FILEBROWSER_LIST_PER_PAGE = 25
+# Default Upload and Version Permissions
+FILEBROWSER_DEFAULT_PERMISSIONS = None
+
+WEBDAV_RECURSIVE_MKCOL = True
+WEBDAV_LISTING_BACKEND = 'django_webdav_storage.listing.wsgidav_autoindex'
 
 ARCHIVES = {
     'zip': {
@@ -574,11 +602,13 @@ ARCHIVES = {
 
 CONTRAX_FILE_STORAGE_TYPE = 'Local'
 CONTRAX_FILE_STORAGE_LOCAL_ROOT_DIR = MEDIA_ROOT + '/' + FILEBROWSER_DIRECTORY
-#CONTRAX_FILE_STORAGE_TYPE = 'WebDAV'
-#CONTRAX_FILE_STORAGE_WEBDAV_ROOT_URL = 'http://localhost:8090/'
-#CONTRAX_FILE_STORAGE_WEBDAV_USERNAME = 'user'
-#CONTRAX_FILE_STORAGE_WEBDAV_PASSWORD = 'pass'
+# CONTRAX_FILE_STORAGE_TYPE = 'WebDAV'
+# CONTRAX_FILE_STORAGE_WEBDAV_ROOT_URL = 'http://localhost:8090/'
+# CONTRAX_FILE_STORAGE_WEBDAV_USERNAME = 'user'
+# CONTRAX_FILE_STORAGE_WEBDAV_PASSWORD = 'pass'
 CONTRAX_FILE_STORAGE_DOCUMENTS_DIR = 'documents/'
+
+DOCKER_STATS_DIR = PROJECT_DIR('docker_stats')
 
 # django-constance settings
 
@@ -601,6 +631,10 @@ REST_FRAMEWORK = {
         'rest_framework.permissions.IsAuthenticated',
     )
 }
+REST_FRAMEWORK_TUS = {
+    'SAVE_HANDLER_CLASS': 'apps.tus.storage.TusSaveHandler'
+}
+
 REST_AUTH_SERIALIZERS = {
     'TOKEN_SERIALIZER': 'apps.users.authentication.TokenSerializer',
     'PASSWORD_CHANGE_SERIALIZER': 'apps.users.authentication.CustomPasswordChangeSerializer',
@@ -633,7 +667,7 @@ JAI_JARS = ['jai-imageio-core.jar', 'jai-imageio-jpeg2000.jar']
 TIKA_JARS = ['tika-app.jar', 'lexpredict-tika.jar'] + JAI_JARS
 
 TEXTRACT_FIRST_FOR_EXTENSIONS = []
-TIKA_TIMEOUT = 60 * 60
+TIKA_TIMEOUT = 5.5*3600
 
 TEXTRACT_NON_OCR_EXTENSIONS = ['txt', 'doc', 'docx', 'rtf',
                                'md', 'odt', 'ott', 'odf']
@@ -768,6 +802,11 @@ LOGGING = {
             'handlers': ['json_django', 'text_django', 'mail_admins'],
             'level': 'INFO',
         },
+        'apps.common.log_utils': {
+            'handlers': ['json_celery', 'text_celery'],
+            'level': 'DEBUG',
+            'propagate': True,
+        },
     },
 }
 
@@ -788,16 +827,15 @@ NOTEBOOK_ARGUMENTS = [
 # CORS_ALLOW_CREDENTIALS = False
 # CORS_URLS_REGEX = r'^.*$'
 
-VERSION_NUMBER = '1.5.0'
-VERSION_COMMIT = 'cdd28414'
+VERSION_NUMBER = '1.6.0'
+VERSION_COMMIT = '670689597ae28403dd848f924d222a33c4254f46'
 
 NOTIFICATION_EMBEDDED_TEMPLATES_PATH = 'apps/notifications/notification_templates'
 NOTIFICATION_CUSTOM_TEMPLATES_PATH_IN_MEDIA = 'notification_templates'
 
-
 DATA_UPLOAD_MAX_NUMBER_FIELDS = None
 
-SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTOCOL', 'https')
+# SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTOCOL', 'https')
 
 CALCULATED_FIELDS_EVAL_LOCALS = {'datetime': datetime, 'len': len}
 
@@ -829,6 +867,7 @@ FRONTEND_ROOT_URL = None
 DEBUG_STACK_DUMP_ENABLED = True
 DEBUG_STACK_DUMP_SIGNAL = 39
 DEBUG_STACK_DUMP_DIR = PROJECT_DIR('logs')
+DEBUG_TRACE_UPDATE_PARENT_TASK = False
 
 try:
     from local_settings import *
@@ -861,7 +900,10 @@ if BASE_URL:
     BASE_URL += '/'
 
 STATIC_URL = ('/' + BASE_URL if BASE_URL else '/') + 'static/'
-MEDIA_URL = '/' + BASE_URL + 'media/'
+MEDIA_URL = '/' + BASE_URL + 'media-data/'
+
+MEDIA_API_URL = '/api/media-data/'
+
 # LoginRequiredMiddleware settings
 LOGIN_EXEMPT_URLS = (
     r'^' + BASE_URL + 'accounts/',  # allow any URL under /accounts/*
@@ -869,7 +911,8 @@ LOGIN_EXEMPT_URLS = (
     r'^api/v',  # allow any URL under /api/v*
     r'^' + BASE_URL + '__debug__/',  # allow debug toolbar
     r'^' + BASE_URL + 'extract/search/',
-    r'^api/v\d+/logging/log_message/'
+    r'^api/v\d+/logging/log_message/',
+    r'^' + BASE_URL + 'static/',
 )
 
 TEMPLATES[0]['OPTIONS']['debug'] = DEBUG_TEMPLATE

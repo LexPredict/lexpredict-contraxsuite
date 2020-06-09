@@ -2,6 +2,9 @@
 Installation
 ============
 
+.. note:: This documentation is under active development.
+   As such, pages like this one are currently incomplete.
+
 If you haven't done so already, please follow the steps detailed in Environment Configuration. (TODO: link this)
 
 1. Navigate to your desired installation director and pull the latest community edition of ContraxSuite.
@@ -17,17 +20,11 @@ If you haven't done so already, please follow the steps detailed in Environment 
 
 *TODO: Show screenshot*
 
-2. Next, do blah blah blah
+2. Next, install using the following steps:
 
 .. code-block:: bash
 
-    $ code goes here
+    $ commands go here
     $ multiline block
 
-.. code-block:: python
-
-    def some_function(param: int):
-        for i in [0, 1, 2]:
-            yield abc
-
-https://lexpredict.atlassian.net/wiki/spaces/CS/pages/260833281/ContraxSuite+build+and+deployment+process
+.. https://lexpredict.atlassian.net/wiki/spaces/CS/pages/260833281/ContraxSuite+build+and+deployment+process

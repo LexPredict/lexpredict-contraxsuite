@@ -40,8 +40,8 @@ from apps.task.utils.text.segment import segment_sentences
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.5.0/LICENSE"
-__version__ = "1.5.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.6.0/LICENSE"
+__version__ = "1.6.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -105,7 +105,8 @@ class LocateEmployees(BaseTask):
         employee_dict = {}
         provisions = []
 
-        for tu_id, paragraph_text in TextUnit.objects.filter(document_id=document_id, unit_type="paragraph").values_list('id', 'textunittext__text'):
+        for tu_id, paragraph_text in TextUnit.objects.filter(
+                document_id=document_id, unit_type="paragraph").values_list('id', 'textunittext__text'):
             # skip if all text in uppercase
             if paragraph_text == paragraph_text.upper():
                 continue

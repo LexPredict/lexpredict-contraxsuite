@@ -33,8 +33,8 @@ from apps.task.utils.task_utils import TaskUtils  # noqa
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.5.0/LICENSE"
-__version__ = "1.5.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.6.0/LICENSE"
+__version__ = "1.6.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -53,7 +53,14 @@ class AdvancedCelery(Celery):
 
         main_task_id = main_task_id or parent_id or root_id
         args_str = ', '.join([str(arg) for arg in args]) if args else ''
-        kwargs_str = ', '.join([f'{f}={str(v)}' for f, v in kwargs.items()]) if kwargs else ''
+        kwargs_str = '\n'.join([f'{f}: {str(v)}' for f, v in kwargs.items()]) if kwargs else ''
+
+        description = list()
+        if args_str:
+            description.append(args_str)
+
+        if kwargs_str:
+            description.append(kwargs_str)
 
         TaskUtils.prepare_task_execution()
         with transaction.atomic():
@@ -61,7 +68,7 @@ class AdvancedCelery(Celery):
                                    task_name=name,
                                    main_task_id=main_task_id,
                                    parent_task_id=parent_id,
-                                   description=f'Args: {args_str}\nKwargs: {kwargs_str}',
+                                   description='\n'.join(description),
                                    args=args,
                                    source_data=source_data,
                                    run_after_sub_tasks_finished=run_after_sub_tasks_finished,

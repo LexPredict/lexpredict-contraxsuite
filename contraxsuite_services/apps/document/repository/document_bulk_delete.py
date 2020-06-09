@@ -38,8 +38,8 @@ from apps.common.model_utils.table_deps_builder import TableDepsBuilder
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.5.0/LICENSE"
-__version__ = "1.5.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.6.0/LICENSE"
+__version__ = "1.6.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -55,7 +55,7 @@ class DocumentBulkDelete:
     def calculate_deleting_count(self, ids: List[int], remove_empty: bool = True) -> Dict[str, int]:
         if len(ids) == 0:
             return {}
-        where_clause = self.build_where_clause(ids) + ";"
+        where_clause = self.build_where_clause(ids)
         counts = self.bulk_del.calculate_total_objects_to_delete(where_clause)
         if remove_empty:
             counts = {c: counts[c] for c in counts if counts[c] > 0}
@@ -64,7 +64,7 @@ class DocumentBulkDelete:
     def delete_documents(self, ids: List[int]) -> None:
         if len(ids) == 0:
             return
-        where_clause = self.build_where_clause(ids) + ");"
+        where_clause = self.build_where_clause(ids)
         self.bulk_del.delete_objects(where_clause)
         try:
             self.document_repository.delete_document_history_by_ids(ids)

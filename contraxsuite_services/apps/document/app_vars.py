@@ -30,8 +30,8 @@ from django.conf import settings
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.5.0/LICENSE"
-__version__ = "1.5.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.6.0/LICENSE"
+__version__ = "1.6.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -46,7 +46,7 @@ TIKA_SERVER_ENDPOINT = AppVar.set(
 
 TIKA_TIMEOUT = AppVar.set(
     'Document', 'tika_timeout', settings.TIKA_TIMEOUT,
-    'TIKA timeout (default = 3600 s)')
+    'TIKA timeout (default = 5.5 hours)')
 
 TIKA_PARSE_MODE = AppVar.set(
     'Document', 'tika_parse_mode', 'plain',
@@ -84,6 +84,10 @@ OCR_FILE_SIZE_LIMIT = AppVar.set(
     'Document', 'ocr_file_size_limit', 100,
     'Max file size enabled (MB) for OCR')
 
+MIN_NOT_PLAIN_FILE_SIZE = AppVar.set(
+    'Document', 'min_not_plain_file_size', 1024,
+    'Mint file size (bytes) to try extracting text with Tika / Textract etc.')
+
 MSWORD_TO_TEXT_ENABLE = AppVar.set(
     'Document', 'msword_to_text_enable', True,
     'Enables / disables parsing MS Word documents with python-docx')
@@ -99,4 +103,21 @@ STRICT_PARSE_DATES = AppVar.set(
 DETECT_CONTRACT = AppVar.set(
     'Document', 'detect_contract', True,
     'Check if document is a contract'
+)
+
+ENABLE_PROVISION_LEVEL_REVIEW = AppVar.set(
+    'Document', 'enable_provision_level_review', False,
+    'Provision Level Review on/off.'
+)
+
+CSV_DETECTOR_COMPANIES = AppVar.set(
+    'Document', 'csv_detector_companies',
+    'LLC,,Corp,,LP,,Inc,,Ltd,,Corporation,,Limited,,Co,,S.A',
+    'CSV Detector - company abbreviations. Use two commas to separate values'
+)
+
+CSV_DETECTOR_CONJUNCTIONS = AppVar.set(
+    'Document', 'csv_detector_conjunctions',
+    'and,,the,,&',
+    'CSV Detector - conjunctions. Use two commas to separate values'
 )

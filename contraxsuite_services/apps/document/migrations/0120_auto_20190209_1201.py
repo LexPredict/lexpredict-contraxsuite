@@ -5,6 +5,7 @@ from __future__ import unicode_literals
 import django.contrib.postgres.fields.jsonb
 import django.core.serializers.json
 from django.db import migrations
+from apps.common.model_utils.improved_django_json_encoder import ImprovedDjangoJSONEncoder
 
 
 class Migration(migrations.Migration):
@@ -21,6 +22,6 @@ class Migration(migrations.Migration):
         migrations.AlterField(
             model_name='documentfield',
             name='default_value',
-            field=django.contrib.postgres.fields.jsonb.JSONField(blank=True, encoder=django.core.serializers.json.DjangoJSONEncoder, help_text='Default value used \n    for showing in frontend instead of None/null (empty) value. Currently makes sense only for choice / multi-choice\n    fields. Should be defined in JSON format - strings should be quoted, null means empty value. Example: "landlord"', null=True),
+            field=django.contrib.postgres.fields.jsonb.JSONField(blank=True, encoder=ImprovedDjangoJSONEncoder, help_text='Default value used \n    for showing in frontend instead of None/null (empty) value. Currently makes sense only for choice / multi-choice\n    fields. Should be defined in JSON format - strings should be quoted, null means empty value. Example: "landlord"', null=True),
         ),
     ]

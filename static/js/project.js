@@ -42,53 +42,69 @@ function addTypeahead(url, element, name){
         name: name,
         display: 'value',
         source: getBloodhound(url),
-        limit: 10
+        // if result.length < limit then typeahead doesn't show it, so limit it on BE side
+        // - see TypeaheadView.DEFAULT_LIMIT
+        // see https://github.com/twitter/typeahead.js/issues/1232
+        // it should be fixed in typeahead.js-0.11.2 but it doesn't exit in CND
+        limit: 'Infinity'
     });
 }
 
-addTypeahead('/document/complete/text-unit-tag/tag/',
+addTypeahead(window.explorerURL + 'document/complete/text-unit-tag/tag/',
   '#tag_search',
   'tag_search');
 
-addTypeahead('/document/complete/document-property/key/',
+addTypeahead(window.explorerURL + 'document/complete/document-property/key/',
   '#key_search',
   'key_search');
 
-addTypeahead('/document/complete/document/description/',
+addTypeahead(window.explorerURL + 'document/complete/document/description/',
   '#description_search',
   'description_search');
 
-addTypeahead('/document/complete/document/name/',
+addTypeahead(window.explorerURL + 'document/complete/document/name/',
   '#name_search',
   'name_search');
 
-addTypeahead('/extract/complete/geo-entity/name/',
+addTypeahead(window.explorerURL + 'extract/complete/geo-entity/name/',
   '#entity_search',
   'entity_search');
 
-addTypeahead('/extract/complete/party/name/',
+addTypeahead(window.explorerURL + 'extract/complete/party/name/',
   '#party_search',
   'party_search');
 
-addTypeahead('/analyze/complete/text-unit-classification/name/',
+addTypeahead(window.explorerURL + 'analyze/complete/text-unit-classification/name/',
   '#modal_text_unit_classify_class_name',
   'modal_text_unit_classify_class_name');
 
-addTypeahead('/analyze/complete/text-unit-classification/value/',
+addTypeahead(window.explorerURL + 'analyze/complete/text-unit-classification/value/',
   '#modal_text_unit_classify_class_value',
   'modal_text_unit_classify_class_value');
 
-var termBloodhood = getBloodhound('/extract/complete/term/term/');
+var termBloodhood = getBloodhound(window.explorerURL + 'extract/complete/term/term/');
 $('#term_search').tagsinput({
     typeaheadjs: {
         name: 'term_search',
         display: 'value',
         valueKey: 'value',
         source: termBloodhood.ttAdapter(),
-        limit: 10
+        // if result.length < limit then typeahead doesn't show it, so limit it on BE side
+        // - see TypeaheadView.DEFAULT_LIMIT
+        // see https://github.com/twitter/typeahead.js/issues/1232
+        // it should be fixed in typeahead.js-0.11.2 but it doesn't exit in CND
+        limit: 'Infinity'
     }
 });
 
+$('#globalSearchForm').submit(function(e) {
+    var newTermValue = $('#term_search').tagsinput('input').val();
+
+    if (newTermValue.length) {
+        $('#term_search').tagsinput('add', newTermValue);
+        $('#term_search').tagsinput('input').val("");
+    }
+});
 
 // **********************************
 // Document Detail: Action Buttons
@@ -114,7 +130,7 @@ $("#modal_text_unit_classify_button").click(function () {
     $.ajax({
         "type": "POST",
         "dataType": "json",
-        "url": "/analyze/submit/text-unit-classification/",
+        "url": window.explorerURL + "analyze/submit/text-unit-classification/",
         "data": $(this).parents('.modal-dialog').find('form').serialize(),
         "success": function (result) {
             console.log(result);
@@ -127,7 +143,7 @@ $("#modal_text_unit_tag_button").click(function () {
     $.ajax({
         "type": "POST",
         "dataType": "json",
-        "url": "/document/submit/text-unit-tag/",
+        "url": window.explorerURL + "document/submit/text-unit-tag/",
         "data": $(this).parents('.modal-dialog').find('form').serialize(),
         "success": function (result) {
             console.log(result);
@@ -151,10 +167,10 @@ function highlightTerms(container, mark_if_count){
     var mark_options = {separateWordSearch: false, className: 'term-mark'};
 
     $("#highlight_term").on("input", function () {
-        if ($(this).val().length >= mark_if_count) {
+//        if ($(this).val().length >= mark_if_count) {
             mark_instance.unmark(mark_options);
             mark_instance.mark($(this).val(), mark_options);
-        }
+//        }
     });
 
     // Initial highlighting
@@ -201,7 +217,8 @@ $.ajaxSetup({
     beforeSend: function (xhr, settings) {
         if (!(/^http:.*/.test(settings.url) || /^https:.*/.test(settings.url))) {
             // Only send the token to relative URLs i.e. locally.
-            xhr.setRequestHeader("X-CSRFToken", getCookie('csrftoken'));
+            var html_token = $('[name="csrfmiddlewaretoken"]').val();
+            xhr.setRequestHeader("X-CSRFToken", html_token || getCookie('csrftoken'));
         }
     }
 });

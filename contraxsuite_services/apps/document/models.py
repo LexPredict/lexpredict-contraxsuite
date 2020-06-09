@@ -26,22 +26,26 @@
 
 # Standard imports
 import datetime
+import hashlib
 import pickle
 import re
 import uuid
 from enum import Enum
+from io import StringIO
 from typing import List, Union, Any, Tuple
 
 import jiphy
+import pandas as pd
 # Django imports
 from ckeditor.fields import RichTextField
 from django.conf import settings
 from django.contrib.postgres.fields import JSONField
+from django.contrib.postgres.indexes import GinIndex
+from django.contrib.postgres.search import SearchVectorField
 from django.core.exceptions import ValidationError
-from django.core.serializers.json import DjangoJSONEncoder
 from django.core.validators import MinValueValidator
 from django.db import models, transaction
-from django.db.models import Count, F, Value, QuerySet, Index
+from django.db.models import Count, F, Value, QuerySet, Index, Q
 from django.db.models.deletion import CASCADE, SET_NULL
 from django.db.models.functions import Concat
 from django.dispatch import receiver
@@ -52,8 +56,8 @@ from simple_history.models import HistoricalRecords
 
 from apps.common.fields import StringUUIDField, CustomJSONField
 from apps.common.managers import BulkSignalsManager
+from apps.common.model_utils.improved_django_json_encoder import ImprovedDjangoJSONEncoder
 from apps.common.models import get_default_status
-from apps.common.utils import CustomDjangoJSONEncoder
 from apps.document import constants
 from apps.document.value_extraction_hints import ValueExtractionHint, ORDINAL_EXTRACTION_HINTS
 from apps.users.models import User
@@ -63,8 +67,8 @@ from apps.users.models import User
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.5.0/LICENSE"
-__version__ = "1.5.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.6.0/LICENSE"
+__version__ = "1.6.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -114,6 +118,42 @@ class DocumentFieldCategory(models.Model):
 
     def __repr__(self):
         return "{1} (#{0})".format(self.pk, self.name)
+
+
+class DocumentFieldFamily(models.Model):
+    code = models.CharField(max_length=100, blank=True, null=True, db_index=True)
+
+    title = models.CharField(max_length=100, db_index=True)
+
+    class Meta:
+        verbose_name_plural = 'Document Field Families'
+        ordering = ('title',)
+
+    def __str__(self):
+        return self.title
+
+    def __repr__(self):
+        return "{1} (#{0})".format(self.pk, self.title)
+
+    @classmethod
+    def make_unique_code(cls, source):
+        code = re.sub(r'\W+', '_', source.lower()).strip('_')
+        if cls.objects.filter(code=code).exists():
+            similar_codes = cls.objects.filter(code__iregex=re.sub(r'(.+?)\d+$', r'\1\\d+', code))
+            latest_index = max([int(re.sub(r'.+?(\d+)?$', r'\1', i) or 0)
+                                for i in similar_codes.values_list('code', flat=True)])
+            code_base = re.sub(r'_?\d+$', '', code)
+            code = f'{code_base}_{latest_index + 1}'
+        return code
+
+    def save(self, **kwargs):
+        if not self.code:
+            self.code = self.make_unique_code(self.title)
+        elif self.pk and DocumentFieldFamily.objects.exclude(pk=self.pk).filter(code=self.code).exists():
+            self.code = self.make_unique_code(self.code)
+        elif self.pk is None:
+            self.code = self.make_unique_code(self.code)
+        return super().save()
 
 
 class DocumentFieldManager(models.Manager):
@@ -167,10 +207,8 @@ class DocumentField(TimeStampedModel):
 
     # Short name for field.
     code = models.CharField(max_length=constants.DOCUMENT_FIELD_CODE_MAX_LEN,
-                            db_index=True, unique=False, help_text='''Field codes are used for creating 
-    columns in DB tables, in field formulas (Python syntax), for human-readable data representation in APIs. 
-    Field codes must be lowercase, should start with a latin letter and contain only latin letters, digits, 
-    and underscores. You cannot use a field code you have already used for this document type.''')
+                            db_index=True, unique=False, help_text='''Field codes must be lowercase, should start with 
+a Latin letter, and contain only Latin letters, digits, underscores. Field codes must be unique to every Document Type.''')
 
     # Calculated field. Only for usage in __str__ function
     long_code = models.CharField(max_length=150, null=False, unique=True, default=None)
@@ -181,6 +219,10 @@ class DocumentField(TimeStampedModel):
     # Verbose description - information which does not fit into title
     description = models.TextField(null=True, blank=True)
 
+    category = models.ForeignKey(DocumentFieldCategory, blank=True, null=True, db_index=True, on_delete=SET_NULL)
+
+    family = models.ForeignKey(DocumentFieldFamily, blank=True, null=True, db_index=True, on_delete=SET_NULL)
+
     # Type of the field.
     # Choices are lazy-set on app init. See field_type_registry.py
     type = models.CharField(max_length=30, default='string', db_index=True)
@@ -188,39 +230,42 @@ class DocumentField(TimeStampedModel):
     # Type of the text unit to parse.
     text_unit_type = models.CharField(max_length=10, choices=UNIT_TYPES, default='sentence')
 
+    DETECT_LIMIT_NONE = 'NONE'
     DETECT_LIMIT_UNIT = 'UNIT'
     DETECT_LIMIT_SENTENCE = 'SENTENCE'
     DETECT_LIMIT_PARAGRAPH = 'PARAGRAPH'
     DETECT_LIMIT_PAGE = 'PAGE'
     DETECT_LIMIT_CHAR = 'CHAR'
 
-    DETECT_LIMIT_OPTIONS = [(DETECT_LIMIT_UNIT, 'Limit to N document''s units'),
+    DETECT_LIMIT_OPTIONS = [(DETECT_LIMIT_NONE, 'No Limit'),
+                            (DETECT_LIMIT_UNIT, 'Limit to N document''s units'),
                             (DETECT_LIMIT_SENTENCE, 'Limit to N sentences'),
                             (DETECT_LIMIT_PARAGRAPH, 'Limit to N paragraphs'),
-                            (DETECT_LIMIT_PAGE, 'Limit to N pages'),
+                            # (DETECT_LIMIT_PAGE, 'Limit to N pages'),
                             (DETECT_LIMIT_CHAR, 'Limit to N characters')]
 
     # see detect_limit_count
     detect_limit_unit = models.CharField(max_length=10,
                                          choices=DETECT_LIMIT_OPTIONS,
-                                         default=DETECT_LIMIT_UNIT,
-                                         help_text='''Set Detect limit unit and Detect limit count to restrict your 
-    searching to the beginning of the document. For example- search only the first 10 paragraphs of the document. 
-    Detect Limit Unit must be an equal or smaller unit than text unit type. I.E. if Text Unit Type is set to paragraphs,
-    you cannot set your Detect Limit Unit to sentences. Limit to N document units uses the "Text unit type" as the 
-    Detect Limit unit. Cannot be used with Value detection strategy "Apply regexp field detectors to depends-on field 
-    values."''')
+                                         default=DETECT_LIMIT_NONE,
+                                         help_text='''Users may limit Document Field searches by bounding the detection 
+range. Specify the type of element (a “step size”) for a bounded search. When specified, a Document Field Detector will 
+only search from the beginning of the document until it reaches the specified Nth element. Note: Cannot be used with 
+the Field Value Detection Strategy called “apply regexp field detectors to depends-on field values”.''')
 
     # while detecting field value restrict to N units (see detect_limit_unit)
     # 0 means no limit
-    detect_limit_count = models.IntegerField(null=False, default=0, db_index=True, help_text='''Set the number of 
-    "Detect limit units" from the top of the document to search.''')
+    detect_limit_count = models.IntegerField(null=False, default=0, db_index=True, help_text='''Specify the maximum 
+range for a bounded search. Field detection begins at the top of the document and continues until this Nth 
+"Detect limit unit" element.''')
 
     DEFAULT_UNSURE_THRESHOLD = 0.9
 
     VD_DISABLED = 'disabled'
 
     VD_USE_REGEXPS_ONLY = 'use_regexps_only'
+
+    VD_REGEXP_TABLE = 'regexp_table'
 
     VD_USE_FORMULA_ONLY = 'use_formula_only'
 
@@ -252,6 +297,8 @@ class DocumentField(TimeStampedModel):
     VALUE_DETECTION_STRATEGY_CHOICES = [(VD_DISABLED, 'Field detection disabled'),
                                         (VD_USE_REGEXPS_ONLY,
                                          'No ML. Use regexp field detectors.'),
+                                        (VD_REGEXP_TABLE,
+                                         'Use regexp pattern: value collection.'),
                                         (VD_USE_FORMULA_ONLY,
                                          'No ML. Use formula only.'),
                                         (VD_REGEXPS_AND_TEXT_BASED_ML,
@@ -282,7 +329,7 @@ class DocumentField(TimeStampedModel):
     strategies with "Unsure" category. The strategy will return this value if probabilities of all other categories 
     appear lower than the specified threshold.''')
 
-    unsure_thresholds_by_value = JSONField(encoder=DjangoJSONEncoder, null=True, blank=True,
+    unsure_thresholds_by_value = JSONField(encoder=ImprovedDjangoJSONEncoder, null=True, blank=True,
                                            help_text='''Makes sense for machine learning 
     strategies with "Unsure" category. The strategy will return concrete result (one of choice values) only if 
     the probability of the detected value is greater than this threshold. Otherwise the strategy returns None 
@@ -303,10 +350,9 @@ class DocumentField(TimeStampedModel):
 
     formula = models.TextField(null=True, blank=True)
 
-    value_regexp = models.TextField(null=True, blank=True, help_text='''Used for string fields. First ether regexp 
-    field detectors or ML finds sentences/paragraphs/parts of them containing value of the field. Next for string 
-    fields this regexp is used to find a substring in the sentence/paragraph/part of them and use it as the 
-    field value. If re.findall() is used. If the regexp returns multiple groups then the first group is used.''')
+    value_regexp = models.TextField(null=True, blank=True, help_text='''This regular expression is run on the sentence 
+    found by a Field Detector and extracts a specific string value from a Text Unit. The first matching group is used if
+     the regular expression returns multiple matching groups. This is only applicable to string fields.''')
 
     depends_on_fields = models.ManyToManyField('self', blank=True, related_name='affects_fields', symmetrical=False)
 
@@ -317,11 +363,10 @@ class DocumentField(TimeStampedModel):
 
     read_only = models.BooleanField(default=False, null=False, blank=False)
 
-    category = models.ForeignKey(DocumentFieldCategory, blank=True, null=True, db_index=True, on_delete=CASCADE)
-
-    default_value = JSONField(blank=True, null=True, encoder=DjangoJSONEncoder, help_text='''Default value used 
-    for showing in frontend instead of None/null (empty) value. Currently makes sense only for choice / multi-choice
-    fields. Should be defined in JSON format - strings should be quoted, null means empty value. Example: "landlord"''')
+    default_value = JSONField(blank=True, null=True, encoder=ImprovedDjangoJSONEncoder, help_text='''When populated, this 
+    default value is displayed in the user interface’s annotator sidebar for the associated field. If not populated, the
+     Field Value remains empty by default. Please wrap entries with quotes, example: “landlord”. This is only applicable
+      to Choice and Multichoice fields.''')
 
     # In case the type of the field requires selecting one of pre-defined values -
     # they should be stored \n-separated in the "choices" property
@@ -341,9 +386,9 @@ class DocumentField(TimeStampedModel):
     # { "regexp": "choice_value", "regexp": "choice_value", ..... }
     # For field-based field detecting (formulas/ML/field detectors):
     #   - strategies try to find any of these regexps
-    stop_words = JSONField(blank=True, null=True, encoder=DjangoJSONEncoder)
+    stop_words = JSONField(blank=True, null=True, encoder=ImprovedDjangoJSONEncoder)
 
-    metadata = CustomJSONField(blank=True, null=True, encoder=DjangoJSONEncoder)
+    metadata = CustomJSONField(blank=True, null=True, encoder=ImprovedDjangoJSONEncoder)
 
     training_finished = models.BooleanField(default=False)
 
@@ -367,6 +412,17 @@ class DocumentField(TimeStampedModel):
     created_date = models.DateTimeField(auto_now_add=True)
 
     objects = DocumentFieldManager()
+
+    def make_unique_code(self, source=None):
+        source = source or self.title
+        code = re.sub(r'\W+', '_', source.lower()).strip('_')
+        if DocumentField.objects.filter(code=code, document_type=self.document_type).exists():
+            similar_codes = DocumentField.objects.filter(code__iregex=re.sub(r'(.+?)\d+$', r'\1\\d+', code), document_type=self.document_type)
+            latest_index = max([int(re.sub(r'.+?(\d+)?$', r'\1', i) or 0)
+                                for i in similar_codes.values_list('code', flat=True)])
+            code_base = re.sub(r'_?\d+$', '', code)
+            code = f'{code_base}_{latest_index + 1}'
+        return code
 
     def is_detectable(self):
         return self.value_detection_strategy and self.value_detection_strategy != self.VD_DISABLED
@@ -486,16 +542,15 @@ class DocumentType(TimeStampedModel):
 
     # Short name for field.
     code = models.CharField(max_length=50, db_index=True, unique=True,
-                            help_text='Field codes must be lowercase, should start with a latin '
-                                      'letter and contain only latin letters, digits, '
-                                      'and underscores')
+                            help_text='''Field codes must be lowercase, should start with a Latin letter, and contain 
+only Latin letters, digits, and underscores.''')
 
     # Verbose name for field.
     title = models.CharField(max_length=100, db_index=True)
 
     # Aliases of field codes for document import purposes.
     # Json format: { "alias1": "field_code1", "alias2": "field_code2", ...}
-    field_code_aliases = JSONField(blank=True, null=True, encoder=DjangoJSONEncoder)
+    field_code_aliases = JSONField(blank=True, null=True, encoder=ImprovedDjangoJSONEncoder)
 
     # lesser set of fields to filter/sort on Document list page
     search_fields = models.ManyToManyField(
@@ -503,7 +558,7 @@ class DocumentType(TimeStampedModel):
 
     editor_type = models.CharField(max_length=100, blank=True, null=True, choices=DOCUMENT_EDITOR_CHOICES)
 
-    metadata = CustomJSONField(blank=True, null=True, encoder=DjangoJSONEncoder)
+    metadata = CustomJSONField(blank=True, null=True, encoder=ImprovedDjangoJSONEncoder)
 
     class Meta:
         unique_together = (('code', 'modified_by', 'modified_date'),)
@@ -562,6 +617,8 @@ class Document(models.Model):
     can contain zero or more :model:`document.TextUnit`, as well as its own set of fixed and
     flexible metadata about the document per se.
     """
+    LOG_FIELD_DOC_ID = 'log_document_id'
+    LOG_FIELD_DOC_NAME = 'log_document_name'
 
     class DocumentMetadataKey:
         KEY_SECTIONS = 'sections'
@@ -583,7 +640,7 @@ class Document(models.Model):
     source = models.CharField(max_length=1024, db_index=True, null=True)
 
     # Document source type, e.g., File System, Email, Salesforce
-    source_type = models.CharField(max_length=100, db_index=True, null=True)
+    source_type = models.CharField(max_length=100, db_index=True, blank=True, null=True)
 
     # If relevant, URI/path within document source
     source_path = models.CharField(max_length=1024, db_index=True, null=True)
@@ -596,7 +653,7 @@ class Document(models.Model):
     sentences = models.PositiveIntegerField(default=0, null=False)
 
     # Document title
-    title = models.CharField(max_length=1024, db_index=True, null=True)
+    title = models.CharField(max_length=1024, db_index=True, blank=True, null=True)
 
     # Document history
     history = HistoricalRecords()
@@ -605,7 +662,7 @@ class Document(models.Model):
     delete_pending = models.BooleanField(default=False, null=False)
 
     # Document's original path in end user filesystem
-    folder = models.CharField(max_length=1024, db_index=True, null=True)
+    folder = models.CharField(max_length=1024, db_index=True, blank=True, null=True)
 
     # apply custom objects manager
     objects = DocumentManager()
@@ -628,7 +685,9 @@ class Document(models.Model):
 
     processed = models.BooleanField(default=False, null=False)
 
-    document_class = models.CharField(max_length=256, db_index=True, null=True)
+    document_class = models.CharField(max_length=256, db_index=True, blank=True, null=True)
+
+    fields_dirty = models.DateTimeField(db_index=True, null=True)
 
     class Meta:
         ordering = ('name',)
@@ -729,6 +788,60 @@ class Document(models.Model):
                 break
         return val, True
 
+    @classmethod
+    def reset_status_from_annotations(cls, ann_status, project=None, document_ids=None):
+        """
+        Reset Document's status if all its annotations are accepted or rejected
+        OR if a Document status is Awaiting_QA but some annotation is unset from accepted or rejected
+        :param ann_status: ReviewStatus instance
+        :param project: Project instance
+        :param document_ids: Document ids
+        :return:
+        """
+        from apps.common.models import ReviewStatus
+        from apps.rawdb.field_value_tables import cache_document_fields, ProcessLogger
+
+        documents_to_update_pks = []
+        # TODO: do not hardcode status code
+        awaiting_qa_status = ReviewStatus.objects.get(code='awaiting_qa')
+        completed_status = ReviewStatus.objects.get(code='completed')
+
+        document_qs = Document.objects
+        if project is not None:
+            document_qs = document_qs.filter(project=project)
+        elif document_ids is not None:
+            document_qs = document_qs.filter(id__in=document_ids)
+        else:
+            raise NotImplementedError('Provide either project or document.')
+
+        # If all clauses reviewed, set document status to "Awaiting QA"
+        if ann_status.is_accepted or ann_status.is_rejected:
+            documents_to_update = document_qs \
+                .exclude(status__in=[awaiting_qa_status, completed_status]) \
+                .exclude(Q(annotations_matches__status__is_accepted=False) &
+                         Q(annotations_matches__status__is_rejected=False)) \
+                .distinct()
+            documents_to_update_pks += list(documents_to_update.values_list('pk', flat=True))
+            documents_to_update.update(status=awaiting_qa_status)
+
+        # If some clauses are unset from reviewed, set document status to "In Review"
+        else:
+            in_review_status = ReviewStatus.objects.get(code='in_review')
+            documents_to_update = document_qs \
+                .filter(status=awaiting_qa_status) \
+                .filter(Q(annotations_matches__status__is_accepted=False) &
+                        Q(annotations_matches__status__is_rejected=False)) \
+                .distinct()
+            documents_to_update_pks += list(documents_to_update.values_list('pk', flat=True))
+            documents_to_update.update(status=in_review_status)
+
+        for document in Document.objects.filter(pk__in=documents_to_update_pks):
+            cache_document_fields(ProcessLogger(),
+                                  document,
+                                  cache_system_fields=['status'],
+                                  cache_generic_fields=False,
+                                  cache_user_fields=False)
+
 
 @receiver(models.signals.post_delete, sender=Document)
 def full_delete(sender, instance, **kwargs):
@@ -759,7 +872,7 @@ class DocumentMetadata(models.Model):
     document = models.OneToOneField(Document, db_index=True, on_delete=CASCADE)
 
     # Document metadata from original file
-    metadata = JSONField(blank=True, encoder=CustomDjangoJSONEncoder)
+    metadata = JSONField(blank=True, encoder=ImprovedDjangoJSONEncoder)
 
 
 class DocumentTag(models.Model):
@@ -991,12 +1104,24 @@ class TextUnit(models.Model):
 class TextUnitText(models.Model):
     """TextUnitText object model"""
 
+    # enable full-text-search for "text" column in "contains" and "icontains" queries
+    full_text_search_fields = ['text']
+
     text_unit = models.OneToOneField(TextUnit, db_index=True, on_delete=CASCADE)
 
     text = models.TextField(max_length=16384, null=True)
 
+    text_tsvector = SearchVectorField(null=True)
+
     def __str__(self):
         return "TextUnitText (id={}, text_unit={})".format(self.pk, str(self.text_unit))
+
+    class Meta:
+        indexes = [GinIndex(fields=['text'],
+                            name='idx_dtut_text_gin',
+                            opclasses=['gin_trgm_ops']),
+                   GinIndex(fields=['text_tsvector'],
+                            name='idx_dtut_text_tsvector_gin')]
 
 
 class TextUnitTag(models.Model):
@@ -1155,7 +1280,7 @@ class ExternalFieldValue(TimeStampedModel):
     field_id = models.CharField(max_length=36)
 
     # Datastore for extracted value
-    value = JSONField(blank=True, null=True, encoder=DjangoJSONEncoder)
+    value = JSONField(blank=True, null=True, encoder=ImprovedDjangoJSONEncoder)
 
     # source text
     text_unit_text = models.TextField()
@@ -1208,46 +1333,46 @@ class DocumentFieldDetector(models.Model):
 which field detectors were created automatically during import process.''')
 
     exclude_regexps = models.TextField(blank=True, null=True,
-                                       help_text='''\\n-separated regexps excluding sentences from possible match. 
-Exclude regexps are checked before include regexps or definition words. If one of exclude regexps matches text of a 
-text unit then the field detector exits and skips this text unit. Whole text unit does not need to match an 
-exclude regexp. The regexps are searched in the text unit.''')
+                                       help_text='''Enter regular expressions, each on a new line, to exclude sentences 
+from field detection. If any portion of a given Text Unit’s text matches the pattern described in one of the Exclude 
+regexps, then the Field Detector skips and moves to the next Text Unit. Note that Exclude regexps are checked before 
+both definition words and Include regexps.''')
 
     definition_words = models.TextField(blank=True, null=True,
-                                        help_text='''\\n-separated list of definition words (in lowercase) expected 
-to be in the text unit. Definition words are checked after the exclude regexps. If definition words are assigned 
-to the field detector then get_definitions() function is executed on the text unit. If it finds nothing then skip the
-text unit. If the text unit contains one of the definitions from this field then: If there are no include regexps 
-then the whole text unit matches the field detector. If there are include regexps then check against them.''')
+                                        help_text='''Enter words or phrases, each on a new line, that must be present 
+in the Text Unit. These words must be in the Definitions List. If ContraxSuite fails to recognize these words as 
+definitions, then the Field Detector skips and moves to the next Text Unit. If there are Include regexps, then the 
+Field Detector checks against those requirements. The Field Detector marks the entire Text Unit as a match. Note that 
+the Field Detector checks for definition words after filtering using the Exclude regexps.''')
 
-    include_regexps = models.TextField(blank=True, null=True, help_text='''\\n-separated list of regexps to which 
-should be found in the text unit for it to match the field detector. Include regexps are checked after the definition 
-words and include regexps. An include regexp does not need to match the whole sentence but it only should be found in 
-the sentence. Example: "house" - will match any sentence containing this word. Please avoid using ".*" and similar 
-unlimited multipliers. They can cause catastrophic backtracking and slowdown or crash the whole system. 
-Use ".{0,100}" or similar instead.''')
+    include_regexps = models.TextField(blank=True, null=True, help_text='''Enter regular expressions, each on a new 
+line, for finding a text pattern. The Field Detector attempts to match each of these regular expressions within a given 
+Text Unit. Avoid using “.*” and similar unlimited multipliers, as they can crash or slow ContraxSuite. Use bounded 
+multipliers for variable length matching, like “.{0,100}” or similar. Note that Include regexps are checked after both 
+Exclude regexps and Definition words.''')
 
     regexps_pre_process_lower = models.BooleanField(blank=False, null=False, default=True,
-                                                    help_text='Bring sentence/paragraph to lower case before processing'
-                                                              ' with this field detector.')
+                                                    help_text='''Convert a sentence or a paragraph’s characters to 
+lowercase prior to running regular expressions for field detection.''')
 
     # For choice fields - the value which should be set if a sentence matches this detector
-    detected_value = models.CharField(max_length=256, blank=True, null=True, help_text='''Assigns this string value to 
-the field if this field detector matches. Makes sense for choice/multi-choice/string fields only which don't have 
-an extraction function which will be applied to the matching text.''')
+    detected_value = models.CharField(max_length=256, blank=True, null=True, help_text='''The string value written here 
+will be assigned to the field if the Field Detector positively matches a Text Unit. This is only applicable to Choice, 
+Multichoice, and String fields, as their respective Field Detectors do not extract and display values from the source 
+text.''')
 
     # Number of value to extract in case of multiple values
     extraction_hint = models.CharField(max_length=30, choices=EXTRACTION_HINT_CHOICES,
                                        default=EXTRACTION_HINT_CHOICES[0][0], db_index=True,
-                                       blank=True, null=True, help_text='''Hint for selection one of multiple possible
-values found by an extraction function of the corresponding field type. Example: Date field finds 5 dates and the last
-of them should be taken.''')
+                                       blank=True, null=True, help_text='''Provide additional instruction on which 
+specific values should be prioritized for extraction, when multiple values of the same type 
+(e.g., Company, Person, Geography) are found within the relevant detected Text Unit.''')
 
     text_part = models.CharField(max_length=30, choices=TEXT_PARTS, default=TEXT_PARTS[0][0], db_index=True,
-                                 blank=False, null=False, help_text='''Defines which part of the matching 
-sentence / paragraph should be passed to the extraction function of the corresponding field type. 
-Example: "2019-01-23 is the Start date and 2019-01-24 is the end date." If include regexp is "is.{0,100}Start" and 
-text part = "Before matching substring" then "2019-01-23 " will be passed to get_dates().''')
+                                 blank=False, null=False, help_text='''Defines which part of the matched Text Unit 
+should be passed to the extraction function. Example: In the string "2019-01-23 is the start date and 2019-01-24 is the 
+end date," if text part = "Before matching substring" and Include regexp is "is.{0,100}start" then "2019-01-23" will be 
+parsed correctly as the start date.''')
 
     @property
     def include_matchers(self):
@@ -1340,6 +1465,90 @@ text part = "Before matching substring" then "2019-01-23 " will be passed to get
                + " (#{0})".format(self.uid)
 
 
+class DocumentFieldMultilineRegexDetector(models.Model):
+    document_field = models.OneToOneField(
+        DocumentField, db_index=True, primary_key=True, blank=False, null=False, on_delete=CASCADE)
+
+    csv_content = models.TextField(blank=True, null=True, help_text='''CSV structure where:
+    - the first column is the detected value,
+    - the second column is the regular expression,
+    - separators are semicolon, other semicolon are escaped with \\''')
+
+    csv_checksum = models.CharField(blank=True, db_index=True, max_length=100, null=True,
+                                    help_text='''The field is used for caching regular expressions between
+                                     parsing tasks. Should be rewritten upon changing csv_content.''')
+
+    # Number of value to extract in case of multiple values
+    extraction_hint = models.CharField(max_length=30, choices=EXTRACTION_HINT_CHOICES,
+                                       default=EXTRACTION_HINT_CHOICES[0][0], db_index=True,
+                                       blank=True, null=True, help_text='''Provide additional instruction on which 
+    specific values should be prioritized for extraction, when multiple values of the same type 
+    (e.g., Company, Person, Geography) are found within the relevant detected Text Unit.''')
+
+    text_part = models.CharField(max_length=30,
+                                 choices=DocumentFieldDetector.TEXT_PARTS,
+                                 default=DocumentFieldDetector.TEXT_PARTS[0][0], db_index=True,
+                                 blank=False, null=False, help_text='''Defines which part of the matched Text Unit 
+    should be passed to the extraction function. Example: In the string "2019-01-23 is the start date and 2019-01-24 is the 
+    end date," if text part = "Before matching substring" and Include regexp is "is.{0,100}start" then "2019-01-23" will be 
+    parsed correctly as the start date.''')
+
+    regexps_pre_process_lower = models.BooleanField(blank=False, null=False, default=True,
+                                                    help_text='''Convert a sentence or a paragraph’s characters to 
+    lowercase prior to running regular expressions for field detection.''')
+
+    def __repr__(self):
+        short_text = self.csv_content or ''
+        short_text = short_text if len(short_text) < 512 else short_text[512] + ' ...'
+        field_code = self.document_field.code if self.document_field else '-'
+        return f'field: {field_code}\n{short_text}'
+
+    def update_checksum(self):
+        if not self.csv_content:
+            self.csv_checksum = None
+            return
+        m = hashlib.md5()
+        m.update(self.csv_content.encode('utf-8'))
+        self.csv_checksum = m.hexdigest()
+
+    def get_as_pandas_df(self):
+        return self.get_csv_as_pandas_df(self.csv_content)
+
+    @classmethod
+    def get_csv_as_pandas_df(cls, csv_data):
+        if not csv_data:
+            return None
+        with StringIO(csv_data) as cs_stream:
+            df = pd.read_csv(cs_stream,
+                             usecols=[1, 2],
+                             header=None,
+                             skiprows=1,
+                             names=['value', 'pattern'],
+                             dtype={'value': str, 'pattern': str})
+            if df.shape[0] > 0:
+                if df.iloc[0]['value'] == 'value' and df.iloc[0]['pattern'] == 'pattern':
+                    df.drop(0, axis=0, inplace=True)
+            return df
+
+    def combine_with_dataframe(self, df: pd.DataFrame) -> None:
+        """
+        "Append" another DF (value, pattern) to own data and update csv_content
+        Remove duplicates by value or pattern
+        :param df: dataframe (value, pattern) to append
+        """
+        own_df = self.get_as_pandas_df()
+        if own_df is None:
+            self.csv_content = df.to_csv()
+            self.update_checksum()
+            return
+        own_df = own_df.append(df, ignore_index=True)
+        own_df.drop_duplicates(subset='pattern',
+                               inplace=True,
+                               keep='last')
+        self.csv_content = own_df.to_csv()
+        self.update_checksum()
+
+
 class ClassifierModel(models.Model):
     document_field = models.ForeignKey(DocumentField, db_index=True, null=False,
                                        blank=True, default=None, on_delete=CASCADE)
@@ -1379,7 +1588,7 @@ class FieldValue(models.Model):
 
     field = models.ForeignKey(DocumentField, db_index=True, on_delete=CASCADE)
 
-    value = JSONField(blank=True, null=True, encoder=DjangoJSONEncoder)
+    value = JSONField(blank=True, null=True, encoder=ImprovedDjangoJSONEncoder)
 
     history = HistoricalRecords()
 
@@ -1427,10 +1636,10 @@ class FieldAnnotationStatus(models.Model):
     is_active = models.BooleanField(default=True, db_index=True)
 
     # flag - to set it automatically if a document has "completed" status
-    is_confirm = models.BooleanField(default=False, db_index=True)
+    is_accepted = models.BooleanField(default=False, db_index=True)
 
     # flag - to transform annotation into FalseMatch
-    is_deny = models.BooleanField(default=False, db_index=True)
+    is_rejected = models.BooleanField(default=False, db_index=True)
 
     class Meta:
         ordering = ['order', 'name', 'code']
@@ -1438,6 +1647,10 @@ class FieldAnnotationStatus(models.Model):
 
     def __str__(self):
         return "FieldAnnotationStatus (pk={}, name={})".format(self.pk, self.name)
+
+    @property
+    def is_final_status(self):
+        return self.is_accepted or self.is_rejected
 
     @classmethod
     def initial_status(cls):
@@ -1449,16 +1662,30 @@ class FieldAnnotationStatus(models.Model):
         return status.pk if status else None
 
     @classmethod
-    def confirm_status(cls):
-        return cls.objects.filter(is_confirm=True).first()
+    def accepted_status(cls):
+        return cls.objects.filter(is_accepted=True).first()
 
     @classmethod
-    def confirm_status_pk(cls):
-        status = cls.confirm_status()
+    def accepted_status_pk(cls):
+        status = cls.accepted_status()
+        return status.pk if status else None
+
+    @classmethod
+    def rejected_status(cls):
+        return cls.objects.filter(is_rejected=True).first()
+
+    @classmethod
+    def rejected_status_pk(cls):
+        status = cls.rejected_status()
         return status.pk if status else None
 
 
 class FieldAnnotation(models.Model):
+    # INFO: added to make unique field among FieldAnnotation and FieldAnnotationFalseMatch
+    # as we use combined clauses views
+    # TODO: make it primary_key? - had issues with updating pk for history objects
+    uid = StringUUIDField(default=uuid.uuid4, editable=False)
+
     modified_date = models.DateTimeField(auto_now=True, db_index=True)
     modified_by = models.ForeignKey(User, null=True, blank=True, db_index=True, on_delete=CASCADE)
 
@@ -1466,7 +1693,7 @@ class FieldAnnotation(models.Model):
 
     field = models.ForeignKey(DocumentField, db_index=True, on_delete=CASCADE, related_name='annotations_matches')
 
-    value = JSONField(blank=True, null=True, encoder=DjangoJSONEncoder)
+    value = JSONField(blank=True, null=True, encoder=ImprovedDjangoJSONEncoder)
 
     location_start = models.PositiveIntegerField(null=True, blank=True)
 
@@ -1486,7 +1713,7 @@ class FieldAnnotation(models.Model):
 
     assign_date = models.DateTimeField(blank=True, null=True)
 
-    status = models.ForeignKey(FieldAnnotationStatus, default=FieldAnnotationStatus.initial_status,
+    status = models.ForeignKey(FieldAnnotationStatus, default=FieldAnnotationStatus.initial_status_pk,
                                blank=True, null=True, db_index=True, on_delete=SET_NULL)
 
     history = HistoricalRecords()
@@ -1528,11 +1755,16 @@ class FieldAnnotation(models.Model):
 
 
 class FieldAnnotationFalseMatch(models.Model):
+    # INFO: added to make unique field among FieldAnnotation and FieldAnnotationFalseMatch
+    # as we use combined clauses views
+    # TODO: make it primary_key? - had issues with updating pk for history objects
+    uid = StringUUIDField(default=uuid.uuid4, editable=False)
+
     document = models.ForeignKey(Document, db_index=True, on_delete=CASCADE, related_name='annotation_false_matches')
 
     field = models.ForeignKey(DocumentField, db_index=True, on_delete=CASCADE, related_name='annotation_false_matches')
 
-    value = JSONField(blank=True, null=True, encoder=DjangoJSONEncoder)
+    value = JSONField(blank=True, null=True, encoder=ImprovedDjangoJSONEncoder)
 
     location_start = models.PositiveIntegerField(null=True, blank=True)
 
@@ -1543,6 +1775,11 @@ class FieldAnnotationFalseMatch(models.Model):
     text_unit = models.ForeignKey(TextUnit, blank=True, null=True,
                                   on_delete=CASCADE,
                                   related_name='annotation_false_matches')
+
+    assignee = models.ForeignKey(User, blank=True, null=True, db_index=True, on_delete=SET_NULL,
+                                 related_name='annotation_false_matches')
+
+    assign_date = models.DateTimeField(blank=True, null=True)
 
     history = HistoricalRecords()
 
@@ -1559,6 +1796,7 @@ class FieldAnnotationFalseMatch(models.Model):
         fa.location_end = ant.location_end
         fa.location_text = ant.location_text
         fa.text_unit = ant.text_unit
+        fa.assignee = ant.assignee
         return fa
 
 
@@ -1581,11 +1819,11 @@ class FieldAnnotationSavedFilter(models.Model):
 
     user = models.ForeignKey(User, blank=True, null=True, db_index=True, on_delete=CASCADE)
 
-    columns = JSONField(blank=True, null=True, encoder=DjangoJSONEncoder)
+    columns = JSONField(blank=True, null=True, encoder=ImprovedDjangoJSONEncoder)
 
-    column_filters = JSONField(blank=True, null=True, encoder=DjangoJSONEncoder)
+    column_filters = JSONField(blank=True, null=True, encoder=ImprovedDjangoJSONEncoder)
 
-    order_by = JSONField(blank=True, null=True, encoder=DjangoJSONEncoder)
+    order_by = JSONField(blank=True, null=True, encoder=ImprovedDjangoJSONEncoder)
 
     class Meta:
         ordering = ['filter_type', 'user__username', 'project_id']

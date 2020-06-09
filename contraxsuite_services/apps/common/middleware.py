@@ -25,7 +25,7 @@
 # -*- coding: utf-8 -*-
 
 # Standard imports
-from re import compile as re_compile
+import re
 
 from rest_auth.models import TokenModel
 
@@ -43,19 +43,20 @@ from django.utils.functional import curry
 
 # Project imports
 from apps.users.authentication import CookieAuthentication
+from apps.task.utils.task_utils import check_blocks
 # from apps.common.utils import get_test_user
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.5.0/LICENSE"
-__version__ = "1.5.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.6.0/LICENSE"
+__version__ = "1.6.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
 
-EXEMPT_URLS = [re_compile(settings.LOGIN_URL.lstrip('/'))]
+EXEMPT_URLS = [re.compile(settings.LOGIN_URL.lstrip('/'))]
 if hasattr(settings, 'LOGIN_EXEMPT_URLS'):
-    EXEMPT_URLS += [re_compile(expr) for expr in settings.LOGIN_EXEMPT_URLS]
+    EXEMPT_URLS += [re.compile(expr) for expr in settings.LOGIN_EXEMPT_URLS]
 
 
 class LoginRequiredMiddleware(MiddlewareMixin):
@@ -97,7 +98,7 @@ class LoginRequiredMiddleware(MiddlewareMixin):
 #
 #     """
 #     TEST_USER_FORBIDDEN_URLS = [
-#         re_compile(str(expr)) for expr in settings.AUTOLOGIN_TEST_USER_FORBIDDEN_URLS]
+#         re.compile(str(expr)) for expr in settings.AUTOLOGIN_TEST_USER_FORBIDDEN_URLS]
 #
 #     def process_view(self, request, view_func, args, kwargs):
 #
@@ -207,7 +208,11 @@ class RequestUserMiddleware(MiddlewareMixin):
         signals.post_delete.disconnect(dispatch_uid=(self.__class__, request,))
 
     def insert_user(self, user, sender, instance, **kwargs):
-        instance.request_user = user
+        try:
+            instance.request_user = user
+        except:
+            # if instance is not object
+            pass
 
 
 class AppEnabledRequiredMiddleware(MiddlewareMixin):
@@ -281,3 +286,30 @@ class CookieMiddleware(MiddlewareMixin):
         response.set_cookie('release_version', settings.VERSION_NUMBER)
 
         return response
+
+
+ALLOWED_ALWAYS_NON_GET_URLS = re.compile(r'/{}(?:admin|accounts)/|/rest-auth/|/api/v1/users/verify-token/'.format(settings.BASE_URL))
+
+
+class AppBlocksMiddleware(MiddlewareMixin):
+    """
+    Middleware that checks any blocks before processing
+    """
+    def process_view(self, request, view_func, args, kwargs):
+        # check for any app-wide blocks
+        if request.method != 'GET':
+            # allow any actions under /admin
+            if ALLOWED_ALWAYS_NON_GET_URLS.search(request.path):
+                return
+            block_msg = check_blocks(raise_error=False, error_message='Unable to process request.')
+            if block_msg is not False:
+                # 1. request is ajax
+                # 2. content type is json
+                # 3. any api request (except /api/app/ or /api/version/ - mostly this check is for
+                # apps.project.api.v1.ProjectViewSet.send_clusters_to_project which receives form data
+                if request.is_ajax() or request.META['CONTENT_TYPE'] == 'application/json' or re.search(r'^/api/v\d', request.path):
+                    response = JsonResponse({'detail': block_msg}, status=403)
+                else:
+                    response = HttpResponseForbidden()
+                    response.content = render(request, '403.html', context={'message': block_msg})
+                return response

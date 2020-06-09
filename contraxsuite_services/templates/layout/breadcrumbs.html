@@ -1,14 +1,22 @@
 {% if user.is_authenticated %}
-<div class="page-header">
+  <div class="page-header">
     <nav aria-label="breadcrumb">
-        <ol class="breadcrumb">
-            <li class="breadcrumb-item"><a href="#">Home</a></li>
-            {% block page_header_wrapper %}
-            <li class="breadcrumb-item active" aria-current="page">
-                {% block page_header %}{% endblock %}{% block page_header_addon %}{% endblock %}
-            </li>
-            {% endblock %}
-        </ol>
+      <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="#">Home</a></li>
+        {% block page_header_wrapper %}
+          <li class="breadcrumb-item active" aria-current="page">
+            {% block page_header %}{% endblock %}{% block page_header_addon %}{% endblock %}
+          </li>
+        {% endblock %}
+      </ol>
     </nav>
-</div>
+    <div class="right-block">
+      <label for="id_project">Project Selection:</label>
+      <select name="project_selection" class="chosen" id="id_project_selection">
+      <option value="" selected>---------</option>
+        {% for project_id, project_name in user_projects.values %}
+          <option value="{{ project_id }}">{{ project_name }}</option>
+        {% endfor %}
+    </div>
+  </div>
 {% endif %}

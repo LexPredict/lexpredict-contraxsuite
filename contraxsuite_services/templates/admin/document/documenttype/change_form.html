@@ -1,0 +1,15 @@
+{% extends "admin/change_form.html" %}
+
+{% block submit_buttons_bottom %}
+  {% if clone %}
+    <div class="submit-row clearfix">
+      <button type="submit" class="btn btn-high btn-info" name="_save">Clone</button>
+      <a href="{% url "admin:document_documenttype_change" object_id %}"><button class="btn btn-high" type="button">Cancel</button></a>
+    </div>
+  {% else %}
+    {{ block.super }}
+    <div class="submit-row" style="margin-top: 10px;">
+      <a href="{% url "admin:clone_document_type" object_id %}"><button class="btn btn-high btn-warning" type="button">Clone</button></a>
+    </div>
+  {% endif %}
+{% endblock %}

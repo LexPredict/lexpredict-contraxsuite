@@ -127,8 +127,15 @@
     div.jconfirm-content-pane {
       overflow: visible !important;
     }
+  .popup-error {
+    background-color: #ff9b9c;
+    padding: 5px 10px;
+  }
   </style>
 {% endblock %}
+
+{% block project_selection %}{% endblock %}
+
 
 {% block button_block %}
   {{ block.super }}
@@ -226,14 +233,14 @@
           <li class="dropdown-item">
             <a class="task" href="#"
                data-href="{% url "analyze:train-text-unit-classifier" %}"
-               data-btn-text="Classify">
+               data-btn-text="Train">
               <i class="fa fa-object-group"></i>
               Train Text Units Classifier</a>
           </li>
           <li class="dropdown-item">
             <a class="task" href="#"
                data-href="{% url "analyze:train-document-classifier" %}"
-               data-btn-text="Classify">
+               data-btn-text="Train">
               <i class="fa fa-object-group"></i>
               Train Documents Classifier</a>
           </li>
@@ -303,7 +310,7 @@
   <form class="popup-form ltr load-form-template">
 
     <div class="fancy-title title-bottom-border">
-      <h4>Load Terms</h4>
+      <h4>Load Terms</h4><span> Custom ProjectTermConfigurations will not be automatically updated with these newly loaded Terms.</span>
     </div>
 
     <div class="level-1">
@@ -602,6 +609,21 @@
           $form.find('[name^="svc_"], [name^="mnb_"], [name^="rfc_etc_"]' + hidden_advanced).parent('p').hide()
         }
       }
+
+      {# build doc2vec vectors form #}
+      else if ($('.build-features-form').length) {
+        let sel_src = $('.bootstrap-switch-id-id_source_select.bootstrap-switch-on').length;
+        sel_src = sel_src ? 'text-unit' : 'document';
+        console.log(sel_src);
+        show_preffix = 'txt_';
+        hide_preffix = 'doc_';
+        if (sel_src == 'text-unit') {
+          show_preffix = 'doc_';
+          hide_preffix = 'txt_';
+        }
+        $form.find('[name^="' + show_preffix + '"]').parent('p').show();
+        $form.find('[name^="' + hide_preffix + '"]').parent('p').hide();
+      }
     };
     var onLoadJC = function(jc){
       var $form = jc.$content;
@@ -684,9 +706,11 @@
       $form.find('[name="do_cluster_documents"], ' +
           '[name="do_cluster_text_units"], ' +
           'select[name="using"], select[name="algorithm"], ' +
-          'input[name="options"]').on('change switchChange.bootstrapSwitch', function () {
+          'input[name="options"], ' +
+          'input[name="source_select"]').on('change switchChange.bootstrapSwitch', function () {
         show_options($form)
       });
+
       show_options($form);
       // activate form using small delay to enable all plugins !!!
       $form.find('input[type="checkbox"]').prop("disabled", false);
@@ -695,6 +719,8 @@
 
     $('.task').click(function(){
       var $that = $(this);
+      window.contentReady = false;
+      window.dataLoaded = false;
       var jc = $.confirm({
         title: 'Are you sure?',
         backgroundDismiss: true,
@@ -719,6 +745,11 @@
             // disable form checkboxes for 1 s to allow to activate all handlers firstly
             $content.find('input[type="checkbox"]:not(.bt-switch)').prop("disabled", true);
             $content.addClass('disabled');
+            window.contentReady = true;
+            if (window.dataLoaded)
+              setTimeout(function() {
+                onLoadJC(jc);
+              }, {{task_dialog_freeze_ms}});
           }).fail(function(xhr) {
             jc.close();
             $.alert({
@@ -731,12 +762,14 @@
                 $('.jqxgrid').jqxGrid('updatebounddata')
               }
             })
-          })
-        },
+          }) // - end of "$.get($that.data('href'))"
+        }, // - end of "content: $that.data('content') || function(){"
         onContentReady: function(){
-          setTimeout(function() {
-            onLoadJC(jc);
-          }, 5000);
+          window.dataLoaded = true;
+            if (window.contentReady)
+              setTimeout(function() {
+                onLoadJC(jc);
+              }, {{task_dialog_freeze_ms}});
         },
         columnClass: 'col-md-8',
         type: $that.data('type') || 'blue',
@@ -761,8 +794,10 @@
                      console.log('Start over from here');
                      // start over skipping confirmation
                      post_data = formdata ? formdata : form.serialize();
-                     console.log(post_data);
                      post_data.append('skip_confirmation', true);
+                     // UWSGI - Daphne migration
+                     post_data.append('csrfmiddlewaretoken', jQuery("[name=csrfmiddlewaretoken]").val())
+                     console.log(post_data);
                      $.ajax({
                         url: $that.data('href'),
                         type: 'POST',
@@ -809,29 +844,37 @@
               };
 
               onError = function(data) {
-                  if ('status' in data.responseJSON) {
-                    $.alert({
-                      icon: 'fa fa-warning text-danger',
-                      title: 'Something went wrong',
-                      type: 'red',
-                      content: data.statusText,
-                      columnClass: 'col-md-4',
-                      onClose: function(){
-                        $('.jqxgrid').jqxGrid('updatebounddata')
-                      } // onClose
-                    }); // $.alert
-                    return false;
-                  } // if ('status'
+                if ( typeof data.responseJSON === 'string' || data.responseJSON instanceof String){
+                  var error_p = '<p class="popup-error">' + data.responseJSON + '</p>';
+                  jc.$content.before(error_p);
+                }
 
-                  $.each(data.responseJSON, function(field, error) {
+                else if (data.responseJSON && typeof data.responseJSON === 'object' && data.responseJSON.constructor === Object && 'status' in data.responseJSON) {
+                  $.alert({
+                    icon: 'fa fa-warning text-danger',
+                    title: 'Something went wrong',
+                    type: 'red',
+                    content: data.statusText,
+                    columnClass: 'col-md-4',
+                    onClose: function(){
+                      $('.jqxgrid').jqxGrid('updatebounddata')
+                    } // onClose
+                  }); // $.alert
+                  return false;
+                } // if ('status'
+
+                else {
+                  $.each(data.responseJSON, function (field, error) {
                     var error_p = '<p class="error">' + error[0] + '</p>';
                     form.find('#id_' + field).before(error_p);
                   }); // $.each
-                  return false;
+                }
               };
 
               post_data = formdata ? formdata : form.serialize();
-              console.log('post data is: ');
+              // UWSGI - Daphne migration
+              post_data.append('csrfmiddlewaretoken', jQuery("[name=csrfmiddlewaretoken]").val())
+              console.log('post data is here: ');
               console.log(post_data)
 
               $.ajax({
@@ -842,6 +885,8 @@
                 processData: false,
                 success: onSuccess,
                 error: onError});
+              //
+              return false
             }
           },
           cancel: {
@@ -854,7 +899,7 @@
     $('.task-load').click(function(){
       var $that = $(this);
       $.confirm({
-        title: 'Load data from github repository or from filesystem.',
+        title: 'Load Data from a GitHub Repository or from Filesystem.',
         backgroundDismiss: true,
         content: function(){
           var $form = $('.load-form-template').clone().toggleClass('load-form-template load-form');
@@ -986,8 +1031,19 @@
         { text: 'Task Name', datafield: 'display_name', width: 'auto',
           align: 'center', cellsalign: 'left',
           cellsrenderer: defaultLinkFormatter },
-        { text: 'Description', datafield: 'description', width: 80,
-          align: 'center', cellsalign: 'left' },
+        { text: 'Arguments / Description', datafield: 'description', width: 'auto',
+          align: 'center', cellsalign: 'left',
+           cellsrenderer: function(row_num, row_type, v, defaulthtml, columnproperties, row) {
+            v = v ? v : '';
+            if (typeof v === 'string')
+              v = v.split('\n');
+            {#if (v.length > 2)#}
+            {#  v = v.slice(0, 2);#}
+            v = v.join('\n');
+            v = '<pre>' + v + '</pre>';
+            defaulthtml = $(defaulthtml).css('margin-top', '5px');
+            return renderCell(defaulthtml, v);
+          }},
         { text: 'User', datafield: 'username', width: 100,
           align: 'center', cellsalign: 'center' },
         { text: 'Scheduled', datafield: 'date_start', width: 90,

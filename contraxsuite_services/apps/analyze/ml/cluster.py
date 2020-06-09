@@ -27,6 +27,7 @@
 import datetime
 import inspect
 import sys
+from typing import Callable
 
 import numpy as np
 import sklearn.cluster
@@ -35,12 +36,12 @@ from sklearn.feature_extraction.text import TfidfTransformer
 
 from apps.analyze.models import DocumentCluster, TextUnitCluster
 from apps.document.models import Document, TextUnit
-from apps.analyze.ml.features import DocumentFeatures, TextUnitFeatures
+from apps.analyze.ml.features import DocumentFeatures, TextUnitFeatures, Document2VecFeatures, TextUnit2VecFeatures
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.5.0/LICENSE"
-__version__ = "1.5.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.6.0/LICENSE"
+__version__ = "1.6.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -241,7 +242,6 @@ class ClusterDocuments:
         >>> clustering.metadata
 
     """
-    features_model = DocumentFeatures
     default_cluster_name = 'Document Cluster'
     db_target_model = Document
     db_cluster_model = DocumentCluster
@@ -260,6 +260,7 @@ class ClusterDocuments:
                  name=None,
                  use_default_name=False,
                  description=None,
+                 log_message: Callable[[str, str], None] = None,
                  **cluster_options):
         """
         :param queryset: Document/TextUnit queryset
@@ -272,8 +273,10 @@ class ClusterDocuments:
         :param name: str - clustering custom name
         :param use_default_name: bool - use default name "Default({cluster_pk})"
         :param description: str - clustering custom description
+        :param log_message: log routine(msg: str, msg_key: str)
         :param cluster_options: **kwargs for cluster model
         """
+        self.features_model = DocumentFeatures
         self.project_id = project_id
         self.queryset = queryset
         self.use_tfidf = use_tfidf
@@ -289,6 +292,12 @@ class ClusterDocuments:
         self.description = description
         self.engine_wrapper = self.get_engine_wrapper()
         self.start_date = None
+        self.log_message_routine = log_message
+        self.init_classifier()
+
+    def init_classifier(self):
+        if self.cluster_by == 'text' or self.cluster_by == ['text']:
+            self.features_model = Document2VecFeatures
 
     def get_engine_wrapper(self):
         """
@@ -318,7 +327,10 @@ class ClusterDocuments:
             queryset=self.queryset,
             project_id=self.project_id,
             feature_source=self.cluster_by,
-            unit_type=self.unit_type).get_features()
+            unit_type=self.unit_type,
+            log_message=self.log_message_routine).get_features()
+        elapsed = (datetime.datetime.now() - self.start_date).total_seconds()
+        self.log_message(f'Getting features took {elapsed} seconds.')
 
         # Run cluster model - the magic is here!
         clustering = self.engine_wrapper(
@@ -409,7 +421,7 @@ class ClusterDocuments:
         :return: DB object pk
         """
         cluster_title = self.name or self.get_db_cluster_title(cluster_label_id)
-        cluster_self_name = '-'.join(cluster_terms[:5]) if cluster_terms else None
+        cluster_self_name = '-'.join([str(c) for c in cluster_terms[:5]]) if cluster_terms else None
 
         db_cluster_obj = self.db_cluster_model.objects.create(
             cluster_id=cluster_label_id,
@@ -440,6 +452,10 @@ class ClusterDocuments:
             start_date=self.start_date)
         return cluster_name
 
+    def log_message(self, msg: str, msg_key='') -> None:
+        if self.log_message_routine:
+            self.log_message_routine(msg, msg_key)
+
 
 class ClusterTextUnits(ClusterDocuments):
     features_model = TextUnitFeatures
@@ -449,3 +465,7 @@ class ClusterTextUnits(ClusterDocuments):
     db_cluster_model_m2m_name = 'text_units'
     point_item_id_name = 'text_unit_id'
     point_item_name_field = 'text_unit_name'
+
+    def init_classifier(self):
+        if self.cluster_by == 'text' or self.cluster_by == ['text']:
+            self.features_model = TextUnit2VecFeatures

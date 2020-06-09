@@ -26,11 +26,12 @@
 
 # Third-party imports
 from rest_framework.permissions import BasePermission, IsAuthenticated
+from apps.task.utils.task_utils import check_blocks
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.5.0/LICENSE"
-__version__ = "1.5.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.6.0/LICENSE"
+__version__ = "1.6.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -65,3 +66,15 @@ class ReviewerForbiddenPermission(IsAuthenticated):
         if not res:
             return res
         return not request.user.is_reviewer
+
+
+class AppBlockPermissions(BasePermission):
+
+    def has_permission(self, request, view):
+        # check for any app-wide blocks
+        if request.method != 'GET':
+            block_msg = check_blocks(raise_error=False, error_message='Unable to process request.')
+            if block_msg is not False:
+                self.message = block_msg
+                return False
+        return True

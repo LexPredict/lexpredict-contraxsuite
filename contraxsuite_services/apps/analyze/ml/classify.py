@@ -61,6 +61,7 @@ import datetime
 import inspect
 import pickle
 import sys
+from typing import Optional, Union, List
 
 import sklearn.feature_extraction
 from sklearn.ensemble import ExtraTreesClassifier, RandomForestClassifier
@@ -68,17 +69,18 @@ from sklearn.linear_model import LogisticRegressionCV
 from sklearn.naive_bayes import MultinomialNB
 from sklearn.svm import SVC
 
+from apps.analyze.ml.utils import ModelUniqueNameBuilder
 from apps.analyze.models import (
     TextUnitClassification, TextUnitClassifier, TextUnitClassifierAssessment,
     DocumentClassification, DocumentClassifier, DocumentClassifierAssessment,
     DocumentClassifierSuggestion, TextUnitClassifierSuggestion)
 from apps.document.models import Document, TextUnit
-from apps.analyze.ml.features import DocumentFeatures, TextUnitFeatures
+from apps.analyze.ml.features import DocumentFeatures, TextUnitFeatures, Document2VecFeatures, TextUnit2VecFeatures
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.5.0/LICENSE"
-__version__ = "1.5.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.6.0/LICENSE"
+__version__ = "1.6.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -236,12 +238,16 @@ class ClassifyDocuments:
     """
 
     source_db_model = Document
-    features_engine_class = DocumentFeatures
     classification_db_model = DocumentClassification
     classifier_db_model = DocumentClassifier
     assessment_db_model = DocumentClassifierAssessment
     suggestion_db_model = DocumentClassifierSuggestion
     target_id_name = 'document_id'
+
+    @classmethod
+    def get_features_engine_class(cls, classify_by: Optional[str]):
+        return Document2VecFeatures \
+            if classify_by == 'text' or classify_by == ['text'] else DocumentFeatures
 
     def get_engine_wrapper(self, classifier_algorithm):
         """
@@ -261,13 +267,14 @@ class ClassifyDocuments:
     def build_classifier(self,
                          class_name,
                          train_queryset=None,
-                         train_project_id=None,
+                         train_project_id: Optional[Union[int, List[int]]] = None,
+                         project_name_filter: Optional[str] = None,
                          unit_type='sentence',
                          class_missing='ignore',
                          classifier_algorithm='RandomForestClassifier',
                          classifier_assessment=True,
-                         classifier_name=None,
-                         metric_pos_label=None,
+                         classifier_name: Optional[str] = None,
+                         metric_pos_label: Optional[str] = None,
                          classify_by='term',
                          use_tfidf=True,
                          **classifier_options):
@@ -279,6 +286,7 @@ class ClassifyDocuments:
         :param class_name: str - classification name
         :param train_queryset: Document/TextUnit queryset to train classifier
         :param train_project_id: int - to train classifier
+        :param project_name_filter: alternative to
         :param unit_type: str - one of "sentence", "paragraph"
         :param class_missing: str['ignore', 'negative']
         :param classifier_algorithm: str - one of ['RandomForestClassifier',]
@@ -291,9 +299,10 @@ class ClassifyDocuments:
         :return: classifier db object
         """
         # pre-initialize feature engine to get initial queryset
-        feature_engine = self.features_engine_class(
+        feature_engine = self.get_features_engine_class(classify_by)(
             queryset=train_queryset,
             project_id=train_project_id,
+            project_name_filter=project_name_filter,
             feature_source=classify_by,
             unit_type=unit_type,
             drop_empty_rows=True,
@@ -347,10 +356,14 @@ class ClassifyDocuments:
         # Save model
         classify_by_str = ', '.join(classify_by) if isinstance(classify_by, (list, tuple))\
             else classify_by
+
+        model_name = "{} class={} algo={} tfidf={} by={}".format(
+            'name={} '.format(classifier_name) if classifier_name else '',
+            class_name, classifier_algorithm, use_tfidf, classify_by_str)
+        model_name = ModelUniqueNameBuilder.ensure_unique_name(model_name, self.classifier_db_model)
+
         classifier = self.classifier_db_model(
-            name="{}class={} algo={} tfidf={} by={}".format(
-                'name={} '.format(classifier_name) if classifier_name else '',
-                class_name, classifier_algorithm, use_tfidf, classify_by_str),
+            name=model_name,
             version=datetime.datetime.now().isoformat(),
             class_name=class_name,
             is_active=True)
@@ -374,6 +387,9 @@ class ClassifyDocuments:
                         continue
                     else:
                         metric_kwargs = {'pos_label': metric_pos_label}
+                if 'average' in inspect.getfullargspec(metric_func).args[1:] \
+                        and 'metric_average' in classifier_options:
+                    metric_kwargs['average'] = classifier_options['metric_average']
 
                 ca = self.assessment_db_model()
                 ca.assessment_name = metric_name
@@ -387,7 +403,7 @@ class ClassifyDocuments:
     def run_classifier(self,
                        classifier,
                        test_queryset=None,
-                       test_project_id=None,
+                       test_project_id: Optional[Union[int, List[int]]] = None,
                        unit_type='sentence',
                        min_confidence=50):
         """
@@ -406,7 +422,7 @@ class ClassifyDocuments:
         min_confidence /= 100
 
         # get features according to model feature names
-        feature_engine = self.features_engine_class(
+        feature_engine = self.get_features_engine_class(clf_model.classify_by)(
             queryset=test_queryset,
             project_id=test_project_id,
             feature_source=clf_model.classify_by,
@@ -449,3 +465,8 @@ class ClassifyTextUnits(ClassifyDocuments):
     assessment_db_model = TextUnitClassifierAssessment
     suggestion_db_model = TextUnitClassifierSuggestion
     target_id_name = 'text_unit_id'
+
+    @classmethod
+    def get_features_engine_class(cls, classify_by: Optional[str]):
+        return TextUnit2VecFeatures \
+            if classify_by == 'text' or classify_by == ['text'] else TextUnitFeatures

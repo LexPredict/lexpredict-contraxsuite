@@ -24,18 +24,27 @@
 """
 # -*- coding: utf-8 -*-
 
+import gc
+from typing import Callable, Optional, Union, List, Tuple, Any
+
+import gensim
 import pandas as pd
 import psutil
 import numpy as np
 
-from django.db.models import Sum, Value, Q, Case, When, IntegerField
+from django.db.models import Sum, Value, Q, Case, When, IntegerField, QuerySet, CharField
 
-from apps.document.models import Document, TextUnit
+from apps.analyze.ml.transform import Doc2VecTransformer
+from apps.analyze.ml.utils import ProjectsNameFilter
+from apps.analyze.models import DocumentVector, BaseTransformer, TextUnitVector
+from apps.document.models import Document, TextUnit, DocumentText, TextUnitText
+from apps.extract.models import *
+from apps.project.models import Project
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.5.0/LICENSE"
-__version__ = "1.5.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.6.0/LICENSE"
+__version__ = "1.6.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -74,6 +83,15 @@ class Features:
         return self.feature_df.columns.tolist()
 
 
+def get_mb(size):
+    return round(size / 1024 / 1024, 2)
+
+
+def get_df_info(df):
+    size = get_mb(df.memory_usage().sum())
+    return f'shape={df.shape} size={size}M'
+
+
 class DocumentFeatures:
     """
     Collects features for Documents.
@@ -86,49 +104,49 @@ class DocumentFeatures:
         ...:        unit_type="sentence").get_features()
     Returns Feature object (see above for its signature)
     """
+    source_item = 'document'
     source_model = Document
-    project_filter_key = 'project_id'
-    unit_type_filter = 'textunit__unit_type'
+    target_id_field = 'document_id'
+    unit_type_filter = 'text_unit__unit_type'
+    aggregation_function = Sum('count')
+    max_chunk_size = 5000
+
+    source_models = dict(
+        date=DateUsage,
+        definition=DefinitionUsage,
+        duration=DateDurationUsage,
+        court=CourtUsage,
+        currency_name=CurrencyUsage,
+        currency_value=CurrencyUsage,
+        term=TermUsage,
+        party=PartyUsage,
+        geoentity=GeoEntityUsage)
 
     source_fields = dict(
-        source_type='source_type',
-        document_type='document_type',
-        metadata='documentmetadata__metadata',
-        date='textunit__dateusage__date',
-        definition='textunit__definitionusage__definition',
-        duration='textunit__datedurationusage__duration_days',
-        court='textunit__courtusage__court__name',
-        currency_name='textunit__currencyusage__currency',
-        currency_value='textunit__currencyusage__amount',
-        term='textunit__termusage__term__term',
-        party='textunit__partyusage__party__name',
-        geoentity='textunit__geoentityusage__entity__name')
-
-    aggregation_functions = dict(
-        source_type=Value('source_type'),
-        document_type=Value('document_type'),
-        metadata=Value('documentmetadata__metadata'),
-        date=Sum('textunit__dateusage__count'),
-        definition=Sum('textunit__definitionusage__count'),
-        duration=Sum('textunit__datedurationusage__count'),
-        court=Sum('textunit__courtusage__count'),
-        currency_name=Sum('textunit__currencyusage__count'),
-        currency_value=Sum('textunit__currencyusage__count'),
-        term=Sum('textunit__termusage__count'),
-        party=Sum('textunit__partyusage__count'),
-        geoentity=Sum('textunit__geoentityusage__count'))
+        date='date',
+        definition='definition',
+        duration='duration_days',
+        court='court__name',
+        currency_name='currency',
+        currency_value='amount',
+        term='term__term',
+        party='party__name',
+        geoentity='entity__name')
 
     def __init__(self,
                  queryset=None,
-                 project_id=None,
+                 project_id: Optional[Union[int, List[int]]] = None,
+                 project_name_filter: Optional[str] = None,
                  unit_type='sentence',
                  feature_source='term',
                  drop_empty_rows=True,
                  drop_empty_columns=True,
-                 external_feature_names=None):
+                 external_feature_names=None,
+                 log_message: Callable[[str, str], None] = None):
         """
         :param queryset: Document/TextUnit queryset
         :param project_id: int
+        :param project_name_filter: str - alternative to project_id
         :param unit_type: str - one of "sentence", "paragraph"
         :param feature_source: str or list[str] - source name - e.g. "term", or ["term", "date"]
         :param drop_empty_rows: bool - whether skip empty rows from resulted queryset
@@ -137,17 +155,19 @@ class DocumentFeatures:
         """
         self.queryset = queryset
         self.project_id = project_id
+        self.project_name_filter = project_name_filter
         self.unit_type = unit_type
         self.feature_source = [feature_source] if isinstance(feature_source, str) else feature_source
         self.drop_empty_rows = drop_empty_rows
         self.drop_empty_columns = drop_empty_columns
         self.external_feature_names = external_feature_names
-        self.check()
+        self.log_message_routine = log_message
+        self.filter_projects_by_name()
+        self.check_arguments()
 
-    def check(self):
-        """
-        Validate incoming data
-        """
+    def check_arguments(self):
+        if 'text' in self.feature_source:
+            raise RuntimeError('"text" is not implemented among other feature sources, see Document2VecFeatures')
         if self.unit_type not in ('sentence', 'paragraph'):
             raise RuntimeError('The "unit_type" argument should be one of "sentence", "paragraph".')
         if not isinstance(self.feature_source, (list, tuple)):
@@ -156,6 +176,13 @@ class DocumentFeatures:
             raise RuntimeError('The "feature_source" argument should contain only {}, but it includes {}'.format(
                 str(list(self.source_fields.keys())), str(self.feature_source)))
 
+    def filter_projects_by_name(self):
+        project_name_filter = (self.project_name_filter or '').strip()
+        if project_name_filter and not self.project_id:
+            self.project_id = ProjectsNameFilter.filter_objects_by_name(
+                Project, project_name_filter)
+            self.project_name_filter = ''
+
     def get_queryset(self):
         """
         Get target model queryset (Document vs TextUnit)
@@ -163,22 +190,27 @@ class DocumentFeatures:
         """
         target_qs = self.queryset or self.source_model.objects
         target_qs = target_qs.filter()
-        if self.project_id:
-            target_qs = target_qs.filter(**{self.project_filter_key: self.project_id})
+        target_qs = self.filter_by_project_id(target_qs)
         if not target_qs.exists():
             msg = 'Initial queryset {}is empty.'.format(
                 'of chosen project_id={} '.format(self.project_id) if self.project_id else '')
             raise EmptyDataSetError(msg, feature_source=self.feature_source)
         return target_qs.distinct()
 
+    def filter_by_project_id(self, queryset) -> Any:
+        if not self.project_id:
+            return queryset
+        project_ids = [self.project_id] if isinstance(self.project_id, int) else self.project_id or []
+        return queryset.filter(project_id__in=project_ids)
+
     def get_chunk_size(self, row_cost, memory_use=0.1, zeros=3):
-        free_memory = psutil.virtual_memory().free
+        free_memory = psutil.virtual_memory().available
         chunk_size = free_memory * memory_use / row_cost
         len_chunk_size = len(str(int(chunk_size)))
         zeros = min([zeros, len_chunk_size - 1])
         return int(str(chunk_size)[0:len_chunk_size - zeros] + '0' * zeros)
 
-    def get_feature_df(self):
+    def get_feature_df(self) -> Tuple[pd.SparseDataFrame, List[Any]]:
         """
         Transform incoming data into pandas dataframe
         :return: tuple(features pandas.DataFrame, unqualified item id list)
@@ -187,95 +219,89 @@ class DocumentFeatures:
         df = pd.SparseDataFrame()
 
         target_qs = self.get_queryset()
-        target_id_field = 'id'
         counter = 'counter'
 
         for feature_source_item in self.feature_source:
 
+            msg = f'Get "{feature_source_item}" feature data:'
+            self.log_message(msg)
+            self.log_message('_' * len(msg))
+
             # get aggregation queryset parameters for .annotate function
+            source_model = self.source_models[feature_source_item]
             source_field = self.source_fields[feature_source_item]
-            aggregation_function = self.aggregation_functions[feature_source_item]
-            aggregation_function.filter = Q(**{self.unit_type_filter: self.unit_type})
-            aggregation = {counter: aggregation_function}
-
-            # use bool value for missing metadata
-            if feature_source_item == 'metadata':
-                aggregation = {
-                    counter: Case(When(**{source_field + '__isnull': False}, then=Value(1)),
-                                  default=Value(0), output_field=IntegerField())}
-
-            # prepare feature_source_item-specific values queryset with total counts per ID/term
-            term_source_qs = target_qs \
-                .order_by(target_id_field, source_field) \
-                .values(target_id_field, source_field) \
-                .annotate(**aggregation) \
-                .exclude(**{counter: None})
-
-            # skip unqualified rows with zeros
-            if self.drop_empty_rows:
-                term_source_qs = term_source_qs.filter(**{counter + '__gt': 0})
-
-            if not term_source_qs.exists():
-                continue
-
-            # unpack nested metadata values into features
-            if feature_source_item == 'metadata':
-                term_source_qs = [
-                    {'id': item['id'], source_field: '%s: %s' % (k, str(v)), counter: 1} for item in
-                    term_source_qs for k, v in item[source_field].items()]
-
-            # FIXME: leave it just commented out - seems it doesn't work properly
-            # use number of days since min value as feature value
-            # if feature_source_item == 'date':
-            #     min_value = df_[source_field].min().toordinal() - 1
-            #     df_[counter] = df_.apply(lambda x: x[source_field].toordinal() - min_value, axis=1)
-
-            # FIXME: leave it just commented out - seems it doesn't work properly
-            # use amount value as feature value
-            # elif feature_source_item in ['duration', 'currency_value']:
-            #     df_[counter] = df_.apply(lambda x: x[source_field], axis=1)
+            target_id_field = self.target_id_field
+            aggregation = {counter: self.aggregation_function}
 
             # try to decrease memory usage iterating over chunks and using sparse dataframes
             # Note: pivot_table takes extra memory so use lower memory limits
-            ids = list(set(target_qs.values_list(target_id_field, flat=True)))
+            source_qs = source_model.objects.filter(**{target_id_field+'__in': target_qs.values_list('id')})
+
+            if hasattr(source_model, 'text_unit'):
+                source_qs = source_qs.filter(**{self.unit_type_filter: self.unit_type})
+
+            ids = sorted(source_qs.order_by(target_id_field).values_list(target_id_field,flat=True).distinct())
+            terms = sorted(source_qs.order_by(source_field).values_list(source_field, flat=True).distinct())
             id_count = len(ids)
-            terms = sorted(list(term_source_qs.order_by(source_field)
-                                .values_list(source_field, flat=True).distinct()))
             term_count = len(terms)
 
-            print('id_count: ', id_count)
-            print('term_count: ', term_count)
+            self.log_message(f'{self.source_item}s containing "{feature_source_item}": {id_count}')
+            self.log_message(f'unique "{feature_source_item}" items: {term_count}')
 
-            chunk_size = self.get_chunk_size(term_count * 2)    # np.uint16 - 2 bytes
+            if not term_count:
+                self.log_message(f'WARN: there are no "{feature_source_item}" entities found')
+                continue
 
-            print('chunk_size: ', chunk_size)
+            from_mem_chunk_size = self.get_chunk_size(term_count * 2)    # np.uint16 - 2 bytes
+            chunk_size = min([self.max_chunk_size, from_mem_chunk_size])
+            self.log_message(f'chunk_size from_mem/min/final: {from_mem_chunk_size}/{self.max_chunk_size}/{chunk_size}')
 
             # FIXME: pandas 0.25 has another way:
             # https://pandas.pydata.org/pandas-docs/stable/user_guide/sparse.html#sparse-migration
             df_ = pd.SparseDataFrame()
 
             for step in range(0, id_count, chunk_size):
+                self.log_message(f'...process "{feature_source_item}" feature: "{self.source_item}s" range: {step}-{step + chunk_size}')
 
-                print('process range: {}-{}'.format(step, step + chunk_size))
+                chunk_qs = source_qs \
+                    .filter(**{target_id_field + '__in': ids[step:step + chunk_size]}) \
+                    .order_by(target_id_field, source_field) \
+                    .values(target_id_field, source_field) \
+                    .annotate(**aggregation)
 
-                chunk_qs = term_source_qs.filter(
-                    **{target_id_field + '__in': ids[step:step + chunk_size]})
+                if not chunk_qs.exists():
+                    continue
+
                 chunk_df = pd.DataFrame.from_records(list(chunk_qs))
+                del chunk_qs
+                gc.collect()  # try to free up memory
+
                 chunk_df[counter] = chunk_df[counter].astype(np.uint16)
                 chunk_dft = chunk_df.pivot_table(
                     index=target_id_field, columns=source_field,
                     values=counter, aggfunc=sum)
+
+                self.log_message(f'......chunk_df: {get_df_info(chunk_df)}')
+                del chunk_df
+                gc.collect()  # try to free up memory
+
                 missed_columns = list(set(terms) - set(chunk_dft.columns))
                 chunk_dft = chunk_dft.reindex(chunk_dft.columns.tolist() + missed_columns, axis=1) \
                     .fillna(0).astype(np.uint16)
-                chunk_dfts = chunk_dft.fillna(0).to_sparse(fill_value=0)
-                df_ = df_.append(chunk_dfts).fillna(0)
 
-                print('chunk_df size: ', chunk_df.memory_usage().sum())
-                print('chunk_dft size: ', chunk_dft.memory_usage().sum())
-                print('chunk_dfts size: ', chunk_dfts.memory_usage().sum())
-                print('df_ size: ', df_.memory_usage().sum())
-                print('df_ shape: ', df_.shape)
+                chunk_dfts = chunk_dft.fillna(0).to_sparse(fill_value=0)
+                self.log_message(f'......chunk_dft: {get_df_info(chunk_dft)}')
+                del chunk_dft
+                gc.collect()  # try to free up memory
+
+                df_ = df_.append(chunk_dfts).fillna(0)
+                self.log_message(f'......chunk_dfts: {get_df_info(chunk_dfts)}')
+                del chunk_dfts
+                gc.collect()  # try to free up memory
+
+                self.log_message(f'......df_: {get_df_info(df_)}')
+                mem = psutil.virtual_memory()
+                self.log_message(f'......available memory: {get_mb(mem.available)}M ({mem.percent}%)')
 
             if self.drop_empty_columns:
                 df_ = df_.dropna(axis=1, how='all')
@@ -283,11 +309,15 @@ class DocumentFeatures:
             # name columns by feature_source item like "term(account)", "duration(30)"
             df_.columns = ["%s(%s)" % (feature_source_item, str(i)) for i in df_.columns]
 
-            # join  feature_source_item-specific dataframe into results dataframe
+            # join feature_source_item-specific dataframe into results dataframe
+            gc.collect()    # try to free up memory
             df = df.join(df_, how='outer')
+            del df_
+            gc.collect()    # try to free up memory
 
-            print('df size: ', df.memory_usage().sum())
-            print('df shape: ', df.shape)
+            self.log_message(f'df: {get_df_info(df)}')
+            mem = psutil.virtual_memory()
+            self.log_message(f'available memory: {get_mb(mem.available)}M ({mem.percent}%)')
 
         if df.empty:
             msg = 'No features of chosen "feature_source" options {} detected. ' \
@@ -295,26 +325,25 @@ class DocumentFeatures:
             raise EmptyDataSetError(msg, feature_source=self.feature_source)
 
         # item ids not included in feature df which don't have features at all
-        initial_id_set = set(target_qs.values_list(target_id_field, flat=True))
+        initial_id_set = set(target_qs.values_list('id', flat=True))
         feature_id_set = set(df.index.tolist())
         unqualified_item_ids = sorted(list(initial_id_set.difference(feature_id_set)))
 
-        print('count unqualified_item_ids: ', len(unqualified_item_ids))
+        self.log_message('count unqualified_item_ids: {}'.format(len(unqualified_item_ids)))
 
         if not self.drop_empty_rows and unqualified_item_ids:
             unqualified_items_df = pd.SparseDataFrame(index=unqualified_item_ids, columns=df.columns).fillna(0)
 
-            print('unqualified_items_df size: ', unqualified_items_df.memory_usage().sum())
-            print('unqualified_items_df shape: ', unqualified_items_df.shape)
+            self.log_message('unqualified_items_df shape: {} size: {}'.format(
+                unqualified_items_df.shape, unqualified_items_df.memory_usage().sum()))
 
-            df = df.join(unqualified_items_df, how='outer')
+            df = pd.concat([df, unqualified_items_df]).fillna(0).astype(np.uint16)
 
-            print('df size: ', df.memory_usage().sum())
-            print('df shape: ', df.shape)
+            self.log_message(f'df: {get_df_info(df)}')
 
         return df, unqualified_item_ids
 
-    def get_features(self):
+    def get_features(self) -> Features:
         """
         Aggregator method to transform incoming queryset into features and indexes
         :return: Features object
@@ -357,44 +386,20 @@ class DocumentFeatures:
         document_id_to_name = dict(Document.objects.filter(id__in=item_index).values_list('id', 'name'))
         return [document_id_to_name[i] for i in item_index]
 
+    def log_message(self, msg: str, msg_key='') -> None:
+        if self.log_message_routine:
+            self.log_message_routine(msg, msg_key)
+
 
 class TextUnitFeatures(DocumentFeatures):
     """
     Collects features for TextUnits
     See DocumentFeatures docstring.
     """
-
+    source_item = 'text_unit'
     source_model = TextUnit
-    project_filter_key = 'document__project_id'
-    unit_type_filter = 'unit_type'
-
-    source_fields = dict(
-        source_type='document__source_type',
-        document_type='document__document_type',
-        metadata='document__documentmetadata__metadata',
-        court='courtusage__court__name',
-        currency_name='currencyusage__currency',
-        currency_value='currencyusage__amount',
-        date='dateusage__date',
-        definition='definitionusage__definition',
-        duration='datedurationusage__duration_days',
-        term='termusage__term__term',
-        party='partyusage__party__name',
-        geoentity='geoentityusage__entity__name')
-
-    aggregation_functions = dict(
-        source_type=Value('document__source_type'),
-        document_type=Value('document__document_type'),
-        metadata=Value('document__documentmetadata__metadata'),
-        date=Sum('dateusage__count'),
-        definition=Sum('definitionusage__count'),
-        duration=Sum('datedurationusage__count'),
-        court=Sum('courtusage__count'),
-        currency_name=Sum('currencyusage__count'),
-        currency_value=Sum('currencyusage__count'),
-        term=Sum('termusage__count'),
-        party=Sum('partyusage__count'),
-        geoentity=Sum('geoentityusage__count'))
+    target_id_field = 'text_unit_id'
+    max_chunk_size = 20000
 
     def get_item_names(self, item_index):
         """
@@ -413,8 +418,192 @@ class TextUnitFeatures(DocumentFeatures):
         """
         Validate incoming data
         """
-        super().check()
+        # super().check()
+        if len(self.feature_source) > 1 and 'text' in self.feature_source:
+            raise RuntimeError('"text" could be the only feature source')
         if self.queryset is None and self.project_id is None:
             raise RuntimeError(
                 '''Without providing either "queryset" or "project_id"
                 argument executing the task may be impossible.''')
+
+    def filter_by_project_id(self, queryset) -> Any:
+        if not self.project_id:
+            return queryset
+        project_ids = [self.project_id] if isinstance(self.project_id, int) else self.project_id or []
+        return queryset.filter(document__project_id__in=project_ids)
+
+
+class Document2VecFeatures(DocumentFeatures):
+    """
+    Replaces DocumentFeatures when the only feature source is "text"
+    (full document text)
+    """
+    source_item = 'document'
+    source_model = Document
+    project_filter_key = 'project_id'
+    unit_type_filter = 'textunit__unit_type'
+
+    def __init__(self,
+                 queryset: Optional[Union[QuerySet, List[Document]]] = None,
+                 project_id: Optional[int] = None,
+                 project_name_filter: Optional[str] = None,
+                 unit_type: str = 'sentence',
+                 feature_source: str = 'term',
+                 drop_empty_rows=True,
+                 drop_empty_columns=True,
+                 external_feature_names=None,
+                 log_message: Callable[[str, str], None] = None):
+        super().__init__(queryset, project_id, project_name_filter,
+                         unit_type, feature_source,
+                         drop_empty_rows, drop_empty_columns,
+                         external_feature_names, log_message)
+        self.transformer = None  # type: Optional[BaseTransformer]
+        self.project_ids = []  # type: List[str]
+
+    def check_arguments(self):
+        if ['text'] != self.feature_source:
+            raise RuntimeError('The only feature source for Document2VecFeatures should be "text"')
+
+    def build_doc2vec_model(self) -> None:
+        transformer = Doc2VecTransformer(vector_size=100, window=10,
+                                         min_count=10, dm=1)
+        transformer_name = ''
+        self.project_ids = [self.project_id] \
+            if self.project_id and isinstance(self.project_id, int) else self.project_id or []
+        if not self.project_ids:
+            self.project_ids = list(self.queryset.values_list('project_id', flat=True).distinct())
+            if not self.project_ids:
+                error_msg = 'Document2VecFeatures has got no project_id and empty docs queryset'
+                self.log_message(error_msg)
+                raise RuntimeError(error_msg)
+
+        if not self.queryset:
+            self.queryset = Document.objects.filter(project_id__in=self.project_ids)
+
+        model_builder_args = dict(project_ids=self.project_ids, transformer_name=transformer_name)
+        model_builder = transformer.build_doc2vec_document_model  # source == 'document':
+        doc2vec, trans_obj = model_builder(**model_builder_args)
+        self.transformer = trans_obj
+
+    def get_features(self) -> Features:
+        """
+        Aggregator method to transform incoming queryset into features and indexes
+        """
+        self.build_doc2vec_model()  # type: gensim.models.doc2vec.Doc2Vec
+        data = DocumentText.objects.filter(document__project_id__in=self.project_ids).values_list(
+            'document_id', 'full_text')
+        vectors = Doc2VecTransformer.create_vectors(
+            self.transformer,
+            data,
+            DocumentVector,
+            'document_id')  # type: List[DocumentVector]
+
+        item_names = []
+        unqualified_item_ids = []
+        unqualified_item_names = []
+        for v in vectors:
+            item_names.append(v.document.name)
+
+        # feature names could be words instead of just "f0" ... by tagging documents
+        # but this would require too much memory
+        columns = ['id'] + [f'f{i}' for i in range(len(vectors[0].vector_value))]
+        vectors_indexed = [[v.document.pk] + list(v.vector_value) for v in vectors]
+        feature_df = pd.DataFrame(vectors_indexed,
+                                  columns=columns)
+        feature_df.set_index('id', inplace=True)
+
+        res = Features(feature_df,
+                       item_names,
+                       unqualified_item_ids,
+                       unqualified_item_names)
+
+        return res
+
+
+class TextUnit2VecFeatures(DocumentFeatures):
+    """
+    Replaces TextUnitFeatures when the only feature source is "text"
+    (unit's text)
+    """
+    source_item = 'document'
+    source_model = Document
+    project_filter_key = 'project_id'
+    unit_type_filter = 'textunit__unit_type'
+
+    def __init__(self,
+                 queryset: Optional[Union[QuerySet, List[Document]]] = None,
+                 project_id: Optional[int] = None,
+                 unit_type: str = 'sentence',
+                 feature_source: str = 'term',
+                 drop_empty_rows=True,
+                 drop_empty_columns=True,
+                 external_feature_names=None,
+                 log_message: Callable[[str, str], None] = None):
+        super().__init__(queryset, project_id, unit_type, feature_source,
+                         drop_empty_rows, drop_empty_columns,
+                         external_feature_names, log_message)
+        self.transformer = None  # type: Optional[BaseTransformer]
+        self.project_ids = []  # type: List[str]
+
+    def check_arguments(self):
+        if ['text'] != self.feature_source:
+            raise RuntimeError('The only feature source for Document2VecFeatures should be "text"')
+        if self.unit_type not in ('sentence', 'paragraph'):
+            raise RuntimeError('The "unit_type" argument should be one of "sentence", "paragraph".')
+
+    def build_doc2vec_model(self) -> None:
+        transformer = Doc2VecTransformer(vector_size=100, window=10,
+                                         min_count=10, dm=1)
+        transformer_name = ''
+        self.project_ids = [self.project_id] if self.project_id else []
+        if not self.project_ids:
+            self.project_ids = list(self.queryset.values_list('project_id', flat=True).distinct())
+            if not self.project_ids:
+                error_msg = 'Document2VecFeatures has got no project_id and empty docs queryset'
+                self.log_message(error_msg)
+                raise RuntimeError(error_msg)
+
+        if not self.queryset:
+            self.queryset = \
+                TextUnitText.objects.filter(text_unit__unit_type=self.unit_type,
+                                            text_unit__document__project_id__in=self.project_ids)
+
+        model_builder_args = dict(project_ids=self.project_ids, transformer_name=transformer_name)
+        model_builder = transformer.build_doc2vec_text_unit_model
+        doc2vec, trans_obj = model_builder(**model_builder_args)
+        self.transformer = trans_obj
+
+    def get_features(self) -> Features:
+        """
+        Aggregator method to transform incoming queryset into features and indexes
+        """
+        self.build_doc2vec_model()  # type: gensim.models.doc2vec.Doc2Vec
+        data = self.queryset.values_list(
+            'text_unit_id', 'text')
+        vectors = Doc2VecTransformer.create_vectors(
+            self.transformer,
+            data,
+            TextUnitVector,
+            'text_unit_id')  # type: List[TextUnitVector]
+
+        item_names = []
+        unqualified_item_ids = []
+        unqualified_item_names = []
+        for v in vectors:
+            unit_name = f'[{v.text_unit.location_start}:{v.text_unit.location_end}]'
+            item_names.append(unit_name)
+
+        # feature names could be words instead of just "f0" ... by tagging documents
+        # but this would require too much memory
+        columns = ['id'] + [f'f{i}' for i in range(len(vectors[0].vector_value))]
+        vectors_indexed = [[v.text_unit.pk] + list(v.vector_value) for v in vectors]
+        feature_df = pd.DataFrame(vectors_indexed,
+                                  columns=columns)
+        feature_df.set_index('id', inplace=True)
+
+        res = Features(feature_df,
+                       item_names,
+                       unqualified_item_ids,
+                       unqualified_item_names)
+
+        return res

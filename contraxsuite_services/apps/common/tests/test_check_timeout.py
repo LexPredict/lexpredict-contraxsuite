@@ -34,8 +34,8 @@ from apps.common.time_limit import time_limit
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.5.0/LICENSE"
-__version__ = "1.5.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.6.0/LICENSE"
+__version__ = "1.6.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -60,7 +60,7 @@ class TestCheckTimeout(TestCase):
         self.assertTrue(b)
 
         self.assertEqual(1, len(log_records))
-        self.assertEqual(f"1 seconds timeout in sample_func() call",
+        self.assertEqual("1 seconds timeout in sample_func() call",
                          log_records[0])
 
     def failed_test_two_calls_two_threads(self):
@@ -73,7 +73,7 @@ class TestCheckTimeout(TestCase):
             j.join()
 
         self.assertEqual(1, len(log_records))
-        self.assertEqual(f"1 seconds timeout in sample_func() call",
+        self.assertEqual("1 seconds timeout in sample_func() call",
                          log_records[0])
 
 

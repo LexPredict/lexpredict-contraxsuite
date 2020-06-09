@@ -30,12 +30,12 @@ from typing import Any, Collection, Mapping
 
 from dataclasses import dataclass
 from dataclasses_json import dataclass_json
-from django.core.serializers.json import DjangoJSONEncoder
+from apps.common.model_utils.improved_django_json_encoder import ImprovedDjangoJSONEncoder
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.5.0/LICENSE"
-__version__ = "1.5.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.6.0/LICENSE"
+__version__ = "1.6.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -59,9 +59,9 @@ def serialize(obj):
         for i in obj:
             i = serialize(i)
     elif isinstance(obj, (datetime.datetime, datetime.date, datetime.time)):
-        obj = DjangoJSONEncoder().default(obj)
+        obj = ImprovedDjangoJSONEncoder().default(obj)
     elif isinstance(obj, decimal.Decimal):
-        obj = float(obj)    # DjangoJSONEncoder().default(obj)
+        obj = float(obj)    # ImprovedDjangoJSONEncoder().default(obj)
     return obj
 
 

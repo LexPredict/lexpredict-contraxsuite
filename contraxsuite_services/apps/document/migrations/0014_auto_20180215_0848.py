@@ -7,6 +7,7 @@ import django.contrib.postgres.fields.jsonb
 import django.core.serializers.json
 from django.db import migrations, models
 import django.db.models.deletion
+from apps.common.model_utils.improved_django_json_encoder import ImprovedDjangoJSONEncoder
 
 
 class Migration(migrations.Migration):
@@ -21,7 +22,7 @@ class Migration(migrations.Migration):
             name='DocumentFieldValue',
             fields=[
                 ('id', models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('value', django.contrib.postgres.fields.jsonb.JSONField(blank=True, encoder=django.core.serializers.json.DjangoJSONEncoder, null=True)),
+                ('value', django.contrib.postgres.fields.jsonb.JSONField(blank=True, encoder=ImprovedDjangoJSONEncoder, null=True)),
                 ('location_start', models.PositiveSmallIntegerField()),
                 ('location_end', models.PositiveSmallIntegerField()),
                 ('document', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='document.Document')),
@@ -34,7 +35,7 @@ class Migration(migrations.Migration):
             name='HistoricalDocumentFieldValue',
             fields=[
                 ('id', models.IntegerField(auto_created=True, blank=True, db_index=True, verbose_name='ID')),
-                ('value', django.contrib.postgres.fields.jsonb.JSONField(blank=True, encoder=django.core.serializers.json.DjangoJSONEncoder, null=True)),
+                ('value', django.contrib.postgres.fields.jsonb.JSONField(blank=True, encoder=ImprovedDjangoJSONEncoder, null=True)),
                 ('location_start', models.PositiveSmallIntegerField()),
                 ('location_end', models.PositiveSmallIntegerField()),
                 ('history_id', models.AutoField(primary_key=True, serialize=False)),

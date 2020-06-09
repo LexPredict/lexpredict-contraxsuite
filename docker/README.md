@@ -26,22 +26,23 @@ Please note that ContraxSuite installations generally require trained models or 
 
 # Contraxsuite: Deployment
 
-This folder contains scripts for deploying the current latest Contraxsuite release on a clean Ubuntu 16.04 or 18.04 machine.
+This folder contains scripts for deploying the current latest Contraxsuite release on a clean Ubuntu 18.04 machine.
 
 ## Architecture
 
 ContraxSuite is a Python/Django based application.
 
 ContraxSuite deployment consists of the following main components:
-* Django Web application (UWSGI) - Django-based UI, REST API
+* Django Web application (Daphne) - Django-based UI, REST API, Websockets
 * PostgreSQL - Relational database
 * Celery Beat Scheduler - Periodic task scheduling
 * Celery Workers (1 or more) - Asynchronous task processing
+  * Document Loading Workers - OCR/Text extraction tasks (they use embedded Apache TIKA application for OCR);
+  * High Priority Workers - separate Celery workers processing high priority tasks important for UI functioning;
+  * Default Priority Workers - various asynchronous tasks.
 * RabbitMQ - Message queue for Celery
-* Flower - Celery management UI
 * Jupyter - Jupyter Notebook application connected to the ContraxSuite code and DB for experimenting
 * Elasticsearch - Full text search and log storage
-* Tika REST Servers (1 or more) - Text extraction from different file formats
 * Filebeat - Log collection
 * Metricbeat - Metrics collection
 * Kibana - Web UI for accessing Elasticsearch data, logs, and metrics
@@ -66,14 +67,6 @@ For example docker-compose.yml files are provided for the following architecture
     * The most stable and standard architecture. 
     * Works good for big number of documents.
     * Celery workers can be put into auto-scaling groups at AWS which will grow/decrease depending on the current load.
-* Two masters, many workers
-    * (1) One server for DB; (2) One server for web server, and other components, (3) any number of Celery workers
-    * Used for splitting CPU/memory resources between DB and Web server components.
-    * Mostly used for debugging/testing under the big load.
-* Two masters, many workers with only primary components enabled.
-    * The same as previous but with logging, filebeat, metricbeat, flower and other not very important 
-    components turned off.
-    * Used for debugging/testing under the big load.
 
 ### Things To Know
 There are a lot of parameters which will be different depending on your deployment requirements and goals, so we cannot have a one-size fits all deployment package.
@@ -91,7 +84,6 @@ It works similar to the following:
         * takes nginx config template
         * replaces environment variables with values in the template
         * uses the config in docker-compose file
-        * ...
     * fills additional environment variables in docker-compose file which are made available inside the containers.
 
 For storing persistent data Contraxsuite uses simple Docker volumes mounted to the filesystem of the 
@@ -110,14 +102,21 @@ Volumes can be easily accessed from the host machine file system inside the dock
 They can be manually copied from one machine to another, backed up, restored.
 
 ## System Requirements
-* Clean Ubuntu 16.04, 18.04 machine.
+* Clean Ubuntu 18.04 machine.
 * Either Virtual or Physical PCs are supported
 * Network Access: Port 22 (SSH), 80 (HTTP), 443 (HTTPS)
-* RAM: 16GB.
+* RAM: 32GB.
 * CPU: 8 cores.
 * Storage: 
-    * Either 100GB disk at / 
-    * or 32GB disk at / for the OS and an additional 100GB disk at /data for Docker and Contraxsuite (safer). Note: Creating, mounting and formatting the disk is outside of the scope of this readme, but detailed instructions can easily be found online.
+    * 32GB disk at / for the OS and an additional 250GB disk at /data for Docker and Contraxsuite (safer). Note: Creating, mounting and formatting the disk is outside of the scope of this readme, but detailed instructions can easily be found online.
+
+The real amount of the disk space required depends on the amount of documents loaded into the system.
+For example, a test deployment of ~90,000 documents used over 300 GB of total space at /data.
+
+Important: Always keep enough additional free disk space (20% - 30%) available.
+When the free disk space is close to the end various components of the system start working slower (e.g. PostgreSQL database) or shutting down too keep the data safe (e.g. Elasticsearch).
+
+
 
 ## Installation
 **We make simplifying assumptions throughought this installation to work for most initial use cases. Deviations from this setup guide will require you to be proficient in a wide range of applications, including those described above. **
@@ -149,14 +148,14 @@ and going to setup HTTPS certificates.
 
     For an initial single-server installation it is enough to have a single disk with 
     at least 100GB at /. If you just want to learn the system you can ignore this step.
-    
+
     To check free space on your disks use:
     ```
     df -h
     ```
     
     For more safety it is usually a good idea to place Docker 
-    on a separate 100GB disk. If for some reason all space is filled
+    on a separate 250GB - 300GB disk. If for some reason all space is filled
     by Docker files you will avoid problems with logging in to the VM because the root
     partition will still have free space.
     
@@ -166,7 +165,7 @@ and going to setup HTTPS certificates.
 
 * Declare all required system or django variables (like DOCKER_DJANGO_SECRET_KEY) in setenv.sh or setenv_local.sh
 
-* Run script: **setup_local_contraxsuite_ubuntu_16_04.sh** and enter the information which it requests.
+* Run script: **setup_local_contraxsuite_ubuntu_18_04.sh** and enter the information which it requests.
   
     The script will do the following:
     * install Docker, 
@@ -248,7 +247,7 @@ xseorkylt3p0        contraxsuite_contrax-logrotate            global            
 1b451ku22b14        contraxsuite_contrax-metricbeat           replicated          0/0                 docker.elastic.co/beats/metricbeat:6.2.4                  
 quopp5ak19k3        contraxsuite_contrax-nginx                replicated          1/1                 nginx:stable                                              *:80->8080/tcp, *:443->4443/tcp
 ixkkplnixtmr        contraxsuite_contrax-rabbitmq             replicated          1/1                 rabbitmq:3-management                                                                 
-tl1iu3b8gj7f        contraxsuite_contrax-uwsgi                replicated          1/1                 lexpredict/lexpredict-contraxsuite:latest  
+tl1iu3b8gj7f        contraxsuite_contrax-daphne               replicated          1/1                 lexpredict/lexpredict-contraxsuite:latest
 
 ```
 
@@ -263,24 +262,14 @@ sudo tail -f /var/log/syslog
 ```
 
 * After the installation is finished:
-  * Django-based UI of the Contraxsuite application: **https://your.domain.com/advanced/**;
+  * Django-based UI of the Contraxsuite application: **https://your.domain.com/explorer/**;
   * Jupyter with access to the Contraxsuite python code and database: **https://your.domain.com/jupyter/**;
   * Kibana connected to ElasticSearch to which Contraxsuite indexes documents and write logs: **https://your.domain.com/kibana/**
-    * Contraxsuite Django logs are in **logstash*** indexes
-    * Documents indexed for search purposes are in **contraxsuite*** indexes.
-  * Root (https://your.domain.com/) is reserved for the new React UI provided to the paid 
+    * Contraxsuite Django logs are in **filebeat-*** indexes
+  * Root (https://your.domain.com/) is reserved for the new React UI provided to the paid
   customers. See https://demo.contraxsuite.com .
 
   **Admin login/pass: Administrator/Administrator**
-  
-* To prepare text processing system and to additionnally ensure that Celery works:
-    * Login to https://your.domain.com/advanced/ as Administrator
-    **Web app will continue responding with 502 error until the UWSGI service is fully loaded.
-    Wait few minutes till it start showing the login screen.**
-    * Go to Tasks / Admin Tasks in the top menu (https://your.domain.com/advanced/task/task/list/)
-    * Click Run Task, select Load Data / Load Dictionary Data. Set all checkboxes and run the task.
-    * Wait a minute and click Refresh Data icon (rotating arrows) to refresh the task progress.
-    The tasks should end soon.
   
 ## Updating to the Latest Contraxsuite Image
 To update running Contraxsuite demo application installed by these scripts to

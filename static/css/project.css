@@ -396,7 +396,7 @@ body {
 
 .container.home-page > .col-md-6 {
   margin-bottom: 30px;
-  min-width: 710px;
+  min-width: 450px;
   padding-right: 12%;
 }
 
@@ -414,8 +414,20 @@ body {
   margin: 5px 0 14px 0;
 }
 
-.container.home-page .list-subtitle.two-rows {
+/*.container.home-page .list-subtitle.two-rows {
   height: 34px;
+}*/
+
+@media (max-width: 1470px) {
+    .container.home-page > .col-md-6 {
+        padding-right: 6%;
+    }
+}
+
+@media (max-width: 1270px) {
+    .container.home-page > .col-md-6 {
+        padding-right: 3%;
+    }
 }
 
 .container.home-page .list-group-item {
@@ -624,12 +636,16 @@ mark {
   margin-bottom: 3px;
 }
 .global-search input.tt-input,
+.global-search input.non-typeahead,
 .global-search .bootstrap-tagsinput input.tt-input {
   color: #385178;
   padding: 0 10px;
   line-height: 24px;
   font-size: 14px;
   height: 34px;
+}
+.global-search input.non-typeahead {
+  background-color: transparent;
 }
 /*.global-search input.tt-input {*/
 /*  height: 25px;*/
@@ -1044,6 +1060,9 @@ section h3 {
 .header-search-form.highlight-container {
   border-radius: 0 0 4px 4px !important;
 }
+.header-search-form.highlight-container input {
+    height: 34px;
+}
 .header-search-form.highlight-container input:focus {
   border: 1px solid #f0ad4e;
 }
@@ -1346,6 +1365,15 @@ body:not(.device-touch) .btn-u {
 .jqx-icon-arrow-up-selected {
   background-image: url(../vendor/jqwidgets/styles/images/metro-icon-up-white.png);
 }
+
+.jqxgrid.jqx-grid .jqx-icon-arrow-up {
+  background-image: url(../vendor/jqwidgets/styles/images/metro-icon-up.png);
+}
+
+.jqxgrid.jqx-grid .jqx-icon-arrow-down {
+  background-image: url(../vendor/jqwidgets/styles/images/metro-icon-down.png);
+}
+
 .jqx-widget .jqx-grid-column-menubutton,
 .jqx-widget .jqx-grid-column-sortascbutton,
 .jqx-widget .jqx-grid-column-sortdescbutton,
@@ -1378,6 +1406,15 @@ body:not(.device-touch) .btn-u {
 .jqx-icon-arrow-right-selected {
   background-image: url(../vendor/jqwidgets/styles/images/metro-icon-right-white.png);
 }
+
+.jqx-calendar-title-navigation.jqx-icon-arrow-right {
+    background-image: url(../vendor/jqwidgets/styles/images/icon-right.png);
+}
+
+div[id^="calendarjqxWidget"] {
+    margin-left: -90px;
+}
+
 /* sub-grid */
 .jqx-enableselect.jqx-widget-content {
   background-color: #e1e1eb;
@@ -1633,3 +1670,23 @@ li.dropdown-item>a {
 /*#wrapper #footer {*/
 /*  margin-top: 10px !important;*/
 /*}*/
+
+/* Styles for "Project Selection block */
+.project_selection {
+  position: absolute;
+  float: right;
+  right: 5px;
+  padding: 1px;
+  z-index: 999;
+}
+.project_selection ul.chosen-choices {
+  max-height: 38px;
+  overflow: auto;
+}
+.project_selection ul.chosen-choices:hover {
+  max-height: 95px;
+}
+.project_selection label {
+  vertical-align: top;
+  padding-top: 12px;
+}

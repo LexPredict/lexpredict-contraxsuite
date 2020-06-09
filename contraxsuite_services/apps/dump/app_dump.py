@@ -44,15 +44,15 @@ from apps.common.plugins import collect_plugins_in_apps
 from apps.deployment.models import Deployment
 from apps.document.models import (
     DocumentField, DocumentType, DocumentFieldDetector, ExternalFieldValue,
-    DocumentFieldCategory)
+    DocumentFieldCategory, DocumentFieldFamily)
 from apps.extract.models import Court, GeoAlias, GeoEntity, GeoRelation, Party, Term
 from apps.task.models import TaskConfig
 from apps.users.models import User, Role
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.5.0/LICENSE"
-__version__ = "1.5.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.6.0/LICENSE"
+__version__ = "1.6.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -62,6 +62,7 @@ APP_CONFIG_MODELS = {
     DocumentField: None,
     DocumentFieldDetector: None,
     DocumentFieldCategory: None,
+    DocumentFieldFamily: None,
 }  # type: Dict[Type[Model], Callable[[QuerySet], QuerySet]]
 
 FULL_DUMP_MODELS = {User: None,
@@ -131,6 +132,11 @@ def get_app_config_dump(document_type_codes=None) -> str:
             .distinct('category__pk') \
             .order_by('category__pk')
 
+        field_family_document_type_field = document_field_filter(DocumentField.objects.get_queryset()) \
+            .values_list('family__pk') \
+            .distinct('family__pk') \
+            .order_by('family__pk')
+
         filter_by_model = dict(APP_CONFIG_MODELS)
 
         filter_by_model.update({
@@ -138,6 +144,7 @@ def get_app_config_dump(document_type_codes=None) -> str:
             DocumentField: document_field_filter,
             DocumentFieldDetector: lambda qs: qs.filter(field__document_type__code__in=document_type_codes),
             DocumentFieldCategory: lambda qs: qs.filter(pk__in=Subquery(category_document_type_field)),
+            DocumentFieldFamily: lambda qs: qs.filter(pk__in=Subquery(field_family_document_type_field))
         })
     return get_dump(filter_by_model, object_handler_by_model)
 

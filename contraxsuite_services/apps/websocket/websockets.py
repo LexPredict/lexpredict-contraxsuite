@@ -34,6 +34,7 @@ from channels.layers import get_channel_layer
 from channels_redis.core import RedisChannelLayer
 from django.conf import settings
 from django.db.models import QuerySet
+from django.db import connection
 from rest_framework.authtoken.models import Token
 
 from apps.common.singleton import Singleton
@@ -43,8 +44,8 @@ from apps.websocket.channel_message import ChannelMessage
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.5.0/LICENSE"
-__version__ = "1.5.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.6.0/LICENSE"
+__version__ = "1.6.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -119,6 +120,11 @@ class Websockets:
         connected_user_ids = self.get_connected_users()
         if not connected_user_ids:
             return
+
+        # A workaround for "connection already closed" problem.
+        # Looks like this code is being executed in a way that
+        # the "connection" object it accesses is re-used for a long time and appears broken after some long delay.
+        connection.close()
 
         layer = get_channel_layer()  # type: RedisChannelLayer
         msg = {'type': 'send_to_client', 'message': message_obj.to_dict()}

@@ -1,2 +1,2 @@
 {% load project_tags %}
-<img src="{{ request.scheme|default:"http" }}://{% settings_value "HOST_NAME" %}/static/images/contraxsuite_logo.png" style="max-width:200px;" alt="Logo" id="headerImage" mc:label="header_image" mc:edit="header_image" mc:allowdesigner mc:allowtext />
+<img src="{% settings_value "HOST_NAME" %}/static/images/contraxsuite_logo.png" style="max-width:200px;" alt="Logo" id="headerImage" mc:label="header_image" mc:edit="header_image" mc:allowdesigner mc:allowtext />

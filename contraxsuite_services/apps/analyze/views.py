@@ -32,12 +32,12 @@ import datetime
 
 # Django imports
 from django.urls import reverse
-from django.db.models import Count
+from django.db.models import Count, Q
 
 # Project imports
 from apps.analyze.models import *
 from apps.analyze.forms import *
-from apps.analyze.tasks import TrainDoc2VecModel, TrainClassifier, RunClassifier, Cluster
+from apps.analyze.tasks import TrainDoc2VecModel, TrainClassifier, RunClassifier, Cluster, BuildFeatureVectorsTask
 from apps.common.contraxsuite_urls import doc_editor_url, project_documents_url
 from apps.document.views import SubmitTextUnitTagView
 from apps.task.views import BaseAjaxTaskView
@@ -45,8 +45,8 @@ import apps.common.mixins
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.5.0/LICENSE"
-__version__ = "1.5.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.6.0/LICENSE"
+__version__ = "1.6.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -69,15 +69,17 @@ class TextUnitClassificationListView(apps.common.mixins.JqPaginatedListView):
     def get_json_data(self, **kwargs):
         data = super().get_json_data()
         for item in data['data']:
-            item['url'] = reverse('document:document-detail',
-                                  args=[item['text_unit__document__pk']])
-            item['detail_url'] = reverse('document:text-unit-detail', args=[item['text_unit__pk']])
-            item['delete_url'] = reverse('analyze:text-unit-classification-delete',
-                                         args=[item['pk']])
+            item['url'] = self.full_reverse('document:document-detail',
+                                            args=[item['text_unit__document__pk']])
+            item['detail_url'] = self.full_reverse('document:text-unit-detail', args=[item['text_unit__pk']])
+            item['delete_url'] = self.full_reverse('analyze:text-unit-classification-delete',
+                                                   args=[item['pk']])
         return data
 
     def get_queryset(self):
         qs = super().get_queryset()
+
+        qs = qs.filter(text_unit__document__project_id__in=self.request.user.userprojectssavedfilter.projects.all())
 
         class_name = self.request.GET.get("class_name")
         if class_name is not None and len(class_name.strip()) > 0:
@@ -128,15 +130,17 @@ class DocumentClassificationListView(apps.common.mixins.JqPaginatedListView):
     def get_json_data(self, **kwargs):
         data = super().get_json_data()
         for item in data['data']:
-            item['url'] = reverse('document:document-detail',
-                                  args=[item['document__pk']])
-            item['detail_url'] = reverse('document:document-detail', args=[item['pk']])
-            item['delete_url'] = reverse('analyze:document-classification-delete',
-                                         args=[item['pk']])
+            item['url'] = self.full_reverse('document:document-detail',
+                                            args=[item['document__pk']])
+            item['detail_url'] = self.full_reverse('document:document-detail', args=[item['pk']])
+            item['delete_url'] = self.full_reverse('analyze:document-classification-delete',
+                                                   args=[item['pk']])
         return data
 
     def get_queryset(self):
         qs = super().get_queryset()
+
+        qs = qs.filter(document__project_id__in=self.request.user.userprojectssavedfilter.projects.all())
 
         class_name = self.request.GET.get("class_name")
         if class_name is not None and len(class_name.strip()) > 0:
@@ -185,8 +189,8 @@ class TextUnitClassifierListView(apps.common.mixins.JqPaginatedListView):
         data = super().get_json_data()
         for item in data['data']:
             item['suggestions_url'] = '{}?class_name={}'.format(
-                reverse('analyze:text-unit-classifier-suggestion-list'), item['class_name'])
-            item['delete_url'] = reverse('analyze:text-unit-classifier-delete', args=[item['pk']])
+                self.full_reverse('analyze:text-unit-classifier-suggestion-list'), item['class_name'])
+            item['delete_url'] = self.full_reverse('analyze:text-unit-classifier-delete', args=[item['pk']])
         return data
 
 
@@ -218,8 +222,8 @@ class DocumentClassifierListView(apps.common.mixins.JqPaginatedListView):
         data = super().get_json_data()
         for item in data['data']:
             item['suggestions_url'] = '{}?class_name={}'.format(
-                reverse('analyze:document-classifier-suggestion-list'), item['class_name'])
-            item['delete_url'] = reverse('analyze:document-classifier-delete', args=[item['pk']])
+                self.full_reverse('analyze:document-classifier-suggestion-list'), item['class_name'])
+            item['delete_url'] = self.full_reverse('analyze:document-classifier-delete', args=[item['pk']])
         return data
 
 
@@ -256,15 +260,18 @@ class TextUnitClassifierSuggestionListView(apps.common.mixins.JqPaginatedListVie
     def get_json_data(self, **kwargs):
         data = super().get_json_data()
         for item in data['data']:
-            item['url'] = reverse('document:document-detail',
-                                  args=[item['text_unit__document__pk']])
-            item['detail_url'] = reverse('document:text-unit-detail', args=[item['text_unit__pk']])
-            item['delete_url'] = reverse('analyze:text-unit-classifier-suggestion-delete',
-                                         args=[item['pk']])
+            item['url'] = self.full_reverse('document:document-detail',
+                                            args=[item['text_unit__document__pk']])
+            item['detail_url'] = self.full_reverse('document:text-unit-detail', args=[item['text_unit__pk']])
+            item['delete_url'] = self.full_reverse('analyze:text-unit-classifier-suggestion-delete',
+                                                   args=[item['pk']])
         return data
 
     def get_queryset(self):
         qs = super().get_queryset()
+
+        qs = qs.filter(text_unit__document__project_id__in=self.request.user.userprojectssavedfilter.projects.all())
+
         class_name = self.request.GET.get('class_name')
         if class_name is not None and len(class_name.strip()) > 0:
             qs = qs.filter(class_name=class_name)
@@ -309,13 +316,16 @@ class DocumentClassifierSuggestionListView(apps.common.mixins.JqPaginatedListVie
     def get_json_data(self, **kwargs):
         data = super().get_json_data()
         for item in data['data']:
-            item['detail_url'] = reverse('document:document-detail', args=[item['document__pk']])
-            item['delete_url'] = reverse('analyze:document-classifier-suggestion-delete',
-                                         args=[item['pk']])
+            item['detail_url'] = self.full_reverse('document:document-detail', args=[item['document__pk']])
+            item['delete_url'] = self.full_reverse('analyze:document-classifier-suggestion-delete',
+                                                   args=[item['pk']])
         return data
 
     def get_queryset(self):
         qs = super().get_queryset()
+
+        qs = qs.filter(document__project_id__in=self.request.user.userprojectssavedfilter.projects.all())
+
         class_name = self.request.GET.get('class_name')
         if class_name is not None and len(class_name.strip()) > 0:
             qs = qs.filter(class_name=class_name)
@@ -361,12 +371,14 @@ class DocumentClusterListView(apps.common.mixins.JqPaginatedListView):
                 documents = documents.filter(taskqueue__reviewers=self.request.user)
             documents = documents.values('pk', 'name', 'description', 'project__name', 'document_type__title')
             for document in documents:
-                document['url'] = reverse('document:document-detail', args=[document['pk']]),
+                document['url'] = self.full_reverse('document:document-detail', args=[document['pk']]),
             item['documents'] = list(documents)
         return data
 
     def get_queryset(self):
         qs = super().get_queryset()
+
+        # qs = qs.filter(documents__project_id__in=self.request.user.userprojectssavedfilter.projects.all())
 
         if "document_pk" in self.request.GET:
             qs = qs.filter(documents__pk=self.request.GET['document_pk'])
@@ -416,6 +428,10 @@ class DocumentSimilarityListView(apps.common.mixins.JqPaginatedListView):
 
     def get_queryset(self):
         qs = super().get_queryset()
+        # TODO: remove the filter
+        qs = qs.filter(Q(document_a__project_id__in=self.request.user.userprojectssavedfilter.projects.all()) |
+                       Q(document_b__project_id__in=self.request.user.userprojectssavedfilter.projects.all()))
+
         if "document_pk" in self.request.GET:
             qs = qs.filter(document_a__pk=self.request.GET['document_pk'])
         return qs
@@ -440,18 +456,22 @@ class TextUnitSimilarityListView(apps.common.mixins.JqPaginatedListView):
     def get_json_data(self, **kwargs):
         data = super().get_json_data()
         for item in data['data']:
-            item['text_unit_a__url'] = reverse('document:text-unit-detail',
-                                               args=[item['text_unit_a__pk']]),
-            item['text_unit_b__url'] = reverse('document:text-unit-detail',
-                                               args=[item['text_unit_b__pk']]),
-            item['text_unit_a_document_url'] = reverse('document:document-detail',
-                                                       args=[item['text_unit_a__document__pk']]),
-            item['text_unit_b_document_url'] = reverse('document:document-detail',
-                                                       args=[item['text_unit_b__document__pk']]),
+            item['text_unit_a__url'] = self.full_reverse('document:text-unit-detail',
+                                                         args=[item['text_unit_a__pk']]),
+            item['text_unit_b__url'] = self.full_reverse('document:text-unit-detail',
+                                                         args=[item['text_unit_b__pk']]),
+            item['text_unit_a_document_url'] = self.full_reverse('document:document-detail',
+                                                                 args=[item['text_unit_a__document__pk']]),
+            item['text_unit_b_document_url'] = self.full_reverse('document:document-detail',
+                                                                 args=[item['text_unit_b__document__pk']]),
         return data
 
     def get_queryset(self):
         qs = super().get_queryset()
+        # TODO: remove the filter
+        qs = qs.filter(Q(text_unit_a__document__project_id__in=self.request.user.userprojectssavedfilter.projects.all()) |
+                       Q(text_unit_b__document__project_id__in=self.request.user.userprojectssavedfilter.projects.all()))
+
         if "text_unit_pk" in self.request.GET:
             qs = qs.filter(text_unit_a__pk=self.request.GET['text_unit_pk'])
         return qs.select_related('text_unit_a', 'text_unit_a__textunittext',
@@ -474,10 +494,10 @@ class PartySimilarityListView(apps.common.mixins.JqPaginatedListView):
     def get_json_data(self, **kwargs):
         data = super().get_json_data()
         for item in data['data']:
-            item['party_a__url'] = reverse('extract:party-summary',
-                                           args=[item['party_a__pk']]),
-            item['party_b__url'] = reverse('extract:party-summary',
-                                           args=[item['party_b__pk']]),
+            item['party_a__url'] = self.full_reverse('extract:party-summary',
+                                                     args=[item['party_a__pk']]),
+            item['party_b__url'] = self.full_reverse('extract:party-summary',
+                                                     args=[item['party_b__pk']]),
         return data
 
     def get_queryset(self):
@@ -499,6 +519,8 @@ class TextUnitClusterListView(apps.common.mixins.JqPaginatedListView):
 
     def get_queryset(self):
         qs = super().get_queryset()
+
+        # qs = qs.filter(text_units__document__project_id__in=self.request.user.userprojectssavedfilter.projects.all())
 
         if "text_unit_pk" in self.request.GET:
             qs = qs.filter(text_units__pk=self.request.GET['text_unit_pk'])
@@ -550,6 +572,13 @@ class TrainDocumentDoc2VecModelView(BaseAjaxTaskView):
 
 class TrainTextUnitDoc2VecModelView(TrainDocumentDoc2VecModelView):
     form_class = TrainTextUnitDoc2VecTaskForm
+
+
+class BuildFeatureVectorsTaskView(BaseAjaxTaskView):
+    task_class = BuildFeatureVectorsTask
+    module_name = 'apps.analyze.tasks'
+    form_class = BuildFeatureVectorsTaskForm
+    html_form_class = 'popup-form build-features-form'
 
 
 class RunDocumentClassifierView(BaseAjaxTaskView):
@@ -615,6 +644,6 @@ class ClusterView(BaseAjaxTaskView):
         if count < count_limit:
             self.start_task(data)
             return self.json_response('The task is started. It can take a while.')
-        message = 'Executing the task may take too much time.'
+        message = 'Processing large amounts of documents may take a long time.'
         return self.json_response({'message': message,
                                    'confirm': True})

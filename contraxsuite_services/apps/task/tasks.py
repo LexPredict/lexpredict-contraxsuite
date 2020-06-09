@@ -31,9 +31,9 @@ import importlib
 import json
 import mimetypes
 import os
-import regex as re
 import string
 import sys
+import tempfile
 import threading
 import time
 import traceback
@@ -44,13 +44,13 @@ from typing import List, Dict, Tuple, Any, Callable, Optional
 import magic
 import nltk
 import pandas as pd
-from celery import shared_task
+import regex as re
+from celery import shared_task, signature
 from celery.exceptions import SoftTimeLimitExceeded, Retry
 from celery.result import AsyncResult
-from celery.states import SUCCESS, FAILURE, UNREADY_STATES
+from celery.states import FAILURE, UNREADY_STATES
 from celery.utils.log import get_task_logger
 from celery.utils.time import get_exponential_backoff_interval
-
 # Django imports
 from django.conf import settings
 from django.db import transaction, connection, IntegrityError
@@ -69,6 +69,7 @@ from psycopg2 import InterfaceError, OperationalError
 # Project imports
 import task_names
 from apps.celery import app
+from apps.common.archive_file import ArchiveFile
 from apps.common.errors import find_cause_of_type
 from apps.common.file_storage import get_file_storage
 from apps.common.log_utils import ProcessLogger
@@ -87,6 +88,7 @@ from apps.document.sync_tasks.document_files_cleaner import DocumentFilesCleaner
 from apps.extract import dict_data_cache
 from apps.extract import models as extract_models
 from apps.extract.locators import LOCATORS, LocationResults
+from apps.extract.locators import request_mat_views_refresh
 from apps.extract.models import Court, GeoAlias, GeoEntity, GeoRelation, Term
 from apps.project.models import Project, UploadSession
 from apps.task.celery_backend.task_utils import revoke_task
@@ -97,15 +99,14 @@ from apps.task.task_monitor import TaskMonitor
 from apps.task.utils.nlp.heading_heuristics import HeadingHeuristics
 from apps.task.utils.nlp.lang import get_language
 from apps.task.utils.nlp.parsed_text_corrector import ParsedTextCorrector
-from apps.task.utils.task_utils import TaskUtils, pre_serialize
+from apps.task.utils.task_utils import TaskUtils, pre_serialize, check_blocks, check_blocks_decorator
 from apps.users.models import User
 from contraxsuite_logging import write_task_log
-from apps.document.app_vars import DETECT_CONTRACT
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.5.0/LICENSE"
-__version__ = "1.5.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.6.0/LICENSE"
+__version__ = "1.6.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -126,7 +127,7 @@ python_magic = magic.Magic(mime=True)
 
 es = Elasticsearch(hosts=settings.ELASTICSEARCH_CONFIG['hosts'])
 
-REG_EXTRA_SPACE = re.compile(r'<[\s/]*(?:[A-Za-z]+|[Hh]\d)[\s/]*>')
+REG_EXTRA_SPACE = re.compile(r'<[\s/]*(?:[A-Za-z]+|[Hh]\d)[\s/]*>|\x00')
 
 
 def _get_or_create_task_config(celery_task) -> TaskConfig:
@@ -162,6 +163,31 @@ class ExtendedTask(app.Task):
 
     db_connection_ping = False
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._cached_data = None
+        self._log_kwargs = None  # type: Optional[Dict[str, Any]]
+
+    def run(self, *args, **kwargs):
+
+        run_count = Task.objects.increase_run_count(self.request.id)
+        if hasattr(self, 'max_retries'):
+            if run_count > self.max_retries:
+                raise RuntimeError(
+                    'Exceeded maximum number of retries ({})'.format(self.max_retries))
+
+        self.log_info(f'Start task "{self.task_name}", id={self.main_task_id}, ' +
+                      f'run_count={run_count}\nKwargs: {str(kwargs)}')
+        if '_log_extra' in kwargs:
+            self._log_kwargs = kwargs['_log_extra']
+        try:
+            ret = self.process(**kwargs)
+        finally:
+            self.log_info(f'End of main task "{0}", id={1}. '
+                          'Sub-tasks may be still running.'.format(self.task_name,
+                                                                   self.main_task_id))
+        return ret or self.main_task_id
+
     @property
     def task(self) -> Task:
         self.init_cache()
@@ -173,7 +199,7 @@ class ExtendedTask(app.Task):
 
     @property
     def log_extra(self) -> Dict:
-        return self.task.log_extra
+        return self.task.log_extra or self._log_kwargs
 
     @log_extra.setter
     def log_extra(self, v: Dict):
@@ -182,9 +208,11 @@ class ExtendedTask(app.Task):
         this_task.save(update_fields=['log_extra'])
 
     def write_log(self, message, level='info', exc_info: Exception = None, **kwargs):
+        if self._log_kwargs:
+            kwargs.update(self._log_kwargs)
         try:
             self.task.write_log(message, level, exc_info=exc_info, **kwargs)
-        except Task.DoesNotExist:
+        except:
             write_task_log(self.request.id,
                            'Task.' + message, level,
                            task_name=self.request.task,
@@ -228,7 +256,7 @@ class ExtendedTask(app.Task):
                                     args,
                                     kwargs) -> str:
 
-        return f'Task has been failed:\n' + \
+        return 'Task has been failed:\n' + \
                f'{self.name}\n' + \
                f'Args: {args}\n' + \
                f'Kwargs: {str(kwargs)}\n'
@@ -373,6 +401,8 @@ class ExtendedTask(app.Task):
 
         for index, args in enumerate(kwargs_list):
             args['call_stack'] = call_stack
+            if self.log_extra:
+                args['_log_extra'] = self.log_extra
             sub_task_signature = sub_task_class().subtask(
                 kwargs=args,
                 source_data=source_data[index] if source_data is not None else self.task.source_data,
@@ -398,13 +428,15 @@ class ExtendedTask(app.Task):
     def on_success(self, retval, task_id, args, kwargs):
         task = self.task
         if task:
-            task.on_task_completed(True)
+            if task.name == 'Locate':
+                logger.info('Locate: on_success()')
+            task.update_progress(100, True)
 
     def on_failure(self, exc, task_id, args, kwargs, einfo):
         task = self.task
         if task:
             try:
-                task.on_task_completed(False)
+                task.update_progress(100, False)
             except IntegrityError:
                 # task object might have been deleted
                 pass
@@ -413,13 +445,12 @@ class ExtendedTask(app.Task):
         TaskUtils.prepare_task_execution()
         self._cached_data = None
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self._cached_data = None
-
     def __call__(self, *args: Any, **kwargs: Any) -> Any:
+
         self.prepare_task_execution()
-        Task.objects.increase_run_count(self.request.id)
+
+        # moved into run() method - seems sometimes task restarts without re-initiating
+        # Task.objects.increase_run_count(self.request.id)
 
         working = [True]
         if self.db_connection_ping:
@@ -506,14 +537,23 @@ class CeleryTaskLogger(ProcessLogger):
     def step_progress(self):
         self._celery_task.push()
 
-    def info(self, message: str):
-        return self._celery_task.log_info(message)
+    def info(self, message: str, **kwargs):
+        return self._celery_task.log_info(message, **kwargs)
 
-    def error(self, message: str, field_code: str = None, exc_info: Exception = None):
+    def debug(self, message: str, **kwargs):
+        return self._celery_task.log_debug(message, **kwargs)
+
+    def warn(self, message: str, **kwargs):
+        return self._celery_task.log_warn(message, **kwargs)
+
+    def error(self, message: str,
+              field_code: str = None, exc_info: Exception = None,
+              **kwargs):
         if field_code:
             message = f'{field_code}: {message or "error"}'
 
-        return self._celery_task.log_error(message, exc_info=exc_info, log_field_code=field_code)
+        return self._celery_task.log_error(
+            message, exc_info=exc_info, log_field_code=field_code, **kwargs)
 
 
 @shared_task(base=ExtendedTask, bind=True, name='advanced_celery.end_chord')
@@ -534,18 +574,24 @@ def end_chord(task: ExtendedTask, *args, **kwargs):
             logger.error('{0}: sub-tasks processing crashed'.format(title))
 
 
-def call_task_func(task_func: Callable,
-                   task_args: Tuple,
-                   user_id,
-                   source_data=None,
-                   metadata: Dict = None,
-                   visible: bool = True,
-                   queue: str = None,
-                   run_after_sub_tasks_finished: bool = False,
-                   run_if_parent_task_failed: bool = False,
-                   main_task_id: str = None,
-                   call_stack: str = None,
-                   parent_stack: str = None):
+@check_blocks_decorator(raise_error=True, error_message='Task is blocked.')
+def call_task_func(*args, **kwargs):
+    return _call_task_func(*args, **kwargs)
+
+
+def _call_task_func(task_func: Callable,
+                    task_args: Tuple,
+                    user_id,
+                    source_data=None,
+                    metadata: Dict = None,
+                    visible: bool = True,
+                    queue: str = None,
+                    run_after_sub_tasks_finished: bool = False,
+                    run_if_parent_task_failed: bool = False,
+                    main_task_id: str = None,
+                    call_stack: str = None,
+                    parent_stack: str = None,
+                    caller_task: Optional[ExtendedTask] = None):
     celery_task_id = str(fast_uuid())
     priority = get_task_priority(task_func)
     call_stack = call_stack or get_call_stack_line(-3)
@@ -566,7 +612,8 @@ def call_task_func(task_func: Callable,
         main_task_id=main_task_id,
         priority=priority,
         call_stack=call_stack,
-        failure_reported=False
+        failure_reported=False,
+        log_extra=caller_task.log_extra if caller_task else None
     )
 
     task.write_log('Celery task id: {}\n'.format(celery_task_id))
@@ -581,7 +628,12 @@ def call_task_func(task_func: Callable,
     return task.pk
 
 
-def call_task(task_name, **options):
+@check_blocks_decorator(raise_error=True, error_message='Task is blocked.')
+def call_task(*args, **kwargs):
+    return _call_task(*args, **kwargs)
+
+
+def _call_task(task_name, **options):
     """
     Call celery task by name
     :param task_name: str task name or task class
@@ -637,9 +689,9 @@ def call_task(task_name, **options):
 
     task.write_log('Celery task id: {}\n'.format(celery_task_id))
     options['task_id'] = task.id
-    async = options.pop('async', True)
+    is_async_task = options.pop('async', True)
     task_config = _get_or_create_task_config(task_class_resolved)
-    if async:
+    if is_async_task:
         queue = task_class_resolved.queue \
             if hasattr(task_class_resolved, 'queue') \
             else get_queue_by_task_priority(priority)
@@ -663,19 +715,8 @@ class BaseTask(ExtendedTask):
     Adds logging for start/end events of task
      and optional error handling.
     """
-
-    def run(self, *args, **kwargs):
-        self.log_info(
-            'Start task "{0}", id={1}\nKwargs: {2}'.format(self.task_name,
-                                                           self.main_task_id,
-                                                           str(kwargs)))
-        try:
-            ret = self.process(**kwargs)
-        finally:
-            self.log_info(f'End of main task "{0}", id={1}. '
-                          'Sub-tasks may be still running.'.format(self.task_name,
-                                                                   self.main_task_id))
-        return ret or self.main_task_id
+    # TODO: moved run() into ExtendedTask; consider to get rid of BaseTask
+    pass
 
 
 @shared_task(base=ExtendedTask,
@@ -685,9 +726,12 @@ class BaseTask(ExtendedTask):
              retry_backoff=True,
              autoretry_for=(SoftTimeLimitExceeded, InterfaceError, OperationalError),
              max_retries=3)
-def delete_document_on_load_failed(task: ExtendedTask, file_name: str):
+def delete_document_on_load_failed(task: ExtendedTask, file_name: str, kwargs: dict):
     document_name = os.path.basename(file_name)
     document_source = os.path.dirname(file_name)
+
+    from apps.project.notifications import notify_failed_load_document
+    notify_failed_load_document(document_name, kwargs)
 
     document_ids = list(
         Document.objects
@@ -696,6 +740,7 @@ def delete_document_on_load_failed(task: ExtendedTask, file_name: str):
 
     if document_ids:
         task.log_error(f'Loading documents task failed, deleting documents: {file_name} (ids: {document_ids})')
+
         try:
             from apps.document.tasks import DeleteDocuments
             del_task = DeleteDocuments()
@@ -758,9 +803,8 @@ class LoadDocuments(BaseTask):
 
     @staticmethod
     @shared_task(base=ExtendedTask,
-                 db_connection_ping=True,
                  bind=True,
-                 soft_time_limit=3600,
+                 soft_time_limit=6*3600,
                  default_retry_delay=10,
                  retry_backoff=True,
                  autoretry_for=(SoftTimeLimitExceeded, InterfaceError, OperationalError),
@@ -768,8 +812,27 @@ class LoadDocuments(BaseTask):
                  queue='doc_load')
     def create_document(task: ExtendedTask, uri: str, kwargs):
         with file_storage.get_document_as_local_fn(uri) as (fn, file_name):
-            task.run_if_task_or_sub_tasks_failed(delete_document_on_load_failed, args=(uri,))
+            task.run_if_task_or_sub_tasks_failed(delete_document_on_load_failed, args=(uri, kwargs))
             return LoadDocuments.create_document_local(task, fn, uri, kwargs)
+
+    @staticmethod
+    @shared_task(base=ExtendedTask,
+                 db_connection_ping=True,
+                 bind=True,
+                 soft_time_limit=3600,
+                 default_retry_delay=10,
+                 retry_backoff=True,
+                 autoretry_for=(InterfaceError, OperationalError),
+                 max_retries=3,
+                 queue='doc_load')
+    def create_document_from_bytes(task: ExtendedTask,
+                                   doc_bytes: bytes,
+                                   file_name: str,
+                                   kwargs):
+        with tempfile.NamedTemporaryFile() as fw:
+            fw.write(doc_bytes)
+            return LoadDocuments.create_document_local(
+                task, fw.name, file_name, kwargs)
 
     # FIXME: this becomes unuseful as we CANNOT subclass from LoadDocument now - it hasn't self in methods!!!
     @staticmethod
@@ -789,12 +852,12 @@ class LoadDocuments(BaseTask):
                               return_doc_id: bool = False,
                               pre_defined_doc_fields_code_to_val: Dict[str, Any] = None):
         task.task.title = 'Load Document: {0}'.format(file_name)
-        task.log_extra = {'log_document_name': file_name}
+        task.log_extra = {Document.LOG_FIELD_DOC_NAME: file_name}
 
         ret = []
         document_name = os.path.basename(file_name)
         document_source = os.path.dirname(file_name)
-        file_size = os.path.getsize(file_path)
+        file_size = kwargs.get('file_size') or os.path.getsize(file_path)
         upload_session_id = kwargs['metadata'].get('session_id')
         should_run_standard_locators = bool(kwargs.get('run_standard_locators'))
         user_id = kwargs.get('user_id')
@@ -816,8 +879,8 @@ class LoadDocuments(BaseTask):
         # get plain text and metadata from file
         propagate_exceptions = kwargs.get('propagate_exception')
         task.task.update_progress(10)  # document's just uploaded
-        pars_results = LoadDocuments.get_text_from_file(file_name, file_path,
-                                                        propagate_exceptions, task)
+        pars_results = LoadDocuments.get_text_from_file(
+            file_name, file_path, propagate_exceptions, task)
 
         # do reconnect - postgres may have already closed the connection because of long-running OCR
         # WARN: this should be BEFORE any other interactions with DB
@@ -850,16 +913,24 @@ class LoadDocuments(BaseTask):
             metadata = json.loads(json.dumps(metadata).replace('\\u0000', ''))
 
         metadata['parsed_by'] = parser_name
+        extra_metadata = kwargs.get('extra_metadata')
+        if extra_metadata:
+            metadata = {**metadata, **extra_metadata}
 
         # detect if document is contract (do detect by default)
         detect_contract = kwargs.get('detect_contract')
         if detect_contract is None:
+            from apps.document.app_vars import DETECT_CONTRACT
             detect_contract = DETECT_CONTRACT.val
         if detect_contract:
             LoadDocuments.classify_document(metadata, pars_results, task)
 
         # remove extra line breaks
+        old_len = len(pars_results.text.text)
         LoadDocuments.preprocess_parsed_text(pars_results)
+        delta = len(pars_results.text.text) - old_len
+        if delta != 0:
+            task.log_info(f'After preprocessing text length has changed from {old_len} to {old_len + delta}')
 
         # Language identification
         language, lang_detector = get_language(pars_results.text.text, get_parser=True)
@@ -913,7 +984,7 @@ class LoadDocuments(BaseTask):
             DocumentText.objects.create(document=document, full_text=pars_results.text.text)
             DocumentMetadata.objects.create(document=document, metadata=metadata)
 
-            task.log_extra['log_document_id'] = document.pk
+            task.log_extra[Document.LOG_FIELD_DOC_ID] = str(document.pk)
 
             # create Document Properties
             document_properties = [
@@ -1009,7 +1080,7 @@ class LoadDocuments(BaseTask):
 
         LoadDocuments.save_extra_document_data(**kwargs)
 
-        task.log_info(message='LOADED (%s): %s' % (parser_name.upper(), file_name))
+        task.log_info(message=f'LOADED ({parser_name.upper()}): {file_name}, {len(pars_results.text.text)} chars')
         task.log_info(message='Document pk: %d' % document.pk)
 
         # call post processing task
@@ -1019,7 +1090,7 @@ class LoadDocuments(BaseTask):
             from apps.extract.app_vars import STANDARD_LOCATORS
 
             task.run_sub_tasks_class_based('Locate', Locate, [{
-                'locate': STANDARD_LOCATORS.val,
+                'locate': list(set(STANDARD_LOCATORS.val + ['term'])),
                 'parse': ['sentence'],
                 'do_delete': False,
                 'session_id': upload_session_id,
@@ -1127,21 +1198,21 @@ class LoadDocuments(BaseTask):
         extract text from file using either Tika or Textract
         """
         from apps.document.app_vars import OCR_ENABLE, OCR_FILE_SIZE_LIMIT, \
-            MSWORD_TO_TEXT_ENABLE
+            MSWORD_TO_TEXT_ENABLE, MIN_NOT_PLAIN_FILE_SIZE
         ocr_enabled = OCR_ENABLE.val
 
         # disable OCR anyway if file size exceeds limit
+        fsize_bytes = os.path.getsize(file_path)
         if ocr_enabled:
             fsize_limit = OCR_FILE_SIZE_LIMIT.val
-            fsize = os.path.getsize(file_path)
-            fsize /= 1024 * 1024
+            fsize = fsize_bytes / 1024 / 1024
             ocr_enabled = ocr_enabled and fsize <= fsize_limit
+        extracting_enabled = fsize_bytes > MIN_NOT_PLAIN_FILE_SIZE.val
 
-        _fn, ext = os.path.splitext(file_name)
-        if not ext:
-            mt = python_magic.from_file(file_path)
-            ext = mimetypes.guess_extension(mt)
-        ext = ext or ''
+        ext, file_type = LoadDocuments.get_file_extension(file_name, file_path)
+        if file_type == 'ARCHIVE':
+            raise Exception(f'File "{file_name}" ({file_path}) is archive. Archive inside '
+                            'archives are not supported.')
 
         parse_ptrs = ParsingTaskParams(CeleryTaskLogger(task),
                                        file_path,
@@ -1151,19 +1222,21 @@ class LoadDocuments(BaseTask):
                                        ocr_enabled)
 
         # decide can we parse the file with Textract
-        word_parse_enabled = MSWORD_TO_TEXT_ENABLE.val
-        textract_enabled = ocr_enabled or \
-                           ext in settings.TEXTRACT_NON_OCR_EXTENSIONS
+        word_parse_enabled = MSWORD_TO_TEXT_ENABLE.val and extracting_enabled
+        textract_enabled = (ocr_enabled or
+                            ext in settings.TEXTRACT_NON_OCR_EXTENSIONS) \
+                            and extracting_enabled
+        tika_enabled = extracting_enabled
 
         if settings.TEXTRACT_FIRST_FOR_EXTENSIONS:
             parse_functions = [PlainTextDocumentParser(),
                                XmlWordxDocumentParser() if word_parse_enabled else None,
                                TextractDocumentParser() if textract_enabled else None,
-                               TikaDocumentParser()]
+                               TikaDocumentParser() if tika_enabled else None]
         else:
             parse_functions = [PlainTextDocumentParser(),
                                XmlWordxDocumentParser() if word_parse_enabled else None,
-                               TikaDocumentParser(),
+                               TikaDocumentParser() if tika_enabled else None,
                                TextractDocumentParser() if textract_enabled else None]
 
         results = None
@@ -1184,6 +1257,23 @@ class LoadDocuments(BaseTask):
             results.text.replace_by_regex(REG_EXTRA_SPACE, '')
             results.text.replace_by_string('\r\n', '\n')
         return results
+
+    @staticmethod
+    def get_file_extension(file_name: str, file_path: str) -> Tuple[str, str]:
+        """
+        Get file extension and determine file type. Any `text/plain` file is considered to have extension `.txt`.
+        :param file_name: file name + extension
+        :param file_path: full file path
+        :return: (extension, type_string,), type_string: 'CONTENT' or 'ARCHIVE'
+        """
+        _fn, ext = os.path.splitext(file_name)
+        if not ext:
+            known_extensions = {'text/plain': 'txt'}
+            mt = python_magic.from_file(file_path)
+            ext = known_extensions.get(mt) or mimetypes.guess_extension(mt)
+        ext = ext or ''
+        file_content = 'ARCHIVE' if ArchiveFile.check_file_is_archive(file_path, ext) else 'CONTENT'
+        return ext, file_content
 
     @staticmethod
     def preprocess_parsed_text(pars_result: DocumentParsingResults):
@@ -1502,8 +1592,8 @@ class Locate(BaseTask):
         text_unit_ids = text_units.values_list('pk', flat=True)
 
         if text_unit_ids:
-            locate_args = [[text_unit_ids[i:i + package_size], kwargs['user_id'], locate] for i in
-                           range(0, len(text_unit_ids), package_size)]
+            locate_args = [[text_unit_ids[i:i + package_size], kwargs['user_id'], locate, document_initial_load]
+                           for i in range(0, len(text_unit_ids), package_size)]
             self.run_sub_tasks('Locate Data In Each Text Unit', Locate.parse_text_units, locate_args)
 
         if document_id:
@@ -1519,14 +1609,25 @@ class Locate(BaseTask):
             if not text_unit_ids:
                 self.run_sub_tasks('Cache Generic Document Data',
                                    Locate.on_locate_finished,
-                                   [(document_id, doc_loaded_by_user_id,
-                                     predefined_field_codes_to_python_values)])
+                                   [(document_id, doc_loaded_by_user_id, document_initial_load,
+                                     predefined_field_codes_to_python_values, locate)])
             else:
                 self.run_after_sub_tasks_finished(
                     'Cache Generic Document Data',
                     Locate.on_locate_finished,
                     [(document_id, doc_loaded_by_user_id, document_initial_load,
-                      predefined_field_codes_to_python_values)])
+                      predefined_field_codes_to_python_values, locate)])
+
+    @staticmethod
+    def save_summary_on_locate_finished(log: ProcessLogger, doc_id: int, locate: Dict[str, Dict],
+                                        document_initial_load: bool = False):
+        request_mat_views_refresh()
+
+        for locator_name in locate.keys():
+            locator = LOCATORS.get(locator_name)
+            if not locator:
+                continue
+            locator.update_document_summary(log, doc_id, document_initial_load)
 
     @staticmethod
     @shared_task(base=ExtendedTask,
@@ -1538,7 +1639,8 @@ class Locate(BaseTask):
                  max_retries=3,
                  priority=9)
     def on_locate_finished(_self: ExtendedTask, doc_id, doc_loaded_by_user_id, document_initial_load,
-                           predefined_field_codes_to_val: Dict[str, Any] = None):
+                           predefined_field_codes_to_val: Dict[str, Any] = None,
+                           locate: Dict[str, Dict] = None):
         doc = Document.all_objects.filter(pk=doc_id).last()  # type: Document
 
         if not doc:
@@ -1548,6 +1650,8 @@ class Locate(BaseTask):
             return
 
         log = CeleryTaskLogger(_self)
+
+        Locate.save_summary_on_locate_finished(log, doc_id, locate, document_initial_load)
 
         user = User.objects.get(pk=doc_loaded_by_user_id) \
             if doc_loaded_by_user_id is not None \
@@ -1579,7 +1683,22 @@ class Locate(BaseTask):
                                                    changed_by_user=user,
                                                    document_initial_load=document_initial_load)
 
-        Document.objects.filter(pk=doc_id).update(processed=True)
+        # allow notifications only for the documents which are already processed
+        disable_notifications = not doc.processed
+
+        doc.processed = True
+        doc.save()
+
+        from apps.rawdb.field_value_tables import cache_document_fields, FIELD_CODE_DOC_PROCESSED
+        cache_document_fields(log=log,
+                              document=doc,
+                              cache_system_fields=[FIELD_CODE_DOC_PROCESSED],
+                              cache_generic_fields=False,
+                              cache_user_fields=False,
+                              changed_by_user=user,
+                              disable_notifications=disable_notifications)
+
+        _self.log_info('on_locate_finished: completed')
 
     @staticmethod
     @shared_task(base=ExtendedTask,
@@ -1590,24 +1709,25 @@ class Locate(BaseTask):
                  autoretry_for=(SoftTimeLimitExceeded, InterfaceError, OperationalError,),
                  max_retries=3
                  )
-    def parse_text_units(self: ExtendedTask, text_unit_ids, user_id, locate):
+    def parse_text_units(self: ExtendedTask, text_unit_ids, user_id, locate: Dict[str, Dict],
+                         document_initial_load: bool):
         text_units = TextUnit.objects.filter(pk__in=text_unit_ids).values_list(
-            'pk', 'textunittext__text', 'language', 'document__project_id')
-        location_results = LocationResults()
+            'pk', 'textunittext__text', 'language', 'document_id', 'document__project_id')
+        location_results = LocationResults(document_initial_load=document_initial_load)
         log = CeleryTaskLogger(self)
 
         for task_name, task_kwargs in locate.items():
             if task_name not in LOCATORS:
                 raise Exception('Programming error. Unknown locator: {0}'.format(task_name))
             locator = LOCATORS[task_name]
-            for text_unit_id, text, text_unit_lang, project_id in text_units:
+            for text_unit_id, text, text_unit_lang, document_id, project_id in text_units:
 
                 # inject project_id for TermLocator to use custom ProjectTermConfiguration
                 if task_name == 'term':
                     task_kwargs['project_id'] = project_id
 
                 locator.try_parsing(log, location_results, text,
-                                    text_unit_id, text_unit_lang, **task_kwargs)
+                                    text_unit_id, text_unit_lang, document_id, project_id, **task_kwargs)
         location_results.save(log, user_id)
 
 
@@ -1626,25 +1746,27 @@ def clean_tasks(this_task: ExtendedTask):
     executing_tasks = order_tasks_by_hierarchy(executing_tasks)
     this_task.set_push_steps(len(executing_tasks) + 3)
 
-    if not executing_tasks:
-        return
-    purge_tasks(this_task, executing_tasks, True)
+    if executing_tasks:
+        purge_tasks(this_task, executing_tasks, True)
 
-    # while we were purging tasks new sub tasks might have been started
-    root_ids = [t.pk for t in executing_tasks]
-    tasks_to_purge = []
-    for i in range(3):
-        child_tasks = list(Task.objects.filter(parent_task_id__in=root_ids))
-        if not child_tasks:
-            break
-        tasks_to_purge = child_tasks + tasks_to_purge
-        root_ids = [t.pk for t in child_tasks]
+        # while we were purging tasks new sub tasks might have been started
+        root_ids = [t.pk for t in executing_tasks]
+        tasks_to_purge = []
+        for i in range(3):
+            child_tasks = list(Task.objects.filter(parent_task_id__in=root_ids))
+            if not child_tasks:
+                break
+            tasks_to_purge = child_tasks + tasks_to_purge
+            root_ids = [t.pk for t in child_tasks]
 
-    if tasks_to_purge:
-        purge_tasks(this_task, tasks_to_purge, False)
+        if tasks_to_purge:
+            purge_tasks(this_task, tasks_to_purge, False)
+
     this_task.push()
+
     purge_tasks(this_task, all_tasks, False)
     this_task.push()
+
     this_task.task.date_done = now()
     this_task.task.save()
 
@@ -1692,23 +1814,115 @@ def purge_tasks(this_task: ExtendedTask, tasks: List[Task], log_progress: bool):
 @app.task(name=task_names.TASK_NAME_TRACK_TASKS, bind=True, queue=settings.CELERY_QUEUE_SERIAL)
 def track_tasks(_celery_task):
     TaskUtils.prepare_task_execution()
-    for task_id in Task.objects.unready_parent_tasks().values_list('pk', flat=True):
-        Task.objects.update_parent_task(task_id)
+
+    start = time.time()
+
+    # Running in separate cursors mostly because starting sub-tasks closes the connections
+
+    # 1. Update all parent task statuses
+    stage_start = time.time()
+    with connection.cursor() as cursor:
+        cursor.execute('''
+update task_task t set 
+    status = t0.calc_status,
+    progress = t0.calc_progress
+from    
+    (
+     select t1.id,
+            task_status_to_str(t1.calc_status) as calc_status,
+            round(fix_task_progress_with_status(t1.calc_progress, t1.calc_status)) as calc_progress
+     from (
+        select t2.id as id,
+               calc_task_status(t2.id, t2.own_status, t2.has_sub_tasks) as calc_status, 
+               calc_task_progress(t2.id, t2.own_progress, t2.own_status, t2.has_sub_tasks) as calc_progress
+        from task_task t2
+        where t2.own_status = 'REVOKED' or (t2.worker is not null and 
+            (t2.status is null or t2.status in ('PENDING', 'RETRY', 'REJECTED', 'RECEIVED', 'STARTED')))
+     ) as t1
+    ) as t0
+where t0.id = t.id and (t.status <> t0.calc_status or t.progress <> t0.calc_progress);
+        ''')
+    print(f'Task statuses updated for {cursor.rowcount} tasks in {time.time() - stage_start} seconds.')
+
+    # 2. Get and start "on success" handlers
+    stage_start = time.time()
+    with connection.cursor() as cursor:
+        cursor.execute('''
+select t.id, t.name, t.metadata, t.main_task_id, t.title, t.priority
+from task_task t 
+where       t.run_after_sub_tasks_finished 
+        and t.own_status is null 
+        and not exists (select subt.id 
+                        from task_task subt 
+                        where       not subt.run_after_sub_tasks_finished 
+                                and not subt.run_if_parent_task_failed 
+                                and (   subt.parent_task_id = t.parent_task_id and subt.status <> 'SUCCESS' 
+                                     or subt.id = t.parent_task_id and subt.own_status <> 'SUCCESS'
+                                     )
+                        );        
+        ''')
+        count = 0
+        for task_id, name, metadata, main_task_id, title, priority in cursor.fetchall():
+            run_task_finish_handler(task_id, name, title, metadata, priority)
+            count += 1
+        print(f'Started {count} "on success" task handlers in {time.time() - stage_start} seconds.')
+
+    # 3. Get and start "on failure" handlers
+    stage_start = time.time()
+    with connection.cursor() as cursor:
+        cursor.execute('''
+select t.id, t.name, t.metadata, t.main_task_id, t.title, t.priority
+from task_task t inner join task_task p on t.parent_task_id = p.id 
+where       t.run_if_parent_task_failed 
+        and t.own_status is null 
+        and p.status in ('FAILURE', 'REVOKED');
+                ''')
+        count = 0
+        for task_id, name, metadata, main_task_id, title, priority in cursor.fetchall():
+            run_task_finish_handler(task_id, name, title, metadata, priority)
+            count += 1
+        print(f'Started {count} "on fail" task handlers in {time.time() - stage_start} seconds.')
+
+    # 4. Delete all sub-tasks of the finished tasks
+    stage_start = time.time()
+    with connection.cursor() as cursor:
+        cursor.execute('''
+delete from task_task t 
+where t.main_task_id in (select mt.id 
+                         from task_task mt 
+                         where mt.main_task_id is null and mt.status in ('SUCCESS', 'FAILURE', 'REVOKED')
+                         );
+        ''')
+    print(f'Deleted {cursor.rowcount} sub-tasks of finished main tasks in {time.time() - stage_start} seconds.')
+
+    stage_start = time.time()
+    with connection.cursor() as cursor:
+        cursor.execute('''update task_task set date_done = now() where 
+                          date_done is null and status in ('SUCCESS', 'FAILURE', 'REVOKED');''')
+    if cursor.rowcount:
+        print(f'Updating {cursor.rowcount} task date_done fields took {time.time() - stage_start} seconds.')
+
+    total_time = time.time() - start
+    print(f'Task tracking procedure finished in {total_time} seconds')
+
+
+def run_task_finish_handler(task_id, name, title, metadata, priority):
+    options = metadata['options']
+    options['task_id'] = task_id
+    options['parent_id'] = None
+    options['main_task_id'] = None
+    options['title'] = title
+    options['run_after_sub_tasks_finished'] = False
+    options['run_if_parent_task_failed'] = False
+    priority = priority
+    queue = get_queue_by_task_priority(priority)
+    task = signature(name, args=metadata['args'], **options)
+    task.apply_async(priority=priority, queue=queue)
 
 
 @app.task(name=task_names.TASK_NAME_TRACK_FAILED_TASKS, bind=True, queue=settings.CELERY_QUEUE_SERIAL)
 def track_failed_tasks(_celery_task):
     TaskMonitor.report_on_failed_tasks()
-
-
-@app.task(name=task_names.TASK_NAME_UPDATE_PARENT_TASK, bind=True, queue=settings.CELERY_QUEUE_SERIAL)
-def update_parent_task(_celery_task, parent_task_id: str,
-                       linked_parent_task_id: Optional[str] = None):
-    if parent_task_id == linked_parent_task_id:
-        raise Exception(f'Task #{parent_task_id} updates itself')
-    parent_task_id = linked_parent_task_id or parent_task_id
-    TaskUtils.prepare_task_execution()
-    Task.objects.update_parent_task(parent_task_id)
 
 
 @app.task(name=task_names.TASK_NAME_CLEAN_TASKS_PERIODIC, bind=True, queue=settings.CELERY_QUEUE_SERIAL)
@@ -1718,11 +1932,6 @@ def clean_tasks_periodic(_celery_task):
     TaskUtils.prepare_task_execution()
 
     del_sub_tasks_date = now() - datetime.timedelta(seconds=settings.REMOVE_SUB_TASKS_DELAY_IN_SEC)
-
-    # Delete sub-tasks of all main tasks finished more than a minute ago
-    Task.objects \
-        .filter(main_task__date_done__lt=del_sub_tasks_date, own_status__in=[SUCCESS]) \
-        .delete()
 
     # Delete all completed system/periodic tasks from DB
     Task.objects \
@@ -1743,16 +1952,56 @@ def clean_tasks_periodic(_celery_task):
         qr.delete()
 
 
-def purge_task(task_pk, wait=False, timeout=None, delete=True):
+@app.task(name=task_names.TASK_NAME_MONITOR_DISK_USAGE, bind=True, queue=settings.CELERY_QUEUE_SERIAL)
+def monitor_disk_usage(_celery_task):
+    disk_usage_msg = check_blocks(raise_error=False)
+
+    # exclude these already running tasks from purging
+    exclude_task_names = [
+        'advanced_celery.clean_tasks_periodic',
+        'apps.task.tasks.clean_tasks',
+        'Clean Project',
+        'Clean Projects',
+        'Delete Documents',
+        'Cancel Upload'
+    ]
+
+    if disk_usage_msg is not False:
+        logger.info(disk_usage_msg)
+
+        executing_tasks = list(
+            Task.objects
+                .filter(status__in=UNREADY_STATES)
+                .exclude(id=_celery_task.request.id)
+                .exclude(name__in=exclude_task_names)
+        )
+        executing_tasks = order_tasks_by_hierarchy(executing_tasks)
+
+        logger.info('Purge {} tasks.'.format(len(executing_tasks)))
+
+        if not executing_tasks:
+            return
+
+        for task in executing_tasks:
+            purge_task(task)
+
+
+def purge_task(task_pk, wait=False, timeout=None, delete=True,
+               log_func: Callable[[str], None] = None):
     """
     Purge task method.
+    :param log_func:
     :param task_pk: Task id
     :param wait:
     :param timeout
-    :oaram delete - bool - either delete task and its subtasks after purge
+    :param delete - bool - either delete task and its subtasks after purge
     :return:
     """
+    log_func = log_func or (lambda m: logger.info(m))
 
+    # TODO: maybe move into separate Task.purge method ?
+
+    status = 'success'
     task = task_pk
 
     if not isinstance(task, Task):
@@ -1762,12 +2011,16 @@ def purge_task(task_pk, wait=False, timeout=None, delete=True):
             return
 
     message = 'Task "Purge task", app task id={}'.format(task.pk)
-    logger.info(message)
+    log_func(message)
 
-    celery_task = AsyncResult(task.id)
-    logger.info('Celery task id={}'.format(task.id))
+    for subtask in task.subtasks:
+        subtask_celery_task = AsyncResult(subtask.id)
+        revoke_task(subtask_celery_task, wait=wait, timeout=timeout)
 
-    revoke_task(celery_task, wait=wait, timeout=timeout)
+    log_func('Celery task id={}'.format(task.id))
+
+    main_celery_task = AsyncResult(task.id)
+    revoke_task(main_celery_task, wait=wait, timeout=timeout)
 
     if delete:
         ret = 'Deleted '
@@ -1775,7 +2028,19 @@ def purge_task(task_pk, wait=False, timeout=None, delete=True):
         subtask_results_deleted = task.subtasks.delete()
 
         # delete Task
-        task.delete()
+        attempts = 3  # number of attempts
+        delay = 1  # delay in seconds for the first attempt
+        multiplier = 1  # multiplier to increase time between further attempts
+
+        for attempt_n in range(1, attempts + 1):
+            try:
+                task.delete()
+                break
+            # case 1. when task creates subtasks AFTER they are deleted in previous step
+            except:
+                if attempt_n != attempts:
+                    time.sleep(delay)
+                    delay *= multiplier
 
         ret += 'Task(id={}), TaskHistory, '.format(task.pk)
 
@@ -1784,9 +2049,25 @@ def purge_task(task_pk, wait=False, timeout=None, delete=True):
     else:
         ret = 'Revoked Task(id={})'
 
-    logger.info(ret)
+    log_func(ret)
 
-    return {'message': ret, 'status': 'success'}
+    if task.name == LoadDocuments.name and task.status in UNREADY_STATES:
+        if task.metadata and 'session_id' in task.metadata:
+            try:
+                document_ids = list(Document.objects.filter(
+                    processed=False,
+                    upload_session__uid=task.metadata['session_id'],
+                    name=task.metadata['file_name']).values_list('pk', flat=True))
+                if document_ids:
+                    from apps.document.tasks import DeleteDocuments
+                    _call_task(DeleteDocuments, _document_ids=document_ids)
+            except Exception as e:
+                error_msg = 'Failed to start "DeleteDocuments" task. ' + str(e)
+                log_func(error_msg)
+                ret += '\n' + error_msg
+                status = 'error'
+
+    return {'message': ret, 'status': status}
 
 
 class TotalCleanup(BaseTask):
@@ -1824,6 +2105,67 @@ def get_call_stack_line(index: int) -> str:
     if lbr_pos:
         call_stack = call_stack[:lbr_pos]
     return call_stack
+
+
+@shared_task(base=ExtendedTask, bind=True)
+def debug_on_task_finished(_celery_task: ExtendedTask, arg1: str = None, deep: int = 0):
+    print(f'on_debug_task_finished: {arg1}')
+    # from time import sleep
+    # sleep(2)
+
+
+@shared_task(base=ExtendedTask, bind=True)
+def debug_on_task_crash(_celery_task: ExtendedTask, arg1: str = None, deep: int = 0):
+    print(f'on_debug_task_crashed: {arg1}')
+    # from time import sleep
+    # sleep(2)
+
+
+@shared_task(base=ExtendedTask, bind=True)
+def debug_sub_task(_celery_task: ExtendedTask, arg1: str = None, deep: int = 0):
+    print(f'debug_sub_task: {arg1}')
+    # sleep(1)
+    if deep:
+        args = [(str(i) + '_' + str(deep - 1), deep - 1) for i in range(1)]
+        _celery_task.run_sub_tasks('debug', debug_sub_task, args)
+        _celery_task.run_after_sub_tasks_finished('debug after sub-tasks finished', debug_on_task_finished, args)
+
+
+@shared_task(base=ExtendedTask, bind=True)
+def debug_main_task(_celery_task: ExtendedTask, arg1: str = None):
+    print(f'debug_main_task: {arg1}')
+    args = [(str(i), 3) for i in range(1)]
+    _celery_task.run_sub_tasks('debug', debug_sub_task, args)
+    _celery_task.run_after_sub_tasks_finished('debug after sub-tasks finished', debug_on_task_finished, args)
+    _celery_task.run_if_task_or_sub_tasks_failed(debug_on_task_crash, args)
+
+
+@shared_task(base=ExtendedTask, bind=True)
+def test_task_progress_single_task(_celery_task: ExtendedTask, arg1: str = None):
+    _celery_task.log_info(
+        f'Testing task progress. Going to change progress every 10 seconds for 1 minute.\narg1={arg1}')
+    _celery_task.set_push_steps(10)
+    import time
+    for i in range(1, 10):
+        time.sleep(10)
+        _celery_task.push()
+        _celery_task.log_info(f'Step {i}')
+    _celery_task.log_info('Done. Bye.')
+
+
+@shared_task(base=ExtendedTask, bind=True)
+def test_task_progress_sub_task(_celery_task: ExtendedTask, arg1: str = None):
+    _celery_task.log_info(f'Testing task progress - subtask. Sleeping 10 seconds...\narg1={arg1}')
+    _celery_task.set_push_steps(10)
+    import time
+    time.sleep(10)
+
+
+@shared_task(base=ExtendedTask, bind=True)
+def test_task_progress_with_subtasks(_celery_task: ExtendedTask, arg1: str = None):
+    print(f'Testing task progress - main task. Going to start 10 sub-tasks each to sleep 10 seconds...\narg1={arg1}')
+    args = [(arg1,) for _i in range(1, 10)]
+    _celery_task.run_sub_tasks('debug', test_task_progress_sub_task, args)
 
 
 # Register all load tasks

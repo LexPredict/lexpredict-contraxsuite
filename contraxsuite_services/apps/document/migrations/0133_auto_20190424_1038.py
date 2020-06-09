@@ -3,6 +3,7 @@
 import django.contrib.postgres.fields.jsonb
 import django.core.serializers.json
 from django.db import migrations
+from apps.common.model_utils.improved_django_json_encoder import ImprovedDjangoJSONEncoder
 
 
 class Migration(migrations.Migration):
@@ -19,6 +20,6 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='documentfield',
             name='unsure_thresholds_by_value',
-            field=django.contrib.postgres.fields.jsonb.JSONField(blank=True, encoder=django.core.serializers.json.DjangoJSONEncoder, help_text='Makes sense for machine learning \n    strategies with "Unsure" category. The strategy will return concrete result (one of choice values) only if \n    the probability of the detected value is greater than this threshold. Otherwise the strategy returns None \n    or the choice value specified in "Unsure choice value" field. Format: { "value1": 0.9, "value2": 0.5, ...}.\n     Default: 0.9', null=True),
+            field=django.contrib.postgres.fields.jsonb.JSONField(blank=True, encoder=ImprovedDjangoJSONEncoder, help_text='Makes sense for machine learning \n    strategies with "Unsure" category. The strategy will return concrete result (one of choice values) only if \n    the probability of the detected value is greater than this threshold. Otherwise the strategy returns None \n    or the choice value specified in "Unsure choice value" field. Format: { "value1": 0.9, "value2": 0.5, ...}.\n     Default: 0.9', null=True),
         ),
     ]

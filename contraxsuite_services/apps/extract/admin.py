@@ -25,21 +25,30 @@
 # -*- coding: utf-8 -*-
 
 # Django imports
+from collections import Set
+from typing import List, Tuple, Dict, Any
+
 from django.contrib import admin
-from django.db.models import F
+from django.db.models import F, Q, QuerySet
 
 # Project imports
+from django.utils.html import escape
+from django.utils.safestring import mark_safe
+
+from apps.common.querysets import CustomCountQuerySet, stringify_queryset
+from apps.common.utils import full_reverse
+from apps.document.models import TextUnit
 from apps.extract.models import (
     AmountUsage, CitationUsage, CopyrightUsage, Court, CourtUsage, CurrencyUsage,
     DateDurationUsage, DateUsage, DefinitionUsage, DistanceUsage,
     GeoAlias, GeoAliasUsage, GeoEntity, GeoEntityUsage, GeoRelation,
     Party, PartyUsage, PercentUsage, RatioUsage, RegulationUsage,
-    Term, TermUsage, TrademarkUsage, UrlUsage, DocumentTermUsage)
+    Term, TermUsage, TrademarkUsage, UrlUsage, DocumentTermUsage, DocumentDefinitionUsage)
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.5.0/LICENSE"
-__version__ = "1.5.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.6.0/LICENSE"
+__version__ = "1.6.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -116,6 +125,16 @@ class DefinitionUsageAdmin(TextUnitUsageAdminBase):
     search_fields = ('definition',)
 
 
+class DocumentDefinitionUsageAdmin(admin.ModelAdmin):
+    list_display = ('document', 'definition', 'count')
+    search_fields = ('definition', 'document')
+
+    def get_queryset(self, request):
+        qs = admin.ModelAdmin.get_queryset(self, request)
+        qs = qs.only('id', 'document_id', 'count', 'definition')
+        return qs
+
+
 class RegulationUsageAdmin(TextUnitUsageAdminBase):
     list_display = ('text_unit', 'regulation_name', 'regulation_type', 'count')
     search_fields = ('regulation_name',)
@@ -164,13 +183,67 @@ class TermAdmin(admin.ModelAdmin):
 
 
 class TermUsageAdmin(TextUnitUsageAdminBase):
-    list_display = ('term', 'count')
-    search_fields = ('term', 'count')
+    list_display = ('term_data', 'document_ref', 'unit_type', 'count',)
+    search_fields = ('term', 'count',)
+    last_request = None
+    LIMIT_QUERY = 100000
 
     def get_queryset(self, request):
-        qs = admin.ModelAdmin.get_queryset(self, request)
-        qs = qs.only('id', 'text_unit_id', 'count', 'term').select_related('term')
+        self.last_request = request
+        # qs = admin.ModelAdmin.get_queryset(self, request)
+        qs = TermUsage.objects.all()
+        if 'q' in request.GET:
+            # searching by count?
+            request.GET = request.GET.copy()
+            query_text = request.GET.pop('q')
+            query_text = query_text[0] if query_text else ''
+            if query_text:
+                queries = Q(term__term__icontains=query_text) | \
+                          Q(document__name__icontains=query_text) | \
+                          Q(document__project__name__icontains=query_text)
+                if query_text.isdigit():
+                    queries |= (Q(count__gt=int(query_text) - 1))
+                qs = qs.filter(queries)
+        qs = qs.only('id', 'text_unit_id', 'count', 'term')
+        qs = self.filter_count_predicate(qs)
         return qs
+
+    def filter_count_predicate(self, qs: QuerySet) -> CustomCountQuerySet:
+        inner_query = stringify_queryset(qs)
+        qs = CustomCountQuerySet.wrap(qs)  # type: CustomCountQuerySet
+        full_query = f'SELECT COUNT(text_unit_id) FROM ({inner_query} LIMIT {self.LIMIT_QUERY}) AS temp;'
+        qs.set_optional_count_query(full_query)
+        return qs
+
+    def term_data(self, obj):
+        term = obj.term
+        url = self.full_reverse('extract:term-usage-list') + '?term_search=' + term.term
+        return mark_safe(f'<a href="{url}"><i class="fa fa-external-link"></i>{escape(term.term)}</a>')
+
+    term_data.short_description = 'Term'
+    term_data.admin_order_field = 'term__term'
+
+    def document_ref(self, obj):
+        document = obj.document
+        url = self.full_reverse('document:document-detail', args=[document.pk])
+        return mark_safe(f'<a href="{url}"><i class="fa fa-external-link"></i>{escape(document.name)}</a>')
+
+    document_ref.short_description = 'Document'
+    document_ref.admin_order_field = 'document__name'
+
+    def unit_type(self, obj):
+        unit = obj.text_unit  # type: TextUnit
+        unit_text = unit.text or ''
+        if len(unit_text) > 60:
+            unit_text = unit_text[:57] + '...'
+        url = self.full_reverse('document:text-unit-detail', args=[unit.pk])
+        return mark_safe(f'<a href="{url}"><i class="fa fa-external-link"></i>{escape(unit_text)}</a>')
+
+    unit_type.short_description = 'Unit'
+    unit_type.admin_order_field = 'text_unit__unit_type'
+
+    def full_reverse(self, *args, **kwargs):
+        return full_reverse(*args, **kwargs, request=self.last_request)
 
 
 class DocumentTermUsageAdmin(admin.ModelAdmin):
@@ -216,6 +289,7 @@ admin.site.register(CurrencyUsage, CurrencyUsageAdmin)
 admin.site.register(DateDurationUsage, DateDurationUsageAdmin)
 admin.site.register(DateUsage, DateUsageAdmin)
 admin.site.register(DefinitionUsage, DefinitionUsageAdmin)
+admin.site.register(DocumentDefinitionUsage, DocumentDefinitionUsageAdmin)
 admin.site.register(DistanceUsage, DistanceUsageAdmin)
 admin.site.register(GeoAlias, GeoAliasAdmin)
 admin.site.register(GeoAliasUsage, GeoAliasUsageAdmin)

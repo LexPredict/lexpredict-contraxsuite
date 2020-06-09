@@ -24,6 +24,8 @@ ignore =
     E501,
     # W291 - trailing whitespace (usually we have in text strings
     W291,
+    W504, W503,
+    E122, E127, E126,
 
 # maximum length that any line (with some exceptions) may be
 max-line-length = 130
