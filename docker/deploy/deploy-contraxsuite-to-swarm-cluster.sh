@@ -6,6 +6,9 @@ pushd ../
 export DOLLAR='$' # escape $ in envsubst
 export DOCKER_COMPOSE_CONFIG_VERSION=`date +%Y%m%d%H%M%S`
 
+# We use bc for numeric calculations in setenv.sh
+sudo apt-get install -y bc
+
 source setenv.sh
 if [ -e setenv_local.sh ]
 then
