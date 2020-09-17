@@ -1,0 +1,6 @@
+{% extends 'admin/change_list.html' %}
+
+{% block extrajs %}
+    {{ block.super }}
+    {% include "../ql_searchbox.html" %}
+{% endblock %}

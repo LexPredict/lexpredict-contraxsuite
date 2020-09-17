@@ -1,11 +1,20 @@
 {% extends "account/base.html" %}
 {% load i18n %}
+{% load static project_tags %}
 
-{% block title %}{% trans "Account Inactive" %}{% endblock %}
+{% block title %}{% trans "Account Unavailble" %}{% endblock %}
 
-{% block header %}{% trans "Account Inactive" %}{% endblock %}
+{% block header %}{% trans "Account Unavailble" %}{% endblock %}
 
 {% block inner %}
-  <p>{% trans "This account is inactive." %}</p>
+  <p>{% trans 'Please contact ' %} {% admin_email %}</p>
+  <form method="post" action="{% url 'account_logout' %}">
+      {% csrf_token %}
+      {% if redirect_field_value %}
+        <input type="hidden" name="{{ redirect_field_name }}" value="{{ redirect_field_value }}"/>
+      {% endif %}
+      <button class="btn-u btn-sm" type="submit">{% trans 'Try Another Account' %}</button>
+      <button class="btn-u btn-sm btn-l cancel" type="submit" name="action">{% trans "Cancel" %}</button>
+    </form>
 {% endblock %}
 

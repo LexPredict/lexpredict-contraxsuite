@@ -28,6 +28,7 @@
 from __future__ import absolute_import, unicode_literals
 
 # Django imports
+from allauth.socialaccount.models import SocialApp
 from django.urls import reverse
 from django.views.generic import RedirectView
 
@@ -37,8 +38,8 @@ from apps.users.models import User
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.6.0/LICENSE"
-__version__ = "1.6.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.7.0/LICENSE"
+__version__ = "1.7.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -99,5 +100,17 @@ class UserListView(apps.common.mixins.TechAdminRequiredMixin, apps.common.mixins
         return data
 
 
-from allauth.account.views import PasswordChangeView, reverse_lazy
+from allauth.account.views import PasswordChangeView, reverse_lazy, LoginView
+
+
+class MixedLoginView(LoginView):
+    def get(self, request, *args, **kwargs):
+        return super().get(request, *args, **kwargs)
+
+    def get_context_data(self, **kwargs):
+        ret = super().get_context_data(**kwargs)
+        ret['providers'] = [app for app in SocialApp.objects.all()]
+        return ret
+
+
 PasswordChangeView.success_url = reverse_lazy('users:user-detail', args=['-'])

@@ -33,8 +33,8 @@ from apps.rawdb.rawdb.query_parsing import SortDirection
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.6.0/LICENSE"
-__version__ = "1.6.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.7.0/LICENSE"
+__version__ = "1.7.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -62,6 +62,7 @@ FIELD_CODE_ASSIGNEE_ID = 'assignee_id'
 FIELD_CODE_ASSIGNEE_NAME = 'assignee_name'
 FIELD_CODE_ASSIGN_DATE = 'assign_date'
 FIELD_CODE_STATUS_NAME = 'status_name'
+FIELD_CODE_STATUS_ID = 'status_id'
 FIELD_CODE_DELETE_PENDING = 'delete_pending'
 FIELD_CODE_NOTES = 'notes'
 FIELD_CODE_FORMULA = 'formula'

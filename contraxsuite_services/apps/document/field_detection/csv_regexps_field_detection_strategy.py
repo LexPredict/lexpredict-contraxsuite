@@ -27,8 +27,8 @@
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.6.0/LICENSE"
-__version__ = "1.6.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.7.0/LICENSE"
+__version__ = "1.7.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -164,7 +164,8 @@ class CsvRegexpsFieldDetectionStrategy(FieldDetectionStrategy):
                                             field: DocumentField,
                                             train_data_project_ids: Optional[List],
                                             use_only_confirmed_field_values: bool = False,
-                                            train_documents: Iterable[Document] = None) -> Optional[ClassifierModel]:
+                                            split_and_log_out_of_sample_test_report: bool = False)\
+            -> Optional[ClassifierModel]:
 
         return None
 

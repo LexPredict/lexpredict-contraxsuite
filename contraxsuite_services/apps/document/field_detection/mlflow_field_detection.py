@@ -35,19 +35,21 @@ from apps.document.models import ClassifierModel, TextUnit, \
     DocumentField
 from apps.document.models import Document
 from apps.document.repository.dto import FieldValueDTO, AnnotationDTO
+from apps.document.repository.text_unit_repository import TextUnitRepository
 from apps.document.value_extraction_hints import ValueExtractionHint
 from apps.mlflow.mlflow_model_manager import MLFlowModelManager
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.6.0/LICENSE"
-__version__ = "1.6.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.7.0/LICENSE"
+__version__ = "1.7.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
 
 class MLFlowModelBasedFieldDetectionStrategy(FieldDetectionStrategy):
     code = DocumentField.VD_MLFLOW_MODEL
+    text_unit_repo = TextUnitRepository()
 
     @classmethod
     def test_model(cls, model_uri: str):
@@ -79,7 +81,9 @@ class MLFlowModelBasedFieldDetectionStrategy(FieldDetectionStrategy):
                                             log: ProcessLogger,
                                             field: DocumentField,
                                             train_data_project_ids: Optional[List],
-                                            use_only_confirmed_field_values: bool = False) -> Optional[ClassifierModel]:
+                                            use_only_confirmed_field_values: bool = False,
+                                            split_and_log_out_of_sample_test_report: bool = False)\
+            -> Optional[ClassifierModel]:
         return None
 
     @classmethod
@@ -88,7 +92,10 @@ class MLFlowModelBasedFieldDetectionStrategy(FieldDetectionStrategy):
                            doc: Document,
                            field: DocumentField,
                            field_code_to_value: Dict[str, Any]) -> Optional[FieldValueDTO]:
-        typed_field = TypedField.by(field)  # type: TypedField
+
+        ants: List[AnnotationDTO] = []
+        typed_field: TypedField = TypedField.by(field)
+        text_unit_repo = cls.text_unit_repo
 
         if field.mlflow_detect_on_document_level:
             log.debug('detect_field_value: mlflow_field_detection on doc level, ' +
@@ -110,42 +117,26 @@ class MLFlowModelBasedFieldDetectionStrategy(FieldDetectionStrategy):
                 return None
             return FieldValueDTO(field_value=value)
 
-        ants = list()  # type: List[AnnotationDTO]
+        qs_text_units = text_unit_repo.get_doc_text_units(doc, field.text_unit_type)
+        qs_text_units = FieldDetectionStrategy.reduce_textunits_by_detection_limit(qs_text_units, field)
 
-        qs_text_units = TextUnit.objects \
-            .filter(document=doc) \
-            .filter(unit_type=field.text_unit_type) \
-            .select_related('textunittext') \
-            .order_by('location_start', 'pk') \
-            .defer('textunittext__text_tsvector')
-
-        units_counted = 0
         log.debug('detect_field_value: mlflow_field_detection on text unit level, ' +
                   f'field {field.code}({field.pk}), document #{doc.pk}')
-        for text_unit in qs_text_units.iterator():
-            if field.detect_limit_count:
-                units_counted = FieldDetectionStrategy.update_units_counted(
-                    field, units_counted, text_unit)
-                if units_counted > field.detect_limit_count:
-                    break
 
+        for text_unit in qs_text_units.iterator():
             model_input = dict(field_code_to_value)
             model_input['text'] = text_unit.text
             model_input_df = pd.DataFrame([model_input])
             model_output = MLFlowModelManager().predict(field.mlflow_model_uri, model_input_df)
-
             value = model_output[0]
-
             if value is None:
                 continue
-
             ant = None
 
             if typed_field.requires_value:
                 # For the field types expecting a value the mlflow model must return either a value or None.
                 hint_name = ValueExtractionHint.TAKE_FIRST.name
-                value, hint_name = typed_field \
-                    .get_or_extract_value(doc, value, hint_name, text_unit.text)
+                value, hint_name = typed_field.get_or_extract_value(doc, value, hint_name, text_unit.text)
                 if not typed_field.is_python_annotation_value_ok(value):
                     raise ValueError(f'ML model of field {field.code} ({typed_field.type_code}) returned '
                                      f'annotation value not suitable for this field:\n'
@@ -166,20 +157,12 @@ class MLFlowModelBasedFieldDetectionStrategy(FieldDetectionStrategy):
 
             if ant is None:
                 continue
-            if field.detect_limit_count and field.detect_limit_unit == DocumentField.DETECT_LIMIT_CHAR:
-                if ant.location_in_doc_start > field.detect_limit_count:
-                    break
-
             ants.append(ant)
             if not isinstance(typed_field, MultiValueField):
                 return FieldValueDTO(field_value=ant.annotation_value, annotations=ants)
 
-            if field.detect_limit_count and field.detect_limit_unit == DocumentField.DETECT_LIMIT_CHAR:
-                units_counted += len(text_unit.text)
-
         if not ants:
             return None
 
-        return FieldValueDTO(field_value=typed_field.build_json_field_value_from_json_ant_values([a.annotation_value
-                                                                                                  for a in ants]),
-                             annotations=ants)
+        return FieldValueDTO(field_value=typed_field.build_json_field_value_from_json_ant_values(
+            [a.annotation_value for a in ants]), annotations=ants)

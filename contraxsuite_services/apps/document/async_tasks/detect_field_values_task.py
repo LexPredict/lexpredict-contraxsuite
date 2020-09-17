@@ -32,29 +32,30 @@ import settings
 from apps.document.field_detection import field_detection
 from apps.document.field_detection.detect_field_values_params import DocDetectFieldValuesParams
 from apps.document.models import DocumentType, Document
-from apps.task.tasks import BaseTask, ExtendedTask, call_task_func, CeleryTaskLogger
+from apps.task.tasks import ExtendedTask, call_task_func, CeleryTaskLogger
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.6.0/LICENSE"
-__version__ = "1.6.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.7.0/LICENSE"
+__version__ = "1.7.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
 
-class DetectFieldValues(BaseTask):
+class DetectFieldValues(ExtendedTask):
     name = 'Detect Field Values'
 
     def process(self,
                 document_type: DocumentType = None,
                 project_ids=list,
                 document_name: str = None,
-                do_not_run_for_modified_documents=True,
+                existing_data_action='maintain',
                 do_not_write=False,
                 **kwargs):
         self.log_info("Going to detect document field values based on "
                       "the pre-coded regexps and field values entered by users...")
 
+        do_not_run_for_modified_documents = existing_data_action == 'maintain'
         if isinstance(document_type, dict):
             document_type = DocumentType.objects.get(pk=document_type['pk'])
 
@@ -72,7 +73,10 @@ class DetectFieldValues(BaseTask):
         document_id = kwargs.get('document_id')
         if document_id:
             self.set_push_steps(1)
-            dcptrs = DocDetectFieldValuesParams(document_id, False, kwargs.get('clear_old_values') or True)
+            dcptrs = DocDetectFieldValuesParams(document_id,
+                                                False,
+                                                kwargs.get('clear_old_values') or True,
+                                                skip_modified_values=do_not_run_for_modified_documents)
             self.run_sub_tasks('Detect Field Values For Single Document',
                                DetectFieldValues.detect_field_values_for_document,
                                [(dcptrs,)])
@@ -91,6 +95,7 @@ class DetectFieldValues(BaseTask):
         detect_field_values_for_document_args = []
         source_data = []
 
+        document_ids = kwargs.get('document_ids')
         qs = Document.objects.filter(status__is_active=True)
         if document_name:
             qs = qs.filter(name=document_name)
@@ -100,6 +105,8 @@ class DetectFieldValues(BaseTask):
             qs = qs.filter(project_id__in=project_ids)
         elif document_type_pks:
             qs = qs.filter(document_type_id__in=document_type_pks)
+        elif document_ids:
+            qs = qs.filter(pk__in=document_ids)
 
         for doc_id, source, name in qs.values_list('id', 'source', 'name'):
             dcptrs = DocDetectFieldValuesParams(doc_id,

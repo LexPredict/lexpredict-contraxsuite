@@ -28,6 +28,7 @@ from typing import Optional, List, Dict, Tuple, Iterable, Any
 
 import pandas as pd
 from django.conf import settings
+from django.db import transaction
 from django.db.models import F, Value, IntegerField, Q, Subquery
 from sklearn.feature_extraction.text import CountVectorizer
 from sklearn.feature_extraction.text import TfidfTransformer
@@ -38,6 +39,7 @@ from sklearn.pipeline import Pipeline
 from sklearn.utils import shuffle
 
 from apps.common.log_utils import ProcessLogger
+from apps.document.field_detection.field_based_ml_field_detection import init_classifier_impl
 from apps.document.field_detection.field_detection_repository import FieldDetectionRepository
 from apps.document.field_detection.fields_detection_abstractions import FieldDetectionStrategy
 from apps.document.field_detection.regexps_field_detection import RegexpsOnlyFieldDetectionStrategy
@@ -49,18 +51,20 @@ from apps.document.models import ClassifierModel, ExternalFieldValue, TextUnit, 
     DocumentField, DocumentType
 from apps.document.models import Document, FieldAnnotation
 from apps.document.repository.dto import FieldValueDTO, AnnotationDTO
+from apps.document.repository.text_unit_repository import TextUnitRepository
 from apps.document.value_extraction_hints import ValueExtractionHint
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.6.0/LICENSE"
-__version__ = "1.6.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.7.0/LICENSE"
+__version__ = "1.7.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
 
 class TextBasedMLFieldDetectionStrategy(FieldDetectionStrategy):
     code = DocumentField.VD_TEXT_BASED_ML_ONLY
+    text_unit_repo = TextUnitRepository()
 
     @classmethod
     def has_problems_with_field(cls, field: DocumentField) -> Optional[str]:
@@ -92,11 +96,18 @@ class TextBasedMLFieldDetectionStrategy(FieldDetectionStrategy):
     def get_no_field_text_units(cls, document_type: DocumentType, text_unit_type: str) -> List[str]:
         return list(
             TextUnit.objects.filter(document__document_type_id=document_type.pk, unit_type=text_unit_type,
-                                    related_field_values=None)
+                                    annotations_matches=None)
                 .values_list('textunittext__text', flat=True)[:settings.ML_TRAIN_DATA_SET_GROUP_LEN])
 
     @classmethod
-    def train_model(cls, field: DocumentField, train_data_sets: List[List[dict]]) -> ClassifierModel:
+    def init_classifier(cls, field: DocumentField):
+        init_script = field.classifier_init_script  # type: str
+
+        return init_classifier_impl(field.code, init_script)
+
+    @classmethod
+    def train_model(cls, log: ProcessLogger, field: DocumentField, train_data_sets: List[List[dict]],
+                    split_and_log_out_of_sample_test_report: bool = False) -> ClassifierModel:
         typed_field = TypedField.by(field)
         df = pd.DataFrame.from_records(train_data_sets.pop(0))
         # add transferred external data
@@ -111,12 +122,13 @@ class TextBasedMLFieldDetectionStrategy(FieldDetectionStrategy):
         df['target_index'] = df['target_name'].factorize(sort=True)[0] + 1
 
         df = df.append(
-            [{'text_unit__textunittext__text': i} for i in cls.get_no_field_text_units(field.document_type, field.text_unit_type)])
+            [{'text_unit__textunittext__text': i} for i in
+             cls.get_no_field_text_units(field.document_type, field.text_unit_type)])
 
         df['target_index'] = df['target_index'].fillna(0).astype('int')
         df['target_name'] = df['target_name'].fillna(SkLearnClassifierModel.EMPTY_CAT_NAME).astype(
             'str')
-        df['user_input'] = df['created_by'].fillna(0).astype('bool')
+        df['user_input'] = df['modified_by'].fillna(0).astype('bool')
 
         res_df = pd.DataFrame()
 
@@ -129,38 +141,51 @@ class TextBasedMLFieldDetectionStrategy(FieldDetectionStrategy):
 
         target_names = sorted(res_df['target_name'].unique())
 
+        if field.classifier_init_script:
+            try:
+                clf = cls.init_classifier(field)
+            except Exception as e:
+                log.error(f'Unable to initialize classifier for field {field.code}. '
+                          f'Classifier init script: {field.classifier_init_script}', exc_info=e)
+        else:
+            clf = SGDClassifier(loss='hinge', penalty='l2',
+                                alpha=1e-3, max_iter=5, tol=None, n_jobs=-1,
+                                class_weight='balanced')
+
+        log.info(f'Classifier initialized: {clf}')
+
         text_clf = Pipeline([('vect', CountVectorizer(strip_accents='unicode', analyzer='word',
                                                       stop_words='english',
                                                       tokenizer=word_position_tokenizer)),
                              ('tfidf', TfidfTransformer()),
-                             ('clf', SGDClassifier(loss='hinge', penalty='l2',
-                                                   alpha=1e-3, max_iter=5, tol=None, n_jobs=-1,
-                                                   class_weight='balanced')),
+                             ('clf', clf),
                              ])
         x = res_df['text_unit__textunittext__text']
         y = res_df['target_index']
 
-        x_train, x_test_os, y_train, y_test_os = train_test_split(x, y, test_size=0.2, random_state=42)
-        _x_train, x_test_is, _y_train, y_test_is = train_test_split(x_train, y_train, test_size=0.2, random_state=42)
+        if split_and_log_out_of_sample_test_report:
+            x_train, x_test_os, y_train, y_test_os = train_test_split(x, y, test_size=0.2, random_state=42)
+        else:
+            x_train, x_test_os, y_train, y_test_os = x, None, y, None
 
         sklearn_model = text_clf.fit(x_train, y_train)
 
         model = SkLearnClassifierModel(sklearn_model=sklearn_model, target_names=target_names)
 
         classifier_model = ClassifierModel()
-
         classifier_model.set_trained_model_obj(model)
         classifier_model.document_field = field
 
-        predicted_os = text_clf.predict(x_test_os)
-        predicted_is = text_clf.predict(x_test_is)
+        classifier_model.classifier_accuracy_report_in_sample = \
+            classification_report(y,
+                                  text_clf.predict(x),
+                                  target_names=target_names)
 
-        classifier_model.classifier_accuracy_report_out_of_sample = classification_report(y_test_os,
-                                                                                          predicted_os,
-                                                                                          target_names=target_names)
-        classifier_model.classifier_accuracy_report_in_sample = classification_report(y_test_is,
-                                                                                      predicted_is,
-                                                                                      target_names=target_names)
+        if y_test_os is not None and x_test_os is not None:
+            classifier_model.classifier_accuracy_report_out_of_sample = \
+                classification_report(y_test_os,
+                                      text_clf.predict(x_test_os),
+                                      target_names=target_names)
 
         return classifier_model
 
@@ -190,7 +215,9 @@ class TextBasedMLFieldDetectionStrategy(FieldDetectionStrategy):
                                             log: ProcessLogger,
                                             field: DocumentField,
                                             train_data_project_ids: Optional[List],
-                                            use_only_confirmed_field_values: bool = False) -> Optional[ClassifierModel]:
+                                            use_only_confirmed_field_values: bool = False,
+                                            split_and_log_out_of_sample_test_report: bool = False) \
+            -> Optional[ClassifierModel]:
         log.info(f'Training model for field {field.code} (#{field.pk})...')
 
         if train_data_project_ids and not use_only_confirmed_field_values:
@@ -199,20 +226,20 @@ class TextBasedMLFieldDetectionStrategy(FieldDetectionStrategy):
             train_data_sets = cls.get_train_data_sets(field, train_data_project_ids)
 
         if not train_data_sets:
-            log.info('Not enough data to train model for document_type #{0} and field #{1}.'
-                     .format(field.document_type.pk, field.pk))
+            log.info(
+                f'Not enough data to train model for document_type {field.document_type.code}, field: {field.code}.')
             return None
 
-        classifier_model = cls.train_model(field, train_data_sets)
+        classifier_model = cls.train_model(log, field, train_data_sets, split_and_log_out_of_sample_test_report)
         log.info(
-            'Finished training model for document_type #{0} and field #{1}.'.format(field.document_type.pk, field.pk))
+            f'Finished training model for document_type {field.document_type.code}, field: {field.code}.')
 
         return classifier_model
 
     @classmethod
-    def predict_value(cls, sklearn_model: SkLearnClassifierModel, text_unit: TextUnit) \
+    def predict_value(cls, sklearn_model: SkLearnClassifierModel, text: str) \
             -> Tuple[Optional[str], Optional[str], Optional[str]]:
-        predicted = sklearn_model.sklearn_model.predict([text_unit.text])
+        predicted = sklearn_model.sklearn_model.predict([text])
         target_index = predicted[0]
         target_name = sklearn_model.target_names[target_index]
         return parse_category(target_name)
@@ -222,13 +249,15 @@ class TextBasedMLFieldDetectionStrategy(FieldDetectionStrategy):
                                   typed_field: TypedField,
                                   document: Document,
                                   field: DocumentField,
-                                  text_unit: TextUnit) -> Optional[AnnotationDTO]:
-        field_code, value, hint_name = cls.predict_value(sklearn_model, text_unit)
+                                  text: str,
+                                  location_start: int,
+                                  location_end: int) -> Optional[AnnotationDTO]:
+        field_code, value, hint_name = cls.predict_value(sklearn_model, text)
         if field_code == field.code:
             if typed_field.requires_value:
                 hint_name = hint_name or ValueExtractionHint.TAKE_FIRST.name
                 value, hint_name = typed_field \
-                    .get_or_extract_value(document, value, hint_name, text_unit.text)
+                    .get_or_extract_value(document, value, hint_name, text)
                 if not typed_field.is_python_annotation_value_ok(value):
                     raise ValueError(f'ML model of field {field.code} ({typed_field.type_code}) returned '
                                      f'annotation value not suitable for this field:\n'
@@ -236,76 +265,63 @@ class TextBasedMLFieldDetectionStrategy(FieldDetectionStrategy):
 
                 annotation_value = typed_field.annotation_value_python_to_json(value)
                 return AnnotationDTO(annotation_value=annotation_value,
-                                     location_in_doc_start=text_unit.location_start,
-                                     location_in_doc_end=text_unit.location_end,
+                                     location_in_doc_start=location_start,
+                                     location_in_doc_end=location_end,
                                      extraction_hint_name=hint_name)
             else:
                 return AnnotationDTO(annotation_value=None,
-                                     location_in_doc_start=text_unit.location_start,
-                                     location_in_doc_end=text_unit.location_end,
+                                     location_in_doc_start=location_start,
+                                     location_in_doc_end=location_end,
                                      extraction_hint_name=None)
 
         return None
 
     @classmethod
+    @transaction.atomic
     def detect_field_value(cls,
                            log: ProcessLogger,
                            doc: Document,
                            field: DocumentField,
                            field_code_to_value: Dict[str, Any]) -> Optional[FieldValueDTO]:
 
-        depends_on_full_text = doc.full_text
-        detected_with_stop_words, detected_value = detect_with_stop_words_by_field_and_full_text(field,
-                                                                                                 depends_on_full_text)
+        log.debug('detect_field_value: regexps_and_text_based_ml_field_value, ' +
+                  f'field {field.code}({field.pk}), document #{doc.pk}')
+
+        ants: List[AnnotationDTO] = []
+        text_unit_repo = cls.text_unit_repo
+        depends_on_full_text: str = doc.full_text
+        typed_field: TypedField = TypedField.by(field)
+
+        detected_with_stop_words, detected_value = \
+            detect_with_stop_words_by_field_and_full_text(field, depends_on_full_text)
         if detected_with_stop_words:
             return FieldValueDTO(field_value=detected_value)
 
+        qs_text_units = text_unit_repo.get_doc_text_units(doc, field.text_unit_type)
+        qs_text_units = FieldDetectionStrategy.reduce_textunits_by_detection_limit(qs_text_units, field)
+
         try:
-            log.debug('detect_field_value: regexps_and_text_based_ml_field_value, ' +
-                      f'field {field.code}({field.pk}), document #{doc.pk}')
             classifier_model = ClassifierModel.objects.get(document_field=field)
             sklearn_model = classifier_model.get_trained_model_obj()
-            typed_field = TypedField.by(field)  # type: TypedField
 
-            ants = list()  # type: List[AnnotationDTO]
-
-            qs_text_units = TextUnit.objects \
-                .filter(document=doc) \
-                .filter(unit_type=field.text_unit_type) \
-                .order_by('location_start', 'pk')
-
-            units_counted = 0
-            for text_unit in qs_text_units.iterator():
-                if field.detect_limit_count:
-                    units_counted = FieldDetectionStrategy.update_units_counted(
-                        field, units_counted, text_unit)
-                    if units_counted > field.detect_limit_count:
-                        break
-
+            for text_unit in qs_text_units.iterator():  # type: TextUnit
                 ant = cls.predict_and_extract_value(sklearn_model=sklearn_model,
                                                     typed_field=typed_field,
                                                     document=doc,
                                                     field=field,
-                                                    text_unit=text_unit)
+                                                    text=text_unit.text,
+                                                    location_start=text_unit.location_start,
+                                                    location_end=text_unit.location_end)
                 if ant is None:
                     continue
-                if field.detect_limit_count and field.detect_limit_unit == DocumentField.DETECT_LIMIT_CHAR:
-                    if ant.location_in_doc_start > field.detect_limit_count:
-                        break
-
                 ants.append(ant)
                 if not isinstance(typed_field, MultiValueField):
                     return FieldValueDTO(field_value=ant.annotation_value, annotations=ants)
-
-                if field.detect_limit_count and field.detect_limit_unit == DocumentField.DETECT_LIMIT_CHAR:
-                    units_counted += len(text_unit.text)
-
             if not ants:
                 return None
 
-            return FieldValueDTO(field_value=typed_field.build_json_field_value_from_json_ant_values([a.annotation_value
-                                                                                                      for a in ants]),
-                                 annotations=ants)
+            return FieldValueDTO(field_value=typed_field.build_json_field_value_from_json_ant_values(
+                [a.annotation_value for a in ants]), annotations=ants)
 
         except ClassifierModel.DoesNotExist as e:
             log.info(f'Classifier model does not exist for field: {field.code}')
@@ -339,4 +355,5 @@ class RegexpsAndTextBasedMLFieldDetectionStrategy(TextBasedMLFieldDetectionStrat
         try:
             return super().detect_field_value(log, doc, field, field_code_to_value)
         except ClassifierModel.DoesNotExist:
-            return RegexpsOnlyFieldDetectionStrategy.detect_field_value(log, doc, field, field_code_to_value)
+            return RegexpsOnlyFieldDetectionStrategy.detect_field_value(
+                log, doc, field, field_code_to_value)

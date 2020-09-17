@@ -24,8 +24,9 @@
 """
 # -*- coding: utf-8 -*-
 
+import time
 from datetime import datetime, timedelta
-from typing import Callable, Type
+from typing import Callable, Type, Tuple
 
 from celery.states import PENDING
 from django.db import connection, transaction, models
@@ -34,13 +35,18 @@ from django.utils import timezone
 from apps.common.log_utils import ProcessLogger
 from apps.common.singleton import Singleton
 from apps.common.sql_commons import SQLClause, fetch_bool
+from apps.materialized_views.models import MaterializedView
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.6.0/LICENSE"
-__version__ = "1.6.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.7.0/LICENSE"
+__version__ = "1.7.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
+
+
+TABLE_M_VIEW = 'materialized_views_materializedview'
+TABLE_M_VIEW_REQUEST = 'materialized_views_materializedviewrefreshrequest'
 
 
 @Singleton
@@ -85,31 +91,52 @@ class MaterializedViews:
         :param log
         :return:
         """
+        try:
+            with connection.cursor() as cursor:
+                cursor.execute(f'update {TABLE_M_VIEW} '
+                               'set status=%s where view_name=%s;',
+                               [MaterializedView.VIEW_STATUS_UPDATING, view_name])
+        except Exception as e:
+            log.error(f'Error saving updated status for view "{view_name}": {e}')
+
         with transaction.atomic():
             with connection.cursor() as cursor:
                 if not self.advisory_lock_by_relation_name(cursor, view_name):
                     log.info(f'Canceled refreshing materialized view: {view_name}. '
                              f'Unable to acquire the advisory lock.')
+                    cursor.execute(f'update {TABLE_M_VIEW} '
+                                   'set status=%s where view_name=%s;',
+                                   [MaterializedView.VIEW_STATUS_UPDATED, view_name])
                     return
                 log.info(f'Refreshing materialized view: {view_name}.')
                 cursor.execute('select max(request_date) '
-                               'from materialized_views_materializedviewrefreshrequest '
-                               'where view_name = %s', [view_name])
+                               f'from {TABLE_M_VIEW_REQUEST} '
+                               'where view_name = %s;', [view_name])
                 row = cursor.fetchone()
                 request_date = row[0] if row else None
-                cursor.execute(f'refresh materialized view {view_name}')
+
+                concurency_clause = ''
+                from apps.materialized_views.app_vars import CONCURRENCY_UPDATE
+                if CONCURRENCY_UPDATE.val:
+                    concurency_clause = ' CONCURRENTLY'
+                cursor.execute(f'refresh materialized view{concurency_clause} {view_name};')
+
                 if request_date is not None:
-                    cursor.execute('delete from materialized_views_materializedviewrefreshrequest '
+                    cursor.execute(f'delete from {TABLE_M_VIEW_REQUEST} '
                                    'where view_name = %s and request_date <= %s',
                                    [view_name, request_date])
                 else:
-                    cursor.execute('delete from materialized_views_materializedviewrefreshrequest '
+                    cursor.execute(f'delete from {TABLE_M_VIEW_REQUEST} '
                                    'where view_name = %s',
                                    [view_name])
                 dt_now = timezone.now()
-                cursor.execute('insert into materialized_views_materializedview '
-                               '(view_name, refresh_date) values (%s, %s) '
-                               'on conflict (view_name) do update set refresh_date = %s', [view_name, dt_now, dt_now])
+                cursor.execute(f'insert into {TABLE_M_VIEW} '
+                               '(view_name, refresh_date, status) '
+                               'values (%s, %s, %s) '
+                               'on conflict (view_name) do update set refresh_date = %s, '
+                               'status = %s;',
+                               [view_name, dt_now, MaterializedView.VIEW_STATUS_UPDATED,
+                                dt_now, MaterializedView.VIEW_STATUS_UPDATED])
 
     def request_refresh(self, view_name: str):
         """
@@ -123,7 +150,7 @@ class MaterializedViews:
         """
         with connection.cursor() as cursor:
             cursor.execute(
-                'insert into materialized_views_materializedviewrefreshrequest '
+                f'insert into {TABLE_M_VIEW_REQUEST} '
                 '(view_name, request_date) '
                 'values (%s, %s)',
                 [view_name, timezone.now()])
@@ -147,11 +174,11 @@ class MaterializedViews:
         refresh_delay_sec = REFRESH_DELAY.val
         to_refresh = list()
         with connection.cursor() as cursor:
-            cursor.execute('''select view_name, max(request_date) 
-                              from materialized_views_materializedviewrefreshrequest
-                              where to_jsonb(view_name) not in 
-                                    (select args->0 from task_task where name = %s and own_status = %s) 
-                              group by view_name''', (refresh_task_name, PENDING))
+            cursor.execute(f'''select view_name, max(request_date) 
+                               from {TABLE_M_VIEW_REQUEST}
+                               where to_jsonb(view_name) not in 
+                                     (select args->0 from task_task where name = %s and own_status = %s) 
+                               group by view_name''', (refresh_task_name, PENDING))
             for view_name, max_request_date in cursor.fetchall():  # type: str, datetime
                 if timezone.now() - max_request_date > timedelta(seconds=refresh_delay_sec):
                     to_refresh.append(view_name)

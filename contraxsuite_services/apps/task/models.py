@@ -26,9 +26,9 @@
 
 # Standard imports
 import logging
-from datetime import datetime
+import datetime
 from traceback import format_exc
-from typing import Generator, Dict, Any
+from typing import Generator, Dict, Any, List, Set
 
 # Third-party imports
 from celery import states
@@ -43,9 +43,11 @@ from django.db import models, DatabaseError
 from django.db.models.deletion import CASCADE
 from django.utils.translation import ugettext_lazy as _
 from elasticsearch import Elasticsearch
+from uuid import getnode as get_mac
 
 # Project imports
 from apps.common.fields import StringUUIDField, TruncatingCharField
+from apps.common.processes import terminate_processes_by_ids
 from apps.common.utils import fast_uuid
 from apps.task.celery_backend.managers import TaskManager
 from apps.task.celery_backend.utils import now
@@ -54,8 +56,8 @@ from contraxsuite_logging import write_task_log
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.6.0/LICENSE"
-__version__ = "1.6.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.7.0/LICENSE"
+__version__ = "1.7.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -86,12 +88,13 @@ class TaskLogEntry:
     file_index: str
     record_id: str
     message: str
-    timestamp: datetime = None
+    timestamp: datetime.datetime = None
     log_level: str = None
     task_name: str = None
     task_id: str = None
     main_task_id: str = None
     stack_trace: str = None
+    com_docker_swarm_task_id: str = None
 
 
 class Task(models.Model):
@@ -170,6 +173,8 @@ class Task(models.Model):
 
     failure_reported = models.BooleanField(null=False, default=False, db_index=True)
 
+    spawned_processes = JSONField(blank=True, null=True, encoder=ImprovedDjangoJSONEncoder)
+
     objects = TaskManager()
 
     def __str__(self):
@@ -230,7 +235,10 @@ class Task(models.Model):
                        exc_info=exc_info,
                        log_extra=extra)
 
-    def get_task_log_from_elasticsearch(self) -> Generator[TaskLogEntry, None, None]:
+    def get_task_log_from_elasticsearch(self,
+                                        include_systemwide_errors: bool = False,
+                                        sw_ers_minute_interval: int = 5,
+                                        records_limit: int = 0) -> List[TaskLogEntry]:
         query = {
                     'bool': {
                         'must': [
@@ -238,23 +246,90 @@ class Task(models.Model):
                         ]
                     }
                 }
-        yield from self.get_task_log_from_elasticsearch_by_query(query)
+        # docker.container.labels.com_docker_swarm_task_id:"y2pjcbg0pztbmo75z4udjgsuv" AND ERROR
+        records = list(self.get_task_log_from_elasticsearch_by_query(query, records_limit))
+        # search for extra errors not bound for this very task
+        if include_systemwide_errors:
+            records += self.append_task_failure_records(records, sw_ers_minute_interval)
+            records.sort(key=lambda r: r.timestamp)
+        return records
+
+    @classmethod
+    def append_task_failure_records(cls,
+                                    records: List[TaskLogEntry],
+                                    sw_ers_minute_interval: int) -> List[TaskLogEntry]:
+        """
+        Search for errors on swarm nodes where the task resided
+        for N minutes interval after the task finished.
+        :param sw_ers_minute_interval: minutes to look in logs after the task's completed
+        :param records: task's log records
+        :return: extra error log records
+        """
+        error_extra_seconds = sw_ers_minute_interval * 60
+        swarm_task_ids = set()  # type: Set[str]
+        record_ids = set()  # type: Set[str]
+        last_time = None
+        for resp in records:
+            record_ids.add(resp.record_id)
+            last_time = max(resp.timestamp, last_time) if last_time else resp.timestamp
+            if resp.com_docker_swarm_task_id:
+                swarm_task_ids.add(resp.com_docker_swarm_task_id)
+
+        if not swarm_task_ids:
+            return []
+
+        should_clause = []
+        for swarm_task_id in swarm_task_ids:
+            should_clause.append({'term': {
+                'docker.container.labels.com_docker_swarm_task_id': {'value': swarm_task_id}}})
+        query = {
+            'bool': {
+                'should': should_clause,
+                'must': [{
+                    "wildcard": {"message": "*error*"}
+                },
+                    {
+                        "range": {
+                            "@timestamp": {
+                                "gte": last_time,
+                                "lte": last_time + datetime.timedelta(0, error_extra_seconds)
+                            }
+                        }
+                }]
+            }
+        }
+        error_records = []
+        for resp in cls.get_task_log_from_elasticsearch_by_query(query):
+            if resp.record_id not in record_ids:
+                if 'WorkerLostError' in resp.message:
+                    resp.log_level = 'ERROR'
+                    error_records.append(resp)
+        return error_records
 
     @classmethod
     def get_task_log_from_elasticsearch_by_query(
-            cls, query: Dict[str, Any], limit=10000) -> Generator[TaskLogEntry, None, None]:
+            cls,
+            query: Dict[str, Any],
+            limit: int = 0) -> Generator[TaskLogEntry, None, None]:
+        limit = limit or 10000
         try:
             es_query = {
                 'sort': ['@timestamp'],
                 'query': query,
                 '_source': ['@timestamp', 'level', 'message', 'log_main_task_id',
-                            'log_task_id', 'log_task_name', 'log_stack_trace', '_id']
+                            'log_task_id', 'log_task_name', 'log_stack_trace',
+                            '_id', 'docker']
             }
             es_res = es.search(size=limit,
                                index=settings.LOGGING_ELASTICSEARCH_INDEX_TEMPLATE,
                                body=es_query)
             for hit in es_res['hits']['hits']:
                 doc = hit['_source']
+                docker_data = doc.get('docker')
+                try:
+                    docker_swarm_task_id = docker_data['container']['labels']['com_docker_swarm_task_id']
+                except:
+                    docker_swarm_task_id = ''
 
                 yield TaskLogEntry(file_index=hit['_index'],
                                    record_id=hit['_id'],
@@ -264,7 +339,8 @@ class Task(models.Model):
                                    task_name=doc.get('log_task_name'),
                                    task_id=doc.get('log_task_id'),
                                    main_task_id=doc.get('log_main_task_id'),
-                                   stack_trace=doc.get('log_stack_trace'))
+                                   stack_trace=doc.get('log_stack_trace'),
+                                   com_docker_swarm_task_id=docker_swarm_task_id)
         except GeneratorExit:
             return
         except:
@@ -313,3 +389,45 @@ class Task(models.Model):
             return
         self.visible = vis
         self.save(update_fields=['visible'])
+
+    def store_spawned_process(self, pid: int):
+        adr_pid = (get_mac(), pid,)
+        if self.spawned_processes:
+            self.spawned_processes.append(adr_pid)
+        else:
+            self.spawned_processes = [adr_pid]
+        self.save(update_fields=('spawned_processes',))
+
+    def terminate_spawned_processes(
+            self, terminate_where: str):
+        """
+        terminate_where could be either "locally" or "everywhere"
+        """
+        try:
+            self.terminate_spawned_processes_unsafe(terminate_where)
+        except Exception as e:
+            self.write_log(f'Error in terminate_spawned_processes({terminate_where}): {e}')
+
+    def terminate_spawned_processes_unsafe(
+            self, terminate_where: str):
+        from apps.task.tasks import call_terminate_processes_task
+        if not self.spawned_processes:
+            return
+
+        if terminate_where == 'locally':
+            pids = [p for adr, p in self.spawned_processes]
+            terminate_processes_by_ids(pids,
+                                       lambda m: self.write_log(m))
+            return
+
+        # terminate on all nodes
+        proc_by_adr = {}
+        for adr, p in self.spawned_processes:
+            if adr in proc_by_adr:
+                proc_by_adr[adr].append(p)
+            else:
+                proc_by_adr[adr] = [p]
+
+        for adr in proc_by_adr:
+            pids = proc_by_adr[adr]
+            call_terminate_processes_task(adr, pids)

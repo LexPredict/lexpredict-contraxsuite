@@ -54,8 +54,8 @@ from apps.users.models import User, Role
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.6.0/LICENSE"
-__version__ = "1.6.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.7.0/LICENSE"
+__version__ = "1.7.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -180,8 +180,8 @@ def export_qs_to_file(request, qs, column_names=None,
 
     # columns names - go into file
     # fields - extract from db
-
-    column_names = list(column_names)
+    if column_names:
+        column_names = list(column_names)
 
     # construct file name if it's not given
     if file_name is None:

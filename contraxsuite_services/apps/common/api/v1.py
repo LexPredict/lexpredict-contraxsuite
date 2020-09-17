@@ -50,8 +50,8 @@ from apps.users.api.v1 import UserSerializer
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.6.0/LICENSE"
-__version__ = "1.6.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.7.0/LICENSE"
+__version__ = "1.7.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -72,14 +72,21 @@ class AppVarSerializer(serializers.ModelSerializer):
         fields = ('name',)
 
 
+class AppVarPermission(ReviewerReadOnlyPermission):
+    def has_permission(self, request, view):
+        if request.method == 'GET':
+            return True
+        return super().has_permission(request, view)
+
+
 class AppVarAPIView(rest_framework.views.APIView):
     """
     Based on custom AppVar model storage
     """
-    permission_classes = (ReviewerReadOnlyPermission,)
+    permission_classes = (AppVarPermission,)
 
     @property
-    def schema(self):
+    def coreapi_schema(self):
         if self.request.method == 'GET':
             fields = [
                 coreapi.Field(
@@ -121,6 +128,10 @@ class AppVarAPIView(rest_framework.views.APIView):
         var_name = request.GET.get('name')
         name_contains = request.GET.get('name_contains')
         result = AppVar.objects.all()
+
+        # deliver "Common" app-vars to unauth users, f.e. into login page, see users.authentication
+        if not bool(request.user and request.user.is_authenticated):
+            result = result.filter(category='Common')
         if var_name:
             result = result.filter(name=var_name)
             if not result.exists():
@@ -141,7 +152,7 @@ class AppVarAPIView(rest_framework.views.APIView):
         """
         data = request.data
         for var_name, value in data.items():
-            AppVar.set(var_name, value)
+            AppVar.set('Common', var_name, value)
         return Response('Application settings updated successfully.')
 
     def delete(self, request, *args, **kwargs):
@@ -149,13 +160,15 @@ class AppVarAPIView(rest_framework.views.APIView):
         Delete specific App Variable by name
             Param:
                 - name: str
+                - category: str
         """
         var_name = request.data.get('name')
+        category = request.data.get('category')
 
-        if not var_name:
-            raise APIException('Provide variable name to delete')
+        if not var_name or not category:
+            raise APIException('Provide variable name and category to delete')
 
-        AppVar.clear(var_name)
+        AppVar.clear(var_name, category)
         return Response('OK')
 
 

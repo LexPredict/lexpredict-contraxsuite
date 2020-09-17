@@ -41,6 +41,7 @@ import rest_framework
 import rest_framework.filters
 import rest_framework.generics
 import rest_framework.response
+import rest_framework.serializers
 from typing import Tuple, Union, List, Any, Optional, Dict
 
 # Django imports
@@ -74,8 +75,8 @@ from apps.common.utils import cap_words, export_qs_to_file, download, full_rever
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.6.0/LICENSE"
-__version__ = "1.6.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.7.0/LICENSE"
+__version__ = "1.7.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -400,7 +401,7 @@ class AjaxListView(ReviewerQSMixin, AjaxResponseMixin, BaseCustomListView):
     def get(self, request, *args, **kwargs):
         qs = self.get_queryset()
 
-        if request.is_ajax():
+        if request.is_ajax() or 'return_raw_data' in self.request.GET:
             if 'export' in self.request.GET:
                 return export_qs_to_file(
                     request, qs=qs, **self.export_params)
@@ -921,7 +922,15 @@ class JqListAPIMixin(JqPaginatedListMixin):
         serializer = self.get_serializer(queryset, many=True)
         data = serializer.data
         if isinstance(data, GeneratorType):
-            data = list(data)
+            # debugger
+            try:
+                data = list(data)
+            except Exception as e:
+                import logging
+                logger = logging.getLogger('django')
+                logger.warning(f'Query: "{str(queryset.query)}"')
+                raise e
+
         # 6.1 filter "columns"
         if 'columns' in request.GET:
             columns = request.GET['columns'].split(',')
@@ -969,7 +978,12 @@ class JqListAPIView(JqListAPIMixin, rest_framework.generics.ListAPIView):
     pass
 
 
+class TypeaheadSerializer(rest_framework.serializers.Serializer):
+    q = rest_framework.serializers.CharField()
+
+
 class TypeaheadAPIView(ReviewerQSMixin, rest_framework.generics.ListAPIView):
+    serializer_class = TypeaheadSerializer
 
     def get(self, request, *args, **kwargs):
         field_name = self.kwargs.get('field_name')

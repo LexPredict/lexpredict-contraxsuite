@@ -24,24 +24,28 @@
 """
 # -*- coding: utf-8 -*-
 
+from typing import Tuple
+
 from django.conf import settings
-from django.contrib.auth.forms import password_validation
 from django.urls import reverse
 from django.utils import timezone
+from django.utils.translation import ugettext_lazy as _
+
 from rest_auth.models import TokenModel
-from rest_auth.serializers import PasswordResetConfirmSerializer, UserModel, force_text, \
-    uid_decoder, default_token_generator, ValidationError
 from rest_framework import serializers
 from rest_framework.authentication import TokenAuthentication, exceptions
-from django.utils.translation import ugettext_lazy as _
+
 from apps.common.models import AppVar
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.6.0/LICENSE"
-__version__ = "1.6.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.7.0/LICENSE"
+__version__ = "1.7.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
+
+
+from apps.users.models import User
 
 
 def token_creator(token_model, user, serializer):
@@ -72,7 +76,7 @@ class CookieAuthentication(TokenAuthentication):
 
     def authenticate(self, request):
         # Add urls that don't require authorization
-        token_exempt_urls = [reverse('rest_login'), reverse('rest_password_reset')]
+        token_exempt_urls = [reverse('rest_login'), reverse('rest_password_reset'), reverse('v1:app-variables')]
 
         # authenticate only if request path is not in excepted urls
         # first check for existing AUTHORIZATION header
@@ -102,7 +106,7 @@ class CookieAuthentication(TokenAuthentication):
         res = super().authenticate(request)
         return res
 
-    def authenticate_credentials(self, key):
+    def authenticate_credentials(self, key) -> Tuple[User, str]:
         model = self.get_model()
         try:
             token = model.objects.select_related('user').get(key=key)
@@ -172,83 +176,3 @@ class TokenSerializer(serializers.ModelSerializer):
             .values_list('name', 'value')}
         data.update(frontend_vars)
         return data
-
-
-class CustomPasswordChangeSerializer(serializers.Serializer):
-    old_password = serializers.CharField(max_length=128)
-    new_password = serializers.CharField(max_length=128)
-
-    def __init__(self, *args, **kwargs):
-        # TODO: made old_password field optional
-        self.old_password_field_enabled = True
-
-        self.logout_on_password_change = getattr(
-            settings, 'LOGOUT_ON_PASSWORD_CHANGE', False
-        )
-        super().__init__(*args, **kwargs)
-
-        if not self.old_password_field_enabled:
-            self.fields.pop('old_password')
-
-        self.request = self.context.get('request')
-        self.user = getattr(self.request, 'user', None)
-
-    def validate_old_password(self, value):
-        invalid_password_conditions = (
-            self.old_password_field_enabled,
-            self.user,
-            not self.user.check_password(value)
-        )
-
-        if all(invalid_password_conditions):
-            raise serializers.ValidationError('Invalid password')
-        return value
-
-    def validate(self, attrs):
-        password = attrs['new_password']
-        errors = password_validation.validate_password(password, self.user)
-
-        if errors:
-            raise serializers.ValidationError(self.set_password_form.errors)
-        return attrs
-
-    def save(self):
-        new_password = self.validated_data['new_password']
-        self.user.set_password(new_password)
-        self.user.save()
-        if not self.logout_on_password_change:
-            from django.contrib.auth import update_session_auth_hash
-            update_session_auth_hash(self.request, self.user)
-
-
-class CustomPasswordResetConfirmSerializer(PasswordResetConfirmSerializer):
-    """
-    Serializer for requesting a password reset e-mail.
-
-    See custom message about wrong token
-    """
-    def validate(self, attrs):
-        self._errors = {}
-
-        # Decode the uidb64 to uid to get User object
-        try:
-            uid = force_text(uid_decoder(attrs['uid']))
-            self.user = UserModel._default_manager.get(pk=uid)
-        except (TypeError, ValueError, OverflowError, UserModel.DoesNotExist):
-            raise ValidationError({'uid': ['Invalid reset password link (wrong uid). '
-                                           'Probably this link is wrong or expired. '
-                                           'Please try to reset password again.']})
-
-        self.custom_validation(attrs)
-        # Construct SetPasswordForm instance
-        self.set_password_form = self.set_password_form_class(
-            user=self.user, data=attrs
-        )
-        if not self.set_password_form.is_valid():
-            raise serializers.ValidationError(self.set_password_form.errors)
-        if not default_token_generator.check_token(self.user, attrs['token']):
-            raise ValidationError({'token': ['Invalid reset password link (wrong token). '
-                                             'Probably this link is wrong or expired. '
-                                             'Please try to reset password again.']})
-
-        return attrs

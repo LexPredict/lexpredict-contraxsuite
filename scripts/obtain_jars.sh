@@ -36,6 +36,7 @@ fi
 mkdir ./tika-src/
 cd ./tika-src/
 cp -fu ../../../docker/build/contraxsuite-app/tika/tika.config ../tika.config
+cp -fu ../../../docker/build/contraxsuite-app/tika/tika.noocr.config ../tika.noocr.config
 cp -fu ../../../docker/build/contraxsuite-app/tika/tika.lexp.config ../tika.lexp.config
 git clone https://github.com/LexPredict/tika-server.git;
 cd ./tika-server/lexpredict-tika/

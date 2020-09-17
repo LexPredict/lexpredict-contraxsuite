@@ -24,9 +24,14 @@
 """
 # -*- coding: utf-8 -*-
 
+import datetime
 import inspect
 import json
+import os
 import sys
+import tempfile
+from contextlib import contextmanager
+from typing import Dict, Any, Generator
 
 from django.core.files.uploadedfile import UploadedFile
 from django.core.serializers.python import Serializer
@@ -37,10 +42,14 @@ from apps.common.db_cache.db_cache import DbCache
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.6.0/LICENSE"
-__version__ = "1.6.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.7.0/LICENSE"
+__version__ = "1.7.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
+
+
+from apps.common.file_storage import get_file_storage
+from apps.common.models import ExportFile
 
 
 def is_celery_worker():
@@ -86,6 +95,7 @@ class SimpleObjectSerializer(Serializer):
 
 
 def normalize(task_id, key, value):
+    DB_CACHED_FILE_LIMIT = 1024 * 1024 * 100
     try:
         json.dumps(value)
         return value
@@ -98,13 +108,57 @@ def normalize(task_id, key, value):
             return pre_serialize(task_id, key, value)
         elif isinstance(value, UploadedFile):
             uploaded_file = value  # type: UploadedFile
-            cache_key = str(task_id) + '__' + str(key) if key else str(task_id)
-            DbCache.put_to_db(cache_key, uploaded_file.read())
-            return {
-                'file_name': uploaded_file.name,
-                'cache_key': cache_key
-            }
+            if uploaded_file.size < DB_CACHED_FILE_LIMIT:
+                cache_key = str(task_id) + '__' + str(key) if key else str(task_id)
+                DbCache.put_to_db(cache_key, uploaded_file.read())
+                return {
+                    'file_name': uploaded_file.name,
+                    'cache_key': cache_key
+                }
+            else:
+                file_ref = ExportFile()
+                file_ref.created_time = datetime.datetime.utcnow()
+                file_ref.expires_at = datetime.datetime.utcnow() + datetime.timedelta(hours=1)
+                file_ref.comment = f'Import documents from "{len(uploaded_file.name)}" file'
+                time_part = str(datetime.datetime.utcnow()).replace('.', '_').replace(':', '_').replace(' ', '_')
+                file_name = f'doc_export_{os.path.splitext(uploaded_file.name)[0]}_{time_part}.zip'
+
+                storage = get_file_storage()
+                docs_subfolder = storage.sub_path_join(storage.export_path, 'documents')
+                try:
+                    storage.mkdir(docs_subfolder)
+                except:
+                    pass
+                file_ref.file_path = storage.sub_path_join(docs_subfolder, file_name)
+                storage.write_file(file_ref.file_path, uploaded_file, uploaded_file.size)
+                file_ref.file_created = True
+                file_ref.stored_time = datetime.datetime.utcnow()
+                file_ref.save()
+                return {'file_ref_id': file_ref.pk}
+
         return str(value)
+
+
+@contextmanager
+def download_task_attached_file(document_import_file: Dict[str, Any]) -> Generator[str, None, None]:
+    if 'cache_key' in document_import_file:
+        # download from DB cache
+        zip_bytes = DbCache.get(document_import_file['cache_key'])
+        ext = os.path.splitext(document_import_file['file_name'])[1][1:].lower()
+        _fd, fn = tempfile.mkstemp(suffix=ext)
+        try:
+            with open(fn, 'wb') as fw:
+                fw.write(zip_bytes)
+                yield fn  # TODO: fix yield ...
+        finally:
+            DbCache.clean_cache(document_import_file['cache_key'])
+    else:
+        # download from file storage cache
+        file_ref_id = document_import_file['file_ref_id']
+        file_ref = ExportFile.objects.get(pk=file_ref_id)  # type: ExportFile
+        storage = get_file_storage()
+        with storage.get_as_local_fn(file_ref.file_path) as f_path:
+            yield f_path[0]
 
 
 def pre_serialize(task_id, key, obj):

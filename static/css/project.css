@@ -1381,20 +1381,21 @@ body:not(.device-touch) .btn-u {
   border-color: #eee;
 }
 .jqx-grid-pager .jqx-dropdownlist-state-normal.jqx-fill-state-normal {
-  background-color: #555;
-  color: #eee;
+  /* background-color: #555; */
+  /* color: #eee; */
+  color: #16325C;
 }
 .jqx-grid-pager .jqx-dropdownlist-state-normal.jqx-fill-state-pressed {
   border-color: #aaa;
 }
 
 .jqx-grid-pager .jqx-button {
-  background-color: #555;
+  background-color: #1589ee;
 }
-.jqx-grid-pager .jqx-button:hover,
+/* .jqx-grid-pager .jqx-button:hover,
 .jqx-grid-pager .jqx-dropdownlist-state-normal.jqx-fill-state-normal:hover {
   background-color: #333;
-}
+} */
 .jqx-grid-pager .jqx-icon-arrow-left,
 .jqx-grid-pager .jqx-icon-arrow-left-selected {
   background-image: url(../vendor/jqwidgets/styles/images/metro-icon-left-white.png);
@@ -1429,10 +1430,10 @@ div[id^="calendarjqxWidget"] {
   margin: 5px 10px 10px 10px;
 }
 
-.jqx-grid-cell-pinned-alt,
+/* .jqx-grid-cell-pinned-alt,
 .jqx-grid-cell-pinned {
   background-color: #555;
-}
+} */
 /* Popup menu on "acton" button click in jqxgrid */
 .popup-menu {
   margin-top: 5px;

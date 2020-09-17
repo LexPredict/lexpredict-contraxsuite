@@ -7,7 +7,10 @@ from django.core.management import call_command
 
 
 def load_roles(apps, schema_editor):
-    call_command('load_roles')
+    try:
+        call_command('load_roles')
+    except:
+        pass
 
 
 class Migration(migrations.Migration):

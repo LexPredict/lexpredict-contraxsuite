@@ -32,12 +32,12 @@ import task_names
 from apps.celery import app
 from apps.common.models import MethodStats, MethodStatsCollectorPlugin
 from apps.common.decorators import collect_stats, decorate
-from apps.task.tasks import BaseTask
+from apps.task.tasks import ExtendedTask
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.6.0/LICENSE"
-__version__ = "1.6.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.7.0/LICENSE"
+__version__ = "1.7.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -59,12 +59,12 @@ def init_method_stats_collectors(_celery_task):
         decorate(collect_stats, **instance_values)
 
 
-class ReindexDB(BaseTask):
+class ReindexDB(ExtendedTask):
     """
     Reindex DB and run VACUUM ANALYZE
     """
     name = 'Reindex DB'
-    priority = 9
+    priority = 7
 
     def process(self, **kwargs):
         do_reindex = kwargs.get('reindex')

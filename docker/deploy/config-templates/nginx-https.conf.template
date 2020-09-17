@@ -20,6 +20,9 @@ server {
     add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
     proxy_cookie_path / "/; HTTPOnly; Secure";
 
+    proxy_pass_header Server;
+    proxy_set_header Host ${DOLLAR}http_host;
+
     charset     utf-8;
     client_max_body_size 5120M;
     sendfile on;

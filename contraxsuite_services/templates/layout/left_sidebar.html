@@ -70,7 +70,6 @@
                 <li class="divider"></li>
                 <li><a href="{% url "filebrowser:fb_browse" %}">Browse/Upload Documents</a></li>
                 <li><a href="{% url "document:stats" %}">Stats</a></li>
-                <li><a href="{% url "analyze:text-unit-classifier-list" %}">Classifiers</a></li>
 
                 {% if user.is_admin %}
                 <li class="divider"></li>
@@ -89,7 +88,7 @@
             </a>
         </li>
         <li>
-            <a href="{% url 'swagger' group_by='app' %}">
+            <a href="{% url 'swagger-ui' %}">
                 <i class="icon fa fa-sitemap"></i> {% trans "API" %}
             </a>
         </li>

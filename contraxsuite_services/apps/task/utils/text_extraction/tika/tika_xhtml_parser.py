@@ -34,8 +34,8 @@ from apps.task.utils.marked_up_text import MarkedUpText, MarkedUpTable, MarkedUp
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.6.0/LICENSE"
-__version__ = "1.6.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.7.0/LICENSE"
+__version__ = "1.7.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -113,11 +113,11 @@ class TikaXhtmlParser:
 
     re_tag_h = re.compile(r'^h\d{1,1}$', re.IGNORECASE)
 
-    re_tag_a = re.compile(r'(<a\s+[^>]+>.+</a>)|(<a\s+[^>]+/>)', re.IGNORECASE)
+    re_tag_a = re.compile(r'(<a\s+[^>]+>.+</a>)|(<a\s+[^>]+/>)(?s)', re.IGNORECASE)
     re_tag_a_href = re.compile(r'(?<=href=")[^"]+(?=")')
     re_tag_a_name = re.compile(r'(?<=name=")[^"]+(?=")')
 
-    re_tag_img = re.compile(r'(<img\s+[^>]+>.+</img>)|(<img\s+[^>]+/>)', re.IGNORECASE)
+    re_tag_img = re.compile(r'(<img\s+[^>]+>.+</img>)|(<img\s+[^>]+/>)(?s)', re.IGNORECASE)
     re_tag_img_src = re.compile(r'(?<=src=")[^"]+(?=")')
     re_tag_img_alt = re.compile(r'(?<=alt=")[^"]+(?=")')
 
@@ -169,7 +169,8 @@ class TikaXhtmlParser:
             tag_type = self.get_tag_type(tag_text)
 
             if tag_name == 'div' and 'class="page"' in tag_text:
-                result.labels['pages'].append((len(result.text), 0))
+                result.add_marker('pages', True)
+                result.add_marker('pages', False)
                 continue
 
             block_type = 'image' if tag_name == 'div' and 'class="ocr"' in tag_text \
@@ -194,13 +195,14 @@ class TikaXhtmlParser:
                 line = markup[cur_block.start:end]
                 p_start = len(result.text)
                 p_end = p_start + len(line)
+
+                if cur_block.label_name:
+                    result.add_marker(cur_block.label_name, True)
                 result.text += line
                 if not cur_block.is_inline:
                     result.text += '\n\n'
                 if cur_block.label_name:
-                    if cur_block.label_name not in result.labels:
-                        result.labels[cur_block.label_name] = []
-                    result.labels[cur_block.label_name].append((p_start, p_end))
+                    result.add_marker(cur_block.label_name, False)
 
                 # check if the block belongs to a table
                 self.update_tables_content(result.tables, tag_start, tag_end,
@@ -208,13 +210,6 @@ class TikaXhtmlParser:
 
                 cur_block = None
                 continue
-
-        l_pages = result.labels['pages']
-        if l_pages:
-            pages = []
-            for i in range(len(l_pages) - 1):
-                pages.append((l_pages[i][0], l_pages[i + 1][0]))
-            pages.append((l_pages[-1][0], len(result.text)))
 
         self.process_inner_tags(result)
         self.post_process(result)
@@ -327,13 +322,14 @@ class TikaXhtmlParser:
         sub-tags of all known types within a tag, like <a>-s and <img>-s within <p>
         :param result: a MarkedUpText variable with plain text to process
         """
-        regex_function = [(self.re_tag_a, self.extract_hyperlink),
-                          (self.re_tag_img, self.extract_image)]
-        for reg, get_text_func in regex_function:
-            self.process_inner_tag(result, reg, get_text_func)
+        regex_function = [('a', self.re_tag_a, self.extract_hyperlink),
+                          ('img', self.re_tag_img, self.extract_image)]
+        for label_tag, reg, get_text_func in regex_function:
+            self.process_inner_tag(result, label_tag, reg, get_text_func)
 
     def process_inner_tag(self,
                           result: MarkedUpText,
+                          tag_label: str,
                           tag_regex: Pattern,
                           make_text_function: Callable[[Any], str]) -> None:
         """
@@ -344,9 +340,7 @@ class TikaXhtmlParser:
         :param make_text_function: method that processes the tag found transforming the tag into plain text
         """
         new_text = ''
-        transformations = []  # type: List[Tuple[Tuple[int, int], Tuple[int, int]]]
         last_stop = 0
-        new_labels = []
 
         for match in tag_regex.finditer(result.text):
             link_markup = make_text_function(match)
@@ -359,24 +353,14 @@ class TikaXhtmlParser:
             if not ends_space:
                 link_markup += ' '
 
-            end_e = src_s + len(link_markup)
-            if end_e != src_e:
-                transformations.append(((src_s, src_e), (src_s, end_e)))
-            new_labels.append((src_s, end_e))
-
             new_text += result.text[last_stop: src_s]
+            new_text += MarkedUpText.get_marker(tag_label, True)
             new_text += link_markup
+            new_text += MarkedUpText.get_marker(tag_label, False)
             last_stop = src_e
 
         new_text += result.text[last_stop: len(result.text)]
         result.text = new_text
-        if transformations:
-            result.apply_transformations(transformations)
-        if new_labels:
-            if 'a' not in result.labels:
-                result.labels['a'] = new_labels
-            else:
-                result.labels['a'] = result.labels['a'] + new_labels
 
     def extract_hyperlink(self, match) -> str:
         """
@@ -453,13 +437,24 @@ class TikaXhtmlParser:
         source is a PDF file).
         :param result: MarkedUpText containing resulted plain text
         """
-        paragraphs = result.labels.get('paragraphs') or [(0, len(result.text))]
-        for par_start, par_end in paragraphs:
-            # check the paragraph is not a list and, therefore, can be
-            # cleared of extra line breaks
-            par_text = result.text[par_start: par_end]
+        paragraph_op, paragraph_cl = MarkedUpText.BLOCK_MARKERS['paragraphs']
+
+        start = 0
+        while True:
+            p_start = result.text.find(paragraph_op, start)
+            if p_start < 0:
+                break
+            start = p_start + len(paragraph_op)
+            p_end = result.text.find(paragraph_cl, start)
+            if p_end < 0:
+                continue
+            p_block_end = p_end + len(paragraph_cl)
+
+            # remove extra "\n" between p_start, p_end
+            par_text = result.text[start: p_end]
             par_lines = [l for l in par_text.split('\n') if l.strip()]
             if not par_lines:
+                start = p_block_end
                 continue
 
             # if lines make a list then don't remove line breaks
@@ -473,7 +468,9 @@ class TikaXhtmlParser:
                 is_list = False
 
             if not is_list:
-                result.replace_by_regex(self.re_single_newline, ' ', par_start, par_end)
+                par_text = self.re_single_newline.sub(' ', par_text)
+                result.text = result.text[:start] + par_text + result.text[p_end:]
+            start = p_block_end
 
     @staticmethod
     def unescape(result: MarkedUpText) -> None:
@@ -533,20 +530,15 @@ class TikaXhtmlParser:
         The method decides whether to leave or to delete these pieces of text
         :param result: MarkedUpText, containing resulting plain text
         """
-        if not result.text or 'images' not in result.labels:
-            return
-
-        # remove some of OCR-d text fragments or remove all of them or just quit
         if self.settings.ocr_sets == OcrTextStoreSettings.NEVER_STORE:
             return
 
-        images = result.labels['images']
-        self.parse_stat.parsed_ocr_text_len = sum([result.count_non_space_chars(l_s, l_e)
-                                                   for l_s, l_e in images])
+        self.parse_stat.parsed_ocr_text_len = self.count_text_in_images(result)
         self.parse_stat.parsed_text_len -= self.parse_stat.parsed_ocr_text_len
         if self.settings.ocr_sets == OcrTextStoreSettings.STORE_ALWAYS:
             return
 
+        # remove some of OCR-d text fragments or remove all of them or just quit
         remove_ocrs = False
         if self.settings.ocr_sets == OcrTextStoreSettings.STORE_IF_NO_OTHER_TEXT and \
                 self.parse_stat.parsed_text_len >= self.settings.ocr_vector_text_min_length:
@@ -559,5 +551,34 @@ class TikaXhtmlParser:
         if not remove_ocrs:
             return
 
-        transformations = [(l, (l[0], l[0])) for l in images]
-        result.apply_transformations(transformations)
+        # do remove text that was obtained from images
+        self.remove_text_in_images(result)
+
+    def count_text_in_images(self, result: MarkedUpText) -> int:
+        text_len = 0
+        im_op, im_cl = MarkedUpText.BLOCK_MARKERS['images']
+        start = 0
+        while True:
+            p_start = result.text.find(im_op, start)
+            if p_start < 0:
+                break
+            start = p_start + len(im_op)
+            p_end = result.text.find(im_cl, start)
+            if p_end < 0:
+                continue
+            text_len += result.count_non_space_chars(start, p_end)
+
+        return text_len
+
+    def remove_text_in_images(self, result: MarkedUpText):
+        im_op, im_cl = MarkedUpText.BLOCK_MARKERS['images']
+        while True:
+            p_start = result.text.find(im_op)
+            if p_start < 0:
+                break
+            start = p_start + len(im_op)
+            p_end = result.text.find(im_cl, start)
+            if p_end < 0:
+                continue
+            p_end += len(im_cl)
+            result.text = result.text[:p_start] + result.text[p_end:]

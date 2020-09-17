@@ -24,15 +24,23 @@
 """
 # -*- coding: utf-8 -*-
 
+import hashlib
+import pickle
+
 from django.db import models
 from django.db.models.deletion import CASCADE, DO_NOTHING
 from django.db.models.signals import post_save, pre_delete, post_delete
 from django.dispatch import receiver
 
+from lexnlp.extract.common.entities.entity_banlist import EntityBanListItem
+
+from apps.common import redis
+
+
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.6.0/LICENSE"
-__version__ = "1.6.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.7.0/LICENSE"
+__version__ = "1.7.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -158,6 +166,7 @@ class DocumentTermUsage(DocumentUsage):
 
 class ProjectTermUsage(ProjectUsage):
     # to be filled with a trigger
+    MATERIALIZED_PROJECT_VIEW = 'extract_projecttermusage'
 
     term = models.OneToOneField(Term, db_index=True, on_delete=DO_NOTHING, primary_key=True)
 
@@ -230,6 +239,7 @@ class GeoEntityUsage(Usage):
 
 class ProjectGeoEntityUsage(ProjectUsage):
     # to be filled with a trigger
+    MATERIALIZED_PROJECT_VIEW = 'extract_projectgeoentityusage'
 
     entity = models.OneToOneField(GeoEntity, db_index=True, on_delete=DO_NOTHING, primary_key=True)
 
@@ -292,6 +302,7 @@ class PartyUsage(Usage):
 
 class ProjectPartyUsage(ProjectUsage):
     # to be filled with a trigger
+    MATERIALIZED_PROJECT_VIEW = 'extract_projectpartyusage'
 
     party = models.OneToOneField(Party, db_index=True, on_delete=DO_NOTHING, primary_key=True)
 
@@ -361,7 +372,7 @@ class DocumentDefinitionUsage(DocumentUsage):
 
 class ProjectDefinitionUsage(ProjectUsage):
     # to be filled with a trigger
-
+    MATERIALIZED_PROJECT_VIEW = 'extract_projectdefinitionusage'
     definition = models.TextField(db_index=True, unique=True, primary_key=True)
 
 
@@ -608,3 +619,88 @@ class CitationUsage(Usage):
     def __str__(self):
         return "CitationUsage (citation_str={0}, text_unit={1})" \
             .format(self.citation_str, self.text_unit)
+
+
+class BanListRecord(models.Model):
+    TYPE_PARTY = 'party'
+    # TYPE_COMPANY = 'company'
+    TYPE_CHOICES = (
+        (TYPE_PARTY, 'party'),
+        # (TYPE_COMPANY, 'company'),
+    )
+
+    CACHE_KEY = 'BanListRecordAdmin_cache'
+    LAST_CACHED_HASH = ''
+    CACHED_DATA = None
+
+    """
+    Items (company or geoentity or ..) that should be excluded
+    from location / field detecting results.
+    """
+    entity_type = models.CharField(max_length=128,
+                                   db_index=True,
+                                   choices=TYPE_CHOICES,
+                                   default=TYPE_PARTY)
+
+    pattern = models.CharField(max_length=1024, db_index=True)
+
+    ignore_case = models.BooleanField(default=True)
+
+    is_regex = models.BooleanField(default=True)
+
+    trim_phrase = models.BooleanField(default=True)
+
+    def __repr__(self):
+        flags = []
+        if self.ignore_case:
+            flags.append('I')
+        if self.is_regex:
+            flags.append('Re')
+        if self.trim_phrase:
+            flags.append('T')
+        flags_s = ' ' + ','.join(flags) if flags else ''
+        return f'"{self.pattern}"{flags_s}'
+
+    def to_banlist_item(self):
+        return EntityBanListItem(
+            pattern=self.pattern,
+            ignore_case=self.ignore_case,
+            is_regex=self.is_regex,
+            trim_phrase=self.trim_phrase)
+
+    @classmethod
+    def rewrite_cache(cls):
+        records = list(BanListRecord.objects.all())
+        records_str = pickle.dumps(records)
+        m = hashlib.md5()
+        m.update(records_str)
+        records_checksum = m.hexdigest()
+        redis.push(f'{cls.CACHE_KEY}_data', records_str, pickle_value=False)
+        redis.push(f'{cls.CACHE_KEY}_hash', records_checksum, pickle_value=False)
+        cls.LAST_CACHED_HASH = records_checksum
+        return records
+
+    @classmethod
+    def get_cached(cls):
+        cached_key = redis.pop(f'{cls.CACHE_KEY}_hash', unpickle_value=False)
+        if cls.CACHED_DATA:
+            if cached_key == cls.LAST_CACHED_HASH:
+                return cls.CACHED_DATA
+        cls.CACHED_DATA = redis.pop(f'{cls.CACHE_KEY}_data', unpickle_value=True)
+        if cls.CACHED_DATA is None:
+            return cls.rewrite_cache()
+        cls.LAST_CACHED_HASH = cached_key
+        return cls.CACHED_DATA
+
+    def save(self, **kwargs):
+        super().save(**kwargs)
+        BanListRecord.rewrite_cache()
+
+    def delete(self, **kwargs):
+        super().delete(**kwargs)
+        BanListRecord.rewrite_cache()
+
+
+@receiver(pre_delete, sender=BanListRecord)
+def on_banlist_record_delete(instance, **kwargs):
+    BanListRecord.rewrite_cache()

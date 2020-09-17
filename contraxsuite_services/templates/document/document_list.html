@@ -1,8 +1,20 @@
 {% extends "base_list_ajax.html" %}
 {% load static %}
 
+{% block button_block %}
+  {{ block.super }}
+  <form id="changelist-search" action="" method="get" class="form-inline">
+    <div class="search-container">
+      <input id="quick-search" type="text" name="q" autocomplete="off">
+      <input type="submit" value="Search" class="btn-u btn-info btn-sm">
+    </div>
+  </form>
+{% endblock %}
+
 {% block js_extra %}
   {{ block.super }}
+  {% include "_django_ql_searchbox.html" %}
+
   <script type="text/javascript">
     $(document).ready(function () {
       var datafields = [
@@ -34,9 +46,9 @@
         { text: 'Lang', datafield: 'language', width: 60,
           align: 'center', cellsalign: 'center' },
         { text: 'Properties', datafield: 'properties', width: 100,
-          align: 'center', cellsalign: 'center' },
+          align: 'center', cellsalign: 'center', sortable: false, filterable: false },
         { text: 'Relations', datafield: 'relations', width: 100,
-          align: 'center', cellsalign: 'center' },
+          align: 'center', cellsalign: 'center', sortable: false, filterable: false },
         { text: 'Is Contract', datafield: 'is_contract', width: 100,
           align: 'center', cellsalign: 'center', filtertype: 'bool',
           cellsrenderer: bool_renderer },
@@ -46,13 +58,15 @@
           align: 'center', cellsalign: 'center' }
       ];
       draw_grid(".jqxgrid", datafields, columns, true);
-      $(".jqxgrid").bind("bindingcomplete", function(event) {
-        var hasContracts = $(".jqxgrid").jqxGrid("source").loadedData.has_contracts;
+      $('.jqxgrid').bind('bindingcomplete', function(event) {
+        var hasContracts = $('.jqxgrid').jqxGrid('source').loadedData.has_contracts;
         if (!hasContracts)
-          $(".jqxgrid").jqxGrid('hidecolumn', 'is_contract');
+          $('.jqxgrid').jqxGrid('hidecolumn', 'is_contract');
         else
-          $(".jqxgrid").jqxGrid('showcolumn', 'is_contract');
+          $('.jqxgrid').jqxGrid('showcolumn', 'is_contract');
+        // window.showQueryErrors($('.jqxgrid').jqxGrid('source').loadedData.query_errors);
       });
+      window.setupDjangoQLSearch('div.pull-right', 'document');
     });
   </script>
 {% endblock %}

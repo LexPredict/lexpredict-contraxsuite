@@ -40,8 +40,8 @@ from traceback import format_exc
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.6.0/LICENSE"
-__version__ = "1.6.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.7.0/LICENSE"
+__version__ = "1.7.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -52,6 +52,7 @@ class ParsingTaskParams:
                  file_path: str,
                  ext: str,
                  original_file_name: str,
+                 task: Any,
                  propagate_exceptions: bool = True,
                  enable_ocr: bool = True):
         """
@@ -68,6 +69,7 @@ class ParsingTaskParams:
         self.original_file_name = original_file_name
         self.propagate_exceptions = propagate_exceptions
         self.enable_ocr = enable_ocr
+        self.task = task
 
 
 class DocumentParsingResults:
@@ -165,6 +167,7 @@ class TikaDocumentParser(BaseDocumentParser):
                 data = parse_function(
                     local_path=ptrs.file_path,
                     original_file_name=ptrs.original_file_name,
+                    task=ptrs.task,
                     timeout=timeout,
                     logger=ptrs.logger,
                     enable_ocr=ptrs.enable_ocr)

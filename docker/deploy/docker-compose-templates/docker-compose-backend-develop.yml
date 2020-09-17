@@ -14,6 +14,11 @@ services:
       AUTH_TYPE: Basic
       USERNAME: ${DOCKER_WEBDAV_AUTH_USER}
       PASSWORD: ${DOCKER_WEBDAV_AUTH_PASSWORD}
+    logging:
+      driver: "json-file"
+      options:
+        max-file: 5
+        max-size: 10m
     deploy:
       replicas: 1
       placement:
@@ -32,6 +37,11 @@ services:
     # Here we create a bucket dir for the mlflow models and drop minio config for the case we changed access/secret key.
     # Minio encrypts its config with access/secret keys and if they are changed it won't start until manual handling.
     command: -c "mkdir -p /data/${MLFLOW_AWS_BUCKET} && rm -rf /data/.minio.sys && /usr/bin/minio server /data"
+    logging:
+      driver: "json-file"
+      options:
+        max-file: 5
+        max-size: 10m
     deploy:
       replicas: 1
       placement:
@@ -39,8 +49,8 @@ services:
     ports:
       - 19000:9000
     environment:
-      - "MINIO_ACCESS_KEY=${DOLLAR}{MLFLOW_AWS_ACCESS_KEY}"
-      - "MINIO_SECRET_KEY=${DOLLAR}{MLFLOW_AWS_SECRET_KEY}"
+      - "MINIO_ACCESS_KEY=${MLFLOW_AWS_ACCESS_KEY}"
+      - "MINIO_SECRET_KEY=${MLFLOW_AWS_SECRET_KEY}"
       - "MINIO_BROWSER=off"
 
   contrax-mlflow-tracking:
@@ -49,6 +59,11 @@ services:
       - contraxsuite_mlflow_tracking:/mlflow
     networks:
       - contrax_net
+    logging:
+      driver: "json-file"
+      options:
+        max-file: 5
+        max-size: 10m
     deploy:
       replicas: 1
       placement:
@@ -58,17 +73,27 @@ services:
     environment:
       - "PORT=5000"
       - "FILE_DIR=/mlflow"
-      - "MLFLOW_S3_ENDPOINT_URL=${DOLLAR}{MLFLOW_S3_ENDPOINT_URL}"
-      - "AWS_BUCKET=${DOLLAR}{MLFLOW_AWS_BUCKET}"
-      - "AWS_ACCESS_KEY_ID=${DOLLAR}{MLFLOW_AWS_ACCESS_KEY}"
-      - "AWS_SECRET_ACCESS_KEY=${DOLLAR}{MLFLOW_AWS_SECRET_KEY}"
-
+      - "MLFLOW_S3_ENDPOINT_URL=${MLFLOW_S3_ENDPOINT_URL}"
+      - "AWS_BUCKET=${MLFLOW_AWS_BUCKET}"
+      - "AWS_ACCESS_KEY_ID=${MLFLOW_AWS_ACCESS_KEY}"
+      - "AWS_SECRET_ACCESS_KEY=${MLFLOW_AWS_SECRET_KEY}"
+      - "http_proxy=${PROXY_SERVER_HTTP}"
+      - "HTTP_PROXY=${PROXY_SERVER_HTTP}"
+      - "https_proxy=${PROXY_SERVER_HTTPS}"
+      - "HTTPS_PROXY=${PROXY_SERVER_HTTPS}"
+      - "no_proxy=${PROXY_NO_PROXY}"
+      - "NO_PROXY=${PROXY_NO_PROXY}"
   contrax-redis:
     image: ${DOCKER_REDIS_IMAGE}
     volumes:
       - redis_data:/data
     networks:
       - contrax_net
+    logging:
+      driver: "json-file"
+      options:
+        max-file: 5
+        max-size: 10m
     deploy:
       replicas: 1
       placement:
@@ -84,7 +109,12 @@ services:
       - "PERIOD=15min"
       - "KEEP_DAYS=30"
       - "INDEX_PREFIX=filebeat-"
-    command: "--host ${DOLLAR}{DOCKER_HOST_NAME_ELASTICSEARCH} --port ${DOLLAR}{DOCKER_ELASTICSEARCH_PORT}"
+    command: "--host ${DOCKER_HOST_NAME_ELASTICSEARCH} --port ${DOCKER_ELASTICSEARCH_PORT}"
+    logging:
+      driver: "json-file"
+      options:
+        max-file: 5
+        max-size: 10m
     deploy:
       replicas: 1
       placement:
@@ -98,7 +128,12 @@ services:
       - "PERIOD=15min"
       - "KEEP_DAYS=3"
       - "INDEX_PREFIX=metricbeat-"
-    command: "--host ${DOLLAR}{DOCKER_HOST_NAME_ELASTICSEARCH} --port ${DOLLAR}{DOCKER_ELASTICSEARCH_PORT}"
+    command: "--host ${DOCKER_HOST_NAME_ELASTICSEARCH} --port ${DOCKER_ELASTICSEARCH_PORT}"
+    logging:
+      driver: "json-file"
+      options:
+        max-file: 5
+        max-size: 10m
     deploy:
       replicas: 1
       placement:
@@ -113,12 +148,17 @@ services:
         target: /usr/share/elasticsearch/config/elasticsearch.yml
     networks:
       - contrax_net
+    logging:
+      driver: "json-file"
+      options:
+        max-file: 5
+        max-size: 10m
     deploy:
       replicas: ${DOCKER_ELASTICSEARCH_REPLICAS}
       resources:
         limits:
-          cpus: '${DOLLAR}{DOCKER_ELASTICSEARCH_CPUS}'
-          memory: ${DOLLAR}{DOCKER_ELASTICSEARCH_MEMORY}
+          cpus: '${DOCKER_ELASTICSEARCH_CPUS}'
+          memory: ${DOCKER_ELASTICSEARCH_MEMORY}
       placement:
         constraints: [node.role == manager]
     ports: #
@@ -147,12 +187,17 @@ services:
         target: /elastalert-smtp-auth.yaml
     networks:
       - contrax_net
+    logging:
+      driver: "json-file"
+      options:
+        max-file: 5
+        max-size: 10m
     deploy:
       replicas: 1
       resources:
         limits:
-          cpus: '${DOLLAR}{DOCKER_ELASTALERT_CPUS}'
-          memory: ${DOLLAR}{DOCKER_ELASTALERT_MEMORY}
+          cpus: '${DOCKER_ELASTALERT_CPUS}'
+          memory: ${DOCKER_ELASTALERT_MEMORY}
       placement:
         constraints: [node.role == manager]
     ports:
@@ -168,6 +213,11 @@ services:
     configs:
       - source: kibana_${KIBANA_CONFIG_VERSION}
         target: /usr/share/kibana/config/kibana.yml
+    logging:
+      driver: "json-file"
+      options:
+        max-file: 5
+        max-size: 10m
     deploy:
       replicas: 1
 
@@ -183,6 +233,11 @@ services:
         target: /usr/share/filebeat/filebeat.yml
     networks:
       - contrax_net
+    logging:
+      driver: "json-file"
+      options:
+        max-file: 5
+        max-size: 10m
     deploy:
       mode: global
       resources:
@@ -207,6 +262,11 @@ services:
         target: /usr/share/metricbeat/metricbeat.yml
     networks:
       - contrax_net
+    logging:
+      driver: "json-file"
+      options:
+        max-file: 5
+        max-size: 10m
     deploy:
       #mode: global
       replicas: 1 # by default we disable mertricbeat for single-host configs to free more resources
@@ -238,6 +298,11 @@ services:
         protocol: tcp
         published: 443
         target: 4443
+    logging:
+      driver: "json-file"
+      options:
+        max-file: 5
+        max-size: 10m
     deploy:
       replicas: 1
       placement:
@@ -249,9 +314,14 @@ services:
     networks:
       - contrax_net
     environment:
-      - "RABBITMQ_DEFAULT_USER=${DOLLAR}{DOCKER_RABBITMQ_USER}"
-      - "RABBITMQ_DEFAULT_PASS=${DOLLAR}{DOCKER_RABBITMQ_PASSWORD}"
-      - "RABBITMQ_DEFAULT_VHOST=${DOLLAR}{DOCKER_RABBITMQ_VHOST}"
+      - "RABBITMQ_DEFAULT_USER=${DOCKER_RABBITMQ_USER}"
+      - "RABBITMQ_DEFAULT_PASS=${DOCKER_RABBITMQ_PASSWORD}"
+      - "RABBITMQ_DEFAULT_VHOST=${DOCKER_RABBITMQ_VHOST}"
+    logging:
+      driver: "json-file"
+      options:
+        max-file: 5
+        max-size: 10m
     deploy:
       replicas: ${DOCKER_RABBITMQ_REPLICAS}
       placement:
@@ -263,27 +333,24 @@ services:
 
   contrax-pgbouncer-transaction:
     image: ${DOCKER_PGBOUNCER_IMAGE}
-    environment:
-      - "DB_USER=${DOCKER_PG_USER}"
-      - "DB_PASSWORD=${DOCKER_PG_PASSWORD}"
-      - "DB_NAME=${DOCKER_PG_DB_NAME}"
-      - "DB_HOST=${DOCKER_HOST_NAME_PG}"
-      - "DB_PORT=${DOCKER_PG_PORT}"
-      - "POOL_MODE=transaction"
-      - "APPLICATION_NAME_ADD_HOST=1"
-      - "MAX_CLIENT_CONN=${DOCKER_PGBOUNCER_TRANS_MAX_CLIENT_CONN}"
-      - "SERVER_RESET_QUERY=${DOCKER_PGBOUNCER_TRANS_SERVER_RESET_QUERY}"
-      - "DEFAULT_POOL_SIZE=${DOCKER_PGBOUNCER_TRANS_DEFAULT_POOL_SIZE}"
-      - "ADMIN_USERS=${DOCKER_PG_USER}"
-      - "STATS_USERS=${DOCKER_PG_USER}"
     networks:
       - contrax_net
+    logging:
+      driver: "json-file"
+      options:
+        max-file: 5
+        max-size: 10m
     deploy:
       replicas: 1
       placement:
         constraints: [node.role == manager]
     ports: #
       - 5433:5432 #
+    configs:
+      - source: pgbnc_celery_${PGBOUNCER_CELERY_CONFIG_VERSION}
+        target: /etc/pgbouncer/pgbouncer.ini
+      - source: pgbnc_userlist_${PGBOUNCER_USERLIST_VERSION}
+        target: /etc/pgbouncer/userlist.txt
     sysctls:
       # Possible solution for DB connections disappearing.
       # https://forums.docker.com/t/setting-tcp-keepalive-time-param-for-containers/41496/3
@@ -300,27 +367,24 @@ services:
 
   contrax-pgbouncer-session:
     image: ${DOCKER_PGBOUNCER_IMAGE}
-    environment:
-      - "DB_USER=${DOCKER_PG_USER}"
-      - "DB_PASSWORD=${DOCKER_PG_PASSWORD}"
-      - "DB_NAME=${DOCKER_PG_DB_NAME}"
-      - "DB_HOST=${DOCKER_HOST_NAME_PG}"
-      - "DB_PORT=${DOCKER_PG_PORT}"
-      - "POOL_MODE=session"
-      - "APPLICATION_NAME_ADD_HOST=1"
-      - "MAX_CLIENT_CONN=${DOCKER_PGBOUNCER_SESS_MAX_CLIENT_CONN}"
-      - "SERVER_RESET_QUERY=${DOCKER_PGBOUNCER_SESS_SERVER_RESET_QUERY}"
-      - "DEFAULT_POOL_SIZE=${DOCKER_PGBOUNCER_SESS_DEFAULT_POOL_SIZE}"
-      - "ADMIN_USERS=${DOCKER_PG_USER}"
-      - "STATS_USERS=${DOCKER_PG_USER}"
     networks:
       - contrax_net
+    logging:
+      driver: "json-file"
+      options:
+        max-file: 5
+        max-size: 10m
     deploy:
       replicas: 1
       placement:
         constraints: [node.role == manager]
     ports: #
       - 5434:5432 #
+    configs:
+      - source: pgbnc_websrv_${PGBOUNCER_WEBSRV_CONFIG_VERSION}
+        target: /etc/pgbouncer/pgbouncer.ini
+      - source: pgbnc_userlist_${PGBOUNCER_USERLIST_VERSION}
+        target: /etc/pgbouncer/userlist.txt
     sysctls:
       # Possible solution for DB connections disappearing.
       # https://forums.docker.com/t/setting-tcp-keepalive-time-param-for-containers/41496/3
@@ -339,9 +403,9 @@ services:
     image: ${DOCKER_PG_IMAGE}
     environment:
       - "PGDATA=/var/lib/contraxsuite-postgres"
-      - "POSTGRES_USER=${DOLLAR}{DOCKER_PG_USER}"
-      - "POSTGRES_PASSWORD=${DOLLAR}{DOCKER_PG_PASSWORD}"
-      - "POSTGRES_DB=${DOLLAR}{DOCKER_PG_DB_NAME}"
+      - "POSTGRES_USER=${DOCKER_PG_USER}"
+      - "POSTGRES_PASSWORD=${DOCKER_PG_PASSWORD}"
+      - "POSTGRES_DB=${DOCKER_PG_DB_NAME}"
     command: postgres -c config_file=/contraxsuite/postgresql.conf
     tmpfs:
       - /tmp:size=4GB
@@ -360,12 +424,17 @@ services:
     networks:
       - contrax_net
     read_only: false
+    logging:
+      driver: "json-file"
+      options:
+        max-file: 5
+        max-size: 10m
     deploy:
       replicas: ${DOCKER_PG_REPLICAS}
       resources:
         limits:
-          cpus: '${DOLLAR}{DOCKER_POSTGRES_CPUS}'
-          memory: ${DOLLAR}{DOCKER_POSTGRES_MEMORY}
+          cpus: '${DOCKER_POSTGRES_CPUS}'
+          memory: ${DOCKER_POSTGRES_MEMORY}
       placement:
         constraints: [node.role == manager]
     ports: #
@@ -422,3 +491,9 @@ configs:
     file: ./nginx-customer.conf
   pg_backup_script_${PG_BACKUP_SCRIPT_CONFIG_VERSION}:
     file: ./db-backup.sh
+  pgbnc_websrv_${PGBOUNCER_WEBSRV_CONFIG_VERSION}:
+    file: ./pgbouncer.websrv.ini
+  pgbnc_celery_${PGBOUNCER_CELERY_CONFIG_VERSION}:
+    file: ./pgbouncer.celery.ini
+  pgbnc_userlist_${PGBOUNCER_USERLIST_VERSION}:
+    file: ./pgbouncer.userlist.txt

@@ -26,14 +26,14 @@
 
 import re
 from contextlib import contextmanager
-from typing import Optional, BinaryIO
+from typing import Optional, Union, BinaryIO, ByteString
 
 from django.conf import settings
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.6.0/LICENSE"
-__version__ = "1.6.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.7.0/LICENSE"
+__version__ = "1.7.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -73,6 +73,7 @@ class ContraxsuiteFileStorage:
     def __init__(self) -> None:
         super().__init__()
         self.documents_path = settings.CONTRAX_FILE_STORAGE_DOCUMENTS_DIR.strip('/')
+        self.export_path = settings.CONTRAX_FILE_STORAGE_EXPORT_DIR.strip('/')
 
     RE_PATH_PROHIBITED = re.compile(r'(^\.\./)|(/\.\.$)|(/\.\./)')
     RE_PATH_DOUBLE_SLASH = re.compile(r'/+')
@@ -172,7 +173,10 @@ class ContraxsuiteFileStorage:
         """
         self.mkdir(self.sub_path_join(self.documents_path, rel_path))
 
-    def write_document(self, rel_file_path: str, contents_file_like_object: BinaryIO, content_length: int = None):
+    def write_document(self,
+                       rel_file_path: str,
+                       contents_file_like_object: Union[BinaryIO, ByteString],
+                       content_length: int = None):
         """
         Write contents into a file in the documents sub-dir of the file storage.
         :param rel_file_path: Path related to the "documents" sub-dir.

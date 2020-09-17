@@ -24,18 +24,26 @@
 """
 # -*- coding: utf-8 -*-
 
+import json
+import re
+from collections import OrderedDict
+
 from django.conf import settings
 
 from rest_framework import exceptions
 from rest_framework.authentication import SessionAuthentication
 from rest_framework.permissions import AllowAny
-from rest_framework.renderers import CoreJSONRenderer
+from rest_framework.renderers import CoreJSONRenderer, JSONOpenAPIRenderer, OpenAPIRenderer
 from rest_framework.response import Response
+from rest_framework.schemas import coreapi, get_schema_view
+from rest_framework.schemas.openapi import AutoSchema, SchemaGenerator as OpenAPISchemaGenerator
+
+from apps.common.model_utils.improved_django_json_encoder import ImprovedDjangoJSONEncoder
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.6.0/LICENSE"
-__version__ = "1.6.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.7.0/LICENSE"
+__version__ = "1.7.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -48,6 +56,14 @@ def get_swagger_view():
     from rest_framework.schemas import SchemaGenerator
 
     class CustomSchemaGenerator(SchemaGenerator):
+        def create_view(self, callback, method, request=None):
+            view = super().create_view(callback, method, request=request)
+            try:
+                view.schema = getattr(view, 'coreapi_schema', coreapi.AutoSchema())
+            except AttributeError:
+                pass
+            return view
+
         def get_schema(self, request=None, public=False):
             """
             Generate a `coreapi.Document` representing the API schema.
@@ -86,6 +102,7 @@ def get_swagger_view():
             return links
 
     class SwaggerSchemaView(APIView):
+
         from rest_framework_swagger import renderers
         _ignore_model_permissions = True
         exclude_from_schema = True
@@ -126,3 +143,83 @@ def get_swagger_view():
             return Response(schema)
 
     return SwaggerSchemaView.as_view()
+
+
+def get_path_tags(path):
+    path_tags = []
+    path_parts = path.strip('/').split('/')
+    if path_parts:
+        if path_parts[0] == 'api':
+            if re.match(r'v\d+', path_parts[1]):
+                path_tags.append(path_parts[2])
+            else:
+                path_tags.append('api-other')
+        else:
+            path_tags.append(path_parts[0])
+    return path_tags
+
+
+class CustomAutoSchema(AutoSchema):
+
+    def _get_operation_id(self, path, method):
+        """
+        Compute an operation ID from the model, serializer or view name.
+        """
+        method_name = getattr(self.view, 'action', method.lower())
+        if method_name not in self.method_mapping:
+            action = method_name
+        else:
+            action = self.method_mapping[method.lower()]
+
+        name = re.sub(r'(?:ViewSet|APIView|ApiView|View)$', '', self.view.__class__.__name__)
+
+        path_tag = ''.join(get_path_tags(path))
+
+        return f'{path_tag}:{name}:{action}:{method}'
+
+
+class CustomJSONOpenAPIRenderer(JSONOpenAPIRenderer):
+    format = 'openapi-json'
+
+    def render(self, data, media_type=None, renderer_context=None):
+        return json.dumps(data, indent=2, cls=ImprovedDjangoJSONEncoder).encode('utf-8')
+
+
+class CustomOpenAPISchemaGenerator(OpenAPISchemaGenerator):
+    methods = ['get', 'post', 'put', 'patch', 'delete', 'options']
+
+    def get_schema(self, request=None, public=False):
+        schema = super().get_schema(request=request, public=public)
+
+        # regroup data according to passed "group_by" param
+        group_by = request.GET.get('group_by')
+        if group_by == 'app':
+            for path, path_schema in schema['paths'].items():
+                path_tags = get_path_tags(path)
+                if path_tags:
+                    method = None
+                    for _method in self.methods:
+                        if _method in path_schema:
+                            method = _method
+                            break
+                    if method:
+                        path_schema[method]['tags'] = path_tags
+                path_schema['tags'] = path_tags
+            schema['paths'] = OrderedDict(sorted(schema['paths'].items()))
+
+        return schema
+
+
+# TODO: merge with get_swagger_view()
+def get_openapi_view():
+    return get_schema_view(
+        title="Contraxsuite API",
+        description="Contraxsuite API",
+        generator_class=CustomOpenAPISchemaGenerator,
+        permission_classes=[AllowAny],
+        authentication_classes=[SessionAuthentication],
+        renderer_classes=[
+            OpenAPIRenderer,
+            CustomJSONOpenAPIRenderer
+        ]
+    )

@@ -1,0 +1,80 @@
+{% load static %}
+
+<link rel="stylesheet" href="{% static "djangoql/css/completion_admin.css" %}"></link>
+<link rel="stylesheet" href="{% static "djangoql/css/completion.css" %}"></link>
+<style type="text/css">
+  .ql-input-error {
+    color: #a00;
+  }
+  div.help-dlg-content {
+    max-height: 400px;
+    overflow: scroll;
+  }
+  .djangoql-completion {
+    position: absolute;
+    display: none;
+    border: solid 1px #ccc;
+    border-radius: 4px;
+    background: white;
+    min-width: 183px;
+    font-size: 13px;
+    z-index:100;
+  }
+  .search-container {
+    width: 70%;
+  }
+  textarea.quick-search {
+    height: 27px;
+  }
+  form#changelist-search {
+    margin-bottom: 5px;
+  }
+  #quick-search {
+    resize: none;
+    overflow: hidden;
+    height: 27px !important;
+    min-height: 27px !important;
+    max-width: 70%;
+    vertical-align: middle;
+    width: 80%;
+  }
+</style>
+
+<script type="text/javascript" src="{% static "djangoql/js/lib/lexer.js" %}"></script>
+<script type="text/javascript" src="{% static "djangoql/js/completion.js" %}"></script>
+<script type="text/javascript" src="{% static "djangoql/js/completion_admin.js" %}"></script>
+<script type="text/javascript" src="{% static "djangoql/js/completion_admin_toggle.js" %}"></script>
+
+<script type="text/javascript">
+  window.getUrlParameter = function(sParam) {
+    var sPageURL = window.location.search.substring(1),
+      sURLVariables = sPageURL.split('&'),
+      sParameterName,
+      i;
+
+    for (i = 0; i < sURLVariables.length; i++) {
+      sParameterName = sURLVariables[i].split('=');
+
+      if (sParameterName[0] === sParam) {
+        return sParameterName[1] === undefined ? true : decodeURIComponent(sParameterName[1]);
+      }
+    }
+  };
+
+  window.adjustSearchField = function() {
+    var newSearch = $('#quick-search');
+    {#newSearch.attr('maxlength', '2000');#}
+    {#newSearch.attr('autocomplete', 'off');#}
+    {#newSearch.attr('rows', '1');#}
+
+    var ql_query = window.getUrlParameter('q');
+    if (ql_query) {
+      ql_query = ql_query.replace(/\+/g, ' ');
+      newSearch.val(ql_query);
+    }
+  };
+
+  window.setupDjangoQLSearch = function(parentContainerSelector, entityName) {
+    window.adjustSearchField();
+  }
+</script>

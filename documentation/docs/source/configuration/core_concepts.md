@@ -44,8 +44,8 @@ ContraxSuite labels documents as "binary," "multi-class," and/or "multi-label".
 * ContraxSuite can also connect and order amendments to their originals, based on parties + historically referenced effective dates
 
 ContraxSuite can also identify the internal structure of a document:
-* The title of a document, plus any "attached" ancillaries, such as Exhibits, Appendices, Addenda
-* The table of contents
+* Titles of documents, plus any "attached" ancillaries, such as Exhibits, Appendices, Addenda
+* Tables of contents
 * Sections, with properly captured hierarchies (*e.g.*, "Section 3, Subsection 3.A")
 * Signature blocks
 * Individual text units at the level of sentences, paragraphs, sections, and clauses (*see ["Identification Methods"](./core_concepts.html#identification-methods), below*)
@@ -89,7 +89,7 @@ ContraxSuite determines whether a text unit contains zero or more types of struc
     * B = six
     * I = months
 
-The goal is for all locators to run in parallel, sharing the same feature vectors, through a multi-label classification model. The locators themselves do not structure the information, *but can identify whether and where structured information exists*. This allows subsequent structured information extraction code to run efficiently over small subsets of text instead of entire documents.
+The goal is for all locators to run in parallel, sharing the same feature vectors, through a multi-label classification model. The locators themselves do not structure the information, but they can identify whether and where structured information exists. This allows subsequent structured information extraction code to run efficiently over small subsets of text instead of entire documents.
 
 Simple character frequency and token frequency techniques analyze the incidence of things like commas, periods, and bulleted lists, in order to inform the content type detection and data extraction processes. For example, documents typically have very few dates in them, so locators are written to identify the small number of sentences where dates do occur. Then, a regular expression engine parses an entire document - even if zero dates occur, this pass for regular expressions will not be re-used for any other tasks like durations, monetary amounts, *etc*.
 

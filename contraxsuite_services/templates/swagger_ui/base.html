@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block css_extra %}
+  {{ block.super }}  <link rel="stylesheet" type="text/css" href="//unpkg.com/swagger-ui-dist@3/swagger-ui.css" />
+  <style>
+    .information-container {
+      display: none;
+    }
+  </style>
+{% endblock %}
+{% block bodyclass %}{% endblock %}
+{% block page_header %}Contraxsuite API{% endblock %}
+
+{% block project_selection %}{% endblock %}
+
+{% block content %}
+  <div id="swagger-header">
+    <h5>
+      Schema: openapi-3.0.2
+      <span><a href="{% url 'openapi-schema' %}?format=openapi-json" download="contraxsuite-openapi.json">JSON</a></span>
+       /
+      <span><a href="{% url 'openapi-schema' %}?format=openapi" download="contraxsuite-openapi.yaml">YAML</a></span>
+    </h5>
+    <h5>
+      <a href="{% url "swagger" "app" %}">CoreAPI Swagger UI</a>
+    </h5>
+
+  </div>
+  <div id="swagger-ui"></div>
+{% endblock %}
+
+{% block js %}
+
+  <script src="//unpkg.com/swagger-ui-dist@3/swagger-ui-bundle.js"></script>
+  <script>
+
+    const ui = SwaggerUIBundle({
+      url: "{% url 'openapi-schema' %}?format=openapi-json&group_by=app",
+      dom_id: '#swagger-ui',
+      docExpansion: "none",
+      presets: [
+        SwaggerUIBundle.presets.apis,
+        SwaggerUIBundle.SwaggerUIStandalonePreset
+      ],
+      layout: "BaseLayout"
+    })
+  </script>
+  {{ block.super }}
+{% endblock %}

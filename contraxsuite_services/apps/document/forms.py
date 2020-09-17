@@ -28,10 +28,12 @@ import json
 import re
 from django import forms
 from django.conf import settings
+from django.db.models import Count
 
 from apps.common.widgets import FilterableProjectSelectField, FiltrableProjectSelectWidget
 from apps.document.constants import DOCUMENT_TYPE_PK_GENERIC_DOCUMENT, DOCUMENT_FIELD_CODE_MAX_LEN
 from apps.document.models import DocumentType, DocumentField
+from apps.document.scheme_migrations.scheme_migration import CURRENT_VERSION, MIGRATION_TAGS
 from apps.document.tasks import FindBrokenDocumentFieldValues, FixDocumentFieldCodes, MODULE_NAME
 from apps.project.models import Project
 from apps.document.tasks import ImportCSVFieldDetectionConfig
@@ -39,8 +41,8 @@ from task_names import TASK_NAME_IDENTIFY_CONTRACTS
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.6.0/LICENSE"
-__version__ = "1.6.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.7.0/LICENSE"
+__version__ = "1.7.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -76,10 +78,22 @@ class DetectFieldValuesForm(PatchedForm):
 
     document_name = forms.CharField(strip=True, required=False)
 
-    do_not_run_for_modified_documents = forms.BooleanField(
-        label='Do not detect values for documents modified by user',
-        initial=True,
-        required=False)
+    existing_data_action = forms.ChoiceField(
+        label='Existing Field Data',
+        choices=(
+            ('maintain', 'Maintain Reviewed Data'),
+            ('delete', 'Delete all field data from the project and run fresh extraction'),
+        ),
+        help_text="""
+        "Maintain Reviewed Data" will not modify anything on completed documents, 
+        will not change the status on any accepted or rejected clauses, and will 
+        not find any additional clauses for any fields that have already been 
+        reviewed/modified. All other field data will be deleted and repopulated 
+        based on current field detectors. Additional annotations may be added to 
+        any documents which are not "completed".        
+        """,
+        initial='maintain',
+        required=True)
 
     do_not_write = forms.BooleanField(label='Do not write detected values to DB (only log)',
                                       required=False)
@@ -126,6 +140,8 @@ class TrainAndTestForm(forms.Form):
         required=False)
 
     skip_training = forms.BooleanField(required=False)
+
+    split_and_log_out_of_sample_test_report = forms.BooleanField(required=False)
 
     use_only_confirmed_field_values_for_training = forms.BooleanField(required=False)
 
@@ -208,6 +224,34 @@ class ExportDocumentTypeForm(forms.Form):
 
     document_type = forms.ModelChoiceField(queryset=DocumentType.objects.all(), required=True)
 
+    target_version = forms.ChoiceField(
+        label='Target CS Version',
+        choices=[(f'{MIGRATION_TAGS[c]}', c,) for c in MIGRATION_TAGS],
+        help_text="""
+            Optionally select previous ContraxSuite version here.
+            """,
+        initial='',
+        required=False
+    )
+
+
+class ExportDocumentsForm(forms.Form):
+    header = 'Export Documents'
+
+    document_type = forms.ModelChoiceField(queryset=DocumentType.objects.all(), required=False)
+    projects = forms.MultipleChoiceField(
+        widget=forms.SelectMultiple(attrs={'class': 'chosen'}),
+        required=False,
+        help_text='Select one or several projects')
+    export_files = forms.BooleanField(initial=True, required=False,
+                                      help_text='Export original document files')
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['projects'].choices = \
+            [(p.pk, f'#{p.pk} {p.name} ({p.type.code}), {p.total} files') for p in
+             Project.objects.annotate(total=Count('document')).order_by('-pk') if p.total]
+
 
 class ImportDocumentTypeForm(forms.Form):
     header = 'Import Document Type'
@@ -232,10 +276,35 @@ class ImportDocumentTypeForm(forms.Form):
         initial='validate',
         required=True)
 
+    source_version = forms.ChoiceField(
+        label='Source CS Version (optional)',
+        choices=[(f'{MIGRATION_TAGS[c]}', c,) for c in MIGRATION_TAGS],
+        help_text="""
+                Optionally select version here if the input file was 
+                obtained from older ContraxSuite installation.
+                """,
+        initial='',
+        required=False
+    )
+
     update_cache = forms.BooleanField(
         label='Documents: Cache document fields after import finished',
         initial=True,
         required=False)
+
+
+class ImportDocumentsForm(forms.Form):
+    header = 'Import Document Data'
+
+    document_import_file = forms.FileField(required=True, label='Packed documents data (zip)')
+
+    project = forms.ModelChoiceField(
+        required=False,
+        label='Import into existing project',
+        queryset=Project.objects.order_by('-pk'),
+        widget=forms.widgets.Select(attrs={'class': 'chosen'}))
+    import_files = forms.BooleanField(initial=True, required=False,
+                                      help_text='Import original document files')
 
 
 class IdentifyContractsForm(forms.Form):
@@ -255,7 +324,7 @@ class IdentifyContractsForm(forms.Form):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.fields['project'].widget.master_id = 'id_document_type'
+        self.fields['project'].widget.manager_id = 'id_document_type'
 
     def _post_clean(self):
         super()._post_clean()

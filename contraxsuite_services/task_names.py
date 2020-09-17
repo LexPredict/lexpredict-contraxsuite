@@ -27,11 +27,13 @@
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.6.0/LICENSE"
-__version__ = "1.6.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.7.0/LICENSE"
+__version__ = "1.7.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
+
+TASK_NAME_TERMINATE_PROCESSES = 'apps.task.tasks.terminate_processes'
 
 TASK_NAME_AUTO_REINDEX = 'apps.rawdb.tasks.auto_reindex'
 
@@ -57,19 +59,23 @@ TASK_NAME_UPDATE_PARENT_TASK = 'advanced_celery.update_parent_task'
 
 TASK_NAME_CLEAN_TASKS_PERIODIC = 'advanced_celery.clean_tasks_periodic'
 
+TASK_NAME_CLEAN_EXPORT_FILES_PERIODIC = 'advanced_celery.clean_export_files_periodic'
+
+TASK_NAME_CLEAN_ALL_TASKS = 'apps.task.tasks.clean_tasks'
+
 TASK_NAME_RETRAIN_DIRTY_TASKS = 'advanced_celery.retrain_dirty_fields'
 
 TASK_NAME_CACHE_UPDATED_DOCS = 'advanced_celery.cache_updated_docs'
 
 TASK_NAME_TRACK_SESSION_COMPLETED = 'advanced_celery.track_session_completed'
 
+TASK_NAME_TRACK_PDEF2PDFA_STATUS = 'advanced_celery.track_pdf2pdfa_status'
+
 TASK_NAME_USAGE_STATS = 'deployment.usage_stats'
 
 TASK_NAME_CACHE_DOC_NOT_TRACKED = 'apps.rawdb.tasks.cache_document_fields_for_doc_ids_not_tracked'
 
 TASK_NAME_UPDATE_MAIN_TASK = 'advanced_celery.update_main_task'
-
-TASK_NAME_NOTIFICATIONS_ON_DOCUMENT_CHANGE = 'apps.notifications.tasks.process_notifications_on_document_change'
 
 TASK_NAME_DELETE_METHOD_STATS = 'apps.common.tasks.delete_method_stats'
 
@@ -83,8 +89,15 @@ TASK_NAME_PLAN_REFRESHING_MATERIALIZED_VIEWS = 'apps.materialized_views.tasks.pl
 
 TASK_NAME_REFRESH_MATERIALIZED_VIEW = 'apps.materialized_views.tasks.refresh_materialized_view'
 
+TASK_NAME_DOCUMENT_CHANGED = 'Document Changed'
+
+TASK_NAME_SET_ANNOTATIONS_STATUS = 'Set Annotations Status'
+
+TASK_NAME_CREATE_SEARCHABLE_PDF = 'Create Searchable PDF'
+
 TASK_FRIENDLY_NAME = {
     TASK_NAME_CLEAN_TASKS_PERIODIC: 'Clean Tasks Periodically',
+    TASK_NAME_CLEAN_EXPORT_FILES_PERIODIC: 'Clean Export Files Periodically',
     TASK_NAME_RETRAIN_DIRTY_TASKS: 'Retrain Dirty Fields',
     TASK_NAME_CACHE_UPDATED_DOCS: 'Cache Updated Documents',
     TASK_NAME_TRACK_FAILED_TASKS: 'Track Failed Tasks',
@@ -105,13 +118,11 @@ TASK_FRIENDLY_NAME = {
     'auto_reindex_not_tracked': 'Auto Reindex Not Tracked',
     'process_document_changed': 'Process Document Changed',
     'process_documents_status_changed': 'Process Document Status Changed',
-    TASK_NAME_NOTIFICATIONS_ON_DOCUMENT_CHANGE: 'Notify On Document Changed',
-    'process_notifications_on_document_change': 'Notify On Document Changed',
     TASK_NAME_AUTO_REINDEX: 'Auto Reindex',
     TASK_NAME_TRIGGER_DIGESTS: 'Trigger Digests',
     'apps.task.tasks.on_locate_finished': 'On Locate Finished',
     'apps.task.tasks.delete_document_on_load_failed': 'Delete Document On Load Failed',
     'apps.rawdb.tasks.cache_document_fields_for_doc_ids_tracked': 'Cache Document Fields (for doc ids tracked)',
-    'apps.task.tasks.clean_tasks': 'Clean All Tasks',
+    TASK_NAME_CLEAN_ALL_TASKS: 'Clean All Tasks',
     TASK_NAME_REFRESH_MATERIALIZED_VIEW: 'Refresh Materialized View'
 }

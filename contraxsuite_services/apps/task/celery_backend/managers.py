@@ -43,13 +43,14 @@ from django.db.models import F, Q, Value
 from django.db.utils import IntegrityError, InterfaceError, OperationalError
 
 from apps.task.celery_backend.utils import now
+from apps.task.task_visibility import TaskVisibility
 from apps.task.utils.task_utils import TaskUtils
 from task_names import TASK_FRIENDLY_NAME
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.6.0/LICENSE"
-__version__ = "1.6.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.7.0/LICENSE"
+__version__ = "1.7.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -197,8 +198,6 @@ class QuerySet(models.QuerySet):
 class TaskManager(models.Manager):
     _last_id = None
 
-    EXCLUDE_FROM_TRACKING = settings.EXCLUDE_FROM_TRACKING
-
     def get_queryset(self):
         return QuerySet(self.model, using=self._db)
 
@@ -310,19 +309,21 @@ class TaskManager(models.Manager):
     NON_FAILED_STATES = set(ALL_STATES) - {FAILURE}
 
     def main_tasks(self, show_failed_excluded_from_tracking: bool = False):
+        excluded = TaskVisibility.get_excluded_from_tracking()
         qr = self.filter(Q(main_task__isnull=True) | Q(main_task_id=F('id')))
         if not show_failed_excluded_from_tracking:
-            qr = qr.exclude(name__in=self.EXCLUDE_FROM_TRACKING)
+            qr = qr.exclude(name__in=excluded)
         else:
-            qr = qr.exclude(Q(name__in=self.EXCLUDE_FROM_TRACKING) & Q(status__in=self.NON_FAILED_STATES))
+            qr = qr.exclude(Q(name__in=excluded) & Q(status__in=self.NON_FAILED_STATES))
         return qr
 
     def parent_tasks(self, show_failed_excluded_from_tracking: bool = False):
+        excluded = TaskVisibility.get_excluded_from_tracking()
         qr = self.filter(Q(has_sub_tasks=True) | Q(main_task__isnull=True) | Q(main_task_id=F('id')))
         if not show_failed_excluded_from_tracking:
-            qr = qr.exclude(name__in=self.EXCLUDE_FROM_TRACKING)
+            qr = qr.exclude(name__in=excluded)
         else:
-            qr = qr.exclude(Q(name__in=self.EXCLUDE_FROM_TRACKING) & Q(status__in=self.NON_FAILED_STATES))
+            qr = qr.exclude(Q(name__in=excluded) & Q(status__in=self.NON_FAILED_STATES))
         return qr
 
     def unready_main_tasks(self):
@@ -453,12 +454,13 @@ class TaskManager(models.Manager):
         return self.main_tasks().filter(**opts)
 
     def get_active_user_tasks(self) -> QuerySet:
+        excluded = TaskVisibility.get_excluded_from_tracking()
         execution_delay = now() - datetime.timedelta(seconds=settings.USER_TASK_EXECUTION_DELAY)
         start_date_limit = now() - datetime.timedelta(seconds=3 * 24 * 60 * 60)
         return self \
             .filter(Q(main_task__isnull=True) | Q(main_task_id=F('id'))) \
             .filter(status__in=UNREADY_STATES) \
-            .exclude(name__in=settings.EXCLUDE_FROM_TRACKING) \
+            .exclude(name__in=excluded) \
             .filter(Q(date_start__isnull=True) | Q(date_start__gt=start_date_limit)) \
             .filter(Q(date_work_start__isnull=True) | Q(date_work_start__gt=execution_delay))
 

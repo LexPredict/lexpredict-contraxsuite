@@ -40,6 +40,17 @@
 {% block project_selection %}{% endblock %}
 
 {% block content %}
+  <div id="swagger-header">
+    <h5>
+      Schema: coreapi-2.0
+      <span><a href="{% url "swagger" "app" %}?format=openapi" download="contraxsuite-coreapi.json">JSON</a></span>
+    </h5>
+    <h5>
+      <a href="{% url "swagger-ui" %}">OpenAPI Swagger UI</a>
+    </h5>
+
+  </div>
+
   <div class="pull-right wrapper">
     <span class="btn-group">
       <a class="btn btn-u btn-xs btn-s" href="{% url "swagger" group_by="app" %}">App</a>

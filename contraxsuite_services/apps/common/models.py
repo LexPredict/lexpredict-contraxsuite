@@ -26,14 +26,10 @@
 
 # Standard imports
 import pickle
-import sys
 from typing import Dict, Any
 
-import pandas as pd
-from rest_framework_tracking.models import APIRequestLog
-from simple_history.models import HistoricalRecords
-
 # Django imports
+from django.conf import settings
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
 from django.contrib.postgres.fields import JSONField
@@ -44,26 +40,27 @@ from django.db.models.base import ModelBase
 from django.db.models.deletion import CASCADE, DO_NOTHING
 from django.db.models.lookups import IContains, Contains, Lookup
 from django.dispatch import receiver
+from django.urls import reverse
+from django.utils.safestring import mark_safe
 from django.utils.timezone import now
 
+# Third-party imports
+import pandas as pd
+from rest_framework_tracking.models import APIRequestLog
+from simple_history.models import HistoricalRecords
+
 # Project imports
+from apps.common import redis, signals
+from apps.common.log_utils import ProcessLogger
+from apps.common.migration_utils import is_migration_in_process
 from apps.users.models import User
-from apps.common import signals
-from apps.common import redis
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.6.0/LICENSE"
-__version__ = "1.6.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.7.0/LICENSE"
+__version__ = "1.7.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
-
-
-def is_migration_in_process() -> bool:
-    for arg in sys.argv:
-        if arg in ('migrate', 'makemigrations'):
-            return True
-    return False
 
 
 is_migrating = is_migration_in_process()
@@ -81,6 +78,7 @@ class AppVar(models.Model):
     MAIL_CATEGORY = 'Mail server'
 
     """Storage for application variables"""
+
     class Meta:
         unique_together = (('category', 'name'),)
 
@@ -403,14 +401,14 @@ class MethodStats(models.Model):
         :return: pandas Dataframe OR QuerySet
         """
         # .filter(has_error=False)\
-        qs = cls.objects\
-            .values('method', 'path', 'name')\
+        qs = cls.objects \
+            .values('method', 'path', 'name') \
             .annotate(calls=Count('id'),
                       errors=Count(Case(
                           When(has_error=True, then=1),
                           output_field=IntegerField(),
                       )),
-                      avg_time=Avg('time'), max_time=Max('time'))\
+                      avg_time=Avg('time'), max_time=Max('time')) \
             .filter(**filter_kwargs)
         qs = list(qs)
         qs.sort(key=lambda m: -m['calls'])
@@ -422,7 +420,6 @@ class MethodStats(models.Model):
 
 
 class MethodStatsCollectorPlugin(models.Model):
-
     path = models.CharField(
         max_length=200, db_index=True, unique=True,
         help_text='Full absolute path to a method like "apps.common.api.v1.AppVarsAPIView.get".')
@@ -473,7 +470,6 @@ def delete_plugin(sender, instance, **kwargs):
 
 
 class MenuGroup(models.Model):
-
     name = models.CharField(
         max_length=100, db_index=True,
         help_text='Menu item group (folder) name.')
@@ -504,7 +500,6 @@ def save_menu_group(sender, instance, created, **kwargs):
 
 
 class MenuItem(models.Model):
-
     name = models.CharField(
         max_length=100, db_index=True,
         help_text='Menu item name.')
@@ -649,6 +644,59 @@ class ContainsOrFullTextSearch(FullTextSearch):
             approx_table_rows = approx_count(target)
             return approx_table_rows > AUTO_FULL_TEXT_SEARCH_CUTOFF.val
         return USE_FULL_TEXT_SEARCH.val
+
+
+class ExportFile(models.Model):
+    file_path = models.CharField(
+        max_length=1024,
+        db_index=True,
+        help_text='File path')
+
+    file_created = models.BooleanField(default=False, null=False)
+
+    comment = models.CharField(
+        max_length=1024,
+        null=True,
+        help_text='Comment on file')
+
+    created_time = models.DateTimeField(null=False, blank=False)
+
+    stored_time = models.DateTimeField(null=True, blank=True)
+
+    expires_at = models.DateTimeField(null=False, blank=False, db_index=True)
+
+    downloaded = models.BooleanField(default=False, null=False)
+
+    email_sent = models.BooleanField(default=False, null=False)
+
+    user = models.ForeignKey(User, db_index=True, null=True, on_delete=CASCADE)
+
+    def get_link(self, abs_path=False, as_html=True):
+        if not self.file_created:
+            return ''
+        uri = reverse('admin:download_file_data', args=[self.pk])
+        if abs_path:
+            uri = f'{settings.API_URL_PROTOCOL}://{settings.HOST_NAME}{uri}'
+        if as_html:
+            return mark_safe(f'<a href="{uri}">download</a>')
+        return uri
+
+    def send_email(self, log: ProcessLogger = None,
+                   subject: str = None, text: str = None, html: str = None):
+        from apps.notifications.notifications import send_email
+        link = self.get_link(abs_path=True, as_html=False)
+        default_subject = 'Document Files Ready to Download'
+        default_msg_template = 'You can download your documents {}'
+        default_text = default_msg_template.format(link)
+        default_html = default_msg_template.format(f'<a href="{link}">here</a>')
+        send_email(
+            log=log or ProcessLogger(),
+            dst_user=self.user,
+            subject=subject or default_subject,
+            txt=text or default_text,
+            html=html or default_html)
+        self.email_sent = True
+        self.save()
 
 
 class IContainsOrFullTextSearch(ContainsOrFullTextSearch):

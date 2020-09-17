@@ -47,11 +47,12 @@ RUN apt-get -y update --fix-missing && \
 	apt-get install -y curl && \
 	apt-get install -y htop && \
 	virtualenv -p /usr/bin/python3 /contraxsuite_services/venv && chmod ug+x /contraxsuite_services/venv/bin/activate && \
-	. /contraxsuite_services/venv/bin/activate && python --version && pip install -r /contraxsuite_services/python-requirements-additional.txt && pip install -r /contraxsuite_services/deploy/base/python-requirements-all.txt && pip uninstall -y -r /contraxsuite_services/deploy/base/python-unwanted-requirements.txt && deactivate && \
+	. /contraxsuite_services/venv/bin/activate && python --version && pip install -r /contraxsuite_services/deploy/base/python-requirements-all.txt${LEXNLP_MASTER_INSTALL_CMD} && pip install -r /contraxsuite_services/python-requirements-additional.txt && pip uninstall -y -r /contraxsuite_services/deploy/base/python-unwanted-requirements.txt && deactivate && \
 	if [ -f  /contraxsuite_services/deploy/base/customer-requirements.txt ]; then \
     . /contraxsuite_services/venv/bin/activate && \
     pip install -r /contraxsuite_services/deploy/base/customer-requirements.txt && deactivate; fi && \
     su - ${SHARED_USER_NAME} -c ". /contraxsuite_services/venv/bin/activate && python -m nltk.downloader averaged_perceptron_tagger punkt stopwords words maxent_ne_chunker wordnet && deactivate" && \
+    su - ${SHARED_USER_NAME} -c "test -f \"/static/vendor/jqwidgets/jqx-all.js\" && echo \"JQWidgets are bundled within the image. Running collectstatic...\" && . /contraxsuite_services/venv/bin/activate && python manage.py collectstatic --noinput && deactivate || echo \"JQWidgets not bundled within the image.\"" && \
     cat /build.info && cat /build.uuid && ls /static -l && \
     . /install_ssl_certs_to_python.sh && \
     apt-get install -y tesseract-ocr tesseract-ocr-eng tesseract-ocr-ita tesseract-ocr-fra tesseract-ocr-spa tesseract-ocr-deu tesseract-ocr-rus && \
@@ -65,17 +66,21 @@ RUN apt-get -y update --fix-missing && \
     rm -rf /ssl_certs && \
     rm /install_ssl_certs_to_python.sh && \
 	wget https://github.com/krallin/tini/releases/download/v0.6.0/tini -O /usr/bin/tini && \
-	chmod +x /usr/bin/tini
-
-RUN echo ${DOLLAR}(date) > /build.date
-
-RUN mkdir -p /contraxsuite_services/staticfiles
-RUN chown -R -v ${SHARED_USER_NAME}:${SHARED_USER_NAME} /contraxsuite_services || true
-RUN mkdir -p /data/data
-RUN mkdir -p /data/logs
-RUN mkdir -p /static
-RUN mkdir -p /deployment_uuid
-RUN mkdir -p /data/celery_worker_state
-RUN chown -R -v ${SHARED_USER_NAME}:${SHARED_USER_NAME} /data || true
+	chmod +x /usr/bin/tini && \
+    echo ${DOLLAR}(date) > /build.date && \
+    echo "Contraxsuite Git branch: ${BUILD_CONTRAXSUITE_GIT_BRANCH}" > /build_info.txt && \
+    echo "Customer repo commit: ${BUILD_CONTRAXSUITE_GIT_COMMIT}" >> /build_info.txt && \
+    echo "Lexnlp Core branch: ${BUILD_LEXNLP_CORE_GIT_BRANCH}" >> /build_info.txt && \
+    echo "Lexnlp Core commit: ${BUILD_LEXNLP_CORE_GIT_COMMIT}" >> /build_info.txt && \
+    echo "Customer repo branch: ${BUILD_CUSTOMER_REPO_GIT_BRANCH}" >> /build_info.txt && \
+    echo "Customer repo commit: ${BUILD_CUSTOMER_REPO_GIT_COMMIT}" >> /build_info.txt && \
+    mkdir -p /contraxsuite_services/staticfiles && \
+    chown -R -v ${SHARED_USER_NAME}:${SHARED_USER_NAME} /contraxsuite_services || true && \
+    mkdir -p /data/data && \
+    mkdir -p /data/logs && \
+    mkdir -p /static && \
+    mkdir -p /deployment_uuid && \
+    mkdir -p /data/celery_worker_state && \
+    chown -R -v ${SHARED_USER_NAME}:${SHARED_USER_NAME} /data || true
 
 ENTRYPOINT ["/usr/bin/tini", "--"]

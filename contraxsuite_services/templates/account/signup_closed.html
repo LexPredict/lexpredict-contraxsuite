@@ -1,11 +1,15 @@
 {% extends "account/base.html" %}
-{% load i18n %}
+{% load i18n project_tags %}
 
-{% block title %}{% trans "Sign Up Closed" %}{% endblock %}
+{% block title %}{% trans "Account Unavailable" %}{% endblock %}
 
-{% block header %}{% trans "Sign Up Closed" %}{% endblock %}
+{% block header %}{% trans "Account Unavailable" %}{% endblock %}
 
 {% block inner %}
-  <p>{% trans "We are sorry, but the sign up is currently closed." %}</p>
+  <p>{% trans 'Please contact ' %} {% admin_email %}</p>
+  <br/>
+  <button onclick="window.location.href='{% url 'login' %}';" class="btn-u btn-sm" type="button">
+    {% trans 'Try Another Account' %}
+  </button>
   <button class="btn-u btn-sm btn-l cancel" type="button">{% trans "Back" %}</button>
 {% endblock %}

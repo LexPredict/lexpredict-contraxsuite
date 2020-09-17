@@ -37,8 +37,8 @@ from apps.document.repository.dto import FieldValueDTO
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.6.0/LICENSE"
-__version__ = "1.6.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.7.0/LICENSE"
+__version__ = "1.7.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -58,7 +58,9 @@ class PythonCodedFieldDetectionStrategy(FieldDetectionStrategy):
                                             log: ProcessLogger,
                                             field: DocumentField,
                                             train_data_project_ids: Optional[List],
-                                            use_only_confirmed_field_values: bool = False) -> Optional[ClassifierModel]:
+                                            use_only_confirmed_field_values: bool = False,
+                                            split_and_log_out_of_sample_test_report: bool = False)\
+            -> Optional[ClassifierModel]:
         python_coded_field = PYTHON_CODED_FIELDS_REGISTRY.get(field.python_coded_field)  # type: PythonCodedField
         if not python_coded_field:
             raise RuntimeError('Unknown python-coded field: {0}'.format(field.python_coded_field))
@@ -85,8 +87,8 @@ class PythonCodedFieldDetectionStrategy(FieldDetectionStrategy):
 
         log.debug('detect_field_value: python_coded_field_detection, ' +
                   f'field {field.code}({field.pk}), document #{doc.pk}')
-        field_value_dto = python_coded_field.get_value(log=log, field=field, doc=doc,
-                                                       cur_field_code_to_value=field_code_to_value)
+        field_value_dto = python_coded_field.get_value(
+            log=log, field=field, doc=doc, cur_field_code_to_value=field_code_to_value)
         if not typed_field.is_json_field_value_ok(field_value_dto.field_value):
             raise ValueError(f'Python coded field class {field.python_coded_field} returned value not suitable for '
                              f'field {field.code} ({typed_field.type_code})')

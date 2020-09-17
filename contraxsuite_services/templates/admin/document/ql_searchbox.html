@@ -1,0 +1,42 @@
+<script type="text/javascript">
+    window.getUrlParameter = function(sParam) {
+        var sPageURL = window.location.search.substring(1),
+            sURLVariables = sPageURL.split('&'),
+            sParameterName,
+            i;
+
+        for (i = 0; i < sURLVariables.length; i++) {
+            sParameterName = sURLVariables[i].split('=');
+
+            if (sParameterName[0] === sParam) {
+                return sParameterName[1] === undefined ? true : decodeURIComponent(sParameterName[1]);
+            }
+        }
+    };
+
+    $(document).ready(function() {
+        var oldSearch = $('#searchbar');
+        var newSearch = $('#quick-search');
+        oldSearch.replaceWith(newSearch);
+
+        setTimeout(function(){
+            var newSearch = $('#quick-search');
+            newSearch.css('resize', 'none');
+            newSearch.css('overflow', 'hidden');
+            newSearch.css('height', '18px');
+            newSearch.css('max-width', '100%');
+            newSearch.css('margin-top', '6px');
+            newSearch.width('80%');
+            newSearch.attr('maxlength', '2000');
+            newSearch.attr('autocomplete', 'off');
+            newSearch.attr('rows', '1');
+
+            var ql_query = window.getUrlParameter('q');
+            if (ql_query) {
+                ql_query = ql_query.replace(/\+/g, ' ');
+                newSearch.val(ql_query);
+            }
+        }, 0);
+
+    });
+</script>

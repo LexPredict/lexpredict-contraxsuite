@@ -1,5 +1,10 @@
 {% extends "base_detail.html" %}
 
+{% block page_header_wrapper %}
+<li class="breadcrumb-item"><a href="{% url 'task:task-list' %}">Admin Tasks</a></li>
+<li class="breadcrumb-item active" aria-current="page">Task <small style="text-transform: none">detail</small></li>
+{% endblock %}
+
 {% block css_extra %}
   {{ block.super }}
   <style>
@@ -12,4 +17,23 @@
   </style>
 {% endblock %}
 
+{% block project_selection %}{% endblock %}
+
 {% block update_button %}{% endblock %}
+
+{% block js_extra %}
+  {{ block.super }}
+  <script type="text/javascript">
+    function showHideToggleOnclick(titleA) {
+      var contentDiv = titleA.nextElementSibling;
+      var title = titleA.innerText.trim().substring(4);
+      if (contentDiv.style.display === 'block') {
+        contentDiv.style.display = 'none';
+        titleA.innerText = '[+] ' + title;
+      } else {
+        contentDiv.style.display = 'block';
+        titleA.innerText = '[-] ' + title;
+      }
+    }
+  </script>
+{% endblock %}

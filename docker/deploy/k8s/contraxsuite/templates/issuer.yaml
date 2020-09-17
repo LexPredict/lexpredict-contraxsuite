@@ -1,0 +1,23 @@
+{{ if .Values.customcertificate }}
+#contrax-ingress
+
+apiVersion: certmanager.k8s.io/v1alpha1
+kind: Issuer
+metadata:
+  name: {{ .Values.domain_name }}-issuer
+spec:
+  acme:
+    {{ if and .Values.letsencryptenv (eq .Values.letsencryptenv "prod") }}
+    server: https://acme-v02.api.letsencrypt.org/directory
+    {{ else }}
+    server: https://acme-staging-v02.api.letsencrypt.org/directory
+    {{ end }}
+    email: support@lexpredict.com
+    privateKeySecretRef:
+      {{ if and .Values.letsencryptenv (eq .Values.letsencryptenv "prod") }}
+      name: letsencrypt-prod
+      {{ else }}
+      name: letsencrypt-staging
+      {{ end }}
+    http01: {}
+{{ end }}

@@ -16,7 +16,7 @@ Read on for more on how to set up Document Field Detectors and take full advanta
 
 **3.** Complete the following fields in the form:
   * **Field:** Choose the Document Field that this Field Detector will correspond to.
-  * **Exclude regexps:** Enter any regexp you want to identify phrases which would _disqualify_ a text unit from being picked up in the search and highlighted for this Field. You can separate more than one exclusion pattern with a line break and they will be run separately. 
+  * **Exclude regexps:** Enter any regexp you want to identify phrases which would _disqualify_ a text unit from being picked up in the search and highlighted for this Field. You can separate more than one exclusion pattern with a line break and they will be run separately. **Note:** A Field Detector will not work properly if it only has an Exclude regexps, without a Definition word and/or Include regexps.
   * **Definition words:** Any words entered here (in lowercase) will be checked after "Exclude regexps". Any matching text units found in the document will be highlighted for this Field, unless there is further refinement using "Include regexps" (see next). You can separate multiple defined terms with a line break and they will be run separately.
   * **Include regexps:** Enter regexp to identify phrases that should trigger the system to highlight the respective text unit in which the trigger is found, as well as to extract the appropriate value based on the Field Type. You can separate more than one defined term with a line break and they will be run separately.
   * **Regexps preprocess lower:** Check this box to make regexp case-insensitive. For most scenarios, it is helpful to have this box checked and to write all regexp in lowercase.
@@ -33,30 +33,19 @@ Read on for more on how to set up Document Field Detectors and take full advanta
   * After matching substring
   * Inside matching substring
 
-  Example: In the string "2019-01-23 is the Start date and 2019-01-24 is the end date," if Include regexp is "is.{0,100}Start" and text part = "Before matching substring" then "2019-01-23 " will be parsed correctly as the Start Date.
+**Field Detector Example #1:** For a Date Field, the string "2019-01-23 is the Start date and 2019-01-24 is the end date," with the Include regexp "is.{0,100}Start" and the text part "Before matching substring", the date "2019-01-23" will be parsed correctly as the Start Date.
 
-**Example Field Detector:** If a Field Detector is written for a "Company" Type, and has the following elements:
-  * Include regexps:
-      "as\s[1,5}borrower"
-  * Extraction hint:
-      TAKE_LAST
-  * Text part:
-      Before matching substring
-
-**Result:** ContraxSuite would extract "XYZ Company" from this sentence: "ABC Company as lender has provided $100 to XYZ Company, as borrower."
+**Field Detector Example #2:** For a Company Field, the clause "ABC Company as lender has provided $100 to XYZ Company, as borrower," with the Include regexp "as\s[1,5}borrower" and the extraction hint "TAKE_LAST" and the text part "Before matching substring", the string "XYZ Company" will be parsed correctly as the borrower.
 
 ---
 
 #### How to Test and Apply New Field Detectors
 
-When you write a new Field Detector, it is not automatically applied retroactively to documents already uploaded to a project. In order to see if your new Field Detector is working as expected on all documents in your project, you will need to either:
-* Upload a new document to a project, to see if the extraction behavior you're expecting from your new Field Detector is working correctly, or
-* Run an Admin Task called: **Documents:Detect Field Values**.
+When you write a new Field Detector, it is not automatically applied retroactively to documents already uploaded to a project. In order to see if your new Field Detector is working as expected on all documents in your project, you will need to either upload a new document to a project to see if your changes are working properly, or run the **Documents:Detect Field Values** task from the Admin Tasks.
 
 Follow these steps to run "Documents:Detect Field Values" on your project:
 
 **1.** Navigate to "Data Science" in the main menu (left pane), and click on "Document Explorer"
-    ![ExploreData](../../_static/img/guides/DocTypeCreation/ExploreData.png)
 
 **2.** In the Document Explorer, click "Administration" in the main menu (left pane), then choose "Admin Tasks" and then click the "Run Task" button in the top-left of the main viewing screen:
     ![Tasks](../../_static/img/guides/DocTypeCreation/Tasks.png)
@@ -71,21 +60,21 @@ Follow these steps to run "Documents:Detect Field Values" on your project:
   
   ![DocTypeProject](../../_static/img/guides/DocTypeCreation/DocTypeProject.png)
 
-**5.** Hit the "Process" button in the lower right of the pop-up. You’ll be taken to the following screen. Status will reach 100% when the task is complete. (*You can refresh the page to check progress*)
+**5.** Once you have seletect your Document Type and/or Project (or specific document), click the "Process" button in the lower right of the pop-up. Refresh the Admin Task List screen using the "Refresh" button near the top-right. Task status will reach 100% when the task is complete.
     
   ![DetectFieldValues](../../_static/img/guides/DocTypeCreation/DetectFieldValues.png)
 
-**6.** Depending on the number of documents in the chosen Document Type/number of documents in the chosen Project, this step may take a while. Refresh the page until the Task Progress is "100%" and its status is marked "Success" in green.
+**6.** Depending on how many documents are in your chosen Document Type and/or Project, this task may take a while. Refresh the page until the Task Progress is "100%" and its status is marked "Success" in green.
 
-**Note:** Developers, admins, and power users may wish to see details of the task that was run. To do so, click "Menu" on the far right of the main viewing pane, and then click "View Details". You will be taken to a screen that looks like this.
+Developers, admins, and power users may wish to see details of the task. To do so, click "Menu" on the far right of the main viewing pane, and then click "View Details". You will be taken to a screen that looks like this.
   
   ![TaskDetails](../../_static/img/guides/DocTypeCreation/TaskDetails.png)
 
-**7.** Finally, return to the project for which you wanted to run these new/updated Field Detectors. His the "Refresh" button above the Document Grid View.
+**7.** Finally, return to the project where you ran the "Documents:Detect Field Values" task and click the "Refresh" button above the Document Grid View.
 
   ![Refresh](../../_static/img/guides/DocTypeCreation/Refresh.png)
 
-Once you refresh the Document Grid View you will see any new values that the new/updated Field Detectors have extracted. Or you can click within a document itself to see the results and the corresponding highlighted annotations.
+**8.** Once you refresh the Document Grid View, you will see the new values that the new/updated Field Detectors have extracted. Or you can click into a document to view any new annotations.
 
   ![Frontend](../../_static/img/guides/DocTypeCreation/Frontend.png)
 

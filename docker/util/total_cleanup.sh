@@ -30,6 +30,7 @@ sudo rm -rf `sudo realpath ${VOLUME_RABBIT}/..`
 sudo rm -rf `sudo realpath ${VOLUME_CELERY_WORK_STATE}/..`
 sudo rm -rf `sudo realpath ${VOLUME_DB}/..`
 sudo rm -rf ${VOLUME_DATA_MEDIA}/data/documents/*
+sudo rm -rf ${VOLUME_DATA_MEDIA}/data/export/*
 
 echo "Postgres volume has been deleted on this local machine."
 echo "If Postgres is running on another machine - please delete its volume manually NOW."

@@ -24,18 +24,27 @@
 """
 # -*- coding: utf-8 -*-
 
+import io
 import hashlib
 import time
 import traceback
 from typing import List, Dict, Optional, Tuple, Any, Generator, Set, Callable
+from zipfile import ZipFile, ZIP_DEFLATED
+
+from openpyxl import Workbook
+from openpyxl.writer.excel import save_virtual_workbook
+from openpyxl.styles import Font, Alignment
 
 from django.conf import settings
 from django.db import connection, transaction, IntegrityError
 from django.db.models import Q
+from django.http import HttpResponse, StreamingHttpResponse
 
+from apps.common.error_explorer import retry_for_operational_error
 from apps.common.log_utils import ProcessLogger
 from apps.common.sql_commons import fetch_int, escape_column_name, sum_list, SQLClause, \
     SQLInsertClause, join_clauses, format_clause, fetch_dicts
+from apps.common.streaming_utils import csv_gen, GeneratorList
 from apps.document import field_types
 from apps.document.constants import DOCUMENT_FIELD_CODE_MAX_LEN, DocumentGenericField, DocumentSystemField, FieldSpec, \
     DOC_METADATA_DOCUMENT_CLASS_PROB
@@ -52,12 +61,11 @@ from apps.rawdb.constants import TABLE_NAME_PREFIX, FIELD_CODE_DOC_NAME, FIELD_C
     FIELD_CODES_GENERIC, FIELD_CODE_ANNOTATION_SUFFIX, INDEX_NAME_PREFIX, DEFAULT_ORDER_BY, FIELD_CODE_FOLDER, \
     CACHE_FIELD_TO_DOC_FIELD, FIELD_CODE_DOCUMENT_CLASS, FIELD_CODE_DOCUMENT_CLASS_PROB, FIELD_CODE_IS_CONTRACT, \
     FIELD_CODE_GEOGRAPHIES, FIELD_CODE_CURRENCY_TYPES
-from apps.common.error_explorer import retry_for_operational_error
 from apps.rawdb.models import SavedFilter
 from apps.rawdb.notifications import UserNotifications
 from apps.rawdb.rawdb.rawdb_field_handlers import PgTypes, RawdbFieldHandler, ColumnDesc, StringRawdbFieldHandler, \
     AnnotationTextFieldHandler, MoneyRawdbFieldHandler, DateFieldHandler, IntFieldHandler, BooleanRawdbFieldHandler, \
-    DateTimeFieldHandler, LongTextFromRelTableFieldHandler, LinkedDocumentsRawdbFieldHandler, RatioRawdbFieldHandler, \
+    DateTimeFieldHandler, LinkedDocumentsRawdbFieldHandler, RatioRawdbFieldHandler, \
     FloatFieldHandler, MultichoiceFieldHandler, RelatedInfoRawdbFieldHandler, AddressFieldHandler, PercentFieldHandler
 from apps.rawdb.rawdb.errors import Forbidden, UnknownColumnError
 from apps.rawdb.rawdb.query_parsing import SortDirection, parse_column_filters, parse_order_by
@@ -68,14 +76,17 @@ from apps.users.models import User
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.6.0/LICENSE"
-__version__ = "1.6.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.7.0/LICENSE"
+__version__ = "1.7.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
 
 # method return types
 class DocumentQueryResults(list):
+
+    export_file_name = 'export'
+
     def __init__(self,
                  offset: Optional[int],
                  limit: Optional[int],
@@ -83,7 +94,8 @@ class DocumentQueryResults(list):
                  reviewed_sql: Optional[SQLClause],
                  columns: List[ColumnDesc],
                  items_sql: Optional[SQLClause],
-                 row_processor: Callable[[List], List] = None) -> None:
+                 row_processor: Callable[[List], List] = None,
+                 unfiltered_count: int = 0) -> None:
         super().__init__()
         self.offset = offset
         self.limit = limit
@@ -92,7 +104,9 @@ class DocumentQueryResults(list):
         self._items_sql = items_sql
         self.reviewed = None
         self.total = None
+        self.assignees = None
         self.row_processor = row_processor
+        self.unfiltered_count = unfiltered_count
         if total_sql or reviewed_sql:
             with connection.cursor() as cursor:
                 self.reviewed = fetch_int(cursor, reviewed_sql) if reviewed_sql else None
@@ -132,6 +146,72 @@ class DocumentQueryResults(list):
     def __len__(self) -> int:
         return 1
 
+    def to_json(self, time_start: float = None):
+        res = {'offset': self.offset,
+               'limit': self.limit,
+               'total_documents': self.total,
+               'count_of_filtered_items': self.total,
+               'count_of_items': self.unfiltered_count,
+               'reviewed_documents': self.reviewed,
+               'items': GeneratorList(self.fetch_dicts()),
+               'assignees': self.assignees,
+               'time': time.time() - time_start}
+        return {k: v for k, v in res.items() if v is not None}
+
+    def to_zip(self, content, file_name):
+        zip_mem_file = io.BytesIO()
+        with ZipFile(zip_mem_file, 'w', ZIP_DEFLATED) as zip_archive:
+            zip_archive.writestr(file_name, content)
+        zip_mem_file.seek(0)
+        resp = HttpResponse(zip_mem_file.read(), content_type="application/zip")
+        resp['Content-Disposition'] = f'attachment; filename="{self.export_file_name}.zip"'
+        return resp
+
+    def to_xlsx(self, as_zip=False) -> HttpResponse:
+        wb = Workbook()
+        ws = wb.active
+        ws.append(self.column_titles)
+        for cells in ws.rows:
+            for cell in cells:
+                cell.font = Font(name=cell.font.name, bold=True)
+                cell.alignment = Alignment(horizontal='center')
+            break
+
+        for row in self.fetch():
+            ws.append(row)
+
+        def str_len(value):
+            return len(str(value)) if value is not None else 0
+
+        for column_cells in ws.columns:
+            length = min(max(str_len(cell.value) for cell in column_cells), 100) + 1
+            ws.column_dimensions[column_cells[0].column_letter].width = length
+
+        xlsx_content = save_virtual_workbook(wb)
+        file_name = f'{self.export_file_name}.xlsx'
+
+        if as_zip:
+            return self.to_zip(xlsx_content, file_name=file_name)
+
+        resp = HttpResponse(xlsx_content,
+                            content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+        resp['Content-Disposition'] = f'attachment; filename={file_name}'
+        return resp
+
+    def to_csv(self, as_zip=False):
+        _csv_gen = csv_gen(self.column_codes, self.fetch(), self.column_titles)
+        file_name = f'{self.export_file_name}.csv'
+
+        if as_zip:
+            content = ''.join(_csv_gen)
+            return self.to_zip(content, file_name=file_name)
+
+        resp = StreamingHttpResponse(
+            _csv_gen,
+            content_type='text/csv')
+        resp['Content-Disposition'] = f'attachment; filename={file_name}'
+        return resp
+
 
 class EmptyDocumentQueryResults(DocumentQueryResults):
     def __init__(self) -> None:
@@ -144,14 +224,14 @@ class EmptyDocumentQueryResults(DocumentQueryResults):
         return 0
 
     def fetch_dicts(self) -> Generator[Dict, None, None]:
-        return None
+        return
 
     @property
     def documents(self):
         return list()
 
     def fetch(self) -> Generator[List, None, None]:
-        return None
+        return
 
 
 RAWDB_FIELD_HANDLER_REGISTRY = {
@@ -598,6 +678,13 @@ def _recreate_document_fields_table(log: ProcessLogger, table_name: str, column_
             cursor.execute(create_index, [])
 
 
+def _delete_document_fields_table(log: ProcessLogger, document_type_code: str):
+    table_name = doc_fields_table_name(document_type_code)
+    log.info('Dropping raw sql table: {0}'.format(table_name))
+    with connection.cursor() as cursor:
+        cursor.execute('DROP TABLE IF EXISTS "{table_name}"'.format(table_name=table_name))
+
+
 def _fill_system_fields_to_python_values(document: Document,
                                          field_to_python_values: Dict[str, List],
                                          include_system_fields: FieldSpec = True):
@@ -923,12 +1010,15 @@ def cache_document_fields(log: ProcessLogger,
         field_repo = DocumentFieldRepository()
 
         user_fields_code_to_value = {code: None for code in
-                                     document_type.fields.all().values_list('code', flat=True)}
-        user_fields_code_to_value.update(field_repo.get_field_code_to_python_value(document_type_id=document_type.pk,
-                                                                                   doc_id=document.pk))
+                                     document_type.fields.values_list('code', flat=True)}
+        user_fields_code_to_value.update(field_repo.get_field_code_to_python_value(
+            document_type_id=document_type.pk,
+            doc_id=document.pk,
+            ignore_errors=True,
+            log_func=lambda m: log.error(m)))
 
-        _hidden_field_ids, hidden_field_codes = field_repo.get_hidden_field_ids_codes(document,
-                                                                                      user_fields_code_to_value)
+        _hidden_field_ids, hidden_field_codes = field_repo.get_hidden_field_ids_codes(
+            document, user_fields_code_to_value)
         if hidden_field_codes:
             hid_handlers = build_field_handlers(document_type,
                                                 table_name,
@@ -960,31 +1050,43 @@ def cache_document_fields(log: ProcessLogger,
                                          field_to_python_values,
                                          hidden_field_codes=hidden_field_codes)
 
-    with connection.cursor() as cursor:
-        document_fields_before = _get_document_fields(cursor=cursor,
-                                                      document_id=document.pk,
-                                                      table_name=table_name,
-                                                      handlers=handlers)
-        if old_field_values:
-            document_fields_before.update(old_field_values)
-        try:
-            cursor.execute(insert_clause.sql, insert_clause.params)
-        except IntegrityError:
-            # this error means that the document referred has been already deleted
-            # in primary table (document_document) - so we can skip it
-            er_str = f'is not present in table "{Document._meta.db_table}"'
-            ex_str = traceback.format_exc()
-            if er_str in ex_str:
-                log.error(f'Document {document.pk} of {document_type} is '
-                          f'deleted by the time it is being cached in cache_document_fields()')
-                pass
-        except:
-            import sys
-            etype, evalue, _ = sys.exc_info()
-            log.error(f'Error {etype}: {evalue}\n'
-                      f'in cache_document_fields(doc_id={document.pk})\nSQL: '
-                      f'{insert_clause.sql}\nParams: {insert_clause.params}.\n\n')
-            raise
+    with transaction.atomic():
+        with connection.cursor() as cursor:
+
+            # We load old document fields and not only the ones which are going to be changed.
+            # This is needed to cover the document loading event and notification.
+            # Without it "assignee" and maybe other fields will not be loaded and provided to the notification
+            # sending routines.
+            handlers_before = build_field_handlers(document_type,
+                                                   table_name,
+                                                   include_system_fields=True,
+                                                   include_generic_fields=True,
+                                                   include_user_fields=True,
+                                                   include_annotation_fields=False)
+            document_fields_before = _get_document_fields(cursor=cursor,
+                                                          document_id=document.pk,
+                                                          table_name=table_name,
+                                                          handlers=handlers_before)
+            if old_field_values:
+                document_fields_before.update(old_field_values)
+            try:
+                cursor.execute(insert_clause.sql, insert_clause.params)
+            except IntegrityError:
+                # this error means that the document referred has been already deleted
+                # in primary table (document_document) - so we can skip it
+                er_str = f'is not present in table "{Document._meta.db_table}"'
+                ex_str = traceback.format_exc()
+                if er_str in ex_str:
+                    log.error(f'Document {document.pk} of {document_type} is '
+                              f'deleted by the time it is being cached in cache_document_fields()')
+                    pass
+            except:
+                import sys
+                etype, evalue, _ = sys.exc_info()
+                log.error(f'Error {etype}: {evalue}\n'
+                          f'in cache_document_fields(doc_id={document.pk})\nSQL: '
+                          f'{insert_clause.sql}\nParams: {insert_clause.params}.\n\n')
+                raise
 
     inserted_document_fields = {
         h.field_code: h.python_value_to_indexed_field_value(field_to_python_values.get(h.field_code))
@@ -1020,6 +1122,7 @@ def cache_document_fields(log: ProcessLogger,
     document.save(update_fields=['fields_dirty'])
     log.debug(f"Fields are cached for document {document.pk}",
               extra={Document.LOG_FIELD_DOC_ID: str(document.pk)})
+
     fire_document_fields_changed(cache_document_fields,
                                  log=log,
                                  document_event=DocumentEvent.CREATED.value if document_initial_load
@@ -1084,11 +1187,10 @@ def _extract_column_filters_and_order_by_from_saved_filters(document_type: Docum
                                                             saved_filter_ids: List[int]) \
         -> Tuple[List[Tuple[str, str]], List[Tuple[str, SortDirection]]]:
     saved_filters = list(SavedFilter.objects
-                         .filter(document_type=document_type)
-                         .filter(pk__in=saved_filter_ids)
+                         .filter(document_type=document_type,
+                                 pk__in=saved_filter_ids)
                          .filter(Q(user__isnull=True) | Q(user=requester))
-                         .values_list('column_filters', 'order_by')
-                         .all())  # type: List[Tuple[str, str]]
+                         .values_list('column_filters', 'order_by'))  # type: List[Tuple[str, str]]
     if not saved_filters:
         raise Forbidden()
     column_filters = list()  # type: List[Tuple[str, str]]

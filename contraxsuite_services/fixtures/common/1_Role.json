@@ -7,6 +7,7 @@
         "code": "technical_admin",
         "order": 1,
         "is_admin": true,
+        "is_top_manager": false,
         "is_manager": false
     }
 },
@@ -18,6 +19,7 @@
         "code": "manager",
         "order": 2,
         "is_admin": false,
+        "is_top_manager": false,
         "is_manager": true
     }
 },
@@ -29,6 +31,7 @@
         "code": "project_creator",
         "order": 3,
         "is_admin": false,
+        "is_top_manager": false,
         "is_manager": true
     }
 },
@@ -40,7 +43,20 @@
         "code": "reviewer",
         "order": 4,
         "is_admin": false,
+        "is_top_manager": false,
         "is_manager": false
+    }
+},
+    {
+    "model": "users.role",
+    "pk": 5,
+    "fields": {
+        "name": "Project and Document Type Creator",
+        "code": "project_and_doc_type_creator",
+        "order": 5,
+        "is_admin": false,
+        "is_top_manager": true,
+        "is_manager": true
     }
 }
 ]

@@ -34,12 +34,12 @@ from django.contrib.auth.admin import UserAdmin as AuthUserAdmin
 from django.contrib.auth.forms import UserChangeForm, UserCreationForm
 
 # Project imports
-from apps.users.models import User, Role
+from apps.users.models import User, Role, SocialAppUri
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.6.0/LICENSE"
-__version__ = "1.6.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.7.0/LICENSE"
+__version__ = "1.7.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -77,9 +77,34 @@ class MyUserAdmin(AuthUserAdmin):
 
 
 class RoleAdmin(admin.ModelAdmin):
-    list_display = ('name', 'code', 'abbr', 'order', 'is_admin', 'is_manager')
+    list_display = ('name', 'code', 'abbr', 'order', 'is_admin', 'is_manager', 'is_top_manager')
     search_fields = ['name', 'code']
+
+
+class SocialAppUriAdminForm(forms.ModelForm):
+
+    class Meta:
+        model = SocialAppUri
+        fields = ['social_app', 'uri_type', 'uri']
+        widgets = {
+            'value': forms.Textarea(
+                attrs={
+                    'rows': '2', 'cols': '95'
+                }
+            )
+        }
+
+
+class SocialAppUriAdmin(admin.ModelAdmin):
+    list_display = ['social_app', 'uri_type', 'uri']
+    search_fields = ['social_app', 'uri_type', 'uri']
+    list_editable = ['uri_type', 'uri']
+    list_display_links = ['social_app']
+
+    def get_changelist_form(self, request, **kwargs):
+        return SocialAppUriAdminForm
 
 
 admin.site.register(User, MyUserAdmin)
 admin.site.register(Role, RoleAdmin)
+admin.site.register(SocialAppUri, SocialAppUriAdmin)

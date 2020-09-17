@@ -15,6 +15,12 @@
     {{ block.super }}
 {% endblock %}
 
-<script>
-
-</script>
+{% block extrajs %}
+    {{ block.super }}
+    <script>
+    $(document).ready(function() {
+        var newSearch = $('form.form-search.nav-quick-search');
+        newSearch.hide();
+        });
+    </script>
+{% endblock %}

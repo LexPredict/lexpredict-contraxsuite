@@ -31,8 +31,8 @@ from django.db import models
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.6.0/LICENSE"
-__version__ = "1.6.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.7.0/LICENSE"
+__version__ = "1.7.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -47,3 +47,15 @@ class MaterializedView(models.Model):
     view_name = models.CharField(max_length=100, db_index=True, unique=True)
 
     refresh_date = models.DateTimeField(auto_now=False, db_index=True)
+
+    VIEW_STATUS_CREATED = 'CREATED'
+    VIEW_STATUS_UPDATING = 'UPDATING'
+    VIEW_STATUS_UPDATED = 'UPDATED'
+
+    VIEW_STATUSES = ((VIEW_STATUS_CREATED, VIEW_STATUS_CREATED,),
+                     (VIEW_STATUS_UPDATING, VIEW_STATUS_UPDATING,),
+                     (VIEW_STATUS_UPDATED, VIEW_STATUS_UPDATED,))
+
+    status = models.CharField(max_length=10,
+                              choices=VIEW_STATUSES,
+                              default=VIEW_STATUS_CREATED)

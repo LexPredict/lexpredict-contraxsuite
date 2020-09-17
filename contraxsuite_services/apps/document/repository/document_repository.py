@@ -25,7 +25,7 @@
 # -*- coding: utf-8 -*-
 
 import uuid
-from typing import List, Generator
+from typing import List, Generator, Tuple
 
 from django.db import connection
 
@@ -38,8 +38,8 @@ from apps.extract.models import Party
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.6.0/LICENSE"
-__version__ = "1.6.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.7.0/LICENSE"
+__version__ = "1.7.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -50,6 +50,10 @@ class DocumentRepository(BaseDocumentRepository):
     # @collect_stats(name='DocumentRepository', log_sql=False)
     def get_all_document_source_paths(self, ids: List[int]) -> List[str]:
         return list(Document.all_objects.filter(pk__in=ids).values_list('source_path', flat=True))
+
+    def get_document_source_paths_by_id(self,
+                                        ids: List[int]) -> List[Tuple[int, str]]:
+        return list(Document.all_objects.filter(pk__in=ids).values_list('pk', 'source_path'))
 
     # @collect_stats(name='DocumentRepository', log_sql=False)
     def delete_all_documents_by_ids(self, ids: List[int]) -> None:

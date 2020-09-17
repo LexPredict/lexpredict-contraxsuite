@@ -31,7 +31,7 @@ import traceback
 
 # Django imports
 from django.conf import settings
-from django.db.models import F
+from django.db.models import F, Q
 from django.db.models.functions import Now, Coalesce
 from django.http import JsonResponse, HttpResponseForbidden
 from django.shortcuts import redirect
@@ -55,13 +55,16 @@ from apps.task.utils.task_utils import check_blocks
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.6.0/LICENSE"
-__version__ = "1.6.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.7.0/LICENSE"
+__version__ = "1.7.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
 
 project_api_module = get_api_module('project')
+
+TASK_STARTED_MESSAGE = 'The task has been started. Click OK to close this window. ' \
+                       'Click the refresh icon ⟳ in the top right of the grid to view task progress.'
 
 
 class BaseTaskView(apps.common.mixins.AdminRequiredMixin, FormView):
@@ -88,6 +91,7 @@ class BaseAjaxTaskView(apps.common.mixins.AdminRequiredMixin, apps.common.mixins
     task_name = 'Task'
     form_class = None
     html_form_class = 'popup-form'
+    task_started_message = TASK_STARTED_MESSAGE
 
     @staticmethod
     def json_response(data, **kwargs):
@@ -105,7 +109,11 @@ class BaseAjaxTaskView(apps.common.mixins.AdminRequiredMixin, apps.common.mixins
             data = dict(header=form.header,
                         form_class=self.html_form_class,
                         form_data=form.as_p())
+        self.provide_extra_task_data(request, data, *args, **kwargs)
         return self.json_response(data)
+
+    def provide_extra_task_data(self, request, data, *args, **kwargs):
+        pass
 
     def get_metadata(self):
         return getattr(self, 'metadata', None)
@@ -140,7 +148,7 @@ class BaseAjaxTaskView(apps.common.mixins.AdminRequiredMixin, apps.common.mixins
             self.start_task(data)
         except Exception as e:
             return self.json_response(str(e), status=400)
-        return self.json_response('The task is started. It can take a while.')
+        return self.json_response(self.task_started_message)
 
 
 class LoadTaskView(apps.common.mixins.AdminRequiredMixin, apps.common.mixins.JSONResponseView):
@@ -187,7 +195,7 @@ class LoadTaskView(apps.common.mixins.AdminRequiredMixin, apps.common.mixins.JSO
                 except Exception as e:
                     return self.json_response(str(e), status=400)
                 started_tasks.append(task_name)
-        return self.json_response('The task is started. It can take a while.')
+        return self.json_response(TASK_STARTED_MESSAGE)
 
 
 class LoadDocumentsView(BaseAjaxTaskView):
@@ -293,7 +301,7 @@ class LocateTaskView(BaseAjaxTaskView):
 
         response_text = ''
         if started_tasks:
-            response_text += 'The Task is started. It can take a while.<br />'
+            response_text += f'{TASK_STARTED_MESSAGE}<br /><br />'
             response_text += 'Started tasks: [{}].<br />'.format(', '.join(started_tasks))
         if rejected_tasks:
             response_text += 'Some tasks were rejected (already started).<br />'
@@ -341,7 +349,9 @@ class TaskListView(apps.common.mixins.AdminRequiredMixin, apps.common.mixins.JqP
     template_name = 'task/task_list.html'
 
     def get_queryset(self):
-        qs = Task.objects.main_tasks().filter(visible=True).order_by('-date_start')
+        qs = Task.objects.main_tasks(show_failed_excluded_from_tracking=True)\
+            .exclude(Q(visible=False) & Q(status__in=Task.objects.NON_FAILED_STATES))\
+            .order_by('-date_start')
         qs = qs.annotate(time=self.db_time, work_time=self.db_work_time, username=self.db_user)
         return qs
 

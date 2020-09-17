@@ -32,14 +32,14 @@ import tarfile
 import time
 import zipfile
 # Third-party imports
-from typing import Optional, Set, Callable, Dict, Any
+from typing import Optional, Set, Callable, Dict, Any, List
 
 from celery import shared_task
 from celery.exceptions import SoftTimeLimitExceeded
 from celery.states import FAILURE, PENDING, SUCCESS
 # Django imports
 from django.core.files.uploadedfile import TemporaryUploadedFile
-from django.db.models import Q
+from django.db.models import F, BooleanField, Case, When, Value
 from django.http import HttpRequest
 from django.utils.timezone import now
 from psycopg2 import InterfaceError, OperationalError
@@ -53,19 +53,22 @@ from apps.common.file_storage import get_file_storage
 from apps.document import signals
 from apps.document.constants import DocumentGenericField
 from apps.document.field_detection import field_detection
-from apps.document.models import Document, DocumentType
+from apps.document.models import Document, DocumentType, TextUnit, FieldAnnotation, FieldAnnotationFalseMatch, \
+    FieldAnnotationStatus
 from apps.document.repository.base_document_repository import BaseDocumentRepository
 from apps.document.repository.document_repository import DocumentRepository
 from apps.project.models import Project, ProjectClustering, UploadSession
-from apps.project.notifications import notify_active_upload_sessions, notify_cancelled_upload_session
-from apps.task.tasks import BaseTask, CeleryTaskLogger, Task, purge_task, _call_task_func, ExtendedTask
+from apps.project.notifications import notify_active_upload_sessions, \
+    notify_cancelled_upload_session, notify_active_pdf2pdfa_tasks
+from apps.rawdb.constants import FIELD_CODE_STATUS_ID
+from apps.task.tasks import CeleryTaskLogger, Task, purge_task, _call_task_func, ExtendedTask
 from apps.task.utils.task_utils import TaskUtils
 from apps.users.models import User
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.6.0/LICENSE"
-__version__ = "1.6.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.7.0/LICENSE"
+__version__ = "1.7.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -74,7 +77,7 @@ THIS_MODULE = __name__
 file_storage = get_file_storage()
 
 
-class ClusterProjectDocuments(BaseTask):
+class ClusterProjectDocuments(ExtendedTask):
     """
     Cluster Project Documents
     """
@@ -85,8 +88,6 @@ class ClusterProjectDocuments(BaseTask):
     retry_backoff = True
     autoretry_for = (SoftTimeLimitExceeded, InterfaceError, OperationalError)
     max_retries = 3
-
-    queue = 'high_priority'
 
     project_clustering_id = None
 
@@ -196,7 +197,7 @@ class ClusterProjectDocuments(BaseTask):
             self.log_times[msg_key] = datetime.datetime.now()
 
 
-class ReassignProjectClusterDocuments(BaseTask):
+class ReassignProjectClusterDocuments(ExtendedTask):
     """
     Reassign Project Cluster Documents
     """
@@ -210,15 +211,11 @@ class ReassignProjectClusterDocuments(BaseTask):
         new_project_id = kwargs.get('new_project_id')
         new_project = Project.objects.get(pk=new_project_id)
 
-        p_cl = ProjectClustering.objects.get(id=project_clustering_id)
+        _p_cl = ProjectClustering.objects.get(id=project_clustering_id)
 
         documents = Document.objects.filter(documentcluster__pk__in=reassign_cluster_ids)
-        # if reassign unclustered
-        if 0 in reassign_cluster_ids:
-            documents = Document.objects.filter(Q(documentcluster__pk__in=reassign_cluster_ids) |
-                                                Q(id__in=p_cl.metadata['unclustered_item_ids']))
 
-        self.ensure_document_unique_names(documents, new_project, new_project.type)
+        self.set_doc_unique_name_and_project(documents, new_project, new_project.type)
 
         self.run_if_task_or_sub_tasks_failed(
             ReassignProjectClusterDocuments.rollback,
@@ -235,10 +232,10 @@ class ReassignProjectClusterDocuments(BaseTask):
             [(project_clustering_id, new_project_id, reassign_cluster_ids)])
         # TODO: metadata[project_id] in tasks related with reassigned documents
 
-    def ensure_document_unique_names(self,
-                                     documents,
-                                     new_project: Project,
-                                     new_doc_type: DocumentType) -> None:
+    def set_doc_unique_name_and_project(self,
+                                        documents,
+                                        new_project: Project,
+                                        new_doc_type: DocumentType) -> None:
 
         def strict_check_unique_name(doc_new_name: str) -> bool:
             from apps.project.api.v1 import UploadSessionViewSet
@@ -253,6 +250,9 @@ class ReassignProjectClusterDocuments(BaseTask):
             if new_name != doc_name:
                 Document.all_objects.filter(pk=doc_id).update(name=new_name)
         documents.update(project_id=new_project.pk, document_type=new_doc_type)
+        doc_ids = [d.pk for d in documents]
+        text_units = TextUnit.objects.filter(document_id__in=doc_ids)
+        text_units.update(project_id=new_project.pk)
 
     @staticmethod
     def make_doc_unique_name(doc_name: str,
@@ -320,10 +320,6 @@ class ReassignProjectClusterDocuments(BaseTask):
 
         # get reassigned documents queryset
         documents = Document.objects.filter(documentcluster__pk__in=reassign_cluster_ids)
-        # if reassign unclustered
-        if 0 in reassign_cluster_ids:
-            documents = Document.objects.filter(Q(documentcluster__pk__in=reassign_cluster_ids) |
-                                                Q(id__in=p_cl.metadata['unclustered_item_ids']))
 
         # update rawdb cache for target doc type
         for document in documents:
@@ -335,12 +331,6 @@ class ReassignProjectClusterDocuments(BaseTask):
         # update rawdb cache forGeneric Doc Type
         for document in documents:
             signals.document_changed.send(task.__name__, log=log, document=document)
-
-        # if reassign unclustered - update info about unclustered documents
-        if 0 in reassign_cluster_ids:
-            unclustered_documents = Document.objects.filter(project_id=project_id, documentcluster=None)
-            p_cl.metadata['unclustered_item_ids'] = list(unclustered_documents.values_list('pk', flat=True))
-            p_cl.metadata['unclustered_item_names'] = list(unclustered_documents.values_list('name', flat=True))
 
         # update info about reassignings in metadata
         reassignings = p_cl.metadata.get('reassigning', [])
@@ -370,18 +360,12 @@ class ReassignProjectClusterDocuments(BaseTask):
         - reassigned_cluster_ids
         - clusters_data
         - points_data
-        - unclustered_item_ids
-        - unclustered_item_names
         (cluster_obj_ids remains the same to track initial clusters history)
         """
         p_cl = ProjectClustering.objects.get(pk=project_clustering_id)
 
         # get reassigned documents queryset
         documents = Document.objects.filter(documentcluster__pk__in=reassign_cluster_ids)
-        # if reassign unclustered
-        if 0 in reassign_cluster_ids:
-            documents = Document.objects.filter(Q(documentcluster__pk__in=reassign_cluster_ids) |
-                                                Q(id__in=p_cl.metadata['unclustered_item_ids']))
 
         # set info about reassigning into metadata
         reassignings = p_cl.metadata.get('reassigning', [])
@@ -405,14 +389,10 @@ class ReassignProjectClusterDocuments(BaseTask):
         reassigned_document_ids = documents.values_list('pk', flat=True)
         p_cl.metadata['points_data'] = [i for i in p_cl.metadata['points_data']
                                         if int(i['document_id']) not in reassigned_document_ids]
-        # if reassign unclustered
-        if 0 in reassign_cluster_ids:
-            p_cl.metadata['unclustered_item_ids'] = []
-            p_cl.metadata['unclustered_item_names'] = []
         p_cl.save()
 
 
-class CleanProject(BaseTask):
+class CleanProject(ExtendedTask):
     """
     Cleanup Project - remove unassigned docs, sessions, clusters, etc.
     Only for "Multiple Contract Type"
@@ -470,7 +450,7 @@ class CleanProject(BaseTask):
             task_model.save()
 
 
-class CleanProjects(BaseTask):
+class CleanProjects(ExtendedTask):
     """
     Run Cleanup Project for all the projects, passed by ids in arguments
     """
@@ -490,7 +470,7 @@ class CleanProjects(BaseTask):
                                        clean_args)
 
 
-class CancelUpload(BaseTask):
+class CancelUpload(ExtendedTask):
     """
     Cancel Upload Session - remove session, remove uploaded files, Documents, Tasks, reindex.
     """
@@ -615,6 +595,12 @@ def track_session_completed(_celery_task):
             session.check_and_set_completed()
         notify_active_upload_sessions(sessions_for_ws_notification)
 
+    from apps.project.api.v1 import ProjectViewSet
+    for session in UploadSession.objects.filter(pk__in=[i.pk for i in sessions_for_ws_notification],
+                                                completed=True,
+                                                project__type__code=DocumentType.GENERIC_TYPE_CODE):
+        ProjectViewSet._cluster(project=session.project, user_id=session.created_by.id)
+
     for session in UploadSession.objects.filter(
             notified_upload_started=True,
             notified_upload_completed=False):
@@ -622,7 +608,50 @@ def track_session_completed(_celery_task):
             session.notify_upload_completed()
 
 
-class LoadArchive(BaseTask):
+@app.task(name=task_names.TASK_NAME_TRACK_PDEF2PDFA_STATUS, bind=True)
+def track_pdf2pdfa_status(_celery_task):
+    """
+    Track uncompleted CreateSearchablePDF tasks and send WS notification.
+    """
+    TaskUtils.prepare_task_execution()
+
+    qs = Task.objects.filter(name=CreateSearchablePDF.name).exclude(completed=True)
+
+    if not qs.exists():
+        return
+
+    data = list(qs.values('pk', 'name', 'progress', 'user_id', 'status', 'kwargs'))
+    for task_data in data:
+        task_data['details'] = []
+        if task_data['kwargs'] and 'document_ids' in task_data['kwargs']:
+            document_ids = task_data['kwargs']['document_ids']
+            task_data['details'] = list(Document.objects.filter(pk__in=document_ids).annotate(
+                done=Case(
+                    When(alt_source_path__isnull=False,
+                         then=Value(True)),
+                    default=Value(False),
+                    output_field=BooleanField())).values('name', 'id', 'done'))
+
+        del task_data['kwargs']
+
+    # for task_data in data:
+    #     task_data['details'] = []
+    #     subtasks = Task.objects.get(pk=task_data['pk']).subtasks
+    #     if subtasks:
+    #         subtasks_data = subtasks.values('status', 'args')
+    #         for subtask_data in subtasks_data:
+    #             task_data['details'].append({
+    #                 'status': subtask_data['status'],
+    #                 'file_name': subtask_data['args'][0] if subtask_data['args'] else None,
+    #                 'document_id': subtask_data['args'][1] if subtask_data['args'] else None,
+    #             })
+
+    if data:
+        notify_active_pdf2pdfa_tasks(data)
+        qs.filter(progress=100).update(completed=True)
+
+
+class LoadArchive(ExtendedTask):
     """
     Load Documents from archive
     """
@@ -642,6 +671,14 @@ class LoadArchive(BaseTask):
         self.user_id = kwargs.get('user_id')
         self.directory_path = kwargs.get('directory_path')
         archive_type = kwargs.get('archive_type')
+
+        self.task.metadata.update({
+            'session_id': self.session_id,
+            'file_name': os.path.basename(self.source_path),
+            'progress': [],
+            'progress_sent': False
+        })
+        self.task.save()
 
         if archive_type == 'zip':
             return self.process_zip()
@@ -667,22 +704,35 @@ class LoadArchive(BaseTask):
         request.user = User.objects.get(pk=self.user_id)
         api_view = UploadSessionViewSet(request=request, kwargs={'pk': self.session_id})
         kwargs.update({'user_id': self.user_id, 'force': self.force})
-        api_view.upload_file(**kwargs)
+        resp = api_view.upload_file(**kwargs)
+        self.task.metadata['progress'].append(
+            dict(
+                file_name=kwargs.get('file_name'),
+                directory_path=kwargs.get('directory_path'),
+                response_status_code=resp.status_code,
+                response_data=resp.data['status'] if isinstance(resp.data, dict) and 'status' in resp.data
+                else resp.data
+            )
+        )
+        self.task.save()
 
     def process_zip(self):
         with file_storage.get_document_as_local_fn(self.source_path) as (local_file_path, _):
             with zipfile.ZipFile(local_file_path) as zip_file:
-                zip_file_filelist = zip_file.filelist
+                zip_file_filelist = [i for i in zip_file.filelist if not i.is_dir()]
 
                 self.log_info('Start extracting {} documents from {}'.format(
                     len(zip_file_filelist), local_file_path))
 
                 for n, a_file in enumerate(zip_file_filelist):
-                    if a_file.is_dir():
-                        continue
                     file_size = a_file.file_size
                     file_name = os.path.basename(a_file.filename)
+                    file_rel_path = os.path.dirname(a_file.filename)
                     mime_type = self.get_mime_type(file_name)
+                    if file_rel_path:
+                        directory_path = os.path.join(self.directory_path or '', file_rel_path)
+                    else:
+                        directory_path = self.directory_path
 
                     self.log_info(
                         'Extract/start LoadDocument for {} of {} files: name={}, size={}, mime_type={}'.format(
@@ -696,22 +746,25 @@ class LoadArchive(BaseTask):
                             file_name=file_name,
                             file_size=file_size,
                             contents=tempfile,
-                            directory_path=self.directory_path)
+                            directory_path=directory_path)
 
     def process_tar(self):
         with file_storage.get_document_as_local_fn(self.source_path) as (local_file_path, _):
-            with tarfile.TarFile(local_file_path) as tar_file:
-                tar_file_members = tar_file.getmembers()
+            with tarfile.open(local_file_path) as tar_file:
+                tar_file_members = [i for i in tar_file.getmembers() if not i.isdir()]
 
                 self.log_info('Start extracting {} documents from {}'.format(
                     len(tar_file_members), local_file_path))
 
                 for n, a_file in enumerate(tar_file_members):
-                    if a_file.isdir():
-                        continue
                     file_size = a_file.size
                     file_name = os.path.basename(a_file.name)
                     mime_type = self.get_mime_type(file_name)
+                    file_rel_path = os.path.dirname(a_file.name)
+                    if file_rel_path:
+                        directory_path = os.path.join(self.directory_path or '', file_rel_path)
+                    else:
+                        directory_path = self.directory_path
 
                     self.log_info(
                         'Extract/start LoadDocument for {} of {} files: name={}, size={}, mime_type={}'.format(
@@ -724,7 +777,140 @@ class LoadArchive(BaseTask):
                             file_name=file_name,
                             file_size=file_size,
                             contents=tempfile,
-                            directory_path=self.directory_path)
+                            directory_path=directory_path)
+
+    def on_failure(self, exc, task_id, args, kwargs, einfo):
+        super().on_failure(exc, task_id, args, kwargs, einfo)
+        pass
+
+
+class SetAnnotationsStatus(ExtendedTask):
+    """
+    Load Documents from archive
+    """
+    name = task_names.TASK_NAME_SET_ANNOTATIONS_STATUS
+
+    soft_time_limit = 6000
+    default_retry_delay = 10
+    retry_backoff = True
+    autoretry_for = (SoftTimeLimitExceeded, InterfaceError, OperationalError)
+    max_retries = 3
+
+    def process(self, **kwargs):
+        ant_uids = kwargs.get('ids')
+        status_id = kwargs.get('status_id')
+
+        # for preventing "connection already closed"
+        TaskUtils.prepare_task_execution()
+        ann_status = FieldAnnotationStatus.objects.get(pk=status_id)
+        user = User.objects.get(pk=kwargs.get('user_id'))
+
+        true_annotations = FieldAnnotation.objects.filter(uid__in=ant_uids)
+        false_annotations = FieldAnnotationFalseMatch.objects.filter(uid__in=ant_uids)
+
+        if ann_status.is_rejected:
+            from apps.document.repository.document_field_repository import DocumentFieldRepository
+            field_repo = DocumentFieldRepository()
+            for ant in true_annotations:
+                field_repo.delete_field_annotation_and_update_field_value(ant, user)
+        else:
+            import apps.document.repository.document_field_repository as dfr
+            field_repo = dfr.DocumentFieldRepository()
+            field_repo.update_field_annotations_by_ant_ids(
+                ant_uids, [(f'{FIELD_CODE_STATUS_ID}', status_id)])
+
+            if false_annotations:
+                for false_ant in false_annotations:
+                    field_repo.restore_field_annotation_and_update_field_value(
+                        false_ant, status_id, user)
+
+        ant_docs = set(FieldAnnotation.objects.filter(
+            uid__in=ant_uids).values_list('document_id', flat=True))
+        false_ant_docs = set(FieldAnnotationFalseMatch.objects.filter(
+            uid__in=ant_uids).values_list('document_id', flat=True))
+        ant_docs.update(false_ant_docs)
+        Document.reset_status_from_annotations(ann_status=ann_status,
+                                               document_ids=list(ant_docs))
+
+
+class CreateSearchablePDF(ExtendedTask):
+    """
+    Convert PDF files to PDF-A
+    """
+    name = task_names.TASK_NAME_CREATE_SEARCHABLE_PDF
+
+    soft_time_limit = 6000
+    default_retry_delay = 10
+    retry_backoff = True
+    autoretry_for = (SoftTimeLimitExceeded, InterfaceError, OperationalError)
+    max_retries = 3
+
+    def process(self, **kwargs):
+        project_id = kwargs.get('project_id')
+        document_ids = kwargs.get('document_ids')
+        user_id = kwargs.get('user_id')
+
+        if not document_ids:
+            document_ids = list(Document.objects.filter(project_id=project_id).values_list('id', flat=True))
+
+        if not document_ids:
+            self.log_info('No documents found, exit')
+            return
+
+        subtask_args = list(
+            Document.objects.filter(id__in=document_ids).values_list('id', 'name', 'source_path'))
+
+        self.log_info(f'Convert PDF to PDF-A, project id={project_id} document ids={document_ids}')
+
+        # skip non-pdf
+        from apps.task.tasks import LoadDocuments
+        args = [i for i in subtask_args if LoadDocuments.get_file_extension(i[1], i[2])[0] == '.pdf']
+        self.run_sub_tasks('Convert pdf to pdf-a', self.convert, args)
+
+        # TODO: if needed - f.e. email a user
+        # self.run_after_sub_tasks_finished(
+        #     'Notify processing completed',
+        #     CreateSearchablePDF.notify_task_completed,
+        #     [(project_id, document_ids, user_id)])
+
+    @staticmethod
+    @shared_task(base=ExtendedTask,
+                 bind=True,
+                 soft_time_limit=6000,
+                 default_retry_delay=10,
+                 retry_backoff=True,
+                 autoretry_for=(SoftTimeLimitExceeded, InterfaceError, OperationalError,),
+                 max_retries=3,
+                 priority=9)
+    def convert(task: ExtendedTask,
+                document_id: int,
+                file_name: str,
+                file_path: str):
+        with file_storage.get_document_as_local_fn(file_path) as (local_file_path, _):
+            from apps.task.tasks import LoadDocuments
+            task.log_info(f'Convert PDF to PDF-A, document id={document_id}, file_name={file_name}')
+            alt_source_path = LoadDocuments.convert_pdf2pdfa(task, local_file_path, file_path,
+                                                             fail_silently=False, force=True)
+            if alt_source_path:
+                document = Document.objects.get(id=document_id)
+                document.alt_source_path = alt_source_path
+                document.save()
+
+    @staticmethod
+    @shared_task(base=ExtendedTask,
+                 bind=True,
+                 soft_time_limit=6000,
+                 default_retry_delay=10,
+                 retry_backoff=True,
+                 autoretry_for=(SoftTimeLimitExceeded, InterfaceError, OperationalError,),
+                 max_retries=3,
+                 priority=9)
+    def notify_task_completed(task: ExtendedTask,
+                              project_id: int,
+                              document_ids: List[int],
+                              user_id: int):
+        # TODO: if needed - f.e. email a user
+        task.log_info(f'Notification sent to user id={user_id}')
 
 
 app.register_task(ClusterProjectDocuments())
@@ -733,3 +919,5 @@ app.register_task(CleanProject())
 app.register_task(CleanProjects())
 app.register_task(CancelUpload())
 app.register_task(LoadArchive())
+app.register_task(SetAnnotationsStatus())
+app.register_task(CreateSearchablePDF())

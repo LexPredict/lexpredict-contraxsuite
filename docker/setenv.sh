@@ -1,5 +1,12 @@
 #!/bin/bash
 
+export DOLLAR='$' # escape $ in envsubst
+
+export WITH_JS_FRONTEND=false
+export WITH_HTTPS=false
+
+export CHANGE_APT_SOURCES_TO_HTTPS=true
+
 export DOCKER_NGINX_IMAGE=nginx:1.16.1
 export DOCKER_PG_IMAGE=postgres:11.5
 export DOCKER_REDIS_IMAGE=redis:5-alpine
@@ -14,6 +21,8 @@ export DOCKER_FILEBEAT_IMAGE=docker.elastic.co/beats/filebeat-oss:7.5.2
 export DOCKER_METRICBEAT_IMAGE=docker.elastic.co/beats/metricbeat-oss:7.5.2
 export DOCKER_RABBITMQ_IMAGE=rabbitmq:3-management
 export DOCKER_PGBOUNCER_IMAGE=edoburu/pgbouncer:1.11.0
+
+export MOCK_IMANAGE_REPLICAS=0
 
 
 export CPU_CORES=$(grep -c ^processor /proc/cpuinfo)
@@ -182,7 +191,7 @@ export SHARED_USER_LOG_READER_NAME=contraxsuite_docker_log_reader
 
 
 export DOCKER_REGISTRY=
-export CONTRAXSUITE_IMAGE=lexpredict/lexpredict-contraxsuite
+export CONTRAXSUITE_IMAGE=lexpredict/lexpredict-contraxsuite:latest
 
 export DOCKER_CELERY_CPUS=4
 export DOCKER_CELERY_MEMORY=8G
@@ -230,10 +239,6 @@ export MLFLOW_AWS_BUCKET=contraxmlflowartifacts
 export MLFLOW_AWS_ACCESS_KEY=${DOCKER_DJANGO_ADMIN_NAME}
 export MLFLOW_AWS_SECRET_KEY=${DOCKER_DJANGO_ADMIN_PASSWORD}
 
-export CONTRAXSUITE_IMAGE_FROM=ubuntu:18.04
-
-export DOCKER_BUILD_FLAGS=
-
 export PG_STATISTICS_ENABLED=true
 
 #export DOCKER_COMPOSE_FILE=docker-compose-single-master-many-workers.yml
@@ -241,20 +246,18 @@ export DOCKER_COMPOSE_FILE=docker-compose-single-host.yml
 
 export DOCKER_SWARM_ADVERTISE_ADDR=
 
-export CONTRAXSUITE_IMAGE_VERSION=latest
-
 export LEXNLP_TIKA_PARSER_MODE=pdf_ocr
 
 export UWSGI_PRIMARY_MIGRATIONS=
 
 export DEBUG_TRACE_UPDATE_PARENT_TASK=False
 
+export PROXY_SERVER_HTTP=
+export PROXY_SERVER_HTTPS=
+export PROXY_NO_PROXY=localhost,127.0.0.1,contrax-webdav,contrax-minio,contrax-mlflow-tracking,contrax-redis,contrax-elasticsearch,contrax-daphne
 
-if [ -f setenv_distr.sh ]
-then
-    echo "Loading setenv_distr.sh"
-    source setenv_distr.sh
-fi
+# set to non-empty string to enable aioredis debug logging
+export AIOREDIS_DEBUG=
 
 if [ -f setenv_local.sh ]
 then
@@ -263,14 +266,6 @@ then
 fi
 
 export DOCKER_FRONTEND_ROOT_URL=${DOCKER_DJANGO_HOST_NAME}
-
-if [ "${DOCKER_REGISTRY}" ] && [ -z "${DOCKER_EXTERNAL_REGISTRY}" ]; then
-    export CONTRAXSUITE_IMAGE_FULL_NAME=${DOCKER_REGISTRY}/${CONTRAXSUITE_IMAGE}
-elif [ "${DOCKER_REGISTRY}" ] && [ "${DOCKER_EXTERNAL_REGISTRY}" ]; then
-    export CONTRAXSUITE_IMAGE_FULL_NAME=${DOCKER_EXTERNAL_REGISTRY}/${CONTRAXSUITE_IMAGE}
-else
-    export CONTRAXSUITE_IMAGE_FULL_NAME=${CONTRAXSUITE_IMAGE}
-fi
 
 export DOCKER_POSTGRES_LOG_MIN_DUR_STMT=-1
 export DOCKER_DJANGO_BASE_PATH_STRIPPED=${DOCKER_DJANGO_BASE_PATH%/}

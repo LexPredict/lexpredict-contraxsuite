@@ -25,7 +25,7 @@
 # -*- coding: utf-8 -*-
 
 import asyncio
-from typing import Optional, Set, Dict, Iterable
+from typing import Optional, Set, Dict, Iterable, List
 
 import redis
 from asgiref.sync import async_to_sync
@@ -44,11 +44,10 @@ from apps.websocket.channel_message import ChannelMessage
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.6.0/LICENSE"
-__version__ = "1.6.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.7.0/LICENSE"
+__version__ = "1.7.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
-
 
 USER = 'user'
 ALL = 'all'
@@ -108,32 +107,6 @@ class Websockets:
         layer = get_channel_layer()  # type: RedisChannelLayer
         async_to_sync(layer.group_send)(ALL, {'type': 'send_to_client', 'message': message_obj.to_dict()})
 
-    async def _send_to_users(self, qs_users: QuerySet, message_obj: ChannelMessage):
-        """
-        Send the message to the users returned by the specified Django query set.
-
-        This is an async method made private for calling it from the sync public method.
-        :param qs_users: Django query set returning User models. Pk field will be requested via values_list(..).
-        :param message_obj: Message to send.
-        :return:
-        """
-        connected_user_ids = self.get_connected_users()
-        if not connected_user_ids:
-            return
-
-        # A workaround for "connection already closed" problem.
-        # Looks like this code is being executed in a way that
-        # the "connection" object it accesses is re-used for a long time and appears broken after some long delay.
-        connection.close()
-
-        layer = get_channel_layer()  # type: RedisChannelLayer
-        msg = {'type': 'send_to_client', 'message': message_obj.to_dict()}
-        coros = list()
-        for user_id in qs_users.filter(pk__in=connected_user_ids).values_list('pk', flat=True):
-            send_to_user_coro = layer.group_send(self.user_id_to_group_name(user_id), msg)
-            coros.append(send_to_user_coro)
-        await asyncio.gather(*coros)
-
     def send_to_users(self, qs_users: QuerySet, message_obj: ChannelMessage):
         """
         Send the message to the users returned by the specified Django query set.
@@ -142,7 +115,16 @@ class Websockets:
         :param message_obj: Message to send.
         :return:
         """
-        async_to_sync(self._send_to_users)(qs_users, message_obj)
+
+        connected_user_ids = self.get_connected_users()
+        if not connected_user_ids:
+            return
+        user_ids: Set[int] = set(qs_users.filter(pk__in=connected_user_ids).values_list('pk', flat=True))
+
+        layer = get_channel_layer()  # type: RedisChannelLayer
+        async_to_sync(layer.group_send)(ALL, {'type': 'send_to_client',
+                                              'user_ids': list(user_ids),
+                                              'message': message_obj.to_dict()})
 
     def send_to_user(self, user_id, message_obj: ChannelMessage):
         """
@@ -253,7 +235,13 @@ class ContraxsuiteWSConsumer(AsyncJsonWebsocketConsumer):
         :param message:
         :return:
         """
-        await self.send_json(content=message.get('message'))
+        user_ids: List[int] = message.get('user_ids')
+        if user_ids:
+            user = self.scope.get(USER)
+            if user and user.pk in user_ids:
+                await self.send_json(content=message.get('message'))
+        else:
+            await self.send_json(content=message.get('message'))
 
     async def disconnect(self, code):
         """

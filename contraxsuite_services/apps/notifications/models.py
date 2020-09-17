@@ -43,10 +43,13 @@ from apps.users.models import User, Role
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.6.0/LICENSE"
-__version__ = "1.6.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.7.0/LICENSE"
+__version__ = "1.7.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
+
+
+from task_names import TASK_NAME_DOCUMENT_CHANGED
 
 
 class DocFilter:
@@ -388,7 +391,7 @@ class DocumentDeletedEvent:
 
 class DocumentChangedEvent:
     code = 'document_changed'
-    title = 'Document changed'
+    title = TASK_NAME_DOCUMENT_CHANGED
     default_subject = 'Document changed: {{ document.document_name }} '
     default_header = 'Document "{{ document.document_name }}" has been changed'
     default_bulk_subject = 'Documents changed ({{ documents|length }})'

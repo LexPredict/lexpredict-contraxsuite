@@ -26,7 +26,7 @@
 
 from typing import List
 
-from django.db.models import Q
+from django.db.models import Q, F
 from celery.states import READY_STATES
 
 from apps.users.models import User
@@ -37,8 +37,8 @@ from apps.websocket.websockets import Websockets
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.6.0/LICENSE"
-__version__ = "1.6.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.7.0/LICENSE"
+__version__ = "1.7.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -55,15 +55,30 @@ def notify_active_upload_sessions(sessions: List[UploadSession]):
         processed_documents = sum([1 for k, v in document_progress_details.items() if v.get('tasks_overall_status') in READY_STATES])
         unprocessed_documents = all_documents - processed_documents
 
-        data.append({'session_id': session.pk,
-                     'project_id': session.project.pk,
-                     'user_id': session.created_by.pk if session.created_by else None,
-                     'user_name': session.created_by.get_full_name() if session.created_by else None,
-                     'progress': progress,
-                     'processed_documents': processed_documents,
-                     'unprocessed_documents': unprocessed_documents,
-                     'completed': bool(session.completed),
-                     'created_date': session.created_date})
+        session_data = {'session_id': session.pk,
+                        'project_id': session.project.pk,
+                        'user_id': session.created_by.pk if session.created_by else None,
+                        'user_name': session.created_by.get_full_name() if session.created_by else None,
+                        'progress': progress,
+                        'processed_documents': processed_documents,
+                        'unprocessed_documents': unprocessed_documents,
+                        'completed': bool(session.completed),
+                        'created_date': session.created_date}
+        from apps.project.tasks import LoadArchive
+        session_archive_tasks = session.task_set.filter(name=LoadArchive.name,
+                                                        progress=100,
+                                                        metadata__progress_sent=False)
+        if session_archive_tasks.exists():
+            archive_tasks_progress_data = list()
+            for task in session_archive_tasks.all():
+                archive_tasks_progress_data.append(
+                    dict(archive_name=task.metadata.get('file_name'),
+                         arhive_progress=task.metadata.get('progress')))
+            session_data['archive_data'] = archive_tasks_progress_data
+            for task in session_archive_tasks:
+                task.metadata['progress_sent'] = True
+                task.save()
+        data.append(session_data)
 
     message = ChannelMessage(message_types.CHANNEL_MSG_TYPE_ACTIVE_UPLOAD_SESSIONS, data)
 
@@ -102,22 +117,21 @@ def notify_cancelled_upload_session(session, user_id):
         .filter(Q(project_owners__pk=session.project_id) |
                 Q(project_reviewers__pk=session.project_id) |
                 Q(project_super_reviewers__pk=session.project_id))
-    if non_admins.exists():
-        Websockets().send_to_users(qs_users=non_admins, message_obj=message)
+    Websockets().send_to_users(qs_users=non_admins, message_obj=message)
 
 
-def notify_failed_load_document(file_name, kwargs):
+def notify_failed_load_document(file_name, session_id, directory_path):
     """
     Notify users about failed LoadDocument tasks
     """
     from apps.project.models import UploadSession
-    project_id = UploadSession.objects.get(pk=kwargs['session_id']).project_id
+    project_id = UploadSession.objects.get(pk=session_id).project_id
 
     data = dict(
         file_name=file_name,
         project_id=project_id,
-        upload_session_id=kwargs['session_id'],
-        directory_path=kwargs['directory_path']
+        upload_session_id=session_id,
+        directory_path=directory_path
     )
     message = ChannelMessage(message_types.CHANNEL_MSG_TYPE_FAILED_LOAD_DOCUMENT, data)
 
@@ -129,5 +143,15 @@ def notify_failed_load_document(file_name, kwargs):
         .filter(Q(project_owners__pk=project_id) |
                 Q(project_reviewers__pk=project_id) |
                 Q(project_super_reviewers__pk=project_id))
-    if non_admins.exists():
-        Websockets().send_to_users(qs_users=non_admins, message_obj=message)
+    Websockets().send_to_users(qs_users=non_admins, message_obj=message)
+
+
+def notify_active_pdf2pdfa_tasks(data):
+    """
+    Notify users about active upload sessions to show/track progress
+    """
+    user_ids = set([i['user_id'] for i in data])
+    for user_id in user_ids:
+        user_data = [i for i in data if i['user_id'] == user_id]
+        message = ChannelMessage(message_types.CHANNEL_MSG_TYPE_ACTIVE_PDF2PDFA_TASKS, user_data)
+        Websockets().send_to_user(user_id=user_id, message_obj=message)

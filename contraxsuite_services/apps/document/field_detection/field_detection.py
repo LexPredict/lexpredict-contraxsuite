@@ -28,6 +28,7 @@ import sys
 from typing import Optional, List, Dict, Set, Any, Tuple
 
 from django.db.models import Prefetch
+from django.db import transaction
 
 from apps.common.log_utils import ProcessLogger, ErrorCollectingLogger
 from apps.document.constants import FieldSpec
@@ -46,7 +47,8 @@ from apps.document.field_detection.regexps_field_detection import RegexpsOnlyFie
     FieldBasedRegexpsDetectionStrategy
 from apps.document.field_processing.field_processing_utils import order_field_detection, get_dependent_fields
 from apps.document.field_types import TypedField
-from apps.document.models import Document, DocumentType, DocumentField, ClassifierModel, FieldValue
+from apps.document.models import Document, DocumentType, DocumentField, ClassifierModel, FieldValue, FieldAnnotation, \
+    FieldAnnotationStatus
 from apps.document.repository.document_field_repository import DocumentFieldRepository
 from apps.document.repository.dto import FieldValueDTO
 from apps.document.signals import fire_document_changed
@@ -55,8 +57,8 @@ from apps.document.field_detection.mlflow_field_detection import MLFlowModelBase
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.6.0/LICENSE"
-__version__ = "1.6.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.7.0/LICENSE"
+__version__ = "1.7.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -83,7 +85,9 @@ FIELD_DETECTION_STRATEGY_REGISTRY = {st.code: st
 def train_document_field_detector_model(log: ProcessLogger,
                                         field: DocumentField,
                                         train_data_project_ids: Optional[List],
-                                        use_only_confirmed_field_values: bool = False) -> Optional[ClassifierModel]:
+                                        use_only_confirmed_field_values: bool = False,
+                                        split_and_log_out_of_sample_test_report: bool = False)\
+        -> Optional[ClassifierModel]:
     strategy = FIELD_DETECTION_STRATEGY_REGISTRY[
         field.value_detection_strategy] \
         if field.value_detection_strategy else STRATEGY_DISABLED
@@ -91,9 +95,11 @@ def train_document_field_detector_model(log: ProcessLogger,
     return strategy.train_document_field_detector_model(log,
                                                         field,
                                                         train_data_project_ids,
-                                                        use_only_confirmed_field_values)
+                                                        use_only_confirmed_field_values,
+                                                        split_and_log_out_of_sample_test_report)
 
 
+@transaction.atomic
 def detect_field_value(log: ProcessLogger,
                        doc: Document,
                        field: DocumentField,
@@ -211,8 +217,11 @@ def detect_and_cache_field_values_for_document(log: ProcessLogger,
     if skip_modified_values:
         skip_codes = set(list(FieldValue.objects.filter(
             modified_by__isnull=False, document_id=document.pk).values_list('field__code', flat=True)))
+        processed_ant_fields = set(list(FieldAnnotation.objects.filter(status_id__in=(
+            FieldAnnotationStatus.rejected_status_pk(), FieldAnnotationStatus.accepted_status_pk()),
+            document_id=document.pk).values_list('field__code', flat=True)))
+        skip_codes.update(processed_ant_fields)
         if updated_field_codes:  # these fields have to be deleted despite being set by user
-            # updated_field_ids = DocumentField.objects.filter(code__in=updated_field_codes).values_list('pk', flat=True)
             skip_codes -= set(updated_field_codes)
 
     if field_codes_to_detect:
@@ -238,10 +247,10 @@ def detect_and_cache_field_values_for_document(log: ProcessLogger,
                 field_code_to_value=current_field_values)
 
             if not new_field_value_dto:
-                detecting_field_status.append(f"No new value's gotten for '{field.code}'")
+                detecting_field_status.append(f"No new values gotten for '{field.code}'")
                 continue
-            if is_unit_limit_exceeded(new_field_value_dto, field, document):
-                continue
+            # if is_unit_limit_exceeded(new_field_value_dto, field, document):
+            #     continue
 
             detecting_field_status.append(
                 f"{format_value_short_str(new_field_value_dto.field_value)} for '{field.code}'")
@@ -303,21 +312,6 @@ def detect_and_cache_field_values_for_document(log: ProcessLogger,
         raise FieldDetectionError(msg)
 
     return res
-
-
-def is_unit_limit_exceeded(fval_dto: FieldValueDTO,
-                           field: DocumentField,
-                           _: Document) -> bool:
-    if not fval_dto.annotations or not field.detect_limit_count:
-        return False
-    # "filter" annotations by detect_limit_count
-    if field.detect_limit_unit == DocumentField.DETECT_LIMIT_CHAR:
-        fval_dto.annotations = [d for d in fval_dto.annotations
-                                if d.location_in_doc_start <= field.detect_limit_count]
-        return not (not field.requires_text_annotations or fval_dto.annotations)
-    # TODO: we can't calculate other text measuring units (sentence, paragraph, page)
-    # with reasonable effort
-    return False
 
 
 def format_value_short_str(val: Any) -> str:

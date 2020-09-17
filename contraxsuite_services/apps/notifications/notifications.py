@@ -48,8 +48,8 @@ from apps.notifications.models import DocumentDigestConfig, DocumentDigestSendDa
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.6.0/LICENSE"
-__version__ = "1.6.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.7.0/LICENSE"
+__version__ = "1.7.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -86,18 +86,21 @@ def get_notification_template_resource(rfn: str) -> Optional[bytes]:
 RE_SRC_ATTACHMENT = re.compile(r'(<.{1,2000}")(images/)([^"]+)(".{1,2000})>')
 
 
-def send_email(log: ProcessLogger, dst_user, subject: str, txt: str, html: str, image_dir: str, cc: Set[str] = None):
+def send_email(log: ProcessLogger, dst_user, subject: str, txt: str, html: str,
+               image_dir: str = None, cc: Set[str] = None):
+
     if not dst_user.email:
         log.error('Destination user {0} has no email assigned'.format(dst_user.get_full_name()))
         return
 
     try:
         from apps.notifications.mail_server_config import MailServerConfig
+        from apps.common.app_vars import SUPPORT_EMAIL
         backend = MailServerConfig.make_connection_config()
         email = EmailMultiAlternatives(subject=subject,
                                        body=txt,
                                        cc=list(cc) if cc else None,
-                                       from_email=settings.DEFAULT_FROM_EMAIL,
+                                       from_email=SUPPORT_EMAIL.val or settings.DEFAULT_FROM_EMAIL,
                                        to=['"{0}" <{1}>'.format(dst_user.get_full_name(), dst_user.email)],
                                        connection=backend)
         if html:
@@ -105,16 +108,17 @@ def send_email(log: ProcessLogger, dst_user, subject: str, txt: str, html: str, 
             email_html = RE_SRC_ATTACHMENT.sub(r'\1cid:\3\4', html)
             email.attach_alternative(email_html, 'text/html')
 
-            for image_fn in images:
-                data = get_notification_template_resource(os.path.join(image_dir, image_fn))
-                mime_type = get_predefined_mime_type(image_fn)
-                try:
-                    img = MIMEImage(data, _subtype=mime_type) if mime_type else MIMEImage(data)
-                except TypeError as e:
-                    raise RuntimeError(f"Couldn't guess MIME type for tile {image_fn}") from e
-                img.add_header('Content-Id', '<' + image_fn + '>')
-                img.add_header("Content-Disposition", "inline", filename=image_fn)
-                email.attach(img)
+            if images and image_dir:
+                for image_fn in images:
+                    data = get_notification_template_resource(os.path.join(image_dir, image_fn))
+                    mime_type = get_predefined_mime_type(image_fn)
+                    try:
+                        img = MIMEImage(data, _subtype=mime_type) if mime_type else MIMEImage(data)
+                    except TypeError as e:
+                        raise RuntimeError(f"Couldn't guess MIME type for tile {image_fn}") from e
+                    img.add_header('Content-Id', '<' + image_fn + '>')
+                    img.add_header("Content-Disposition", "inline", filename=image_fn)
+                    email.attach(img)
 
         email.send(fail_silently=False)
     except Exception as caused_by:

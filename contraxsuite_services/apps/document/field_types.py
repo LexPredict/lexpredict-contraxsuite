@@ -36,7 +36,7 @@ from lexnlp.extract.en.addresses.addresses import get_addresses
 from lexnlp.extract.en.amounts import get_amounts
 from lexnlp.extract.en.dates import get_dates_list
 from lexnlp.extract.en.durations import get_durations
-from lexnlp.extract.en.entities.nltk_maxent import get_companies, get_persons
+from lexnlp.extract.en.entities.nltk_maxent import get_persons
 from lexnlp.extract.en.geoentities import get_geoentities
 from lexnlp.extract.en.money import get_money
 from lexnlp.extract.en.percents import get_percents
@@ -45,14 +45,15 @@ from sklearn.feature_extraction.text import CountVectorizer, TfidfTransformer
 from sklearn.pipeline import FeatureUnion, Pipeline
 from sklearn.feature_extraction.text import ENGLISH_STOP_WORDS
 
+from apps.companies_extractor import CompaniesExtractor
 from apps.document.field_processing import vectorizers
 from apps.document.value_extraction_hints import ValueExtractionHint
-from apps.document.models import DocumentField, TextUnit
+from apps.document.models import DocumentField, TextUnit, Document
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.6.0/LICENSE"
-__version__ = "1.6.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.7.0/LICENSE"
+__version__ = "1.7.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -187,7 +188,12 @@ class TypedField:
 
         return self.default_hint
 
-    def get_or_extract_value(self, document, possible_value, possible_hint: str, text) \
+    def get_or_extract_value(self,
+                             document: Document,
+                             possible_value,
+                             possible_hint: Optional[str],
+                             text: Optional[str],
+                             text_unit: Optional[TextUnit] = None) \
             -> Tuple[Any, Optional[str]]:
         if possible_value is None and not text:
             return None, None
@@ -213,7 +219,7 @@ class TypedField:
 
         text = str(possible_value) if possible_value else text
 
-        extracted = self._extract_variants_from_text(text, document=document)
+        extracted = self._extract_variants_from_text(text=text, text_unit=text_unit)
 
         if not extracted:
             return None, None
@@ -732,6 +738,9 @@ class DateField(TypedField):
 
         return RE_DATE_TIME_ISO.fullmatch(val) is not None or RE_DATE_ISO.fullmatch(val) is not None
 
+    def is_python_annotation_value_ok(self, val: Any):
+        return val is None or isinstance(val, datetime) or isinstance(val, date)
+
     def is_python_field_value_ok(self, val: Any):
         return val is None or isinstance(val, datetime) or isinstance(val, date)
 
@@ -940,7 +949,8 @@ class CompanyField(TypedField):
             return None
 
     def _extract_variants_from_text(self, text: str, **kwargs):
-        companies = list(get_companies(text, detail_type=True, name_upper=True, strict=True))
+        companies = list(CompaniesExtractor.get_companies(
+            text, detail_type=True, name_upper=True, strict=True))
         if not companies:
             return None
         return ['{0}{1}'.format(company[0].upper(),
@@ -1291,34 +1301,40 @@ class GeographyField(TypedField):
 
     def _extract_variants_from_text(self, text: str, **kwargs):
         geo_entities = None
-        document = kwargs.get('document')
-        if document is not None:
-            # try to extract from GeoEntityUsage
-            # pros: faster extraction
-            # cons: we may extract extra entities
+        text_unit = kwargs.get('text_unit')
+        if isinstance(None, TextUnit):
             from apps.extract.models import GeoEntityUsage
             geo_entities = GeoEntityUsage.objects \
-                .filter(text_unit__document=document,
-                        text_unit__unit_type='sentence',
-                        text_unit__textunittext__text__contains=text) \
+                .filter(text_unit=text_unit) \
                 .values_list('entity__name', flat=True)
 
         if not geo_entities:
             from apps.extract import dict_data_cache
             geo_config = dict_data_cache.get_geo_config()
-
             text_languages = None
-            if document:
-                text_languages = TextUnit.objects.filter(
-                    document=document,
-                    textunittext__text__contains=text).values_list('language', flat=True)
+            try:
+                if text_unit.document:
+                    document = text_unit.document
+                else:
+                    raise AttributeError(f'`text_unit.document` value {text_unit.document} is invalid')
+            except AttributeError as e:
+                document = kwargs.get('document')
+            if isinstance(document, Document):
+                text_languages = TextUnit.objects \
+                    .filter(document=document, textunittext__text__contains=text) \
+                    .values_list('language', flat=True)
                 if document.language and not text_languages:
                     text_languages = [document.language]
-
-            geo_entities = [i[0][1] for i in get_geoentities(text,
-                                                             geo_config_list=geo_config,
-                                                             text_languages=text_languages,
-                                                             priority=True)]
+            else:
+                try:
+                    text_languages = [text_unit.language]
+                except AttributeError as e:
+                    pass
+            geos = get_geoentities(text=text,
+                                   geo_config_list=geo_config,
+                                   text_languages=text_languages,
+                                   priority=True)
+            geo_entities = [i[0].name for i in geos]
         return list(geo_entities) or None
 
     def example_python_value(self):

@@ -32,21 +32,22 @@ import datetime
 
 # Django imports
 from django.urls import reverse
-from django.db.models import Count, Q
+from django.db.models import Count, Q, QuerySet
 
 # Project imports
 from apps.analyze.models import *
 from apps.analyze.forms import *
 from apps.analyze.tasks import TrainDoc2VecModel, TrainClassifier, RunClassifier, Cluster, BuildFeatureVectorsTask
 from apps.common.contraxsuite_urls import doc_editor_url, project_documents_url
+from apps.common.querysets import CustomCountQuerySet, stringify_queryset
 from apps.document.views import SubmitTextUnitTagView
 from apps.task.views import BaseAjaxTaskView
 import apps.common.mixins
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.6.0/LICENSE"
-__version__ = "1.6.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.7.0/LICENSE"
+__version__ = "1.7.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -79,7 +80,9 @@ class TextUnitClassificationListView(apps.common.mixins.JqPaginatedListView):
     def get_queryset(self):
         qs = super().get_queryset()
 
-        qs = qs.filter(text_unit__document__project_id__in=self.request.user.userprojectssavedfilter.projects.all())
+        qs = qs.filter(
+            text_unit__document__project_id__in=list(
+                self.request.user.userprojectssavedfilter.projects.values_list('pk', flat=True)))
 
         class_name = self.request.GET.get("class_name")
         if class_name is not None and len(class_name.strip()) > 0:
@@ -140,7 +143,9 @@ class DocumentClassificationListView(apps.common.mixins.JqPaginatedListView):
     def get_queryset(self):
         qs = super().get_queryset()
 
-        qs = qs.filter(document__project_id__in=self.request.user.userprojectssavedfilter.projects.all())
+        qs = qs.filter(
+            document__project_id__in=list(
+                self.request.user.userprojectssavedfilter.projects.values_list('pk', flat=True)))
 
         class_name = self.request.GET.get("class_name")
         if class_name is not None and len(class_name.strip()) > 0:
@@ -270,7 +275,9 @@ class TextUnitClassifierSuggestionListView(apps.common.mixins.JqPaginatedListVie
     def get_queryset(self):
         qs = super().get_queryset()
 
-        qs = qs.filter(text_unit__document__project_id__in=self.request.user.userprojectssavedfilter.projects.all())
+        qs = qs.filter(
+            text_unit__document__project_id__in=list(
+                self.request.user.userprojectssavedfilter.projects.values_list('pk', flat=True)))
 
         class_name = self.request.GET.get('class_name')
         if class_name is not None and len(class_name.strip()) > 0:
@@ -324,7 +331,9 @@ class DocumentClassifierSuggestionListView(apps.common.mixins.JqPaginatedListVie
     def get_queryset(self):
         qs = super().get_queryset()
 
-        qs = qs.filter(document__project_id__in=self.request.user.userprojectssavedfilter.projects.all())
+        qs = qs.filter(
+            document__project_id__in=list(
+                self.request.user.userprojectssavedfilter.projects.values_list('pk', flat=True)))
 
         class_name = self.request.GET.get('class_name')
         if class_name is not None and len(class_name.strip()) > 0:
@@ -429,8 +438,9 @@ class DocumentSimilarityListView(apps.common.mixins.JqPaginatedListView):
     def get_queryset(self):
         qs = super().get_queryset()
         # TODO: remove the filter
-        qs = qs.filter(Q(document_a__project_id__in=self.request.user.userprojectssavedfilter.projects.all()) |
-                       Q(document_b__project_id__in=self.request.user.userprojectssavedfilter.projects.all()))
+        project_ids = list(self.request.user.userprojectssavedfilter.projects.values_list('pk', flat=True))
+        qs = qs.filter(Q(document_a__project_id__in=project_ids) |
+                       Q(document_b__project_id__in=project_ids))
 
         if "document_pk" in self.request.GET:
             qs = qs.filter(document_a__pk=self.request.GET['document_pk'])
@@ -445,17 +455,29 @@ class TextUnitSimilarityListView(apps.common.mixins.JqPaginatedListView):
     model = TextUnitSimilarity
     template_name = "analyze/text_unit_similarity_list.html"
     limit_reviewers_qs_by_field = ['text_unit_a__document', 'text_unit_b__document']
-    json_fields = ['text_unit_a__pk', 'text_unit_a__unit_type',
-                   'text_unit_a__language', 'text_unit_a__textunittext__text',
-                   'text_unit_a__document__pk', 'text_unit_a__document__name',
-                   'text_unit_b__pk', 'text_unit_b__unit_type',
-                   'text_unit_b__language', 'text_unit_b__textunittext__text',
-                   'text_unit_b__document__pk', 'text_unit_b__document__name',
-                   'similarity']
+    json_fields = ['similarity', 'text_unit_a_id', 'text_unit_b_id']
+    LIMIT_QUERY = 100000
 
     def get_json_data(self, **kwargs):
         data = super().get_json_data()
         for item in data['data']:
+            unit_a = TextUnit.objects.get(pk=item['text_unit_a_id'])  # type: TextUnit
+            unit_b = TextUnit.objects.get(pk=item['text_unit_b_id'])  # type: TextUnit
+
+            item['text_unit_a__pk'] = unit_a.pk
+            item['text_unit_b__pk'] = unit_b.pk
+            item['text_unit_a__unit_type'] = unit_a.unit_type
+            item['text_unit_b__unit_type'] = unit_b.unit_type
+            item['text_unit_a__language'] = unit_a.language
+            item['text_unit_b__language'] = unit_b.language
+            item['text_unit_a__textunittext__text'] = unit_a.text
+            item['text_unit_b__textunittext__text'] = unit_b.text
+
+            item['text_unit_a__document__pk'] = unit_a.document_id
+            item['text_unit_b__document__pk'] = unit_b.document_id
+            item['text_unit_a__document__name'] = unit_a.document.name
+            item['text_unit_b__document__name'] = unit_b.document.name
+
             item['text_unit_a__url'] = self.full_reverse('document:text-unit-detail',
                                                          args=[item['text_unit_a__pk']]),
             item['text_unit_b__url'] = self.full_reverse('document:text-unit-detail',
@@ -469,13 +491,15 @@ class TextUnitSimilarityListView(apps.common.mixins.JqPaginatedListView):
     def get_queryset(self):
         qs = super().get_queryset()
         # TODO: remove the filter
-        qs = qs.filter(Q(text_unit_a__document__project_id__in=self.request.user.userprojectssavedfilter.projects.all()) |
-                       Q(text_unit_b__document__project_id__in=self.request.user.userprojectssavedfilter.projects.all()))
+        project_ids = list(self.request.user.userprojectssavedfilter.projects.values_list('pk', flat=True))
+        qs = qs.filter(Q(project_a_id__in=project_ids) |
+                       Q(project_b_id__in=project_ids))
 
         if "text_unit_pk" in self.request.GET:
             qs = qs.filter(text_unit_a__pk=self.request.GET['text_unit_pk'])
-        return qs.select_related('text_unit_a', 'text_unit_a__textunittext',
-                                 'text_unit_b', 'text_unit_b__textunittext')
+        qs = qs.select_related('text_unit_a', 'text_unit_a__textunittext',
+                               'text_unit_b', 'text_unit_b__textunittext')
+        return qs
 
 
 class PartySimilarityListView(apps.common.mixins.JqPaginatedListView):
@@ -637,13 +661,13 @@ class ClusterView(BaseAjaxTaskView):
     def start_task_and_return(self, data):
         if data.get('skip_confirmation'):
             self.start_task(data)
-            return self.json_response('The task is started. It can take a while.')
+            return self.json_response(self.task_started_message)
 
         count, count_limit = Cluster.estimate_reaching_limit(data)
         # if we don't have to cluster too many units ...
         if count < count_limit:
             self.start_task(data)
-            return self.json_response('The task is started. It can take a while.')
+            return self.json_response(self.task_started_message)
         message = 'Processing large amounts of documents may take a long time.'
         return self.json_response({'message': message,
                                    'confirm': True})

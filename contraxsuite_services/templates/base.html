@@ -207,32 +207,30 @@
 
   <script type="application/javascript">
     var $id_project_selection = $("#id_project_selection");
-    window.user_projects_selected = {{ user_projects_selected }};
+    if (typeof $id_project_selection !== 'undefined') {
+      window.user_projects_selected = {{ user_projects_selected }};
 
-    $id_project_selection.chosen({search_contains: true, width: '300px'});
-    $id_project_selection.on('change', function(evt, params) {
-      $.ajax({
-        url: '{% url 'project:select-projects' %}',
-        {#url: '{% url 'v1:project-select-projects' %}',#}
-        type: 'POST',
-        data: { project_ids: $(this).val() },
-        {#data: JSON.stringify({ project_ids: $(this).val() }),#}
-        {#contentType: "application/json; charset=utf-8",#}
-        dataType: "json",
-        success: function(data, status, xhr){
-          window.user_projects_selected = data.project_ids
-          $.each(data.project_ids, function(i, val){
-            $id_project_selection.find("option[value='" + val + "']").prop("selected", true);
-            $id_project_selection.trigger("chosen:updated");
-          });
-          $('.jqxgrid').jqxGrid('updatebounddata')
-        },
-        error: function(data, status, xhr){
-          console.log(xhr);
-        }
+      $id_project_selection.chosen({search_contains: true, width: '300px'});
+      $id_project_selection.on('change', function(evt, params) {
+        $.ajax({
+          url: '{% url 'project:select-projects' %}',
+          type: 'POST',
+          data: { project_ids: $(this).val() },
+          dataType: "json",
+          success: function(data, status, xhr){
+            window.user_projects_selected = data.project_ids;
+            $.each(data.project_ids, function(i, val){
+              $id_project_selection.find("option[value='" + val + "']").prop("selected", true);
+              $id_project_selection.trigger("chosen:updated");
+            });
+            $('.jqxgrid').jqxGrid('updatebounddata')
+          },
+          error: function(data, status, xhr){
+            console.log(xhr);
+          }
+        });
       });
-
-    });
+    }
   </script>
 
   <script src="{% static 'vendor/tagsinput/bootstrap-tagsinput.js' %}" style="text/javascrypt"></script>

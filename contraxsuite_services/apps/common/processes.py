@@ -26,17 +26,19 @@
 
 import asyncio
 import os
+import signal
 import subprocess
 import sys
 import time
+import psutil
 from io import StringIO
 from threading import Thread
-from typing import List, Callable, TextIO, Optional
+from typing import List, Callable, TextIO, Optional, Any
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.6.0/LICENSE"
-__version__ = "1.6.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.7.0/LICENSE"
+__version__ = "1.7.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -64,12 +66,16 @@ def exec(cmd: List[str],
          stdout: Callable[[str], None] = None,
          stderr: Callable[[str], None] = None,
          encoding: str = sys.getdefaultencoding(),
-         timeout_sec: int = 60 * 60) -> int:
+         timeout_sec: int = 60 * 60,
+         task: Any = None) -> int:
     with subprocess.Popen(cmd,
                           stdout=subprocess.PIPE,
                           stderr=subprocess.PIPE,
                           universal_newlines=True,
-                          encoding=encoding) as ps:
+                          encoding=encoding,
+                          preexec_fn=os.setpgrp) as ps:
+        if task:
+            task.store_spawned_process(ps.pid)
         if stdout:
             Thread(target=io_pipe_lines, args=(ps.stdout, stdout), daemon=True).start()
 
@@ -79,7 +85,8 @@ def exec(cmd: List[str],
         try:
             return ps.wait(timeout=timeout_sec)
         except subprocess.TimeoutExpired:
-            ps.kill()
+            # ps.kill()
+            os.killpg(os.getpgid(ps.pid), signal.SIGTERM)
             ps.wait(timeout=5)
             raise ProcessKilledByTimeout()
 
@@ -108,7 +115,8 @@ def read_output(cmd: List[str],
                 stderr_callback: Callable[[str], None],
                 encoding: str = sys.getdefaultencoding(),
                 timeout_sec: int = 60 * 60,
-                error_if_returner_not: Optional[int] = 0) -> str:
+                error_if_returner_not: Optional[int] = 0,
+                task: Any = None) -> str:
     stdout = StringIO()
     stderr = StringIO()
 
@@ -120,7 +128,9 @@ def read_output(cmd: List[str],
         stdout.write(line)
 
     try:
-        error_code = exec(cmd, stdout=out, stderr=err, encoding=encoding, timeout_sec=timeout_sec)
+        error_code = exec(cmd, stdout=out, stderr=err,
+                          encoding=encoding, timeout_sec=timeout_sec,
+                          task=task)
     except ProcessKilledByTimeout:
         raise ProcessKilledByTimeout(f'Process has been killed by timeout.\n'
                                      f'Cmd: {cmd}\n'
@@ -175,3 +185,24 @@ async def async_wait_for_file(file_path, timeout_interval_sec: float = 30, check
             await asyncio.sleep(check_interval_sec)
         else:
             break
+
+
+def terminate_processes_by_ids(pids: List[int],
+                               log_func: Optional[Callable[[str], None]] = None):
+    count_terminated, count_skipped, count_failed = 0, 0, 0
+    # terminate spawned processes
+    for pid in pids:
+        try:
+            p = psutil.Process(pid)
+            if p:
+                p.terminate()
+                count_terminated += 1
+            else:
+                count_skipped += 1
+        except psutil.NoSuchProcess:
+            count_skipped += 1
+        except:
+            count_failed += 1
+    if log_func:
+        log_func(f'terminate_processes(): {count_terminated} spawned processed are terminated, '
+                 f'{count_skipped} skipped, {count_failed} failed to terminate')

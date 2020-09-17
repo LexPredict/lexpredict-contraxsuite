@@ -60,13 +60,24 @@ Learn more about these and other ContraxSuite use cases by `visiting our website
     :maxdepth: 1
 
     user_guides/cxs_roles
-    user_guides/power_users/import_jupyter_notebooks
     user_guides/power_users/create_document_type
     user_guides/power_users/create_document_field
     user_guides/power_users/create_field_detectors
     user_guides/power_users/field_detection_examples
     user_guides/power_users/writing_formulas
     user_guides/doc_type_migration
+    user_guides/power_users/import_jupyter_notebooks
+
+.. toctree::
+    :titlesonly:
+    :hidden:
+    :caption: Using CxS - Document Explorer
+    :maxdepth: 1
+
+    user_guides/doc_exp/intro
+    user_guides/doc_exp/documents
+    user_guides/doc_exp/text_units
+    user_guides/doc_exp/admin
 
 .. toctree::
     :titlesonly:

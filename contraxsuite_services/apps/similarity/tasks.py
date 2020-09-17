@@ -25,11 +25,13 @@
 # -*- coding: utf-8 -*-
 
 import math
+import sys
 from collections import defaultdict
 from typing import Optional
 
 import fuzzywuzzy.fuzz
 import nltk
+import pandas as pd
 from celery import shared_task
 from celery.exceptions import SoftTimeLimitExceeded
 from sklearn.feature_extraction.text import TfidfVectorizer
@@ -48,12 +50,12 @@ from apps.extract.models import Party
 from apps.rawdb.constants import FIELD_CODE_DOC_ID
 from apps.similarity.chunk_similarity_task import ChunkSimilarity
 from apps.similarity.models import DocumentSimilarityConfig, DST_FIELD_SIMILARITY_CONFIG_ATTR
-from apps.task.tasks import BaseTask, ExtendedTask, remove_punctuation_map, CeleryTaskLogger
+from apps.task.tasks import ExtendedTask, remove_punctuation_map, CeleryTaskLogger
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.6.0/LICENSE"
-__version__ = "1.6.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.7.0/LICENSE"
+__version__ = "1.7.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -88,7 +90,7 @@ def stem_tokens(tokens):
     return res
 
 
-class PartySimilarity(BaseTask):
+class PartySimilarity(ExtendedTask):
     """
     Task for the identification of similar party names.
     """
@@ -135,7 +137,7 @@ class PartySimilarity(BaseTask):
         self.push()
 
 
-class Similarity(BaseTask):
+class Similarity(ExtendedTask):
     """
     Find Similar Documents, Text Units
     """
@@ -162,7 +164,7 @@ class Similarity(BaseTask):
         # get text units with min length 100 signs
         filters = dict(unit_type='paragraph', textunittext__text__regex=r'.{100}.*')
         if project_id:
-            filters['document__project_id'] = project_id
+            filters['project_id'] = project_id
         text_units = TextUnit.objects.filter(**filters)
         len_tu_set = text_units.count()
 
@@ -248,11 +250,12 @@ class Similarity(BaseTask):
                                 similarity=similarity_matrix[g, h])
                             for h in range(similarity_matrix.shape[1])
                             if i + g != j + h and similarity_matrix[g, h] >= similarity_threshold]
+                        TextUnitSimilarity.fill_joined_refs(tu_sim)
                         TextUnitSimilarity.objects.bulk_create(tu_sim)
                     self.push()
 
 
-class SimilarityByFeatures(BaseTask):
+class SimilarityByFeatures(ExtendedTask):
     """
     Find Similar Documents, Text Units by extracted features
     """
@@ -293,23 +296,38 @@ class SimilarityByFeatures(BaseTask):
             feature_source=feature_source,
             use_tfidf=use_tfidf,
             distance_type=distance_type,
-            threshold=similarity_threshold
+            threshold=similarity_threshold,
+            log_routine=self.log_routine
         )
         similarity_engine = engine_class(**similarity_engine_kwargs)
-        feature_df = similarity_engine.get_features().feature_df
+        features = similarity_engine.get_features()
+        feature_matrix = features.term_frequency_matrix
+        feature_records = feature_matrix.shape[0]
 
         subtasks_args = []
 
-        for block_i_start in range(0, feature_df.shape[0], similarity_engine.block_step):
-            for block_j_start in range(0, feature_df.shape[0], similarity_engine.block_step):
+        for block_i_start in range(0, feature_records, similarity_engine.block_step):
 
-                df1 = feature_df.iloc[block_i_start:block_i_start + similarity_engine.block_step, :]
-                df1_redis_key = f'{self.task.pk}_{block_i_start}_{block_i_start + similarity_engine.block_step}'
-                redis.push(key=df1_redis_key, value=df1, pickle_value=True)
+            block_i_end = block_i_start + similarity_engine.block_step
+            df1_redis_key = f'{self.task.pk}_{block_i_start}_{block_i_end}'
+            if not redis.exists(df1_redis_key):
+                df1_data = (feature_matrix[block_i_start:block_i_end],
+                            features.item_index[block_i_start:block_i_end],
+                            features.feature_names)
+                redis.push(key=df1_redis_key, value=df1_data, pickle_value=True)
 
-                df2 = feature_df.iloc[block_j_start:block_j_start + similarity_engine.block_step, :]
-                df2_redis_key = f'{self.task.pk}_{block_j_start}_{block_j_start + similarity_engine.block_step}'
-                redis.push(key=df2_redis_key, value=df2, pickle_value=True)
+            for block_j_start in range(0, feature_records, similarity_engine.block_step):
+
+                block_j_end = block_j_start + similarity_engine.block_step
+                self.log_info(f'Cache data for blocks: '
+                              f'{block_i_start}:{block_i_end} - {block_j_start}:{block_j_end}')
+
+                df2_redis_key = f'{self.task.pk}_{block_j_start}_{block_j_end}'
+                if not redis.exists(df2_redis_key):
+                    df2_data = (feature_matrix[block_j_start:block_j_end],
+                                features.item_index[block_j_start:block_j_end],
+                                features.feature_names)
+                    redis.push(key=df2_redis_key, value=df2_data, pickle_value=True)
 
                 subtasks_args.append((
                     df1_redis_key,
@@ -325,6 +343,9 @@ class SimilarityByFeatures(BaseTask):
         )
         self.run_after_sub_tasks_finished('Clear redis keys.', self.finalize, [()])
 
+    def log_routine(self, msg: str, msg_key='') -> None:
+        self.log_info(msg)
+
     @staticmethod
     @shared_task(base=ExtendedTask,
                  bind=True,
@@ -334,16 +355,22 @@ class SimilarityByFeatures(BaseTask):
                  autoretry_for=(SoftTimeLimitExceeded, InterfaceError, OperationalError),
                  max_retries=3)
     def calc_block_similarity(task, df1_redis_key, df2_redis_key,
-                              search_similar_documents, engine_kwargs):
+                              search_similar_documents,
+                              engine_kwargs):
         task.log_info(
             f'Calculate similarity for feature_df blocks with keys: '
             f'"{df1_redis_key}" and "{df2_redis_key}"')
 
         engine_class = DocumentSimilarityEngine if search_similar_documents else TextUnitSimilarityEngine
 
-        df1 = redis.pop(df1_redis_key)
-        df2 = redis.pop(df2_redis_key)
-        engine_class(**engine_kwargs).calc_block_similarity(df1, df2)
+        df1_data, df1_index, df1_columns = redis.pop(df1_redis_key)
+        df2_data, df2_index, df2_columns = redis.pop(df2_redis_key)
+
+        df1 = pd.DataFrame(df1_data, index=df1_index, columns=df1_columns)
+        df2 = pd.DataFrame(df2_data, index=df2_index, columns=df2_columns)
+        count = engine_class(**engine_kwargs).calc_block_similarity(df1, df2)
+
+        task.log_info(f'Created {count} records')
 
     @staticmethod
     @shared_task(base=ExtendedTask,
@@ -361,7 +388,7 @@ class SimilarityByFeatures(BaseTask):
             _self.log_info(f'Deleted redis key "{k}"')
 
 
-class PreconfiguredDocumentSimilaritySearch(BaseTask):
+class PreconfiguredDocumentSimilaritySearch(ExtendedTask):
     name = 'PreconfiguredDocumentSimilaritySearch'
     verbose = True
     n_features = 100

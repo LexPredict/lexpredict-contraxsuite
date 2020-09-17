@@ -6,5 +6,5 @@ if ($request_method ~* "(GET|POST|PUT|PATCH|HEAD)") {
     add_header 'Access-Control-Allow-Origin' $server_name;
     add_header 'Access-Control-Allow-Methods' 'GET, POST, PUT, PATCH, HEAD';
     add_header 'Access-Control-Allow-Headers' 'DNT,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Range,authorization,Upload-Length,Upload-Metadata,Upload-Offset,force,Location,tus-resumable,Upload-Defer-Length';
-    add_header 'Access-Control-Expose-Headers' 'Content-Length,Content-Range,Location,Upload-Offset,Upload-Length,Upload-Defer-Length';
+    add_header 'Access-Control-Expose-Headers' 'Content-Length,Content-Range,Location,Upload-Offset,Upload-Length,Upload-Defer-Length,Content-Disposition';
  }

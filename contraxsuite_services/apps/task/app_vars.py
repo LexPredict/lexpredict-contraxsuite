@@ -29,8 +29,8 @@ from apps.common.models import AppVar
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.6.0/LICENSE"
-__version__ = "1.6.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.7.0/LICENSE"
+__version__ = "1.7.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -73,6 +73,30 @@ TIKA_CUSTOM_CONFIG = AppVar.set(
     'Task', 'tika_custom_config', 'tika.config',
     'Tika''s custom config file from "jars" folder, like "tika.config"')
 
+TIKA_NOOCR_CUSTOM_CONFIG = AppVar.set(
+    'Task', 'tika_noocr_custom_config', 'tika.noocr.config',
+    'Tika''s custom config file from "jars" folder, fo NO_OCR case like "tika.noocr.config"')
+
 TIKA_LEXNLP_CUSTOM_CONFIG = AppVar.set(
     'Task', 'tika_lexnlp_custom_config', 'tika.lexp.config',
     'Tika LexNLP custom config file from "jars" folder, like "tika.lexp.config"')
+
+USE_PDF2PDFA_CONVERTER = AppVar.set(
+    'Task', 'use_pdf2pdfa_converter', False,
+    'Convert pdf to pdf-A during parsing a document')
+
+USE_PDF2PDFA_CONVERTER_RESULT = AppVar.set(
+    'Task', 'use_pdf2pdfa_converter_result', False,
+    'Use Converted pdf for further processing instead of source document')
+
+PDF2PDFA_CONVERTER_TIMEOUT = AppVar.set(
+    'Task', 'pdf2pdfa_converter_timeout', 60 * 60 * 3,
+    'Time limit to Convert pdf to pdf-A, sec.')
+
+EXTRA_EXCLUDED_FROM_TRACKING = AppVar.set(
+    'Task', 'extra_excluded_from_tracking', 'IManage Synchronization',
+    'Task names to exclude from tracking, comma separated')
+
+EXTRA_ALLOWED_FOR_TRACKING = AppVar.set(
+    'Task', 'extra_allowed_for_tracking', '',
+    'Task names to allow for tracking, comma separated')

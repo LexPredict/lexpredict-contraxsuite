@@ -23,23 +23,19 @@
     or shipping ContraxSuite within a closed source product.
 """
 # -*- coding: utf-8 -*-
-
 from typing import Dict, Optional
-
 from django.dispatch import receiver
 from apps.rawdb import signals
-
 from apps.common.log_utils import ProcessLogger
 from apps.rawdb.rawdb.rawdb_field_handlers import RawdbFieldHandler
 from apps.users.models import User
-
 
 # noinspection PyUnusedLocal
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.6.0/LICENSE"
-__version__ = "1.6.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.7.0/LICENSE"
+__version__ = "1.7.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -53,7 +49,6 @@ def document_fields_change_listener_impl(_sender,
                                          fields_before: Optional[Dict],
                                          fields_after: Optional[Dict],
                                          changed_by_user: User = None):
-    from apps.task.tasks import call_task_func
     from apps.notifications.tasks import process_notifications_on_document_change
     if not changed_by_user:
         # we ignore changes made by system at the moment
@@ -66,9 +61,11 @@ def document_fields_change_listener_impl(_sender,
     from apps.notifications.app_vars import APP_VAR_DISABLE_EVENT_NOTIFICATIONS
     if APP_VAR_DISABLE_EVENT_NOTIFICATIONS.val:
         return
-    call_task_func(process_notifications_on_document_change,
-                   (document_event, document_pk, fields_before, fields_after, changed_by_user.pk),
-                   changed_by_user.pk)
+
+    process_notifications_on_document_change(
+        lambda m: log.info(m),
+        document_event, document_pk, fields_before, fields_after,
+        changed_by_user.pk)
 
 
 @receiver(signals.document_fields_changed)

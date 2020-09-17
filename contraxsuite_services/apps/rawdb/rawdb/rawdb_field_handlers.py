@@ -39,8 +39,8 @@ from apps.rawdb.rawdb.errors import FilterSyntaxError, FilterValueParsingError
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.6.0/LICENSE"
-__version__ = "1.6.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.7.0/LICENSE"
+__version__ = "1.7.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -557,8 +557,12 @@ class IntFieldHandler(ComparableRawdbFieldHandler):
     pg_type = PgTypes.INTEGER
 
     def python_value_to_indexed_field_value(self, python_value) -> Any:
-        python_value = python_value or self.default_value
-        return int(python_value) if python_value else None
+        if isinstance(python_value, (str, int, float)):
+            try:
+                return int(python_value)
+            except (ValueError, TypeError):
+                pass
+        return self.default_value
 
     def get_client_column_descriptions(self) -> List[ColumnDesc]:
         return [IntColumnDesc(self.field_code, self.column, self.field_title)]
@@ -568,8 +572,12 @@ class FloatFieldHandler(ComparableRawdbFieldHandler):
     pg_type = PgTypes.DOUBLE
 
     def python_value_to_indexed_field_value(self, python_value) -> Any:
-        python_value = python_value or self.default_value
-        return float(python_value) if python_value else None
+        if isinstance(python_value, (str, int, float)):
+            try:
+                return float(python_value)
+            except (ValueError, TypeError):
+                pass
+        return self.default_value
 
     def get_client_column_descriptions(self) -> List[ColumnDesc]:
         return [FloatColumnDesc(self.field_code, self.column, self.field_title)]

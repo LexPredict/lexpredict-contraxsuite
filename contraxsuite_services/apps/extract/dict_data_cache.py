@@ -33,8 +33,8 @@ from apps.project.models import ProjectTermConfiguration
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.6.0/LICENSE"
-__version__ = "1.6.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.7.0/LICENSE"
+__version__ = "1.7.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -48,18 +48,17 @@ CACHE_KEY_TERM_STEMS_PROJECT_PTN = '%s_project_{}' % CACHE_KEY_TERM_STEMS
 def cache_geo_config():
     geo_config = {}
     for name, pk, priority in GeoEntity.objects.values_list('name', 'pk', 'priority'):
-        entity = dict_entities.entity_config(pk, name, priority or 0, name_is_alias=True)
+        entity = dict_entities.DictionaryEntry(pk, name, priority or 0, name_is_alias=True)
         geo_config[pk] = entity
     for alias_id, alias_text, alias_type, entity_id, alias_lang \
             in GeoAlias.objects.values_list('pk', 'alias', 'type', 'entity', 'locale'):
         entity = geo_config[entity_id]
         if entity:
             is_abbrev = alias_type.startswith('iso') or alias_type.startswith('abbrev')
-            dict_entities.add_aliases_to_entity(entity,
-                                                aliases_csv=alias_text,
-                                                language=alias_lang,
-                                                is_abbreviation=is_abbrev,
-                                                alias_id=alias_id)
+            for alias in alias_text.split(';'):
+                entity.aliases.append(dict_entities.DictionaryEntryAlias(
+                    alias, language=alias_lang, is_abbreviation=is_abbrev, alias_id=alias_id
+                ))
     res = list(geo_config.values())
     DbCache.put_to_db(CACHE_KEY_GEO_CONFIG, res)
 
@@ -69,11 +68,11 @@ def get_geo_config():
 
 
 def cache_court_config():
-    res = [dict_entities.entity_config(
-        entity_id=i.id,
-        name=i.name,
-        priority=0,
-        aliases=i.alias.split(';') if i.alias else []
+    res = [dict_entities.DictionaryEntry(
+           id=i.id,
+           name=i.name,
+           priority=0,
+           aliases=[dict_entities.DictionaryEntryAlias(a) for a in i.alias.split(';')] if i.alias else []
     ) for i in Court.objects.all()]
     DbCache.put_to_db(CACHE_KEY_COURT_CONFIG, res)
 

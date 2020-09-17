@@ -1,8 +1,6 @@
 #!/bin/bash
 set -e
-pushd ../
-source setenv.sh
-popd
+source build_setenv.sh
 
 pushd contraxsuite-app
 ./prepare-image-app.sh

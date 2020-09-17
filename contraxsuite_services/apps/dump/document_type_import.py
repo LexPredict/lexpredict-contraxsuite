@@ -25,6 +25,7 @@
 # -*- coding: utf-8 -*-
 
 # Standard imports
+import json
 from uuid import UUID
 from typing import Any, Callable, Iterable
 from time import sleep
@@ -35,19 +36,21 @@ from django.db import transaction
 from django.core import serializers
 
 # Project imports
+import task_names
 from apps.common.log_utils import ProcessLogger
 from apps.document.field_types import TypedField
 from apps.document.field_type_registry import FIELD_TYPE_REGISTRY
 from apps.document.models import DocumentType, DocumentFieldDetector, DocumentField, \
     DocumentFieldCategory, DocumentFieldFamily
 from apps.document.repository.document_field_repository import DocumentFieldRepository
+from apps.document.scheme_migrations.scheme_migration import CURRENT_VERSION, SchemeMigration
 from apps.task.models import Task
 from apps.task.tasks import ExtendedTask, CeleryTaskLogger
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.6.0/LICENSE"
-__version__ = "1.6.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.7.0/LICENSE"
+__version__ = "1.7.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -75,6 +78,9 @@ class ObjectHeap:
 
 
 class DeserializedObjectController:
+    @classmethod
+    def init_static(cls):
+        pass
 
     def __init__(self, deserialized_object: DeserializedObject, auto_fix_validation_errors: bool,
                  logger: ProcessLogger = None):
@@ -186,28 +192,28 @@ class DeserializedObjectController:
     def _save_deserialized_object(self, context: dict) -> None:
         self._deserialized_object.object.save()
 
-    def _save_m2m(self, context: dict) -> None:
+    def _save_m2m(self, _context: dict) -> None:
         if self._deserialized_object.m2m_data:
             for accessor_name, object_list in self._deserialized_object.m2m_data.items():
                 getattr(self.object, accessor_name).set(object_list)
         self._deserialized_object.m2m_data = None
 
     def save_with_dependent_objects(self) -> None:
-        self._log_info('Saving {0} #{1} ...'.format(self.model_name, self.pk))
+        self._log_info(f'Saving {self.model_name} #{self.pk} ...')
         context = self._get_save_object_context()
         self._run_validators(self._object_validators, context)
         self._save_deserialized_object(context)
         self._execute_for_dependent_objects(lambda obj: obj.save_with_dependent_objects())
 
     def save_m2m(self) -> None:
-        self._log_info('Saving many to many relations for {0} #{1} ...'.format(self.model_name, self.pk))
+        self._log_info(f'Saving many to many relations for {self.model_name} #{self.pk} ...')
         context = self._get_save_m2m_context()
         self._run_validators(self._m2m_validators, context)
         self._save_m2m(context)
         self._execute_for_dependent_objects(lambda obj: obj.save_m2m())
 
     def clear_missed_objects(self) -> None:
-        msg = 'Clearing objects missing in the config being imported for {0} #{1} ...'.format(self.model_name, self.pk)
+        msg = f'Clearing objects missing in the config being imported for {self.model_name} #{self.pk} ...'
         self._log_info(msg)
         self._run_validators(self._missed_object_validators, self._get_clear_missed_object_context())
         self._execute_for_dependent_objects(lambda obj: obj.clear_missed_objects())
@@ -223,7 +229,7 @@ class DeserializedObjectController:
         if errors is None:
             errors = []
         self._init()
-        self._log_info('Validating {0} #{1} ...'.format(self.model_name, self.pk))
+        self._log_info(f'Validating {self.model_name} #{self.pk} ...')
         self._add_validation_errors(self._missed_object_validators, errors, self._get_clear_missed_object_context())
         self._add_validation_errors(self._object_validators, errors, self._get_save_object_context())
         self._add_validation_errors(self._m2m_validators, errors, self._get_save_m2m_context())
@@ -271,8 +277,9 @@ class DeserializedDocumentFieldDetector(DeserializedObjectController):
             old_field_pk = self.to_str_if_uuid(field_pk)
             new_field_pk = self.to_str_if_uuid(self.field_pk)
             if old_field_pk != new_field_pk:
-                err_msg = 'Unable to update field detector #{0}. Field has changed, old field id is #{1}, ' \
-                          'new field id is #{2}'.format(self.pk, old_field_pk, new_field_pk)
+                err_msg = f'Unable to update field detector #{self.pk}. Field ' + \
+                          f'has changed, old field id is #{old_field_pk}, ' + \
+                          f'new field id is #{new_field_pk}'
                 raise ValidationError(err_msg)
 
 
@@ -319,7 +326,7 @@ class DeserializedDocumentField(DeserializedObjectController):
 
     @family_pk.setter
     def family_pk(self, family_pk: Any) -> None:
-        self.object.family_pk = family_pk
+        self.object.family_id = family_pk
 
     def _get_save_object_context(self) -> dict:
         saved_field = None
@@ -357,30 +364,29 @@ class DeserializedDocumentField(DeserializedObjectController):
         new_document_type_pk = self.to_str_if_uuid(self.document_type_pk)
         old_field_type = saved_field.type
         if old_document_type_pk != new_document_type_pk:
-            err_msg += 'Document type has changed, old document type id is #{0}, new document type id is #{1}. ' \
-                .format(old_document_type_pk, self.document_type_pk)
+            err_msg += f'Document type has changed, old document type id is #{old_document_type_pk}' + \
+                       f', new document type id is #{self.document_type_pk}. '
         if old_field_type != new_field_type:
-            err_msg += 'Field type has changed, old field type is "{0}", new field type is "{1}". ' \
-                .format(self._get_field_type_title(old_field_type), self._get_field_type_title(new_field_type))
+            err_msg += f'Field type has changed, old field type is ' + \
+                       f'"{self._get_field_type_title(old_field_type)}", ' + \
+                       f'new field type is "{self._get_field_type_title(new_field_type)}". '
         if err_msg:
-            err_msg = 'Unable to update field #{0} "{1}". {2}'.format(self.pk, self.object.code, err_msg)
+            err_msg = f'Unable to update field #{self.pk} "{self.object.code}". {err_msg}'
             values_count = field_repo.get_count_by_field(self.object.pk)
             user_values_count = 0
             detected_values_count = 0
             if values_count > 0:
                 user_values_count = field_repo.get_doc_field_values_filtered_count(self.object.pk)
                 detected_values_count = self._get_detected_values_count(values_count, user_values_count)
-            err_msg += 'Existing document field values become invalid and will be removed. User entered values {0},' \
-                       ' automatically detected values {1}. You need to set force auto-fixes option to continue' \
-                       ' (this option will remove all values for this field) or make manual updates.' \
-                .format(user_values_count, detected_values_count)
+            err_msg += 'Existing document field values become invalid and will be removed. ' + \
+                       f'User entered values {user_values_count}, ' + \
+                       f'automatically detected values {detected_values_count}. ' + \
+                       'You need to set force auto-fixes option to continue ' + \
+                       '(this option will remove all values for this field) or make manual updates.'
 
             raise ValidationError(err_msg)
 
     def _get_invalid_choices(self, saved_field: DocumentField) -> set:
-        # old_choices = set()
-        # if not saved_field.allow_values_not_specified_in_choices and \
-        #         not self.object.allow_values_not_specified_in_choices:
         old_choices = set(saved_field.get_choice_values())
         for choice_value in self.object.get_choice_values():
             if choice_value in old_choices:
@@ -401,9 +407,9 @@ class DeserializedDocumentField(DeserializedObjectController):
         if self._is_allow_values_not_specified_in_choices_was_unset(saved_field):
             err_msg += '"Allow values not specified in choices" flag is unset in the the config being imported. '
         if invalid_choices:
-            invalid_choices = ['"{0}"'.format(invalid_choice) for invalid_choice in invalid_choices]
-            err_msg += 'The following choice values are missing in the config being imported: {0}. ' \
-                .format(', '.join(invalid_choices))
+            invalid_choices = [f'"{invalid_choice}"' for invalid_choice in invalid_choices]
+            err_msg += 'The following choice values are missing in ' + \
+                       f'the config being imported: {", ".join(invalid_choices)}.'
 
         if err_msg:
             invalid_values_count = self.object.get_invalid_choice_annotations().count()
@@ -413,10 +419,11 @@ class DeserializedDocumentField(DeserializedObjectController):
                 field_repo = DocumentFieldRepository()
                 user_values_count = field_repo.get_invalid_choice_vals_count(self.object)
                 detected_values_count = self._get_detected_values_count(invalid_values_count, user_values_count)
-            err_msg += 'Number of invalid values: user entered values {0}, automatically detected values {1}.' \
-                       ' You need to set force auto-fixes option to continue (this option will remove all invalid' \
-                       ' values) or make manual updates.'.format(user_values_count, detected_values_count)
-            err_msg = 'Unable to update field #{0} "{1}". {2}'.format(self.pk, self.object.code, err_msg)
+            err_msg += f'Number of invalid values: user entered values {user_values_count}, ' + \
+                       f'automatically detected values {detected_values_count}. ' + \
+                       'You need to set force auto-fixes option to continue (this option will remove all invalid ' + \
+                       'values) or make manual updates.'
+            err_msg = f'Unable to update field #{self.pk} "{self.object.code}". {err_msg}'
             raise ValidationError(err_msg)
 
     def _get_missed_field_detectors(self) -> list:
@@ -447,10 +454,11 @@ class DeserializedDocumentField(DeserializedObjectController):
             return
 
         if not self.auto_fix_validation_errors:
-            missed_field_detectors = ['#{0}'.format(field_detector['pk']) for field_detector in missed_field_detectors]
-            err_msg = 'The following field detectors are missing (field #{0} "{1}") in the config being imported:' \
-                      ' {2}. Please set force auto-fixes option to continue or solve this problem manually.' \
-                .format(self.object.pk, self.object.code, ', '.join(missed_field_detectors))
+            missed_field_detectors = [f'#{field_detector["pk"]}' for field_detector in missed_field_detectors]
+            err_msg = 'The following field detectors are missing (field ' + \
+                      f'#{self.object.pk} "{self.object.code}") in the config being imported: ' + \
+                      f'{", ".join(missed_field_detectors)}. Please set force ' + \
+                      'auto-fixes option to continue or solve this problem manually.'
             raise ValidationError(err_msg)
 
         if remove_missed_field_detectors:
@@ -469,9 +477,10 @@ class DeserializedDocumentField(DeserializedObjectController):
             .exclude(pk=self.pk) \
             .first()
         if conflicting_field is not None:
-            err_msg = 'Unable to save document field #{0} "{1}". Database already contains a document field #{2}' \
-                      ' with code "{3}"'
-            raise RuntimeError(err_msg.format(self.pk, self.object.code, conflicting_field.pk, conflicting_field.code))
+            err_msg = f'Unable to save document field #{self.pk} "{self.object.code}". ' + \
+                      f'Database already contains a document field #{conflicting_field.pk} ' + \
+                      f'with code "{conflicting_field.code}"'
+            raise RuntimeError(err_msg)
 
         super()._save_deserialized_object(context)
 
@@ -494,7 +503,7 @@ class DeserializedDocumentType(DeserializedObjectController):
         super().__init__(deserialized_object, auto_fix_validation_errors, logger=logger)
         self._auto_fix_validation_errors = auto_fix_validation_errors
         self._remove_missed_in_dump_objects = remove_missed_in_dump_objects
-        self._set_save_order([DocumentFieldCategory, DocumentField])
+        self._set_save_order([DocumentFieldCategory, DocumentFieldFamily, DocumentField])
         self._add_missed_object_validator(lambda context: self._clear_missed_fields(save=False))
 
     def do_basic_cleanup(self):
@@ -519,9 +528,10 @@ class DeserializedDocumentType(DeserializedObjectController):
             return
 
         if not self.auto_fix_validation_errors:
-            missed_fields = ['#{0} "{1}"'.format(field['pk'], field['code']) for field in missed_fields]
-            err_msg = 'The following fields are missing in the config being imported: {0}. Please set force ' \
-                      ' auto-fixes option to continue or solve this problem manually.'.format(', '.join(missed_fields))
+            missed_fields = [f'#{field["pk"]} "{field["code"]}"' for field in missed_fields]
+            err_msg = 'The following fields are missing in the config being imported: ' + \
+                      f'{", ".join(missed_fields)}. Please set force ' + \
+                      'auto-fixes option to continue or solve this problem manually.'
             raise ValidationError(err_msg)
 
         if remove_missed_fields:
@@ -532,8 +542,16 @@ class DeserializedDocumentType(DeserializedObjectController):
         super().clear_missed_objects()
         self._clear_missed_fields(save=True)
 
+    def _save_deserialized_object(self, context: dict) -> None:
+        super()._save_deserialized_object(context)
+
 
 class DeserializedDocumentFieldCategory(DeserializedObjectController):
+    saved_doc_types = set()
+
+    @classmethod
+    def init_static(cls):
+        cls.saved_doc_types = set(DocumentType.objects.all().values_list('pk', flat=True))
 
     def __init__(self, deserialized_object, auto_fix_validation_errors: bool, logger: ProcessLogger = None):
         super().__init__(deserialized_object, auto_fix_validation_errors, logger=logger)
@@ -548,8 +566,24 @@ class DeserializedDocumentFieldCategory(DeserializedObjectController):
     def object(self) -> DocumentFieldCategory:
         return super().object
 
+    @property
+    def document_type_id(self) -> Any:
+        return self.object.document_type_id
+
+    @document_type_id.setter
+    def document_type_id(self, category_pk: Any) -> None:
+        self.object.document_type_id = category_pk
+
     def _save_deserialized_object(self, context: dict) -> None:
         self.object.pk = self._target_object_pk
+        if self.document_type_id is not None:
+            importing_doc_type = self.get_deserialized_object_by_source_pk(
+                DocumentType, self.document_type_id)
+            if not importing_doc_type:
+                # referenced doc type may not be stored on the server
+                if not self.document_type_id in self.saved_doc_types:
+                    self.document_type_id = None
+
         super()._save_deserialized_object(context)
 
 
@@ -577,21 +611,43 @@ def import_document_type(json_bytes: bytes,
                          save: bool,
                          auto_fix_validation_errors: bool,
                          remove_missed_in_dump_objects: bool,
+                         source_version: int,
                          task: ExtendedTask) -> DocumentType:
     tasks = Task.objects \
         .get_active_user_tasks() \
         .exclude(pk=task.task.pk) \
+        .exclude(name__in=[task_names.TASK_NAME_REFRESH_MATERIALIZED_VIEW,
+                           task_names.TASK_NAME_CLEAN_ALL_TASKS,
+                           task_names.TASK_NAME_CHECK_EMAIL_POOL]) \
         .distinct('name') \
         .order_by('name') \
         .values_list('name', flat=True)
+
     tasks = list(tasks)
     if tasks:
-        msg = 'The following user tasks are running: {0}. This import can cause their crashing because of document' \
-              ' type / field structure changes.'.format(', '.join(tasks))
+        msg = f'The following user tasks are running: {", ".join(tasks)}. ' + \
+              'This import can cause their crashing because of document ' + \
+              'type / field structure changes.'
 
         raise RuntimeError(msg)
 
-    objects = serializers.deserialize("json", json_bytes.decode("utf-8"))
+    # check data contains version
+    json_str = json_bytes.decode('utf-8')
+    json_dict = json.loads(json_str)
+
+    sm = SchemeMigration()
+    if isinstance(json_dict, dict):
+        # {"version":"75","data":[{"model": ... ]}
+        version = json_dict.get('version')
+        records = sm.migrate_model_records(json_dict['data'], int(version), CURRENT_VERSION)
+        json_str = json.dumps(records)
+    elif source_version != CURRENT_VERSION:
+        json_str = sm.migrate_json(json_str, source_version, CURRENT_VERSION)
+
+    for doc_type_subclass in DESERIALIZED_OBJECT_CLASSES:
+        doc_type_subclass.init_static()
+
+    objects = serializers.deserialize("json", json_str)
     document_type = None
     pk_to_field = {}
     field_detectors = []
@@ -638,11 +694,9 @@ def import_document_type(json_bytes: bytes,
         .exclude(pk=document_type.pk) \
         .first()
     if conflicting_document_type is not None:
-        err_msg = 'Unable to import document type #{0} "{1}". Database already contains a document type #{2}' \
-                  ' with code "{3}"'.format(document_type.pk,
-                                            document_type.object.code,
-                                            conflicting_document_type.pk,
-                                            conflicting_document_type.code)
+        err_msg = f'Unable to import document type #{document_type.pk} "{document_type.object.code}". ' +\
+                  f'Database already contains a document type #{conflicting_document_type.pk} ' + \
+                  f'with code "{conflicting_document_type.code}"'
         raise RuntimeError(err_msg)
 
     for field_detector in field_detectors:
@@ -650,33 +704,41 @@ def import_document_type(json_bytes: bytes,
         if field is not None:
             field.add_dependent_object(field_detector)
         else:
-            raise RuntimeError('Unknown field #{0}'.format(field_detector.field_pk))
+            raise RuntimeError(f'Unknown field #{field_detector.field_pk}')
 
     for field in pk_to_field.values():
         if field.document_type_pk == document_type.pk:
             document_type.add_dependent_object(field)
         else:
-            raise RuntimeError('Unknown document type #{0}'.format(document_type.pk))
+            raise RuntimeError(f'Unknown document type #{document_type.pk}')
 
     for obj in other_objects:
         document_type.add_dependent_object(obj)
 
-    logger.info('Validation of {0} ...'.format(document_type.object.code))
+    logger.info(f'Validation of {document_type.object.code} ...')
     validation_errors = document_type.validate()
-    logger.info('Validation of {0} is finished'.format(document_type.object.code))
+    logger.info(f'Validation of {document_type.object.code} is finished')
     if validation_errors:
-        task.log_error('{0} VALIDATION ERRORS HAS OCCURRED DURING VALIDATION OF {1}.'
-                       .format(len(validation_errors), document_type.object.code))
+        task.log_error(f'{len(validation_errors)} VALIDATION ERRORS HAS OCCURRED DURING VALIDATION OF {document_type.object.code}.')
         for index, validation_error in enumerate(validation_errors):
             # for different timestamps
             sleep(0.001)
-            task.log_error('VALIDATION ERROR {0}. {1}'.format(index + 1, str(validation_error)))
-        raise ValidationError('Validation errors has occurred during import of {0}'.format(document_type.object.code))
+            task.log_error(f'VALIDATION ERROR {index + 1}. {validation_error}')
+        raise ValidationError(f'Validation errors has occurred during import of {document_type.object.code}')
 
     if save:
-        logger.info('Import of {0} ...'.format(document_type.object.code))
+        logger.info(f'Import of {document_type.object.code} ...')
         with transaction.atomic():
             document_type.save()
-        logger.info('Import of {0} is finished'.format(document_type.object.code))
+        logger.info(f'Import of {document_type.object.code} is finished')
 
     return document_type.object
+
+
+DESERIALIZED_OBJECT_CLASSES = [
+    DeserializedDocumentFieldDetector,
+    DeserializedDocumentField,
+    DeserializedDocumentType,
+    DeserializedDocumentFieldCategory,
+    DeserializedDocumentFieldFamily
+]

@@ -37,18 +37,18 @@ from sklearn.metrics.pairwise import cosine_similarity
 
 from apps.analyze.models import DocumentSimilarity, TextUnitSimilarity
 from apps.document.models import Document
-from apps.task.tasks import BaseTask, ExtendedTask
+from apps.task.tasks import ExtendedTask
 from apps.similarity.similarity_metrics import make_text_units_query
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.6.0/LICENSE"
-__version__ = "1.6.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.7.0/LICENSE"
+__version__ = "1.7.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
 
-class ChunkSimilarity(BaseTask):
+class ChunkSimilarity(ExtendedTask):
     """
     Find Similar Documents, Text Units - almost the same as "Similarity"
     task, but processes documents / text units by chunks.
@@ -332,7 +332,9 @@ class DocumentChunkSimilarityProcessor:
             self.unsim_store_buffer += un_sims
         if len(self.unsim_store_buffer) < self.store_buf_flush_count and not flush:
             return
+        # unit -> document -> project
         if self.unsim_store_buffer:
+            TextUnitSimilarity.fill_joined_refs(self.unsim_store_buffer)
             TextUnitSimilarity.objects.bulk_create(self.unsim_store_buffer, ignore_conflicts=True)
         self.unsim_store_buffer = []
 

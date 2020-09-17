@@ -31,6 +31,10 @@ from __future__ import absolute_import, unicode_literals
 from django.conf.urls import url
 
 # Project imports
+from django.urls import reverse_lazy
+from django.views.generic import RedirectView
+
+import settings
 from apps.common.utils import create_standard_urls
 from apps.document import views
 from apps.document.models import (
@@ -39,8 +43,8 @@ from apps.document.models import (
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.6.0/LICENSE"
-__version__ = "1.6.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.7.0/LICENSE"
+__version__ = "1.7.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -213,13 +217,47 @@ urlpatterns += [
         name='export-document-type',
     ),
     url(
+        r'^export-documents/$',
+        views.ExportDocumentsView.as_view(),
+        name='export-documents',
+    ),
+    url(
         r'^import-document-type/$',
         views.ImportDocumentTypeView.as_view(),
         name='import-document-type',
+    ),
+    url(
+        r'^import-documents/$',
+        views.ImportDocumentsView.as_view(),
+        name='import-documents',
     ),
     url(
         r'^indentify-contracts/$',
         views.IdentifyContractsView.as_view(),
         name='indentify-contracts',
     ),
+    url(
+        r'^document-query-help/$',
+        views.DocumentQueryView.as_view(),
+        name='document-query-help',
+    ),
+    url(
+        r'^textunit-query-help/$',
+        views.TextUnitQueryView.as_view(),
+        name='textunit-query-help',
+    ),
+    url(r'^document/list/introspect/$',
+        views.DjangoQLDocumentIntrospectView.as_view(),
+        name='introspect'
+    ),
+    url(r'^text-unit/list/introspect/$',
+        views.DjangoQLTextUnitIntrospectView.as_view(),
+        name='introspect'
+    ),
+    url(r'^document/list/djangoql-syntax/$',
+        RedirectView.as_view(
+            url=reverse_lazy('admin:djangoql_syntax_help'), permanent=False)),
+    url(r'^text-unit/list/djangoql-syntax/$',
+        RedirectView.as_view(
+            url=reverse_lazy('admin:djangoql_syntax_help'), permanent=False))
 ]

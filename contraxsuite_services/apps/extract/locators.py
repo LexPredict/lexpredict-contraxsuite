@@ -29,16 +29,17 @@ from collections import defaultdict
 from typing import List, Set, Dict, Type, Optional
 
 from django.db import transaction
-from django.db.models import Sum, Subquery, OuterRef
+from django.db.models import Sum
 from lexnlp.extract.en import (
     amounts, citations, copyright, courts, dates, distances, definitions,
-    durations, geoentities, money, percents, ratios, regulations, trademarks, urls, dict_entities)
-from lexnlp.extract.en.entities.nltk_maxent import get_companies
+    durations, geoentities, money, percents, ratios, regulations, trademarks, urls)
 from lexnlp.nlp.en.tokens import get_stems, get_token_list
 
 from apps.common.log_utils import ProcessLogger
+from apps.companies_extractor import CompaniesExtractor
 from apps.document.models import TextUnitTag
 from apps.extract import dict_data_cache
+from apps.extract.locating_performance_meter import LocatingPerformanceMeter
 from apps.extract.models import (
     AmountUsage, CitationUsage, CopyrightUsage, CourtUsage, CurrencyUsage,
     DateDurationUsage, DateUsage, DefinitionUsage, DistanceUsage,
@@ -47,12 +48,12 @@ from apps.extract.models import (
 from apps.extract.models import ProjectGeoEntityUsage, ProjectPartyUsage, ProjectTermUsage, \
     ProjectDefinitionUsage
 from apps.materialized_views.mat_views import MaterializedViews
-from settings import DEFAULT_FLOAT_PRECIZION
+from settings import DEFAULT_FLOAT_PRECISION
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.6.0/LICENSE"
-__version__ = "1.6.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.7.0/LICENSE"
+__version__ = "1.7.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -154,12 +155,16 @@ class Locator:
                     text_unit_id: int, text_unit_lang: str, document_id: int, document_project_id: int, **kwargs):
         if not text:
             return
+        start = datetime.datetime.now()
         try:
             parse_results = self.parse(log, text, text_unit_id, text_unit_lang, locate_results.document_initial_load,
                                        **kwargs)  # type: ParseResults
             if parse_results:
                 parse_results.update_doc_project_ids(document_id, document_project_id)
                 locate_results.collect(self, text_unit_id, parse_results)
+            elapsed = (datetime.datetime.now() - start).total_seconds()
+            LocatingPerformanceMeter().add_record(str(type(self).__name__),
+                                                  elapsed, text_unit_id, text)
         except Exception as e:
             log.error(f'Exception caught while trying to run locator on a text unit.\n'
                       f'Locator: {self.__class__.__name__}\n'
@@ -179,7 +184,7 @@ class AmountLocator(Locator):
 
     def parse(self, log: ProcessLogger, text, text_unit_id, _text_unit_lang,
               document_initial_load: bool = False, **kwargs) -> ParseResults:
-        precision = DEFAULT_FLOAT_PRECIZION
+        precision = DEFAULT_FLOAT_PRECISION
         found = list(amounts.get_amount_annotations(text,
                                                     extended_sources=False,
                                                     float_digits=precision))
@@ -221,7 +226,7 @@ class CourtLocator(Locator):
     def parse(self, log: ProcessLogger, text, text_unit_id, text_unit_lang,
               document_initial_load: bool = False, **kwargs) -> ParseResults:
         court_config = dict_data_cache.get_court_config()
-        found = [dict_entities.get_entity_id(i[0])
+        found = [i[0].id
                  for i in courts.get_courts(text,
                                             court_config_list=court_config,
                                             text_languages=[text_unit_lang])]
@@ -239,7 +244,7 @@ class DistanceLocator(Locator):
 
     def parse(self, log: ProcessLogger, text, text_unit_id, _text_unit_lang,
               document_initial_load: bool = False, **kwargs) -> ParseResults:
-        precision = DEFAULT_FLOAT_PRECIZION
+        precision = DEFAULT_FLOAT_PRECISION
         found = list(distances.get_distance_annotations(text, float_digits=precision))
         if found:
             unique = set(found)
@@ -288,9 +293,20 @@ class DefinitionLocator(Locator):
             [DocumentDefinitionUsage(document_id=doc_id, definition=item['definition'], count=item['total_count'])
              for item in doc_usages], ignore_conflicts=True)
 
+    @staticmethod
+    def _is_any_alphanumeric(string: str) -> bool:
+        for c in string:
+            if c.isalnum():
+                return True
+        return False
+
     def parse(self, log: ProcessLogger, text, text_unit_id, _text_unit_lang,
               document_initial_load: bool = False, **kwargs) -> ParseResults:
-        found = definitions.get_definition_list_in_sentence((0, len(text), text,))
+        found = [
+            definition_caught
+            for definition_caught in definitions.get_definition_list_in_sentence((0, len(text), text,))
+            if self._is_any_alphanumeric(definition_caught.name)
+        ]
         if found:
             unique = set(found)
             return ParseResults({DefinitionUsage: [DefinitionUsage(text_unit_id=text_unit_id,
@@ -307,7 +323,7 @@ class DurationLocator(Locator):
 
     def parse(self, log: ProcessLogger, text, text_unit_id, _text_unit_lang,
               document_initial_load: bool = False, **kwargs) -> ParseResults:
-        precision = DEFAULT_FLOAT_PRECIZION
+        precision = DEFAULT_FLOAT_PRECISION
         found = durations.get_duration_annotations_list(
             text, float_digits=precision)
         if found:
@@ -329,7 +345,7 @@ class CurrencyLocator(Locator):
     def parse(self, log: ProcessLogger, text, text_unit_id, _text_unit_lang,
               document_initial_load: bool = False, **kwargs) -> ParseResults:
         found = list(money.get_money_annotations(text,
-                                                 float_digits=DEFAULT_FLOAT_PRECIZION))
+                                                 float_digits=DEFAULT_FLOAT_PRECISION))
         if found:
             unique = set(found)
             return ParseResults({CurrencyUsage: [CurrencyUsage(text_unit_id=text_unit_id,
@@ -350,7 +366,8 @@ class PartyLocator(Locator):
         # Here we override saving logic to workaround race conditions on party creation vs party usage saving
         if not document_initial_load:
             PartyUsage.objects.filter(text_unit_id=text_unit_id).delete()
-        found = list(get_companies(text, count_unique=True, detail_type=True, name_upper=True))
+        found = list(CompaniesExtractor.get_companies(
+            text, count_unique=True, detail_type=True, name_upper=True))
         if found:
             for _party in found:
                 name, _type, type_abbr, type_label, type_desc, count = _party
@@ -378,7 +395,7 @@ class PercentLocator(Locator):
     def parse(self, log: ProcessLogger, text, text_unit_id, _text_unit_lang,
               document_initial_load: bool = False, **kwargs) -> ParseResults:
         found = list(percents.get_percent_annotations(text,
-                                                      float_digits=DEFAULT_FLOAT_PRECIZION))
+                                                      float_digits=DEFAULT_FLOAT_PRECISION))
         if found:
             unique = set(found)
             return ParseResults({PercentUsage: [PercentUsage(text_unit_id=text_unit_id,
@@ -397,7 +414,7 @@ class RatioLocator(Locator):
     def parse(self, log: ProcessLogger, text, text_unit_id, _text_unit_lang,
               document_initial_load: bool = False, **kwargs) -> ParseResults:
         found = list(ratios.get_ratio_annotations(text,
-                                                  float_digits=DEFAULT_FLOAT_PRECIZION))
+                                                  float_digits=DEFAULT_FLOAT_PRECISION))
         if found:
             unique = set(found)
             return ParseResults({RatioUsage: [RatioUsage(text_unit_id=text_unit_id,
@@ -486,10 +503,10 @@ class GeoEntityLocator(Locator):
                                                               text_languages=[text_unit_lang],
                                                               priority=priority))
 
-        entity_ids = [dict_entities.get_entity_id(entity) for entity, _alias in entity_alias_pairs]
+        entity_ids = [entity.id for entity, _alias in entity_alias_pairs]
         if entity_ids:
             unique_entities = set(entity_ids)
-            alias_ids = [dict_entities.get_alias_id(alias) for _entity, alias in entity_alias_pairs]
+            alias_ids = [alias.alias_id for _entity, alias in entity_alias_pairs]
             unique_aliases = set(alias_ids)
 
             return ParseResults({
@@ -553,9 +570,19 @@ class TermLocator(Locator):
                       count=count) for _, pk, count in term_usages]})
 
 
-LOCATOR_CLASSES = [AmountLocator, CitationLocator, CopyrightLocator, CourtLocator, CurrencyLocator,
-                   DurationLocator, DateLocator, DefinitionLocator, DistanceLocator, GeoEntityLocator,
-                   PercentLocator, RatioLocator, RegulationLocator, PartyLocator, TermLocator, TrademarkLocator,
-                   UrlLocator]
+class LocatorsCollection:
+    _LOCATOR_CLASSES = [AmountLocator, CitationLocator, CopyrightLocator, CourtLocator,
+                        CurrencyLocator, DurationLocator, DateLocator, DefinitionLocator,
+                        DistanceLocator, GeoEntityLocator, PercentLocator, RatioLocator,
+                        RegulationLocator, PartyLocator, TermLocator, TrademarkLocator,
+                        UrlLocator]
 
-LOCATORS = {locator_class.code: locator_class() for locator_class in LOCATOR_CLASSES}  # type: Dict[str, Locator]
+    _LOCATORS = None  # type: Optional[Dict[str, Locator]]
+
+    @classmethod
+    def get_locators(cls) -> Dict[str, Locator]:
+        if cls._LOCATORS:
+            return cls._LOCATORS
+        cls._LOCATORS = {locator_class.code: locator_class()
+                         for locator_class in cls._LOCATOR_CLASSES}
+        return cls._LOCATORS

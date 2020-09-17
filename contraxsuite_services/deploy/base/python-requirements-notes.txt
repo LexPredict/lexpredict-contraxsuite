@@ -1,0 +1,5 @@
+1. channels==2.4.0 is the latest version, but channels-redis>=3.0.0 is incompartible, channels-redis==2.4.2 works well
+2. tabula-py>=2.1.0 requires pandas>=0.25 which is incompatible with lexnlp
+3. django-cors-headers: the newest version requires scheme or netloc, so leave as is for now
+4. asgi-redis 1.4.3 has requirement asgiref~=1.1.2, but we have asgiref 3.2.10 which is incompatible, BUT it works well
+5. celery didn't work without django-autocomplete-light

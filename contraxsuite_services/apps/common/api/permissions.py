@@ -30,8 +30,8 @@ from apps.task.utils.task_utils import check_blocks
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.6.0/LICENSE"
-__version__ = "1.6.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.7.0/LICENSE"
+__version__ = "1.7.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -53,6 +53,19 @@ class ReviewerReadOnlyPermission(IsAuthenticated):
         if not res:
             return res
         if request.user.is_reviewer and request.method != 'GET':
+            return False
+        return True
+
+
+class TopStaffPermission(IsAuthenticated):
+    """
+    Gives read only access for reviewers/plain managers
+    """
+    def has_permission(self, request, view):
+        res = super().has_permission(request, view)
+        if not res:
+            return res
+        if not request.user.can_manage_doc_type and request.method != 'GET':
             return False
         return True
 

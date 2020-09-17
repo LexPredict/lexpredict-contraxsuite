@@ -36,8 +36,8 @@ from apps.task.models import TaskConfig, Task
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.6.0/LICENSE"
-__version__ = "1.6.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.7.0/LICENSE"
+__version__ = "1.7.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -94,6 +94,26 @@ class TaskMonitor:
         Find top-level tasks that are not completed for a long time or are in failed state
         and report on each of these tasks by one email
         """
+
+        from apps.project.notifications import notify_failed_load_document
+        from apps.task.tasks import LoadDocuments
+        from apps.project.tasks import LoadArchive
+        recent_failed_load_document_tasks = Task.objects \
+            .filter(name__in=[LoadDocuments.name, LoadArchive.name], status=FAILURE) \
+            .exclude(metadata__failed_load_document_sent__isnull=False)
+        for task in recent_failed_load_document_tasks:
+            if not task.metadata:
+                continue
+            # send ws notification (include task data for debugging)
+            file_name = task.metadata.get('file_name')
+            session_id = task.metadata.get('session_id')
+            if file_name and session_id:
+                notify_failed_load_document(file_name=file_name,
+                                            session_id=session_id,
+                                            directory_path=task.kwargs.get('directory_path') if task.kwargs else None)
+                task.metadata['failed_load_document_sent'] = True
+                task.save()
+
         from apps.task.app_vars import ENABLE_ALERTS
         if not ENABLE_ALERTS.val:
             return

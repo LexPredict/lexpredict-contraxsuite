@@ -127,10 +127,25 @@
     div.jconfirm-content-pane {
       overflow: visible !important;
     }
-  .popup-error {
-    background-color: #ff9b9c;
-    padding: 5px 10px;
-  }
+    .popup-error {
+      background-color: #ff9b9c;
+      padding: 5px 10px;
+    }
+    a.inactive-link {
+      color: #999999;
+    }
+    .preloader {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      position: relative;
+      border-radius: 50%;
+      width: 40px;
+      height: 40px;
+      border: 4px solid #E2F0FD;
+      border-top: 4px solid #1589EE;
+      animation: spin 2s linear infinite;
+    }
   </style>
 {% endblock %}
 
@@ -283,10 +298,24 @@
           </li>
           <li class="dropdown-item">
             <a class="task" href="#"
+               data-href="{% url "document:import-documents" %}"
+               data-btn-text="Go">
+              <i class="fa fa-upload"></i>
+              Import documents</a>
+          </li>
+          <li class="dropdown-item">
+            <a class="task" href="#"
                data-href="{% url "document:export-document-type" %}"
                data-btn-text="Go">
               <i class="fa fa-download"></i>
               Export document type</a>
+          </li>
+          <li class="dropdown-item">
+            <a class="task" href="#"
+               data-href="{% url "document:export-documents" %}"
+               data-btn-text="Go">
+              <i class="fa fa-download"></i>
+              Export documents</a>
           </li>
         </ul>
       </li>
@@ -614,7 +643,6 @@
       else if ($('.build-features-form').length) {
         let sel_src = $('.bootstrap-switch-id-id_source_select.bootstrap-switch-on').length;
         sel_src = sel_src ? 'text-unit' : 'document';
-        console.log(sel_src);
         show_preffix = 'txt_';
         hide_preffix = 'doc_';
         if (sel_src == 'text-unit') {
@@ -624,7 +652,152 @@
         $form.find('[name^="' + show_preffix + '"]').parent('p').show();
         $form.find('[name^="' + hide_preffix + '"]').parent('p').hide();
       }
+
+      {# mark export documents form for special Ajax request type #}
+      else if ($('.export-document-form').length) {
+        $('<input>').attr({
+            type: 'hidden',
+            id: 'task_result'
+        }).appendTo($('form.export-document-form'));
+        $('<div></div>').attr({
+            id: 'task_result_block'
+        }).appendTo($('form.export-document-form'));
+        $('button.btn.btn-u.btn-sm.btn-l').text('close');
+      }
     };
+
+    function renderTaskResult(action, url, headers, filename, data, onCompleted) {
+      function handleTaskData(data) {
+        if (!data || !data.target || !data.target.response) {
+          console.log("Server didn't return meaningful response: ");
+          console.log(data);
+          return;
+        }
+        // {"file_path": "export/documents/doc_export_11_2020-08-13_08_49_33_451957.zip",
+        //  "check_file_data_ref": "/advanced/admin/common/exportfile/file_download_ref/12/"}
+        data = JSON.parse(data.target.response);
+
+        // create link to the file
+        var markup = '<br/><a class="inactive-link" href="#">' + data.file_path +
+          '</a>&nbsp;&nbsp;&nbsp;<div class="preloader" id="doc_file_link_preloader"></div><br/>';
+
+        if (data.alert) {
+          $.alert({
+            icon: 'fa fa-envelope text-warning',
+            title: data.alert,
+            type: 'orange',
+            content: '',
+            columnClass: 'col-md-6'
+          });
+        }
+
+        $('#task_result_block').html(markup);
+
+        // start routine of checking resulting download link
+        window.taskResultFileRef = data.check_file_data_ref;
+        setTimeout(function () {
+          getFileReference();
+          }, 1000 * 2);
+      }
+
+      var request = new XMLHttpRequest();
+      request.timeout = 5 * 60 * 1000;
+      request.onload = handleTaskData;
+      request.open(action, url);
+      for (var prop in headers)
+        request.setRequestHeader(prop, headers[prop]);
+      if (data) request.send(data);
+      else request.send();
+    };
+
+    function getFileReference() {
+      $.ajax({
+          url: window.taskResultFileRef,
+          type: 'GET',
+          success: function(data, textStatus, jqXHR ) {
+              var fileRef = data.file_reference;
+              if (fileRef && fileRef.length) {
+                $('#task_result_block a').attr('href', fileRef);
+                $('#task_result_block a').removeClass('inactive-link');
+                $('#doc_file_link_preloader').remove();
+                return;
+              }
+              setTimeout(function () {
+                getFileReference();
+              }, 1000 * 2);
+          }
+      });
+    }
+
+    function downloadFile(action,
+      url, headers, filename, data, onCompleted) {
+
+      function handleFile(data) {
+        if (data.target) {
+          if (data.target.status >= 400 || data.target.status == 204)
+            try {
+              var reader = new FileReader();
+              reader.onload = function() {
+                  console.log(reader.result);
+              };
+            } catch {
+              // might not be supported
+            }
+          if (data.target.status >= 400)  {
+            reader.readAsText(data.target.response);
+            console.log('Error code: ' + data.target.status);
+            $.alert({
+              icon: 'fa fa-warning text-danger',
+              title: 'Error ' + data.target.status,
+              type: 'red',
+              content: 'There was an error while downloading data: ' + data.target.status,
+              columnClass: 'width-50'
+            });
+            return;
+          }
+          if (data.target.status == 204) {
+            $.alert({
+              icon: 'fa fa-warning',
+              title: 'Warning',
+              content: 'No data to download',
+              columnClass: 'width-50'
+            });
+            return;
+          }
+        }
+        var file = URL.createObjectURL(this.response || data);
+        filename = filename || url.split("/").pop();
+        resp_fname = request.getResponseHeader('filename');
+        filename = resp_fname && resp_fname.length ? resp_fname : filename;
+
+        var a = document.createElement("a");
+        // if `a` element has `download` property
+        if ("download" in a) {
+          a.href = file;
+          a.download = filename;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+        } else {
+          // use `window.open()` if `download` not defined at `a` element
+          window.open(file);
+        }
+        if (onCompleted) onCompleted();
+      }
+
+      var request = new XMLHttpRequest();
+      request.timeout = 5 * 60 * 1000;
+      request.responseType = "blob";
+      request.onload = handleFile;
+      request.open(action, url);
+      for (var prop in headers) {
+        request.setRequestHeader(prop, headers[prop]);
+      }
+
+      if (data) request.send(data);
+      else request.send();
+    }
+
     var onLoadJC = function(jc){
       var $form = jc.$content;
       $form.find('.task-form-loader').remove();
@@ -787,8 +960,6 @@
                 formdata = new FormData(form[0]);
 
               onSuccess = function(data, status, xhr){
-                console.log(xhr);
-
                 if (data.confirm) {
                   if (confirm(data.message)) {
                      console.log('Start over from here');
@@ -796,8 +967,8 @@
                      post_data = formdata ? formdata : form.serialize();
                      post_data.append('skip_confirmation', true);
                      // UWSGI - Daphne migration
-                     post_data.append('csrfmiddlewaretoken', jQuery("[name=csrfmiddlewaretoken]").val())
-                     console.log(post_data);
+                     post_data.append('csrfmiddlewaretoken', jQuery("[name=csrfmiddlewaretoken]").val());
+
                      $.ajax({
                         url: $that.data('href'),
                         type: 'POST',
@@ -873,20 +1044,40 @@
 
               post_data = formdata ? formdata : form.serialize();
               // UWSGI - Daphne migration
-              post_data.append('csrfmiddlewaretoken', jQuery("[name=csrfmiddlewaretoken]").val())
-              console.log('post data is here: ');
-              console.log(post_data)
+              post_data.append('csrfmiddlewaretoken', jQuery("[name=csrfmiddlewaretoken]").val());
 
-              $.ajax({
-                url: $that.data('href'),
-                type: 'POST',
-                data: post_data,
-                contentType: false,
-                processData: false,
-                success: onSuccess,
-                error: onError});
-              //
-              return false
+              if ($('input#file_download').length) {
+                downloadFile('POST',
+                             $that.data('href'),
+                             {"x-content": "abc"},
+                             "filename.zip",
+                             post_data,
+                             function() {
+                                 jc.close();
+                             });
+              }
+              else if ($('input#task_result').length) {
+                renderTaskResult('POST',
+                             $that.data('href'),
+                             {"x-content": "abc"},
+                             "filename.zip",
+                             post_data,
+                             function() {
+                                 jc.close();
+                             });
+              }
+              else  {
+                console.log('Ajax POST request');
+                $.ajax({
+                  url: $that.data('href'),
+                  type: 'POST',
+                  data: post_data,
+                  contentType: false,
+                  processData: false,
+                  success: onSuccess,
+                  error: onError});
+              }
+              return false;
             }
           },
           cancel: {

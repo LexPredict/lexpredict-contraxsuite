@@ -43,8 +43,8 @@ from apps.document.models import DocumentText, TextUnit
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.6.0/LICENSE"
-__version__ = "1.6.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.7.0/LICENSE"
+__version__ = "1.7.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -183,7 +183,7 @@ class Doc2VecTransformer:
         if text_unit_type is not None:
             queryset = queryset.filter(unit_type=text_unit_type)
         if project_ids is not None:
-            queryset = queryset.filter(document__project_id__in=project_ids)
+            queryset = queryset.filter(project_id__in=project_ids)
 
         queryset = queryset.annotate(text=F('textunittext__text'))
         data = queryset.values_list('text', flat=True).iterator()

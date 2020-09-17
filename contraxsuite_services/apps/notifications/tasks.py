@@ -28,7 +28,7 @@ import datetime
 import pickle
 import uuid
 from collections import defaultdict
-from typing import Optional, Any, Set, Dict, Tuple, List
+from typing import Optional, Any, Set, Dict, Tuple, List, Callable
 
 import tzlocal
 from billiard.exceptions import SoftTimeLimitExceeded
@@ -55,15 +55,16 @@ from apps.rawdb.field_value_tables import build_field_handlers
 from apps.rawdb.constants import FIELD_CODE_ASSIGNEE_ID
 from apps.rawdb.rawdb.rawdb_field_handlers import RawdbFieldHandler
 from apps.rawdb.signals import DocumentEvent
-from apps.task.tasks import BaseTask, ExtendedTask, call_task
+from apps.task.tasks import ExtendedTask, call_task
 from apps.task.tasks import CeleryTaskLogger
+from apps.task.utils.task_utils import TaskUtils
 from apps.users.models import User
 import task_names
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.6.0/LICENSE"
-__version__ = "1.6.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.7.0/LICENSE"
+__version__ = "1.7.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -73,7 +74,7 @@ MODULE_NAME = __name__
 CACHE_DOC_NOTIFICATION_PREFIX = 'DocumentNotification_'
 
 
-class SendDigest(BaseTask):
+class SendDigest(ExtendedTask):
     name = 'Send Digest'
     soft_time_limit = 6000
     default_retry_delay = 10
@@ -264,21 +265,13 @@ def send_notification(package_id: str,
     EmailNotificationPool.push_notification(ntf, event)
 
 
-@shared_task(base=ExtendedTask,
-             name=task_names.TASK_NAME_NOTIFICATIONS_ON_DOCUMENT_CHANGE,
-             bind=True,
-             soft_time_limit=600,
-             default_retry_delay=10,
-             retry_backoff=True,
-             autoretry_for=(SoftTimeLimitExceeded, InterfaceError, OperationalError),
-             max_retries=0,
-             priority=9)
-def process_notifications_on_document_change(task: ExtendedTask,
-                                             document_event: str,
-                                             document_id: int,
-                                             fields_before: Optional[Dict],
-                                             fields_after: Optional[Dict],
-                                             changed_by_user_id: int):
+def process_notifications_on_document_change(
+        log_routine: Callable[[str], None],
+        document_event: str,
+        document_id: int,
+        fields_before: Optional[Dict],
+        fields_after: Optional[Dict],
+        changed_by_user_id: int):
     document_type_id = Document.all_objects.filter(pk=document_id).values_list(
         'document_type', flat=True).first()  # type: str
     document_type = DocumentType.objects.get(pk=document_type_id)  # type: DocumentType
@@ -324,8 +317,7 @@ def process_notifications_on_document_change(task: ExtendedTask,
 
         if len(log_msgs) > 0:
             msgs_str = 'Following fields are different:\n    ' + '\n    '.join(log_msgs)
-            log = CeleryTaskLogger(task)
-            log.info(msgs_str)
+            log_routine(msgs_str)
 
         if FIELD_CODE_ASSIGNEE_ID in changes:
             send_notification(package_id=package_id,
@@ -417,7 +409,7 @@ class EmailNotificationPool:
     @staticmethod
     def send_notifications_packet(ntfs: List[DocumentNotification],
                                   event: str,
-                                  task: BaseTask):
+                                  task: ExtendedTask):
         documents_data = list(Document.all_objects.filter(
             pk__in={d.document_id for d in ntfs}))  # type: List[Document]
         doc_type_by_id = {dt.document_type.pk: dt.document_type for dt in documents_data}

@@ -25,6 +25,8 @@
 # -*- coding: utf-8 -*-
 
 # Third-party imports
+from typing import List
+
 from picklefield import PickledObjectField
 
 # Django imports
@@ -36,12 +38,13 @@ from django.utils.timezone import now
 # App imports
 from apps.document.models import Document, TextUnit
 from apps.extract.models import Party
+from apps.project.models import Project
 from apps.users.models import User
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.6.0/LICENSE"
-__version__ = "1.6.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.7.0/LICENSE"
+__version__ = "1.7.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -486,11 +489,13 @@ class TextUnitSimilarity(models.Model):
     """
     # Left or source text unit
     text_unit_a = models.ForeignKey(TextUnit, db_index=True,
-                                    related_name="similar_text_unit_a_set", on_delete=CASCADE)
+                                    related_name="similar_text_unit_a_set",
+                                    on_delete=CASCADE)
 
     # Right or target text unit
     text_unit_b = models.ForeignKey(TextUnit,
-                                    db_index=True, related_name="similar_text_unit_b_set", on_delete=CASCADE)
+                                    db_index=True, related_name="similar_text_unit_b_set",
+                                    on_delete=CASCADE)
 
     # Similarity score
     similarity = models.DecimalField(max_digits=5, decimal_places=2)
@@ -498,12 +503,65 @@ class TextUnitSimilarity(models.Model):
     # Create date
     created_date = models.DateTimeField(default=now, db_index=True)
 
+    # These columns are added to avoid joining tables
+    document_a = models.ForeignKey(
+        Document, db_index=True, related_name="similar_document_a_set",
+        on_delete=CASCADE)
+
+    document_b = models.ForeignKey(
+        Document, db_index=True, related_name="similar_document_b_set",
+        on_delete=CASCADE)
+
+    project_a = models.ForeignKey(
+        Project, db_index=True, related_name="similar_project_a_set",
+        on_delete=CASCADE)
+
+    project_b = models.ForeignKey(
+        Project, db_index=True, related_name="similar_project_b_set",
+        on_delete=CASCADE)
+
     class Meta:
         ordering = ('text_unit_a__pk', '-similarity', 'text_unit_b__pk')
         verbose_name_plural = 'Text Unit Similarities'
 
     def __str__(self):
         return '{}-{}: {}'.format(str(self.text_unit_a), str(self.text_unit_b), self.similarity)
+
+    def save(self, **kwargs):
+        if not self.document_a:
+            self.document_a = self.text_unit_a.document
+        if not self.project_a:
+            self.project_a = self.document_a.project
+        if not self.document_b:
+            self.document_b = self.text_unit_b.document
+        if not self.project_b:
+            self.project_b = self.document_b.project
+        super().save(**kwargs)
+
+    @classmethod
+    def fill_joined_refs(cls, records: 'List[TextUnitSimilarity]') -> None:
+        """
+        set document_a, document_b, project_a, project_b fields
+        """
+        unit_ids = set()
+        for unit in records:
+            unit_ids.add(unit.text_unit_a_id)
+            unit_ids.add(unit.text_unit_b_id)
+        unit_ids_list = list(unit_ids)
+        doc_id_by_unit = list(TextUnit.objects.filter(pk__in=unit_ids_list).values_list(
+            'pk', 'document_id'))
+        doc_ids = set([d for u, d in doc_id_by_unit])
+        doc_ids_list = list(doc_ids)
+        project_by_doc_list = list(Document.all_objects.filter(pk__in=doc_ids_list).values_list(
+            'pk', 'project_id'))
+
+        doc_by_unit = {u: d for u, d in doc_id_by_unit}
+        project_by_doc = {d: p for d, p in project_by_doc_list}
+        for unit in records:
+            unit.document_a_id = doc_by_unit[unit.text_unit_a_id]
+            unit.project_a_id = project_by_doc[unit.document_a_id]
+            unit.document_b_id = doc_by_unit[unit.text_unit_b_id]
+            unit.project_b_id = project_by_doc[unit.document_b_id]
 
 
 class PartySimilarity(models.Model):

@@ -27,8 +27,8 @@
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.6.0/LICENSE"
-__version__ = "1.6.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.7.0/LICENSE"
+__version__ = "1.7.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -43,5 +43,6 @@ class CustomEmailBackend(EmailBackend):
     def send_messages(self, email_messages):
         for message in email_messages:
             if 'Reply-To' not in message.extra_headers:
-                message.extra_headers['Reply-To'] = settings.DEFAULT_REPLY_TO
+                from apps.common.app_vars import SUPPORT_EMAIL
+                message.extra_headers['Reply-To'] = SUPPORT_EMAIL.val or settings.DEFAULT_REPLY_TO
         return super(CustomEmailBackend, self).send_messages(email_messages)

@@ -26,7 +26,7 @@
 
 import difflib
 from collections import defaultdict
-from typing import List, Dict, Any, Generator, Union, Iterable, Tuple
+from typing import List, Dict, Any, Generator, Union, Iterable, Tuple, Callable
 from typing import Set, Optional
 
 from bulk_update.helper import bulk_update
@@ -46,8 +46,7 @@ from apps.document.constants import ALL_DOCUMENT_FIELD_CODES, DOCUMENT_FIELD_COD
 from apps.document.field_types import TypedField, MultiValueField
 from apps.document.models import Document
 from apps.document.models import DocumentType, DocumentField
-from apps.document.models import FieldValue, FieldAnnotation, \
-    FieldAnnotationFalseMatch
+from apps.document.models import FieldValue, FieldAnnotation, FieldAnnotationFalseMatch
 from apps.document.models import TextUnit
 from apps.document.repository.dto import FieldValueDTO, AnnotationDTO
 from apps.document.signals import fire_hidden_fields_cleared
@@ -56,8 +55,8 @@ from apps.users.models import User
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.6.0/LICENSE"
-__version__ = "1.6.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.7.0/LICENSE"
+__version__ = "1.7.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -182,19 +181,15 @@ class DocumentFieldRepository:
         return DocumentField.objects.get(pk=field_id)
 
     def get_fieldant_ids_by_doc_field(self, document_field_id: int = None) -> Union[QuerySet, List[int]]:
-        dfv_qs = FieldAnnotation.objects
+        dfv_qs = FieldAnnotation.objects.all()
         if document_field_id is not None:
             dfv_qs = dfv_qs.filter(field_id=document_field_id)
-        else:
-            dfv_qs = dfv_qs.all()
         return dfv_qs.values_list('pk', flat=True)
 
     def get_field_value_ids_by_doc_field(self, document_field_id: int = None) -> Union[QuerySet, List[int]]:
-        dfv_qs = FieldValue.objects
+        dfv_qs = FieldValue.objects.all()
         if document_field_id is not None:
             dfv_qs = dfv_qs.filter(field_id=document_field_id)
-        else:
-            dfv_qs = dfv_qs.all()
         return dfv_qs.values_list('pk', flat=True)
 
     def get_ants_by_ids(self, ids: Iterable[int]) -> Union[QuerySet, List[FieldAnnotation]]:
@@ -253,7 +248,9 @@ class DocumentFieldRepository:
     def get_field_code_to_python_value(self,
                                        doc_id: int,
                                        document_type_id: int = None,
-                                       field_codes_only: Optional[Iterable[str]] = None) \
+                                       field_codes_only: Optional[Iterable[str]] = None,
+                                       ignore_errors: bool = False,
+                                       log_func: Optional[Callable[[str], None]] = None) \
             -> Dict[str, Any]:
 
         if document_type_id is None:
@@ -275,8 +272,13 @@ class DocumentFieldRepository:
             if field_code not in field_code_to_field:
                 codes_str = f'{len(field_code_to_field)} items total' \
                     if field_code_to_field else str(field_code_to_field)
-                raise Exception(f'Error in get_field_code_to_python_value(#{doc_id}): code "{field_code}" ' +
-                                f'is not in field_code_to_field ({codes_str})')
+                er_msg = f'Error in get_field_code_to_python_value(#{doc_id}): code "{field_code}" ' + \
+                         f'is not in field_code_to_field ({codes_str})'
+                if log_func:
+                    log_func(er_msg)
+                if not ignore_errors:
+                    raise Exception(er_msg)
+                continue
             field = field_code_to_field[field_code]
             typed_field = TypedField.by(field)
             res[field_code] = typed_field.field_value_json_to_python(value)
@@ -298,7 +300,9 @@ class DocumentFieldRepository:
     def get_field_uid_to_python_value(self,
                                       doc_id: int,
                                       document_type_id: int = None,
-                                      field_uids_only: Optional[Iterable[str]] = None) \
+                                      field_uids_only: Optional[Iterable[str]] = None,
+                                      ignore_errors: bool = False,
+                                      log_func: Optional[Callable[[str], None]] = None) \
             -> Dict[str, Any]:
         if document_type_id is None:
             document_type_id = Document.objects.filter(pk=doc_id).values_list('document_type_id', flat=True).first()
@@ -314,7 +318,14 @@ class DocumentFieldRepository:
         res = dict()
 
         for field_uid, value in qr.values_list('field_id', 'value'):
-            field = field_uid_to_field[field_uid]
+            field = field_uid_to_field.get(field_uid)
+            if not field:
+                er_msg = f'Field #{field_uid} was not found fo doc type #{document_type_id}'
+                if log_func:
+                    log_func(er_msg)
+                if not ignore_errors:
+                    raise Exception(er_msg)
+                continue
             typed_field = TypedField.by(field)
             res[field_uid] = typed_field.field_value_json_to_python(value)
 
@@ -414,7 +425,7 @@ class DocumentFieldRepository:
             -> Tuple[Set[int], Set[str]]:
 
         if not field_code_to_value:
-            field_code_to_value = {code: None for code in doc.document_type.fields.all().values_list('code', flat=True)}
+            field_code_to_value = {code: None for code in doc.document_type.fields.values_list('code', flat=True)}
             field_code_to_value.update(self.get_field_code_to_python_value(document_type_id=doc.document_type_id,
                                                                            doc_id=doc.pk))
 
@@ -423,9 +434,8 @@ class DocumentFieldRepository:
 
         for field_pk, field_code, formula in doc.document_type.fields \
                 .filter(hide_until_python__isnull=False) \
+                .exclude(hide_until_python='') \
                 .values_list('pk', 'code', 'hide_until_python'):
-            if not formula:
-                continue
             eval_locals = dict()
             eval_locals.update(settings.CALCULATED_FIELDS_EVAL_LOCALS)
             eval_locals.update(field_code_to_value)
@@ -500,7 +510,7 @@ class DocumentFieldRepository:
             self.lock_document(cursor, doc.pk)  # will unlock on transaction end
             document_type = doc.document_type  # type: DocumentType
 
-            all_fields = {f.code: f for f in DocumentField.objects.filter(document_type=document_type).all()}
+            all_fields = {f.code: f for f in DocumentField.objects.filter(document_type=document_type)}
 
             to_save = list()  # type: List[FieldValue]
             for field_code, python_val in field_codes_to_python_values.items():
@@ -751,51 +761,51 @@ class DocumentFieldRepository:
 
         return hidden_field_codes
 
-    @transaction.atomic
     def delete_field_annotation_and_update_field_value(self,
                                                        ant_model: FieldAnnotation,
                                                        user: User) -> Tuple[Document, DocumentField, FieldAnnotation]:
-        with connection.cursor() as cursor:
-            doc = ant_model.document
-            self.lock_document(cursor, doc.pk)  # will unlock on transaction end
+        with transaction.atomic():
+            with connection.cursor() as cursor:
+                doc = ant_model.document
+                self.lock_document(cursor, doc.pk)  # will unlock on transaction end
 
-            field = ant_model.field
+                field = ant_model.field
 
-            # refresh field-annotation object to avoid DoesntExist error
-            ant_model = FieldAnnotation.objects.get(pk=ant_model.pk)
-            ant_model.delete()
+                # refresh field-annotation object to avoid DoesntExist error
+                ant_model = FieldAnnotation.objects.get(pk=ant_model.pk)
+                ant_model.delete()
 
-            # fail silently if such false match already exists
-            # (f.e. user already deleted such annotation before)
-            FieldAnnotationFalseMatch.objects.bulk_create(
-                [FieldAnnotationFalseMatch.make_from_annotation(ant_model)], ignore_conflicts=True)
+                # fail silently if such false match already exists
+                # (f.e. user already deleted such annotation before)
+                FieldAnnotationFalseMatch.objects.bulk_create(
+                    [FieldAnnotationFalseMatch.make_from_annotation(ant_model)], ignore_conflicts=True)
 
-            typed_field = TypedField.by(field)
+                typed_field = TypedField.by(field)
 
-            ants = FieldAnnotation.objects.filter(document=doc, field=field)
-            if isinstance(typed_field, MultiValueField):
-                current_ant_values = [a.value for a in ants]
-                self._update_multi_value_field_by_changing_annotations(doc=doc,
-                                                                       typed_field=typed_field,
-                                                                       current_ant_values=current_ant_values,
-                                                                       added_ant_value=None,
-                                                                       removed_ant_value=ant_model.value,
-                                                                       modified_by=user)
+                ants = FieldAnnotation.objects.filter(document=doc, field=field)
+                if isinstance(typed_field, MultiValueField):
+                    current_ant_values = [a.value for a in ants]
+                    self._update_multi_value_field_by_changing_annotations(doc=doc,
+                                                                           typed_field=typed_field,
+                                                                           current_ant_values=current_ant_values,
+                                                                           added_ant_value=None,
+                                                                           removed_ant_value=ant_model.value,
+                                                                           modified_by=user)
 
-            else:
-                field_value = ant_model.value if not field.requires_text_annotations else None
-                for a in ants:
-                    a.delete()  # just a cleanup
-                self._store_field_value(doc, field, field_value, user)
+                else:
+                    field_value = ant_model.value if not field.requires_text_annotations else None
+                    for a in ants:
+                        a.delete()  # just a cleanup
+                    self._store_field_value(doc, field, field_value, user)
 
-            # update rawdb
-            from apps.rawdb.field_value_tables import cache_document_fields
-            cache_document_fields(log=ProcessLogger(),
-                                  document=doc,
-                                  cache_system_fields=False,
-                                  cache_generic_fields=False,
-                                  cache_user_fields=[field.code],
-                                  changed_by_user=user)
+        # update rawdb
+        from apps.rawdb.field_value_tables import cache_document_fields
+        cache_document_fields(log=ProcessLogger(),
+                              document=doc,
+                              cache_system_fields=False,
+                              cache_generic_fields=False,
+                              cache_user_fields=[field.code],
+                              changed_by_user=user)
 
         return doc, field, ant_model
 
@@ -842,8 +852,7 @@ class DocumentFieldRepository:
                                                                        modified_by=user)
 
             else:
-                field_value = true_ant.value if not field.requires_text_annotations else None
-                self._store_field_value(doc, field, field_value, user)
+                self._store_field_value(doc, field, true_ant.value, user)
 
             # update rawdb
             from apps.rawdb.field_value_tables import cache_document_fields
@@ -936,18 +945,11 @@ class DocumentFieldRepository:
             field_value_model.save(update_fields={'value', 'modified_date', 'modified_by'})
 
     def _store_field_value(self, doc, field, field_value, user) -> FieldValue:
-        field_value_model, fv_created = FieldValue.objects \
-            .get_or_create(document=doc,
-                           field=field,
-                           defaults={'document': doc,
-                                     'field': field,
-                                     'value': field_value,
-                                     'modified_by': user
-                                     })  # type: FieldValue, bool
-        if not fv_created and field_value_model.value != field_value:
-            field_value_model.value = field_value
-            field_value_model.modified_by = user
-            field_value_model.save(update_fields={'value', 'modified_date', 'modified_by'})
+        field_value_model, _ = FieldValue.objects \
+            .update_or_create(document=doc,
+                              field=field,
+                              defaults={'value': field_value,
+                                        'modified_by': user})
         return field_value_model
 
     @transaction.atomic
@@ -994,19 +996,23 @@ class DocumentFieldRepository:
                 res.append((field, field_value_model))
         return res
 
-    def find_text_unit_id_by_location(self, doc: Document, field: DocumentField,
+    def find_text_unit_id_by_location(self,
+                                      doc: Document,
+                                      field: Optional[DocumentField],
                                       location_start: int, location_end: int) -> Optional[int]:
-        return TextUnit.objects.filter(
+        query = TextUnit.objects.filter(
             document=doc,
-            unit_type=field.text_unit_type,
             location_start__lte=location_end,
-            location_end__gte=location_start).values_list('pk', flat=True).first()
+            location_end__gte=location_start)
+        if field:
+            query = query.filter(unit_type=field.text_unit_type)
+        return query.values_list('pk', flat=True).first()
 
     def get_annotation_stats_by_field_value(self, field_value: FieldValue) -> Dict[str, int]:
         return {str(val or ''): count
-                for val, count in sql_query('select ant.value, count(ant.*) '
-                                            'from document_fieldannotation ant '
-                                            'where ant.document_id = %s and ant.field_id = %s group by ant.value',
+                for val, count in sql_query(f'select ant.value, count(ant.*) '
+                                            f'from {FieldAnnotation.objects.model._meta.db_table} ant '
+                                            f'where ant.{FIELD_CODE_DOC_ID} = %s and ant.field_id = %s group by ant.value',
                                             [field_value.document_id, field_value.field_id])}
 
     def get_annotation_stats_by_doc(self, document_id: int, field_codes_only: Set[str] = None) \
@@ -1043,22 +1049,38 @@ class DocumentFieldRepository:
         assign_date = now()
         ret = documents.update(assignee=assignee_id, assign_date=assign_date)
         assignee_id_str = str(assignee_id) if assignee_id else 'null'
-        self.update_field_annotations(document_ids_filtered,
-                                 [(f'{FIELD_CODE_ASSIGNEE_ID}', assignee_id_str),
-                                  (f'{DOCUMENT_FIELD_CODE_ASSIGN_DATE}', f"'{assign_date}'")])
+        self.update_field_annotations_by_doc_ids(document_ids_filtered,
+                                                 [(f'{FIELD_CODE_ASSIGNEE_ID}', assignee_id_str),
+                                       (f'{DOCUMENT_FIELD_CODE_ASSIGN_DATE}', f"'{assign_date}'")])
         return ret
 
-    def update_field_annotations(self,
-                                 document_ids: Iterable[int],
-                                 field_data: Iterable[Tuple[str, str]]):
+    def update_field_annotations_by_doc_ids(self,
+                                            document_ids: Iterable[int],
+                                            field_data: Iterable[Tuple[str, str]]):
         if not document_ids or not field_data:
+            return
+        where_clause = ','.join([str(id) for id in document_ids])
+        where_clause = f'WHERE {FIELD_CODE_DOC_ID} in ({where_clause})'
+        self.update_field_annotations(where_clause, field_data)
+
+    def update_field_annotations_by_ant_ids(self,
+                                            annotation_ids: Iterable[int],
+                                            field_data: Iterable[Tuple[str, str]]):
+        if not annotation_ids or not field_data:
+            return
+        where_clause = ','.join([f"'{id}'" for id in annotation_ids])
+        where_clause = f'WHERE "uid" in ({where_clause})'
+        self.update_field_annotations(where_clause, field_data)
+
+    def update_field_annotations(self,
+                                 where_clause: str,
+                                 field_data: Iterable[Tuple[str, str]]):
+        if not where_clause or not field_data:
             return
 
         tables = [FieldAnnotation.objects.model._meta.db_table,
                   FieldAnnotation.history.model._meta.db_table]
         set_clause = ', '.join([f'"{col}" = {val}' for col, val in field_data])
-        where_clause = ','.join([str(id) for id in document_ids])
-        where_clause = f'WHERE {FIELD_CODE_DOC_ID} in ({where_clause})'
 
         try:
             with connection.cursor() as cursor:
@@ -1066,8 +1088,7 @@ class DocumentFieldRepository:
                     query = f'UPDATE {table} SET {set_clause} {where_clause};'
                     cursor.execute(query)
         except Exception as e:
-            ids_str = ','.join([f'{id}' for id in document_ids[:10]])
-            raise RuntimeError(f'Error in update_field_annotations({ids_str} ..., {set_clause})') from e
+            raise RuntimeError(f'Error in update_field_annotations({where_clause} ..., {set_clause})') from e
 
     def replace_wrong_choice_options(self,
                                      field_id: int,

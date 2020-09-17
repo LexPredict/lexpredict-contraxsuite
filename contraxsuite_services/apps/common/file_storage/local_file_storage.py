@@ -37,8 +37,8 @@ from apps.common.streaming_utils import copy_data
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.6.0/LICENSE"
-__version__ = "1.6.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.7.0/LICENSE"
+__version__ = "1.7.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -56,6 +56,10 @@ class ContraxsuiteLocalFileStorage(ContraxsuiteFileStorage):
         self.root_dir = settings.CONTRAX_FILE_STORAGE_LOCAL_ROOT_DIR
         try:
             self.mkdir(self.documents_path)
+        except:
+            pass
+        try:
+            self.mkdir(self.export_path)
         except:
             pass
 

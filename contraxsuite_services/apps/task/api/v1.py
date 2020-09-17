@@ -36,8 +36,8 @@ from apps.task.views import *
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.6.0/LICENSE"
-__version__ = "1.6.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.7.0/LICENSE"
+__version__ = "1.7.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -233,6 +233,32 @@ class TaskStatusAPIView(rest_framework.views.APIView):
         return JsonResponse(message, safe=False)
 
 
+class TaskLogAPIView(rest_framework.views.APIView):
+    """
+    Get task log records
+    GET params:
+        - task_id: int
+        - records_limit: int
+    """
+
+    def get(self, request, *args, **kwargs):
+        task_id = request.GET.get('task_id')
+        records_limit = request.GET.get('records_limit') or 0
+        try:
+            task = Task.objects.get(pk=task_id)  # type: Task
+            log_records = task.get_task_log_from_elasticsearch(records_limit=records_limit)
+
+            message = {'records': [{
+                'timestamp': r.timestamp,
+                'log_level': r.log_level,
+                'message': r.message,
+                'stack_trace': r.stack_trace
+            } for r in log_records]}
+        except Task.DoesNotExist:
+            message = "Task is not found"
+        return JsonResponse(message, safe=False)
+
+
 router = routers.DefaultRouter()
 router.register(r'tasks', TaskViewSet, 'task')
 
@@ -251,4 +277,6 @@ urlpatterns = [
         name='purge-task'),
     url(r'^task-status/$', TaskStatusAPIView.as_view(),
         name='task-status'),
+    url(r'^task-log/$', TaskLogAPIView.as_view(),
+        name='task-log'),
 ]

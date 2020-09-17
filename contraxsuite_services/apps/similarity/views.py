@@ -36,8 +36,8 @@ from apps.task.views import BaseAjaxTaskView
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.6.0/LICENSE"
-__version__ = "1.6.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.7.0/LICENSE"
+__version__ = "1.7.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -66,7 +66,7 @@ class SimilarityView(BaseAjaxTaskView):
     def start_task_and_return(self, data):
         if data.get('skip_confirmation'):
             self.start_task(data)
-            return self.json_response('The task is started. It can take a while.')
+            return self.json_response(self.task_started_message)
 
         project = data.get('project')
         proj_id = project.id if project else None
@@ -88,7 +88,7 @@ class SimilarityView(BaseAjaxTaskView):
 
         if count < count_limit:
             self.start_task(data)
-            return self.json_response('The task is started. It can take a while.')
+            return self.json_response(self.task_started_message)
         return self.json_response({'message': f'Processing {count} {unit_type} may take a long time.',
                                    'confirm': True})
 
@@ -123,14 +123,14 @@ class ChunkSimilarityView(SimilarityView):
     def start_task_and_return(self, data):
         if data.get('skip_confirmation'):
             self.start_task(data)
-            return self.json_response('The task is started. It can take a while.')
+            return self.json_response(self.task_started_message)
 
         sm = ChunkSimilarity()
         estimation = sm.estimate_time(**data)
         # if estimated task duration is less than 1 hour:
         if estimation < SimilarityLimits.WARN_CHUNK_SIMILARITY_SECONDS:
             self.start_task(data)
-            return self.json_response('The task is started. It can take a while.')
+            return self.json_response(self.task_started_message)
         _min, sec = divmod(estimation, 60)
         hour, _min = divmod(_min, 60)
         estim_str = "%d:%02d:%02d" % (hour, _min, sec)

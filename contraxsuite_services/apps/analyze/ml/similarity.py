@@ -34,8 +34,8 @@ from apps.analyze.ml.features import DocumentFeatures, TextUnitFeatures
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.6.0/LICENSE"
-__version__ = "1.6.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.7.0/LICENSE"
+__version__ = "1.7.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -64,7 +64,8 @@ class DocumentSimilarityEngine:
                  feature_source='term',
                  use_tfidf=False,
                  distance_type='cosine',
-                 threshold=0.5):
+                 threshold=0.5,
+                 log_routine=None):
         """
         :param queryset: Document/TextUnit queryset
         :param project_id: int (optional)
@@ -73,6 +74,7 @@ class DocumentSimilarityEngine:
         :param use_tfidf: bool
         :param distance_type: str
         :param threshold: float
+        :param log_routine: logger fn
         """
         self.queryset = queryset
         self.project_id = project_id
@@ -81,6 +83,7 @@ class DocumentSimilarityEngine:
         self.use_tfidf = use_tfidf
         self.distance_type = distance_type
         self.threshold = threshold
+        self.log_routine = log_routine
 
     def get_similarity_matrix(self, observation_matrix: numpy.array):
         """
@@ -110,7 +113,9 @@ class DocumentSimilarityEngine:
             project_id=self.project_id,
             feature_source=self.feature_source,
             unit_type=self.unit_type,
-            drop_empty_rows=skip_unqualified_values)
+            drop_empty_rows=skip_unqualified_values,
+            log_message=self.log_routine
+        )
 
         return feature_engine.get_features()
 

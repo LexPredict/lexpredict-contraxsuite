@@ -1,0 +1,49 @@
+{% extends "admin/base_site.html" %}
+
+{% load i18n l10n admin_urls %}
+{% load url from suit_compat %}
+
+{% block breadcrumbs %}
+  <ul class="breadcrumb">
+    <li><a href="{% url 'admin:index' %}">{% trans 'Home' %}</a>
+      <span class="divider">&raquo;</span></li>
+    <li>
+      <a href="{% url 'admin:app_list' app_label="document" %}">Project</a>
+      <span class="divider">&raquo;</span></li>
+    <li>
+      <a href="{% url 'admin:document_softdeletedocument_changelist' %}">Soft Delete Projects</a>
+      <span class="divider">&raquo;</span></li>
+    <li class="active">{% trans 'Delete multiple objects' %}</li>
+  </ul>
+{% endblock %}
+
+{% block content %}
+    <form action="" method="post">{% csrf_token %}
+        <div class="info-block">
+            <h4 class="alert-heading">The following data will be deleted. Continue?</h4>
+             <ul>
+             {% for model, count, stressed in deleting_count %}
+                 {% if stressed %}
+                 <li><b>{{model}}: {{count}}</b></li>
+                 {% else %}
+                 <li>{{model}}: {{count}}</li>
+                 {% endif %}
+             {% endfor %}
+             {% if not details %}
+               <li>
+                  <span>Project relations (documents, etc.). </span>&nbsp;
+                  <a href="?details=true">Get detailed view with relations counts,</a>
+                  <i class="icon-warning-sign"></i><span>&nbsp;WARNING: this may take a while!</span>
+               </li>
+             {% endif %}
+             </ul>
+
+            <div style="padding: 20px">
+                <input type="submit" value="Yes, I'm sure" class="btn btn-danger"/>
+                &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;
+                <a href="{% url return_url %}">go back</a>
+            </div>
+        </div>
+    </form>
+
+{% endblock %}

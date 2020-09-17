@@ -44,8 +44,10 @@ from typing import List, Dict, Tuple, Any, Callable, Optional
 import magic
 import nltk
 import pandas as pd
+import pycountry
 import regex as re
 from celery import shared_task, signature
+from celery.canvas import Signature
 from celery.exceptions import SoftTimeLimitExceeded, Retry
 from celery.result import AsyncResult
 from celery.states import FAILURE, UNREADY_STATES
@@ -65,6 +67,7 @@ from lexnlp.nlp.en.segments.sections import get_section_spans
 from lexnlp.nlp.en.segments.sentences import get_sentence_span_list, pre_process_document
 from lexnlp.nlp.en.segments.titles import get_titles
 from psycopg2 import InterfaceError, OperationalError
+from uuid import getnode as get_mac
 
 # Project imports
 import task_names
@@ -73,6 +76,7 @@ from apps.common.archive_file import ArchiveFile
 from apps.common.errors import find_cause_of_type
 from apps.common.file_storage import get_file_storage
 from apps.common.log_utils import ProcessLogger
+from apps.common.processes import terminate_processes_by_ids
 from apps.common.utils import fast_uuid
 from apps.deployment.app_data import load_geo_entities, load_terms, load_courts
 from apps.document import signals
@@ -82,12 +86,12 @@ from apps.document.document_class import DocumentClass
 from apps.document.field_detection.field_detection import detect_and_cache_field_values_for_document
 from apps.document.models import (
     Document, DocumentText, DocumentMetadata, DocumentProperty, DocumentType,
-    TextUnit, TextUnitTag, DocumentTable, TextUnitText)
+    TextUnit, TextUnitTag, DocumentTable, TextUnitText, DocumentPage)
 from apps.document.repository.document_field_repository import DocumentFieldRepository
 from apps.document.sync_tasks.document_files_cleaner import DocumentFilesCleaner
 from apps.extract import dict_data_cache
 from apps.extract import models as extract_models
-from apps.extract.locators import LOCATORS, LocationResults
+from apps.extract.locators import LocatorsCollection, LocationResults
 from apps.extract.locators import request_mat_views_refresh
 from apps.extract.models import Court, GeoAlias, GeoEntity, GeoRelation, Term
 from apps.project.models import Project, UploadSession
@@ -96,17 +100,21 @@ from apps.task.models import Task, TaskConfig
 from apps.task.parsing_tasks import ParsingTaskParams, XmlWordxDocumentParser, \
     TikaDocumentParser, TextractDocumentParser, PlainTextDocumentParser, DocumentParsingResults
 from apps.task.task_monitor import TaskMonitor
+from apps.task.task_visibility import TaskVisibility
+from apps.task.utils.marked_up_text import MarkedUpText
 from apps.task.utils.nlp.heading_heuristics import HeadingHeuristics
 from apps.task.utils.nlp.lang import get_language
 from apps.task.utils.nlp.parsed_text_corrector import ParsedTextCorrector
 from apps.task.utils.task_utils import TaskUtils, pre_serialize, check_blocks, check_blocks_decorator
+from apps.task.utils.text_extraction.pdf_tools import pdf_has_images
+from apps.task.utils.text_extraction.pdf2pdfa import pdf2pdfa
 from apps.users.models import User
 from contraxsuite_logging import write_task_log
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.6.0/LICENSE"
-__version__ = "1.6.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.7.0/LICENSE"
+__version__ = "1.7.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -139,12 +147,13 @@ def _get_or_create_task_config(celery_task) -> TaskConfig:
 
 def get_task_priority(callable_or_class) -> int:
     priority = app.conf.task_default_priority
-    if hasattr(callable_or_class, 'priority'):
+    if getattr(callable_or_class, 'priority', None) is not None:
         priority = callable_or_class.priority
     return priority
 
 
 def get_queue_by_task_priority(priority: int) -> str:
+    priority = priority or 0
     return 'high_priority' if priority > 7 else 'default'
 
 
@@ -169,13 +178,10 @@ class ExtendedTask(app.Task):
         self._log_kwargs = None  # type: Optional[Dict[str, Any]]
 
     def run(self, *args, **kwargs):
-
         run_count = Task.objects.increase_run_count(self.request.id)
-        if hasattr(self, 'max_retries'):
-            if run_count > self.max_retries:
-                raise RuntimeError(
-                    'Exceeded maximum number of retries ({})'.format(self.max_retries))
-
+        if hasattr(self, 'max_retries') and self.max_retries is not None and run_count > self.max_retries:
+            raise RuntimeError(
+                'Exceeded maximum number of retries ({})'.format(self.max_retries))
         self.log_info(f'Start task "{self.task_name}", id={self.main_task_id}, ' +
                       f'run_count={run_count}\nKwargs: {str(kwargs)}')
         if '_log_extra' in kwargs:
@@ -288,7 +294,7 @@ class ExtendedTask(app.Task):
                             'root_id': self.main_task_id
                         }
                     },
-                    priority=priority,
+                    priority=priority or 0,
                     call_stack=call_stack)
         task.save()
         self.task.has_sub_tasks = True
@@ -434,12 +440,14 @@ class ExtendedTask(app.Task):
 
     def on_failure(self, exc, task_id, args, kwargs, einfo):
         task = self.task
-        if task:
-            try:
-                task.update_progress(100, False)
-            except IntegrityError:
-                # task object might have been deleted
-                pass
+        task.terminate_spawned_processes('locally')
+        if not task:
+            return
+        try:
+            task.update_progress(100, False)
+        except IntegrityError:
+            # task object might have been deleted
+            pass
 
     def prepare_task_execution(self):
         TaskUtils.prepare_task_execution()
@@ -586,6 +594,8 @@ def _call_task_func(task_func: Callable,
                     metadata: Dict = None,
                     visible: bool = True,
                     queue: str = None,
+                    exchange: str = None,
+                    routing_key: str = None,
                     run_after_sub_tasks_finished: bool = False,
                     run_if_parent_task_failed: bool = False,
                     main_task_id: str = None,
@@ -624,7 +634,9 @@ def _call_task_func(task_func: Callable,
                           args=task_args,
                           task_id=celery_task_id,
                           soft_time_limit=task_config.soft_time_limit,
-                          priority=priority)
+                          priority=priority,
+                          exchange=exchange,
+                          routing_key=routing_key)
     return task.pk
 
 
@@ -668,9 +680,12 @@ def _call_task(task_name, **options):
     # metadata should not be stored in kwargs, because kwargs is indexed
     # and can not be a large field
     options_wo_metadata = {o: options[o] for o in options if o != 'metadata'}
+    display_name = task_names.TASK_FRIENDLY_NAME.get(task_name_resolved) or task_name_resolved
+
     task = Task.objects.create(
         id=celery_task_id,
         name=task_name_resolved,
+        display_name=display_name,
         user_id=options.get('user_id'),
         metadata=options.get('metadata', {}),
         kwargs=pre_serialize(celery_task_id, None, options_wo_metadata),  # this changes the options_wo_metadata !
@@ -679,7 +694,7 @@ def _call_task(task_name, **options):
         visible=options.get('visible', True),
         project=Project.all_objects.get(pk=project_id) if project_id else None,
         upload_session=UploadSession.objects.get(pk=session_id) if session_id else None,
-        priority=priority,
+        priority=priority or 0,
         call_stack=call_stack,
         failure_reported=False
     )
@@ -702,21 +717,11 @@ def _call_task(task_name, **options):
             soft_time_limit=task_config.soft_time_limit,
             countdown=countdown,
             eta=eta,
-            priority=priority,
+            priority=priority or 0,
             queue=queue)
     else:
         task_class_resolved()(**options)
     return task.pk
-
-
-class BaseTask(ExtendedTask):
-    """BaseTask class
-    BaseTask extending celery app Task model.
-    Adds logging for start/end events of task
-     and optional error handling.
-    """
-    # TODO: moved run() into ExtendedTask; consider to get rid of BaseTask
-    pass
 
 
 @shared_task(base=ExtendedTask,
@@ -729,9 +734,6 @@ class BaseTask(ExtendedTask):
 def delete_document_on_load_failed(task: ExtendedTask, file_name: str, kwargs: dict):
     document_name = os.path.basename(file_name)
     document_source = os.path.dirname(file_name)
-
-    from apps.project.notifications import notify_failed_load_document
-    notify_failed_load_document(document_name, kwargs)
 
     document_ids = list(
         Document.objects
@@ -749,7 +751,7 @@ def delete_document_on_load_failed(task: ExtendedTask, file_name: str, kwargs: d
             task.log_error(f'Unable to delete documents, file_name={file_name}', exc_info=e)
 
 
-class LoadDocuments(BaseTask):
+class LoadDocuments(ExtendedTask):
     """
     Load Document, i.e. create Document and TextUnit objects
     from uploaded document files in a given directory
@@ -794,26 +796,13 @@ class LoadDocuments(BaseTask):
             kwargs['project_id'] = project_dict['pk']
             del kwargs['project']
 
-        load_docs_args = [(file_path, kwargs) for file_path in file_list]
+        load_docs_args = [{'uri': file_path, 'task_kwargs': kwargs} for file_path in file_list]
 
-        self.run_sub_tasks('Load Each Document',
-                           LoadDocuments.create_document,
-                           load_docs_args,
-                           file_list)
-
-    @staticmethod
-    @shared_task(base=ExtendedTask,
-                 bind=True,
-                 soft_time_limit=6*3600,
-                 default_retry_delay=10,
-                 retry_backoff=True,
-                 autoretry_for=(SoftTimeLimitExceeded, InterfaceError, OperationalError),
-                 max_retries=3,
-                 queue='doc_load')
-    def create_document(task: ExtendedTask, uri: str, kwargs):
-        with file_storage.get_document_as_local_fn(uri) as (fn, file_name):
-            task.run_if_task_or_sub_tasks_failed(delete_document_on_load_failed, args=(uri, kwargs))
-            return LoadDocuments.create_document_local(task, fn, uri, kwargs)
+        self.run_sub_tasks_class_based(
+            'Load Each Document',
+             CreateDocument,
+             load_docs_args,
+             file_list)
 
     @staticmethod
     @shared_task(base=ExtendedTask,
@@ -879,13 +868,35 @@ class LoadDocuments(BaseTask):
         # get plain text and metadata from file
         propagate_exceptions = kwargs.get('propagate_exception')
         task.task.update_progress(10)  # document's just uploaded
-        pars_results = LoadDocuments.get_text_from_file(
-            file_name, file_path, propagate_exceptions, task)
+        started = datetime.datetime.now()
+        pars_results = None
+
+        # try to convert PDF to searchable PDF-A
+        ext, _ = LoadDocuments.get_file_extension(file_name, file_path)
+        alt_source_path = None
+        if ext == '.pdf':
+            alt_source_path = LoadDocuments.convert_pdf2pdfa(task=task,
+                                                             local_file_path=file_path,
+                                                             source_path=file_name)
+            if isinstance(alt_source_path, str):
+                from apps.task.app_vars import USE_PDF2PDFA_CONVERTER_RESULT
+                if USE_PDF2PDFA_CONVERTER_RESULT.val is True:
+                    task.log_info(f'Use new-generated PDF-A "{alt_source_path}" content further')
+                    with file_storage.get_document_as_local_fn(alt_source_path) as (local_fp, _):
+                        pars_results = LoadDocuments.get_text_from_file(
+                            file_name, local_fp, propagate_exceptions, task, ocr_enabled=False)
+
+        if pars_results is None or pars_results.is_empty():
+            pars_results = LoadDocuments.get_text_from_file(
+                file_name, file_path, propagate_exceptions, task)
+
+        elapsed = (datetime.datetime.now() - started).total_seconds()
 
         # do reconnect - postgres may have already closed the connection because of long-running OCR
         # WARN: this should be BEFORE any other interactions with DB
         # because DB connection may be already closed due to too long session
-        connection.close()
+        if elapsed > 30:
+            TaskUtils.prepare_task_execution()
 
         task.task.update_progress(40)  # document's just uploaded + parsed
 
@@ -903,6 +914,15 @@ class LoadDocuments(BaseTask):
             #     raise RuntimeError('No text extracted.')
             # task.log_info('SKIP (ERROR): ' + file_name)
             # return None
+
+        # remove extra line breaks
+        old_len = len(pars_results.text.text)
+        LoadDocuments.preprocess_parsed_text(pars_results)
+        delta = len(pars_results.text.text) - old_len
+        if delta != 0:
+            task.log_info(f'After preprocessing text length has changed from {old_len} to {old_len + delta}')
+        # remove markers and create labels
+        pars_results.text.convert_markers_to_labels()
 
         if metadata is None:
             metadata = {}
@@ -925,14 +945,9 @@ class LoadDocuments(BaseTask):
         if detect_contract:
             LoadDocuments.classify_document(metadata, pars_results, task)
 
-        # remove extra line breaks
-        old_len = len(pars_results.text.text)
-        LoadDocuments.preprocess_parsed_text(pars_results)
-        delta = len(pars_results.text.text) - old_len
-        if delta != 0:
-            task.log_info(f'After preprocessing text length has changed from {old_len} to {old_len + delta}')
-
         # Language identification
+        if pars_results.text and pars_results.text.text:
+            task.log_info(f'Document text length: {len(pars_results.text.text)}')
         language, lang_detector = get_language(pars_results.text.text, get_parser=True)
         if language:
             task.log_info('Detected language: %s' % language.upper())
@@ -942,6 +957,7 @@ class LoadDocuments(BaseTask):
 
         # detect title
         title = metadata.get('title', None) or LoadDocuments.get_title(pars_results.text.text)
+        task.log_info(f'Title detected as {title}')
 
         with transaction.atomic():
             upload_session = None
@@ -976,6 +992,7 @@ class LoadDocuments(BaseTask):
                 source=document_source,
                 source_type=kwargs.get('source_type'),
                 source_path=file_name,
+                alt_source_path=alt_source_path if isinstance(alt_source_path, str) else None,
                 language=language,
                 title=title,
                 file_size=file_size,
@@ -1000,6 +1017,7 @@ class LoadDocuments(BaseTask):
             paragraph_list = []  # type: List[TextUnit]
 
             # for now we ignore paragraphs obtained from parser
+            task.log_info('Getting paragraphs...')
             paragraphs = LoadDocuments.safely_get_paragraphs(pars_results.text.text)
             for paragraph, pos_start, post_end in paragraphs:
                 if not paragraph:
@@ -1010,7 +1028,8 @@ class LoadDocuments(BaseTask):
                     document=document,
                     unit_type="paragraph",
                     location_start=pos_start,
-                    location_end=post_end)
+                    location_end=post_end,
+                    project=document.project)
                 ptr.language = get_language(paragraph)
                 ptr.text_hash = hashlib.sha1(paragraph.encode("utf-8")).hexdigest()
                 paragraph_list.append(ptr)
@@ -1032,6 +1051,7 @@ class LoadDocuments(BaseTask):
             TextUnitText.objects.bulk_create(paragraph_text_list)
 
             sentence_list = []
+            task.log_info('Getting sentences...')
             sentence_spans = get_sentence_span_list(pars_results.text.text)
             for span in sentence_spans:
                 sentence = pars_results.text.text[span[0]:span[1]]
@@ -1041,7 +1061,8 @@ class LoadDocuments(BaseTask):
                     location_end=span[1],
                     text_hash=hashlib.sha1(sentence.encode("utf-8")).hexdigest(),
                     unit_type="sentence",
-                    language=get_language(sentence))
+                    language=get_language(sentence),
+                    project=document.project)
                 sentence_list.append(text_unit)
 
             sentence_tu_objects = TextUnit.objects.bulk_create(sentence_list)
@@ -1061,7 +1082,10 @@ class LoadDocuments(BaseTask):
             document.sentences = len(sentence_list)
             document.save()
 
+            LoadDocuments.save_document_pages(pars_results.text, document.pk)
+
             # detect sections
+            task.log_info('Getting sections...')
             LoadDocuments.find_document_sections(metadata, pars_results, sentence_list)
 
             if pars_results.tables:
@@ -1126,6 +1150,101 @@ class LoadDocuments(BaseTask):
             return document.pk
         else:
             return json.dumps(ret) if ret else None
+
+    @staticmethod
+    def convert_pdf2pdfa(task, local_file_path, source_path, language='eng',
+                         fail_silently=True, force=False, override_existing=False):
+        """
+        Check a file is PDF with images, save it as PDF-A (searchable PDF)
+        :param task - Task
+        :param local_file_path: str - local file path
+        :param source_path: str - storage rel file path like /{session_uid}/filename.ext
+        :param language: str - 2-3-chars lang name
+        :param fail_silently: bool - fail without exception
+        :param force: bool - process even if app vars disable process
+        :param override_existing: bool - overwrite existing alternative file
+        :return: None - if failed silently,
+                 False - if processing is disabled,
+                 True - if nothing converted (no images detected)
+                 str - else new file path if converted
+        """
+        from apps.task.app_vars import USE_PDF2PDFA_CONVERTER
+        from apps.document.app_vars import OCR_ENABLE
+
+        do_convert = force or (OCR_ENABLE.val and USE_PDF2PDFA_CONVERTER.val)
+        if not do_convert:
+            task.log_warn('Generation PDF-A disabled')
+            return False
+
+        # skip if no images detected; suppose images exist by default
+        try:
+            has_images = pdf_has_images(file_path=local_file_path,
+                                        task=task.task,
+                                        logger=CeleryTaskLogger(task),
+                                        timeout=300)
+        except:
+            has_images = True
+
+        if has_images is False:
+            task.log_warn('Skip Generation PDF-A, no images detected')
+            return True
+
+        task.log_info('Convert PDF to PDF-A')
+
+        # convert 2-chars lang to 3-chars; suppose "eng" by default
+        if len(language) == 2:
+            try:
+                language = pycountry.languages.get(alpha_2=language).alpha_3
+            except AttributeError:
+                language = 'eng'
+
+        output_tmp_file_path = local_file_path + '.alt'
+        alt_source_path = source_path + '.alt'
+        try:
+            from apps.task.app_vars import PDF2PDFA_CONVERTER_TIMEOUT
+            pdf2pdfa(task=task.task,
+                     input_file_path=local_file_path,
+                     output_file_path=output_tmp_file_path,
+                     language=language,
+                     logger=CeleryTaskLogger(task),
+                     timeout=PDF2PDFA_CONVERTER_TIMEOUT.val)
+        except Exception as e:
+            if fail_silently:
+                task.log_warn('Failed to generate PDF-A')
+                return None
+            raise e
+
+        # save generated pdf
+        if override_existing or not file_storage.document_exists(alt_source_path):
+            contents = open(output_tmp_file_path, 'rb').read()
+            file_size = len(contents)
+            file_storage.write_document(rel_file_path=alt_source_path,
+                                        contents_file_like_object=contents,
+                                        content_length=file_size)
+            if os.path.exists(output_tmp_file_path):
+                os.remove(output_tmp_file_path)
+
+        return alt_source_path
+
+    @staticmethod
+    def save_document_pages(text: MarkedUpText,
+                            doc_id: int):
+        if 'pages' not in text.labels:
+            return
+        pages = text.labels['pages']
+        if not pages:
+            return
+
+        doc_pages = []  # type: List[DocumentPage]
+        for i in range(len(pages)):
+            page = DocumentPage()
+            page.document_id = doc_id
+            page.number = i + 1
+            page.location_start = pages[i][0]
+            page.location_end = pages[i][1]
+            doc_pages.append(page)
+
+        DocumentPage.objects.bulk_create(doc_pages)
 
     @staticmethod
     def classify_document(metadata: Dict[str, Any],
@@ -1193,13 +1312,14 @@ class LoadDocuments(BaseTask):
     def get_text_from_file(file_name: str,
                            file_path: str,
                            propagate_exceptions: bool,
-                           task: ExtendedTask) -> DocumentParsingResults:
+                           task: ExtendedTask,
+                           ocr_enabled: bool = None) -> DocumentParsingResults:
         """
         extract text from file using either Tika or Textract
         """
         from apps.document.app_vars import OCR_ENABLE, OCR_FILE_SIZE_LIMIT, \
             MSWORD_TO_TEXT_ENABLE, MIN_NOT_PLAIN_FILE_SIZE
-        ocr_enabled = OCR_ENABLE.val
+        ocr_enabled = OCR_ENABLE.val if ocr_enabled is None else ocr_enabled
 
         # disable OCR anyway if file size exceeds limit
         fsize_bytes = os.path.getsize(file_path)
@@ -1218,6 +1338,7 @@ class LoadDocuments(BaseTask):
                                        file_path,
                                        ext,
                                        file_name,
+                                       task.task,
                                        propagate_exceptions,
                                        ocr_enabled)
 
@@ -1225,7 +1346,7 @@ class LoadDocuments(BaseTask):
         word_parse_enabled = MSWORD_TO_TEXT_ENABLE.val and extracting_enabled
         textract_enabled = (ocr_enabled or
                             ext in settings.TEXTRACT_NON_OCR_EXTENSIONS) \
-                            and extracting_enabled
+                           and extracting_enabled
         tika_enabled = extracting_enabled
 
         if settings.TEXTRACT_FIRST_FOR_EXTENSIONS:
@@ -1297,7 +1418,24 @@ class LoadDocuments(BaseTask):
             return [(text, 0, len(text) - 1)]
 
 
-class UpdateElasticsearchIndex(BaseTask):
+class CreateDocument(ExtendedTask):
+    soft_time_limit = 6 * 3600
+    default_retry_delay = 10
+    retry_backoff = True
+    autoretry_for = (SoftTimeLimitExceeded, InterfaceError, OperationalError)
+    max_retries = 3
+    queue = 'doc_load'
+    name = 'Create Document'
+
+    def process(self, uri: str, task_kwargs, *args, **kwargs):
+        task_id = self.task.pk if self.task else '-'
+        self.log_info(f'CreateDocument("{uri}"), task id #{task_id}')
+        with file_storage.get_document_as_local_fn(uri) as (fn, file_name):
+            self.run_if_task_or_sub_tasks_failed(delete_document_on_load_failed, args=(uri, task_kwargs))
+            return LoadDocuments.create_document_local(self, fn, uri, task_kwargs)
+
+
+class UpdateElasticsearchIndex(ExtendedTask):
     """
     Update Elasticsearch Index: each time after new documents are added
     """
@@ -1339,7 +1477,7 @@ class UpdateElasticsearchIndex(BaseTask):
         self.push()
 
 
-class LoadTerms(BaseTask):
+class LoadTerms(ExtendedTask):
     """
     Load Terms from a dictionary sample
     """
@@ -1383,7 +1521,7 @@ class LoadTerms(BaseTask):
         self.push()
 
 
-class LoadGeoEntities(BaseTask):
+class LoadGeoEntities(ExtendedTask):
     """
     Load Geopolitical Entities from given dictionaries
     """
@@ -1446,12 +1584,12 @@ class LoadGeoEntities(BaseTask):
         self.push()
 
 
-class LoadCourts(BaseTask):
+class LoadCourts(ExtendedTask):
     """
     Load Courts data from a file OR github repo
     """
     name = 'Load Courts'
-    priority = 9
+    priority = 7
 
     def load_courts_from_path(self, path: str, real_fn: str):
         self.log_info(f'Parse "{real_fn or path}"')
@@ -1486,7 +1624,7 @@ class LoadCourts(BaseTask):
         self.push()
 
 
-class Locate(BaseTask):
+class Locate(ExtendedTask):
     """
     Locate multiple items
     """
@@ -1497,7 +1635,7 @@ class Locate(BaseTask):
     retry_backoff = True
     autoretry_for = (SoftTimeLimitExceeded, InterfaceError, OperationalError,)
     max_retries = 3
-    priority = 9
+    priority = 7
 
     usage_model_map = dict(
         duration=['DateDurationUsage'],
@@ -1576,7 +1714,7 @@ class Locate(BaseTask):
         text_units = TextUnit.objects.all()
 
         if project_id:
-            text_units = text_units.filter(document__project__id=project_id)
+            text_units = text_units.filter(project__id=project_id)
 
         if document_id:
             text_units = text_units.filter(document_id=document_id)
@@ -1603,28 +1741,47 @@ class Locate(BaseTask):
                 project_id=project_id).values_list('pk', flat=True)
         else:
             return
+        detect_field_values = kwargs.get('detect_field_values', True)
+        fire_doc_changed = kwargs.get('fire_doc_changed', True)
+        cache_field_values = kwargs.get('cache_field_values', False)
+
         for document_id in document_ids:
             # otherwise run_after_sub_tasks_finished doesn't work if no subtasks
             # TODO: investigate and fix base methods like run_after_sub_tasks_finished
             if not text_unit_ids:
                 self.run_sub_tasks('Cache Generic Document Data',
                                    Locate.on_locate_finished,
-                                   [(document_id, doc_loaded_by_user_id, document_initial_load,
-                                     predefined_field_codes_to_python_values, locate)])
+                                   [(document_id,
+                                     doc_loaded_by_user_id,
+                                     document_initial_load,
+                                     predefined_field_codes_to_python_values,
+                                     locate,
+                                     detect_field_values,
+                                     fire_doc_changed,
+                                     cache_field_values,
+                                     True)])
             else:
                 self.run_after_sub_tasks_finished(
                     'Cache Generic Document Data',
                     Locate.on_locate_finished,
-                    [(document_id, doc_loaded_by_user_id, document_initial_load,
-                      predefined_field_codes_to_python_values, locate)])
+                    [(document_id,
+                      doc_loaded_by_user_id,
+                      document_initial_load,
+                      predefined_field_codes_to_python_values,
+                      locate,
+                      detect_field_values,
+                      fire_doc_changed,
+                      cache_field_values,
+                      True)])
 
     @staticmethod
     def save_summary_on_locate_finished(log: ProcessLogger, doc_id: int, locate: Dict[str, Dict],
                                         document_initial_load: bool = False):
         request_mat_views_refresh()
+        locators = LocatorsCollection.get_locators()
 
         for locator_name in locate.keys():
-            locator = LOCATORS.get(locator_name)
+            locator = locators.get(locator_name)
             if not locator:
                 continue
             locator.update_document_summary(log, doc_id, document_initial_load)
@@ -1638,9 +1795,16 @@ class Locate(BaseTask):
                  autoretry_for=(SoftTimeLimitExceeded, InterfaceError, OperationalError,),
                  max_retries=3,
                  priority=9)
-    def on_locate_finished(_self: ExtendedTask, doc_id, doc_loaded_by_user_id, document_initial_load,
-                           predefined_field_codes_to_val: Dict[str, Any] = None,
-                           locate: Dict[str, Dict] = None):
+    def on_locate_finished(_self: ExtendedTask,
+                           doc_id: int,
+                           doc_loaded_by_user_id: Optional[int],
+                           document_initial_load: bool,
+                           predefined_field_codes_to_val: Optional[Dict[str, Any]] = None,
+                           locate: Optional[Dict[str, Dict]] = None,
+                           detect_field_values: bool = True,
+                           fire_doc_changed: bool = True,
+                           cache_field_values: bool = False,
+                           disable_notifications: bool = False):
         doc = Document.all_objects.filter(pk=doc_id).last()  # type: Document
 
         if not doc:
@@ -1668,35 +1832,48 @@ class Locate(BaseTask):
         else:
             ignore_field_codes = None
 
-        signals.fire_document_changed(sender=_self,
-                                      log=log,
-                                      document=doc,
-                                      changed_by_user=None,
-                                      system_fields_changed=True,
-                                      user_fields_changed=False,
-                                      generic_fields_changed=True)
-        detect_and_cache_field_values_for_document(log=log,
-                                                   document=doc,
-                                                   save=True,
-                                                   clear_old_values=True,
-                                                   ignore_field_codes=ignore_field_codes,
-                                                   changed_by_user=user,
-                                                   document_initial_load=document_initial_load)
+        if fire_doc_changed:
+            signals.fire_document_changed(sender=_self,
+                                          log=log,
+                                          document=doc,
+                                          changed_by_user=None,
+                                          system_fields_changed=True,
+                                          user_fields_changed=False,
+                                          generic_fields_changed=True)
+        if detect_field_values:
+            detect_and_cache_field_values_for_document(
+                log=log,
+                document=doc,
+                save=True,
+                clear_old_values=True,
+                ignore_field_codes=ignore_field_codes,
+                changed_by_user=user,
+                document_initial_load=document_initial_load)
 
         # allow notifications only for the documents which are already processed
-        disable_notifications = not doc.processed
+        disable_notifications = disable_notifications or not doc.processed
 
         doc.processed = True
         doc.save()
 
-        from apps.rawdb.field_value_tables import cache_document_fields, FIELD_CODE_DOC_PROCESSED
-        cache_document_fields(log=log,
-                              document=doc,
-                              cache_system_fields=[FIELD_CODE_DOC_PROCESSED],
-                              cache_generic_fields=False,
-                              cache_user_fields=False,
-                              changed_by_user=user,
-                              disable_notifications=disable_notifications)
+        if detect_field_values:
+            from apps.rawdb.field_value_tables import cache_document_fields, FIELD_CODE_DOC_PROCESSED
+            cache_document_fields(log=log,
+                                  document=doc,
+                                  cache_system_fields=[FIELD_CODE_DOC_PROCESSED],
+                                  cache_generic_fields=False,
+                                  cache_user_fields=False,
+                                  changed_by_user=user,
+                                  disable_notifications=disable_notifications)
+        elif cache_field_values:
+            from apps.rawdb.field_value_tables import cache_document_fields, FIELD_CODE_DOC_PROCESSED
+            cache_document_fields(log=log,
+                                  document=doc,
+                                  cache_system_fields=True,
+                                  cache_generic_fields=True,
+                                  cache_user_fields=True,
+                                  changed_by_user=user,
+                                  disable_notifications=disable_notifications)
 
         _self.log_info('on_locate_finished: completed')
 
@@ -1715,11 +1892,12 @@ class Locate(BaseTask):
             'pk', 'textunittext__text', 'language', 'document_id', 'document__project_id')
         location_results = LocationResults(document_initial_load=document_initial_load)
         log = CeleryTaskLogger(self)
+        locators = LocatorsCollection.get_locators()
 
         for task_name, task_kwargs in locate.items():
-            if task_name not in LOCATORS:
+            if task_name not in locators:
                 raise Exception('Programming error. Unknown locator: {0}'.format(task_name))
-            locator = LOCATORS[task_name]
+            locator = locators[task_name]
             for text_unit_id, text, text_unit_lang, document_id, project_id in text_units:
 
                 # inject project_id for TermLocator to use custom ProjectTermConfiguration
@@ -1809,6 +1987,35 @@ def purge_tasks(this_task: ExtendedTask, tasks: List[Task], log_progress: bool):
 
     ret = f'Purged {purged_pending_tasks} pending main tasks. Deleted {deleted_tasks} tasks after purging main tasks.'
     this_task.log_info(ret)
+
+
+@app.task(base=ExtendedTask,
+          name=task_names.TASK_NAME_TERMINATE_PROCESSES,
+          bind=True,
+          ignore_result=True,
+          queue=settings.CELERY_QUEUE_WORKER_BCAST,
+          exchange=settings.CELERY_EXCHANGE_WORKER_BCAST)
+def terminate_processes(task: ExtendedTask,
+                        target_adr: Optional[int],
+                        pids: List[int]):
+    log = CeleryTaskLogger(task)
+    if target_adr is not None:
+        own_adr = get_mac()
+        if own_adr != target_adr:
+            log.info(f'terminate_processes() is executing on #{own_adr}, but was targeted to #{target_adr}')
+            return
+
+    terminate_processes_by_ids(pids, lambda m: log.info(m))
+
+
+def call_terminate_processes_task(
+        target_adr: Optional[int], pids: List[int]):
+    call_task_func(terminate_processes,
+                   (target_adr, pids,),
+                   user_id=None,
+                   visible=True,
+                   exchange=settings.CELERY_EXCHANGE_WORKER_BCAST,
+                   routing_key='*')
 
 
 @app.task(name=task_names.TASK_NAME_TRACK_TASKS, bind=True, queue=settings.CELERY_QUEUE_SERIAL)
@@ -1917,7 +2124,7 @@ def run_task_finish_handler(task_id, name, title, metadata, priority):
     priority = priority
     queue = get_queue_by_task_priority(priority)
     task = signature(name, args=metadata['args'], **options)
-    task.apply_async(priority=priority, queue=queue)
+    task.apply_async(priority=priority or 0, queue=queue)
 
 
 @app.task(name=task_names.TASK_NAME_TRACK_FAILED_TASKS, bind=True, queue=settings.CELERY_QUEUE_SERIAL)
@@ -1934,8 +2141,9 @@ def clean_tasks_periodic(_celery_task):
     del_sub_tasks_date = now() - datetime.timedelta(seconds=settings.REMOVE_SUB_TASKS_DELAY_IN_SEC)
 
     # Delete all completed system/periodic tasks from DB
+    excluded = TaskVisibility.get_excluded_from_tracking()
     Task.objects \
-        .filter(name__in=Task.objects.EXCLUDE_FROM_TRACKING, own_date_done__lt=del_sub_tasks_date) \
+        .filter(name__in=excluded, own_date_done__lt=del_sub_tasks_date) \
         .delete()
 
     # Delete excess tasks from task list
@@ -1950,6 +2158,21 @@ def clean_tasks_periodic(_celery_task):
         qr = qr.exclude(status=FAILURE)
 
         qr.delete()
+
+
+@app.task(name=task_names.TASK_NAME_CLEAN_EXPORT_FILES_PERIODIC,
+          bind=True, queue=settings.CELERY_QUEUE_SERIAL)
+def clean_export_files_periodic(_celery_task):
+    from apps.common.models import ExportFile
+    now_time = datetime.datetime.utcnow()
+    storage = get_file_storage()
+    records = ExportFile.objects.filter(expires_at__lt=now_time)
+    for record in records:  # type: ExportFile
+        try:
+            storage.delete_file(record.file_path)
+        except Exception as e:
+            logger.error(f'Error deleting file data ("{record.file_path}"): {e}')
+    records.delete()
 
 
 @app.task(name=task_names.TASK_NAME_MONITOR_DISK_USAGE, bind=True, queue=settings.CELERY_QUEUE_SERIAL)
@@ -2010,10 +2233,19 @@ def purge_task(task_pk, wait=False, timeout=None, delete=True,
         except Task.DoesNotExist:
             return
 
-    message = 'Task "Purge task", app task id={}'.format(task.pk)
-    log_func(message)
+    task.terminate_spawned_processes('everywhere')
+
+    task_desc = f'id={task.pk}; ' \
+                f'name="{task.name}"; ' \
+                f'kwargs={task.kwargs}; ' \
+                f'metadata={task.metadata}; ' \
+                f'date_start={task.date_start.isoformat() if task.date_start else None}; ' \
+                f'date_work_start={task.date_work_start.isoformat() if task.date_work_start else None}'
+
+    log_func(f'Task "Purge task" for app task: {task_desc}')
 
     for subtask in task.subtasks:
+        subtask.terminate_spawned_processes('everywhere')
         subtask_celery_task = AsyncResult(subtask.id)
         revoke_task(subtask_celery_task, wait=wait, timeout=timeout)
 
@@ -2022,6 +2254,7 @@ def purge_task(task_pk, wait=False, timeout=None, delete=True,
     main_celery_task = AsyncResult(task.id)
     revoke_task(main_celery_task, wait=wait, timeout=timeout)
 
+    task_id = task.pk
     if delete:
         ret = 'Deleted '
         # delete TaskResults for subtasks
@@ -2042,12 +2275,10 @@ def purge_task(task_pk, wait=False, timeout=None, delete=True,
                     time.sleep(delay)
                     delay *= multiplier
 
-        ret += 'Task(id={}), TaskHistory, '.format(task.pk)
-
-        ret += 'main celery task, children celery tasks, {} TaskResult(s)'.format(
-            subtask_results_deleted[0] + 1)
+        ret += f'Task({task_desc}), TaskHistory, main celery task, children celery tasks, ' \
+               f'{subtask_results_deleted[0] + 1} TaskResult(s)'
     else:
-        ret = 'Revoked Task(id={})'
+        ret = f'Revoked Task({task_desc})'
 
     log_func(ret)
 
@@ -2070,7 +2301,7 @@ def purge_task(task_pk, wait=False, timeout=None, delete=True,
     return {'message': ret, 'status': status}
 
 
-class TotalCleanup(BaseTask):
+class TotalCleanup(ExtendedTask):
     """
     Remove projects, docs, sessions, clusters, etc.
     """
@@ -2099,7 +2330,7 @@ class TotalCleanup(BaseTask):
 def get_call_stack_line(index: int) -> str:
     stack_lines = traceback.format_stack()
     if not stack_lines or len(stack_lines) < -index:
-        return None
+        return
     call_stack = stack_lines[index]
     lbr_pos = call_stack.find('\n')
     if lbr_pos:
@@ -2141,6 +2372,20 @@ def debug_main_task(_celery_task: ExtendedTask, arg1: str = None):
 
 
 @shared_task(base=ExtendedTask, bind=True)
+def debug_generate_error_logs(_celery_task: ExtendedTask, log_to_task_id: str, number_of_logs: int = 3000):
+    task = Task.objects.get(pk=log_to_task_id)
+
+    def crash(i):
+        raise RuntimeError(f'Exception {i}')
+
+    for i in range(number_of_logs):
+        try:
+            crash(i)
+        except RuntimeError as e:
+            task.write_log(f'Error {i}', level='error', exc_info=e)
+
+
+@shared_task(base=ExtendedTask, bind=True)
 def test_task_progress_single_task(_celery_task: ExtendedTask, arg1: str = None):
     _celery_task.log_info(
         f'Testing task progress. Going to change progress every 10 seconds for 1 minute.\narg1={arg1}')
@@ -2170,6 +2415,7 @@ def test_task_progress_with_subtasks(_celery_task: ExtendedTask, arg1: str = Non
 
 # Register all load tasks
 app.register_task(LoadDocuments())
+app.register_task(CreateDocument())
 app.register_task(LoadTerms())
 app.register_task(LoadGeoEntities())
 app.register_task(LoadCourts())

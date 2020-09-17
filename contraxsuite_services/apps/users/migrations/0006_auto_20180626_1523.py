@@ -7,8 +7,8 @@ from django.db import migrations, models
 import django.db.models.deletion
 
 
-def get_default_role_pk():
-    return apps.users.models.Role.objects.first().pk
+# def get_default_role_pk():
+#     return apps.users.models.Role.objects.first().pk
 
 
 class Migration(migrations.Migration):
@@ -20,7 +20,8 @@ class Migration(migrations.Migration):
         migrations.AlterField(
             model_name='user',
             name='role',
-            field=models.ForeignKey(default=get_default_role_pk, on_delete=django.db.models.deletion.CASCADE,
+            field=models.ForeignKey(default=None, null=True, blank=True,
+                                    on_delete=django.db.models.deletion.CASCADE,
                                     to='users.Role'),
         ),
     ]

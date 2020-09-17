@@ -24,12 +24,12 @@
 """
 # -*- coding: utf-8 -*-
 
-from typing import List
+from typing import List, Tuple
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.6.0/LICENSE"
-__version__ = "1.6.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.7.0/LICENSE"
+__version__ = "1.7.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -37,6 +37,10 @@ __email__ = "support@contraxsuite.com"
 class BaseDocumentRepository:
 
     def get_all_document_source_paths(self, ids: List[int]) -> List[str]:
+        raise NotImplementedError()
+
+    def get_document_source_paths_by_id(self,
+                                        ids: List[int]) -> List[Tuple[int, str]]:
         raise NotImplementedError()
 
     def delete_all_documents_by_ids(self, ids: List[int]) -> None:

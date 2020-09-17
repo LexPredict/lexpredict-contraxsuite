@@ -29,18 +29,22 @@ from django.conf.urls import url
 # Third-party imports
 import coreapi
 import coreschema
+from django.http import JsonResponse
 from rest_framework import routers, viewsets, serializers, views, schemas
+from django.core import serializers as core_serializers
 from rest_framework.response import Response
 
 # Project imports
+import settings
 from apps.common.api.permissions import ReviewerReadOnlyPermission
 from apps.common.mixins import JqListAPIMixin, SimpleRelationSerializer
+from apps.common.model_utils.improved_django_json_encoder import ImprovedDjangoJSONEncoder
 from apps.users.models import User, Role
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.6.0/LICENSE"
-__version__ = "1.6.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.7.0/LICENSE"
+__version__ = "1.7.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -53,7 +57,7 @@ class RoleSerializer(SimpleRelationSerializer):
     class Meta:
         model = Role
         fields = ['id', 'name', 'code', 'abbr', 'order',
-                  'is_admin', 'is_manager', 'is_reviewer']
+                  'is_admin', 'is_top_manager', 'is_manager', 'is_reviewer']
 
 
 class RoleViewSet(JqListAPIMixin, viewsets.ModelViewSet):
@@ -113,7 +117,7 @@ class VerifyAuthTokenAPIView(views.APIView):
     http_method_names = ['post']
 
     @property
-    def schema(self):
+    def coreapi_schema(self):
         fields = [
             coreapi.Field(
                 "auth_token",
@@ -124,14 +128,35 @@ class VerifyAuthTokenAPIView(views.APIView):
         return schemas.ManualSchema(fields=fields)
 
     def post(self, request, *args, **kwargs):
-        auth_token = request.POST.get('auth_token') or request.data.get('auth_token')
+        auth_token = request.POST.get('auth_token') or request.data.get('auth_token') \
+            or request.META.get('HTTP_AUTH_TOKEN')
+        if not auth_token and request.COOKIES:
+            auth_token = request.COOKIES.get('auth_token').replace('Token ', '')
         from apps.users.authentication import CookieAuthentication
 
         try:
-            CookieAuthentication().authenticate_credentials(auth_token)
+            tok_usr, _tok = CookieAuthentication().authenticate_credentials(auth_token)
         except Exception as e:
             raise e
 
+        if tok_usr:
+            raw_data = core_serializers.serialize('python', [tok_usr])
+            role_raw_data = core_serializers.serialize('python', [tok_usr.role])
+            role_data = [d['fields'] for d in role_raw_data][0]
+            usr_data = [d['fields'] for d in raw_data][0]
+            del usr_data['password']
+            del usr_data['user_permissions']
+            usr_data['id'] = tok_usr.pk
+            usr_data['role_data'] = role_data
+            role_data['id'] = tok_usr.role.pk
+            role_data['is_reviewer'] = tok_usr.role.is_reviewer
+            resp_data = {
+                'key': auth_token,
+                'user_name': tok_usr.username,
+                'user': usr_data,
+                'release_version': settings.VERSION_NUMBER
+            }
+            return JsonResponse(resp_data, encoder=ImprovedDjangoJSONEncoder, safe=False)
         return Response()
 
 

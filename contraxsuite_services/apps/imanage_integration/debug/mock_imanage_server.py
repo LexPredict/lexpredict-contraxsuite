@@ -31,13 +31,14 @@ import socket
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from threading import Thread
 from typing import Dict, Optional
+import sys
 
 import requests
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.6.0/LICENSE"
-__version__ = "1.6.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.7.0/LICENSE"
+__version__ = "1.7.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -76,7 +77,6 @@ class MockServerRequestHandler(BaseHTTPRequestHandler):
     download_re = re.compile(r'/api/v1/documents/(?P<doc_id>[^/]+)/download')
 
     def do_PUT(self):
-        # Process an HTTP GET request and return a response with an HTTP 200 status.
         if self.path == '/api/v1/session/login':
             self.do_login()
 
@@ -87,7 +87,8 @@ class MockServerRequestHandler(BaseHTTPRequestHandler):
         else:
             m = self.download_re.search(self.path)
             if m:
-                self.do_download(m.group('doc_id'))
+                from urllib import parse
+                self.do_download(parse.unquote(m.group('doc_id')))
             return
 
 
@@ -102,12 +103,12 @@ def get_free_port():
 class MockIManageServer(object):
     @classmethod
     def start(cls):
-        cls.mock_server_port = 65534  # get_free_port()
-        cls.mock_server = HTTPServer(('localhost', cls.mock_server_port), MockServerRequestHandler)
+        cls.mock_server_port = int(sys.argv[1]) if len(sys.argv) > 1 else 65534  # get_free_port()
+        cls.mock_server = HTTPServer(('0.0.0.0', cls.mock_server_port), MockServerRequestHandler)
         cls.mock_server_thread = Thread(target=cls.mock_server.serve_forever)
         cls.mock_server_thread.setDaemon(False)
         cls.mock_server_thread.start()
-        print('Started mock iManage server at localhost:' + str(cls.mock_server_port))
+        print('Started mock iManage server at 0.0.0.0:' + str(cls.mock_server_port))
 
 
 if __name__ == '__main__':

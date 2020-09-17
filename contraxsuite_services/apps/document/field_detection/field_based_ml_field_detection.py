@@ -33,6 +33,7 @@ from sklearn.metrics import classification_report
 from sklearn.pipeline import Pipeline, FeatureUnion
 
 from apps.common.script_utils import eval_script
+from apps.document.field_detection.field_classifier_suggestion import store_classification_suggestion
 from apps.document.field_detection.field_detection_repository import FieldDetectionRepository
 from apps.document.field_detection.fields_detection_abstractions import FieldDetectionStrategy, ProcessLogger
 from apps.document.field_detection.stop_words import detect_with_stop_words_by_field_and_full_text
@@ -46,8 +47,8 @@ from apps.document.repository.dto import FieldValueDTO
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.6.0/LICENSE"
-__version__ = "1.6.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.7.0/LICENSE"
+__version__ = "1.7.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -111,7 +112,7 @@ class FieldBasedMLOnlyFieldDetectionStrategy(FieldDetectionStrategy):
         fields = list(DocumentField.objects.filter(code__in={code for code, _type in depends_on_fields}))
         fields_by_code = {f.code: f for f in fields}
 
-        for field_code, field_type in sorted(depends_on_fields, key=lambda t: t[1]):    # type: str, str
+        for field_code, field_type in sorted(depends_on_fields, key=lambda t: t[1]):  # type: str, str
             field_type = TypedField.by(fields_by_code[field_code])  # type: TypedField
 
             field_vect_steps = [('sel', FieldValueExtractor(field_code))]
@@ -155,7 +156,8 @@ class FieldBasedMLOnlyFieldDetectionStrategy(FieldDetectionStrategy):
                                             log: ProcessLogger,
                                             field: DocumentField,
                                             train_data_project_ids: Optional[List],
-                                            use_only_confirmed_field_values: bool = False) \
+                                            use_only_confirmed_field_values: bool = False,
+                                            split_and_log_out_of_sample_test_report: bool = False) \
             -> Optional[ClassifierModel]:
 
         typed_field = TypedField.by(field)  # type: TypedField
@@ -362,13 +364,12 @@ class FieldBasedMLWithUnsureCatFieldDetectionStrategy(FieldBasedMLOnlyFieldDetec
                            field_code_to_value: Dict[str, Any]) -> Optional[FieldValueDTO]:
 
         # If changing this code make sure you update similar code in notebooks/demo/Train and Debug Decision Tree...
-
         detected_value = cls.maybe_detect_with_stop_words(field, field_code_to_value)
         if detected_value is not None:
             return detected_value
 
         try:
-            classifier_model = ClassifierModel.objects.get(document_field=field)
+            classifier_model = ClassifierModel.objects.get(document_field=field)  # type: ClassifierModel
             obj = classifier_model.get_trained_model_obj()  # type: Dict[str, Any]
 
             model = obj['model']
@@ -390,6 +391,8 @@ class FieldBasedMLWithUnsureCatFieldDetectionStrategy(FieldBasedMLOnlyFieldDetec
                 target_name = predicted_value if target_probability >= threshold else field.unsure_choice_value
 
             value = TypedField.by(field).field_value_python_to_json(target_name)
+            if classifier_model.store_suggestion:
+                store_classification_suggestion(field, doc, value, target_probability)
 
             return FieldValueDTO(field_value=value)
 

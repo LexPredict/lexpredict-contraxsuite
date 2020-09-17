@@ -155,7 +155,6 @@ def convert_document_type_fields(apps, schema_editor):
     DocumentType = apps.get_model('document', 'DocumentType')
     DocumentField = apps.get_model('document', 'DocumentField')
     Document = apps.get_model('document', 'Document')
-    ProjectDocumentsFilter = apps.get_model('project', 'ProjectDocumentsFilter')
 
     processed_field_ids = set()
     cloned_fields_by_document_type_id = {}
@@ -177,9 +176,7 @@ def convert_document_type_fields(apps, schema_editor):
             cloned_fields.append((old_field_pk, new_field_pk))
         processed_field_ids.add(document_type_field.document_field.pk)
 
-    modified_project_documents_filter_by_pk = {}
     for document_type_pk, cloned_fields in cloned_fields_by_document_type_id.items():
-        project_documents_filters = list(ProjectDocumentsFilter.objects.filter(project__type_id=document_type_pk))
         for old_field_pk, new_field_pk in cloned_fields:
 
             DocumentType.search_fields.through.objects\
@@ -191,15 +188,6 @@ def convert_document_type_fields(apps, schema_editor):
                 .update(to_documentfield_id=new_field_pk)
 
             Document.objects.filter(document_type__pk=document_type_pk).update(tmp_dirty=True)
-
-            for project_documents_filter in project_documents_filters:
-                if old_field_pk in project_documents_filter.filter_query:
-                    project_documents_filter.filter_query = project_documents_filter.filter_query\
-                        .replace(old_field_pk, str(new_field_pk))
-                    modified_project_documents_filter_by_pk[project_documents_filter.pk] = project_documents_filter
-
-    for project_documents_filter in modified_project_documents_filter_by_pk.values():
-        project_documents_filter.save()
 
     fix_document_type_conflicts(apps)
 

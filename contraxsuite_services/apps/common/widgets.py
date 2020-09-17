@@ -39,8 +39,8 @@ from django.utils.safestring import SafeText
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.6.0/LICENSE"
-__version__ = "1.6.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.7.0/LICENSE"
+__version__ = "1.7.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -148,7 +148,7 @@ class FilterableProjectSelectField(forms.ModelChoiceField):
 class FiltrableProjectSelectWidget(Select):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.master_id = None  # type: Optional[str]
+        self.manager_id = None  # type: Optional[str]
 
     def render(self, name: str, value, attrs=None, renderer=None):
         """
@@ -156,7 +156,7 @@ class FiltrableProjectSelectWidget(Select):
         <select name="project" id="id_project">
         """
         wig_id = attrs['id']
-        html = self.build_master_change_script(wig_id)
+        html = self.build_manager_change_script(wig_id)
         html += f'<select name="{name}" id="{wig_id}">\n'
         html += '    <option value="" selected>---------</option>\n'
 
@@ -171,20 +171,20 @@ class FiltrableProjectSelectWidget(Select):
         html_safe = SafeText(html)
         return html_safe
 
-    def build_master_change_script(self, wig_id: str):
+    def build_manager_change_script(self, wig_id: str):
         markup = f"""
         <script>
-            window.on_master_changed = function() {{
-                master_val = $('#{self.master_id}').val();
+            window.on_manager_changed = function() {{
+                manager_val = $('#{self.manager_id}').val();
                 $("#{wig_id} option[data_type]").each(function(index) {{
                     var tp_id = $(this).attr('data_type');
-                    if (!master_val || tp_id == master_val)
+                    if (!manager_val || tp_id == manager_val)
                         $(this).show();
                     else
                         $(this).hide();
                 }});
             }};
-            $('#{self.master_id}').on("change", window.on_master_changed);
+            $('#{self.manager_id}').on("change", window.on_manager_changed);
         </script>\n
         """
         return markup

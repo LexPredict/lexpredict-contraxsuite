@@ -28,7 +28,9 @@
 import json
 
 # Django imports
-from celery.states import PENDING, SUCCESS, FAILURE
+from typing import List
+
+from celery.states import PENDING, SUCCESS, FAILURE, REVOKED
 from django import forms
 from django.conf import settings
 
@@ -40,12 +42,12 @@ from apps.common.utils import fast_uuid
 from apps.common.widgets import LTRCheckgroupWidget
 from apps.document.models import DocumentType
 from apps.project.models import Project
-from apps.task.models import Task
+from apps.task.models import Task, TaskLogEntry
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.6.0/LICENSE"
-__version__ = "1.6.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.7.0/LICENSE"
+__version__ = "1.7.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -223,7 +225,7 @@ class TaskDetailForm(forms.Form):
         self.fields['parents'].initial = ''
         self.fields['child_tasks'].initial = ''
 
-        logs = list()
+        logs = list()  # type: List[str]
         # on this stage it was quite hard to implement proper formatting in templates
         # so putting some html/js right here.
         # TODO: Refactor, put formatting to the templates
@@ -269,44 +271,61 @@ class TaskDetailForm(forms.Form):
             logs.append(msg)
 
         # Main problem is that this form's template uses some base template which replaces \n with <br />
-        for record in instance.get_task_log_from_elasticsearch():
-            color = 'green'
-            if record.log_level == 'WARN':
-                color = 'yellow'
-            elif record.log_level == 'ERROR':
-                color = 'red'
+        should_search_errors = this_task.status in {FAILURE, REVOKED} or \
+            this_task.own_status in {FAILURE, REVOKED}
+        all_records = instance.get_task_log_from_elasticsearch(should_search_errors)
+        task_records = [r for r in all_records if r.task_name]
+        genr_records = [r for r in all_records if not r.task_name]
 
-            if not record.timestamp:
-                ts = ''
-            else:
-                ts = record.timestamp.strftime('%Y-%m-%d %H:%M:%S')
-
+        for record in task_records:
+            color = self.get_task_record_color(record)
+            ts = record.timestamp.strftime('%Y-%m-%d %H:%M:%S') if record.timestamp else ''
             level = record.log_level or 'INFO'
-            message = record.message
-            if message and '\n' in message:
-                message = '<br />' + message
+            message = record.message or ''
+            message = '<br />' + message if '\n' in message else message
 
             log_add = f'<b><span style="color: {color}">{level}</span> {ts} | {record.task_name or "no task"} |</b> ' \
                       f'{message}'
-
             logs.append(log_add)
 
             if record.stack_trace:
                 # Adding JS to toggle stack trace showing/hiding
                 stack = record.stack_trace.replace('\n', '<br />')
-                uid = str(fast_uuid())
-                uid_toggle = uid + '_toggle'
-                show_hide = f'''e = document.getElementById('{uid}');
-                                e.style.display = e.style.display === 'block' ? 'none' : 'block';
-                                document.getElementById('{uid_toggle}').innerText 
-                                        = e.style.display === 'block' ? '[-] Stack trace:' : '[+] Stack trace';
-                            '''.replace('\n', '')
-                logs.append(f'<a id="{uid_toggle}" onclick="{show_hide}">[+] Stack trace:</a>')
-                logs.append(f'<div id="{uid}" style="display: none; border-left: 1px solid grey; padding-left: 16px">'
-                            f'{stack}</div>')
+                self.render_collapsible_block(logs, stack, 'Stack trace')
+
+        # show system-wide errors in collapsible block
+        if genr_records:
+            logs.append(f'<br/><h4>{len(genr_records)} error(s) also occurred after completing the task</h4>')
+            inner_block = ''
+            for record in genr_records:
+                color = self.get_task_record_color(record)
+                ts = record.timestamp.strftime('%Y-%m-%d %H:%M:%S') if record.timestamp else ''
+                level = record.log_level or 'INFO'
+                message = record.message or ''
+                message = '<br />' + message if '\n' in message else message
+                log_add = f'<b><span style="color: {color}">{level}</span> {ts} </b> ' \
+                          f'{message}<br/>'
+                inner_block += log_add
+            self.render_collapsible_block(logs, inner_block, 'System-wide errors')
 
         self.fields['log'].initial = '\n'.join(logs)
 
+    @classmethod
+    def render_collapsible_block(cls,
+                                 logs: List[str],
+                                 block_text: str,
+                                 block_heading: str):
+        logs.append(f'<a onclick="showHideToggleOnclick(this)">[+] {block_heading}:</a>'
+                    f'<div style="display: none; border-left: 1px solid grey; padding-left: 16px">{block_text}</div>')
+
+    @classmethod
+    def get_task_record_color(cls, record: TaskLogEntry) -> str:
+        color = 'green'
+        if record.log_level == 'WARN':
+            color = 'yellow'
+        elif record.log_level == 'ERROR':
+            color = 'red'
+        return color
 
 class CleanProjectForm(forms.Form):
     header = 'Clean Project (delete project content or project itself as well.'

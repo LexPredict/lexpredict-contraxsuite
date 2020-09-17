@@ -54,8 +54,8 @@ import apps.common.mixins
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.6.0/LICENSE"
-__version__ = "1.6.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.7.0/LICENSE"
+__version__ = "1.7.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -145,9 +145,9 @@ class BaseUsageListAPIView(apps.common.mixins.JqListAPIView, ViewSetDataMixin):
         return qs
 
 
-class BaseTopUsageSerializer(object):
+class BaseTopUsageSerializer:
 
-    def __init__(self, queryset, *args, **kwargs):
+    def __init__(self, *args, **kwargs):
         self.view = kwargs['context']['view']
         self.queryset = self.view.queryset
         self.data_view = self.view.data_view
@@ -243,7 +243,7 @@ class TopTermUsageListAPIView(BaseTopUsageListAPIView):
     grouping_item = 'term__term'
     data_view = TermUsageListAPIView
     qs_values = ['term__term', 'term__source']
-    qs_order_by = ['-count', 'term__term']
+    qs_order_by = ['term__term', 'term__source']
     url_args = ('v1:term-usage', 'term_search', 'term__term')
 
 
@@ -327,7 +327,7 @@ class TopGeoEntityUsageListAPIView(BaseTopUsageListAPIView):
     grouping_item = 'entity__name'
     data_view = GeoEntityUsageListAPIView
     qs_values = ['entity__name']
-    qs_order_by = ['-count', 'entity__name']
+    qs_order_by = ['entity__name']
     url_args = ('v1:geo-entity-usage', 'entity_search', 'entity__name')
 
 
@@ -370,13 +370,18 @@ class TopGeoAliasUsageListAPIView(BaseTopUsageListAPIView):
     grouping_item = 'alias__alias'
     data_view = GeoAliasUsageListAPIView
     qs_values = ['alias__alias']
-    qs_order_by = ['-count', 'alias__alias']
+    qs_order_by = ['alias__alias']
     url_args = ('v1:geo-alias-usage', 'alias_search', 'alias__alias')
 
 
 # --------------------------------------------------------
 # Typeahead Views
 # --------------------------------------------------------
+
+
+class TypeaheadSerializer(serializers.Serializer):
+    q = serializers.CharField()
+
 
 class TypeaheadUsageApiView(ListAPIView):
     """
@@ -386,6 +391,7 @@ class TypeaheadUsageApiView(ListAPIView):
     """
     model = None
     use_negative_value = False
+    serializer_class = TypeaheadSerializer
 
     def get(self, request, *args, **kwargs):
         qs = self.model.objects.all()
@@ -495,6 +501,7 @@ class TopPartyUsageListAPIView(BaseTopUsageListAPIView):
     data_view = PartyUsageListAPIView
     filters = [('party_id', 'party_id', str)]
     qs_values = ['party__name']
+    qs_order_by = ['party__name']
     url_args = ('v1:party-usage', 'party_search', 'party__name')
 
     # def update_item(self, item):
@@ -620,12 +627,17 @@ class TopDateUsageListAPIView(BaseTopUsageListAPIView):
     grouping_item = 'date'
     data_view = DateUsageListAPIView
     qs_values = ['date']
-    qs_order_by = ['-date', '-count']
+    qs_order_by = ['date']
 
     def update_item(self, item):
         item['url'] = reverse('v1:date-usage') + '?date_search=' + item['date'].isoformat()
         item['date'] = item['date'].isoformat()
         return item
+
+
+class DateUsageTimelineSerializer(serializers.Serializer):
+    document_id = serializers.IntegerField(required=False)
+    per_month = serializers.BooleanField(default=False, required=False)
 
 
 class DateUsageTimelineView(ListAPIView):
@@ -636,6 +648,7 @@ class DateUsageTimelineView(ListAPIView):
         - per_month: bool
     """
     sub_app = 'date'
+    serializer_class = DateUsageTimelineSerializer
 
     def get_queryset(self):
         qs = DateUsage.objects.all()
@@ -690,6 +703,10 @@ class DateUsageTimelineView(ListAPIView):
         return JsonResponse(ret)
 
 
+class DateUsageCalendarSerializer(serializers.Serializer):
+    document_id = serializers.IntegerField(required=False)
+
+
 class DateUsageCalendarView(ListAPIView):
     """
     Date Usage Calendar Chart\n
@@ -697,6 +714,7 @@ class DateUsageCalendarView(ListAPIView):
         - document_id: int
     """
     sub_app = 'date'
+    serializer_class = DateUsageCalendarSerializer
 
     def get_queryset(self):
         qs = DateUsage.objects.all()
@@ -814,7 +832,7 @@ class TopDateDurationUsageListAPIView(BaseTopUsageListAPIView):
     grouping_item = 'duration_days'
     data_view = DateDurationUsageListAPIView
     qs_values = ['duration_days']
-    qs_order_by = ['-duration_days', '-count']
+    qs_order_by = ['duration_days']
     url_args = ('v1:date-duration-usage', 'duration_search', 'duration_days')
 
 
@@ -851,7 +869,8 @@ class TopDefinitionUsageListAPIView(BaseTopUsageListAPIView):
     model = DefinitionUsage
     grouping_item = 'definition'
     data_view = DefinitionUsageListAPIView
-    qs_values = ["definition"]
+    qs_values = ['definition']
+    qs_order_by = ['definition']
     url_args = ('v1:definition-usage', 'definition_search', 'definition')
 
 
@@ -895,7 +914,8 @@ class TopCourtUsageListAPIView(BaseTopUsageListAPIView):
     model = CourtUsage
     grouping_item = 'court__name'
     data_view = CourtUsageListAPIView
-    qs_values = ["court__name", "court__alias"]
+    qs_values = ['court__name', 'court__alias']
+    qs_order_by = ['court__name']
     url_args = ('v1:court-usage', 'court_search', 'court__name')
 
 
@@ -934,7 +954,7 @@ class TopCurrencyUsageListAPIView(BaseTopUsageListAPIView):
     grouping_item = 'amount'
     data_view = CurrencyUsageListAPIView
     qs_values = ['amount', 'currency']
-    qs_order_by = ['-amount', '-count']
+    qs_order_by = ['amount', 'currency']
     url_args = ('v1:currency-usage', 'currency_search', 'currency')
 
 
@@ -977,7 +997,8 @@ class TopRegulationUsageListAPIView(BaseTopUsageListAPIView):
     model = RegulationUsage
     grouping_item = 'regulation_name'
     data_view = RegulationUsageListAPIView
-    qs_values = ["regulation_name", "regulation_type"]
+    qs_values = ['regulation_name', 'regulation_type']
+    qs_order_by = ['regulation_name', "regulation_type"]
     url_args = ('v1:regulation-usage', 'regulation_search', 'regulation_name')
 
 
@@ -1017,7 +1038,7 @@ class TopAmountUsageListAPIView(BaseTopUsageListAPIView):
     grouping_item = 'amount'
     data_view = AmountUsageListAPIView
     qs_values = ['amount']
-    qs_order_by = ['-amount', '-count']
+    qs_order_by = ['amount']
     url_args = ('v1:amount-usage', 'amount_search', 'amount')
 
 
@@ -1056,7 +1077,7 @@ class TopDistanceUsageListAPIView(BaseTopUsageListAPIView):
     grouping_item = 'amount'
     data_view = DistanceUsageListAPIView
     qs_values = ['amount', 'distance_type']
-    qs_order_by = ['-amount', '-count']
+    qs_order_by = ['amount', 'distance_type']
 
     def get_detail_data(self, item):
         return [i for i in self.detail_data if
@@ -1103,7 +1124,7 @@ class TopPercentUsageListAPIView(BaseTopUsageListAPIView):
     grouping_item = 'amount'
     data_view = PercentUsageListAPIView
     qs_values = ['amount', 'unit_type']
-    qs_order_by = ['-amount', '-count']
+    qs_order_by = ['amount', 'unit_type']
 
     def get_detail_data(self, item):
         return [i for i in self.detail_data if
@@ -1152,7 +1173,7 @@ class TopRatioUsageListAPIView(BaseTopUsageListAPIView):
     grouping_item = 'amount'
     data_view = RatioUsageListAPIView
     qs_values = ['amount', 'amount2']
-    qs_order_by = ['-amount', '-count']
+    qs_order_by = ['amount', 'amount2']
 
     def get_detail_data(self, item):
         return [i for i in self.detail_data if
@@ -1203,7 +1224,8 @@ class TopCitationUsageListAPIView(BaseTopUsageListAPIView):
     model = CitationUsage
     data_view = CitationUsageListAPIView
     grouping_item = 'citation_str'
-    qs_values = ["citation_str"]
+    qs_values = ['citation_str']
+    qs_order_by = ['citation_str']
     url_args = ('v1:citation-usage', 'citation_search', 'citation_str')
 
 
@@ -1242,7 +1264,8 @@ class TopCopyrightUsageListAPIView(BaseTopUsageListAPIView):
     model = CopyrightUsage
     data_view = CopyrightUsageListAPIView
     grouping_item = 'copyright_str'
-    qs_values = ["copyright_str"]
+    qs_values = ['copyright_str']
+    qs_order_by = ['copyright_str']
     url_args = ('v1:copyright-usage', 'copyright_search', 'copyright_str')
 
 
@@ -1281,6 +1304,7 @@ class TopTrademarkUsageListAPIView(BaseTopUsageListAPIView):
     data_view = TrademarkUsageListAPIView
     grouping_item = 'trademark'
     qs_values = ['trademark']
+    qs_order_by = ['trademark']
     url_args = ('v1:trademark-usage', 'trademark_search', 'trademark')
 
 
@@ -1319,6 +1343,7 @@ class TopUrlUsageListAPIView(BaseTopUsageListAPIView):
     data_view = UrlUsageListAPIView
     grouping_item = 'source_url'
     qs_values = ['source_url']
+    qs_order_by = ['source_url']
     url_args = ('v1:url-usage', 'url_search', 'source_url')
 
     def update_item(self, item):

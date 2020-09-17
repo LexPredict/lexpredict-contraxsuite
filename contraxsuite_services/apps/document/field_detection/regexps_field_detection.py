@@ -32,7 +32,6 @@ import pandas as pd
 import regex as re
 
 from apps.common.log_utils import ProcessLogger
-from apps.document.app_vars import CSV_DETECTOR_COMPANIES, CSV_DETECTOR_CONJUNCTIONS
 from apps.document.field_types import TypedField, MultiValueField
 from apps.document.field_detection.detector_field_matcher import DetectorFieldMatcher
 from apps.document.field_detection.fields_detection_abstractions import FieldDetectionStrategy
@@ -46,18 +45,32 @@ from apps.document.value_extraction_hints import ValueExtractionHint
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.6.0/LICENSE"
-__version__ = "1.6.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.7.0/LICENSE"
+__version__ = "1.7.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
 
-class ValueExtractionFunctionThrownException(Exception):
-    pass
+class _CausedException(Exception):
+    def __init__(self, message: str, cause: Optional[Exception] = None):
+        self._explanation: str
+        self.__cause__: Exception = cause
+        super().__init__(f'{self._explanation}\n'
+                         f'Cause: {self.__cause__.__class__.__name__}\n'
+                         f'Reason: {self.__cause__}\n'
+                         f'{message}\n')
 
 
-class CaughtErrorWhileApplyingFieldDetector(Exception):
-    pass
+class ValueExtractionFunctionThrownException(_CausedException):
+    def __init__(self, message: str, cause: Optional[Exception] = None):
+        self._explanation = f'Value extraction function has thrown an exception.'
+        super().__init__(message, cause)
+
+
+class CaughtErrorWhileApplyingFieldDetector(_CausedException):
+    def __init__(self, message: str, cause: Optional[Exception] = None):
+        self._explanation = f'Exception caught while trying to apply FieldDetector.'
+        super().__init__(message, cause)
 
 
 class RegexpsOnlyFieldDetectionStrategy(FieldDetectionStrategy):
@@ -75,7 +88,8 @@ class RegexpsOnlyFieldDetectionStrategy(FieldDetectionStrategy):
                                             field: DocumentField,
                                             train_data_project_ids: Optional[List],
                                             use_only_confirmed_field_values: bool = False,
-                                            train_documents: Iterable[Document] = None) -> Optional[ClassifierModel]:
+                                            split_and_log_out_of_sample_test_report: bool = False)\
+            -> Optional[ClassifierModel]:
 
         return None
 
@@ -85,90 +99,116 @@ class RegexpsOnlyFieldDetectionStrategy(FieldDetectionStrategy):
                            doc: Document,
                            field: DocumentField,
                            field_code_to_value: Dict[str, Any]) -> Optional[FieldValueDTO]:
-        text_unit_repo = cls.text_unit_repo
-        field_detector_repo = cls.field_detector_repo
-        log.debug('detect_field_value: regexps_field_detection, ' +
-                  f'field {field.code}({field.pk}), document #{doc.pk}')
-        depends_on_full_text = doc.full_text
-        detected_with_stop_words, detected_value = detect_with_stop_words_by_field_and_full_text(
-            field, depends_on_full_text)
+        try:
+            log.debug('detect_field_value: regexps_field_detection, ' +
+                      f'field {field.code}({field.pk}), document #{doc.pk}')
+        except AttributeError:
+            pass
+
+        ants: List[AnnotationDTO] = []
+        depends_on_full_text: str = doc.full_text
+        typed_field: TypedField = TypedField.by(field)
+        text_unit_repo: TextUnitRepository = cls.text_unit_repo
+        field_detector_repo: FieldDetectorRepository = cls.field_detector_repo
+
+        detected_with_stop_words, detected_value = \
+            detect_with_stop_words_by_field_and_full_text(field, depends_on_full_text)
         if detected_with_stop_words:
             return FieldValueDTO(field_value=detected_value)
 
         qs_text_units = text_unit_repo.get_doc_text_units(doc, field.text_unit_type)
+        qs_text_units = FieldDetectionStrategy.reduce_textunits_by_detection_limit(qs_text_units, field)
 
         field_detectors = field_detector_repo.get_field_detectors(field)
         detectors = [DetectorFieldMatcher(d) for d in field_detectors]
 
-        typed_field = TypedField.by(field)  # type: TypedField
-        ants = list()  # type: List[AnnotationDTO]
-        units_counted = 0
-
-        for text_unit in qs_text_units:  # type: TextUnit
-            if field.detect_limit_count:
-                units_counted = FieldDetectionStrategy.update_units_counted(
-                    field, units_counted, text_unit)
-                if units_counted > field.detect_limit_count:
-                    break
-
-            for field_detector in detectors:
-                try:
-                    matching_piece = field_detector.matching_string(
-                        text_unit.textunittext.text, text_is_sentence=text_unit.is_sentence())
-                    if matching_piece is not None:
-                        if field.detect_limit_unit == DocumentField.DETECT_LIMIT_CHAR:
-                            if field.detect_limit_count < units_counted + matching_piece[1]:
-                                continue
-                        matching_string = matching_piece[0]
-                        value = field_detector.get_validated_detected_value(field)
-                        hint_name = None
-                        if typed_field.requires_value:
-                            hint_name = field_detector.extraction_hint or ValueExtractionHint.TAKE_FIRST.name
-                            try:
-                                value, hint_name = typed_field \
-                                    .get_or_extract_value(doc,
-                                                          value,
-                                                          hint_name,
-                                                          matching_string)
-                            except Exception as e:
-                                raise ValueExtractionFunctionThrownException(
-                                    f'Value extraction function has thrown an exception.\n'
-                                    f'Document: {doc.name} (#{doc.pk})\n'
-                                    f'Value: {value}\n'
-                                    f'Extraction hint: {hint_name}\n'
-                                    f'Matching string:\n'
-                                    f'{matching_string}') from e
-                            if value is None:
-                                continue
-
-                        annotation_value = typed_field.annotation_value_python_to_json(value)
-                        ant = AnnotationDTO(annotation_value=annotation_value,
-                                            location_in_doc_start=text_unit.location_start,
-                                            location_in_doc_end=text_unit.location_end,
-                                            extraction_hint_name=hint_name)
-
-                        if not isinstance(typed_field, MultiValueField):
-                            return FieldValueDTO(field_value=ant.annotation_value, annotations=[ant])
-                        else:
-                            ants.append(ant)
-                except Exception as e:
-                    raise CaughtErrorWhileApplyingFieldDetector(
-                        f'Exception caught while trying to apply field detector.\n'
-                        f'Document: {doc.name} (#{doc.pk})\n'
-                        f'Field detector: #{field_detector.detector.pk}\n'
-                        f'{field_detector.detector.include_regexps}\n'
-                        f'Text unit: #{text_unit.pk}\n'
-                        f'{text_unit.text[:300]}') from e
-
-            if field.detect_limit_count and field.detect_limit_unit == DocumentField.DETECT_LIMIT_CHAR:
-                units_counted += len(text_unit.text)
+        for text_unit in qs_text_units:
+            unit_ants = cls.extract_from_textunit(text_unit, field, detectors)
+            if not unit_ants:
+                continue
+            if not isinstance(typed_field, MultiValueField):
+                return FieldValueDTO(field_value=unit_ants[0].annotation_value, annotations=unit_ants)
+            else:
+                ants += unit_ants
 
         if not ants:
             return None
 
-        return FieldValueDTO(
-            field_value=typed_field.build_json_field_value_from_json_ant_values([a.annotation_value for a in ants]),
-            annotations=ants)
+        if isinstance(typed_field, MultiValueField):
+            field_value = typed_field.build_json_field_value_from_json_ant_values(
+                [a.annotation_value for a in ants])
+        else:
+            field_value = typed_field.annotation_value_python_to_json(ants[0].annotation_value)
+        return FieldValueDTO(field_value=field_value, annotations=ants)
+
+    @classmethod
+    def extract_from_textunit(cls,
+                              text_unit: TextUnit,
+                              field: DocumentField,
+                              detectors: List[DetectorFieldMatcher]) -> List[AnnotationDTO]:
+        """
+        Searches TextUnit text for FieldDetector regex matches.
+        Entity extraction, based on the Field type, is run and returned.
+
+        Args:
+            text_unit (TextUnit):
+            field (DocumentField):
+            detectors (List[DetectorFieldMatcher]):
+
+        Returns:
+            List[AnnotationDTO]:
+        """
+
+        ants = []
+        src_text = text_unit.textunittext.text
+        typed_field: TypedField = TypedField.by(field)
+        for field_detector in detectors:
+            try:
+                matching_and_location = field_detector.matching_string(src_text, text_unit.is_sentence())
+                if matching_and_location is not None:
+                    hint_name = None
+                    matching_string = matching_and_location[0]
+                    value = field_detector.get_validated_detected_value(field)
+                    if typed_field.requires_value:
+                        hint_name = field_detector.extraction_hint or ValueExtractionHint.TAKE_FIRST.name
+                        try:
+                            value, hint_name = typed_field.get_or_extract_value(document=text_unit.document,
+                                                                                possible_value=value,
+                                                                                possible_hint=hint_name,
+                                                                                text=matching_string,
+                                                                                text_unit=text_unit)
+                        except Exception as e:
+                            raise ValueExtractionFunctionThrownException(
+                                f'Document: {text_unit.document.name} (#{text_unit.document.pk})\n'
+                                f'TextUnit: {text_unit.unit_type} (#{text_unit.pk})\n'
+                                f'Value: {value}\n'
+                                f'Extraction hint: {hint_name}\n'
+                                f'Matching string:\n'
+                                f'{matching_string}', e) from e
+                        if value is None:
+                            continue
+
+                    annotation_value = typed_field.annotation_value_python_to_json(value)
+                    ant = AnnotationDTO(annotation_value=annotation_value,
+                                        location_in_doc_start=text_unit.location_start,
+                                        location_in_doc_end=text_unit.location_end,
+                                        extraction_hint_name=hint_name)
+
+                    if not isinstance(typed_field, MultiValueField):
+                        return [ant]
+                    else:
+                        ants.append(ant)
+            except Exception as e:
+                if isinstance(e, ValueExtractionFunctionThrownException):
+                    raise e
+                else:
+                    raise CaughtErrorWhileApplyingFieldDetector(
+                        f'Document: {text_unit.document.name} (#{text_unit.document.pk})\n'
+                        f'TextUnit: {text_unit.unit_type} (#{text_unit.pk})\n'
+                        f'Field detector: #{field_detector.detector.pk}\n'
+                        f'{field_detector.detector.include_regexps}\n'
+                        f'Text: {src_text[:300]}', e) from e
+        return ants
 
 
 class FieldBasedRegexpsDetectionStrategy(FieldDetectionStrategy):
@@ -183,7 +223,9 @@ class FieldBasedRegexpsDetectionStrategy(FieldDetectionStrategy):
                                             log: ProcessLogger,
                                             field: DocumentField,
                                             train_data_project_ids: Optional[List],
-                                            use_only_confirmed_field_values: bool = False) -> Optional[ClassifierModel]:
+                                            use_only_confirmed_field_values: bool = False,
+                                            split_and_log_out_of_sample_test_report: bool = False)\
+            -> Optional[ClassifierModel]:
 
         return None
 
@@ -266,6 +308,7 @@ class CsvDetectorImporter:
         :param wrap_in_wordbreaks: wrap search patterns in \b ... \b special symbols (word break)
         :param save_in_csv_format: save entire CSV as a DocumentFieldMultilineRegexDetector record
         """
+        from apps.document.app_vars import CSV_DETECTOR_COMPANIES, CSV_DETECTOR_CONJUNCTIONS
         self.company_abbreviations = CSV_DETECTOR_COMPANIES.val.split(',,')
         self.company_abbreviations = {c.lower() for c in self.company_abbreviations}
         self.conjunctions = CSV_DETECTOR_CONJUNCTIONS.val.split(',,')

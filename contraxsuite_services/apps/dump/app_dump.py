@@ -24,18 +24,21 @@
 """
 # -*- coding: utf-8 -*-
 
+import json
 import logging
 import sys
 import traceback
+from collections import Sequence
 from io import StringIO
 from tempfile import NamedTemporaryFile
-from typing import Any, Dict, Type, Callable
+from typing import Any, Dict, Type, Callable, Optional, List, Tuple
 
 from allauth.account.models import EmailAddress, EmailConfirmation
 from django.core import serializers as core_serializers
 from django.core.management import call_command
 from django.db.models import Subquery
 from django.db.models import Model, QuerySet
+from django.db.models.query import RawQuerySet
 from django.http import HttpResponse
 
 # Project imports
@@ -45,14 +48,15 @@ from apps.deployment.models import Deployment
 from apps.document.models import (
     DocumentField, DocumentType, DocumentFieldDetector, ExternalFieldValue,
     DocumentFieldCategory, DocumentFieldFamily)
+from apps.document.scheme_migrations.scheme_migration import SchemeMigration, CURRENT_VERSION
 from apps.extract.models import Court, GeoAlias, GeoEntity, GeoRelation, Party, Term
 from apps.task.models import TaskConfig
 from apps.users.models import User, Role
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.6.0/LICENSE"
-__version__ = "1.6.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.7.0/LICENSE"
+__version__ = "1.7.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -90,13 +94,30 @@ def default_object_handler(obj: Any) -> Any:
 
 def get_dump(filter_by_model: Dict[Type[Model], Callable] = None,
              object_handler_by_model: dict = None) -> str:
+    objects = get_objects_to_dump(filter_by_model, object_handler_by_model)
+    return core_serializers.serialize('json', objects)
+
+
+def get_versioned_dump(version: str,
+                       filter_by_model: Dict[Type[Model], Callable] = None,
+                       object_handler_by_model: dict = None) -> str:
+    objects = get_objects_to_dump(filter_by_model, object_handler_by_model)
+    json_str = core_serializers.serialize('json', objects)
+    if version != CURRENT_VERSION:
+        sm = SchemeMigration()
+        json_str = sm.migrate_json(json_str, CURRENT_VERSION, version)
+    return json_str
+
+
+def get_objects_to_dump(filter_by_model: Dict[Type[Model], Callable] = None,
+                        object_handler_by_model: dict = None) -> List[Any]:
     object_handler_by_model = object_handler_by_model if object_handler_by_model is not None else {}
     objects = []
     for model, qs_filter in filter_by_model.items():
         handler = object_handler_by_model.get(model) or default_object_handler
         query_set = qs_filter(model.objects.get_queryset()) if qs_filter else model.objects.all()
         objects += [handler(obj) for obj in query_set]
-    return core_serializers.serialize('json', objects)
+    return objects
 
 
 def write_dump(file_name: str, json_data):
@@ -120,33 +141,48 @@ def clear_owner(obj: Any) -> Any:
     return obj
 
 
+def get_filter_by_model(document_type_codes) -> Dict[Any, Any]:
+    def document_field_filter(qs):
+        return qs.filter(document_type__code__in=document_type_codes)
+
+    category_document_type_field = document_field_filter(DocumentField.objects.get_queryset()) \
+        .values_list('category__pk') \
+        .distinct('category__pk') \
+        .order_by('category__pk')
+
+    field_family_document_type_field = document_field_filter(DocumentField.objects.get_queryset()) \
+        .values_list('family__pk') \
+        .distinct('family__pk') \
+        .order_by('family__pk')
+
+    filter_by_model = dict(APP_CONFIG_MODELS)
+
+    filter_by_model.update({
+        DocumentType: lambda qs: qs.filter(code__in=document_type_codes),
+        DocumentField: document_field_filter,
+        DocumentFieldDetector: lambda qs: qs.filter(field__document_type__code__in=document_type_codes),
+        DocumentFieldCategory: lambda qs: qs.filter(pk__in=Subquery(category_document_type_field)),
+        DocumentFieldFamily: lambda qs: qs.filter(pk__in=Subquery(field_family_document_type_field))
+    })
+    return filter_by_model
+
+
 def get_app_config_dump(document_type_codes=None) -> str:
     object_handler_by_model = {DocumentField: clear_owner}
     filter_by_model = {}
     if document_type_codes:
-        def document_field_filter(qs):
-            return qs.filter(document_type__code__in=document_type_codes)
-
-        category_document_type_field = document_field_filter(DocumentField.objects.get_queryset()) \
-            .values_list('category__pk') \
-            .distinct('category__pk') \
-            .order_by('category__pk')
-
-        field_family_document_type_field = document_field_filter(DocumentField.objects.get_queryset()) \
-            .values_list('family__pk') \
-            .distinct('family__pk') \
-            .order_by('family__pk')
-
-        filter_by_model = dict(APP_CONFIG_MODELS)
-
-        filter_by_model.update({
-            DocumentType: lambda qs: qs.filter(code__in=document_type_codes),
-            DocumentField: document_field_filter,
-            DocumentFieldDetector: lambda qs: qs.filter(field__document_type__code__in=document_type_codes),
-            DocumentFieldCategory: lambda qs: qs.filter(pk__in=Subquery(category_document_type_field)),
-            DocumentFieldFamily: lambda qs: qs.filter(pk__in=Subquery(field_family_document_type_field))
-        })
+        filter_by_model = get_filter_by_model(document_type_codes)
     return get_dump(filter_by_model, object_handler_by_model)
+
+
+def get_app_config_versioned_dump(document_type_codes=None,
+                                  target_version: int = 0) -> Tuple[str, str]:
+    target_version = target_version or CURRENT_VERSION
+    object_handler_by_model = {DocumentField: clear_owner}
+    filter_by_model = {}
+    if document_type_codes:
+        filter_by_model = get_filter_by_model(document_type_codes)
+    return get_versioned_dump(target_version, filter_by_model, object_handler_by_model), target_version
 
 
 def get_field_values_dump() -> str:

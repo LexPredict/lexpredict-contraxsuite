@@ -29,6 +29,7 @@ from __future__ import unicode_literals, absolute_import
 
 # Standard imports
 import tzlocal
+from allauth.socialaccount.models import SocialApp
 from timezone_field import TimeZoneField
 
 # Django imports
@@ -44,8 +45,8 @@ from apps.users import signals
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.6.0/LICENSE"
-__version__ = "1.6.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.7.0/LICENSE"
+__version__ = "1.7.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -65,6 +66,7 @@ class Role(models.Model):
     order = models.PositiveSmallIntegerField()
     is_admin = models.BooleanField(default=False, db_index=True)
     is_manager = models.BooleanField(default=False, db_index=True)
+    is_top_manager = models.BooleanField(default=False, db_index=True)
 
     objects = RoleManager()
 
@@ -91,6 +93,10 @@ class UserManager(AuthUserManager):
 
 @python_2_unicode_compatible
 class User(AbstractUser):
+    USER_ORIGIN_ADMIN = 'admin'
+    USER_ORIGIN_SOCIAL = 'social'
+    USER_ORIGIN_CHOICES = [(USER_ORIGIN_ADMIN, 'CS Admin',), (USER_ORIGIN_SOCIAL, 'Social Account',)]
+
     """User object
 
     User object, as defined and customized for project implementation.
@@ -108,6 +114,9 @@ class User(AbstractUser):
     timezone = TimeZoneField(blank=True, null=True)
     photo = models.ImageField(upload_to='photo', max_length=100, blank=True, null=True,
                               storage=get_media_file_storage(folder='media'))
+    origin = models.CharField(max_length=30, choices=USER_ORIGIN_CHOICES,
+                              default=USER_ORIGIN_CHOICES[0][0],
+                              blank=False, null=False)
 
     class Meta(object):
         ordering = ('username',)
@@ -140,6 +149,10 @@ class User(AbstractUser):
             transaction.on_commit(lambda: self._fire_saved(old_instance))
         return res
 
+    @property
+    def can_manage_doc_type(self):
+        return self.is_superuser or self.role.is_top_manager or self.is_admin
+
     def can_view_document(self, document):
         # TODO: review with new user access strategies
 
@@ -170,3 +183,47 @@ class User(AbstractUser):
 
     def get_time_zone(self):
         return self.timezone or tzlocal.get_localzone()
+
+
+class SocialAppUri(models.Model):
+    """
+    Class stores custom URIs that CS uses to request authorization, token
+    or user claims
+    """
+    URI_TYPE_AUTH = 'auth'
+    URI_TYPE_TOKEN = 'token'
+    URI_TYPE_PROFILE = 'profile'
+
+    social_app = models.ForeignKey(SocialApp, blank=True, null=False,
+                                   db_index=True, on_delete=CASCADE)
+
+    URI_TYPE_CHOICES = [(URI_TYPE_AUTH, URI_TYPE_AUTH,),
+                        (URI_TYPE_TOKEN, URI_TYPE_TOKEN,),
+                        (URI_TYPE_PROFILE, URI_TYPE_PROFILE,)]
+
+    """
+    uri_type can be either of URI_TYPE_X values - each value
+    means something to the specific OAuth provider 
+    """
+    uri_type = models.CharField(max_length=64,
+                                db_index=True,
+                                choices=URI_TYPE_CHOICES,
+                                null=False)
+
+    """
+    a URI like https://dev-12345.okta.com/oauth2/v1/clients for Okta
+    provider, uri_type = "profile"
+    """
+    uri = models.CharField(max_length=1024, db_index=True, null=True)
+
+    class Meta:
+        unique_together = (('social_app', 'uri_type',),)
+        ordering = ('social_app', 'uri_type',)
+
+    def __repr__(self):
+        app_str = '-'
+        try:
+            app_str = self.social_app.name
+        except:
+            pass
+        return f'App: "{app_str}", type: "{self.uri_type}", URI: "{self.uri}"'

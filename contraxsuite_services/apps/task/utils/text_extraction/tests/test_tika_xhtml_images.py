@@ -33,8 +33,8 @@ from apps.task.utils.text_extraction.tika.tika_xhtml_parser import TikaXhtmlPars
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.6.0/LICENSE"
-__version__ = "1.6.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.7.0/LICENSE"
+__version__ = "1.7.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -82,3 +82,11 @@ class TestTikaXhtmlImages(TestCase):
         len_wo_ocred = len(rst.text)
 
         self.assertGreater(len_with_ocred - len_wo_ocred, 100)
+
+    def test_ocr_empty_images(self):
+        text = load_resource_document('parsing/xhtml_ocr_emptyimages.xhtml', encoding='utf-8')
+        parser = TikaXhtmlParser(pars_settings=XhtmlParsingSettings(
+            ocr_sets=OcrTextStoreSettings.STORE_IF_MORE_TEXT,
+            ocr_vector_text_min_length=100))
+        rst = parser.parse_text(text)
+        self.assertEqual(len(rst.text),  rst.markers_extra_text_length)

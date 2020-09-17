@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 set -e
 echo To be run within contraxsuite python venv with: source init_empty_dev_dv.sh
 pushd ../contraxsuite_services

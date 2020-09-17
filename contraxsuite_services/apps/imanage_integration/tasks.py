@@ -45,19 +45,19 @@ from apps.common.sql_commons import fetch_int, SQLClause
 from apps.common.streaming_utils import buffer_contents_into_temp_file
 from apps.imanage_integration.models import IManageConfig, IManageDocument
 from apps.task.models import Task
-from apps.task.tasks import BaseTask, ExtendedTask, LoadDocuments, call_task
+from apps.task.tasks import ExtendedTask, LoadDocuments, call_task
 from apps.task.tasks import CeleryTaskLogger
 from apps.users.user_utils import get_main_admin_user
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.6.0/LICENSE"
-__version__ = "1.6.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.7.0/LICENSE"
+__version__ = "1.7.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
 
-class IManageSynchronization(BaseTask):
+class IManageSynchronization(ExtendedTask):
     name = 'IManage Synchronization'
     soft_time_limit = 6000
     default_retry_delay = 10

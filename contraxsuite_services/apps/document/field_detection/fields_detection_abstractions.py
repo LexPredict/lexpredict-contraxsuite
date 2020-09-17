@@ -24,18 +24,16 @@
 """
 # -*- coding: utf-8 -*-
 
-from typing import Optional, List, Any, Dict
-
-from apps.document.repository.dto import FieldValueDTO
-
+from django.db.models import QuerySet
+from typing import Any, Dict, Iterable, List, Optional, Sequence, Union
 from apps.common.log_utils import ProcessLogger
-from apps.document.models import ClassifierModel, TextUnit
-from apps.document.models import DocumentField, Document
+from apps.document.repository.dto import FieldValueDTO
+from apps.document.models import ClassifierModel, Document, DocumentField, TextUnit
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.6.0/LICENSE"
-__version__ = "1.6.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.7.0/LICENSE"
+__version__ = "1.7.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -57,7 +55,9 @@ class FieldDetectionStrategy:
                                             log: ProcessLogger,
                                             field: DocumentField,
                                             train_data_project_ids: Optional[List],
-                                            use_only_confirmed_field_values: bool = False) -> Optional[ClassifierModel]:
+                                            use_only_confirmed_field_values: bool = False,
+                                            split_and_log_out_of_sample_test_report: bool = False) \
+            -> Optional[ClassifierModel]:
         raise NotImplementedError()
 
     @classmethod
@@ -69,21 +69,61 @@ class FieldDetectionStrategy:
         raise NotImplementedError()
 
     @classmethod
-    def update_units_counted(cls,
-                             field: DocumentField,
-                             units_counted: int,
-                             text_unit: TextUnit) -> int:
-        if field.detect_limit_count:
-            if field.detect_limit_unit == DocumentField.DETECT_LIMIT_UNIT:
-                units_counted += 1
-            elif field.detect_limit_unit == DocumentField.DETECT_LIMIT_PARAGRAPH \
-                    and text_unit.unit_type == TextUnit.UNIT_TYPE_PARAGRAPH:
-                units_counted += 1
-            elif field.detect_limit_unit == DocumentField.DETECT_LIMIT_SENTENCE \
-                    and text_unit.unit_type == TextUnit.UNIT_TYPE_SENTENCE:
-                units_counted += 1
+    def reduce_textunits_by_detection_limit(cls,
+                                            text_units: Union[QuerySet, Sequence[TextUnit]],
+                                            field: DocumentField) -> Union[QuerySet, Sequence[TextUnit]]:
+        """
+        Checks if `text_units` are ordered ascendingly by `location_start`.
+        If `detect_limit_count` is greater than 0, then `text_units` are sliced at that index and returned.
 
-        return units_counted
+        Notes:
+            1. This deprecates `update_units_counted(...)` and `is_unit_limit_exceeded(...)`.
+
+        Args:
+            text_units (Union[QuerySet, Sequence[TextUnit]]):
+            field (DocumentField):
+
+        Returns:
+            QuerySet[TextUnit] or Sequence[TextUnit]:
+                ordered ascendingly by `location_start` with detection limit applied.
+
+        Raises:
+            TypeError: if parameter `text_units` is not of type QuerySet[TextUnit] or Sequence[TextUnit].
+            ValueError: if parameter `text_units` has not been filtered by `unit_type`.
+
+        Example:
+
+            qs_text_units = reduce_textunits_by_detection_limit(
+                qs_text_units=text_unit_repo.get_doc_text_units(doc, field.text_unit_type),
+                field=field
+            )
+
+        """
+        # if field.detect_limit_unit == DocumentField.DETECT_LIMIT_CHAR:
+        #     return text_units.filter(location_end__lt=field.detect_limit_count)
+        if field.detect_limit_unit != 'NONE':
+            if field.detect_limit_count > 0:
+                if isinstance(text_units, QuerySet):
+                    text_units = text_units.order_by('location_start', 'pk')
+                    for child in text_units.query.where.children:
+                        lhs = child.__dict__['lhs'].identity
+                        if lhs[2][1] == ('document.TextUnit', 'unit_type'):
+                            if child.__dict__['rhs'] == field.text_unit_type:
+                                return text_units[:field.detect_limit_count]
+                    raise ValueError('parameter `text_units`, a QuerySet, has not' +
+                                     'been filtered by `unit_type')
+
+                if isinstance(text_units, Sequence):
+                    if all(map(lambda tu: tu.unit_type == field.text_unit_type, text_units)):
+                        return sorted(
+                            text_units,
+                            key=lambda tu: (tu.location_start, tu.pk),
+                            reverse=False
+                        )[:field.detect_limit_count]
+
+                raise TypeError('parameter `text_units` must be of type' +
+                                'QuerySet[TextUnit] or Sequence[TextUnit]')
+        return text_units
 
 
 class DisabledFieldDetectionStrategy(FieldDetectionStrategy):
@@ -98,7 +138,8 @@ class DisabledFieldDetectionStrategy(FieldDetectionStrategy):
                                             log: ProcessLogger,
                                             field: DocumentField,
                                             train_data_project_ids: Optional[List],
-                                            use_only_confirmed_field_values: bool = False) -> Optional[ClassifierModel]:
+                                            use_only_confirmed_field_values: bool = False,
+                                            split_and_log_out_of_sample_test_report: bool = False) -> Optional[ClassifierModel]:
         return None
 
     @classmethod

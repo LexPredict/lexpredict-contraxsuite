@@ -27,6 +27,7 @@
 # Standard imports
 import re
 
+from django.utils.http import urlencode
 from rest_auth.models import TokenModel
 
 # Django imports
@@ -35,7 +36,7 @@ from django.contrib import messages
 from django.core.exceptions import ObjectDoesNotExist
 from django.urls import reverse
 from django.db.models import signals
-from django.http import HttpResponseNotAllowed, HttpResponseForbidden, JsonResponse
+from django.http import HttpResponseNotAllowed, HttpResponseForbidden, JsonResponse, HttpResponseRedirect
 from django.shortcuts import render, redirect
 from django.urls import reverse_lazy
 from django.utils.deprecation import MiddlewareMixin
@@ -48,8 +49,8 @@ from apps.task.utils.task_utils import check_blocks
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.6.0/LICENSE"
-__version__ = "1.6.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.7.0/LICENSE"
+__version__ = "1.7.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -73,7 +74,12 @@ class LoginRequiredMiddleware(MiddlewareMixin):
         if not request.user.is_authenticated:
             path = request.path_info.lstrip('/')
             if not any(m.match(path) for m in EXEMPT_URLS):
-                return redirect(settings.LOGIN_URL)
+                return custom_redirect(settings.LOGIN_URL, next=request.path_info)
+
+
+def custom_redirect(url, *_args, **kwargs):
+    params = urlencode(kwargs)
+    return HttpResponseRedirect(url + "?%s" % params)
 
 
 # class AutoLoginMiddleware(MiddlewareMixin):

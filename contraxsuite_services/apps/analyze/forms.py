@@ -37,8 +37,8 @@ from apps.project.models import Project
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.6.0/LICENSE"
-__version__ = "1.6.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.7.0/LICENSE"
+__version__ = "1.7.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -378,102 +378,104 @@ class TrainDocumentClassifierForm(BaseTrainClassifierForm):
 
 
 class ClusterForm(forms.Form):
-    header = 'Clustering Documents and/or Text Units by Terms, Entities or Parties.'
+    header = 'Cluster by Entity'
     do_cluster_documents = checkbox_field(
         "Cluster Documents", initial=True, input_class='max-one-of')
     do_cluster_text_units = checkbox_field(
         "Cluster Text Units", input_class='max-one-of')
     project = forms.ModelChoiceField(
-        queryset=Project.objects.order_by('-pk'),
-        widget=forms.widgets.Select(attrs={'class': 'chosen'}),
         required=True,
-        label='Restrict to project')
+        label='Restrict to project',
+        queryset=Project.objects.order_by('-pk'),
+        widget=forms.widgets.Select(attrs={'class': 'chosen'}))
     cluster_by = forms.MultipleChoiceField(
+        required=True,
+        label='Cluster by*',
+        help_text='Cluster by terms, parties or other fields.',
         widget=forms.SelectMultiple(attrs={'class': 'chosen'}),
         choices=[(i, i) for i in DocumentFeatures.source_fields],
-        initial='term',
-        required=True,
-        help_text='Cluster by terms, parties or other fields.')
+        initial='term')
     using = forms.ChoiceField(
+        required=True,
         label='Algorithm',
+        help_text='Clustering algorithm model name.',
         choices=[('minibatchkmeans', 'MiniBatchKMeans'),
                  ('kmeans', 'KMeans'),
                  ('birch', 'Birch'),
                  ('dbscan', 'DBSCAN'),
                  # ('LabelSpreading', 'LabelSpreading')
                  ],
-        required=True,
-        initial='minidatchkmeans',
-        help_text='Clustering algorithm model name.')
+        initial='minibatchkmeans')
     n_clusters = forms.IntegerField(
-        label='n_clusters',
-        min_value=1,
-        initial=3,
         required=True,
-        help_text='Number of clusters.')
+        label='N clusters*',
+        help_text='Number of clusters.',
+        initial=3,
+        min_value=1)
     name = forms.CharField(
-        max_length=100,
-        required=True)
+        required=True,
+        label='Name*',
+        max_length=100)
     description = forms.CharField(
-        max_length=200,
-        required=False)
+        required=False,
+        max_length=200)
     options = forms.BooleanField(**options_field_kwargs)
     kmeans_max_iter = forms.IntegerField(
-        label='max_iter',
-        min_value=1,
+        required=True,
+        label='Max iterations*',
+        help_text='Maximum number of iterations for a single run.',
         initial=100,
-        required=True,
-        help_text='Maximum number of iterations for a single run.')
+        min_value=1)
     kmeans_n_init = forms.IntegerField(
-        label='n_init',
-        min_value=1,
-        initial=10,
         required=True,
+        label='N init*',
         help_text='Number of time the k-means algorithm will be run with different centroid seeds. '
                   'The final results will be the best output of n_init consecutive runs in '
-                  'terms of inertia.')
+                  'terms of inertia.',
+        initial=10,
+        min_value=1)
     minibatchkmeans_batch_size = forms.IntegerField(
-        label='batch_size',
-        min_value=1,
+        required=True,
+        label='Batch size*',
+        help_text='Size of the mini batches.',
         initial=100,
-        required=True,
-        help_text='Size of the mini batches.')
+        min_value=1)
     birch_threshold = forms.FloatField(
-        label='threshold',
-        min_value=0,
-        initial=0.5,
         required=True,
+        label='Threshold*',
         help_text='The radius of the subcluster obtained by merging a new sample and the closest '
                   'subcluster should be lesser than the threshold.'
-                  ' Otherwise a new subcluster is started.')
-    birch_branching_factor = forms.IntegerField(
-        label='branching_factor',
-        min_value=1,
-        initial=50,
-        required=True,
-        help_text='Maximum number of CF subclusters in each node.')
-    dbscan_eps = forms.FloatField(
-        label='eps',
-        min_value=0,
+                  ' Otherwise a new subcluster is started.',
         initial=0.5,
+        min_value=0)
+    birch_branching_factor = forms.IntegerField(
         required=True,
+        label='Branching factor*',
+        help_text='Maximum number of CF subclusters in each node.',
+        initial=50,
+        min_value=1)
+    dbscan_eps = forms.FloatField(
+        required=True,
+        label='EPS*',
         help_text='The maximum distance between two samples for them to be considered '
-                  'as in the same neighborhood.')
+                  'as in the same neighborhood.',
+        initial=0.5,
+        min_value=0)
     dbscan_leaf_size = forms.IntegerField(
-        label='leaf_size',
-        min_value=1,
-        initial=30,
         required=True,
+        label='Leaf size*',
         help_text='Leaf size passed to BallTree or cKDTree. '
                   'This can affect the speed of the construction and query, '
-                  'as well as the memory required to store the tree.')
+                  'as well as the memory required to store the tree.',
+        initial=30,
+        min_value=1)
     dbscan_p = forms.FloatField(
-        label='p',
-        min_value=0,
         required=False,
+        label='p',
         help_text='Leaf size passed to BallTree or cKDTree. '
                   'This can affect the speed of the construction and query, '
-                  'as well as the memory required to store the tree.')
+                  'as well as the memory required to store the tree.',
+        min_value=0)
     # ls_documents_property = forms.Field()
     # ls_text_units_property = forms.Field()
     # ls_max_iter = forms.IntegerField(
@@ -522,5 +524,4 @@ class ClusterForm(forms.Form):
         do_cluster_documents = cleaned_data.get("do_cluster_documents")
         do_cluster_text_units = cleaned_data.get("do_cluster_text_units")
         if not any([do_cluster_documents, do_cluster_text_units]):
-            self.add_error('do_cluster_documents', 'Please choose either Documents or Text Units')
-            self.add_error('do_cluster_text_units', 'Please choose either Documents or Text Units')
+            self.add_error('do_cluster_documents', 'Please choose either Documents or Text Units.')

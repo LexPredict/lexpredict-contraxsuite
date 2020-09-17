@@ -1,0 +1,57 @@
+{% extends "admin/delete_selected_confirmation.html" %}
+{% load i18n l10n admin_urls static %}
+{% load project_tags %}
+
+{% block content %}
+
+  {%  include "admin/document/users_tasks_warning.html" %}
+
+  {% if perms_lacking or protected %}
+    {% if perms_lacking %}
+      <div class="alert alert-error">
+        {% blocktrans %}Deleting the selected {{ objects_name }} would result in deleting related objects, but your account doesn't have permission to delete the following types of objects:{% endblocktrans %}
+        <ul>
+          {% for obj in perms_lacking %}
+            <li>{{ obj }}</li>
+          {% endfor %}
+        </ul>
+      </div>
+    {% endif %}
+    {% if protected %}
+      <div class="alert alert-error">
+        {% blocktrans %}Deleting the selected {{ objects_name }} would require deleting the following protected related objects:{% endblocktrans %}
+        <ul>
+          {% for obj in protected %}
+            <li>{{ obj }}</li>
+          {% endfor %}
+        </ul>
+      </div>
+    {% endif %}
+  {% else %}
+
+    <form action="" method="post">{% csrf_token %}
+      {% for obj in queryset %}
+        <input type="hidden" name="{{ action_checkbox_name }}" value="{{ obj.pk|unlocalize }}"/>
+      {% endfor %}
+      <input type="hidden" name="action" value="delete_selected"/>
+      <input type="hidden" name="post" value="yes"/>
+
+      <div class="alert alert-block alert-error">
+        <h4 class="alert-heading">{% trans 'Confirm deletion' %}</h4>
+
+        <p>
+          {% blocktrans %}Are you sure you want to delete the selected {{ objects_name }}? All of the following objects and their related items will be deleted:{% endblocktrans %}</p>
+          <p>Project(s): {{ model_count.projects }} {% if model_count.projects_delete_pending %}({{ model_count.projects_delete_pending }} project(s) are pending delete){% endif %}</p>
+          <p>Document(s): {{ model_count.documents }} {% if model_count.documents_delete_pending %}({{ model_count.documents_delete_pending }} document(s) are pending delete){% endif %}</p>
+          <p>Field(s): {{ model_count.document_fields }}</p>
+          <p>Field Detectors(s): {{ model_count.document_field_detectors }}</p>
+        <br>
+
+        <div>
+          <input type="submit" value="{% trans "Yes, I'm sure" %}" class="btn btn-danger"/>
+        </div>
+      </div>
+    </form>
+
+  {% endif %}
+{% endblock %}

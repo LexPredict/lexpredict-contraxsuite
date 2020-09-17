@@ -30,8 +30,8 @@ from django.conf import settings
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.6.0/LICENSE"
-__version__ = "1.6.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.7.0/LICENSE"
+__version__ = "1.7.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -121,3 +121,16 @@ CSV_DETECTOR_CONJUNCTIONS = AppVar.set(
     'and,,the,,&',
     'CSV Detector - conjunctions. Use two commas to separate values'
 )
+
+ALLOW_REMOVE_DOC_TYPE_WITH_PROJECT = AppVar.set(
+    'Document', 'allow_remove_doc_type_with_project', False,
+    'Allow to remove document types with projects.')
+
+MAX_DOCUMENTS_TO_EXPORT_SIZE_HTTP = AppVar.set(
+    'Document', 'max_documents_to_export_size', 20,
+    'Maximum total size of document files (Mb) to export as zip via http response.')
+
+TIKA_PROCESS_RAM_MB_LIMIT = AppVar.set(
+    'Document', 'tika_process_ram_mb_limit', 0,
+    'Max RAM for Tika Java subprocess, MB. 0 means "not set" (default limit).')
+

@@ -27,8 +27,8 @@
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.6.0/LICENSE"
-__version__ = "1.6.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.7.0/LICENSE"
+__version__ = "1.7.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -72,6 +72,7 @@ DOC_NUMBER_PER_SUB_TASK = 20
 DOC_NUMBER_PER_MAIN_TASK = 100
 
 
+DOCUMENT_FIELD_CODE_ID = 'id'
 DOCUMENT_FIELD_CODE_NAME = 'name'
 DOCUMENT_FIELD_CODE_DESCRIPTION = 'description'
 DOCUMENT_FIELD_CODE_LANGUAGE = 'language'
@@ -90,6 +91,7 @@ DOCUMENT_FIELD_CODE_PROJECT = 'project'
 DOCUMENT_FIELD_CODE_PROJECT_ID = 'project_id'
 DOCUMENT_FIELD_CODE_PROJECT_NAME = 'project.name'
 DOCUMENT_FIELD_CODE_STATUS = 'status'
+DOCUMENT_FIELD_CODE_STATUS_ID = 'status_id'
 DOCUMENT_FIELD_CODE_STATUS_NAME = 'status.name'
 DOCUMENT_FIELD_CODE_ASSIGNEE = 'assignee'
 DOCUMENT_FIELD_CODE_ASSIGNEE_ID = 'assignee_id'

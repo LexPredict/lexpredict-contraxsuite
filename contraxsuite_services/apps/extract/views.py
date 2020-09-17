@@ -59,8 +59,8 @@ from apps.extract.models import (
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.6.0/LICENSE"
-__version__ = "1.6.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.7.0/LICENSE"
+__version__ = "1.7.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -100,7 +100,8 @@ class BaseUsageListView(apps.common.mixins.JqPaginatedListView):
         if "document_pk" in self.request.GET:
             qs = qs.filter(document_id=self.request.GET['document_pk'])
         else:
-            qs = qs.filter(project_id__in=self.request.user.userprojectssavedfilter.projects.all())
+            qs = qs.filter(project_id__in=list(
+                self.request.user.userprojectssavedfilter.projects.values_list('pk', flat=True)))
 
         return qs.select_related('text_unit', 'text_unit__textunittext')
 
@@ -142,7 +143,8 @@ class BaseDocUsageListView(apps.common.mixins.JqPaginatedListView):
             qs = qs.filter(document_id=self.request.GET['document_pk'])
         else:
             qs = qs.filter(
-                document__project_id__in=self.request.user.userprojectssavedfilter.projects.all())
+                document__project_id__in=list(
+                    self.request.user.userprojectssavedfilter.projects.values_list('pk', flat=True)))
 
         return qs
 
@@ -159,9 +161,11 @@ class BaseTopUsageListView(apps.common.mixins.JqPaginatedListView):
     sort_by = None
     document_filter_key = 'document_id'
     project_filter_key = 'project_id__in'
+    extra_data = {}  # type: Dict[str, Any]
 
     def get_json_data(self, **kwargs):
         data = super().get_json_data(**kwargs)
+        data.update(self.extra_data)
         parent_data = None
         if "document_pk" in self.request.GET:
             parent_list_view = self.parent_list_view(request=self.request)
@@ -178,8 +182,9 @@ class BaseTopUsageListView(apps.common.mixins.JqPaginatedListView):
         if "document_pk" in self.request.GET:
             qs = qs.filter(**{self.document_filter_key: self.request.GET['document_pk']})
         else:
-            qs = qs.filter(**{
-                self.project_filter_key: self.request.user.userprojectssavedfilter.projects.all()})
+            project_ids = list(self.request.user.userprojectssavedfilter.projects.values_list(
+                'pk', flat=True))
+            qs = qs.filter(**{self.project_filter_key: project_ids})
         return qs
 
 
@@ -218,6 +223,8 @@ class TopTermUsageListView(BaseTopUsageListView):
         return item
 
     def get_queryset(self):
+        self.extra_data = {}
+
         if 'document_id' in self.request.GET:
             qs = super().get_queryset()
             qs = qs.values('term__term', 'count').order_by('-count')
@@ -356,7 +363,7 @@ class TextUnitTermUsageListView(BaseTextUnitUsageListView):
         qs = TextUnit.objects.only('pk', 'document_id', 'unit_type', 'language',
                                    'location_start', 'location_end').filter(
             pk__in=Subquery(term_usages.values('text_unit_id'))).order_by('document_id')
-        filtered_projects = self.request.user.userprojectssavedfilter.projects.all()
+        filtered_projects = list(self.request.user.userprojectssavedfilter.projects.values_list('pk', flat=True))
         if filtered_projects:
             qs = qs.filter(document__project_id__in=filtered_projects)
         else:
@@ -525,6 +532,8 @@ class GeoEntityUsageListView(BaseUsageListView):
 
     def get_queryset(self):
         qs = apps.common.mixins.JqPaginatedListView.get_queryset(self)
+        qs = qs.filter(
+            project_id__in=list(self.request.user.userprojectssavedfilter.projects.values_list('pk', flat=True)))
 
         if "document_pk" in self.request.GET:
             qs = qs.filter(document_id=self.request.GET['document_pk'])
@@ -613,8 +622,12 @@ class TypeaheadTermTerm(apps.common.mixins.TypeaheadView):
 
     def get_json_data(self, request, *args, **kwargs):
         qs = ProjectTermUsage.objects.all()
+        qs = qs.filter(
+            project_id__in=list(
+                self.request.user.userprojectssavedfilter.projects.values_list('pk', flat=True)))
+
         if "q" in request.GET:
-            qs = qs.filter(term__term__icontains=request.GET.get("q")).values('term__term')
+            qs = qs.filter(term__term__icontains=request.GET.get("q")).values('term__term').distinct()
         qs = qs.order_by('-count')[:self.DEFAULT_LIMIT]
         results = []
         for t in qs:
@@ -627,8 +640,11 @@ class TypeaheadGeoEntityName(apps.common.mixins.TypeaheadView):
 
     def get_json_data(self, request, *args, **kwargs):
         qs = ProjectGeoEntityUsage.objects.all()
+        qs = qs.filter(
+            project_id__in=list(
+                self.request.user.userprojectssavedfilter.projects.values_list('pk', flat=True)))
         if "q" in request.GET:
-            qs = qs.filter(entity__name__icontains=request.GET.get("q")).values('entity__name')
+            qs = qs.filter(entity__name__icontains=request.GET.get("q")).order_by('entity__name').values('entity__name').distinct()
         qs = qs.order_by('-count')[:self.DEFAULT_LIMIT]
         return [{"value": i['entity__name']} for i in qs]
 
@@ -637,8 +653,11 @@ class TypeaheadPartyName(apps.common.mixins.TypeaheadView):
 
     def get_json_data(self, request, *args, **kwargs):
         qs = ProjectPartyUsage.objects.all()
+        qs = qs.filter(project_id__in=list(
+            self.request.user.userprojectssavedfilter.projects.values_list('pk', flat=True)))
+
         if "q" in request.GET:
-            qs = qs.filter(party__name__icontains=request.GET.get("q")).values('party__name')
+            qs = qs.filter(party__name__icontains=request.GET.get("q")).values('party__name').distinct()
         qs = qs.order_by('-count')[:self.DEFAULT_LIMIT]
         return [{"value": i['party__name']} for i in qs]
 
@@ -682,12 +701,15 @@ class TopPartyUsageListView(BaseTopUsageListView):
 
     def get_queryset(self):
         self.model = PartyUsage if 'document_pk' in self.request.GET else ProjectPartyUsage
-        qs = super().get_queryset()
-        if 'party_pk' in self.request.GET:
-            qs = qs.filter(party_id=self.request.GET['party_pk'])
-        qs = qs.values('party__name', 'party__type_abbr', 'party_id') \
-            .annotate(count=Sum("count")) \
-            .order_by('-count')
+        qs = None
+
+        if qs is None:
+            qs = super().get_queryset()
+            if 'party_pk' in self.request.GET:
+                qs = qs.filter(party_id=self.request.GET['party_pk'])
+            qs = qs.values('party__name', 'party__type_abbr', 'party_id') \
+                .annotate(count=Sum("count")) \
+                .order_by('-count')
         return qs
 
 
@@ -961,10 +983,12 @@ class TopDefinitionUsageListView(BaseTopUsageListView):
 
     def get_queryset(self):
         self.model = DefinitionUsage if "document_pk" in self.request.GET else ProjectDefinitionUsage
-        qs = super().get_queryset() \
-            .values("definition") \
-            .annotate(count=Sum("count")) \
-            .order_by("-count")
+        qs = None
+        if qs is None:
+            qs = super().get_queryset() \
+                .values("definition") \
+                .annotate(count=Sum("count")) \
+                .order_by("-count")
         return qs
 
 

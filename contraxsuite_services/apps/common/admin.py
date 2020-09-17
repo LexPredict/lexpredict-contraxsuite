@@ -25,20 +25,26 @@
 # -*- coding: utf-8 -*-
 
 # Django imports
+import os
+
 from django import forms
 from django.contrib import admin
+from django.http import HttpResponse, JsonResponse
+from django.urls import path, reverse
+from django.utils.safestring import mark_safe
 from rest_framework_tracking.admin import APIRequestLogAdmin
 
 # Project imports
 from apps.common.decorators import get_function_from_str
+from apps.common.file_storage import get_file_storage
 from apps.common.models import AppVar, ReviewStatusGroup, ReviewStatus, Action, \
     CustomAPIRequestLog, APIRequestLog, MethodStats, MethodStatsCollectorPlugin, \
-    MenuGroup, MenuItem, ThreadDumpRecord, ObjectStorage
+    MenuGroup, MenuItem, ThreadDumpRecord, ObjectStorage, ExportFile
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.6.0/LICENSE"
-__version__ = "1.6.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.7.0/LICENSE"
+__version__ = "1.7.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -99,6 +105,67 @@ class AppVarAdmin(admin.ModelAdmin):
 
     def get_changelist_form(self, request, **kwargs):
         return AppVarAdminForm
+
+
+class ExportFileAdminForm(forms.ModelForm):
+
+    class Meta:
+        model = AppVar
+        fields = ['category', 'name', 'value', 'user', 'description']
+        widgets = {
+            'value': forms.Textarea(
+                attrs={
+                    'rows': '2', 'cols': '95'
+                }
+            )
+        }
+
+
+class ExportFileAdmin(admin.ModelAdmin):
+    readonly_fields = ['get_link']
+    list_display = ['file_path', 'get_link', 'comment',
+                    'file_created', 'downloaded', 'email_sent',
+                    'created_time']
+    search_fields = ['file_path', 'comment']
+    ordering = ('-created_time',)
+
+    def get_changelist_form(self, request, **kwargs):
+        return ExportFileAdminForm
+
+    def get_link(self, obj: ExportFile):
+        return obj.get_link()
+
+    def download_file_data(self, request, *_args, **kwargs):
+        exp_file = ExportFile.objects.get(pk=kwargs['object_id'])  # type: ExportFile
+        storage = get_file_storage()
+        file_data = storage.read(exp_file.file_path)
+        file_name = os.path.basename(exp_file.file_path)
+        response = HttpResponse(file_data, content_type='application/zip')
+        response['Content-Disposition'] = f'attachment; filename="{file_name}"'
+        response['Content-Length'] = len(file_data)
+        response['filename'] = file_name
+        exp_file.downloaded = True
+        exp_file.save()
+        return response
+
+    def file_download_ref(self, request, *_args, **kwargs):
+        exp_file = ExportFile.objects.get(pk=kwargs['object_id'])  # type: ExportFile
+        file_ref = ''
+        if exp_file.file_created:
+            file_ref = reverse('admin:download_file_data', args=[exp_file.pk])
+        return JsonResponse({'file_reference': file_ref}, safe=False)
+
+    def get_urls(self):
+        urls = super().get_urls()
+        my_urls = [
+            path('download_file_data/<int:object_id>/',
+                 self.download_file_data,
+                 name='download_file_data'),
+            path('file_download_ref/<int:object_id>/',
+                 self.file_download_ref,
+                 name='file_download_ref'),
+        ]
+        return my_urls + urls
 
 
 class ReviewStatusGroupAdmin(admin.ModelAdmin):
@@ -185,3 +252,4 @@ admin.site.register(MenuGroup, MenuGroupAdmin)
 admin.site.register(MenuItem, MenuItemAdmin)
 admin.site.register(ThreadDumpRecord, ThreadDumpRecordAdmin)
 admin.site.register(ObjectStorage, ObjectStorageAdmin)
+admin.site.register(ExportFile, ExportFileAdmin)

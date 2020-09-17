@@ -38,12 +38,12 @@ from apps.analyze.ml.transform import Doc2VecTransformer
 from apps.analyze.ml.classify import ClassifyTextUnits, ClassifyDocuments
 from apps.document.models import Document, TextUnit, DocumentText, TextUnitText
 from apps.project.models import Project
-from apps.task.tasks import BaseTask
+from apps.task.tasks import ExtendedTask
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.6.0/LICENSE"
-__version__ = "1.6.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.7.0/LICENSE"
+__version__ = "1.7.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -51,7 +51,7 @@ __email__ = "support@contraxsuite.com"
 MODULE_NAME = __name__
 
 
-class FeatureStoringTask(BaseTask):
+class FeatureStoringTask(ExtendedTask):
     def save_feature_vectors(self):
         model_class = DocumentTransformer if self.source == 'document' else TextUnitTransformer
         vector_class = DocumentVector if self.source == 'document' else TextUnitVector
@@ -101,7 +101,7 @@ class FeatureStoringTask(BaseTask):
 
 class TrainDoc2VecModel(FeatureStoringTask):
     name = 'Train doc2vec Model'
-    priority = 9
+    priority = 7
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -167,7 +167,7 @@ class BuildFeatureVectorsTask(FeatureStoringTask):
         self.save_feature_vectors()
 
 
-class TrainClassifier(BaseTask):
+class TrainClassifier(ExtendedTask):
     name = 'TrainClassifier'
 
     def process(self, **kwargs):
@@ -220,7 +220,7 @@ class TrainClassifier(BaseTask):
         self.push()  # 3
 
 
-class RunClassifier(BaseTask):
+class RunClassifier(ExtendedTask):
     name = 'RunClassifier'
 
     def process(self, **kwargs):
@@ -272,7 +272,7 @@ class RunClassifier(BaseTask):
         self.push()  # 3
 
 
-class Cluster(BaseTask):
+class Cluster(ExtendedTask):
     """
     Cluster Documents, Text Units
     """

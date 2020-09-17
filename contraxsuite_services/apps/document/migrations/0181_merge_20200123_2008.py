@@ -3,6 +3,10 @@
 from django.db import migrations
 
 
+def do_nothing(_apps, _schema_editor):
+    pass
+
+
 class Migration(migrations.Migration):
 
     dependencies = [
@@ -11,4 +15,5 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
+        migrations.RunPython(do_nothing, reverse_code=migrations.RunPython.noop),
     ]

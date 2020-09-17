@@ -40,8 +40,8 @@ from apps.analyze.ml.features import DocumentFeatures, TextUnitFeatures, Documen
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.6.0/LICENSE"
-__version__ = "1.6.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.7.0/LICENSE"
+__version__ = "1.7.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -99,7 +99,7 @@ class ClusterEngine:
         :return: dict - engine options dictionary
         """
         engine_options = dict()
-        allowed_engine_option_names = inspect.getfullargspec(self.engine.__init__).args[1:]
+        allowed_engine_option_names = list(inspect.signature(self.engine.__init__).parameters.keys())[1:]
         for option_name in allowed_engine_option_names:
 
             # get class attribute-option
@@ -261,6 +261,7 @@ class ClusterDocuments:
                  use_default_name=False,
                  description=None,
                  log_message: Callable[[str, str], None] = None,
+                 create_cluster_for_unclustered: bool = True,
                  **cluster_options):
         """
         :param queryset: Document/TextUnit queryset
@@ -274,6 +275,7 @@ class ClusterDocuments:
         :param use_default_name: bool - use default name "Default({cluster_pk})"
         :param description: str - clustering custom description
         :param log_message: log routine(msg: str, msg_key: str)
+        :param create_cluster_for_unclustered: create a cluster obj for unclustered items
         :param cluster_options: **kwargs for cluster model
         """
         self.features_model = DocumentFeatures
@@ -293,6 +295,7 @@ class ClusterDocuments:
         self.engine_wrapper = self.get_engine_wrapper()
         self.start_date = None
         self.log_message_routine = log_message
+        self.create_cluster_for_unclustered = create_cluster_for_unclustered
         self.init_classifier()
 
     def init_classifier(self):
@@ -383,6 +386,7 @@ class ClusterDocuments:
         # Create each document cluster,
         # transform "clustering" object into raw data
         # - store it in db_obj.metadata and clustering.metadata
+        n = 0
         clusters_data = metadata['clusters_data']
         for n, cluster_label_id in enumerate(clustering.cluster_label_set):
 
@@ -401,13 +405,31 @@ class ClusterDocuments:
                 centroid_coord=clustering.centers2d[n].tolist() if clustering.centers2d is not None else None,
                 cluster_obj_id=cluster_obj.pk
             )
-            clusters_data[cluster_label_id] = dict(cluster_obj_metadata)
+            clusters_data[cluster_label_id] = cluster_obj_metadata
 
             # store metadata for cluster object
             if cluster_label_id in cluster_items_points_data:
                 cluster_obj_metadata['points_data'] = cluster_items_points_data[cluster_label_id]
             cluster_obj.metadata = cluster_obj_metadata
             cluster_obj.save()
+
+        if self.create_cluster_for_unclustered and feature_obj.unqualified_item_ids:
+            cluster_label_id = n + 1
+            cluster_obj = self.create_db_cluster_object(cluster_label_id, ['unclustered'], feature_obj.unqualified_item_ids)
+            metadata['cluster_obj_ids'].append(cluster_obj.pk)
+
+            cluster_obj_metadata = dict(
+                cluster_terms=['unclustered'],
+                centroid_coord=[],
+                points_data=[],
+                cluster_obj_id=cluster_obj.pk
+            )
+            clusters_data[cluster_label_id] = cluster_obj_metadata
+            cluster_obj.metadata = cluster_obj_metadata
+            cluster_obj.name = 'Unclustered'
+            cluster_obj.save()
+            del metadata['unclustered_item_ids']
+            del metadata['unclustered_item_names']
 
         clustering.metadata = metadata
         return clustering

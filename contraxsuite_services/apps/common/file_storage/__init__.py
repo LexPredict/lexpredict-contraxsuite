@@ -34,8 +34,8 @@ from apps.common.file_storage.webdav_file_storage import ContraxsuiteWebDAVFileS
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.6.0/LICENSE"
-__version__ = "1.6.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.7.0/LICENSE"
+__version__ = "1.7.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -59,6 +59,10 @@ def get_filebrowser_site(url_as_download=True):
 
 
 def get_media_file_storage(folder='', url_as_download=True):
+    from apps.common.migration_utils import is_migration_in_process
+    if is_migration_in_process():
+        return None
+
     access_type = settings.CONTRAX_FILE_STORAGE_TYPE
     from filebrowser.sites import FileSystemStorage
     from apps.common.file_storage.filebrowser_webdav_file_storage import FileBrowserWebdavStorage

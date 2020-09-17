@@ -32,7 +32,7 @@ import re
 import uuid
 from enum import Enum
 from io import StringIO
-from typing import List, Union, Any, Tuple
+from typing import List, Union, Any, Tuple, Optional
 
 import jiphy
 import pandas as pd
@@ -51,6 +51,7 @@ from django.db.models.functions import Concat
 from django.dispatch import receiver
 from django.utils.html import format_html
 from django.utils.timezone import now
+from djangoql.queryset import DjangoQLQuerySet
 from picklefield import PickledObjectField
 from simple_history.models import HistoricalRecords
 
@@ -67,8 +68,8 @@ from apps.users.models import User
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.6.0/LICENSE"
-__version__ = "1.6.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.7.0/LICENSE"
+__version__ = "1.7.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -103,6 +104,9 @@ class TimeStampedModel(models.Model):
 
 
 class DocumentFieldCategory(models.Model):
+    document_type = models.ForeignKey('document.DocumentType', null=True, blank=False,
+                                      related_name='categories', on_delete=CASCADE)
+
     name = models.CharField(max_length=100, db_index=True)
 
     order = models.IntegerField(default=0)
@@ -114,10 +118,12 @@ class DocumentFieldCategory(models.Model):
         ordering = ('order', 'name')
 
     def __str__(self):
-        return self.name or ''
+        return "{}: type={} (#{})".format(self.name,
+                                          self.document_type.code if self.document_type else None,
+                                          self.pk)
 
     def __repr__(self):
-        return "{1} (#{0})".format(self.pk, self.name)
+        return self.__str__()
 
 
 class DocumentFieldFamily(models.Model):
@@ -165,7 +171,7 @@ class DocumentFieldManager(models.Manager):
     def _get_dirty_fields_filter(self):
         user_delay = DocumentFieldManager.get_user_delay()
         return self.filter(dirty=True,
-                           value_detection_strategy__in=DocumentField.VALUE_DETECTION_TRAINABLE,
+                           value_detection_strategy__in=DocumentField.VALUE_DETECTION_AUTO_TRAINABLE,
                            training_finished=False,
                            modified_date__lt=user_delay)
 
@@ -232,26 +238,19 @@ a Latin letter, and contain only Latin letters, digits, underscores. Field codes
 
     DETECT_LIMIT_NONE = 'NONE'
     DETECT_LIMIT_UNIT = 'UNIT'
-    DETECT_LIMIT_SENTENCE = 'SENTENCE'
-    DETECT_LIMIT_PARAGRAPH = 'PARAGRAPH'
-    DETECT_LIMIT_PAGE = 'PAGE'
-    DETECT_LIMIT_CHAR = 'CHAR'
 
     DETECT_LIMIT_OPTIONS = [(DETECT_LIMIT_NONE, 'No Limit'),
-                            (DETECT_LIMIT_UNIT, 'Limit to N document''s units'),
-                            (DETECT_LIMIT_SENTENCE, 'Limit to N sentences'),
-                            (DETECT_LIMIT_PARAGRAPH, 'Limit to N paragraphs'),
-                            # (DETECT_LIMIT_PAGE, 'Limit to N pages'),
-                            (DETECT_LIMIT_CHAR, 'Limit to N characters')]
+                            (DETECT_LIMIT_UNIT, 'Limit to N "text unit type" units')]
 
     # see detect_limit_count
     detect_limit_unit = models.CharField(max_length=10,
                                          choices=DETECT_LIMIT_OPTIONS,
                                          default=DETECT_LIMIT_NONE,
-                                         help_text='''Users may limit Document Field searches by bounding the detection 
-range. Specify the type of element (a “step size”) for a bounded search. When specified, a Document Field Detector will 
-only search from the beginning of the document until it reaches the specified Nth element. Note: Cannot be used with 
-the Field Value Detection Strategy called “apply regexp field detectors to depends-on field values”.''')
+                                         help_text='''Choose to add an upward limit to the amount of document text 
+                                         ContraxSuite will search for this Document Field. For example, you can choose 
+                                         to only search the first 10 paragraphs of text for the value required (this 
+                                         often works best for values like “Company,” “Execution Date,” or “Parties,”
+                                         all of which typically appear in the first few paragraphs of a contract).''')
 
     # while detecting field value restrict to N units (see detect_limit_unit)
     # 0 means no limit
@@ -285,13 +284,9 @@ range for a bounded search. Field detection begins at the top of the document an
 
     VD_MLFLOW_MODEL = 'mlflow_model'
 
-    VALUE_DETECTION_TRAINABLE = {
+    VALUE_DETECTION_AUTO_TRAINABLE = {
         VD_REGEXPS_AND_TEXT_BASED_ML,
-        VD_TEXT_BASED_ML_ONLY,
         VD_FORMULA_AND_FIELD_BASED_ML,
-        VD_PYTHON_CODED_FIELD,
-        VD_FIELD_BASED_ML_ONLY,
-        VD_FIELD_BASED_WITH_UNSURE_ML_ONLY
     }
 
     VALUE_DETECTION_STRATEGY_CHOICES = [(VD_DISABLED, 'Field detection disabled'),
@@ -405,7 +400,8 @@ range for a bounded search. Field detection begins at the top of the document an
 
     hide_until_js = models.TextField(null=True, blank=True)
 
-    display_yes_no = models.BooleanField(default=False, null=False, blank=False)
+    display_yes_no = models.BooleanField(default=False, null=False, blank=False, help_text='''Checking this box will 
+    display “Yes” if Related Info text is found, and display “No” if no text is found.''')
 
     modified_date = models.DateTimeField(auto_now=True)
 
@@ -645,6 +641,9 @@ class Document(models.Model):
     # If relevant, URI/path within document source
     source_path = models.CharField(max_length=1024, db_index=True, null=True)
 
+    # If relevant, URI/path within alternative document source
+    alt_source_path = models.CharField(max_length=1024, db_index=True, null=True)
+
     # source file size, bytes
     file_size = models.PositiveIntegerField(default=0, null=False)
 
@@ -666,6 +665,8 @@ class Document(models.Model):
 
     # apply custom objects manager
     objects = DocumentManager()
+
+    ql_objects = DjangoQLQuerySet.as_manager()
 
     all_objects = models.Manager()
 
@@ -938,6 +939,27 @@ class DocumentProperty(TimeStampedModel):
             .format(self.document.id, self.key)
 
 
+class DocumentPage(models.Model):
+    document = models.ForeignKey(Document, db_index=True, on_delete=CASCADE)
+
+    number = models.IntegerField(null=False, blank=False)
+
+    location_start = models.IntegerField(null=False, blank=False)
+
+    location_end = models.IntegerField(null=False, blank=False)
+
+    class Meta:
+        ordering = ('document', 'number')
+        verbose_name_plural = 'Document Page'
+        indexes = [Index(fields=['document', 'number'])]
+
+    def __repr__(self):
+        return f'Page #{self.number} (document={self.document_id}, location={self.location_start})'
+
+    def __str__(self):
+        return f'Page #{self.number}, {self.location_start}: {self.location_end})'
+
+
 @receiver(models.signals.post_save, sender=DocumentProperty)
 def save_document_property(sender, instance, created, **kwargs):
     sender.save_timestamp(sender, instance, created, save_document_property)
@@ -993,6 +1015,10 @@ class DocumentNote(models.Model):
 
     # Document Field Value
     field = models.ForeignKey('document.DocumentField', blank=True, null=True, db_index=True, on_delete=CASCADE)
+
+    user = models.ForeignKey(User, db_index=True, null=True, on_delete=SET_NULL, default=None)
+
+    username = models.CharField(db_index=False, null=True, max_length=200, default=None)
 
     # Document timestamp
     timestamp = models.DateTimeField(default=now, db_index=True)
@@ -1060,6 +1086,10 @@ class TextUnit(models.Model):
     # Document
     document = models.ForeignKey(Document, db_index=True, on_delete=CASCADE)
 
+    # Project reference for better SQL performance
+    project = models.ForeignKey('project.Project', blank=True,
+                                null=True, db_index=True, on_delete=CASCADE)
+
     # Text unit type, e.g., sentence, paragraph, section
     unit_type = models.CharField(max_length=128)
 
@@ -1072,6 +1102,10 @@ class TextUnit(models.Model):
 
     # Cryptographic hash of raw text for identical de-duplication
     text_hash = models.CharField(max_length=1024, null=True)
+
+    objects = models.Manager()
+
+    ql_objects = DjangoQLQuerySet.as_manager()
 
     class Meta:
         ordering = ('document', 'unit_type')
@@ -1246,6 +1280,10 @@ class TextUnitNote(models.Model):
     # Timestamp
     timestamp = models.DateTimeField(default=now, db_index=True)
 
+    user = models.ForeignKey(User, db_index=True, null=True, on_delete=SET_NULL, default=None)
+
+    username = models.CharField(db_index=False, null=True, max_length=200, default=None)
+
     # Note
     note = RichTextField()
 
@@ -1333,10 +1371,12 @@ class DocumentFieldDetector(models.Model):
 which field detectors were created automatically during import process.''')
 
     exclude_regexps = models.TextField(blank=True, null=True,
-                                       help_text='''Enter regular expressions, each on a new line, to exclude sentences 
-from field detection. If any portion of a given Text Unit’s text matches the pattern described in one of the Exclude 
-regexps, then the Field Detector skips and moves to the next Text Unit. Note that Exclude regexps are checked before 
-both definition words and Include regexps.''')
+                                       help_text='''Enter regular expressions, each on a new line, for text patterns 
+you want EXCLUDED. The Field Detector will attempt to skip any Text Unit that contains any of the patterns written 
+here, and will move on to the next Text Unit. Avoid using “.*” and similar unlimited multipliers, as they can crash 
+or slow ContraxSuite. Use bounded multipliers for variable length matching, like “.{0,100}” or similar. Note that 
+Exclude regexps are checked before Definition words and Include regexps. If a Field Detector has Exclude regexps, but 
+no Definition words or Include regexps, it will not extract any data.''')
 
     definition_words = models.TextField(blank=True, null=True,
                                         help_text='''Enter words or phrases, each on a new line, that must be present 
@@ -1346,14 +1386,15 @@ Field Detector checks against those requirements. The Field Detector marks the e
 the Field Detector checks for definition words after filtering using the Exclude regexps.''')
 
     include_regexps = models.TextField(blank=True, null=True, help_text='''Enter regular expressions, each on a new 
-line, for finding a text pattern. The Field Detector attempts to match each of these regular expressions within a given 
-Text Unit. Avoid using “.*” and similar unlimited multipliers, as they can crash or slow ContraxSuite. Use bounded 
-multipliers for variable length matching, like “.{0,100}” or similar. Note that Include regexps are checked after both 
-Exclude regexps and Definition words.''')
+line, for text patterns you want INCLUDED. The Field Detector will attempt to match each of these regular expressions 
+within a given Text Unit. Avoid using “.*” and similar unlimited multipliers, as they can crash or slow ContraxSuite. 
+Use bounded multipliers for variable length matching, like “.{0,100}” or similar. Note that Include regexps are checked 
+after both Exclude regexps and Definition words.''')
 
-    regexps_pre_process_lower = models.BooleanField(blank=False, null=False, default=True,
-                                                    help_text='''Convert a sentence or a paragraph’s characters to 
-lowercase prior to running regular expressions for field detection.''')
+    regexps_pre_process_lower = models.BooleanField(
+        blank=False, null=False, default=True,
+        verbose_name='Make search case-insensitive',
+        help_text='''Set 'ignore case' flag for both 'Include regexps' and 'Exclude regexps' options.''')
 
     # For choice fields - the value which should be set if a sentence matches this detector
     detected_value = models.CharField(max_length=256, blank=True, null=True, help_text='''The string value written here 
@@ -1390,17 +1431,19 @@ parsed correctly as the start date.''')
     def clean_fields(self, exclude=('uid', 'field', 'document_type', 'exclude_regexps',
                                     'include_regexps', 'regexps_pre_process_lower',
                                     'detected_value')):
-        # TODO: Put thit validation to the proper place (forms?)
-
+        # TODO: Put this validation to the proper place (forms?)
         from apps.document.field_types import TypedField
-        typed_field = TypedField.by(self.field)
+        try:
+            typed_field = TypedField.by(self.field)
+        except:
+            raise ValidationError('field')
 
         if not typed_field.ordinal \
                 and self.extraction_hint in ORDINAL_EXTRACTION_HINTS:
-            raise ValidationError(('Cannot take min or max of <Field> because its type is not '
+            raise ValidationError({'field': ['Cannot take min or max of <Field> because its type is not '
                                    'amount, money, int, float, date, or duration. Please select '
                                    'TAKE_FIRST, TAKE_SECOND, or TAKE_THIRD, or change the field '
-                                   'type.'))
+                                   'type.']})
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -1408,14 +1451,16 @@ parsed correctly as the start date.''')
         self._exclude_matchers = None
         self._definition_words = None
 
-    @classmethod
-    def compile_regexps_string(cls, regexps: str) -> list:
+    def compile_regexps_string(self, regexps: str) -> list:
         matchers = []
         if regexps:
             for r in regexps.split('\n'):
                 r = r.strip()
                 if r:
-                    matchers.append(re.compile(r, cls.DEF_RE_FLAGS))
+                    flags = self.DEF_RE_FLAGS
+                    if self.regexps_pre_process_lower:
+                        flags |= re.IGNORECASE
+                    matchers.append(re.compile(r, flags))
         return matchers
 
     def compile_regexps(self):
@@ -1445,7 +1490,7 @@ parsed correctly as the start date.''')
     def _matches_exclude_regexp(self, sentence: str) -> bool:
         if self._exclude_matchers:
             for matcher_re in self._exclude_matchers:
-                for m in matcher_re.finditer(sentence):
+                for _m in matcher_re.finditer(sentence):
                     return True
         return False
 
@@ -1463,6 +1508,26 @@ parsed correctly as the start date.''')
     def __repr__(self):
         return "{0}: {1}".format(self.field, self.include_regexps)[:50] \
                + " (#{0})".format(self.uid)
+
+    def check_model(self) -> List[Tuple[str, Any]]:
+        errors = []  # type: List[Tuple[str, Any]]
+        try:
+            self.compile_regexps_string(self.exclude_regexps)
+        except Exception as exc:
+            errors.append(('exclude_regexps', exc,))
+
+        try:
+            self.compile_regexps_string(self.include_regexps)
+        except Exception as exc:
+            errors.append(('include_regexps', exc,))
+
+        try:
+            from apps.document.field_detection.detector_field_matcher import DetectorFieldMatcher
+            DetectorFieldMatcher.validate_detected_value(
+                self.field.type, self.detected_value)
+        except Exception as exc:
+            errors.append(('detected_value', exc,))
+        return errors
 
 
 class DocumentFieldMultilineRegexDetector(models.Model):
@@ -1493,9 +1558,10 @@ class DocumentFieldMultilineRegexDetector(models.Model):
     end date," if text part = "Before matching substring" and Include regexp is "is.{0,100}start" then "2019-01-23" will be 
     parsed correctly as the start date.''')
 
-    regexps_pre_process_lower = models.BooleanField(blank=False, null=False, default=True,
-                                                    help_text='''Convert a sentence or a paragraph’s characters to 
-    lowercase prior to running regular expressions for field detection.''')
+    regexps_pre_process_lower = models.BooleanField(
+        blank=False, null=False, default=True,
+        verbose_name='Make search case-insensitive',
+        help_text='''Set 'ignore case' flag for both 'Include regexps' and 'Exclude regexps' options.''')
 
     def __repr__(self):
         short_text = self.csv_content or ''
@@ -1560,6 +1626,8 @@ class ClassifierModel(models.Model):
     classifier_accuracy_report_in_sample = models.CharField(max_length=1024, null=True, blank=True)
 
     classifier_accuracy_report_out_of_sample = models.CharField(max_length=1024, null=True, blank=True)
+
+    store_suggestion = models.BooleanField(default=False)
 
     def get_trained_model_obj(self):
         if not self.trained_model:

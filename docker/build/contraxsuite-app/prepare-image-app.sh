@@ -1,12 +1,18 @@
 #!/bin/bash
 set -e
 
-pushd ../../
-source setenv.sh
+pushd ../
+source build_setenv.sh
 popd
 
 echo "Image name: ${CONTRAXSUITE_IMAGE}"
 export DOLLAR='$' # escape $ in envsubst
+
+if [[ "${INSTALL_LEXNLP_MASTER,,}" = "true" ]]; then
+    export LEXNLP_MASTER_INSTALL_CMD="&& pip install -r /contraxsuite_services/deploy/base/python-requirements-lexnlp.txt"
+else
+    export LEXNLP_MASTER_INSTALL_CMD=""
+fi
 
 envsubst < Dockerfile.template > Dockerfile
 
@@ -51,11 +57,15 @@ rsync --exclude='.git/' ../../../ssl_certs/ ./temp/ssl_certs/ -a --copy-links -v
 rsync --exclude='.git/' ../../../contraxsuite_services/ ./temp/contraxsuite_services/ -a --copy-links -v
 rsync --exclude='.git/' ../../../static/ ./temp/static/ -a --copy-links -v
 
-# Don't put licensed third-party components into the image
 rm -f -r ./temp/contraxsuite_services/staticfiles
 rm -f ./temp/contraxsuite_services/local_settings.py
 rm -f ./temp/contraxsuite_services/uwsgi.ini
-rm -r ./temp/static/vendor/jqwidgets
+rm -f ./temp/additionals/additionals
+
+sed -i "/VERSION_NUMBER/ c\VERSION_NUMBER = '${CONTRAXSUITE_VERSION}'" ./temp/contraxsuite_services/settings.py
+sed -i "/VERSION_COMMIT/ c\VERSION_COMMIT = '${BUILD_CONTRAXSUITE_GIT_COMMIT}'" ./temp/contraxsuite_services/settings.py
+
+
 
 echo "LexPredict Contraxsuite App Docker Image" > ./temp/build.info
 echo "Built at: $(uname -a)" >> ./temp/build.info

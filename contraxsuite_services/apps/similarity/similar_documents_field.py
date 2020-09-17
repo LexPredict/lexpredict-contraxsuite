@@ -43,8 +43,8 @@ from apps.similarity.models import (
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.6.0/LICENSE"
-__version__ = "1.6.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.7.0/LICENSE"
+__version__ = "1.7.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -77,8 +77,14 @@ class SimilarDocumentsField(PythonCodedField):
                                   cache_generic_fields=False,
                                   cache_user_fields=[field.code])
 
-    def get_value(self, log: ProcessLogger, field: DocumentField, doc: Document, text: str,
-                  cur_field_code_to_value: Dict[str, Any]) -> Optional[FieldValueDTO]:
+    def get_value(self,
+                  log: ProcessLogger,
+                  field: DocumentField,
+                  doc: Document,
+                  cur_field_code_to_value: Dict[str, Any],
+                  location_text: Optional[str],
+                  location_start: int = 0,
+                  location_end: int = 0) -> Optional[FieldValueDTO]:
 
         try:
             conf = getattr(field, DST_FIELD_SIMILARITY_CONFIG_ATTR)  # type: Optional[DocumentSimilarityConfig]
@@ -167,4 +173,7 @@ class SimilarDocumentsField(PythonCodedField):
             res.add(other_doc_pk)
             self._maybe_save_reverse_similarity_value(log=log, field=field, document=doc, other_doc_id=other_doc_pk)
 
-        return FieldValueDTO(field_values=sorted(res))
+        if res:
+            field_value = sorted(res)[0]
+            return FieldValueDTO(field_value)
+        return None

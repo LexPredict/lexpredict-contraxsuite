@@ -28,7 +28,11 @@ import csv
 import datetime
 import io
 import json
+import os
 import re
+import tempfile
+import zipfile
+from shutil import rmtree
 from typing import Any, List, Dict, Iterable, Tuple, Union, Optional
 
 import jiphy
@@ -49,7 +53,7 @@ from apps.celery import app
 from apps.common.collection_utils import chunks
 from apps.common.db_cache.db_cache import DbCache
 from apps.common.file_storage import get_file_storage
-from apps.common.models import ReviewStatus
+from apps.common.models import ReviewStatus, ExportFile
 from apps.common.sql_commons import escape_column_name
 from apps.document import signals
 from apps.document.async_tasks.detect_field_values_task import DetectFieldValues
@@ -62,39 +66,41 @@ from apps.document.field_detection.field_detection import detect_and_cache_field
 from apps.document.field_detection.field_detection_repository import FieldDetectionRepository
 from apps.document.field_detection.regexps_field_detection import CsvDetectorImporter
 from apps.document.field_types import TypedField
+from apps.document.migration.document_export import DocumentExporter
+from apps.document.migration.document_import import DocumentImporter
 from apps.document.models import DocumentType, \
     Document, DocumentMetadata, ClassifierModel, TextUnit, DocumentField
 from apps.document.models import FieldValue, FieldAnnotation
 from apps.document.repository.document_bulk_delete import get_document_bulk_delete
 from apps.document.repository.dto import FieldValueDTO
+from apps.document.scheme_migrations.scheme_migration import CURRENT_VERSION
 from apps.document.signals import fire_documents_status_changed, \
     fire_documents_assignee_changed, fire_document_changed
 from apps.document.sync_tasks.document_files_cleaner import DocumentFilesCleaner
 from apps.dump.document_type_import import import_document_type
 from apps.project.models import Project
 from apps.rawdb.field_value_tables import adapt_table_structure
-from apps.task.models import Task
-from apps.task.tasks import BaseTask, ExtendedTask, CeleryTaskLogger, call_task
-from apps.task.tasks import call_task_func
-from apps.task.utils.task_utils import TaskUtils
-from apps.users.models import User
 from apps.rawdb.field_value_tables import cache_document_fields
+from apps.task.models import Task
+from apps.task.tasks import ExtendedTask, CeleryTaskLogger, call_task, Locate
+from apps.task.tasks import call_task_func
+from apps.task.utils.task_utils import TaskUtils, download_task_attached_file
+from apps.users.models import User
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.6.0/LICENSE"
-__version__ = "1.6.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.7.0/LICENSE"
+__version__ = "1.7.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
-
 
 MODULE_NAME = __name__
 logger = get_task_logger(__name__)
 
 
-class TrainDocumentFieldDetectorModel(BaseTask):
+class TrainDocumentFieldDetectorModel(ExtendedTask):
     name = 'Train Document Field Detector Model'
-    priority = 9
+    priority = 7
 
     def process(self, **kwargs):
         self.log_info(
@@ -140,7 +146,7 @@ class TrainDocumentFieldDetectorModel(BaseTask):
             new_model.save()
 
 
-class TrainDirtyDocumentFieldDetectorModel(BaseTask):
+class TrainDirtyDocumentFieldDetectorModel(ExtendedTask):
     name = 'Train Dirty Document Field Detector Model'
 
     def process(self, **kwargs):
@@ -166,8 +172,7 @@ class TrainDirtyDocumentFieldDetectorModel(BaseTask):
                  default_retry_delay=10,
                  retry_backoff=True,
                  autoretry_for=(SoftTimeLimitExceeded, InterfaceError, OperationalError,),
-                 max_retries=3,
-                 priority=9)
+                 max_retries=3)
     def train_model_for_dirty_field(task: ExtendedTask, dirty_field_id: Any) -> None:
         dirty_field = DocumentField.objects.get(pk=dirty_field_id)
         if dirty_field.can_retrain():
@@ -222,7 +227,7 @@ def cache_updated_documents(_celery_task):
             break
 
 
-class TrainAndTest(BaseTask):
+class TrainAndTest(ExtendedTask):
     name = 'Train And Test'
     soft_time_limit = 6000
     default_retry_delay = 10
@@ -238,6 +243,7 @@ class TrainAndTest(BaseTask):
         skip_training = kwargs.get('skip_training')
         use_only_confirmed_field_values_for_training = kwargs.get('use_only_confirmed_field_values_for_training')
         train_data_project_ids = kwargs.get('train_data_project_ids')
+        split_and_log_out_of_sample_test_report = kwargs.get('split_and_log_out_of_sample_test_report')
 
         skip_testing = kwargs.get('skip_testing')
         use_only_confirmed_field_values_for_testing = kwargs.get('use_only_confirmed_field_values_for_testing')
@@ -261,7 +267,8 @@ class TrainAndTest(BaseTask):
                 .train_document_field_detector_model(CeleryTaskLogger(self),
                                                      field,
                                                      train_data_project_ids,
-                                                     use_only_confirmed_field_values_for_training)
+                                                     use_only_confirmed_field_values_for_training,
+                                                     split_and_log_out_of_sample_test_report)
             if new_model:
                 ClassifierModel.objects.filter(document_field=field).delete()
                 new_model.save()
@@ -318,6 +325,7 @@ class TrainAndTest(BaseTask):
                  max_retries=3)
     def test_field_detector_model(task: ExtendedTask, field_id, document_id) -> dict:
         document = Document.objects.get(pk=document_id)  # type: Document
+        doc_text = document.text
         field = DocumentField.objects.get(pk=field_id)  # type: DocumentField
         typed_field = TypedField.by(field)
 
@@ -330,18 +338,21 @@ class TrainAndTest(BaseTask):
         if typed_field.requires_value:
             # dates, numbers, e.t.c.
             actual_field_value_dict = field_repo \
-                .get_field_code_to_python_value(document_type_id=document.document_type_id,
-                                                doc_id=document_id,
-                                                field_codes_only={field.code})
+                .get_field_code_to_json_value(doc_id=document_id, field_codes_only={field.code})
 
             actual_field_value = actual_field_value_dict.get(field.code) if actual_field_value_dict else None
             expected_field_value = expected_field_value_dto.field_value if expected_field_value_dto else None
 
             matches = bool(expected_field_value == actual_field_value)
+            status_str = '[  OK  ]' if matches else '[ ERR  ]'
+            task.log_info(f'{status_str} Test doc: {document.name} '
+                          f'(Doc id: {document.pk}, Project: {document.project.name or "---"}). '
+                          f'Detected: {expected_field_value_dto}. Real: {actual_field_value}.')
         else:
             expected_set = set()
+            expected_set_text: List[str] = list()
             # related-info e.t.c. - comparing by annotations - exact comparing
-            if expected_field_value_dto.annotations:
+            if expected_field_value_dto and expected_field_value_dto.annotations:
                 for ant_dto in expected_field_value_dto.annotations:
                     text_unit_id = field_repo.find_text_unit_id_by_location(
                         document,
@@ -351,32 +362,29 @@ class TrainAndTest(BaseTask):
                     if not text_unit_id:
                         continue
                     expected_set.add('text_unit_' + str(text_unit_id))
-            expected_field_value_dto = '; '.join(sorted(expected_set))
+                    expected_set_text.append(doc_text[ant_dto.location_in_doc_start:ant_dto.location_in_doc_end])
 
-            actual_dfvs = FieldAnnotation.objects.filter(
-                document_type_id=document.document_type_id,
-                doc_id=document_id,
+            actual_dfvs: List[FieldAnnotation] = FieldAnnotation.objects.filter(
+                document_id=document_id,
                 field_id=field.pk)
-            actual_set = {'text_unit_' + str(dfv.text_unit.id) for dfv in actual_dfvs if dfv.text_unit}
+
+            actual_set = set()
+            actual_text: List[str] = list()
+            for dfv in actual_dfvs:
+                if not dfv.text_unit:
+                    continue
+                actual_set.add('text_unit_' + str(dfv.text_unit.id))
+                actual_text.append(dfv.location_text)
+
             actual_field_value = '; '.join(sorted(actual_set))
             matches = bool(expected_set == actual_set)
 
-        if not matches:
-            found_in_text = [dfv.text_unit.text
-                             for dfv in expected_field_value_dto
-                             if dfv.text_unit and dfv.text_unit.text] if expected_field_value_dto else []
-            found_in_text_msg = ''
-            if found_in_text:
-                found_in_text_msg = '\nDetected in text:\n-----\n{0}\n-----'.format('\n---\n'.join(found_in_text))
-            task.log_info('{3} Test doc: {0} (Doc id: {6}, Project: {5}). '
-                          'Detected: {1}. Real: {2}.{4}'
-                          .format(document.name,
-                                  expected_field_value_dto,
-                                  actual_field_value,
-                                  '[  OK  ]' if matches else '[ ERR  ]',
-                                  found_in_text_msg,
-                                  document.project.name if document.project else '',
-                                  document.pk))
+            if not matches:
+                status_str = '[  OK  ]' if matches else '[ ERR  ]'
+                task.log_info(f'{status_str} Test doc: {document.name} '
+                              + f'(Doc id: {document.pk}, Project: {document.project.name or "---"}). '
+                              + '\nDetected annotations:\n' + '\n'.join(expected_set_text)
+                              + '\nReal annotations:\n' + '\n'.join(actual_text))
 
         text_units_number = TextUnit.objects.filter(document=document, unit_type=field.text_unit_type).count()
 
@@ -393,13 +401,12 @@ class TrainAndTest(BaseTask):
                  default_retry_delay=10,
                  retry_backoff=True,
                  autoretry_for=(SoftTimeLimitExceeded, InterfaceError, OperationalError,),
-                 max_retries=3,
-                 priority=9)
+                 max_retries=3)
     def join_field_detector_model_tests(task: ExtendedTask,
                                         field_uid,
                                         classifier_model_id):
         results = list(Task.objects
-                       .filter(main_task_id=task.request.parent_id,
+                       .filter(main_task_id=task.main_task_id,
                                name=TrainAndTest.test_field_detector_model.name)
                        .values_list('result', flat=True))
 
@@ -456,14 +463,14 @@ class TrainAndTest(BaseTask):
             task.log_info('Accuracy per value:\n{0}'.format(json.dumps(accuracy_per_value, sort_keys=True, indent=2)))
 
 
-class LoadDocumentWithFields(BaseTask):
+class LoadDocumentWithFields(ExtendedTask):
     name = 'Load Document With Fields'
     soft_time_limit = 6000
     default_retry_delay = 10
     retry_backoff = True
     autoretry_for = (SoftTimeLimitExceeded, InterfaceError, OperationalError,)
     max_retries = 3
-    priority = 9
+    priority = 7
 
     @staticmethod
     def load_field_values(task: ExtendedTask,
@@ -641,7 +648,7 @@ class LoadDocumentWithFields(BaseTask):
                       f'#{document.pk} ({document.name}): {field_values_text}')
 
 
-class ImportCSVFieldDetectionConfig(BaseTask):
+class ImportCSVFieldDetectionConfig(ExtendedTask):
     name = 'Import CSV Field Detection Config'
     soft_time_limit = 6000
     default_retry_delay = 10
@@ -677,7 +684,7 @@ class ImportCSVFieldDetectionConfig(BaseTask):
             DbCache.clean_cache(config_csv_file['cache_key'])
 
 
-class FindBrokenDocumentFieldValues(BaseTask):
+class FindBrokenDocumentFieldValues(ExtendedTask):
     name = 'Find Broken Document Field Values'
 
     @staticmethod
@@ -765,7 +772,7 @@ class FindBrokenDocumentFieldValues(BaseTask):
             self.log_info(f'Sub-tasks started for {len(id_list)} FieldAnnotations of total {total_num}')
 
 
-class ImportDocumentType(BaseTask):
+class ImportDocumentType(ExtendedTask):
     name = 'Import Document Type'
     soft_time_limit = 3600
     default_retry_delay = 10
@@ -777,6 +784,7 @@ class ImportDocumentType(BaseTask):
                 document_type_config_json_file: Dict,
                 action: str,
                 update_cache: bool,
+                source_version: Optional[str],
                 **kwargs):
 
         if action == 'validate':
@@ -798,12 +806,15 @@ class ImportDocumentType(BaseTask):
         else:
             raise RuntimeError('Unknown action')
 
+        source_version = int(source_version) if source_version else CURRENT_VERSION
+
         try:
             json_bytes = DbCache.get(document_type_config_json_file['cache_key'])
             document_type = import_document_type(json_bytes=json_bytes,
                                                  save=save,
                                                  auto_fix_validation_errors=auto_fix_validation_errors,
                                                  remove_missed_in_dump_objects=remove_missed_objects,
+                                                 source_version=source_version,
                                                  task=self)
         finally:
             DbCache.clean_cache(document_type_config_json_file['cache_key'])
@@ -839,9 +850,183 @@ class ImportDocumentType(BaseTask):
                 log, doc, False, clear_old_values=False)
 
 
-class FixDocumentFieldCodes(BaseTask):
+class ExportDocuments(ExtendedTask):
+    name = 'Export Documents'
+    soft_time_limit = 3600
+    default_retry_delay = 10
+    retry_backoff = True
+    autoretry_for = (SoftTimeLimitExceeded, InterfaceError, OperationalError,)
+    max_retries = 3
+
+    DOC_PER_PACK = 10
+
+    def process(self,
+                document_ids: List[int],
+                project_ids: List[int],
+                document_type_id: str,
+                file_path: str,
+                export_files: bool,
+                **_kwargs):
+        storage = get_file_storage()
+        document_ids.sort()
+        temp_dir = tempfile.mkdtemp()
+        mem_stream = io.BytesIO()
+        try:
+            for ids_pack in list(chunks(document_ids, self.DOC_PER_PACK)):
+                exporter = DocumentExporter()
+                first_id, last_id = min(ids_pack), max(ids_pack)
+                self.log_info(f'Exporting chunk {first_id}:{last_id}')
+                part_name = os.path.join(temp_dir, f'part_{first_id}_{last_id}.zip')
+
+                subfolder = os.path.join(temp_dir, str(first_id))
+                os.mkdir(subfolder)
+                zipped_stream = exporter.in_memory_export(
+                    ids_pack, subfolder, export_files)
+                self.log_info(f'Chunk {first_id}:{last_id} is in memory')
+
+                with open(part_name, 'wb') as fw:
+                    buffer = zipped_stream.getbuffer()
+                    fw.write(buffer)
+                self.log_info(f'Chunk {first_id}:{last_id} is on disk')
+
+            self.log_info(f'Saving all chunks in one file')
+            with zipfile.ZipFile(mem_stream, 'w', zipfile.ZIP_DEFLATED) as zip_file:
+                for name_only in os.listdir(temp_dir):
+                    fn = os.path.join(temp_dir, name_only)
+                    if not os.path.isfile(fn):
+                        continue
+                    zip_file.write(fn, arcname=name_only)
+            self.log_info('Saving all chunks: completed')
+        finally:
+            rmtree(temp_dir)
+
+        buffer_bytes = mem_stream.getbuffer()
+        storage.write_file(file_path, buffer_bytes, buffer_bytes.nbytes)
+        self.log_info('File is saved to the storage')
+        # log path
+        self.log_info(f'ExportDocuments - path is "{file_path}"')
+        try:
+            file_ref = ExportFile.objects.get(file_path=file_path)  # type: ExportFile
+            self.log_info(f'ExportDocuments - absolute path is "{file_ref.get_link(abs_path=True)}"')
+            file_ref.file_created = True
+            file_ref.stored_time = datetime.datetime.utcnow()
+            file_ref.save()
+            if project_ids:
+                sub_msg = 'project(s) {}'.format(
+                    ', '.join(Project.objects.filter(id__in=project_ids)
+                              .values_list('name', flat=True)))
+            elif document_type_id:
+                sub_msg = 'document type "{}"'.format(
+                    DocumentType.objects.get(pk=document_type_id).title)
+            else:
+                sub_msg = '{} document(s)'.format(len(document_ids))
+            file_ref.send_email(log=CeleryTaskLogger(self),
+                                subject=f'Document Files from {sub_msg} Ready to Download')
+            self.log_info(f'Email sent to user {file_ref.user.get_full_name()}')
+        except Exception as e:
+            self.log_error(f'Error updating "ExportFile" reference: {e}, path: "{file_path}"')
+            raise
+
+
+class ImportDocuments(ExtendedTask):
+    name = 'Import Documents'
+    soft_time_limit = 12 * 3600
+    default_retry_delay = 10
+    retry_backoff = True
+    autoretry_for = (SoftTimeLimitExceeded, InterfaceError, OperationalError,)
+    max_retries = 2
+
+    def process(self,
+                document_import_file: Dict,
+                project: Optional[Dict[str, Any]],
+                user_id: Optional[int],
+                import_files: Optional[bool],
+                **_kwargs):
+        with download_task_attached_file(document_import_file) as fn:
+            # download file parts (if any) and create a subtask per each part
+            with zipfile.ZipFile(fn, 'r') as zip_ref:
+                file_names = zip_ref.filelist
+                names_only = [f.filename for f in file_names]
+                if 'project_project.zip' in names_only:
+                    self.log_info('Importing all documents in one task')
+                    # import in the current task as one package
+                    self.import_documents_package(document_import_file,
+                                                  project, user_id, import_files)
+                    return
+                # extract sub-archives and start a task for each one
+                self.log_info(f'Spawning {len(file_names)} subtasks')
+                sub_args = []
+                for sub_archive in file_names:
+                    file_bytes = zip_ref.read(sub_archive)
+                    cache_key = f'{datetime.datetime.now()}_{sub_archive.filename}'
+                    DbCache.put_to_db(cache_key, file_bytes)
+
+                    sub_args.append({'document_import_file': {'cache_key': cache_key,
+                                                              'file_name': sub_archive.filename},
+                                     'project': project,
+                                     'user_id': user_id,
+                                     'import_files': import_files})
+
+                self.run_sub_tasks_class_based(
+                    'Import Documents Pack',
+                    ImportDocumentsPack,
+                    sub_args)
+
+    def import_documents_package(self,
+                                 document_import_file: Dict,
+                                 project: Optional[Dict[str, Any]],
+                                 user_id: Optional[int],
+                                 import_files: Optional[bool]):
+        importer = DocumentImporter(self)
+        task_user = self.task.user_id
+        target_user = user_id or task_user
+        project_obj = Project.objects.get(pk=project['pk']) if project else None
+        with download_task_attached_file(document_import_file) as fn:
+            importer.import_documents(fn, project_obj, target_user, import_files or False)
+
+        doc_id_status = [(id, True,) for id in importer.initially_loaded_docs]
+        doc_id_status += [(id, False,) for id in importer.updated_docs]
+        self.log_info(f'{len(importer.initially_loaded_docs)} docs are loaded, ' +
+                      f'{len(importer.updated_docs)} docs are updated')
+
+        self.log_info(f'Locating values for {len(doc_id_status)} documents')
+        for doc_id, init_loaded in doc_id_status:
+            from apps.extract.app_vars import STANDARD_LOCATORS
+            self.run_sub_tasks_class_based('Locate', Locate, [{
+                'locate': list(set(STANDARD_LOCATORS.val + ['term'])),
+                'parse': ['sentence'],
+                'do_delete': False,
+                'user_id': task_user,
+                'document_id': doc_id,
+                'doc_loaded_by_user_id': task_user,
+                'document_initial_load': init_loaded,
+                'detect_field_values': False,
+                'fire_doc_changed': False,
+                'cache_field_values': True
+            }])
+
+
+class ImportDocumentsPack(ImportDocuments):
+    name = 'Import Documents Pack'
+    soft_time_limit = 6 * 3600
+    default_retry_delay = 10
+    retry_backoff = True
+    autoretry_for = (SoftTimeLimitExceeded, InterfaceError, OperationalError,)
+    max_retries = 2
+
+    def process(self,
+                document_import_file: Dict,
+                project: Optional[Dict[str, Any]],
+                user_id: Optional[int],
+                import_files: Optional[bool],
+                **_kwargs):
+        self.import_documents_package(document_import_file,
+                                      project, user_id, import_files)
+
+
+class FixDocumentFieldCodes(ExtendedTask):
     name = 'Fix Document Field Codes'
-    priority = 9
+    priority = 7
 
     RE_FIELD_CODE_NUM = re.compile(r'(.*)_(\d+)')
 
@@ -928,7 +1113,7 @@ class FixDocumentFieldCodes(BaseTask):
                       'Changed fields csv:\n' + output.getvalue() + '\n------------------')
 
 
-class DeleteDocuments(BaseTask):
+class DeleteDocuments(ExtendedTask):
     name = 'Delete Documents'
     priority = 3
 
@@ -1075,7 +1260,9 @@ def plan_process_documents_status_changed(doc_ids: Iterable, new_status_id: int,
                        changed_by_user_id)
 
 
-def plan_process_documents_assignee_changed(doc_ids: Iterable, new_assignee_id: int, changed_by_user_id: int):
+def plan_process_documents_assignee_changed(doc_ids: Iterable,
+                                            new_assignee_id: Optional[int] = None,
+                                            changed_by_user_id: Optional[int] = None):
     """
     Plans processing of the documents assignee change. Starts multiple tasks, N doc ids per task, to avoid
     possible overloading the rabbitmq if too large set of doc ids is provided.
@@ -1112,7 +1299,7 @@ def identify_contracts(task: ExtendedTask,
     ptrs_str = ', '.join([f'{p}={run_parameters[p]}' for p in run_parameters])
 
     msg = f'identify_contracts called for {ptrs_str}. ' \
-          f'Task: {task.task_name}, main id: {task.main_task_id}'
+        f'Task: {task.task_name}, main id: {task.main_task_id}'
     log = CeleryTaskLogger(task)
     log.info(msg)
     identify_document_classes(task, document_type_code, force, project_id)
@@ -1172,6 +1359,97 @@ def identify_document_classes(task: ExtendedTask,
     log.info(f'{total} documents are processed ({total_contracts} contracts, {total_generics} general docs)')
 
 
+class DeleteDocumentTypes(ExtendedTask):
+    """
+    Run Cleanup Project for all the projects, passed by ids in arguments,
+    delete Document Types
+    """
+    name = 'Delete Document Types'
+
+    def process(self, **kwargs):
+        document_type_ids = kwargs.get('document_type_ids')
+
+        # 1. delete related projects
+        project_ids = list(Project.objects.filter(type_id__in=document_type_ids).values_list('pk', flat=True))
+        clean_projects_args = [{'_project_ids': project_ids,
+                                'delete': True,
+                                'safe_delete': False}]
+
+        from apps.project.tasks import CleanProjects
+        self.run_sub_tasks_class_based('Clean Projects', CleanProjects, clean_projects_args)
+
+        # 2, delete doc type itself, send signals
+        self.run_after_sub_tasks_finished('Delete Document Type itself',
+                                          self.delete_document_type,
+                                          [(i,) for i in document_type_ids])
+
+    @staticmethod
+    @shared_task(base=ExtendedTask,
+                 bind=True,
+                 soft_time_limit=600,
+                 default_retry_delay=10,
+                 retry_backoff=True,
+                 autoretry_for=(SoftTimeLimitExceeded, InterfaceError, OperationalError,),
+                 max_retries=3)
+    def delete_document_type(task: ExtendedTask, document_type_pk):
+        dt = DocumentType.objects.get(pk=document_type_pk)
+        dt.delete()
+        from apps.document.signals import document_type_deleted
+        document_type_deleted.send(task.__class__, user=None, document_type=dt)
+
+
+class ExportDocumentFiles(ExtendedTask):
+    """
+    Archive document files
+    """
+    name = 'Export Document Files'
+    soft_time_limit = 3600
+    default_retry_delay = 10
+    retry_backoff = True
+    autoretry_for = (SoftTimeLimitExceeded, InterfaceError, OperationalError,)
+    max_retries = 3
+    priority = 7
+
+    def process(self, **kwargs):
+        document_ids = kwargs.get('document_ids')
+        project_id = kwargs.get('project_id')
+        user_id = kwargs.get('user_id')
+
+        documents = Document.objects.filter(id__in=document_ids)
+        user = User.objects.get(pk=user_id)
+        project = Project.objects.get(pk=project_id)
+
+        file_storage = get_file_storage()
+        from apps.document.views import ExportDocumentsView
+        file_ref = ExportDocumentsView.get_file_ref(document_ids, [project_id], user)
+        mem_stream = io.BytesIO()
+
+        with zipfile.ZipFile(mem_stream, 'w', zipfile.ZIP_DEFLATED) as zip_archive:
+            for doc in documents:
+                with file_storage.get_document_as_local_fn(doc.source_path) as (full_name, _):
+                    try:
+                        dst = os.path.join(doc.documentcluster_set.last().name, doc.name) \
+                            if doc.document_type.is_generic() else doc.name
+                        zip_archive.writestr(dst, open(full_name, 'rb').read())
+                    except FileNotFoundError:
+                        pass
+
+        nbytes = mem_stream.tell()
+        mem_stream.seek(0)
+        file_storage.write_file(file_ref.file_path, mem_stream, nbytes)
+
+        self.log_info('File is saved to the storage')
+        self.log_info(f'ExportDocuments - path is "{file_ref.file_path}"')
+        self.log_info(f'ExportDocuments - absolute path is "{file_ref.get_link(abs_path=True)}"')
+        file_ref.file_created = True
+        file_ref.stored_time = datetime.datetime.utcnow()
+        file_ref.save()
+        file_ref.send_email(
+            log=CeleryTaskLogger(self),
+            subject=f'Document Files from project "{project.name}" Ready to Download')
+        self.log_info(f'Email sent to user {user.get_full_name()}')
+
+
 app.register_task(DetectFieldValues())
 app.register_task(TrainDocumentFieldDetectorModel())
 app.register_task(TrainDirtyDocumentFieldDetectorModel())
@@ -1180,5 +1458,10 @@ app.register_task(LoadDocumentWithFields())
 app.register_task(ImportCSVFieldDetectionConfig())
 app.register_task(FindBrokenDocumentFieldValues())
 app.register_task(ImportDocumentType())
+app.register_task(ExportDocuments())
+app.register_task(ImportDocuments())
+app.register_task(ImportDocumentsPack())
 app.register_task(FixDocumentFieldCodes())
 app.register_task(DeleteDocuments())
+app.register_task(DeleteDocumentTypes())
+app.register_task(ExportDocumentFiles())

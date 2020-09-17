@@ -34,21 +34,21 @@ import os
 import urllib
 
 # Third-party imports
-from typing import Optional, List, Tuple
+from typing import Optional, List, Tuple, Dict, Any
 
 import magic
 import pandas as pd
 # Django imports
 from django.conf import settings
 from django.contrib.sites.models import Site
-from django.db.models.expressions import Case, When, Value
 from django.urls import reverse
-from django.db.models import Count, F, Prefetch, Q, BooleanField
+from django.db.models import Count, F, Prefetch, Q
 from django.http import FileResponse
 from django.shortcuts import get_object_or_404, redirect
 from django.shortcuts import render
 from django.views.generic import DetailView
 # Other lib imports
+from djangoql.schema import DjangoQLSchema
 from elasticsearch import Elasticsearch
 
 # Project imports
@@ -57,16 +57,20 @@ from apps.analyze.models import (
     TextUnitClassification, TextUnitClassifierSuggestion)
 import apps.common.mixins
 from apps.common.file_storage import get_file_storage
+from apps.common.models import ExportFile
 from apps.common.utils import cap_words
 from apps.document.forms import DetectFieldValuesForm, TrainDocumentFieldDetectorModelForm, TrainAndTestForm, \
     LoadDocumentWithFieldsForm, FindBrokenDocumentFieldValuesForm, ImportCSVFieldDetectionConfigForm, \
-    FixDocumentFieldCodesForm, ExportDocumentTypeForm, ImportDocumentTypeForm, IdentifyContractsForm
+    FixDocumentFieldCodesForm, ExportDocumentTypeForm, ImportDocumentTypeForm, IdentifyContractsForm, \
+    ExportDocumentsForm, ImportDocumentsForm
+from apps.document.migration.document_export import DocumentExporter
 from apps.document.models import (
     Document, DocumentProperty, DocumentRelation, DocumentNote, DocumentTag,
     TextUnit, TextUnitProperty, TextUnitNote, TextUnitTag)
+from apps.document.scheme_migrations.scheme_migration import TAGGED_VERSION
 from apps.document.tasks import ImportCSVFieldDetectionConfig, FindBrokenDocumentFieldValues, ImportDocumentType, \
-    FixDocumentFieldCodes, identify_contracts
-from apps.dump.app_dump import get_app_config_dump, download
+    FixDocumentFieldCodes, identify_contracts, ImportDocuments, ExportDocuments, TrainAndTest
+from apps.dump.app_dump import download, get_app_config_versioned_dump
 from apps.extract.models import (
     AmountUsage, CitationUsage, CopyrightUsage, Court, CourtUsage, CurrencyUsage,
     DateDurationUsage, DateUsage, DefinitionUsage, DistanceUsage,
@@ -82,8 +86,8 @@ from apps.users.models import User
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.6.0/LICENSE"
-__version__ = "1.6.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.7.0/LICENSE"
+__version__ = "1.7.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -125,6 +129,34 @@ def search(request):
     return redirect('{}?{}'.format(reverse(view_name), request.GET.urlencode()))
 
 
+class DjangoQLIntrospectView(apps.common.mixins.JSONResponseView):
+    djangoql_schema = DjangoQLSchema
+    model = None
+
+    def get_json_data(self, request, *args, **kwargs):
+        return self.djangoql_schema(self.model).as_dict()
+
+
+class DocumentQueryView(apps.common.mixins.JSONResponseView):
+    def get_json_data(self, request, *args, **kwargs):
+        return self.get_help_content(Document)
+
+    def get_help_content(self, entity_class):
+        schema = DjangoQLSchema(entity_class)
+        query_variables = [f for f in schema.get_fields(entity_class) if f]
+        query_variables.sort()
+        help_url = reverse('admin:djangoql_syntax_help')
+        return {
+            'variables': query_variables,
+            'syntax_help': help_url
+        }
+
+
+class TextUnitQueryView(DocumentQueryView):
+    def get_json_data(self, request, *args, **kwargs):
+        return self.get_help_content(TextUnit)
+
+
 class DocumentListView(apps.common.mixins.JqPaginatedListView):
     template_name = 'document/document_list.html'
     """DocumentListView
@@ -137,18 +169,31 @@ class DocumentListView(apps.common.mixins.JqPaginatedListView):
                    'title', 'language',
                    # this field makes DB query significantly longer
                    # 'is_contract',
-                   'properties', 'relations', 'paragraphs', 'sentences', 'is_contract']
+                   # 'properties', 'relations',
+                   'paragraphs', 'sentences', 'document_class']
     limit_reviewers_qs_by_field = ""
     field_types = dict(
         properties=int,
         relations=int,
     )
     has_contracts = None
+    query_errors = []
 
     def get_queryset(self):
+        self.query_errors = []
         qs = super().get_queryset()
 
-        qs = qs.filter(project_id__in=self.request.user.userprojectssavedfilter.projects.all())
+        ql = self.request.GET.get('q')
+        if ql:
+            try:
+                qs = Document.ql_objects.djangoql(ql)
+            except Exception as e:
+                self.query_errors = [str(e)]
+                qs = Document.objects.none()
+
+        project_ids = list(self.request.user.userprojectssavedfilter.
+                           projects.values_list('pk', flat=True))
+        qs = qs.filter(project_id__in=project_ids)
 
         document_text_search = self.request.GET.get("document_text_search")
         if document_text_search:
@@ -171,28 +216,23 @@ class DocumentListView(apps.common.mixins.JqPaginatedListView):
 
         if 'party_pk' in self.request.GET:
             qs = qs.filter(textunit__partyusage__party__pk=self.request.GET['party_pk'])
-
-        # Populate with child counts
-        qs = qs.annotate(
-            # this field makes DB query significantly longer
-            # is_contract=KeyTextTransform('is_contract', 'metadata'),
-            properties=Count('documentproperty', distinct=True),
-            num_relation_a=Count('document_a_set', distinct=True),
-            num_relation_b=Count('document_b_set', distinct=True),
-        ).annotate(relations=F('num_relation_a') + F('num_relation_b'),
-                   is_contract=Case(When(document_class='CONTRACT', then=Value(True)),
-                                    default=Value(False),
-                                    output_field=BooleanField()))
-
         self.has_contracts = qs.filter(document_class='CONTRACT').exists()
-
-        return qs
+        return qs.distinct()
 
     def get_json_data(self, **kwargs):
         data = super().get_json_data()
         for item in data['data']:
             item['url'] = self.full_reverse('document:document-detail', args=[item['pk']])
+            item['is_contract'] = item['document_class'] == 'CONTRACT'
+            # properties and relations
+            item['properties'] = DocumentProperty.objects.filter(document_id=item['pk']).count()
+            item['relations'] = DocumentRelation.objects.filter(document_a_id=item['pk']).count() + \
+                                DocumentRelation.objects.filter(document_b_id=item['pk']).count()
+
         data['has_contracts'] = self.has_contracts
+        if self.query_errors:
+            data['query_errors'] = self.query_errors
+        data['help_url'] = self.full_reverse('document:document-query-help')
         return data
 
     def get_context_data(self, **kwargs):
@@ -200,6 +240,26 @@ class DocumentListView(apps.common.mixins.JqPaginatedListView):
         params = dict(urllib.parse.parse_qsl(self.request.GET.urlencode()))
         ctx.update(params)
         return ctx
+
+    def read_request_filters(self) -> Dict[str, Any]:
+        """
+        Client code believes there's a field named "is_contract"
+        Here we have to replace this field in filters for "document_class"
+        with appropriate value
+        """
+        filters = super().read_request_filters()
+        # filters is like: {'is_contract': [{'value': 'false', 'condition': 'EQUAL', 'operator': 1}]}
+        if 'is_contract' in filters:
+            fvals = list(filters['is_contract'])
+            for fval in fvals:
+                fval['value'] = 'CONTRACT' if fval['value'].lower() == 'true' else 'GENERIC'
+            del filters['is_contract']
+            filters['document_class'] = fvals
+        return filters
+
+
+class DjangoQLDocumentIntrospectView(DjangoQLIntrospectView):
+    model = Document
 
 
 class DocumentPropertyCreateView(apps.common.mixins.CustomCreateView):
@@ -249,7 +309,8 @@ class DocumentPropertyListView(apps.common.mixins.JqPaginatedListView):
         if "document_pk" in self.request.GET:
             qs = qs.filter(document__pk=self.request.GET['document_pk'])
 
-        qs = qs.filter(document__project_id__in=self.request.user.userprojectssavedfilter.projects.all())
+        qs = qs.filter(document__project_id__in=list(
+            self.request.user.userprojectssavedfilter.projects.values_list('pk', flat=True)))
 
         key_search = self.request.GET.get('key_search')
         if key_search:
@@ -307,9 +368,10 @@ class DocumentRelationListView(apps.common.mixins.JqPaginatedListView):
 
     def get_queryset(self):
         qs = super().get_queryset()
+        project_ids = list(self.request.user.userprojectssavedfilter.projects.values_list('pk', flat=True))
         qs = qs.filter(
-            Q(document_a__project_id__in=self.request.user.userprojectssavedfilter.projects.all()) |
-            Q(document_b__project_id__in=self.request.user.userprojectssavedfilter.projects.all()))
+            Q(document_a__project_id__in=project_ids) |
+            Q(document_b__project_id__in=project_ids))
         qs = qs.select_related('document_a', 'document_b')
         return qs
 
@@ -401,7 +463,15 @@ def show_document(request, pk):
     """
     document = Document.objects.get(pk=pk)
     file_name = document.name
-    with file_storage.get_document_as_local_fn(document.source_path) as (full_name, _):
+    file_path = document.source_path
+    alt_file_path = document.alt_source_path
+
+    # get alternative file if it exists
+    alt = request.GET.get('alt', 'true')
+    if alt == 'true' and alt_file_path and file_storage.document_exists(alt_file_path):
+        file_path = alt_file_path
+
+    with file_storage.get_document_as_local_fn(file_path) as (full_name, _):
         mimetype = python_magic.from_file(full_name)
         response = FileResponse(open(full_name, 'rb'), content_type=mimetype)
         response['Content-Disposition'] = 'inline; filename="{}"'.format(file_name)
@@ -439,7 +509,9 @@ class DocumentNoteListView(apps.common.mixins.JqPaginatedListView):
     def get_queryset(self):
         qs = super().get_queryset()
 
-        qs = qs.filter(document__project_id__in=self.request.user.userprojectssavedfilter.projects.all())
+        qs = qs.filter(
+            document__project_id__in=list(
+                self.request.user.userprojectssavedfilter.projects.values_list('pk', flat=True)))
 
         if "document_pk" in self.request.GET:
             qs = qs.filter(document__pk=self.request.GET['document_pk'])
@@ -502,12 +574,22 @@ class TextUnitListView(apps.common.mixins.JqPaginatedListView):
     limit_reviewers_qs_by_field = 'document'
     es = Elasticsearch(hosts=settings.ELASTICSEARCH_CONFIG['hosts'])
     template_name = 'document/text_unit_list.html'
+    query_errors = []
 
     def get_queryset(self):
         qs = super().get_queryset().order_by('document_id', 'unit_type')
 
-        if not "document_pk" in self.request.GET:
-            qs = qs.filter(document__project_id__in=self.request.user.userprojectssavedfilter.projects.all())
+        ql = self.request.GET.get('q')
+        if ql:
+            try:
+                qs = TextUnit.ql_objects.djangoql(ql).order_by('document_id', 'unit_type')
+            except Exception as e:
+                self.query_errors = [str(e)]
+        if "document_pk" not in self.request.GET:
+            # we don't filter by "projects" when QL is provided
+            project_ids = list(self.request.user.userprojectssavedfilter.
+                               projects.values_list('pk', flat=True))
+            qs = qs.filter(project_id__in=project_ids)
 
         if "elastic_search" in self.request.GET:
             elastic_search = self.request.GET.get("elastic_search")
@@ -545,13 +627,17 @@ class TextUnitListView(apps.common.mixins.JqPaginatedListView):
 
         # else:
         #     qs = qs.filter(unit_type='paragraph')
-        return qs
+        return qs.distinct()
 
     def get_json_data(self, **kwargs):
         data = super().get_json_data()
         for item in data['data']:
             item['url'] = self.full_reverse('document:document-detail', args=[item['document__pk']])
             item['detail_url'] = self.full_reverse('document:text-unit-detail', args=[item['pk']])
+
+        if self.query_errors:
+            data['query_errors'] = self.query_errors
+        data['help_url'] = self.full_reverse('document:textunit-query-help')
         return data
 
     def get_context_data(self, **kwargs):
@@ -562,6 +648,10 @@ class TextUnitListView(apps.common.mixins.JqPaginatedListView):
         return ctx
 
 
+class DjangoQLTextUnitIntrospectView(DjangoQLIntrospectView):
+    model = TextUnit
+
+
 class TextUnitByLangListView(apps.common.mixins.JqPaginatedListView):
     model = TextUnit
     template_name = 'document/text_unit_lang_list.html'
@@ -569,7 +659,9 @@ class TextUnitByLangListView(apps.common.mixins.JqPaginatedListView):
 
     def get_queryset(self):
         qs = super().get_queryset().order_by('document_id', 'unit_type')
-        qs = qs.filter(document__project_id__in=self.request.user.userprojectssavedfilter.projects.all())
+        qs = qs.filter(
+            document__project_id__in=list(
+                self.request.user.userprojectssavedfilter.projects.values_list('pk', flat=True)))
         return qs
 
     def get_json_data(self, **kwargs):
@@ -598,7 +690,9 @@ class TextUnitPropertyListView(apps.common.mixins.JqPaginatedListView):
             .select_related('text_unit__document__document_type') \
             .order_by('text_unit_id', 'key', 'value')
 
-        qs = qs.filter(text_unit__document__project_id__in=self.request.user.userprojectssavedfilter.projects.all())
+        qs = qs.filter(
+            text_unit__document__project_id__in=list(
+                self.request.user.userprojectssavedfilter.projects.values_list('pk', flat=True)))
 
         if "text_unit_pk" in self.request.GET:
             qs = qs.filter(text_unit__pk=self.request.GET['text_unit_pk'])
@@ -648,27 +742,18 @@ class TextUnitNoteListView(apps.common.mixins.JqPaginatedListView):
 
     def get_json_data(self, **kwargs):
         data = super().get_json_data(keep_tags=True)
-        history = list(
-            TextUnitNote.history
-                .filter(text_unit__document_id__in=list(
-                self.get_queryset().values_list('text_unit__document__pk', flat=True)))
-                .values('id', 'text_unit_id', 'history_date', 'history_user__username', 'note'))
-
         for item in data['data']:
             item['url'] = self.full_reverse('document:document-detail',
                                             args=[item['text_unit__document__pk']])
             item['detail_url'] = self.full_reverse('document:text-unit-detail', args=[item['text_unit__pk']])
             item['delete_url'] = self.full_reverse('document:text-unit-note-delete', args=[item['pk']])
-            item_history = [i for i in history if i['id'] == item['pk']]
-            if item_history:
-                item['history'] = item_history
-                item['user'] = sorted(item_history,
-                                      key=lambda i: i['history_date'])[-1]['history_user__username']
         return data
 
     def get_queryset(self):
         qs = super().get_queryset()
-        qs = qs.filter(text_unit__document__project_id__in=self.request.user.userprojectssavedfilter.projects.all())
+        qs = qs.filter(
+            text_unit__document__project_id__in=list(
+                self.request.user.userprojectssavedfilter.projects.values_list('pk', flat=True)))
 
         if "text_unit_pk" in self.request.GET:
             qs = qs.filter(text_unit__pk=self.request.GET['text_unit_pk'])
@@ -718,7 +803,9 @@ class DocumentTagListView(apps.common.mixins.JqPaginatedListView):
     def get_queryset(self):
         qs = super().get_queryset()
 
-        qs = qs.filter(document__project_id__in=self.request.user.userprojectssavedfilter.projects.all())
+        qs = qs.filter(
+            document__project_id__in=list(
+                self.request.user.userprojectssavedfilter.projects.values_list('pk', flat=True)))
 
         tag_search = self.request.GET.get('tag_search')
         if tag_search:
@@ -767,7 +854,9 @@ class TextUnitTagListView(apps.common.mixins.JqPaginatedListView):
     def get_queryset(self):
         qs = super().get_queryset()
 
-        qs = qs.filter(text_unit__document__project_id__in=self.request.user.userprojectssavedfilter.projects.all())
+        qs = qs.filter(
+            text_unit__document__project_id__in=list(
+                self.request.user.userprojectssavedfilter.projects.values_list('pk', flat=True)))
 
         tag_search = self.request.GET.get('tag_search')
         if tag_search:
@@ -1273,7 +1362,7 @@ class FixDocumentFieldCodesTaskView(BaseAjaxTaskView):
 
 
 class TrainAndTestTaskView(BaseAjaxTaskView):
-    task_name = 'Train And Test'
+    task_class = TrainAndTest
     form_class = TrainAndTestForm
     html_form_class = 'popup-form train-and-test-form'
 
@@ -1318,7 +1407,7 @@ class LoadDocumentWithFieldsView(BaseAjaxTaskView):
             document_fields=document_fields,
             run_detect_field_values=data.get('run_detect_field_values')
         )
-        return self.json_response('The task is started. It can take a while.')
+        return self.json_response(self.task_started_message)
 
 
 class ImportCSVFieldDetectionConfigView(BaseAjaxTaskView):
@@ -1337,8 +1426,77 @@ class ExportDocumentTypeView(LoadFixturesView):
         if not form.is_valid():
             return self.json_response(form.errors, status=400)
         document_type = form.cleaned_data['document_type']
-        json_data = get_app_config_dump([document_type.code])
-        return download(json_data, '{0}_{1}'.format(document_type.code, str(datetime.date.today())))
+        version = int(form.cleaned_data['target_version'])
+
+        json_data, version = get_app_config_versioned_dump([document_type.code], version)
+        if version >= TAGGED_VERSION:
+            json_data = f'{{"version": "{version}", "data": {json_data} }}'
+        return download(json_data, f'{document_type.code}_{datetime.date.today()}')
+
+
+class ExportDocumentsView(LoadFixturesView):
+    task_class = ExportDocuments
+    form_class = ExportDocumentsForm
+    html_form_class = 'popup-form export-document-form'
+
+    def post(self, request, *args, **kwargs):
+        form = self.form_class(request.POST)
+        if not form.is_valid():
+            return self.json_response(form.errors, status=400)
+        document_type = form.cleaned_data['document_type']
+        project_ids = [int(s) for s in form.cleaned_data['projects']]
+        if not document_type and not project_ids:
+            return self.json_response(
+                {'error': 'Either projects or document type should be chosen.'}, status=204)
+
+        doc_filter = Document.objects.none()
+        if project_ids:
+            doc_filter = Document.objects.filter(project_id__in=project_ids)
+        elif document_type:
+            doc_filter = Document.objects.filter(document_type_id=document_type)
+        doc_ids = list(doc_filter.values_list('pk', flat=True))
+        if not doc_ids:
+            return self.json_response(
+                {'error': 'No documents selected'}, status=204)
+
+        # create file ref
+        file_ref = self.get_file_ref(doc_ids, project_ids, request.user)
+
+        self.start_task({'document_ids': doc_ids,
+                         'project_ids': project_ids,
+                         'document_type_id': document_type.pk if document_type else None,
+                         'file_path': file_ref.file_path,
+                         'export_files': form.cleaned_data['export_files'] or False})
+        return self.json_response(
+            {'alert': 'Selected documents will be archived. You will receive an email with a link '
+                      'to download the documents when they are ready.',
+             'file_path': file_ref.file_path,
+             'check_file_data_ref': reverse('admin:file_download_ref', args=[file_ref.pk])})
+
+    @staticmethod
+    def get_file_ref(doc_ids, project_ids=None, user=None):
+        # create file ref
+        file_ref = ExportFile()
+        file_ref.created_time = datetime.datetime.utcnow()
+        file_ref.expires_at = datetime.datetime.utcnow() + datetime.timedelta(days=1)
+        file_ref.comment = f'Export {len(doc_ids)} documents'
+        if project_ids:
+            file_ref.comment += '. Projects: ' + ', '.join([str(p) for p in project_ids[:5]])
+            if len(project_ids) > 5:
+                file_ref.comment += ' ...'
+        file_ref.user = user
+        storage = get_file_storage()
+
+        time_part = str(datetime.datetime.utcnow()).replace('.', '_').replace(':', '_').replace(' ', '_')
+        file_name = f'doc_export_{len(doc_ids)}_{time_part}.zip'
+        docs_subfolder = storage.sub_path_join(storage.export_path, 'documents')
+        try:
+            storage.mkdir(docs_subfolder)
+        except:
+            pass
+        file_ref.file_path = storage.sub_path_join(docs_subfolder, file_name)
+        file_ref.save()
+        return file_ref
 
 
 class ImportDocumentTypeView(BaseAjaxTaskView):
@@ -1346,6 +1504,17 @@ class ImportDocumentTypeView(BaseAjaxTaskView):
     form_class = ImportDocumentTypeForm
 
     html_form_class = 'popup-form import-document-type-form'
+
+
+class ImportDocumentsView(BaseAjaxTaskView):
+    task_name = ImportDocuments.name
+    form_class = ImportDocumentsForm
+
+    html_form_class = 'popup-form import-documents-form'
+
+    def provide_extra_task_data(self, request, data, *args, **kwargs):
+        if hasattr(request, 'user') and request.user:
+            data['user_id'] = request.user.pk
 
 
 class IdentifyContractsView(BaseAjaxTaskView):

@@ -25,13 +25,11 @@
 # -*- coding: utf-8 -*-
 
 # Django imports
-from collections import Set
-from typing import List, Tuple, Dict, Any
-
 from django.contrib import admin
 from django.db.models import F, Q, QuerySet
 
 # Project imports
+from django.forms import Select
 from django.utils.html import escape
 from django.utils.safestring import mark_safe
 
@@ -43,12 +41,12 @@ from apps.extract.models import (
     DateDurationUsage, DateUsage, DefinitionUsage, DistanceUsage,
     GeoAlias, GeoAliasUsage, GeoEntity, GeoEntityUsage, GeoRelation,
     Party, PartyUsage, PercentUsage, RatioUsage, RegulationUsage,
-    Term, TermUsage, TrademarkUsage, UrlUsage, DocumentTermUsage, DocumentDefinitionUsage)
+    Term, TermUsage, TrademarkUsage, UrlUsage, DocumentTermUsage, DocumentDefinitionUsage, BanListRecord)
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.6.0/LICENSE"
-__version__ = "1.6.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.7.0/LICENSE"
+__version__ = "1.7.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -280,6 +278,39 @@ class PartyUsageAdmin(TextUnitUsageAdminBase):
         return qs.select_related('party')
 
 
+class BanListRecordListFilter(admin.SimpleListFilter):
+    title = 'Entity'
+    parameter_name = 'entity_type'
+    default_value = 'All'
+
+    def lookups(self, request, model_admin):
+        options = BanListRecord.TYPE_CHOICES
+        return sorted(options, key=lambda c: c[0])
+
+    def queryset(self, request, queryset):
+        if not self.value() or self.value() == 'All':
+            return queryset
+        return queryset.filter(entity_type=self.value())
+
+
+class BanListRecordAdmin(admin.ModelAdmin):
+    list_display = ('record_ref', 'entity_type', 'pattern', 'ignore_case', 'is_regex', 'trim_phrase')
+    list_editable = ('entity_type', 'pattern', 'ignore_case', 'is_regex', 'trim_phrase')
+    search_fields = ('entity_type', 'pattern')
+    list_filter = (BanListRecordListFilter,)
+
+    @staticmethod
+    def record_ref(obj):
+        return f'{obj.pk} - {obj.pattern}'
+
+    def get_form(self, request, obj=None, **kwargs):
+        form = super().get_form(request, obj, **kwargs)
+        form.base_fields['entity_type'].widget = Select(choices=(
+            ('party', 'party'),
+        ))
+        return form
+
+
 admin.site.register(AmountUsage, AmountUsageAdmin)
 admin.site.register(CitationUsage, CitationUsageAdmin)
 admin.site.register(CopyrightUsage, CopyrightUsageAdmin)
@@ -306,3 +337,4 @@ admin.site.register(TermUsage, TermUsageAdmin)
 admin.site.register(DocumentTermUsage, DocumentTermUsageAdmin)
 admin.site.register(TrademarkUsage, TrademarkUsageAdmin)
 admin.site.register(UrlUsage, UrlUsageAdmin)
+admin.site.register(BanListRecord, BanListRecordAdmin)

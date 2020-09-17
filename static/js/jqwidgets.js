@@ -36,6 +36,7 @@
       beforeprocessing: function (data) {
         // for server-side pagination
         source.totalrecords = data.total_records;
+        render_error(data);
       },
       loadError: function (xhr, status, error){
         if(xhr.responseText=='logout'){
@@ -103,7 +104,7 @@
     var opts = $.extend({}, base_jqxgrid_options, current_jqxgrid_options);
 
     // needed to add custom filters (full text search)
-    $(selector).bind('bindingcomplete', function () {
+    $(selector).bind('bindingcomplete', function (a, b) {
       var localizationObject = {};
       filterstringcomparisonoperators = ['empty', 'not empty', 'contains', 'contains(match case)', 'full text search(or contains)',
         'does not contain', 'does not contain(match case)', 'starts with', 'starts with(match case)',
@@ -124,6 +125,9 @@
             .fadeIn(300)
             .fadeOut(300)
             .fadeIn(300)
+      }
+      else if (window.table_warning) {
+        localizationObject.emptydatastring = window.table_warning;
       }
       else {
         localizationObject.emptydatastring = "No data to display";
@@ -670,6 +674,59 @@
       query_data['sortorder'] = sortinfo.sortdirection.ascending ? 'asc' : 'desc';
     }
     query_data['export_to'] = to;
-    window.location.href = source._source.url.replace('#', '') + '?' + $.param(query_data);
+    query_data['return_raw_data'] = '1';
+    var conjunct = source._source.url.indexOf('?') >= 0 ? '&' : '?';
+    var downloadUrl = source._source.url.replace('#', '') + conjunct + $.param(query_data);
+    window.open(downloadUrl);
     source._source.data = query_data_initial;
   });
+
+  function render_error(data) {
+    window.table_warning = data.table_warning;
+    if (!data) return;
+    var messages = [];
+    var severity = 'Warning';
+    if (data.error) {
+        messages.push(safe_tags_replace(data.error));
+        severity = 'Error';
+    }
+    if (data.warning)
+        messages.push(safe_tags_replace(data.warning));
+    if (!messages.length) return;
+    var msg = messages.join('<br/><br/>');
+    var dlgData = {title: severity,
+                   backgroundDismiss: true,
+                   content: msg};
+    if (!data.prompt_reload)
+        $.alert(dlgData);
+    else {
+        dlgData.buttons = {
+          confirm: {
+            text: 'Reload',
+            btnClass: 'btn-u btn-sm',
+            action: function() {
+                window.location.reload();
+            }
+          },
+          cancel: {
+            btnClass: 'btn-u btn-sm btn-l',
+            text: 'Okay'
+          }
+        };
+        $.confirm(dlgData);
+    }
+  }
+
+var tagsToReplace = {
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;'
+};
+
+function replaceTag(tag) {
+    return tagsToReplace[tag] || tag;
+}
+
+function safe_tags_replace(str) {
+    return str.replace(/[&<>]/g, replaceTag);
+}

@@ -53,12 +53,13 @@ from apps.common.file_storage import get_filebrowser_site
 from apps.common.utils import migrating, get_api_module
 from apps.document.python_coded_fields_registry import init_field_registry
 from apps.document.field_type_registry import init_field_type_registry
-from swagger_view import get_swagger_view
+from apps.users.views import MixedLoginView
+from swagger_view import get_swagger_view, get_openapi_view
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.6.0/LICENSE"
-__version__ = "1.6.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.7.0/LICENSE"
+__version__ = "1.7.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -88,8 +89,11 @@ urlpatterns = [
     url(r'^{0}admin/'.format(settings.BASE_URL), admin.site.urls),
     # User management
     # url(r'^accounts/', include('apps.users.urls', namespace='users')),
+    url(rf'^{settings.BASE_URL}accounts/login/', MixedLoginView.as_view(), name='account_login'),
     url(r'^{0}accounts/'.format(settings.BASE_URL), include('allauth_2fa.urls')),
     url(r'^{0}accounts/'.format(settings.BASE_URL), include('allauth.urls')),
+    path('', TemplateView.as_view(template_name="social_app/index.html")),
+
     # Apps
     # url(r'^', include('apps.common.urls', namespace='common')),
     # url(r'^document/', include('apps.document.urls', namespace='document')),
@@ -102,8 +106,7 @@ urlpatterns = [
     url(r'^{0}api-auth/'.format(settings.BASE_URL), include('rest_framework.urls')),
     url(r'^rest-auth/', include('rest_auth.urls')),
     url(r'^rest-auth/registration/', include('rest_auth.registration.urls')),
-    url(r"^accounts/confirm-email/(?P<key>[-:\w]+)/$", allauth_confirm_email_view, name="allauth_account_confirm_email"),
-
+    url(r"^accounts/confirm-email/(?P<key>[-:\w]+)/$", allauth_confirm_email_view, name="allauth_account_confirm_email")
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT) + \
     static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
 
@@ -165,7 +168,15 @@ urlpatterns += [
     url(r'^api/(?:(?P<group_by>version|app)/)?$', schema_view, name='swagger')
 ]
 
-# APi for media files under /media/data directory
+# openapi urls
+urlpatterns += [
+    path('api/openapi/', get_openapi_view(), name='openapi-schema'),
+    path('api/swagger-ui/',
+         TemplateView.as_view(template_name='swagger_ui/base.html'),
+         name='swagger-ui'),
+]
+
+# API for media files under /media/data directory
 common_api_module = get_api_module('common')
 urlpatterns += [
     url(r'^{}/(?P<path>.+)/$'.format(settings.MEDIA_API_URL.strip('/')),

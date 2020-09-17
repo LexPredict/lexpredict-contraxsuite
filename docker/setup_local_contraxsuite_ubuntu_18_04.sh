@@ -17,18 +17,50 @@ pushd ./util/
 source commons.sh
 popd
 
-if [ -e ${DOCKER_DJANGO_JQWIDGETS_ARCHIVE} ]
-then
-    echo "JQWidgets archive found at: ${DOCKER_DJANGO_JQWIDGETS_ARCHIVE}"
+if [[ "${CHANGE_APT_SOURCES_TO_HTTPS,,}" = 'true' ]]; then
+    source ./util/change_apt_sources_to_https.sh
+fi
+
+# Assuming we are in /data/deploy/contraxsuite-deploy/docker.
+# Checking if the frontend archive is in /data/deploy or in any other known location.
+
+POSSIBLE_FRONTEND_DIRS=(
+"../.."
+"./deploy/dependencies"
+"${HOME}"
+"/tmp"
+)
+
+FRONTEND_ARCHIVE_NAME="contraxsuite-frontend.tar.gz"
+FRONTEND_ARCHIVE=""
+for D in "${POSSIBLE_FRONTEND_DIRS[@]}"; do
+    if [[ -f "${D}/${FRONTEND_ARCHIVE_NAME}" ]]; then
+        echo "Found frontend archive: ${D}/${FRONTEND_ARCHIVE_NAME}"
+        ask "Do you want to use frontend from this archive?"
+        if [[ ${ASK_ANSWER,,} = 'y' ]]; then
+            FRONTEND_ARCHIVE="${D}/${FRONTEND_ARCHIVE_NAME}"
+            break
+        fi
+    fi
+done
+
+if [[ "${FRONTEND_ARCHIVE}" = "" ]]; then
+    echo "Frontend archive not found. To install Contraxsuite with frontend please put contraxsuite-frontend.tar.gz to one of the following dirs:"
+    for D in "${POSSIBLE_FRONTEND_DIRS[@]}"; do
+        echo "${D}"
+    done
+    echo "(paths are related to this script)"
+    ask "Do you want to continue installing Contraxsuite without frontend?"
+    if [[ "${ASK_ANSWER,,}" = "n" ]]; then
+        exit 0
+    fi
 else
-    echo "JQWidgets archive not found at: ${DOCKER_DJANGO_JQWIDGETS_ARCHIVE}"
-    echo "Please copy it there first before starting the installation."
-    echo "See README.md"
-    exit 1
+    echo "Unpacking ${FRONTEND_ARCHIVE} to ${VOLUME_FRONTEND}"
+    sudo tar -xvf ${FRONTEND_ARCHIVE} -C ${VOLUME_FRONTEND}
 fi
 
 ask "Do you want to set up letsencrypt certs?"
-if [ ${ASK_ANSWER} = "y" ]; then
+if [[ ${ASK_ANSWER,,} = "y" ]]; then
     echo "=== Setting up letsencrypt certs ==="
 
     sudo add-apt-repository ppa:certbot/certbot
@@ -40,10 +72,9 @@ if [ ${ASK_ANSWER} = "y" ]; then
     sudo cp ./.certs/live/${DOCKER_DJANGO_HOST_NAME}/privkey.pem ${VOLUME_NGINX_CERTS}certificate.key
     sudo rm -r ./.certs
 
-    echo "=== Setting up local contraxsuite ubuntu ==="
 fi
 
-echo "=== Installing Docker..." -r
+echo "=== Installing Docker..."
 pushd ./util
     source install-docker-ubuntu.sh
     source set-docker-target-dir.sh
@@ -58,27 +89,6 @@ source install-docker-swarm.sh
 set +e
 popd
 
-
-if [ ! -z "${DISTR_DOCKER_IMAGE_URL}" ]; then
-    echo "=== Downloading Contraxsuite image from dist server"
-    rm -f ./image.tar
-    wget ${DISTR_DOCKER_IMAGE_URL} -O ./image.tar
-    sudo docker load < image.tar
-    rm -f ./image.tar
-
-    if [ "${DISTR_DOCKER_IMAGE_NAME}" != "${CONTRAXSUITE_IMAGE_FULL_NAME}" ]; then
-        echo "Tagging contraxsuite image as: ${CONTRAXSUITE_IMAGE_FULL_NAME}:latest"
-        sudo docker tag ${DISTR_DOCKER_IMAGE_NAME}:latest ${CONTRAXSUITE_IMAGE_FULL_NAME}:latest
-    fi
-
-    if [ ! -z "${DOCKER_REGISTRY}" ]; then
-        echo "Pushing ${CONTRAXSUITE_IMAGE_FULL_NAME}:latest to its registry..."
-        sudo docker push ${CONTRAXSUITE_IMAGE_FULL_NAME}:latest
-    fi
-else
-    echo "=== Pulling contraxsuite image from DockerHub "
-    sudo docker pull ${CONTRAXSUITE_IMAGE_FULL_NAME}
-fi
 
 echo "=== Deploying Contraxsuite stack to Docker Swarm..."
 pushd ./deploy

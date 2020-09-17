@@ -33,8 +33,8 @@ from tests.testutils import TEST_RESOURCE_DIRECTORY
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.6.0/LICENSE"
-__version__ = "1.6.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.7.0/LICENSE"
+__version__ = "1.7.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -44,5 +44,18 @@ class TestDocxParse(TestCase):
         file_path = os.path.join(TEST_RESOURCE_DIRECTORY,
                                  'documents/parsing/word_table.docx')
         parser = TikaParsingWrapper()
-        text_tika = parser.parse_file_local_plain_text(file_path, 'word_table.docx')
+        text_tika = parser.parse_file_local_plain_text(
+            file_path, 'word_table.docx', None, timeout=60 * 60, logger=LoggerMock())
         self.assertIsNotNone(text_tika)
+
+
+class LoggerMock:
+    def info(self, message: str):
+        print(message)
+
+    def error(self, message: str, field_code: str = None, exc_info: Exception = None):
+        if field_code:
+            message = f'{field_code}: {message or "error"}'
+        if exc_info:
+            message += f'\nException: {exc_info}'
+        print(message)

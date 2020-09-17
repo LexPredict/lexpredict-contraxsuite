@@ -1,0 +1,30 @@
+{% extends "account/base.html" %}
+
+{% load i18n project_tags %}
+
+{% block head_title %}{% trans "Social Network Login Failure" %}{% endblock %}
+
+{% block inner %}
+<h1>{% trans "Social Network Login Failure" %}</h1>
+
+{% if auth_error and auth_error.provider %}
+  <p>{% trans "An error occurred while attempting to login via your social network account" %}
+      ({{auth_error.provider}})</p>
+{% else %}
+  <p>{% trans "An error occurred while attempting to login via your social network account." %}</p>
+{% endif %}
+
+{% if auth_error and auth_error.exception %}
+    <h3>Reason:</h3>
+    <p>{{auth_error.exception}}</p>
+{% endif %}
+
+<br/>
+<p>{% trans 'Please contact ' %} {% admin_email %}</p>
+<br/>
+<button onclick="window.location.href='{% url 'login' %}';" class="btn-u btn-sm" type="button">
+    {% trans 'Try Another Account' %}
+</button>
+<button class="btn-u btn-sm btn-l cancel" type="button">{% trans "Back" %}</button>
+
+{% endblock %}

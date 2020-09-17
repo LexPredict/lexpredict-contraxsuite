@@ -1,0 +1,17 @@
+{% load socialaccount %}
+<html>
+  <head>
+    <title>Google Registration</title>
+  </head>
+  <body>
+  <h1>ContraxSuite</h1>
+  {% if user.is_authenticated %}
+  <p>Welcome, {{ user.username }} !</p>
+
+  {% else %}
+  <h1>ContraxSuite</h1>
+  <a href="{% provider_login_url 'google' %}">Login with Google</a>
+  {% endif %}
+
+  </body>
+</html>

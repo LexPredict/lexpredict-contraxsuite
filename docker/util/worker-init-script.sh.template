@@ -1,0 +1,64 @@
+#!/bin/bash
+
+set -x
+
+if [[ -z "${PROXY_SERVER_HTTP}" ]]; then
+    echo "HTTP proxy is not specified."
+else
+    echo "Configuring HTTP proxy: ${PROXY_SERVER_HTTP}"
+    echo "http_proxy=\"${PROXY_SERVER_HTTP}\"" | tee --append /etc/environment
+    echo "HTTP_PROXY=\"${PROXY_SERVER_HTTP}\"" | tee --append /etc/environment
+    echo "no_proxy=\"localhost,127.0.0.1,${DOCKER_SWARM_MASTER_IP}\"" | tee --append /etc/environment
+    export http_proxy="${PROXY_SERVER_HTTP}"
+    export HTTP_PROXY="${PROXY_SERVER_HTTP}"
+    export no_proxy="localhost,127.0.0.1,${DOCKER_SWARM_MASTER_IP}"
+    export NO_PROXY="localhost,127.0.0.1,${DOCKER_SWARM_MASTER_IP}"
+fi
+
+if [[ -z "${PROXY_SERVER_HTTPS}" ]]; then
+    echo "HTTPS proxy is not specified."
+else
+    echo "Configuring HTTPS proxy: ${PROXY_SERVER_HTTPS}"
+    echo "https_proxy=\"${PROXY_SERVER_HTTPS}\"" | tee --append /etc/environment
+    echo "HTTPS_PROXY=\"${PROXY_SERVER_HTTPS}\"" | tee --append /etc/environment
+    export https_proxy="${PROXY_SERVER_HTTPS}"
+    export HTTPS_PROXY="${PROXY_SERVER_HTTPS}"
+fi
+
+${SCRIPT_CHANGE_APT_SOURCES_TO_HTTPS}
+
+${SCRIPT_CONFIGURE_HOST}
+
+# Allow insecure registry:
+echo "{ \"insecure-registries\" : [\"${DOCKER_DJANGO_HOST_NAME}:5001\"] }" | tee /etc/docker/daemon.json
+
+echo "${DOCKER_SWARM_MASTER_IP} ${DOCKER_DJANGO_HOST_NAME}" | tee -a /etc/hosts
+
+${SCRIPT_INSTALL_DOCKER}
+
+if [[ -z "${PROXY_SERVER_HTTP}" ]]; then
+    echo "HTTP proxy is not specified."
+else
+    echo "Configuring HTTP proxy for Docker: ${PROXY_SERVER_HTTP}"
+    sed -i "/^\[Service\]/a Environment=\"HTTP_PROXY=${PROXY_SERVER_HTTP}\"" /lib/systemd/system/docker.service
+    sed -i "/^\[Service\]/a Environment=\"http_proxy=${PROXY_SERVER_HTTP}\"" /lib/systemd/system/docker.service
+    sed -i "/^\[Service\]/a Environment=\"NO_PROXY=localhost,127.0.0.1,${DOCKER_SWARM_MASTER_IP}\"" /lib/systemd/system/docker.service
+    sed -i "/^\[Service\]/a Environment=\"no_proxy=localhost,127.0.0.1,${DOCKER_SWARM_MASTER_IP}\"" /lib/systemd/system/docker.service
+fi
+
+if [[ -z "${PROXY_SERVER_HTTPS}" ]]; then
+    echo "HTTPS proxy is not specified."
+else
+    echo "Configuring HTTPS proxy for Docker: ${PROXY_SERVER_HTTPS}"
+    sed -i "/^\[Service\]/a Environment=\"HTTPS_PROXY=${PROXY_SERVER_HTTPS}\"" /lib/systemd/system/docker.service
+    sed -i "/^\[Service\]/a Environment=\"https_proxy=${PROXY_SERVER_HTTPS}\"" /lib/systemd/system/docker.service
+fi
+systemctl daemon-reload
+service docker restart
+docker run hello-world
+
+# Connect worker to cluster - replace token and IP with the ones returned from manager
+
+${DOCKER_REGISTRY_LOGIN}
+
+docker swarm join --token ${DOCKER_SWARM_JOIN_TOKEN} ${DOCKER_SWARM_MASTER_IP}:2377

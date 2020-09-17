@@ -55,8 +55,8 @@ from apps.users.models import User
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.6.0/LICENSE"
-__version__ = "1.6.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.7.0/LICENSE"
+__version__ = "1.7.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -218,6 +218,8 @@ def completed_documents_changed(instance, action, pk_set, **kwargs):
 
 
 class ProjectManager(models.Manager):
+    use_in_migrations = True
+
     def get_queryset(self):
         return super(ProjectManager, self).get_queryset().filter(delete_pending=False)
 
@@ -449,11 +451,42 @@ def reviewers_total(sender, instance, **kwargs):
         instance.owners.add(instance.latest_removed.pop())
 
 
+def clean_up_assignees(instance, removed_user_ids):
+    documents_qs = instance.document_set.filter(assignee_id__in=removed_user_ids)
+    if documents_qs.exists():
+        document_ids = list(documents_qs.values_list('pk', flat=True))
+        documents_qs.update(assignee=None)
+        from apps.rawdb.tasks import plan_reindex_tasks_in_chunks
+        from apps.document.repository.document_field_repository import DocumentFieldRepository
+        from apps.document.constants import DocumentSystemField
+
+        field_repo = DocumentFieldRepository()
+        field_repo.update_docs_assignee(document_ids, None)
+        plan_reindex_tasks_in_chunks(document_ids, None,
+                                     cache_system_fields=[DocumentSystemField.assignee.value],
+                                     cache_generic_fields=False, cache_user_fields=False)
+
+    from apps.document.models import FieldAnnotation, FieldAnnotationFalseMatch
+    FieldAnnotation.objects.filter(
+        document__project=instance, assignee_id__in=removed_user_ids).update(assignee=None)
+    FieldAnnotationFalseMatch.objects.filter(
+        document__project=instance, assignee_id__in=removed_user_ids).update(assignee=None)
+
+
+@receiver(m2m_changed, sender=Project.reviewers.through)
+def reviewers_changed(instance, action, **kwargs):
+    if action == 'post_remove':
+        removed_user_ids = kwargs.get('pk_set')
+        transaction.on_commit(lambda: clean_up_assignees(instance, removed_user_ids))
+
+
 @receiver(m2m_changed, sender=Project.owners.through)
 def owners_changed(instance, action, **kwargs):
     if action == 'post_remove':
         if not instance.owners.exists():
             instance.latest_removed = kwargs.get('pk_set', {})
+        removed_user_ids = kwargs.get('pk_set')
+        transaction.on_commit(lambda: clean_up_assignees(instance, removed_user_ids))
 
 
 class UploadSession(models.Model):
@@ -520,8 +553,11 @@ class UploadSession(models.Model):
             i['tasks_overall_status'] = SUCCESS if i['processed'] is True else None
         result = {i['name']: i for i in result}
 
+        from apps.project.tasks import LoadArchive
+        session_tasks_progress = [i for i in sorted(self.session_tasks_progress, key=lambda i: i['file_name'])
+                                  if i['task_name'] != LoadArchive.name]
         for file_name, task_progress_data in itertools.groupby(
-                sorted(self.session_tasks_progress, key=lambda i: i['file_name']),
+                session_tasks_progress,
                 key=lambda i: i['file_name']):
             task_progress_data = list(task_progress_data)
             document_progress = round(sum([int(i.get('task_progress') or 0) for i in task_progress_data]), 2)
@@ -604,8 +640,9 @@ class UploadSession(models.Model):
         text_message = render_to_string("email/notify_upload_started.txt", ctx)
         html_message = render_to_string("email/notify_upload_started.html", ctx)
         from apps.notifications.mail_server_config import MailServerConfig
+        from apps.common.app_vars import SUPPORT_EMAIL
         backend = MailServerConfig.make_connection_config()
-        send_mail(subject=subject, message=text_message, from_email=settings.DEFAULT_FROM_EMAIL,
+        send_mail(subject=subject, message=text_message, from_email=SUPPORT_EMAIL.val or settings.DEFAULT_FROM_EMAIL,
                   recipient_list=to, html_message=html_message, connection=backend)
         self.notified_upload_started = True
         self.save()
@@ -620,7 +657,8 @@ class UploadSession(models.Model):
         html_message = render_to_string("email/notify_upload_completed.html", ctx)
         from apps.notifications.mail_server_config import MailServerConfig
         backend = MailServerConfig.make_connection_config()
-        send_mail(subject=subject, message=text_message, from_email=settings.DEFAULT_FROM_EMAIL,
+        from apps.common.app_vars import SUPPORT_EMAIL
+        send_mail(subject=subject, message=text_message, from_email=SUPPORT_EMAIL.val or settings.DEFAULT_FROM_EMAIL,
                   recipient_list=to, html_message=html_message, connection=backend)
         self.notified_upload_completed = True
         self.save()

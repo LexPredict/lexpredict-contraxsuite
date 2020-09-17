@@ -32,8 +32,8 @@ from pydash.strings import snake_case
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.6.0/LICENSE"
-__version__ = "1.6.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.7.0/LICENSE"
+__version__ = "1.7.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -297,6 +297,8 @@ class dropping_constraints_and_indexes:
         self.table_name = table_name
         self.schema_name = schema_name
         self.log = logger_proc
+        self.restore_constraints = []  # type: List[str]
+        self.restore_indexes = []  # type: List[str]
 
     def __enter__(self):
         if self.log:
@@ -305,14 +307,12 @@ class dropping_constraints_and_indexes:
 
         if self.log:
             self.log(f'Dropping constraints for table: {self.schema_name}."{self.table_name}"')
-        self.restore_constraints = drop_constraints_for_table_and_generate_restore_queries(self.cursor,
-                                                                                           self.table_name,
-                                                                                           schema_name=self.schema_name)
+        self.restore_constraints = drop_constraints_for_table_and_generate_restore_queries(
+            self.cursor, self.table_name, schema_name=self.schema_name)
         if self.log:
             self.log(f'Dropping indexes for table: {self.schema_name}."{self.table_name}"')
-        self.restore_indexes = drop_indexes_for_table_and_generate_restore_query(self.cursor,
-                                                                                 self.table_name,
-                                                                                 schema_name=self.schema_name)
+        self.restore_indexes = drop_indexes_for_table_and_generate_restore_query(
+            self.cursor, self.table_name, schema_name=self.schema_name)
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
@@ -329,3 +329,28 @@ class dropping_constraints_and_indexes:
 
         for q in self.restore_indexes:
             self.cursor.execute(q)
+
+
+class ModelLock:
+    # Transaction-time table lock
+    LOCK_MODE_EXCLUSIVE = 'EXCLUSIVE'
+    LOCK_MODE_ACCESS_EXCLUSIVE = 'ACCESS EXCLUSIVE'
+
+    def __init__(self,
+                 cursor,
+                 model,
+                 lock='EXCLUSIVE') -> None:
+        self.model = model
+        self.cursor = cursor
+        self.lock = lock
+        self.close_cursor = False
+
+    def __enter__(self):
+        if not self.cursor:
+            self.cursor = connection.cursor()
+            self.close_cursor = True
+        self.cursor.execute(f'LOCK TABLE {self.model._meta.db_table} IN {self.lock} MODE;')
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        if self.close_cursor:
+            self.cursor.close()

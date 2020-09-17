@@ -120,18 +120,13 @@ When the free disk space is close to the end various components of the system st
 
 ## Installation
 **We make simplifying assumptions throughought this installation to work for most initial use cases. Deviations from this setup guide will require you to be proficient in a wide range of applications, including those described above. **
-* Obtain a VM with Ubuntu 16.04 or 18.04.
+* Obtain a VM with Ubuntu 18.04.
     * Open ports 80 (HTTP) and 443 (HTTPS).
     * Ensure you have access to the shell of the VM. 
 * Setup a Fully Qualified Domain Name (FQDN) for the VM if you are going to access it in the Internet
 and going to setup HTTPS certificates.
-* Download contents of this folder to the VM:
-    ```
-    sudo apt-get install -y wget
-    wget https://demo.contraxsuite.com/files/contraxsuite-deploy.tar.gz
-    tar -xzf contraxsuite-deploy.tar.gz
-    cd docker
-    ```
+* Download contents of the "docker" folder from https://github.com/LexPredict/lexpredict-contraxsuite/tree/master/ to the VM.
+
 * Obtain third-party paid dependencies:
     * jQWidgets (https://www.jqwidgets.com/download/)
 * Put zipped jqwidgets files into ./deploy/dependencies directory and rename it to **jqwidgets.zip**.

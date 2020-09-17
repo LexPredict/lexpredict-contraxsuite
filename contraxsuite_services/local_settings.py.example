@@ -215,7 +215,7 @@ CORS_ALLOW_HEADERS = list(default_headers) + [
     'Upload-Length', 'Upload-Metadata', 'Upload-Offset', 'force', 'Location', 'tus-resumable'
 ]
 
-CORS_EXPOSE_HEADERS = ['Content-Length', 'Content-Range', 'Upload-Length', 'Location', 'Upload-Offset', 'Upload-Length']
+CORS_EXPOSE_HEADERS = ['Content-Length', 'Content-Range', 'Upload-Length', 'Location', 'Upload-Offset', 'Upload-Length', 'Content-Disposition']
 
 
 CORS_ALLOW_CREDENTIALS = False
@@ -237,3 +237,4 @@ AWS_ACCESS_KEY_ID = 'minio_access_key'
 AWS_SECRET_ACCESS_KEY = 'minio_secret_key'
 MLFLOW_PIP_ENV = '../venv'
 
+OAUTH_CALLBACK_PROTOCOL = 'http'

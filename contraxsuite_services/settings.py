@@ -46,7 +46,8 @@ import environ
 from celery.schedules import crontab
 # Django imports
 from django.urls import reverse_lazy
-from kombu import Queue
+from kombu import Queue, Exchange
+from kombu.common import Broadcast
 
 # App imports
 import task_names
@@ -73,8 +74,8 @@ API_URL_PROTOCOL = 'https'
 # ------------------------------------------------------------------------------
 INSTALLED_APPS = (
     # Default Django apps:
-    'django.contrib.auth',
     'django.contrib.contenttypes',
+    'django.contrib.auth',
     'django.contrib.sessions',
     'django.contrib.sites',
     'django.contrib.messages',
@@ -82,12 +83,19 @@ INSTALLED_APPS = (
     'django.contrib.postgres',
     'suit',  # Admin
     'django.contrib.admin',
+    'djangoql',
 
     # THIRD_PARTY_APPS
     'crispy_forms',  # Form layouts
     'allauth',  # registration
     'allauth.account',  # registration
     'allauth.socialaccount',  # registration
+    'allauth.socialaccount.providers.facebook',
+    'allauth.socialaccount.providers.twitter',
+    'apps.users.providers.proprietary',
+    'apps.users.providers.office365',
+    'apps.users.providers.google',
+    'apps.users.providers.okta',
     'simple_history',  # historical records
     'django_celery_beat',  # task scheduling via DB
     'django_celery_results',  # for celery tasks
@@ -130,9 +138,6 @@ INSTALLED_APPS = (
     # 'apps.deployment',
     # 'apps.task',
     # 'apps.users',
-    # 'apps.employee',
-    # 'apps.fields',
-    # 'apps.lease',
     # 'apps.dump'
 )
 
@@ -356,13 +361,25 @@ AUTHENTICATION_BACKENDS = (
     'allauth.account.auth_backends.AuthenticationBackend',
 )
 
+SOCIALACCOUNT_PROVIDERS = {
+    'google': {
+        'SCOPE': [
+            'profile',
+            'email',
+        ],
+        'AUTH_PARAMS': {
+            'access_type': 'online',
+        }
+    }
+}
+
 # allauth settings
 # http://django-allauth.readthedocs.io/en/latest/overview.html
 ACCOUNT_LOGOUT_REDIRECT_URL = 'account_login'
 ACCOUNT_AUTHENTICATION_METHOD = 'username_email'
 ACCOUNT_EMAIL_REQUIRED = True
+ACCOUNT_UNIQUE_EMAIL = True
 ACCOUNT_EMAIL_VERIFICATION = 'mandatory'
-ACCOUNT_ALLOW_REGISTRATION = False
 ACCOUNT_LOGIN_ATTEMPTS_LIMIT = 10
 ACCOUNT_LOGIN_ATTEMPTS_TIMEOUT = 5
 # ACCOUNT_ADAPTER = 'apps.users.adapters.AccountAdapter'
@@ -391,6 +408,7 @@ CELERY_RESULT_EXPIRES = 0
 # CELERY_WORKER_HIJACK_ROOT_LOGGER = False
 
 CELERY_QUEUE_SERIAL = 'serial'
+# message targeted to this queue will be processed on all workers
 
 CELERY_BEAT_SCHEDULE = {
     'advanced_celery.track_tasks': {
@@ -408,6 +426,11 @@ CELERY_BEAT_SCHEDULE = {
         'schedule': 60.0,
         'options': {'queue': CELERY_QUEUE_SERIAL, 'expires': 60},
     },
+    'advanced_celery.clean_export_files_periodic': {
+        'task': task_names.TASK_NAME_CLEAN_EXPORT_FILES_PERIODIC,
+        'schedule': 60.0 * 30,
+        'options': {'queue': CELERY_QUEUE_SERIAL, 'expires': 60 * 30},
+    },
     'advanced_celery.retrain_dirty_fields': {
         'task': task_names.TASK_NAME_RETRAIN_DIRTY_TASKS,
         'schedule': 60.0,
@@ -421,6 +444,11 @@ CELERY_BEAT_SCHEDULE = {
     },
     'advanced_celery.track_session_completed': {
         'task': task_names.TASK_NAME_TRACK_SESSION_COMPLETED,
+        'schedule': 15.0,
+        'options': {'queue': CELERY_QUEUE_SERIAL, 'expires': 15},
+    },
+    'advanced_celery.track_pdf2pdfa_status': {
+        'task': task_names.TASK_NAME_TRACK_PDEF2PDFA_STATUS,
         'schedule': 15.0,
         'options': {'queue': CELERY_QUEUE_SERIAL, 'expires': 15},
     },
@@ -475,9 +503,11 @@ EXCLUDE_FROM_TRACKING = {
     task_names.TASK_NAME_TRACK_TASKS,
     task_names.TASK_NAME_TRACK_FAILED_TASKS,
     task_names.TASK_NAME_TRACK_SESSION_COMPLETED,
+    task_names.TASK_NAME_TRACK_PDEF2PDFA_STATUS,
     task_names.TASK_NAME_UPDATE_MAIN_TASK,
     task_names.TASK_NAME_UPDATE_PARENT_TASK,
     task_names.TASK_NAME_CLEAN_TASKS_PERIODIC,
+    task_names.TASK_NAME_CLEAN_EXPORT_FILES_PERIODIC,
     task_names.TASK_NAME_USAGE_STATS,
     task_names.TASK_NAME_RETRAIN_DIRTY_TASKS,
     task_names.TASK_NAME_CACHE_UPDATED_DOCS,
@@ -485,11 +515,12 @@ EXCLUDE_FROM_TRACKING = {
     task_names.TASK_NAME_AUTO_REINDEX,
     task_names.TASK_NAME_IMANAGE_TRIGGER_SYNC,
     task_names.TASK_NAME_TRIGGER_DIGESTS,
-    task_names.TASK_NAME_NOTIFICATIONS_ON_DOCUMENT_CHANGE,
     task_names.TASK_NAME_INIT_METHOD_STATS_COLLECTORS,
     task_names.TASK_NAME_CHECK_EMAIL_POOL,
     task_names.TASK_NAME_MONITOR_DISK_USAGE,
-    task_names.TASK_NAME_PLAN_REFRESHING_MATERIALIZED_VIEWS
+    task_names.TASK_NAME_PLAN_REFRESHING_MATERIALIZED_VIEWS,
+    task_names.TASK_NAME_TERMINATE_PROCESSES,
+    task_names.TASK_NAME_DOCUMENT_CHANGED
 }
 
 TASKS_DO_NOT_REMOVE_WHEN_READY = set()
@@ -513,13 +544,25 @@ CELERY_IMPORTS = ('apps.task.tasks',)
 CELERY_TASK_SERIALIZER = 'pickle'
 CELERY_ACCEPT_CONTENT = ['json', 'pickle']
 
+CELERY_QUEUE_WORKER_BCAST = 'worker_bcast'
+CELERY_EXCHANGE_WORKER_BCAST = 'worker_bcast_exchange'
+exchange = Exchange(CELERY_EXCHANGE_WORKER_BCAST, type='fanout')
+
 CELERY_TASK_QUEUES = (
     Queue('default', routing_key='task_default.#', queue_arguments={'max-priority': 10}),
     Queue('high_priority', routing_key='task_high_priority.#'),
     Queue('serial', routing_key='task_serial.#'),
     Queue('beat-db', routing_key='task_beat_db.#'),
     Queue('doc_load', routing_key='task_doc_load.#'),
+    Broadcast(name=CELERY_QUEUE_WORKER_BCAST, exchange=exchange),
 )
+
+CELERY_ROUTES = {
+    'apps.task.tasks.terminate_processes': {
+        'queue': CELERY_QUEUE_WORKER_BCAST,
+        'exchange': CELERY_EXCHANGE_WORKER_BCAST
+    }
+}
 
 CELERY_TASK_DEFAULT_QUEUE = 'default'
 
@@ -607,13 +650,12 @@ CONTRAX_FILE_STORAGE_LOCAL_ROOT_DIR = MEDIA_ROOT + '/' + FILEBROWSER_DIRECTORY
 # CONTRAX_FILE_STORAGE_WEBDAV_USERNAME = 'user'
 # CONTRAX_FILE_STORAGE_WEBDAV_PASSWORD = 'pass'
 CONTRAX_FILE_STORAGE_DOCUMENTS_DIR = 'documents/'
+CONTRAX_FILE_STORAGE_EXPORT_DIR = 'export/'
 
 DOCKER_STATS_DIR = PROJECT_DIR('docker_stats')
 
-# django-constance settings
-
 # default precision (numbers after decimal dot) for float values
-DEFAULT_FLOAT_PRECIZION = 6
+DEFAULT_FLOAT_PRECISION = 6
 
 # django-rest-framework settings
 # http://www.django-rest-framework.org/
@@ -629,7 +671,8 @@ REST_FRAMEWORK = {
     ),
     'DEFAULT_PERMISSION_CLASSES': (
         'rest_framework.permissions.IsAuthenticated',
-    )
+    ),
+    'DEFAULT_SCHEMA_CLASS': 'swagger_view.CustomAutoSchema'
 }
 REST_FRAMEWORK_TUS = {
     'SAVE_HANDLER_CLASS': 'apps.tus.storage.TusSaveHandler'
@@ -637,8 +680,9 @@ REST_FRAMEWORK_TUS = {
 
 REST_AUTH_SERIALIZERS = {
     'TOKEN_SERIALIZER': 'apps.users.authentication.TokenSerializer',
-    'PASSWORD_CHANGE_SERIALIZER': 'apps.users.authentication.CustomPasswordChangeSerializer',
-    'PASSWORD_RESET_CONFIRM_SERIALIZER': 'apps.users.authentication.CustomPasswordResetConfirmSerializer',
+    'PASSWORD_CHANGE_SERIALIZER': 'apps.users.adapters.CustomPasswordChangeSerializer',
+    'PASSWORD_RESET_SERIALIZER': 'apps.users.adapters.CustomPasswordResetSerializer',
+    'PASSWORD_RESET_CONFIRM_SERIALIZER': 'apps.users.adapters.CustomPasswordResetConfirmSerializer',
 }
 
 # rest auth token settings
@@ -691,6 +735,9 @@ prepare_log_dirs(CELERY_LOG_FILE_PATH)
 prepare_log_dirs(LOG_FILE_PATH)
 prepare_log_dirs(FRONT_LOG_FILE_PATH)
 prepare_log_dirs(DB_LOG_FILE_PATH)
+
+LOGGING_CONFIG = 'logging.config.dictConfig'
+FORCE_SCRIPT_NAME = None
 
 LOGGING = {
     'version': 1,
@@ -827,7 +874,7 @@ NOTEBOOK_ARGUMENTS = [
 # CORS_ALLOW_CREDENTIALS = False
 # CORS_URLS_REGEX = r'^.*$'
 
-VERSION_NUMBER = '1.6.0'
+VERSION_NUMBER = '1.7.0'
 VERSION_COMMIT = '670689597ae28403dd848f924d222a33c4254f46'
 
 NOTIFICATION_EMBEDDED_TEMPLATES_PATH = 'apps/notifications/notification_templates'
@@ -868,6 +915,13 @@ DEBUG_STACK_DUMP_ENABLED = True
 DEBUG_STACK_DUMP_SIGNAL = 39
 DEBUG_STACK_DUMP_DIR = PROJECT_DIR('logs')
 DEBUG_TRACE_UPDATE_PARENT_TASK = False
+
+# what exact action should we take for particular migration
+TEXTUNIT_SIMILARITY_MIGRATION_ACTION = 'update'
+
+SOCIALACCOUNT_EMAIL_REQUIRED = True
+LOGIN_REDIRECT_URL = 'home'
+OAUTH_CALLBACK_PROTOCOL = 'https'
 
 try:
     from local_settings import *

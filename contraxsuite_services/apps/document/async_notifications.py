@@ -39,8 +39,8 @@ from apps.websocket.websockets import Websockets
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.6.0/LICENSE"
-__version__ = "1.6.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.7.0/LICENSE"
+__version__ = "1.7.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -66,19 +66,28 @@ def _get_user_dto(instance):
     return _user_to_dto(getattr(instance, 'request_user', None))
 
 
+def safe_failure(func):
+    """
+    Fail silently in case if related object doesn't exist - just log function and return None
+    """
+    def decorator(*args, **kwargs):
+        try:
+            return func(*args, **kwargs)
+        except ObjectDoesNotExist as e:
+            logger = get_django_logger()
+            logger.warning(f'{func.__name__} failed because related object was probably deleted, '
+                           f'original exception is "{e}"')
+    return decorator
+
+
+@safe_failure
 def _notify_field_value_saved(instance: FieldValue, deleted=False):
     if not instance.document.processed:
         return
-    try:
-        field_value = {'document': instance.document_id,
-                       'project_id': instance.document.project_id,
-                       'field__code': instance.field.code,
-                       'value': instance.value if not deleted else None}
-    except ObjectDoesNotExist:
-        logger = get_django_logger()
-        logger.warning(f'_notify_field_value_saved is called for '
-                       f'field {instance.field_id}, that was probably deleted')
-        return
+    field_value = {'document': instance.document_id,
+                   'project_id': instance.document.project_id,
+                   'field__code': instance.field.code,
+                   'value': instance.value if not deleted else None}
 
     annotation_stats = DocumentFieldRepository().get_annotation_stats_by_field_value(instance)
 
@@ -97,6 +106,7 @@ def notify_field_value_deleted(instance: FieldValue):
     _notify_field_value_saved(instance, deleted=True)
 
 
+@safe_failure
 def notify_field_annotation_saved(instance: FieldAnnotation):
     if not instance.document.processed:
         return
@@ -106,19 +116,14 @@ def notify_field_annotation_saved(instance: FieldAnnotation):
     notify_on_document_changes(instance.document.pk, message)
 
 
+@safe_failure
 def notify_field_annotation_deleted(instance: FieldAnnotation):
     if not instance.document.processed:
         return
-    try:
-        message = ChannelMessage(message_types.CHANNEL_MSG_TYPE_FIELD_ANNOTATION_DELETED,
-                                 {'annotation': _annotation_to_dto(instance),
-                                  'user': _get_user_dto(instance)})
-        notify_on_document_changes(instance.document.pk, message)
-    except ObjectDoesNotExist:
-        logger = get_django_logger()
-        logger.warning(f'notify_field_annotation_deleted is called for '
-                       f'field {instance.field_id}, that was probably deleted')
-        return
+    message = ChannelMessage(message_types.CHANNEL_MSG_TYPE_FIELD_ANNOTATION_DELETED,
+                             {'annotation': _annotation_to_dto(instance),
+                              'user': _get_user_dto(instance)})
+    notify_on_document_changes(instance.document.pk, message)
 
 
 def notify_on_document_changes(doc_id: int, message: ChannelMessage):

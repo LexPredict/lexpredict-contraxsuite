@@ -48,8 +48,8 @@ from apps.common.model_utils.model_class_dictionary import ModelClassDictionary
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.6.0/LICENSE"
-__version__ = "1.6.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.7.0/LICENSE"
+__version__ = "1.7.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -252,22 +252,26 @@ class SoftDeleteProjectAdmin(ProjectAdmin):
             doc_ids = Document.all_objects.filter(
                 project_id__in=project_ids).values_list('id', flat=True)
 
-            from apps.document.repository.document_bulk_delete \
-                import get_document_bulk_delete
-            items_by_table = get_document_bulk_delete().calculate_deleting_count(doc_ids)
-            mdc = ModelClassDictionary()
-            del_count_hash = {mdc.get_model_class_name_hr(t): items_by_table[t]
-                              for t in items_by_table if t in mdc.model_by_table}
-            del_count = [(d, del_count_hash[d], False) for d in del_count_hash]
-            del_count = sorted(del_count, key=lambda x: x[0])
-            del_count.insert(0, ('Documents', len(doc_ids), True))
-            del_count.insert(0, ('Projects', len(project_ids), True))
+            details = request.GET.get('details') == 'true'
+            del_count = []
+            if details:
+                from apps.document.repository.document_bulk_delete \
+                    import get_document_bulk_delete
+                items_by_table = get_document_bulk_delete().calculate_deleting_count(doc_ids)
+                mdc = ModelClassDictionary()
+                del_count_hash = {mdc.get_model_class_name_hr(t): items_by_table[t]
+                                  for t in items_by_table if t in mdc.model_by_table}
+                del_count = [(d, del_count_hash[d], False) for d in del_count_hash]
+                del_count = sorted(del_count, key=lambda x: x[0])
+                del_count.insert(0, ('Documents', len(doc_ids), True))
+                del_count.insert(0, ('Projects', len(project_ids), True))
 
             context = {
                 'deleting_count': del_count,
-                'return_url': 'admin:project_softdeleteproject_changelist'
+                'return_url': 'admin:project_softdeleteproject_changelist',
+                'details': details
             }
-            return render(request, "admin/common/confirm_delete_view.html", context)
+            return render(request, "admin/project/softdeleteproject/confirm_delete_view.html", context)
 
         # POST: actual delete
         from apps.task.tasks import _call_task

@@ -16,7 +16,7 @@ else
 
 	echo "Restarting all Docker Swarm Workers using PEM file ${WORKER_PEM}..."
 
-	docker node ls --filter "role=worker" --format "{{.Hostname}}"|grep -v ip-172-31-18-215|xargs -L 1 ./reboot-worker.sh ${WORKER_PEM}
+	docker node ls --filter "role=worker" --format "{{.Hostname}}"|xargs -L 1 ./reboot-worker.sh ${WORKER_PEM}
 
 	echo "Finished restarting all Docker Swarm workers."
 fi

@@ -39,8 +39,8 @@ from apps.document.repository.dto import FieldValueDTO
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.6.0/LICENSE"
-__version__ = "1.6.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.7.0/LICENSE"
+__version__ = "1.7.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -52,7 +52,7 @@ class DocumentFieldFormulaError(RuntimeError):
         self.line_number = traceback.extract_tb(exc_tb)[-1].lineno
         self.field_values = field_values
         self.field_code = field_code
-        msg = f'{exc_type.__name__} in formula of field \'{field_code}\'\n' \
+        msg = f'{exc_type.__name__} in formula of Document Field \'{field_code}\'\n' \
               f'{self.base_error}' \
               f'Formula:\n{formula}\n' \
               f'At line: {self.line_number}\n' \
@@ -73,7 +73,7 @@ class FormulaBasedFieldDetectionStrategy(FieldDetectionStrategy):
                                             field: DocumentField,
                                             train_data_project_ids: Optional[List],
                                             use_only_confirmed_field_values: bool = False,
-                                            train_documents: Iterable[Document] = None) -> Optional[ClassifierModel]:
+                                            split_and_log_out_of_sample_test_report: bool = False) -> Optional[ClassifierModel]:
         return None
 
     @classmethod
@@ -97,7 +97,6 @@ class FormulaBasedFieldDetectionStrategy(FieldDetectionStrategy):
                            doc: Document,
                            field: DocumentField,
                            field_code_to_value: Dict[str, Any]) -> FieldValueDTO:
-
         formula = field.formula
 
         if not formula:

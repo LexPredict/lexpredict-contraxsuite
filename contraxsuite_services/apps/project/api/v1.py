@@ -37,7 +37,7 @@ from django.contrib.contenttypes.models import ContentType
 from django.core.files import File
 from django.core.files.storage import FileSystemStorage
 from django.db import connection, transaction
-from django.db.models import Count, Subquery
+from django.db.models import Count, Subquery, Q
 from django.http import JsonResponse, HttpRequest
 from django.http.request import QueryDict
 from django.urls import path, include
@@ -63,6 +63,7 @@ from apps.common.log_utils import render_error
 from apps.common.models import ReviewStatus
 from apps.common.url_utils import as_bool
 from apps.common.utils import get_api_module, safe_to_int, cap_words
+from apps.document.async_tasks.detect_field_values_task import DetectFieldValues
 from apps.document.constants import DOCUMENT_TYPE_PK_GENERIC_DOCUMENT
 from apps.document.models import Document, DocumentType, DocumentField, \
     FieldAnnotation, FieldAnnotationFalseMatch, FieldAnnotationStatus
@@ -71,7 +72,9 @@ from apps.document.tasks import plan_process_documents_status_changed, \
 from apps.project.models import Project, TaskQueue, UploadSession, ProjectClustering, \
     UserProjectsSavedFilter
 from apps.project.tasks import ReassignProjectClusterDocuments, ClusterProjectDocuments, \
-    CleanProject, CancelUpload, LoadArchive, track_session_completed
+    CleanProject, CancelUpload, LoadArchive, track_session_completed, SetAnnotationsStatus, \
+    CreateSearchablePDF
+from apps.rawdb.constants import FIELD_CODE_STATUS_ID
 from apps.task.models import Task
 from apps.task.tasks import call_task, purge_task, LoadDocuments, call_task_func
 from apps.task.utils.logger import get_django_logger
@@ -81,8 +84,8 @@ from apps.users.models import User
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.6.0/LICENSE"
-__version__ = "1.6.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.7.0/LICENSE"
+__version__ = "1.7.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -399,6 +402,14 @@ class ProjectPermissions(BasePermission):
         # Warn! self.get_object() initializes this check! so include it in custom view func!
         if request.user.is_reviewer:
             return obj.reviewers.filter(pk=request.user.pk).exists()
+        elif request.user.is_manager:
+            is_in_reviewers = obj.reviewers.filter(pk=request.user.pk).exists()
+            is_in_owners = obj.owners.filter(pk=request.user.pk).exists()
+            if request.method == 'GET' or view.action in [
+                    'cluster', 'set_status', 'assign_documents',
+                    'assign_annotations', 'set_annotation_status']:
+                return is_in_reviewers or is_in_owners
+            return is_in_owners
         return True
 
 
@@ -409,6 +420,10 @@ class ProjectPermissionViewMixin:
         qs = super().get_queryset()
         if self.request.user.is_reviewer:
             qs = qs.filter(reviewers=self.request.user)
+        elif self.request.user.is_manager:
+            qs = qs.filter(Q(reviewers=self.request.user)|
+                           Q(super_reviewers=self.request.user) |
+                           Q(owners=self.request.user)).distinct()
         return qs
 
 
@@ -533,6 +548,24 @@ class ProjectViewSet(apps.common.mixins.APILoggingMixin,
 
         return Response(result)
 
+    @staticmethod
+    def _cluster(project, user_id=None, n_clusters=3, method='kmeans', cluster_by='term'):
+
+        project.drop_clusters()
+        project_clustering = ProjectClustering.objects.create(project=project)
+
+        task_id = call_task(
+            ClusterProjectDocuments,
+            user_id=user_id,
+            project_id=project.id,
+            project_clustering_id=project_clustering.id,
+            method=method,
+            metadata={'project_id': project.id},
+            cluster_by=cluster_by,
+            n_clusters=n_clusters)
+
+        return {'task_id': task_id, 'project_clustering_id': project_clustering.id}
+
     @require_generic_contract_type
     def cluster(self, request, **kwargs):
         """
@@ -543,8 +576,20 @@ class ProjectViewSet(apps.common.mixins.APILoggingMixin,
                 - force: bool (optional) - force clustering if uncompleted tasks exist
         """
         project = getattr(self, 'object', None) or self.get_object()
+        force = request.data.get('force') == 'true'
 
-        if not request.data.get('force') == 'true':
+        task = Task.objects.filter(name=ClusterProjectDocuments.name,
+                                   status=PENDING,
+                                   kwargs__project_id=project.id).last()
+        if task is not None:
+            if force:
+                purge_task(task.pk)
+            else:
+                data = {'task_id': task.pk,
+                        'project_clustering_id': task.kwargs.get('project_clustering_id')}
+                return Response(data)
+
+        if not force:
             if project.uploadsession_set.filter(completed=False).exists():
                 raise APIException('Project has uncompleted upload sessions.')
             elif not project.uploadsession_set.filter(completed=True).exists():
@@ -560,10 +605,6 @@ class ProjectViewSet(apps.common.mixins.APILoggingMixin,
                 return Response({'message': 'Processing large amounts of documents may take a long time.',
                                  'confirm': True})
 
-        project.drop_clusters()
-
-        project_clustering = ProjectClustering.objects.create(project=project)
-
         try:
             n_clusters = int(request.data.get('n_clusters', 3))
         except ValueError:
@@ -576,18 +617,12 @@ class ProjectViewSet(apps.common.mixins.APILoggingMixin,
         else:
             cluster_by = request.data.getlist('cluster_by', ['term'])
 
-        task_id = call_task(
-            ClusterProjectDocuments,
-            user_id=request.user.id,
-            project_id=project.id,
-            project_clustering_id=project_clustering.id,
-            method=request.data.get('method', 'kmeans'),
-            metadata={'project_id': project.id},
-            cluster_by=cluster_by,
-            n_clusters=n_clusters)
-
-        return Response({'task_id': task_id,
-                         'project_clustering_id': project_clustering.id})
+        res = self._cluster(project,
+                            user_id=request.user.id,
+                            n_clusters=n_clusters,
+                            method=request.data.get('method', 'kmeans'),
+                            cluster_by=cluster_by)
+        return Response(res)
 
     @require_generic_contract_type
     def clustering_status(self, request, **kwargs):
@@ -804,8 +839,14 @@ class ProjectViewSet(apps.common.mixins.APILoggingMixin,
             Returns:
                 int (number of reassigned documents)
         """
-        self.get_object()    # noqa: permissions check
+        project = self.get_object()    # noqa: permissions check
         assignee_id = request.data.get('assignee_id')
+
+        if assignee_id is not None and \
+                assignee_id not in project.owners.values_list('id', flat=True) and \
+                assignee_id not in project.reviewers.values_list('id', flat=True):
+            return Response({'detail': f'This assignee (id={assignee_id}) is not in project owners or reviewers'},
+                            status=404)
 
         if request.data.get('all'):
             documents = self.get_document_queryset()
@@ -840,10 +881,9 @@ class ProjectViewSet(apps.common.mixins.APILoggingMixin,
             documents = self.get_document_queryset()
             if request.data.get('no_document_ids'):
                 documents = documents.exclude(pk__in=request.data.get('no_document_ids'))
-            document_ids = documents.values_list('pk', flat=True)
+            document_ids = list(documents.values_list('pk', flat=True))
         else:
             document_ids = request.data.get('document_ids')
-
         documents = Document.objects \
             .filter(project=project, pk__in=document_ids)
 
@@ -859,11 +899,11 @@ class ProjectViewSet(apps.common.mixins.APILoggingMixin,
             ret = documents.update(status=status_id)
             # TODO: do not hardcode doc status code
             if review_status.code in ('completed', 'excluded'):
-                FieldAnnotation.objects.filter(document__in=documents).update(
-                    status=FieldAnnotationStatus.accepted_status())
+                target_status = FieldAnnotationStatus.accepted_status()
+                field_repo.update_field_annotations_by_doc_ids(
+                    document_ids, [(f'{FIELD_CODE_STATUS_ID}', target_status.pk)])
 
         plan_process_documents_status_changed(document_ids, status_id, request.user.pk)
-
         return Response({'success': ret})
 
     def get_annotations_queryset(self, only_true_annotations=False):
@@ -919,8 +959,14 @@ class ProjectViewSet(apps.common.mixins.APILoggingMixin,
             Returns:
                 int (number of reassigned annotations)
         """
-        self.get_object()    # noqa: permissions check
+        project = self.get_object()    # noqa: permissions check
         assignee_id = request.data.get('assignee_id')
+
+        if assignee_id is not None and \
+                assignee_id not in project.owners.values_list('id', flat=True) and \
+                assignee_id not in project.reviewers.values_list('id', flat=True):
+            return Response({'detail': f'This assignee (id={assignee_id}) is not in project owners or reviewers'},
+                            status=404)
 
         annotations = self.get_annotations_queryset()
 
@@ -942,40 +988,39 @@ class ProjectViewSet(apps.common.mixins.APILoggingMixin,
                 all: any value - update all annotations if any value
                 no_annotation_ids: list[int] - exclude those annotations from action (if "all" is set)
                 status_id: int - field annotation status id
+                run_mode: str - 'sync', 'background', 'smart'
             Returns:
                 int (number of reassigned annotations)
         """
+        MAX_ANTS_TO_RUN_SYNC = 20
         project = self.get_object()    # noqa: permissions check
+        # "sync" - process request in foreground
+        # "background" - process request in background as a separate Celery task
+        # "smart" - process request in foreground if there are less than N annotations found
+        run_mode = request.data.get('run_mode') or 'sync'
         status_id = request.data.get('status_id')
-        ann_status = FieldAnnotationStatus.objects.get(pk=status_id)
-
         annotations = self.get_annotations_queryset()
-
         # re-fetch annotations as initial values-qs doesn't allow update
         ant_uids = [i['uid'] for i in annotations]
-        true_annotations = FieldAnnotation.objects.filter(uid__in=ant_uids)
-        false_annotations = FieldAnnotationFalseMatch.objects.filter(uid__in=ant_uids)
 
-        if ann_status.is_rejected:
-            from apps.document.repository.document_field_repository import DocumentFieldRepository
-            field_repo = DocumentFieldRepository()
-            # TODO: check if it lasts long time either move into a periodic task (deny>>FalseMatch)
-            for ant in true_annotations:
-                field_repo.delete_field_annotation_and_update_field_value(ant, request.user)
-        else:
-            true_annotations.update(status_id=status_id)
-            if false_annotations:
-                from apps.document.repository.document_field_repository import DocumentFieldRepository
-                field_repo = DocumentFieldRepository()
-                for false_ant in false_annotations:
-                    field_repo.restore_field_annotation_and_update_field_value(false_ant,
-                                                                               status_id,
-                                                                               request.user)
+        run_sync = run_mode == 'sync'
+        if not run_sync:
+            run_sync = run_mode == 'smart' and len(ant_uids) < MAX_ANTS_TO_RUN_SYNC
 
-        document_ids = set([i['document_id'] for i in annotations])
-        Document.reset_status_from_annotations(ann_status=ann_status, document_ids=document_ids)
+        if run_sync:
+            sync_task = SetAnnotationsStatus()
+            sync_task.process(ids=ant_uids,
+                              status_id=status_id,
+                              user_id=request.user.pk)
+            return Response({'success': len(ant_uids)})
 
-        return Response({'success': annotations.count()})
+        task_id = call_task(
+            SetAnnotationsStatus,
+            ids=ant_uids,
+            status_id=status_id,
+            user_id=request.user.pk)
+
+        return Response({'task_id': task_id, 'annotations': len(ant_uids)})
 
     @action(detail=False, methods=['get'])
     def recent(self, request, **kwargs):
@@ -1018,16 +1063,29 @@ class ProjectViewSet(apps.common.mixins.APILoggingMixin,
 
         # limit query for reviewers - only if a reviewer is in project user groups
         # (owners, super_reviewers or reviewers)
-        reviewer_subquery = '''
+        man_subquery = f'''
             LEFT JOIN project_project_reviewers ppr
                 ON p1.id = ppr.project_id
             LEFT JOIN project_project_super_reviewers ppsr
                 ON p1.id = ppsr.project_id
             LEFT JOIN project_project_owners ppo
                 ON p1.id = ppo.project_id
-            WHERE ppr.user_id = {user_id} OR ppsr.user_id = {user_id} OR ppo.user_id = {user_id}
-        '''.format(user_id=user_id)
-        sql = sql.format(reviewer_subquery if request.user.is_reviewer else '')
+            WHERE p1."delete_pending" = False AND (ppr.user_id = {user_id} OR 
+                  ppsr.user_id = {user_id} OR ppo.user_id = {user_id})
+        '''
+
+        reviewer_subquery = f'''
+        LEFT JOIN project_project_reviewers ppr
+                ON p1.id = ppr.project_id
+            WHERE p1."delete_pending" = False AND ppr.user_id = {user_id}
+        '''
+
+        if request.user.is_reviewer:
+            sql = sql.format(reviewer_subquery)
+        elif request.user.is_manager:
+            sql = sql.format(man_subquery)
+        else:
+            sql = sql.format('')
 
         result = list()
         with connection.cursor() as cursor:
@@ -1044,6 +1102,42 @@ class ProjectViewSet(apps.common.mixins.APILoggingMixin,
                 })
 
         return Response(result)
+
+    @action(detail=True, methods=['post'])
+    def detect_field_values(self, request, **kwargs):
+        project = getattr(self, 'object', None) or self.get_object()  # type: Project
+        do_not_update_modified = request.data.get('do_not_update_modified')
+        if do_not_update_modified is None:
+            do_not_update_modified = True
+        do_not_write = request.data.get('do_not_write') or False
+        document_ids = request.data.get('document_ids')
+
+        task_id = call_task(
+            DetectFieldValues,
+            user_id=request.user.id,
+            document_type=project.type,
+            project_ids=[project.pk],
+            do_not_write=do_not_write,
+            existing_data_action='maintain' if do_not_update_modified else 'delete',
+            document_ids=document_ids)
+
+        return Response({'task_id': task_id})
+
+    @action(detail=True, methods=['post'], url_path='make-searchable-pdf')
+    def make_searchable_pdf(self, request, **kwargs):
+        if not kwargs.get('pk') and not request.data.get('document_ids'):
+            raise APIException('Either provide project id or document_ids')
+        task_id = call_task(
+            CreateSearchablePDF,
+            project_id=kwargs.get('pk'),
+            document_ids=request.data.get('document_ids'),
+            user_id=request.user.id
+        )
+        return Response({'task_id': task_id})
+
+    @action(detail=False, methods=['post'], url_path='make-searchable-pdf')
+    def _make_searchable_pdf(self, request, **kwargs):
+        return self.make_searchable_pdf(request, **kwargs)
 
 
 # --------------------------------------------------------
@@ -1314,14 +1408,17 @@ class UploadSessionViewSet(UploadSessionPermissionViewMixin,
         :param review_file: whether check or not for empty/exists/delete_pending/processing status
         :return:
         """
+        logger = get_django_logger()
         from apps.document.app_vars import MAX_DOCUMENT_SIZE
         if file_size > MAX_DOCUMENT_SIZE.val * 1024 * 1024:
+            logger.error(f'uploading: file {file_name} is too large ({file_size})')
             return Response(status=status.HTTP_400_BAD_REQUEST,
                             data=f'File size is greater than allowed max {MAX_DOCUMENT_SIZE.val} Mb')
 
         try:
             session = self.get_object()
         except (UploadSession.DoesNotExist, ValidationError):
+            logger.error(f'uploading: session was not found')
             return Response(status=status.HTTP_400_BAD_REQUEST,
                             data='Wrong upload session uid.')
 
@@ -1396,6 +1493,7 @@ class UploadSessionViewSet(UploadSessionPermissionViewMixin,
                 self._notify_upload_started(session)
 
         except Exception as e:
+            logger.error(f'uploading: general error ({e})')
             return Response(status=status.HTTP_500_INTERNAL_SERVER_ERROR,
                             data=render_error('Unable to load file', caused_by=e))
 
@@ -1418,7 +1516,7 @@ class UploadSessionViewSet(UploadSessionPermissionViewMixin,
                                 force=as_bool(request.GET, 'force', False) or
                                       request.META.get('HTTP_FORCE', False) == 'true')
 
-    def upload_archive(self, request, file_, archive_type):
+    def upload_archive(self, request, file_, archive_type, directory_path=None):
         from apps.document.app_vars import MAX_ARCHIVE_SIZE
         if file_.size > MAX_ARCHIVE_SIZE.val * 1024 * 1024:
             return Response(status=status.HTTP_400_BAD_REQUEST,
@@ -1454,6 +1552,7 @@ class UploadSessionViewSet(UploadSessionPermissionViewMixin,
             LoadArchive,
             archive_type=archive_type,
             source_path=source_path,
+            directory_path=directory_path,
             user_id=request.user.id,
             session_id=session.pk,
             force=as_bool(request.POST, 'force', False) or request.META.get('HTTP_FORCE', False) == 'true'
@@ -1485,12 +1584,14 @@ class UploadSessionViewSet(UploadSessionPermissionViewMixin,
         return False
 
     @action(detail=True, methods=['post'])
-    def upload(self, request, pk: str, review_file=True):
+    def upload(self, request, pk: str, review_file=True, directory_path=None):
         """
         Upload a File\n
             Params:
                 - file: file object
                 - force: bool (optional) - whether rewrite existing file and Document
+                - review_file: bool - whether skip file check (exists or not)
+                - directory_path: str - may be passed from TUS plugin
         """
         file_ = request.FILES.dict().get('file')
 
@@ -1498,9 +1599,9 @@ class UploadSessionViewSet(UploadSessionPermissionViewMixin,
             raise APIException('File not found.')
 
         if self.is_zip(file_):
-            return self.upload_archive(request, file_, archive_type='zip')
+            return self.upload_archive(request, file_, directory_path=directory_path, archive_type='zip')
         if self.is_tar(file_):
-            return self.upload_archive(request, file_, archive_type='tar')
+            return self.upload_archive(request, file_, directory_path=directory_path, archive_type='tar')
         file_.seek(0)
 
         resp = self.upload_file(file_name=file_.name,
@@ -1509,7 +1610,7 @@ class UploadSessionViewSet(UploadSessionPermissionViewMixin,
                                 user_id=request.user.id,
                                 force=request.POST.get('force') == 'true' or
                                       request.META.get('HTTP_FORCE') == 'true',
-                                directory_path=request.POST.get('directory_path'),
+                                directory_path=directory_path or request.POST.get('directory_path'),
                                 review_file=review_file)
 
         # workaround for old frontend usage which checks status based on string constants in response data

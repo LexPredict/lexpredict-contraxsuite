@@ -1,8 +1,22 @@
 {% extends "base_list_ajax.html" %}
 {% load static %}
 
+{% block button_block %}
+    {{ block.super }}
+    <form id="changelist-search" action="" method="get" class="form-inline">
+        <div class="search-container">
+            <input id="quick-search" type="text" name="q" autocomplete="off"
+                style="width: 100px"/>
+            <input type="submit" value="Search" class="btn btn-info">
+            &nbsp;
+        </div>
+    </form>
+{% endblock %}
+
 {% block js_extra %}
   {{ block.super }}
+  {% include "_django_ql_searchbox.html" %}
+
   <script type="text/javascript">
     $(document).ready(function () {
       var datafields = [
@@ -68,6 +82,7 @@
         ]
       };
       draw_grid(".jqxgrid", datafields, columns, true, null, custom_grid_options);
+      window.setupDjangoQLSearch('div.pull-right', 'text unit');
     });
   </script>
 {% endblock %}

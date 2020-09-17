@@ -27,8 +27,8 @@
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.6.0/LICENSE"
-__version__ = "1.6.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.7.0/LICENSE"
+__version__ = "1.7.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -154,6 +154,25 @@ def app_var_value(name, category='Common'):
     if value.exists():
         return value.last().value
     return ''
+
+
+@register.simple_tag
+def admin_email():
+    """
+    Get admin email from AppVar or settings
+    :return: email (string)
+    """
+    value = AppVar.objects.filter(name='support_email', category='Common')
+    if value.exists():
+        return value.last().value
+    if not hasattr(settings, 'ADMINS'):
+        return ''
+    admins = settings.ADMINS
+    if not admins:
+        return ''
+    if len(admins[0]) > 1:
+        return admins[0][1]
+    return admins[0]
 
 
 @register.simple_tag

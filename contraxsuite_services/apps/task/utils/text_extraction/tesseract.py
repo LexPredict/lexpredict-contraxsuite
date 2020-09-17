@@ -30,8 +30,8 @@ import subprocess
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.6.0/LICENSE"
-__version__ = "1.6.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.7.0/LICENSE"
+__version__ = "1.7.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -41,21 +41,26 @@ TESSERACT_PATH = "/usr/bin/"
 
 
 def process_tesseract_file(input_file_path, output_file_path,
-                           tesseract_language="eng", tesseract_whitelist=None):
+                           tesseract_language="eng",
+                           tesseract_char_acceptlist=None,
+                           tesseract_extra_args=None):
     """
     Process a document with tesseract.
     :param input_file_path: path to input document file
     :param output_file_path: path to output document file
     :param tesseract_language: language model
-    :param tesseract_whitelist:
+    :param tesseract_char_acceptlist:
     :return: return code
     """
     # Setup command arguments
     args_tesseract = [os.path.join(TESSERACT_PATH, "tesseract"),
                       "-l", str(tesseract_language)]
-    if tesseract_whitelist:
-        args_tesseract.extend(["-c", 'tessedit_char_whitelist={0}'.format(tesseract_whitelist)])
+    if tesseract_char_acceptlist:
+        args_tesseract.extend(["-c", 'tessedit_char_whitelist={0}'.format(tesseract_char_acceptlist)])
     args_tesseract.extend([input_file_path, output_file_path])
+
+    if tesseract_extra_args:
+        args_tesseract.extend(tesseract_extra_args)
 
     # Execute command
     proc_tesseract = subprocess.Popen(args_tesseract, stdout=subprocess.PIPE,

@@ -29,8 +29,8 @@ from apps.project.models import Project, UserProjectsSavedFilter
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.6.0/LICENSE"
-__version__ = "1.6.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.7.0/LICENSE"
+__version__ = "1.7.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -39,9 +39,9 @@ def user_projects(request):
     if not request.user.is_authenticated or request.is_ajax() or hasattr(request, 'versioning_scheme'):
         return {}
 
-    qs = Project.objects.order_by('-pk').values('pk', 'name')
-    if request.user.is_reviewer:
-        qs = qs.filter(reviewers=request.user)
+    from apps.project.views import SelectProjectsView
+    qs = SelectProjectsView.get_user_projects(request.user)
+    qs = qs.order_by('-pk').values('pk', 'name')
 
     saved_filter, _ = UserProjectsSavedFilter.objects.get_or_create(user=request.user)
 
@@ -49,6 +49,7 @@ def user_projects(request):
         saved_filter.projects.add(qs.first()['pk'])
 
     user_projects_selected = saved_filter.projects.values_list('pk', flat=True)
+    user_projects_selected = qs.filter(pk__in=user_projects_selected).values_list('pk', flat=True)
 
     return {'user_projects': qs,
             'user_projects_selected': list(user_projects_selected)}

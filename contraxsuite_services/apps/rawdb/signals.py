@@ -38,6 +38,7 @@ from apps.document import signals
 from apps.document.constants import DocumentSystemField, FieldSpec
 from apps.document.models import Document, DocumentType, DocumentField
 from apps.document.repository.document_field_repository import DocumentFieldRepository
+from apps.document import signals as document_signals
 from apps.project import signals as project_signals
 from apps.rawdb.rawdb.rawdb_field_handlers import RawdbFieldHandler
 from apps.users import signals as user_signals
@@ -45,8 +46,8 @@ from apps.users.models import User
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.6.0/LICENSE"
-__version__ = "1.6.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.7.0/LICENSE"
+__version__ = "1.7.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -105,6 +106,13 @@ def document_field_delete_listener(sender, **kwargs):
 def document_type_change_listener(sender, **kwargs):
     document_type = kwargs.get('document_type')
     reindex_on_doc_type_change(document_type)
+
+
+@receiver(document_signals.document_type_deleted)
+def document_type_delete_listener(sender, **kwargs):
+    document_type = kwargs.get('document_type')
+    from apps.rawdb.field_value_tables import _delete_document_fields_table
+    _delete_document_fields_table(ProcessLogger(), document_type.code)
 
 
 @receiver(project_signals.project_saved)
@@ -216,7 +224,7 @@ def update_documents_assignee_impl(sender,
     field_repo = DocumentFieldRepository()
     field_repo.update_docs_assignee(doc_ids, new_assignee_id)
 
-    plan_reindex_tasks_in_chunks(doc_ids, changed_by_user.pk,
+    plan_reindex_tasks_in_chunks(doc_ids, changed_by_user.pk if changed_by_user else None,
                                  cache_system_fields=[DocumentSystemField.assignee.value],
                                  cache_generic_fields=False,
                                  cache_user_fields=False)

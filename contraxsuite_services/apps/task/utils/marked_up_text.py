@@ -31,8 +31,8 @@ import regex as re
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.6.0/LICENSE"
-__version__ = "1.6.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.7.0/LICENSE"
+__version__ = "1.7.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -164,12 +164,29 @@ class MarkedUpText:
     """
     DEFAULT_HEADINGS = {'heading_1': 1, 'heading_2': 2, 'heading_3': 3, 'heading_4': 4}
     REG_SPACE = re.compile(r'\s|(\r\n|\r|\n)')
+    BLOCK_MARKERS = {
+        'paragraphs': ('{{##PF', 'PF##}}',),
+        'images': ('{{##IM', 'IM##}}',),
+        'a': ('{{##AN', 'AN##}}',),
+        'pages': ('{{##PG', 'PG##}}',),
+        'heading_1': ('{{##H1', 'H1##}}',),
+        'heading_2': ('{{##H2', 'H2##}}',),
+        'heading_3': ('{{##H3', 'H3##}}',),
+        'heading_4': ('{{##H4', 'H4##}}',),
+        'heading_5': ('{{##H5', 'H5##}}',),
+        'heading_6': ('{{##H6', 'H6##}}',),
+        'heading_7': ('{{##H7', 'H7##}}',),
+        'heading_8': ('{{##H8', 'H8##}}',),
+        'heading_9': ('{{##H9', 'H9##}}',),
+    }
+    MARKER_TEXT_LEN = len('<<##PF')
 
     def __init__(self, text: str,
                  labels: Optional[Dict[str, List[Tuple[int, int]]]] = None,
                  tables: Optional[List[MarkedUpTable]] = None,
                  meta: Optional[Dict[str, str]] = None):
         self.text = text
+        self.markers_extra_text_length = 0
         self.labels = labels or {}
         self.tables = tables or []
         self.meta = meta or {}
@@ -180,6 +197,10 @@ class MarkedUpText:
 
         labels = ', '.join([f'{l}: {len(self.labels[l])}' for l in self.labels])
         return f'{text_short}, labels: {labels}'
+
+    @property
+    def pure_text_length(self) -> int:
+        return len(self.text or '') - self.markers_extra_text_length
 
     def sort_labels(self):
         """
@@ -376,3 +397,92 @@ class MarkedUpText:
         if start is not None:
             return len(self.REG_SPACE.sub('', self.text[start:end]))
         return len(self.REG_SPACE.sub('', self.text))
+
+    def add_marker(self, label: str, is_open: bool, position=-1):
+        marker_text = self.get_marker(label, is_open)
+        if position < 0 or position == len(self.text):
+            self.text += marker_text
+        else:
+            self.text = self.text[:position] + marker_text + self.text[:position]
+        self.markers_extra_text_length += len(marker_text)
+
+    @classmethod
+    def get_marker(cls, label: str, is_open: bool):
+        marker = cls.BLOCK_MARKERS[label]
+        return marker[0] if is_open else marker[1]
+
+    def convert_markers_to_labels(self):
+        # label - is opening - position
+        marker_coords = []  # type: List[Tuple[str, bool, int]]
+
+        # find coords for all markers
+        for label in self.BLOCK_MARKERS:
+            for i in range(len(self.BLOCK_MARKERS[label])):
+                marker = self.BLOCK_MARKERS[label][i]
+                is_opening = i == 0
+
+                start = 0
+                while True:
+                    marker_start = self.text.find(marker, start)
+                    if marker_start < 0:
+                        break
+                    start = marker_start + len(marker)
+                    marker_coords.append((label, is_opening, marker_start,))
+
+        # sort markers by position
+        marker_coords.sort(key=lambda m: m[2])
+
+        # cut markers from text, shifting the following markers left
+        for i in range(len(marker_coords)):
+            _label, _is_op, pos = marker_coords[i]
+            self.text = self.text[:pos] + self.text[pos + self.MARKER_TEXT_LEN:]
+            # shift other markers
+            for j in range(i + 1, len(marker_coords)):
+                marker_coords[j] = (marker_coords[j][0],
+                                    marker_coords[j][1],
+                                    marker_coords[j][2] - self.MARKER_TEXT_LEN,)
+
+        # make unpaired labels from marker_coords
+        for label, is_op, position in marker_coords:
+            lst = self.labels.get(label)
+            if not lst:
+                lst = []
+                self.labels[label] = lst
+            lst.append((position, is_op,))
+
+        # make label pairs (opening / closing) from unpaired labels
+        for label in self.labels:
+            lst = self.labels[label]
+            lst.sort(key=lambda p: p[0] * 10 + (1 if p[1] else 0))
+            paired_list = []
+
+            cur_item = None  # type: Optional[Tuple[int, int]]
+            for position, is_open in lst:
+                if cur_item is None:
+                    cur_item = (position if is_open else None, None if is_open else position,)
+                    continue
+                cur_item = (position if is_open else cur_item[0], cur_item[1] if is_open else position,)
+                if cur_item[0] is not None and cur_item[1] is not None:
+                    paired_list.append(cur_item)
+                    cur_item = None
+
+            self.labels[label] = paired_list
+        self.untangle_self_closing_tags()
+
+    def untangle_self_closing_tags(self):
+        # self-closing tags looks like
+        # [(0, 0), (901, 901), (1460, 1460)]
+        # instead, we should transform to
+        # [(0, 901), (901, 1460), (1460, text_length)]
+        self_clos_tags = ['pages']
+        for label in self_clos_tags:
+            lst = self.labels.get(label)
+            if not lst:
+                continue
+
+            untangled = []
+            last_index = len(lst) - 1
+            for i in range(len(lst)):
+                next_pos = lst[i + 1][0] if i < last_index else len(self.text)
+                untangled.append((lst[i][0], next_pos,))
+            self.labels[label] = untangled

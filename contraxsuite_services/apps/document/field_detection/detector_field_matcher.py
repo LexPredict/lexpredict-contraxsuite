@@ -27,8 +27,8 @@
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.6.0/LICENSE"
-__version__ = "1.6.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.7.0/LICENSE"
+__version__ = "1.7.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -43,7 +43,7 @@ from apps.document.models import DocumentFieldDetector, TextParts
 
 class DetectorFieldMatcher:
     """
-    class matches text units (sentences or paragraphs) agains
+    class matches text units (sentences or paragraphs) against
     regular expressions, defined in DocumentFieldDetector
     """
 
@@ -94,23 +94,18 @@ class DetectorFieldMatcher:
             return None
 
         text = text.replace('\n', ' ').replace('\t', ' ')
-
-        sentence_without_lower = text
-        if self.detector.regexps_pre_process_lower:
-            text = text.lower()
-
         if self.detector._matches_exclude_regexp(text):
             return None
         else:
             if self.detector.detector_definition_words:
-                if not self._matches_definition_words(sentence_without_lower, text_is_sentence):
+                if not self._matches_definition_words(text, text_is_sentence):
                     return None
-                elif not self.detector.include_matchers:
-                    return sentence_without_lower, 0, len(sentence_without_lower)
+                if not self.detector.include_matchers:
+                    return text, 0, len(text)
                 else:
-                    return self._match_include_regexp_or_none(text, sentence_without_lower)
+                    return self._match_include_regexp_or_none(text, text)
             else:
-                return self._match_include_regexp_or_none(text, sentence_without_lower)
+                return self._match_include_regexp_or_none(text, text)
 
     def matching_string(self, text: str, text_is_sentence: bool = True) -> Optional[Tuple[str, int, int]]:
         # returns: string, begin, end
@@ -153,7 +148,10 @@ class DetectorFieldMatcher:
             field_types = [FIELD_TYPE_REGISTRY[ft].title for ft in FIELD_TYPES_ALLOWED_FOR_DETECTED_VALUE]
             field_types_str = ', '.join(field_types)
             raise RuntimeError(
-                f'Detected value is allowed only for {field_types_str} fields')
+                f'Detected value "{detected_value}"'
+                f'is allowed only for {field_types_str} fields, '
+                f'and not for field type "{field_type}".'
+            )
 
     def get_validated_detected_value(self, field=None) -> str:
         field = field or self.detector.field

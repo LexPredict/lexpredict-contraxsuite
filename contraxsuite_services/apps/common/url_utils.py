@@ -28,8 +28,8 @@ from typing import List, Dict, Any, Optional
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.6.0/LICENSE"
-__version__ = "1.6.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.7.0/LICENSE"
+__version__ = "1.7.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -40,6 +40,8 @@ class URLParamFormatException(Exception):
 
 def as_bool(url_params: Dict[str, Any], name: str, default_value: Optional[bool] = None) -> Optional[bool]:
     url_param = url_params.get(name)
+    if url_param in (True, False):
+        return url_param
     if url_param is None:
         return default_value
     url_param = url_param.strip().lower()

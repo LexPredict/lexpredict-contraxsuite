@@ -25,22 +25,26 @@
 # -*- coding: utf-8 -*-
 
 import time
+from urllib.parse import quote
 from collections import defaultdict
-from typing import Dict, List, Set
+from typing import Dict, List, Set, Generator, Any
 
 import rest_framework.views
+import pandas as pd
+from allauth.socialaccount import providers
+from allauth.socialaccount.models import SocialApp
+
 from django.conf.urls import url
 from django.db import transaction
 from django.db.models import Q, F
-from django.http import StreamingHttpResponse
+from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
-from django.http import HttpResponse
 
 import apps.common.mixins
 from apps.common.errors import APIRequestError
-from apps.common.streaming_utils import csv_gen, GeneratorList
 from apps.common.url_utils import as_bool, as_int, as_int_list, as_str_list
 from apps.document.models import Document, DocumentType
+from apps.document.scheme_migrations.scheme_migration import MIGRATION_TAGS, CURRENT_VERSION
 from apps.project.models import Project
 from apps.rawdb.constants import FT_COMMON_FILTER, FT_USER_DOC_GRID_CONFIG, \
     FIELD_CODES_SHOW_BY_DEFAULT_NON_GENERIC, FIELD_CODES_SHOW_BY_DEFAULT_GENERIC, \
@@ -53,8 +57,8 @@ from apps.rawdb.rawdb.rawdb_field_handlers import ColumnDesc
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.6.0/LICENSE"
-__version__ = "1.6.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.7.0/LICENSE"
+__version__ = "1.7.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -80,56 +84,6 @@ def _document_type_schema_to_dto(document_type: DocumentType, columns: List[Colu
     }
 
     return document_type_data
-
-
-def _query_results_to_json(query_results: DocumentQueryResults, exec_time: float) -> Response:
-    res = {
-        'offset': query_results.offset,
-        'limit': query_results.limit,
-        'total_documents': query_results.total,
-        'reviewed_documents': query_results.reviewed,
-        'items': GeneratorList(query_results.fetch_dicts()),
-        'time': exec_time
-    }
-    return Response({k: v for k, v in res.items() if v is not None})
-
-
-def _query_results_to_xlsx(query_results: DocumentQueryResults) -> HttpResponse:
-    from openpyxl import Workbook
-    from openpyxl.writer.excel import save_virtual_workbook
-    from openpyxl.styles import Font, Alignment
-
-    wb = Workbook()
-    ws = wb.active
-    ws.append(query_results.column_titles)
-    for cells in ws.rows:
-        for cell in cells:
-            cell.font = Font(name=cell.font.name, bold=True)
-            cell.alignment = Alignment(horizontal='center')
-        break
-
-    for row in query_results.fetch():
-        ws.append(row)
-
-    def str_len(value):
-        return len(str(value)) if value is not None else 0
-
-    for column_cells in ws.columns:
-        length = min(max(str_len(cell.value) for cell in column_cells), 100) + 1
-        ws.column_dimensions[column_cells[0].column_letter].width = length
-
-    response = HttpResponse(save_virtual_workbook(wb),
-                            content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
-    response['Content-Disposition'] = 'attachment; filename=export.xlsx'
-    return response
-
-
-def _query_results_to_csv(query_results: DocumentQueryResults) -> StreamingHttpResponse:
-    resp = StreamingHttpResponse(
-        csv_gen(query_results.column_codes, query_results.fetch(), query_results.column_titles),
-        content_type='text/csv')
-    resp['Content-Disposition'] = 'attachment; filename="export.csv"'
-    return resp
 
 
 class RawDBConfigAPIView(apps.common.mixins.APILoggingMixin, rest_framework.views.APIView):
@@ -198,7 +152,36 @@ class RawDBConfigAPIView(apps.common.mixins.APILoggingMixin, rest_framework.view
             'common_filters_by_document_type': common_filters_by_document_type,
             'common_filters_by_project': common_filters_by_project,
             'user_doc_grid_configs_by_project': user_doc_grid_configs_by_project,
-            'time': time.time() - start
+            'time': time.time() - start,
+            'scheme_migrations': {
+                'migrations': MIGRATION_TAGS,
+                'current_version': CURRENT_VERSION
+            }
+        })
+
+
+class SocialAccountsAPIView(apps.common.mixins.APILoggingMixin, rest_framework.views.APIView):
+    permission_classes = (AllowAny,)
+    authentication_classes = []
+
+    def get(self, request, *_args, **_kwargs):
+        root_url = request.build_absolute_uri('/')
+        next_val = quote(root_url.rstrip('/') + '/#/?redirect_oauth=true')
+
+        social_apps = SocialApp.objects.all()
+        social_app_data = []
+        for app in social_apps:  # type: SocialApp
+            provider = providers.registry.by_id(app.provider)
+            provider_url = provider.get_login_url(None)
+            provider_url = f'{provider_url.rstrip()}?next={next_val}'
+            social_app_data.append({
+                'name': app.name,
+                'provider': app.provider,
+                'login_url': provider_url
+            })
+
+        return Response({
+            'social_accounts': social_app_data
         })
 
 
@@ -227,6 +210,7 @@ class DocumentsAPIView(rest_framework.views.APIView):
                             if i.field_code.rstrip(FIELD_CODE_ANNOTATION_SUFFIX) in columns]
 
             fmt = request.GET.get('fmt') or self.FMT_JSON
+            as_zip = request.GET.get('as_zip') == 'true'
 
             offset = as_int(request.GET, 'offset', None)
             if offset is not None and offset < 0:
@@ -285,37 +269,104 @@ class DocumentsAPIView(rest_framework.views.APIView):
             # show_unprocessed = as_bool(request.GET, 'show_unprocessed', False)
             # if show_unprocessed is False:
             #     column_filters.append((FIELD_CODE_DOC_PROCESSED, 'true'))
+            total_documents_query = Document.objects.filter(
+                document_type=document_type)
+            if project_ids:
+                total_documents_query = total_documents_query.filter(project_id__in=project_ids)
+            total_documents_of_type = total_documents_query.count()
 
-            query_results = query_documents(requester=request.user,
-                                            document_type=document_type,
-                                            project_ids=project_ids,
-                                            column_names=columns,
-                                            saved_filter_ids=saved_filters,
-                                            column_filters=column_filters,
-                                            order_by=order_by,
-                                            offset=offset,
-                                            limit=limit,
-                                            return_documents=return_data,
-                                            return_reviewed_count=return_reviewed,
-                                            return_total_count=return_total,
-                                            ignore_errors=ignore_errors,
-                                            include_annotation_fields=True)  # type: DocumentQueryResults
+            columns_to_query = columns
+            if columns_to_query:
+                columns_to_query = self.leave_unique_values(['document_id', 'document_name'] + columns)
+
+            query_results = query_documents(
+                requester=request.user,
+                document_type=document_type,
+                project_ids=project_ids,
+                column_names=columns_to_query,  # columns,
+                saved_filter_ids=saved_filters,
+                column_filters=column_filters,
+                order_by=order_by,
+                offset=offset,
+                limit=limit,
+                return_documents=return_data,
+                return_reviewed_count=return_reviewed,
+                return_total_count=return_total,
+                ignore_errors=ignore_errors,
+                include_annotation_fields=True)  # type: DocumentQueryResults
+
+            # get assignees stats
+            assignees_query_results = query_documents(
+                requester=request.user,
+                document_type=document_type,
+                project_ids=project_ids,
+                column_names=['document_id', 'assignee_name', 'assignee_id'],
+                saved_filter_ids=saved_filters,
+                column_filters=column_filters,
+                return_documents=True,
+                return_reviewed_count=False)  # type: DocumentQueryResults
+
+            df = pd.DataFrame(assignees_query_results.fetch_dicts())
+            if df.empty:
+                query_results.assignees = []
+            else:
+                df = df.groupby(['assignee_id', 'assignee_name']).agg({
+                    'document_id': {'document_ids': lambda x: list(x), 'documents_count': 'count'}})
+                if df.empty:
+                    query_results.assignees = []
+                else:
+                    df.columns = df.columns.droplevel()
+                    df = df.reset_index()
+                    df['assignee_id'] = df['assignee_id'].astype(int)
+                    query_results.assignees = df.to_dict('records')
+
+            query_results.unfiltered_count = total_documents_of_type
 
             if fmt in {self.FMT_XLSX, self.FMT_CSV} and not return_data:
                 raise APIRequestError('Export to csv/xlsx requested with return_data=false')
 
             if fmt == self.FMT_CSV:
-                return _query_results_to_csv(query_results)
+                return query_results.to_csv(as_zip=as_zip)
             elif fmt == self.FMT_XLSX:
-                return _query_results_to_xlsx(query_results)
+                return query_results.to_xlsx(as_zip=as_zip)
             else:
                 if query_results is None:
                     return Response({'time': time.time() - start})
-                return _query_results_to_json(query_results, time.time() - start)
+                query_dict = query_results.to_json(time_start=start)
+                if columns and 'items' in query_dict:
+                    columns_to_remove = []
+                    if 'document_id' not in columns:
+                        columns_to_remove.append('document_id')
+                    query_dict['items'] = self.expand_items(
+                        query_dict['items'], columns_to_remove)
+                return Response(query_dict)
         except APIRequestError as e:
             return e.to_response()
         except Exception as e:
             return APIRequestError(message='Unable to process request', caused_by=e, http_status_code=500).to_response()
+
+    @staticmethod
+    def expand_items(items: Generator[Dict[str, Any], None, None],
+                     columns_to_remove: List[str]) -> Generator[Dict[str, Any], None, None]:
+        for item in items:
+            if 'document_id' in item:
+                item['doc_identifier'] = item['document_id']
+            for cl in columns_to_remove:
+                if cl in item:
+                    del item[cl]
+            yield item
+
+    @staticmethod
+    def leave_unique_values(lst: List[str]) -> List[str]:
+        seen = set()
+        seen_add = seen.add
+        return [x for x in lst if not (x in seen or seen_add(x))]
+
+    def post(self, request, document_type_code: str, *args, **kwargs):
+        request.GET = request.GET.copy()
+        request.GET.update(request.data)
+        request.GET.update(request.POST)
+        return self.get(request, document_type_code, *args, **kwargs)
 
     @classmethod
     def simulate_get(cls, user, project, return_ids=True, use_saved_filter=True):
@@ -325,7 +376,7 @@ class DocumentsAPIView(rest_framework.views.APIView):
         # TODO: Do not simulate http requests, use query_documents()
         filters = order_by = None
 
-        if isinstance(project, int):
+        if isinstance(project, (int, str)):
             project = Project.objects.get(pk=project)
 
         if use_saved_filter:
@@ -383,7 +434,7 @@ class ProjectStatsAPIView(rest_framework.views.APIView):
             if not query_results:
                 return Response({'time': time.time() - start})
 
-            return _query_results_to_json(query_results, time.time() - start)
+            return Response(query_results.to_json(time_start=start))
         except APIRequestError as e:
             return e.to_response()
         except Exception as e:
@@ -394,4 +445,5 @@ urlpatterns = [
     url(r'documents/(?P<document_type_code>[^/]+)/$', DocumentsAPIView.as_view(), name='documents'),
     url(r'project_stats/(?P<project_id>\d+)/$', ProjectStatsAPIView.as_view(), name='project_stats'),
     url(r'config/$', RawDBConfigAPIView.as_view(), name='config'),
+    url(r'social_accounts/$', SocialAccountsAPIView.as_view(), name='social_accounts'),
 ]

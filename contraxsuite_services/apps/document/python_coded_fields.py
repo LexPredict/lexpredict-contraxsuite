@@ -37,8 +37,8 @@ from apps.extract.models import CurrencyUsage, DateUsage, PartyUsage
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.6.0/LICENSE"
-__version__ = "1.6.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.7.0/LICENSE"
+__version__ = "1.7.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -54,14 +54,20 @@ class PythonCodedField:
                                             use_only_confirmed_field_values: bool = False) -> Optional[ClassifierModel]:
         return None
 
-    def get_value(self, log: ProcessLogger, field: DocumentField, doc: Document,
+    def get_value(self,
+                  log: ProcessLogger,
+                  field: DocumentField,
+                  doc: Document,
                   cur_field_code_to_value: Dict[str, Any]) \
             -> Optional[FieldValueDTO]:
         """
         Locates field values in text - either in a sentence or in a whole document text
         (depending on 'by_sentence' flag).
-        :param log
-        :param field Configured document field
+        :param location_end: coordinate of the location_text
+        :param location_start: coordinate of the location_text
+        :param location_text: optional text to search for entries within this text only
+        :param log:
+        :param field: Configured document field
         :param doc: Document in which the location is done
         :param cur_field_code_to_value: Current field values of this document. May contain only the depends-on fields.
         :return: List of tuples: (value, location_start, location_end)
@@ -78,9 +84,18 @@ class TextUnitBasedSingleValuePythonCodedField(PythonCodedField):
                                 text_unit: TextUnit) -> Tuple[bool, Any]:
         raise NotImplementedError()
 
-    def get_value(self, log: ProcessLogger, field: DocumentField, doc: Document,
-                  cur_field_code_to_value: Dict[str, Any]) \
-            -> Optional[FieldValueDTO]:
+    def find_value_in_text(self,
+                           log: ProcessLogger,
+                           field: DocumentField,
+                           doc: Document,
+                           text: str) -> Tuple[bool, Any]:
+        raise NotImplementedError()
+
+    def get_value(self,
+                  log: ProcessLogger,
+                  field: DocumentField,
+                  doc: Document,
+                  cur_field_code_to_value: Dict[str, Any]) -> Optional[FieldValueDTO]:
         typed_field = TypedField.by(field)  # type: TypedField
         if typed_field.multi_value:
             raise Exception(f'Python coded field {self.__class__.__name__} supports only single-value field types and '
@@ -91,14 +106,23 @@ class TextUnitBasedSingleValuePythonCodedField(PythonCodedField):
             .filter(unit_type=field.text_unit_type) \
             .order_by('location_start', 'pk')
 
+        # test all text units
         for text_unit in qs_text_units.iterator():  # type: TextUnit
             found, value = self.find_value_in_text_unit(log, field, doc, text_unit)
             if found:
-                value = typed_field.field_value_python_to_json(value)
-                ant = AnnotationDTO(annotation_value=value,
-                                    location_in_doc_start=text_unit.location_start,
-                                    location_in_doc_end=text_unit.location_end)
-                return FieldValueDTO(field_value=value, annotations={ant})
+                return self.pack_parsed_value(typed_field,
+                                              value,
+                                              text_unit.location_start,
+                                              text_unit.location_end)
+
+    @classmethod
+    def pack_parsed_value(cls, typed_field: TypedField, value: Any,
+                          loc_start: int, loc_end: int):
+        value = typed_field.field_value_python_to_json(value)
+        ant = AnnotationDTO(annotation_value=value,
+                            location_in_doc_start=loc_start,
+                            location_in_doc_end=loc_end)
+        return FieldValueDTO(field_value=value, annotations=[ant])
 
 
 class PartiesField(PythonCodedField):
@@ -106,12 +130,23 @@ class PartiesField(PythonCodedField):
     title = 'Parties'
     type = field_types.StringField.type_code
 
-    def get_value(self, log, field: DocumentField, doc: Document,
+    def get_value(self,
+                  log,
+                  field: DocumentField,
+                  doc: Document,
                   cur_field_code_to_value: Dict[str, Any]) -> Optional[FieldValueDTO]:
-        v = PartyUsage.objects.filter(text_unit__document_id=doc.id) \
-            .aggregate(value=StringAgg('party__name', delimiter=', ', distinct=True))
-        value = TypedField.by(field).field_value_python_to_json(v['value'])
-        return FieldValueDTO(field_value=value) if v else None
+
+        party_query = PartyUsage.objects.filter(text_unit__document_id=doc.pk)
+        party_values = party_query.values_list('party__name',
+                                               'text_unit__location_start',
+                                               'text_unit__location_end')
+        party_names = set()
+        for name, start, end in party_values:
+            party_names.add(name)
+
+        names = ', '.join(party_names)
+        value = TypedField.by(field).field_value_python_to_json(names)
+        return FieldValueDTO(field_value=value) if names else None
 
 
 class MaxCurrencyField(PythonCodedField):
@@ -120,12 +155,17 @@ class MaxCurrencyField(PythonCodedField):
     type = field_types.MoneyField.type_code
     detect_per_text_unit = False
 
-    def get_value(self, log, field: DocumentField, doc: Document,
+    def get_value(self,
+                  log,
+                  field: DocumentField,
+                  doc: Document,
                   cur_field_code_to_value: Dict[str, Any]) -> Optional[FieldValueDTO]:
-        for v in CurrencyUsage.objects.filter(text_unit__document_id=doc.id) \
+        for curx, amt, start, end in \
+            CurrencyUsage.objects.filter(text_unit__document_id=doc.pk) \
                 .order_by('-amount') \
-                .values('currency', 'amount'):
-            v = TypedField.by(field).field_value_python_to_json(v)
+                .values('currency', 'amount',
+                        'text_unit__location_start', 'text_unit__location_end'):
+            v = TypedField.by(field).field_value_python_to_json((curx, amt,))
             return FieldValueDTO(field_value=v)
         return None
 
@@ -136,12 +176,17 @@ class MinDateField(PythonCodedField):
     type = field_types.DateField.type_code
     detect_per_text_unit = False
 
-    def get_value(self, log, field: DocumentField, doc: Document,
+    def get_value(self,
+                  log,
+                  field: DocumentField,
+                  doc: Document,
                   cur_field_code_to_value: Dict[str, Any]) -> Optional[FieldValueDTO]:
-        for v in DateUsage.objects.filter(text_unit__document_id=doc.id) \
+        for date, start, end in DateUsage.objects.filter(text_unit__document_id=doc.pk) \
                 .order_by('date') \
-                .values_list('date', flat=True):
-            v = TypedField.by(field).field_value_python_to_json(v)
+                .values_list('date',
+                             'text_unit__location_start',
+                             'text_unit__location_end'):
+            v = TypedField.by(field).field_value_python_to_json(date)
             return FieldValueDTO(field_value=v)
         return None
 
@@ -152,12 +197,17 @@ class MaxDateField(PythonCodedField):
     type = field_types.DateField.type_code
     detect_per_text_unit = False
 
-    def get_value(self, log, field: DocumentField, doc: Document,
+    def get_value(self,
+                  log,
+                  field: DocumentField,
+                  doc: Document,
                   cur_field_code_to_value: Dict[str, Any]) -> Optional[FieldValueDTO]:
-        for v in DateUsage.objects.filter(text_unit__document_id=doc.id) \
+        for date, start, end in DateUsage.objects.filter(text_unit__document_id=doc.pk) \
                 .order_by('-date') \
-                .values_list('date', flat=True):
-            v = TypedField.by(field).field_value_python_to_json(v)
+                .values_list('date',
+                             'text_unit__location_start',
+                             'text_unit__location_end'):
+            v = TypedField.by(field).field_value_python_to_json(date)
             return FieldValueDTO(field_value=v)
         return None
 

@@ -1,0 +1,13 @@
+apiVersion: v1
+appVersion: ${HELM_CHART_APP_VERSION}
+description: Contraxsuite
+engine: gotpl
+home: https://www.lexpredict.com
+keywords:
+- contraxsuite
+- lexpredict
+maintainers:
+- email: support@lexpredict.com
+  name: LexPredict
+name: contraxsuite
+version: ${HELM_CHART_VERSION}

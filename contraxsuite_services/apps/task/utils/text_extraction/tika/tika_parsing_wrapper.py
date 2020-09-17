@@ -27,7 +27,7 @@
 # Tika imports
 import os
 import tempfile
-from typing import Dict
+from typing import Dict, Any
 
 from tika.parser import _parse
 from tika.tika import getRemoteFile, callServer
@@ -41,8 +41,8 @@ from apps.task.utils.text_extraction.tika.tika_xhtml_parser import TikaXhtmlPars
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.6.0/LICENSE"
-__version__ = "1.6.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.7.0/LICENSE"
+__version__ = "1.7.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -69,7 +69,7 @@ class TikaParsingWrapper:
 
     def __init__(self):
         self.xhtml_parser = TikaXhtmlParser(pars_settings=XhtmlParsingSettings(
-            ocr_sets=OcrTextStoreSettings.STORE_IF_MORE_TEXT,
+            ocr_sets=OcrTextStoreSettings.STORE_ALWAYS,
             remove_extra_newlines=False
         ))
         self.tika_files_path = tempfile.gettempdir()
@@ -82,12 +82,20 @@ class TikaParsingWrapper:
         tika_cp = ':'.join([os.path.join(jar_base_path, jar) for jar in settings.TIKA_JARS])
 
         self.tika_default_command_list = ['java',
-                                        '-cp', tika_cp,
-                                        '-Dsun.java2d.cmm=sun.java2d.cmm.kcms.KcmsServiceProvider',
+                                          '-cp',
+                                          tika_cp,
+                                          '-Dsun.java2d.cmm=sun.java2d.cmm.kcms.KcmsServiceProvider',
                                           tika_cls_name]
-        self.tika_lexnlp_default_command_list = [c for c in self.tika_default_command_list]
-        from apps.task.app_vars import TIKA_CUSTOM_CONFIG, TIKA_LEXNLP_CUSTOM_CONFIG
-        custom_tika_config = TIKA_LEXNLP_CUSTOM_CONFIG.val
+        self.tika_lexnlp_default_command_list = self.tika_default_command_list[:]
+        from apps.task.app_vars import TIKA_CUSTOM_CONFIG, TIKA_NOOCR_CUSTOM_CONFIG, TIKA_LEXNLP_CUSTOM_CONFIG
+
+        custom_noocr_tika_config = TIKA_NOOCR_CUSTOM_CONFIG.val
+        self.tika_noocr_default_command_list = None
+        if custom_noocr_tika_config:
+            conf_full_path = os.path.join(jar_base_path, custom_noocr_tika_config)
+            self.tika_noocr_default_command_list = self.tika_default_command_list + [f'--config={conf_full_path}']
+
+        custom_tika_config = TIKA_CUSTOM_CONFIG.val
         if custom_tika_config:
             conf_full_path = os.path.join(jar_base_path, custom_tika_config)
             self.tika_default_command_list += [f'--config={conf_full_path}']
@@ -101,6 +109,7 @@ class TikaParsingWrapper:
     def parse_file_local_plain_text(self,
                                     local_path: str,
                                     original_file_name: str,
+                                    task: Any,
                                     timeout: int = 60,
                                     encoding_name: str = 'utf-8',
                                     logger: ProcessLogger = None,
@@ -120,12 +129,19 @@ class TikaParsingWrapper:
         mode_flag = self.TIKA_MODE_OCR if enable_ocr else self.TIKA_MODE_PDF_ONLY
         os.environ[self.TIKA_ENV_VAR_FLAG_MODE] = mode_flag
 
-        cmd = self.tika_default_command_list + ['-J', '-t', f'-e{encoding_name}', local_path]
+        tika_default_command_list = self.tika_lexnlp_default_command_list
+        if enable_ocr is False and self.tika_noocr_default_command_list is not None:
+            tika_default_command_list = self.tika_noocr_default_command_list
+        cmd = tika_default_command_list + ['-J', '-t', f'-e{encoding_name}', local_path]
 
         def err(line):
             logger.info(f'TIKA parsing {original_file_name}:\n{line}')
+        logger.info(f'Tika (plain text) args: {", ".join(cmd)}')
 
-        text = read_output(cmd, stderr_callback=err, encoding=encoding_name, timeout_sec=timeout) or ''
+        text = read_output(cmd, stderr_callback=err,
+                           encoding=encoding_name,
+                           timeout_sec=timeout,
+                           task=task) or ''
 
         try:
             ptr_val = _parse((200, text))
@@ -138,6 +154,7 @@ class TikaParsingWrapper:
     def parse_file_local_xhtml(self,
                                local_path: str,
                                original_file_name: str,
+                               task: Any,
                                timeout: int = 60,
                                encoding_name: str = 'utf-8',
                                logger: ProcessLogger = None,
@@ -160,14 +177,29 @@ class TikaParsingWrapper:
         def err(line):
             logger.info(f'TIKA parsing {original_file_name}:\n{line}')
 
-        for cmd_list in [self.tika_default_command_list, self.tika_lexnlp_default_command_list]:
-            cmd = cmd_list + ['-x', f'-e{encoding_name}', local_path]
+        tika_default_command_list = self.tika_lexnlp_default_command_list
+        if enable_ocr is False and self.tika_noocr_default_command_list is not None:
+            tika_default_command_list = self.tika_noocr_default_command_list
 
-            last_try = cmd == self.tika_lexnlp_default_command_list
-            text = read_output(cmd, stderr_callback=err, encoding=encoding_name, timeout_sec=timeout) or ''
+        parse_commands = [tika_default_command_list, self.tika_default_command_list]
+        from apps.document.app_vars import TIKA_PROCESS_RAM_MB_LIMIT
+        ram_limit = TIKA_PROCESS_RAM_MB_LIMIT.val
+
+        for cmd_index in range(len(parse_commands)):
+            cmd_list = parse_commands[cmd_index]
+            cmd = cmd_list + ['-x', f'-e{encoding_name}', local_path]
+            if ram_limit:
+                java_index = cmd.index('java')
+                cmd = cmd[:java_index + 1] + [f'-Xmx{ram_limit}m'] + cmd[java_index + 1:]
+            logger.info(f'Tika (XHTML) args: {", ".join(cmd)}')
+
+            last_try = cmd_index == len(parse_commands) - 1
+            text = read_output(cmd, stderr_callback=err,
+                               encoding=encoding_name,
+                               timeout_sec=timeout, task=task) or ''
             try:
                 output = self.xhtml_parser.parse_text(text)
-                output_len = len(output.text) if output and output.text else 0
+                output_len = output.pure_text_length if output else 0
                 logger.info(f'parse_file_local_xhtml: {len(text)} source boiled down to {output_len}')
                 if not output_len and not last_try:
                     continue

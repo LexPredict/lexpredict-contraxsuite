@@ -24,6 +24,8 @@
 """
 # -*- coding: utf-8 -*-
 
+import os
+
 from django.core.files.uploadedfile import UploadedFile
 from django.core.exceptions import ValidationError
 from django.conf.urls import url, include
@@ -36,8 +38,8 @@ from apps.project.models import UploadSession
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.6.0/LICENSE"
-__version__ = "1.6.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.7.0/LICENSE"
+__version__ = "1.7.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -162,12 +164,20 @@ class TusUploadViewSet(UploadViewSet):
                                 size=upload.upload_length)
             request._files = MultiValueDict()
             request._files['file'] = file
+
+            try:
+                directory_path = os.path.dirname(json.loads(upload.upload_metadata)['relativePath'])
+            except (KeyError, TypeError, json.JSONDecodeError):
+                directory_path = None
+
             response = UploadSessionViewSet(
                 request=request,
                 format_kwarg=upload_session_id,
+                action='upload',
                 kwargs={'pk': upload_session_id}).upload(request=request,
                                                          pk=upload_session_id,
-                                                         review_file=False)
+                                                         review_file=False,
+                                                         directory_path=directory_path)
             if response.status_code != 200:
                 return response
             response_data = response.data

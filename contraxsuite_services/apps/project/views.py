@@ -43,8 +43,8 @@ from apps.project.forms import (
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.6.0/LICENSE"
-__version__ = "1.6.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.7.0/LICENSE"
+__version__ = "1.7.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -63,7 +63,9 @@ class ProjectListView(apps.common.mixins.JqPaginatedListView):
         return data
 
     def get_queryset(self):
-        qs = super().get_queryset().filter(delete_pending=False).annotate(
+        qs = super().get_queryset()
+        qs = SelectProjectsView.get_user_projects(self.request.user, qs=qs)
+        qs = qs.filter(delete_pending=False).annotate(
             total_documents_count=Count('document', filter=Q(document__delete_pending=False)),
             reviewed_documents_count=Count('document', filter=Q(document__delete_pending=False, status__group__is_active=False))
         )
@@ -276,8 +278,24 @@ class SelectProjectsView(LoginRequiredMixin, apps.common.mixins.JSONResponseView
     """
     Select Project(s) to filter Document/TextUnit/ThingUsage views
     """
+    @staticmethod
+    def get_user_projects(user, qs=None):
+        user_projects = qs or Project.objects
+        if user.is_admin:
+            user_projects = user_projects.all()
+        elif user.is_reviewer:
+            user_projects = user_projects.filter(reviewers=user)
+        elif user.is_manager:
+            user_projects = user_projects.filter(Q(reviewers=user) | Q(owners=user))
+        return user_projects.distinct()
+
     def post(self, request, *args, **kwargs):
         project_ids = request.POST.getlist('project_ids[]')
+
+        user_projects = self.get_user_projects(request.user)
+
+        project_ids = list(user_projects.filter(id__in=project_ids).values_list('pk', flat=True))
+
         obj, _ = UserProjectsSavedFilter.objects.get_or_create(user=request.user)
         obj.projects.set(project_ids)
 
