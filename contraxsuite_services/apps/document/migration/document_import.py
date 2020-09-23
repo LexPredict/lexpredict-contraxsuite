@@ -208,6 +208,10 @@ class DocumentImporter:
             if proj_type in self.missing_doc_types:
                 raise Exception(f'Doc. type {self.missing_doc_types[proj_type]} ' +
                                 f'was not found, project "{proj_name}"')
+            if self.project:
+                self.project_ids[proj_id] = self.project.pk
+                continue
+
             proj_type = self.document_types[proj_type]
             # TRANSACTION starts here
             with transaction.atomic():
