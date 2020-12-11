@@ -30,13 +30,14 @@ from typing import List
 from django.contrib import admin
 from django.contrib.admin import SimpleListFilter
 from django.contrib.admin.utils import NestedObjects
-from django.db import router
+from django.db import router, transaction
 from django.db.models import Count, F
 from django.http import HttpResponseRedirect
 from django.shortcuts import render
 from django.urls import reverse, path
 from django.utils.safestring import mark_safe
 from django.utils.translation import ugettext_lazy as _
+from guardian.admin import GuardedModelAdmin
 
 # Project imports
 from apps.common.utils import cap_words
@@ -48,8 +49,8 @@ from apps.common.model_utils.model_class_dictionary import ModelClassDictionary
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.7.0/LICENSE"
-__version__ = "1.7.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
+__version__ = "1.8.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -96,7 +97,7 @@ def get_deleted_objects(objs, request, admin_site):
     return to_delete, model_count, None, None
 
 
-class ProjectAdmin(admin.ModelAdmin):
+class ProjectAdmin(GuardedModelAdmin):
     list_display = ('name', 'type', 'status_name', 'description', 'documents_num', 'documents_to_delete')
     search_fields = ('name', 'description')
     filter_horizontal = ('task_queues',)
@@ -132,6 +133,26 @@ class ProjectAdmin(admin.ModelAdmin):
         Patched version.
         """
         return get_deleted_objects(objs, request, self.admin_site)
+
+    def save_related(self, request, form, formsets, change):
+        """
+        Patched to check if we need to remove assigned docs and reassign perms
+        """
+        instance = form.instance
+
+        prev_team_ids = set(instance.get_team().values_list('id', flat=True))
+
+        super().save_related(request, form, formsets, change)
+
+        curr_team_qs = instance.get_team()
+        curr_team_ids = set(curr_team_qs.values_list('id', flat=True))
+
+        removed_user_ids = prev_team_ids - curr_team_ids
+
+        with transaction.atomic():
+            transaction.on_commit(lambda: instance.clean_up_assignees(removed_user_ids))
+
+        instance.reset_project_team_perms()
 
 
 class ProjectClusteringAdmin(ModelAdminWithPrettyJsonField):
@@ -317,7 +338,7 @@ class UserProjectsSavedFilterAdmin(admin.ModelAdmin):
 
     @staticmethod
     def user_name(obj):
-        return obj.user.get_full_name()
+        return obj.user.name
 
     @staticmethod
     def project_names(obj):

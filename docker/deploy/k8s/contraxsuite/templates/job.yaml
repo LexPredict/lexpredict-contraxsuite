@@ -1,162 +1,40 @@
-#contrax-initial-job
-
-apiVersion: batch/v1
-kind: Job
-metadata:
-  name: "contrax-initial-job"
-  labels:
-    app.kubernetes.io/managed-by: {{ .Release.Service | quote }}
-    app.kubernetes.io/instance: {{ .Release.Name | quote }}
-    app.kubernetes.io/version: {{ .Chart.AppVersion }}
-    helm.sh/chart: "{{ .Chart.Name }}-{{ .Chart.Version }}"
-  annotations:
-    "helm.sh/hook": pre-install,pre-upgrade,pre-rollback
-    "helm.sh/hook-weight": "1"
-    "helm.sh/hook-delete-policy": hook-succeeded
-spec:
-  template:
-    metadata:
-      name: "{{ .Release.Name }}"
-      labels:
-        app.kubernetes.io/managed-by: {{ .Release.Service | quote }}
-        app.kubernetes.io/instance: {{ .Release.Name | quote }}
-        helm.sh/chart: "{{ .Chart.Name }}-{{ .Chart.Version }}"
-    spec:
-      restartPolicy: Never
-      containers:
-      - name: contrax-manager
-        image: "ubuntu:18.04"
-        command: ["/bin/bash","-c"]
-        args: ["/usr/bin/apt-get update && /usr/bin/apt-get -y install wget gettext-base && /usr/bin/wget --user={{ .Values.config_user }} --password=\"{{ .Values.config_password }}\" https://distr.contraxsuite.com/distr/{{ .Values.config_folder }}/deploy.sh -O /deploy.sh && /bin/bash /deploy.sh"]
-        volumeMounts:
-        - mountPath: /data/docker/volumes/contraxsuite_contraxsuite_data_media/_data
-          name: contraxsuite-data-media
-        - mountPath: /data/docker/volumes/contraxsuite_postgres_data_11
-          name: postgres-data-11
-        - mountPath: /data/docker/volumes/contraxsuite_redis_data/_data
-          name: redis-data
-        - mountPath: /data/docker/volumes/contraxsuite_backup/_data
-          name: backup
-        - mountPath: /data/docker/volumes/contraxsuite_elasticsearch_data/_data
-          name: elasticsearch-data
-        - mountPath: /data/docker/volumes/contraxsuite_filebeat_data/_data
-          name: filebeat-data
-        - mountPath: /data/docker/volumes/contraxsuite_metricbeat_data/_data
-          name: metricbeat-data
-        - mountPath: /data/docker/volumes/contraxsuite_rabbitmq_data/_data
-          name: rabbitmq-data
-        - mountPath: /data/docker/volumes/contraxsuite_contraxsuite_nginx_conf/_data
-          name: contraxsuite-nginx-conf
-        - mountPath: /data/docker/volumes/contraxsuite_contraxsuite_nginx_certs/_data
-          name: contraxsuite-nginx-certs
-        - mountPath: /data/docker/volumes/contraxsuite_contraxsuite_frontend/_data
-          name: contraxsuite-frontend
-        - mountPath: /data/docker/volumes/contraxsuite_contraxsuite_nginx_server_include/_data
-          name: contraxsuite-nginx-server-include
-        - mountPath: /data/docker/volumes/contraxsuite_contraxsuite_third_party_dependencies/_data
-          name: contraxsuite-third-party-dependencies
-        - mountPath: /data/docker/volumes/contraxsuite_contraxsuite_notebooks/_data
-          name: contraxsuite-notebooks
-        - mountPath: /data/docker/volumes/contraxsuite_contraxsuite_jupyter_add_req/_data
-          name: contraxsuite-jupyter-add-req
-        - mountPath: /data/docker/volumes/contraxsuite_contraxsuite_ssl_certs/_data
-          name: contraxsuite-ssl-certs
-        - mountPath: /data/docker/volumes/contraxsuite_celery_worker_state/_data
-          name: celery-worker-state
-        - mountPath: /data/docker/volumes/contraxsuite_contraxsuite_additional_fixtures/_data
-          name: contraxsuite-additional-fixtures
-        - mountPath: /data/docker/volumes/contraxsuite_contraxsuite_data_update/_data
-          name: contraxsuite-data-update
-        - mountPath: /data/docker/volumes/contraxsuite_contraxsuite_powa_web/_data
-          name: contrax-powa-web
-      imagePullSecrets:
-      - name: contraxsuitesecret
-      volumes:
-      - name: contraxsuite-data-media
-        persistentVolumeClaim:
-          claimName: contraxsuite-data-media
-          readOnly: false
-      - name: postgres-data-11
-        persistentVolumeClaim:
-          claimName: postgres-data-11
-          readOnly: false
-      - name: redis-data
-        persistentVolumeClaim:
-          claimName: redis-data
-          readOnly: false
-      - name: backup
-        persistentVolumeClaim:
-          claimName: backup
-          readOnly: false
-      - name: elasticsearch-data
-        persistentVolumeClaim:
-          claimName: elasticsearch-data
-          readOnly: false
-      - name: filebeat-data
-        persistentVolumeClaim:
-          claimName: filebeat-data
-          readOnly: false
-      - name: metricbeat-data
-        persistentVolumeClaim:
-          claimName: metricbeat-data
-          readOnly: false
-      - name: rabbitmq-data
-        persistentVolumeClaim:
-          claimName: rabbitmq-data
-          readOnly: false
-      - name: contraxsuite-nginx-conf
-        persistentVolumeClaim:
-          claimName: contraxsuite-nginx-conf
-          readOnly: false
-      - name: contraxsuite-nginx-certs
-        persistentVolumeClaim:
-          claimName: contraxsuite-nginx-certs
-          readOnly: false
-      - name: contraxsuite-frontend
-        persistentVolumeClaim:
-          claimName: contraxsuite-frontend
-          readOnly: false
-      - name: contraxsuite-nginx-server-include
-        persistentVolumeClaim:
-          claimName: contraxsuite-nginx-server-include
-          readOnly: false
-      - name: contraxsuite-notebooks
-        persistentVolumeClaim:
-          claimName: contraxsuite-notebooks
-          readOnly: false
-      - name: contraxsuite-jupyter-add-req
-        persistentVolumeClaim:
-          claimName: contraxsuite-jupyter-add-req
-          readOnly: false
-      - name: contraxsuite-ssl-certs
-        persistentVolumeClaim:
-          claimName: contraxsuite-ssl-certs
-          readOnly: false
-      - name: celery-worker-state
-        persistentVolumeClaim:
-          claimName: celery-worker-state
-          readOnly: false
-      - name: contraxsuite-additional-fixtures
-        persistentVolumeClaim:
-          claimName: contraxsuite-additional-fixtures
-          readOnly: false
-      - name: contraxsuite-data-update
-        persistentVolumeClaim:
-          claimName: contraxsuite-data-update
-          readOnly: false
-      - name: contrax-powa-web
-        persistentVolumeClaim:
-          claimName: contrax-powa-web
-          readOnly: false
-      - name: contraxsuite-third-party-dependencies
-        persistentVolumeClaim:
-          claimName: contraxsuite-third-party-dependencies
-          readOnly: false
-      - name: elastalert-rule-templates
-        persistentVolumeClaim:
-          claimName: elastalert-rule-templates
-          readOnly: false
-      - name: elastalert-rules
-        persistentVolumeClaim:
-          claimName: elastalert-rules
-          readOnly: false
+# apiVersion: batch/v1
+# kind: Job
+# metadata:
+#   namespace: {{ .Values.namespace}}
+#   name: "{{ .Release.Name }}"
+#   labels:
+#     app.kubernetes.io/managed-by: {{ .Release.Service | quote }}
+#     app.kubernetes.io/instance: {{ .Release.Name | quote }}
+#     app.kubernetes.io/version: {{ .Chart.AppVersion }}
+#     helm.sh/chart: "{{ .Chart.Name }}-{{ .Chart.Version }}"
+#   annotations:
+#     "helm.sh/hook": post-install, pre-upgrade, pre-rollback
+#     "helm.sh/hook-weight": "-5"
+#     "helm.sh/hook-delete-policy": hook-succeeded
+# spec:
+#   template:
+#     metadata:
+#       name: "{{ .Release.Name }}"
+#       labels:
+#         app.kubernetes.io/managed-by: {{ .Release.Service | quote }}
+#         app.kubernetes.io/instance: {{ .Release.Name | quote }}
+#         helm.sh/chart: "{{ .Chart.Name }}-{{ .Chart.Version }}"
+#     spec:
+#       restartPolicy: Never
+#       containers:
+#       - name: copy-frontend
+#         image: {{ .Values.docker_image}}
+#         command: ["/bin/bash","touch /contraxsuite_frontend_nginx_volume/index.html"]
+#         volumeMounts:
+#         - mountPath: /contraxsuite_frontend_nginx_volume
+#           name: contraxsuite-frontend-nginx-volume
+#           readOnly: false
+#       volumes:
+#       - name: contraxsuite-frontend-nginx-volume
+#         flexVolume:
+#           driver: ceph.rook.io/rook
+#           fsType: ceph
+#           options:
+#             fsName: nginxcephfs
+#             clusterNamespace: rook-ceph

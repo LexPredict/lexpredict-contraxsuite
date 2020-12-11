@@ -24,12 +24,12 @@
 """
 # -*- coding: utf-8 -*-
 
-from typing import Iterable, List, Sequence
+from typing import Iterable, List, Sequence, Any, Callable, Dict
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.7.0/LICENSE"
-__version__ = "1.7.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
+__version__ = "1.8.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -89,3 +89,21 @@ def chunks(col: Iterable, n: int) -> Iterable[List]:
         yield from sequence_chunks(col, n)
     else:
         yield from iterable_chunks(col, n)
+
+
+def leave_unique_values(lst: List[Any]) -> List[Any]:
+    seen = set()
+    seen_add = seen.add
+    return [x for x in lst if not (x in seen or seen_add(x))]
+
+
+def group_by(items: Iterable[Any], key_selector: Callable[[Any], Any]) -> Dict[Any, List[Any]]:
+    grouped = {}  # type: Dict[Any, List[Any]]
+    for item in items:
+        key = key_selector(item)
+        ex_list = grouped.get(key)
+        if ex_list:
+            ex_list.append(item)
+            continue
+        grouped[key] = [item]
+    return grouped

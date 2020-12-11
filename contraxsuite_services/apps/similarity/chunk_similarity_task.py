@@ -34,16 +34,18 @@ from scipy import sparse
 from scipy.sparse import csr_matrix
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
+from django.db.models import Q
 
 from apps.analyze.models import DocumentSimilarity, TextUnitSimilarity
 from apps.document.models import Document
+from apps.similarity.similarity_model_reference import SimilarityObjectReference
 from apps.task.tasks import ExtendedTask
 from apps.similarity.similarity_metrics import make_text_units_query
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.7.0/LICENSE"
-__version__ = "1.7.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
+__version__ = "1.8.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -168,6 +170,7 @@ class DocumentChunkSimilarityProcessor:
         self.text_unit_query = None
         # time_logged prevents logging to frequent
         self.time_logged = {}  # type: Dict[str, time]
+        self.total_stored = 0
         if search_similar_text_units:
             self.text_unit_query = make_text_units_query(self.project_id)
 
@@ -183,6 +186,9 @@ class DocumentChunkSimilarityProcessor:
         if self.search_similar_text_units:
             self.do_search_similar_textunits()
 
+        if self.total_stored:
+            self.task.log_info(f'Added {self.total_stored} records')
+
     def do_search_similar_documents(self) -> None:
         """
         Full text search for similar documents by comparing
@@ -195,7 +201,12 @@ class DocumentChunkSimilarityProcessor:
             self.documents_count / self.doc_vocabulary_chunk_size) * 2)
 
         if self.should_delete:
-            DocumentSimilarity.objects.all().delete()
+            if self.project_id:
+                DocumentSimilarity.objects.filter(
+                    Q(document_a__project_id=self.project_id) |
+                    Q(document_b__project_id=self.project_id)).delete()
+            else:
+                DocumentSimilarity.objects.all().delete()
         self.push_time('deleting')
 
         vocabulary = self.build_doclevel_vocabulary()
@@ -255,7 +266,12 @@ class DocumentChunkSimilarityProcessor:
             self.units_count / self.unit_vocabulary_chunk_size) * 2 + 1)
 
         if self.should_delete:
-            TextUnitSimilarity.objects.all().delete()
+            if self.project_id:
+                TextUnitSimilarity.objects.filter(
+                    Q(project_a__id=self.project_id) |
+                    Q(project_b__id=self.project_id)).delete()
+            else:
+                TextUnitSimilarity.objects.all().delete()
         self.push_time('deleting')
 
         self.log_check_flood('vocabulary', 'building vocabulary')
@@ -317,6 +333,7 @@ class DocumentChunkSimilarityProcessor:
             return
         if self.docsim_store_buffer:
             DocumentSimilarity.objects.bulk_create(self.docsim_store_buffer, ignore_conflicts=True)
+            self.total_stored += len(self.docsim_store_buffer)
             self.docsim_store_buffer = []
 
     def store_unit_similarity_issues(self,
@@ -334,7 +351,8 @@ class DocumentChunkSimilarityProcessor:
             return
         # unit -> document -> project
         if self.unsim_store_buffer:
-            TextUnitSimilarity.fill_joined_refs(self.unsim_store_buffer)
+            SimilarityObjectReference.ensure_unit_similarity_model_refs(
+                self.unsim_store_buffer, self.project_id)
             TextUnitSimilarity.objects.bulk_create(self.unsim_store_buffer, ignore_conflicts=True)
         self.unsim_store_buffer = []
 

@@ -28,8 +28,8 @@ import datetime
 import importlib
 import logging
 import os
-from dateutil.parser import parse
 
+from dateutil.parser import parse
 from django.conf import settings
 
 # Project imports
@@ -37,8 +37,8 @@ from apps.common.models import AppVar
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.7.0/LICENSE"
-__version__ = "1.7.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
+__version__ = "1.8.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -57,6 +57,24 @@ def init_app_vars():
         except ImportError:
             continue
 
+
+def get_build_date():
+    try:
+        with open(os.path.join('..', settings.BASE_DIR, 'build.date'), 'r') as f:
+            build_date_str_ini = f.read().strip()
+            build_date_obj = parse(build_date_str_ini)
+            return datetime.datetime.strftime(build_date_obj, '%Y-%m-%d %H:%M:%S %Z')
+    except:
+        pass
+
+
+build_date = get_build_date()
+
+BUILD_DATE = AppVar.set(
+    'Common', 'build_date', build_date,
+    'Backend build date.',
+    overwrite=build_date is not None
+)
 
 TRACK_API = AppVar.set(
     'Common', 'track_api', False,
@@ -90,39 +108,17 @@ PG_FULL_TEXT_SEARCH_LOCALE = AppVar.set(
     'Common', 'pg_full_text_search_locale', 'english',
     'Default locale for PostgreSQL full text search (for to_tsvector, to_tsquery).')
 
-
-def get_build_date():
-    try:
-        with open(os.path.join('..', settings.BASE_DIR, 'build.date'), 'r') as f:
-            build_date_str_ini = f.read().strip()
-            build_date_obj = parse(build_date_str_ini)
-            return datetime.datetime.strftime(build_date_obj, '%Y-%m-%d %H:%M:%S %Z')
-    except:
-        pass
-
-
-build_date = get_build_date()
-
-
-BUILD_DATE = AppVar.set(
-    'Common', 'build_date', build_date,
-    'Backend build date.',
-    overwrite=build_date is not None
-)
-
-
 RELEASE_VERSION = AppVar.set(
     'Common', 'release_version', settings.VERSION_NUMBER, 'Backend release version.',
     overwrite=True
 )
-
 
 MAX_FILES_UPLOAD = AppVar.set(
     'Common', 'max_files_upload', 10000,
     'Max amount of files to upload at once.')
 
 MAX_FILES_UPLOAD_PARALLEL = AppVar.set(
-    'Common', 'max_files_upload_parallel', 20,
+    'Common', 'max_files_upload_parallel', 10,
     'Max amount of files to upload at once in parallel.')
 
 SUPPORT_EMAIL = AppVar.set(

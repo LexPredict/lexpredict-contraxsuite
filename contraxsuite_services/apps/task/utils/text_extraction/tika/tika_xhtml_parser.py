@@ -34,8 +34,8 @@ from apps.task.utils.marked_up_text import MarkedUpText, MarkedUpTable, MarkedUp
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.7.0/LICENSE"
-__version__ = "1.7.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
+__version__ = "1.8.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -140,9 +140,7 @@ class TikaXhtmlParser:
         self.settings = pars_settings or self.DEFAULT_PARSING_SETS
         self.parse_stat = XhtmlParsingStatistics()
 
-    def parse_text(self,
-                   markup: str,
-                   detect_tables: bool = True) -> MarkedUpText:
+    def parse_text(self, markup: str) -> MarkedUpText:
         """
         The only method to call by external code. Transforms "markup" (XHTML string)
         into plain text with some formatting and extra information stored into MarkedUpText structure.
@@ -151,8 +149,6 @@ class TikaXhtmlParser:
         :return: MarkedUpText - resulted text, paragraphs, pages, headings and tables markup information
         """
         result = MarkedUpText('', {'pages': [], 'paragraphs': []})
-        if detect_tables:
-            result.tables = self.detect_tables(markup)
 
         cur_block = None  # type: Optional[TikaXhtmlParser.BlockProps]
         for tg in self.re_tag.finditer(markup):
@@ -173,22 +169,25 @@ class TikaXhtmlParser:
                 result.add_marker('pages', False)
                 continue
 
-            block_type = 'image' if tag_name == 'div' and 'class="ocr"' in tag_text \
-                else 'paragraph' if tag_name == 'p' \
-                else 'heading' if self.re_tag_h.match(tag_name) else tag_name
-            is_text_block = block_type == 'paragraph' or block_type == 'heading' or block_type == 'image'
+            block_type = 'images' if tag_name == 'div' and 'class="ocr"' in tag_text \
+                else 'paragraphs' if tag_name == 'p' \
+                else 'heading' if self.re_tag_h.match(tag_name) \
+                else 'td' if tag_name == 'th' \
+                else tag_name
+            is_text_block = block_type in {'paragraphs', 'heading', 'images'}  #, 'table', 'tr', 'td'}
 
             if is_text_block and tag_type == 'o':
-                if block_type == 'image' and self.settings.ocr_sets == OcrTextStoreSettings.NEVER_STORE:
+                if block_type == 'images' and self.settings.ocr_sets == OcrTextStoreSettings.NEVER_STORE:
                     continue
                 cur_block = TikaXhtmlParser.BlockProps(tg.end(), block_type)
-                if block_type == 'paragraph':
-                    cur_block.label_name = 'paragraphs'
+                if block_type in {'paragraphs', 'images', 'table', 'tr', 'td'}:
+                    cur_block.label_name = block_type
                 elif block_type == 'heading':
                     cur_block.label_name = 'heading_' + tag_name[1:]
-                elif block_type == 'image':
-                    cur_block.label_name = 'images'
                 continue
+
+            if block_type in {'table', 'tr', 'td'}:
+                result.add_marker(block_type, tag_type == 'o')
 
             if (is_text_block or block_type == 'div') and tag_type == 'c' and cur_block:
                 end = tag_start
@@ -203,11 +202,6 @@ class TikaXhtmlParser:
                     result.text += '\n\n'
                 if cur_block.label_name:
                     result.add_marker(cur_block.label_name, False)
-
-                # check if the block belongs to a table
-                self.update_tables_content(result.tables, tag_start, tag_end,
-                                           p_start, p_end)
-
                 cur_block = None
                 continue
 
@@ -215,62 +209,7 @@ class TikaXhtmlParser:
         self.post_process(result)
         self.parse_stat.parsed_text_len = result.count_non_space_chars()
         self.check_ocr_text(result)
-        self.update_tables_outer_bounds(result.tables)
-
         return result
-
-    def update_tables_outer_bounds(self, tables_to_process: List[MarkedUpTable]) -> None:
-        """
-        a "private" method to find a table by its start / end positions
-        then "stretch" table's row's bounds (start / end) and table itself
-        after including a new cell into that table
-        :param tables_to_process: all tables detected on the step before
-        """
-        for table in tables_to_process:
-            for row in table.rows:
-                for cell in row.cells:
-                    if cell.content_coords:
-                        row.content_coords = cell.content_coords if not row.content_coords \
-                            else (row.content_coords[0], cell.content_coords[1])
-                        table.content_coords = cell.content_coords if not table.content_coords \
-                            else (table.content_coords[0], cell.content_coords[1])
-
-    def update_tables_content(self,
-                              tables_to_process: List[MarkedUpTable],
-                              tag_start: int,
-                              tag_end: int,
-                              cont_start: int,
-                              cont_end: int) -> None:
-        """
-        a "private" method finding a table (by its bounds) and including current
-        tag with its source (relative to source XHTML) and resulting (relative
-        to resulting plain text)
-        :param tables_to_process: list of MarkedUpTable those start / end positions are already detected
-        :param tag_start: current tag's (<td> or <th> probably) start position relative to the source XHTML
-        :param tag_end: current tag's end position relative to the source XHTML
-        :param cont_start: current tag's start position relative to the resulting plain text
-        :param cont_end: current tag's end position relative to the resulting plain text
-        """
-        for table in tables_to_process:
-            if table.end <= tag_start:
-                continue
-            if table.start >= tag_end:
-                break
-            # tables can be nested, so we may check several tables here
-            for row in table.rows:
-                if row.end <= tag_start:
-                    continue
-                if row.start >= tag_end:
-                    break
-                for cell in row.cells:
-                    if cell.end <= tag_start:
-                        continue
-                    if cell.start >= tag_end:
-                        break
-                    cell.content_coords = (cont_start, cont_end) if not cell.content_coords \
-                        else (cell.content_coords[0], cont_end)
-                    break
-                break
 
     def process_meta(self, tag_text: str, result: MarkedUpText) -> None:
         """
@@ -323,7 +262,7 @@ class TikaXhtmlParser:
         :param result: a MarkedUpText variable with plain text to process
         """
         regex_function = [('a', self.re_tag_a, self.extract_hyperlink),
-                          ('img', self.re_tag_img, self.extract_image)]
+                          ('images', self.re_tag_img, self.extract_image)]
         for label_tag, reg, get_text_func in regex_function:
             self.process_inner_tag(result, label_tag, reg, get_text_func)
 
@@ -498,32 +437,6 @@ class TikaXhtmlParser:
         if transformations:
             result.apply_transformations(transformations)
 
-    def detect_tables(self, text: str) -> List[MarkedUpTable]:
-        """
-        a "private" method called while parsing the source markup to
-        detect tables and store them as MarkedUpTable records. Each MarkedUpTable
-        stores start /end positions (relative to resulting text) of each row, cell
-        and the table itself.
-        :param text: plain text to find tables in
-        :return: list of MarkedUpTable
-        """
-        tables = []  # type: List[MarkedUpTable]
-        for match_table in self.re_tag_table.finditer(text):
-            table = MarkedUpTable(match_table.start(), match_table.end())
-            tables.append(table)
-            table_text = text[table.start:table.end]
-            for match_row in self.re_tag_row.finditer(table_text):
-                row = MarkedUpTableRow(match_row.start() + table.start,
-                                       match_row.end() + table.start)
-                table.rows.append(row)
-                row_text = table_text[match_row.start():match_row.end()]
-                for match_cell in self.re_tag_cell.finditer(row_text):
-                    cell = MarkedUpTableCell(match_cell.start() + row.start,
-                                             match_cell.end() + row.start)
-                    row.cells.append(cell)
-
-        return tables
-
     def check_ocr_text(self, result: MarkedUpText) -> None:
         """
         a "private" method that checks text obtained from embedded images
@@ -552,7 +465,7 @@ class TikaXhtmlParser:
             return
 
         # do remove text that was obtained from images
-        self.remove_text_in_images(result)
+        result.text = self.remove_text_in_images(result.text)
 
     def count_text_in_images(self, result: MarkedUpText) -> int:
         text_len = 0
@@ -570,15 +483,16 @@ class TikaXhtmlParser:
 
         return text_len
 
-    def remove_text_in_images(self, result: MarkedUpText):
+    def remove_text_in_images(self, text: str) -> str:
         im_op, im_cl = MarkedUpText.BLOCK_MARKERS['images']
         while True:
-            p_start = result.text.find(im_op)
+            p_start = text.find(im_op)
             if p_start < 0:
                 break
             start = p_start + len(im_op)
-            p_end = result.text.find(im_cl, start)
+            p_end = text.find(im_cl, start)
             if p_end < 0:
                 continue
             p_end += len(im_cl)
-            result.text = result.text[:p_start] + result.text[p_end:]
+            text = text[:p_start] + text[p_end:]
+        return text

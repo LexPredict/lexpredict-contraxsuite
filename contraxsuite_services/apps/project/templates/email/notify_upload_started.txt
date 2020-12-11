@@ -3,5 +3,5 @@ Batch upload job is started and is being processed
 Project ID: {{ session.project.pk }}
 Project Name: {{ session.project.name }}
 Session ID: {{ session.uid }}
-Session created by: {{ session.created_by.get_full_name }}
+Session created by: {{ session.created_by.name }}
 Batch upload job started at: {% now "F j, Y, h:i A" %}

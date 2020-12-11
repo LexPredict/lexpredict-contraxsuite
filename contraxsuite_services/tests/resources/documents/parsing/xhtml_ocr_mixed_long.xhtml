@@ -1,0 +1,162 @@
+<?xml version="1.0" encoding="utf-8"?><html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<meta name="X-Parsed-By" content="org.apache.tika.parser.CompositeParser"/>
+<meta name="X-Parsed-By" content="org.apache.tika.parser.DefaultParser"/>
+<meta name="X-Parsed-By" content="org.apache.tika.parser.microsoft.ooxml.OOXMLParser"/>
+<meta name="resourceName" content="Sample Docx with Image copy 01.docx"/>
+<meta name="Content-Length" content="257058"/>
+<meta name="Content-Type" content="application/vnd.openxmlformats-officedocument.wordprocessingml.document"/>
+<title/>
+</head>
+<body><h1><a name="_7h7s3t1ykhr8"/>Explore XHTML Tika’s output</h1>
+<p/>
+<p>JIRA ticket: <a href="https://lexpredict.atlassian.net/browse/CS-3966"><u>https://lexpredict.atlassian.net/browse/CS-3966</u></a></p>
+<p/>
+<p>Here (<a href="https://docs.google.com/document/d/1PsqtEAirUejuaJfsm5a5CFSFp7jHoR60j2QGYP8eTOo/edit#heading=h.klz277294k93"><u>Improve text segmentation (section / page / paragraph / sentence)</u></a>, section 1.1 Use markup from document parser) I described Tika’s output in XHTML. In short:</p>
+<p>· Tika uses PdfBox for “vector” files, MS Word and OpenOffice files </p>
+<p>· and Tesseract for scanned files</p>
+<p/>
+<p>see the aforementioned document, section 1.2 Verdict on using Tika markup for segmenting text.</p>
+<p/>
+<p>I’ve implemented a parser:</p>
+<p>1. plain text</p>
+<p>2. tables as Pandas dataframes</p>
+<p/>
+<p>Here’s a picture:</p>
+<p><img src="embedded:image2.png" alt=""/></p>
+<p/>
+<p>And here’s another one:</p>
+<p><img src="embedded:image1.png" alt=""/></p>
+<p>That’s all.</p>
+<div class="ocr">
+
+i
+=
+
+
+
+
+
+jocument ) ft parsers
+
+=) Project ~ -
+
+‘ile Edit View Navigate Code Refactor Run Tools VCS Window Help
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Steps to reproduse:
+- debug
+- navigate a variable by mouse pointer
+Ling - click inside the popup window, e.g., to traverse
+
+
+
+
+
+
+
+
+
+
+
+de ) i line_processor.py ‘Apytestintests~| &gt; Am Gt ~ YOoQ
+@line_processor.py __{® test_parse_definitions.py | i en/parse_definitions.py « | (@ test_line_processor.py
+7 elass LineProcessor! :
+25 default_length = 95
+2 max_possible length = 200 . .
+2 ain_possible length pressing Esc does nothing
+28 line tail_percent = 60 oe . . .
+: word separator pattern = re.compite(+*\w#") clicking outside the window does nothing
+2 W cif-tine tenith = Linerocessorvaefauitiengtn it’s still opened even when I collapse PyCharm
+self.tail_length = int(self.line length * LineProcessor.line tail percent / 109)
+
+‘ &lt;otew-brecks—in-phrase—atlow_breektin-phre
+5 _ I beg you:
+: | me x please, add a close button
+2 } _group = {builtin_Function_or_method) &lt;built-in method group of _sre.SRE_Match object at 0x7F8d8be33d30&gt; in this #X%$@ window!!!
+‘ {
+1 ( 7
+a |
+135 ( otfject at Ox7f8d8b9b135é&gt; text: ' While I pounded, weak and weary. Ove
+be le sometimes only rebooting|.| helps :
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+TODO I3:VersionControl___ A Terminal __@ Python Console
+
+2) Debug: pytestin tests . a -
+| ct | Debvaer [Bhconole |= 8 St aL through variables J
+Dy Frames *] B Variables &gt;
+© MainThread Y 4 | + Bilast_end={int}o
+g m=(SRE_Match} &lt; sre.SRE_Match object; span=(1, 6), match="While'&gt;
+$ text ‘ds, test selfself = {LineProcessor} &lt;apps.document.parsers.de.line_processor.LineProcessor object at 0x7F8d8b9b1358&gt;
+BS _ text_on_words, test _line_processor, etre tine ‘ P ‘ a
+| © | i pytest_pyfunc call python.py.165 8% text = {str} ' While | pounded, weak and weary. Over manya quaint and curious volume of Forgotten lore, While | nodded, nearly napping; suddenly there came a tapping,
+*) | te muttical callers.py:187 | &gt; 1S words = {list} &lt;class ‘list’&gt;: []
+# Q Event Log
+
+
+</div>
+<div class="ocr">Formula is calculate
+
+Result is: SOME COMPANY LLCtest
+
+Slop wero wr voutmeer&gt; user nt Heneeasee
+
+‘each word on new line
+
+lated Fields
+two + test if k_two\
+
+else com(k_five) + TEST if k five \
+else None
+
+Check formula
+</div>
+</body></html>

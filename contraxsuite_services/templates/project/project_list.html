@@ -2,7 +2,7 @@
 {% load static %}
 
 {% block add_button %}
-  {% if not user.is_reviewer %}
+  {% if can_add_project %}
     <a class="btn-u btn-sm btn-s" href="{% url "project:project-add" %}">Create</a>
   {% endif %}
 {% endblock %}

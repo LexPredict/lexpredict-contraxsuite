@@ -24,33 +24,35 @@
 """
 # -*- coding: utf-8 -*-
 
+from django.conf import settings
 from django.conf.urls import url
+from django.db.models import Count, F, Q, Case, When, DecimalField
+from django.contrib.postgres.aggregates import StringAgg
 
 # Third-party imports
 import coreapi
 import coreschema
-from django.http import JsonResponse
+from guardian.shortcuts import get_objects_for_user
 from rest_framework import routers, viewsets, serializers, views, schemas
-from django.core import serializers as core_serializers
+from rest_framework.decorators import action
+from rest_framework.permissions import DjangoModelPermissions, AllowAny
 from rest_framework.response import Response
 
 # Project imports
-import settings
-from apps.common.api.permissions import ReviewerReadOnlyPermission
-from apps.common.mixins import JqListAPIMixin, SimpleRelationSerializer
-from apps.common.model_utils.improved_django_json_encoder import ImprovedDjangoJSONEncoder
+from apps.common.mixins import JqListAPIMixin, SimpleRelationSerializer, APIFormFieldsMixin
+from apps.common.schemas import CustomAutoSchema, ObjectToItemResponseMixin, string_schema
 from apps.users.models import User, Role
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.7.0/LICENSE"
-__version__ = "1.7.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
+__version__ = "1.8.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
 
 # --------------------------------------------------------
-# Role Views
+# Role View
 # --------------------------------------------------------
 
 class RoleSerializer(SimpleRelationSerializer):
@@ -71,23 +73,23 @@ class RoleViewSet(JqListAPIMixin, viewsets.ModelViewSet):
     queryset = Role.objects.all()
     serializer_class = RoleSerializer
     http_method_names = ['get', 'post', 'put', 'patch']
-    permission_classes = (ReviewerReadOnlyPermission,)
+    permission_classes = [DjangoModelPermissions]
 
 
 # --------------------------------------------------------
-# User Views
+# User View
 # --------------------------------------------------------
 
 class UserSerializer(SimpleRelationSerializer):
-    full_name = serializers.SerializerMethodField()
     role_data = RoleSerializer(source='role', many=False, required=False)
     photo = serializers.SerializerMethodField()
+    permissions = serializers.SerializerMethodField()
 
     class Meta:
         model = User
-        fields = ['id', 'username', 'last_name', 'first_name', 'full_name',
+        fields = ['id', 'username', 'last_name', 'first_name',
                   'email', 'is_superuser', 'is_staff', 'is_active',
-                  'name', 'role', 'role_data', 'organization', 'photo']
+                  'name', 'role', 'role_data', 'organization', 'photo', 'permissions', 'groups']
 
     def get_photo(self, obj):
         return obj.photo.url if obj.photo else None
@@ -95,8 +97,81 @@ class UserSerializer(SimpleRelationSerializer):
     def get_full_name(self, obj):
         return obj.get_full_name()
 
+    def get_permissions(self, obj):
+        view_documenttype_stats = obj.has_perm('document.view_documenttype_stats')
+        view_documentfield_stats = obj.has_perm('document.view_documentfield_stats')
+        view_project_stats = obj.has_perm('project.view_project_stats')
+        view_user_stats = obj.has_perm('users.view_user_stats')
+        view_stats = any([view_documenttype_stats, view_documentfield_stats,
+                          view_project_stats, view_user_stats])
 
-class UserViewSet(JqListAPIMixin, viewsets.ModelViewSet):
+        return {
+            'add_project': obj.has_perm('project.add_project'),
+
+            'add_documenttype': obj.has_perm('document.add_documenttype'),
+            'import_documenttype': obj.has_perm('document.import_documenttype'),
+            'view_documenttype': get_objects_for_user(obj, 'document.view_documenttype').exists(),
+
+            'view_documenttype_stats': view_documenttype_stats,
+            'view_documentfield_stats': view_documentfield_stats,
+            'view_project_stats': view_project_stats,
+            'view_user_stats': view_user_stats,
+            'view_stats': view_stats,
+
+            'view_explorer': obj.has_perm('users.view_explorer'),
+        }
+    get_permissions.output_field = serializers.DictField(child=serializers.BooleanField())
+
+
+class UserProfileSerializer(UserSerializer):
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['groups'].read_only = True
+        self.fields['username'].label = 'Login'
+
+    class Meta:
+        model = User
+        fields = ['username', 'last_name', 'first_name', 'name',
+                  'email', 'organization', 'groups']
+        read_only_fields = ('username', 'email')
+
+
+class UserStatsSerializer(serializers.Serializer):
+    id = serializers.IntegerField()
+    user_name = serializers.CharField()
+    role_name = serializers.CharField(allow_null=True)
+    group_name = serializers.CharField(allow_null=True)
+    total_projects = serializers.IntegerField()
+    documents_assigned = serializers.IntegerField()
+    documents_completed = serializers.IntegerField()
+    documents_todo = serializers.IntegerField()
+    documents_completed_pcnt = serializers.FloatField()
+    documents_todo_pcnt = serializers.FloatField()
+    clauses_assigned = serializers.IntegerField()
+    clauses_completed = serializers.IntegerField()
+    clauses_todo = serializers.IntegerField()
+    clauses_completed_pcnt = serializers.FloatField()
+    clauses_todo_pcnt = serializers.FloatField()
+
+
+class UserStatsSchema(ObjectToItemResponseMixin, CustomAutoSchema):
+    response_serializer = UserStatsSerializer()
+
+
+class UserViewSetPermission(DjangoModelPermissions):
+    """
+    Gives access ещ user API
+    """
+    def has_permission(self, request, view):
+        if view.action in ['retrieve', 'update', 'partial_update']:
+            return True
+        if view.action == 'user_stats':
+            return request.user.has_perm('users.view_user_stats')
+        return super().has_permission(request, view)
+
+
+class UserViewSet(JqListAPIMixin, APIFormFieldsMixin, viewsets.ModelViewSet):
     """
     list: User List
     create: Create User
@@ -104,17 +179,114 @@ class UserViewSet(JqListAPIMixin, viewsets.ModelViewSet):
     update: Update User
     partial_update: Partial Update User
     """
-    queryset = User.objects.all().select_related('role')
-    serializer_class = UserSerializer
+    queryset = User.objects.all()
     http_method_names = ['get', 'post', 'put', 'patch']
-    permission_classes = (ReviewerReadOnlyPermission,)
+    permission_classes = [UserViewSetPermission]
+    options_serializer = UserProfileSerializer
+
+    def get_serializer_class(self):
+        if self.action == 'user_stats':
+            return UserStatsSerializer
+        elif self.action in ['create', 'update', 'partial_update']:
+            return UserProfileSerializer
+        return UserSerializer
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        return qs.exclude(id=User.get_anonymous().id).prefetch_related('groups')
+
+    @action(detail=False, methods=['get'], schema=UserStatsSchema())
+    def user_stats(self, request, **kwargs):
+        """
+        User stats: projects, document types, tasks
+        """
+        # TODO: being splitted, this QS takes low time to run, otherwise it hangs on large DB
+        # pros: time;
+        # cons: we cannot use server-side filtering/sorting/pagination
+        # tried Subquery on FieldAnnotations, but it slows down query in 3-5 times
+        qs = self.get_queryset()
+        qs1 = qs.annotate(
+            user_name=F('name'),
+            role_name=F('role__name'),
+            group_name=StringAgg('groups__name', delimiter=', ', distinct=True),
+            total_projects=Count('project_junior_reviewers', distinct=True) +
+                           Count('project_reviewers', distinct=True) +
+                           Count('project_owners', distinct=True),
+
+            documents_assigned=Count('document', distinct=True),
+            documents_completed=Count('document',
+                                      filter=Q(document__status__is_active=False),
+                                      distinct=True),
+            documents_todo=F('documents_assigned') - F('documents_completed'),
+
+            documents_completed_pcnt=Case(
+                When(documents_assigned=0, then=0),
+                default=100.0 * F('documents_completed') / F('documents_assigned'),
+                output_field=DecimalField(max_digits=5, decimal_places=2)),
+            documents_todo_pcnt=Case(
+                When(Q(documents_assigned=0), then=0),
+                default=100.0 * F('documents_todo') / F('documents_assigned'),
+                output_field=DecimalField(max_digits=5, decimal_places=2)),
+        ).values('id', 'user_name', 'role_name', 'group_name', 'total_projects',
+                 'documents_assigned', 'documents_completed', 'documents_todo',
+                 'documents_completed_pcnt', 'documents_todo_pcnt')
+
+        qs2 = qs.annotate(
+                clauses_assigned=Count('field_annotations', distinct=True) +
+                                 Count('annotation_false_matches', distinct=True),
+                clauses_todo=Count('field_annotations',
+                                   filter=Q(field_annotations__status__code='unreviewed'),
+                                   distinct=True),
+                clauses_completed=F('clauses_assigned') - F('clauses_todo'),
+
+                clauses_completed_pcnt=Case(
+                    When(Q(clauses_assigned=0), then=0),
+                    default=100.0 * F('clauses_completed') / F('clauses_assigned'),
+                    output_field=DecimalField(max_digits=5, decimal_places=2)),
+                clauses_todo_pcnt=Case(
+                    When(Q(clauses_assigned=0), then=0),
+                    default=100.0 * F('clauses_todo') / F('clauses_assigned'),
+                    output_field=DecimalField(max_digits=5, decimal_places=2)),
+        ).values('id', 'clauses_assigned', 'clauses_todo',  'clauses_completed',
+                 'clauses_completed_pcnt', 'clauses_todo_pcnt')
+
+        qs = {i['id']: i for i in qs1}
+        for i in qs2:
+            qs[i['id']].update(i)
+
+        return Response(list(qs.values()))
+
+
+# --------------------------------------------------------
+# VerifyAuthToken View
+# --------------------------------------------------------
+
+class VerifyAuthTokenAPIViewSchema(CustomAutoSchema):
+
+    class VerifyAuthTokenRequestSerializer(serializers.Serializer):
+        auth_token = serializers.CharField(max_length=40, required=True)
+
+    class VerifyAuthTokenResponseSerializer(serializers.Serializer):
+        key = serializers.CharField()
+        user_name = serializers.CharField()
+        release_version = serializers.CharField()
+        user = UserSerializer()
+
+    request_serializer = VerifyAuthTokenRequestSerializer()
+    response_serializer = VerifyAuthTokenResponseSerializer()
+
+    def get_responses(self, path, method):
+        resp = super().get_responses(path, method)
+        resp['403'] = string_schema
+        return resp
 
 
 class VerifyAuthTokenAPIView(views.APIView):
 
     authentication_classes = []
-    permission_classes = []
+    permission_classes = [AllowAny]
     http_method_names = ['post']
+    schema = VerifyAuthTokenAPIViewSchema()
 
     @property
     def coreapi_schema(self):
@@ -128,6 +300,9 @@ class VerifyAuthTokenAPIView(views.APIView):
         return schemas.ManualSchema(fields=fields)
 
     def post(self, request, *args, **kwargs):
+        """
+        Get user data for provided auth_token.
+        """
         auth_token = request.POST.get('auth_token') or request.data.get('auth_token') \
             or request.META.get('HTTP_AUTH_TOKEN')
         if not auth_token and request.COOKIES:
@@ -140,31 +315,20 @@ class VerifyAuthTokenAPIView(views.APIView):
             raise e
 
         if tok_usr:
-            raw_data = core_serializers.serialize('python', [tok_usr])
-            role_raw_data = core_serializers.serialize('python', [tok_usr.role])
-            role_data = [d['fields'] for d in role_raw_data][0]
-            usr_data = [d['fields'] for d in raw_data][0]
-            del usr_data['password']
-            del usr_data['user_permissions']
-            usr_data['id'] = tok_usr.pk
-            usr_data['role_data'] = role_data
-            role_data['id'] = tok_usr.role.pk
-            role_data['is_reviewer'] = tok_usr.role.is_reviewer
             resp_data = {
                 'key': auth_token,
                 'user_name': tok_usr.username,
-                'user': usr_data,
-                'release_version': settings.VERSION_NUMBER
-            }
-            return JsonResponse(resp_data, encoder=ImprovedDjangoJSONEncoder, safe=False)
+                'user': UserSerializer(tok_usr).data,
+                'release_version': settings.VERSION_NUMBER }
+            return Response(resp_data)
         return Response()
 
 
 router = routers.DefaultRouter()
-router.register(r'users', UserViewSet, 'user')
-router.register(r'roles', RoleViewSet, 'role')
+router.register('users', UserViewSet, 'user')
+router.register('roles', RoleViewSet, 'role')
 
 
 urlpatterns = [
-    url(r'verify-token/$', VerifyAuthTokenAPIView.as_view(), name='verify-token'),
+    url('verify-token/', VerifyAuthTokenAPIView.as_view(), name='verify-token'),
 ]

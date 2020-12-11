@@ -26,12 +26,14 @@
 
 from typing import List, Tuple, Dict
 from django.db import connection
+
+from apps.common.collection_utils import group_by
 from apps.common.model_utils.table_deps import TableDeps, DependencyRecord
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.7.0/LICENSE"
-__version__ = "1.7.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
+__version__ = "1.8.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -43,7 +45,17 @@ class TableDepsBuilder:
         pkeys = TableDepsBuilder.get_all_primary_keys()
         all_deps = []  # type: List[TableDeps]
         TableDepsBuilder.find_dependend_tables(relations, all_deps, None, table_name)
-        all_deps = TableDeps.sort_deps(all_deps)
+
+        # remove longer chains
+        dep_by_own_table = group_by(all_deps,
+                                    lambda d: d.deps[0].own_table)  # type: Dict[str, List[TableDeps]]
+        shortcuts = []  # type: List[TableDeps]
+        for key in dep_by_own_table:
+            opt_deps = TableDeps.remove_duplicates(dep_by_own_table[key])
+            opt_deps = TableDeps.leave_shortest_chains(opt_deps)
+            shortcuts += opt_deps
+
+        all_deps = TableDeps.sort_deps(shortcuts, relations)
         for dep in all_deps:
             dep.own_table_pk = pkeys[dep.deps[0].own_table]
         return all_deps
@@ -54,11 +66,11 @@ class TableDepsBuilder:
             all_deps: List[TableDeps],
             current_dep: TableDeps,
             table_name: str) -> None:
-        for rel in relations:
-            if rel[2] != table_name:
+        for fk_table, fk_column, rf_table, rf_column in relations:
+            if rf_table != table_name:
                 continue
 
-            dep_record = DependencyRecord(rel[0], rel[1], rel[2], rel[3])
+            dep_record = DependencyRecord(fk_table, fk_column, rf_table, rf_column)
             if not current_dep:
                 new_dep = TableDeps(None)
                 new_dep.deps = [dep_record]

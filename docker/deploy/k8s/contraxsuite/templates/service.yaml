@@ -3,6 +3,7 @@
 apiVersion: v1
 kind: Service
 metadata:
+  namespace: {{ .Values.namespace}}
   annotations:
     kompose.cmd: ./kompose convert --file yml
     kompose.version: 1.19.0 (f63a961c)
@@ -19,12 +20,35 @@ status:
   loadBalancer: {}
 
 ---
+#contrax-flower
+
+apiVersion: v1
+kind: Service
+metadata:
+  namespace: {{ .Values.namespace}}
+  annotations:
+    kompose.cmd: ./kompose convert --file yml
+    kompose.version: 1.19.0 (f63a961c)
+  creationTimestamp: null
+  name: contrax-flower
+spec:
+  ports:
+  - name: "15555"
+    port: 5555
+    targetPort: 5555
+  selector:
+    app: contrax-flower
+status:
+  loadBalancer: {}
+
+---
 
 #contrax-mlflow-tracking
 
 apiVersion: v1
 kind: Service
 metadata:
+  namespace: {{ .Values.namespace}}
   annotations:
     kompose.cmd: ./kompose convert --file yml
     kompose.version: 1.19.0 (f63a961c)
@@ -47,6 +71,7 @@ status:
 apiVersion: v1
 kind: Service
 metadata:
+  namespace: {{ .Values.namespace}}
   annotations:
     kompose.cmd: ./kompose convert --file test2.yml
       -o output/ -c
@@ -69,6 +94,7 @@ status:
 apiVersion: v1
 kind: Service
 metadata:
+  namespace: {{ .Values.namespace}}
   annotations:
     kompose.cmd: ./kompose convert --file docker-compose-single-host-db-open-afterdeploy.yml
       -o output/ -c
@@ -89,6 +115,7 @@ status:
 apiVersion: v1
 kind: Service
 metadata:
+  namespace: {{ .Values.namespace}}
   annotations:
     kompose.cmd: ./kompose convert --file docker-compose-single-host-db-open-afterdeploy.yml
       -o output/ -c
@@ -111,6 +138,7 @@ status:
 apiVersion: v1
 kind: Service
 metadata:
+  namespace: {{ .Values.namespace}}
   annotations:
     kompose.cmd: ./kompose convert --file docker-compose-single-host-db-open-afterdeploy.yml
       -o output/ -c
@@ -138,6 +166,7 @@ status:
 apiVersion: v1
 kind: Service
 metadata:
+  namespace: {{ .Values.namespace}}
   annotations:
     kompose.cmd: ./kompose convert --file docker-compose-single-host-db-open-afterdeploy.yml
       -o output/ -c
@@ -160,6 +189,7 @@ status:
 apiVersion: v1
 kind: Service
 metadata:
+  namespace: {{ .Values.namespace}}
   annotations:
     kompose.cmd: ./kompose convert --file yml
     kompose.version: 1.19.0 (f63a961c)
@@ -184,6 +214,7 @@ status:
 apiVersion: v1
 kind: Service
 metadata:
+  namespace: {{ .Values.namespace}}
   annotations:
     kompose.cmd: ./kompose convert --file docker-compose-single-host-db-open-afterdeploy.yml
       -o output/ -c
@@ -206,6 +237,7 @@ status:
 apiVersion: v1
 kind: Service
 metadata:
+  namespace: {{ .Values.namespace}}
   annotations:
     kompose.cmd: ./kompose convert --file docker-compose-single-host-db-open-afterdeploy.yml
       -o output/ -c
@@ -228,6 +260,7 @@ status:
 apiVersion: v1
 kind: Service
 metadata:
+  namespace: {{ .Values.namespace}}
   annotations:
     kompose.cmd: ./kompose convert --file docker-compose-single-host-db-open-afterdeploy.yml
       -o output/ -c
@@ -259,6 +292,7 @@ status:
 apiVersion: v1
 kind: Service
 metadata:
+  namespace: {{ .Values.namespace}}
   annotations:
     kompose.cmd: ./kompose convert --file docker-compose-single-host-db-open-afterdeploy.yml
       -o output/ -c
@@ -276,33 +310,12 @@ status:
 
 ---
 
-#contrax-uwsgi
-
-apiVersion: v1
-kind: Service
-metadata:
-  annotations:
-    kompose.cmd: ./kompose convert --file docker-compose-single-host-db-open-afterdeploy.yml
-      -o output/ -c
-    kompose.version: 1.17.0 (a74acad)
-  creationTimestamp: null
-  name: contrax-uwsgi
-spec:
-  ports:
-    - port: 3031
-      protocol: TCP
-  selector:
-    app: contrax-uwsgi
-status:
-  loadBalancer: {}
-
----
-
 #contrax-daphne
 
 apiVersion: v1
 kind: Service
 metadata:
+  namespace: {{ .Values.namespace}}
   annotations:
     kompose.cmd: ./kompose convert --file test2.yml
       -o output/ -c

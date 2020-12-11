@@ -43,8 +43,8 @@ from apps.users.models import User
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.7.0/LICENSE"
-__version__ = "1.7.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
+__version__ = "1.8.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -537,31 +537,6 @@ class TextUnitSimilarity(models.Model):
         if not self.project_b:
             self.project_b = self.document_b.project
         super().save(**kwargs)
-
-    @classmethod
-    def fill_joined_refs(cls, records: 'List[TextUnitSimilarity]') -> None:
-        """
-        set document_a, document_b, project_a, project_b fields
-        """
-        unit_ids = set()
-        for unit in records:
-            unit_ids.add(unit.text_unit_a_id)
-            unit_ids.add(unit.text_unit_b_id)
-        unit_ids_list = list(unit_ids)
-        doc_id_by_unit = list(TextUnit.objects.filter(pk__in=unit_ids_list).values_list(
-            'pk', 'document_id'))
-        doc_ids = set([d for u, d in doc_id_by_unit])
-        doc_ids_list = list(doc_ids)
-        project_by_doc_list = list(Document.all_objects.filter(pk__in=doc_ids_list).values_list(
-            'pk', 'project_id'))
-
-        doc_by_unit = {u: d for u, d in doc_id_by_unit}
-        project_by_doc = {d: p for d, p in project_by_doc_list}
-        for unit in records:
-            unit.document_a_id = doc_by_unit[unit.text_unit_a_id]
-            unit.project_a_id = project_by_doc[unit.document_a_id]
-            unit.document_b_id = doc_by_unit[unit.text_unit_b_id]
-            unit.project_b_id = project_by_doc[unit.document_b_id]
 
 
 class PartySimilarity(models.Model):

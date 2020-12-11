@@ -40,8 +40,8 @@ from traceback import format_exc
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.7.0/LICENSE"
-__version__ = "1.7.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
+__version__ = "1.8.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -274,7 +274,7 @@ class PlainTextDocumentParser(BaseDocumentParser):
         if ptrs.ext.strip(' .').lower() != 'txt':
             return DocumentParsingResults()
         if ptrs.logger:
-            ptrs.logger.info('Trying plain text extract for file: ' +
+            ptrs.logger.info('Trying plain text extraction for file: ' +
                              ptrs.original_file_name)
         try:
             import magic

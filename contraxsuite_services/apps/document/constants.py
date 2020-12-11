@@ -27,8 +27,8 @@
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.7.0/LICENSE"
-__version__ = "1.7.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
+__version__ = "1.8.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -101,6 +101,7 @@ DOCUMENT_FIELD_CODE_UPLOAD_SESSION = 'upload_session'
 DOCUMENT_FIELD_CODE_PROCESSED = 'processed'
 DOCUMENT_FIELD_CODE_CLUSTER_ID = 'cluster_id'
 DOCUMENT_FIELD_CODE_CLASS = 'document_class'
+DOCUMENT_FIELD_CODE_OCR_GRADE = 'ocr_rating'
 
 ALL_DOCUMENT_FIELD_CODES = {
     DOCUMENT_FIELD_CODE_NAME,
@@ -128,7 +129,9 @@ ALL_DOCUMENT_FIELD_CODES = {
     DOCUMENT_FIELD_CODE_ASSIGN_DATE,
     DOCUMENT_FIELD_CODE_UPLOAD_SESSION,
     DOCUMENT_FIELD_CODE_PROCESSED,
-    DOCUMENT_FIELD_CODE_CLUSTER_ID}
+    DOCUMENT_FIELD_CODE_CLUSTER_ID,
+    DOCUMENT_FIELD_CODE_CLASS,
+    DOCUMENT_FIELD_CODE_OCR_GRADE}
 
 # Document.metadata keys
 DOC_METADATA_DOCUMENT_CLASS_PROB = 'document_class_probability'

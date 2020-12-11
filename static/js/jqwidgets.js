@@ -118,7 +118,7 @@
       localizationObject.filterbooleancomparisonoperators = filterbooleancomparisonoperators;
 
       // change default message for empty data set if user_projects_selected is empty
-      if (!window.user_projects_selected.length){
+      if (!window.user_projects_selected.length && typeof(skip_project_selection) === 'undefined'){
         localizationObject.emptydatastring = "Select Project(s) Above for Viewing Data";
         $(".project_selection label")
             .fadeOut(300)
@@ -500,12 +500,42 @@
 
   // purge task
   function purge_task_popup(pk, url, grid) {
+     show_task_popup(pk, url, grid,
+        'Purge this task?',
+        'fa fa-eraser text-warning');
+  }
+
+  function recall_task_popup(pk, url, grid, title, sessionId) {
+     var token = jQuery("[name=csrfmiddlewaretoken]").val();
+     $.ajax({
+       method: 'GET',
+       url: url,
+       data: {
+         task_pk: pk,
+         csrfmiddlewaretoken: token,
+         session_id: sessionId
+       },
+       success: function(response) {
+         var popText = 'Restart ' + response['tasks'] + ' tasks in "' +
+            response['status'] + '" status?';
+         show_task_popup(pk, url, grid,
+            title,
+            'fa fa-refresh text-warning',
+            sessionId,
+            popText);
+       },
+       error: ajax_error_handler
+     });
+  }
+
+  function show_task_popup(pk, url, grid, title, icon,
+                           sessionId, content) {
     var token = jQuery("[name=csrfmiddlewaretoken]").val();
     $.confirm({
       type: 'orange',
-      icon: 'fa fa-eraser text-warning',
-      title: 'Purge this task?',
-      content: '',
+      icon: icon,
+      title: title,
+      content: content || '',
       backgroundDismiss: true,
       buttons: {
         action: {
@@ -517,7 +547,8 @@
               url: url,
               data: {
                 task_pk: pk,
-                csrfmiddlewaretoken: token
+                csrfmiddlewaretoken: token,
+                session_id: sessionId
               },
               success: function(response){
                 grid.jqxGrid('updatebounddata');
@@ -540,11 +571,17 @@
     var ul = $('<ul class="popup-menu"></ul>');
     $.each(menu_data, function(index, item){
       item = $.extend({}, default_link_data, item);
+      var itemData = '';
+      if (item['data']) {
+          for (var dataKey in item['data'])
+              itemData += ' data-' + dataKey + '="' + item['data'][dataKey] + '" ';
+      }
       var li = $('<li><a href="' + item.url +
                      '" class="' + item.cls +
                      '" target"' + item.target +
                    '" onclick="' + item.onclick +
-                   '" data-pk="' + pk + '"><i class="' + item.icon + '"></i>' + item.text + '</a></li>');
+                   '" ' + itemData +
+                   'data-pk="' + pk + '"><i class="' + item.icon + '"></i>' + item.text + '</a></li>');
       ul.append(li)
     });
     width = typeof width === "undefined" ? 200 : width;
@@ -580,7 +617,18 @@
         });
         $('.popup-menu a.purge-task').click(function(event) {
           event.preventDefault();
-          purge_task_popup(pk, $(this).attr('href'), grid)
+          purge_task_popup(pk, $(this).attr('href'), grid);
+        });
+        $('.popup-menu a.recall-task').click(function(event) {
+          event.preventDefault();
+          var popupTitle = $(this).data('title');
+          recall_task_popup(pk, $(this).attr('href'), grid, popupTitle);
+        });
+        $('.popup-menu a.recall-session').click(function(event) {
+          event.preventDefault();
+          var popupTitle = $(this).data('title');
+          var sessionId = $(this).data('session');
+          recall_task_popup(pk, $(this).attr('href'), grid, popupTitle, sessionId);
         });
         $('.popup-menu a.mark-document-completed').click(function(event) {
           event.preventDefault();

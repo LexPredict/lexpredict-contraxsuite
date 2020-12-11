@@ -25,14 +25,15 @@
 # -*- coding: utf-8 -*-
 
 import datetime
+from decimal import Decimal
 from unittest import TestCase
 
 from apps.common.model_utils.improved_django_json_encoder import ImprovedDjangoJSONEncoder
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.7.0/LICENSE"
-__version__ = "1.7.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
+__version__ = "1.8.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -55,6 +56,44 @@ class TestImprovedDjangoJSONEncoder(TestCase):
         i = -123.45
         s = enc.encode(i)
         self.assertEqual(s, '-123.45')
+
+    def test_long_float(self):
+        enc = ImprovedDjangoJSONEncoder()
+        f = 3.99999999999999999999999999999999999999999999999999999999999999999999999999999999
+        self.assertEqual(f, 4)
+        s = enc.encode(f)
+        self.assertEqual(s, '4.0')
+
+    def test_decimal(self):
+        enc = ImprovedDjangoJSONEncoder()
+        i_str = '3.99999999999999999999999999999999999999999999999999999999999999999999999999999999'
+        d = Decimal(i_str)
+        self.assertEqual(i_str, str(d))
+        s = enc.encode(d)
+        self.assertEqual(s, '"' + i_str + '"')
+
+    def test_decimal_in_struct(self):
+        enc = ImprovedDjangoJSONEncoder(indent=2)
+        i_str = '3.99999999999999999999999999999999999999999999999999999999999999'
+        d = Decimal(i_str)
+        dd = {
+            'a': 'b',
+            'f': 0.1 + 0.2,
+            'd': [d, d + 1, d + 2, d + (4 - d)]
+        }
+
+        expected = '''{
+  "a": "b",
+  "f": 0.30000000000000004,
+  "d": [
+    "3.99999999999999999999999999999999999999999999999999999999999999",
+    "5.000000000000000000000000000",
+    "6.000000000000000000000000000",
+    "4.000000000000000000000000000"
+  ]
+}'''
+        actual = enc.encode(dd)
+        self.assertEqual(expected, actual)
 
     def test_date(self):
         d = datetime.datetime(2019, 9, 18, 21, 30, 7, 303)

@@ -24,14 +24,14 @@
 """
 # -*- coding: utf-8 -*-
 
-from django.test import TestCase
+from unittest import TestCase
 from apps.document.field_processing.field_processing_utils import \
     order_field_detection, get_dependent_fields
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.7.0/LICENSE"
-__version__ = "1.7.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
+__version__ = "1.8.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -45,8 +45,6 @@ class TestFieldsProcessingUtils(TestCase):
         self.assertGreater(ordered_pos['b'], ordered_pos['a'])
         self.assertGreater(ordered_pos['c'], ordered_pos['d'])
         self.assertGreater(ordered_pos['d'], ordered_pos['b'])
-        from apps.document.models import DocumentField
-        DocumentField.objects.filter(code__icontains='leasee').delete()
 
     def test_required_fields(self) -> None:
         fields = [('a', set()), ('b', set('a')), ('c', set('d')), ('d', set('b')), ('e', set())]

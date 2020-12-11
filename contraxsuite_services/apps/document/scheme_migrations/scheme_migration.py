@@ -44,12 +44,14 @@ from apps.document.scheme_migrations.base_scheme_migration import BaseSchemeMigr
 # key is what is displayed in GUI
 # value is the actual version number, see CURRENT_VERSION
 MIGRATION_TAGS = {
-        'current': 76,
-        '1.7': 75,
+        'current': 77,
+        '1.8': 77,
+        '1.7': 76,
+        '1.7 w/o schema versioning': 75,
         '1.6': 65
     }
 
-CURRENT_VERSION = 76
+CURRENT_VERSION = 77
 
 # since this version migration file always includes version info
 TAGGED_VERSION = 76

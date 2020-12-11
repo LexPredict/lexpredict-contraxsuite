@@ -24,21 +24,24 @@
 """
 # -*- coding: utf-8 -*-
 
+import json
+import logging
 import sys
 from traceback import format_exc
 from typing import Dict, List
+
 from django.conf.urls import url
-from django.core.handlers.wsgi import WSGIRequest
-import rest_framework.response
-import rest_framework.views
-import logging
+from rest_framework import serializers
+from rest_framework.response import Response
+from rest_framework.views import APIView
+
 from apps.common.errors import APIRequestError
-import json
+from apps.common.schemas import CustomAutoSchema, ObjectResponseSchema, string_schema, json_ct
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.7.0/LICENSE"
-__version__ = "1.7.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
+__version__ = "1.8.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -85,10 +88,8 @@ class ClientLogMessage:
         return json.dumps({k: v for k, v in self.__dict__.items() if k != 'level' and v})
 
     def make_message_extra_dict(self) -> Dict[str, str]:
-        d = {
-            'log_client_ip': self.query_info['ip'],
-            'log_client_agent': self.query_info['agent']
-        }
+        d = {'log_client_ip': self.query_info['ip'],
+             'log_client_agent': self.query_info['agent']}
         if self.user:
             d['log_user_id'] = self.user['id']
             d['log_user_name'] = self.user['name']
@@ -113,11 +114,29 @@ class ClientLogMessage:
         return items
 
 
-class LoggingAPIView(rest_framework.views.APIView):
-    #authentication_classes = ()
-    permission_classes = ()
+class LoggingAPIViewSchema(CustomAutoSchema):
 
-    def post(self, request: WSGIRequest, *args, **kwargs) -> rest_framework.response.Response:
+    class LoggingAPIViewRequestSerializer(serializers.Serializer):
+        queryInfo = serializers.DictField()
+        records = serializers.ListField()
+
+    request_serializer = LoggingAPIViewRequestSerializer()
+
+    def get_responses(self, path, method):
+        response = {'200': {'content': {json_ct: {'schema': ObjectResponseSchema.object_schema}}},
+                    '400': string_schema,
+                    '500': string_schema}
+        return response
+
+
+class LoggingAPIView(APIView):
+    permission_classes = ()
+    schema = LoggingAPIViewSchema()
+
+    def post(self, request, *args, **kwargs) -> Response:
+        """
+        Log provided data
+        """
         try:
             data = request.data
             messages = ClientLogMessage.deserialize_msg_pack(data)
@@ -134,22 +153,20 @@ class LoggingAPIView(rest_framework.views.APIView):
         except Exception as e:
             return APIRequestError(message='Unable to process request',
                                    caused_by=e, http_status_code=500).to_response()
-        return rest_framework.response.Response()
+        return Response()
 
     @staticmethod
-    def format_user_from_request(request: WSGIRequest) -> Dict[str, str]:
-        if not request.user or not request.user.username:
-            return None
-        return {'id': request.user.id, 'name': request.user.username}
+    def format_user_from_request(request) -> Dict[str, str]:
+        if request.user and request.user.username:
+            return {'id': request.user.id, 'name': request.user.username}
 
     @staticmethod
     def get_client_ip(request):
         x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
         if x_forwarded_for:
-            ip = x_forwarded_for.split(',')[0]
+            return x_forwarded_for.split(',')[0]
         else:
-            ip = request.META.get('REMOTE_ADDR')
-        return ip
+            return request.META.get('REMOTE_ADDR')
 
     def write_log(self, message: ClientLogMessage) -> bool:
         level = message.level
@@ -168,9 +185,8 @@ class LoggingAPIView(rest_framework.views.APIView):
                 'Exception caught while trying to log a message:\n{0}\n{1}'.format(exception_str,
                                                                                    trace),
                 extra=msg_extra)
-            pass
 
 
 urlpatterns = [
-    url(r'log_message/$', LoggingAPIView.as_view(), name='log_message')
+    url('log_message/', LoggingAPIView.as_view(), name='log_message')
 ]

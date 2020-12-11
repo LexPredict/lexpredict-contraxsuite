@@ -24,12 +24,12 @@
 """
 # -*- coding: utf-8 -*-
 
-from typing import List
+from typing import List, Dict, Set, Tuple
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.7.0/LICENSE"
-__version__ = "1.7.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
+__version__ = "1.8.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -44,6 +44,9 @@ class DependencyRecord:
     def __repr__(self):
         return f'{self.own_table}.{self.ref_key} -> {self.ref_table}.{self.ref_table_pk}'
 
+    def stringify(self) -> str:
+        return f'{self.own_table};{self.ref_key};{self.ref_table};{self.ref_table_pk}'
+
 
 class TableDeps:
     """
@@ -51,7 +54,7 @@ class TableDeps:
     Used in bulk delete procedure
     """
     def __init__(self, start_dep):
-        self.own_table_pk = []  #type:List[str]
+        self.own_table_pk = []  # type:List[str]
         if start_dep:
             self.own_table_pk = start_dep.own_table_pk
             self.deps = start_dep.deps[:]
@@ -62,9 +65,57 @@ class TableDeps:
         pk_str = ','.join(self.own_table_pk)
         return f'pk:[{pk_str}], ' + ', '.join([str(d) for d in self.deps])
 
+    def stringify(self) -> str:
+        return '; '.join([d.stringify() for d in self.deps])
+
     @staticmethod
-    def sort_deps(dep_list):
-        return sorted(dep_list, key=lambda x: len(x.deps), reverse=True)
+    def remove_duplicates(dep_list: 'List[TableDeps]') -> 'List[TableDeps]':
+        uniq_dict = {x.stringify(): x for x in dep_list}
+        return list(uniq_dict.values())
+
+    @staticmethod
+    def leave_shortest_chains(dep_list: 'List[TableDeps]') -> 'List[TableDeps]':
+        shortest = []
+        ln = 1000  # no chain could be so long
+        for dep in dep_list:
+            if len(dep.deps) > ln:
+                continue
+            if len(dep.deps) == ln:
+                shortest.append(dep)
+                continue
+            shortest = [dep]
+            ln = len(dep.deps)
+        return shortest
+
+    @staticmethod
+    def sort_deps(dep_list: 'List[TableDeps]',
+                  relations: List[Tuple[str, str, str, str]]) -> 'List[TableDeps]':
+        dep_list.sort(key=lambda x: len(x.deps), reverse=True)
+        # { a: { b, f }, b: ... } - table a depends on b and f
+        table_deps: Dict[str, Set[str]] = {}
+        for a, _, b, __ in relations:
+            if a not in table_deps:
+                table_deps[a] = {b}
+            else:
+                table_deps[a].add(b)
+
+        while True:
+            are_ordered = True
+            for i in range(len(dep_list)):
+                for j in range(i + 1, len(dep_list)):
+                    # if subsequent table depends on one of the previous tables
+                    # swap these tables
+                    tab_a = dep_list[i].deps[0].own_table
+                    tab_b = dep_list[j].deps[0].own_table
+                    tab_b_deps = table_deps.get(tab_b)
+                    if tab_b_deps and tab_a in tab_b_deps:
+                        are_ordered = False
+                        deps_a = dep_list[i]
+                        dep_list[i] = dep_list[j]
+                        dep_list[j] = deps_a
+            if are_ordered:
+                break
+        return dep_list
 
     @staticmethod
     def parse_stored_deps_multiline(text: str) -> List:

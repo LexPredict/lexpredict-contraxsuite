@@ -895,7 +895,7 @@
       window.contentReady = false;
       window.dataLoaded = false;
       var jc = $.confirm({
-        title: 'Are you sure?',
+        title: 'Admin Task',
         backgroundDismiss: true,
         content: $that.data('content') || function(){
           var self = this;
@@ -961,7 +961,8 @@
 
               onSuccess = function(data, status, xhr){
                 if (data.confirm) {
-                  if (confirm(data.message)) {
+                  {# TODO: check that all api switched to "detail" attr #}
+                  if (confirm(data.message || data.detail)) {
                      console.log('Start over from here');
                      // start over skipping confirmation
                      post_data = formdata ? formdata : form.serialize();
@@ -979,7 +980,7 @@
                         error: onError});
                      return;
                   }
-                  data = data.message;
+                  data = data.message || data.detail;
                   return;
                 }
 
@@ -997,15 +998,16 @@
                   URL.revokeObjectURL(url);
                   data = 'Downloaded ' + xhr.getResponseHeader('filename') + ' file'
                 }
-                if ($.isPlainObject(data)){
+
+                if ($.isPlainObject(data) && 'result' in data){
                   data = data.result
                 }
 
                 $.alert({
                   icon: 'fa fa-spinner fa-spin text-warning',
-                  title: 'Working!',
+                  title: 'Admin Task Started',
                   type: 'orange',
-                  content: data,
+                  content: $.type(data) === 'object' && 'detail' in data ? data.detail : data,
                   columnClass: 'col-md-4',
                   onClose: function(){
                     $('.jqxgrid').jqxGrid('updatebounddata')
@@ -1150,7 +1152,7 @@
                       icon: 'fa fa-spinner fa-spin text-warning',
                       title: 'Working!',
                       type: 'orange',
-                      content: data,
+                      content: $.type(data) === 'object' && 'detail' in data ? data.detail : data,
                       columnClass: 'col-md-4',
                       onClose: function(){
                         $('.jqxgrid').jqxGrid('updatebounddata')
@@ -1175,7 +1177,7 @@
         { name: 'pk', type: 'string' },
         { name: 'display_name', type: 'string' },
         { name: 'description', type: 'string' },
-        { name: 'username', type: 'string' },
+        { name: 'user_name', type: 'string' },
         { name: 'date_start', type: 'date' },
         { name: 'date_work_start', type: 'date' },
         { name: 'date_done', type: 'date' },
@@ -1186,11 +1188,22 @@
         { name: 'status', type: 'string' },
         { name: 'url', type: 'string' },
         { name: 'purge_url', type: 'string' },
-        { name: 'result_links' }
+        { name: 'recall_url', type: 'string' },
+        { name: 'result_links' },
+        { name: 'upload_session_id', type: 'string' },
+        { name: 'recallable', type: 'bool' }
       ];
       var menu_renderer = function(row, event) {
         var grid = $(event.currentTarget).parents('.jqxgrid');
         row = grid.jqxGrid('getrowdata', row);
+        var taskStatus = row['status'];
+        var taskTitle = row['display_name'];
+        var recallTitle = 'Recall Task';
+        var recallPrompt = 'Recall this task?';
+        if (taskStatus == 'PENDING') {
+            recallTitle = 'Restart Task';
+            recallPrompt = 'Restart this task?';
+        }
         var menu_data = [
           { url: row.url,
             icon: 'fa fa-info-circle',
@@ -1200,6 +1213,28 @@
             icon: 'fa fa-eraser',
             text: 'Purge Task'}
         ];
+        if (row.recallable)
+          menu_data.push({ url: row.recall_url,
+            cls: 'recall-task',
+            icon: 'fa fa-refresh',
+            text: recallTitle,
+            data: {title: recallPrompt}});
+
+        if (row.recallable && row['upload_session_id'] &&
+          taskTitle == 'Load Documents' &&
+          (taskStatus == 'PENDING' || taskStatus == 'FAILURE')) {
+            var recallSessionTitle = 'Restart Failed Upload Tasks';
+            var recallSessionPrompt = 'Restart failed upload task?';
+            if (taskStatus == 'PENDING') {
+                recallSessionTitle = 'Restart Upload Tasks';
+                recallSessionPrompt = 'Restart upload task?';
+            }
+            menu_data.push({ url: row.recall_url,
+                cls: 'recall-session',
+                icon: 'fa fa-refresh',
+                text: recallSessionTitle,
+                data: {title: recallSessionPrompt, session: row['upload_session_id']}});
+        }
         $.each(row.result_links, function(n, i){
           menu_data.push(
               { url: i.link,
@@ -1235,7 +1270,7 @@
             defaulthtml = $(defaulthtml).css('margin-top', '5px');
             return renderCell(defaulthtml, v);
           }},
-        { text: 'User', datafield: 'username', width: 100,
+        { text: 'User', datafield: 'user_name', width: 100,
           align: 'center', cellsalign: 'center' },
         { text: 'Scheduled', datafield: 'date_start', width: 90,
           filtertype: 'date', cellsformat: 'MM/dd HH:mm',

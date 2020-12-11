@@ -24,6 +24,7 @@
 """
 # -*- coding: utf-8 -*-
 
+import decimal
 import re
 from datetime import datetime, date
 from decimal import Decimal, InvalidOperation
@@ -42,37 +43,51 @@ from lexnlp.extract.en.money import get_money
 from lexnlp.extract.en.percents import get_percents
 from lexnlp.extract.en.ratios import get_ratios
 from sklearn.feature_extraction.text import CountVectorizer, TfidfTransformer
-from sklearn.pipeline import FeatureUnion, Pipeline
 from sklearn.feature_extraction.text import ENGLISH_STOP_WORDS
+from sklearn.pipeline import FeatureUnion, Pipeline
 
 from apps.companies_extractor import CompaniesExtractor
 from apps.document.field_processing import vectorizers
+from apps.document.models import DocumentField, Document
 from apps.document.value_extraction_hints import ValueExtractionHint
-from apps.document.models import DocumentField, TextUnit, Document
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.7.0/LICENSE"
-__version__ = "1.7.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
+__version__ = "1.8.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
 
-def to_float(v, decimal_places=None) -> Optional[float]:
+def to_decimal(v, decimal_places=6) -> Optional[float]:
     """
     Take care about proper rounding for floats:
     round(float('123.5555555'), 6)
-    Out[1]: 123.555555
+    123.555555
     vs
-    to_float('123.5555555', 6)
-    Out[2]: 123.555556
+    to_decimal('123.5555555', 6)
+    123.555556
     """
     if v is None:
         return None
-    v = Decimal(v)
+
+    # This method is used in two kinds of operations:
+    #
+    # 1. Converting floating point values coming from UI to Python values.
+    # JSON decoder for the API endpoint brings such values in form of Python "float".
+    # We convert them to Decimal via str() to avoid non-visible precision digits from appearing.
+    # This makes sense because such values were already represented as float/double
+    # values on the frontend side and the UI form fields do not allow entering more
+    # than 6 digits after dot.
+    #
+    # 2. Converting floating point values coming from DB to Python values.
+    # To avoid loosing anything we decided to store Decimal values as strings in the DB.
+    # Strings are converted to Decimals as is.
+    if not isinstance(v, Decimal):
+        v = Decimal(str(v))
     if isinstance(decimal_places, int):
         v = round(v, decimal_places).normalize()
-    return float(v)
+    return v
 
 
 def to_int(v) -> Optional[int]:
@@ -142,42 +157,51 @@ class TypedField:
     def annotation_value_json_to_python(self, json_value: Any) -> Any:
         return self.field_value_json_to_python(json_value)
 
-    def _extract_variants_from_text(self, text: str, **kwargs):
+    def _extract_variants_from_text(self, text: str,
+                                    doc: Document) -> Optional[List]:
         return None
 
     def extract_from_possible_value(self, possible_value):
         return possible_value
 
-    def extract_from_possible_value_text(self, possible_value_or_text):
+    def extract_from_possible_value_text(self, possible_value_or_text,
+                                         doc: Document):
         """
         Check if possible_value_or_text is also containing the value in this field type's data type.
         If not parse the possible_value_text var for extracting the first suitable value of this type.
         This method does not try to pick value hint or anything similar assuming that there is no
         source text available but only the value which is possibly in text form.
-        :param field:
+        :param doc: Document in which we are detecting. May be used for getting context info such as language.
+        :param text_unit_if_avail: Text unit in which we are detecting (if available). May be used for getting context
+                                    info such as pre-located usage entities.
         :param possible_value_or_text:
         :return:
         """
         try:
             maybe_value = self.extract_from_possible_value(possible_value_or_text)
         except Exception as e:
-            raise RuntimeError(f'Incorrect value ("{possible_value_or_text}") for field "{self.field.code}" ({self.type_code})') from e
+            raise RuntimeError(
+                f'Incorrect value ("{possible_value_or_text}") for field "{self.field.code}" ({self.type_code})') from e
         if maybe_value:
             return maybe_value
-        variants = self._extract_variants_from_text(possible_value_or_text)
+        variants = self._extract_variants_from_text(possible_value_or_text,
+                                                    doc=doc)
         if variants:
             return variants[0]
         return None
 
-    def pick_hint_by_searching_for_value_among_extracted(self, text: str, value, **kwargs) -> \
-            Optional[str]:
+    def pick_hint_by_searching_for_value_among_extracted(self,
+                                                         text: str,
+                                                         value,
+                                                         doc: Document) \
+            -> Optional[str]:
         if not self.value_extracting:
             return None
 
         if value is None or not text:
             return self.default_hint
 
-        extracted = self._extract_variants_from_text(text, **kwargs)
+        extracted = self._extract_variants_from_text(text, doc=doc)
 
         if not extracted:
             return self.default_hint
@@ -192,8 +216,7 @@ class TypedField:
                              document: Document,
                              possible_value,
                              possible_hint: Optional[str],
-                             text: Optional[str],
-                             text_unit: Optional[TextUnit] = None) \
+                             text: Optional[str]) \
             -> Tuple[Any, Optional[str]]:
         if possible_value is None and not text:
             return None, None
@@ -206,7 +229,9 @@ class TypedField:
             if value is not None:
                 if self.value_extracting:
                     hint = possible_hint or self \
-                        .pick_hint_by_searching_for_value_among_extracted(text, value, document=document)
+                        .pick_hint_by_searching_for_value_among_extracted(text,
+                                                                          value,
+                                                                          doc=document)
                 else:
                     hint = None
                 return value, hint
@@ -219,7 +244,7 @@ class TypedField:
 
         text = str(possible_value) if possible_value else text
 
-        extracted = self._extract_variants_from_text(text=text, text_unit=text_unit)
+        extracted = self._extract_variants_from_text(text=text, doc=document)
 
         if not extracted:
             return None, None
@@ -298,6 +323,35 @@ class TypedField:
             res = FIELD_TYPE_REGISTRY[code](field)
             setattr(field, ATTR_TYPED_FIELD, res)
         return res
+
+    @classmethod
+    def replace_decimals_with_floats_in_python_value_of_any_type(cls, v):
+        """
+        Convert python field value of any kind of TypedField to using float instead of Decimal.
+        This method is intended for using in the formula calculation when the operations with Decimals are not
+        supported.
+
+        This method should support all TypedFields - it is quite easy because they all return simple value types
+        or dicts.
+
+        More strictly would be to implement a separate method per TypedField sub-class but it will
+        require a lot of changes in the codebase which uses it. Creating this single method works because
+        we know that all TypedFields work with quite simple python values and we can take all their kinds
+        into accounts in this method.
+        """
+        if v is None:
+            return None
+        if isinstance(v, Decimal):
+            return float(v)
+        if isinstance(v, dict):
+            return {k: cls.replace_decimals_with_floats_in_python_value_of_any_type(v) for k, v in v.items()}
+        if isinstance(v, set):
+            return {cls.replace_decimals_with_floats_in_python_value_of_any_type(i) for i in v}
+        if isinstance(v, list):
+            return [cls.replace_decimals_with_floats_in_python_value_of_any_type(i) for i in v]
+        if isinstance(v, tuple):
+            return (cls.replace_decimals_with_floats_in_python_value_of_any_type(i) for i in v)
+        return v
 
 
 class MultiValueField(TypedField):
@@ -388,7 +442,8 @@ class StringField(TypedField):
     def example_python_value(self):
         return "example_string"
 
-    def _extract_variants_from_text(self, text: str, **kwargs):
+    def _extract_variants_from_text(self, text: str,
+                                    doc: Document) -> Optional[List]:
         regexp = self.field.get_compiled_value_regexp()
         extracted = None
         if regexp:
@@ -430,7 +485,8 @@ class LongTextField(TypedField):
     def example_python_value(self):
         return "example\nmulti-line\ntext"
 
-    def _extract_variants_from_text(self, text: str, **kwargs):
+    def _extract_variants_from_text(self, text: str,
+                                    doc: Document) -> Optional[List]:
         regexp = self.field.get_compiled_value_regexp()
         extracted = None
         if regexp:
@@ -466,7 +522,8 @@ class ChoiceField(TypedField):
         else:
             return None
 
-    def _extract_variants_from_text(self, text: str, **kwargs):
+    def _extract_variants_from_text(self, text: str,
+                                    doc: Document) -> Optional[List]:
         return None
 
     def example_python_value(self):
@@ -482,18 +539,23 @@ class ChoiceField(TypedField):
                 ('tfidf', TfidfTransformer())], self._wrap_get_feature_names(vect)
 
     @classmethod
-    def check_choice_values_list(cls,
-                                 choice_values: List[str]) -> List[str]:
-        errors = []  # type: List[str]
-        opt_num = 0
-        unique_opts = set()  # type: Set[str]
+    def check_choice_values_list(
+            cls,
+            choice_values: List[str]
+    ) -> List[str]:
+        opt_num: int = 0
+        errors: List[str] = []
+        unique_opts: Set[str] = set()
         for opt in choice_values:
             opt_num += 1
             if not opt:
-                errors.append(f'[{opt_num}] option is empty')
+                errors.append(f'Option {opt_num} is empty.')
+                continue
+            if ',' in opt:
+                errors.append(f'Option {opt_num} ({opt}) contains a comma.')
                 continue
             if opt in unique_opts:
-                errors.append(f'Option ([{opt_num}]:{opt}) appeared multiple times')
+                errors.append(f'Option {opt_num} ({opt}) appeared multiple times.')
                 continue
             unique_opts.add(opt)
         return errors
@@ -519,7 +581,8 @@ class BooleanField(TypedField):
         else:
             return bool(possible_value)
 
-    def _extract_variants_from_text(self, text: str, **kwargs):
+    def _extract_variants_from_text(self, text: str,
+                                    doc: Document) -> Optional[List]:
         return None
 
     def example_python_value(self):
@@ -644,7 +707,8 @@ class LinkedDocumentsField(MultiValueSetField):
 
         return possible_value
 
-    def _extract_variants_from_text(self, text: str, **kwargs):
+    def _extract_variants_from_text(self, text: str,
+                                    doc: Document) -> Optional[List]:
         return None
 
     def example_python_value(self):
@@ -707,7 +771,8 @@ class DateTimeField(TypedField):
             except:
                 return None
 
-    def _extract_variants_from_text(self, text: str, **kwargs):
+    def _extract_variants_from_text(self, text: str,
+                                    doc: Document) -> Optional[List]:
         dates = get_dates_list(text) or []
         dates = [d if isinstance(d, datetime) else datetime(d.year, d.month, d.day)
                  for d in dates if d.year < 3000]
@@ -769,7 +834,8 @@ class DateField(TypedField):
             except:
                 return None
 
-    def _extract_variants_from_text(self, text: str, **kwargs):
+    def _extract_variants_from_text(self, text: str,
+                                    doc: Document) -> Optional[List]:
         dates = get_dates_list(text) or []
         dates = [d.date() if isinstance(d, datetime) else d
                  for d in dates if d.year < 3000]
@@ -801,23 +867,24 @@ class FloatField(TypedField):
     ordinal = True
 
     def is_json_field_value_ok(self, val: Any):
-        return val is None or isinstance(val, float)
+        return val is None or isinstance(val, (float, int, Decimal, str))
 
     def field_value_python_to_json(self, python_value: Any) -> Any:
-        return to_float(python_value)
+        return to_decimal(python_value)
 
     def field_value_json_to_python(self, json_value: Any) -> Any:
-        return to_float(json_value)
+        return to_decimal(json_value)
 
     def extract_from_possible_value(self, possible_value):
-        return to_float(possible_value)
+        return to_decimal(possible_value)
 
-    def _extract_variants_from_text(self, text: str, **kwargs):
+    def _extract_variants_from_text(self, text: str,
+                                    doc: Document) -> Optional[List]:
         amounts = get_amounts(text, return_sources=False)
         return list(amounts) if amounts else None
 
     def example_python_value(self):
-        return random() * 1000
+        return decimal.Decimal(random() * 1000)
 
     def build_vectorization_pipeline(self) -> Tuple[List[Tuple[str, Any]], Callable[[], List[str]]]:
         vect = vectorizers.NumberVectorizer()
@@ -844,12 +911,13 @@ class IntField(TypedField):
     def extract_from_possible_value(self, possible_value):
         return to_int(possible_value)
 
-    def _extract_variants_from_text(self, text: str, **kwargs):
+    def _extract_variants_from_text(self, text: str,
+                                    doc: Document) -> Optional[List]:
         amounts = get_amounts(text, return_sources=False)
         if not amounts:
             return None
         amounts = [int(i) if int(i) == i else i for i in amounts
-                   if isinstance(i, (float, int))]
+                   if isinstance(i, (float, int, Decimal))]
         return amounts or None
 
     def example_python_value(self):
@@ -896,7 +964,8 @@ class AddressField(TypedField):
         else:
             return {'address': str(possible_value)}
 
-    def _extract_variants_from_text(self, text: str, **kwargs):
+    def _extract_variants_from_text(self, text: str,
+                                    doc: Document) -> Optional[List]:
         addresses = list(pyap.parse(text, country='US'))
         result = []
 
@@ -948,7 +1017,8 @@ class CompanyField(TypedField):
         else:
             return None
 
-    def _extract_variants_from_text(self, text: str, **kwargs):
+    def _extract_variants_from_text(self, text: str,
+                                    doc: Document) -> Optional[List]:
         companies = list(CompaniesExtractor.get_companies(
             text, detail_type=True, name_upper=True, strict=True))
         if not companies:
@@ -978,19 +1048,26 @@ class DurationField(TypedField):
     MAX_DURATION = 5000 * 365
 
     def is_json_field_value_ok(self, val: Any):
-        return val is None or isinstance(val, float) or isinstance(val, int)
+        return val is None or isinstance(val, (float, int, Decimal, str))
+
+    def field_value_python_to_json(self, python_value: Any) -> Any:
+        return to_decimal(python_value)
+
+    def field_value_json_to_python(self, json_value: Any) -> Any:
+        return to_decimal(json_value)
 
     def extract_from_possible_value(self, possible_value):
-        return to_float(possible_value)
+        return to_decimal(possible_value)
 
-    def _extract_variants_from_text(self, text: str, **kwargs):
+    def _extract_variants_from_text(self, text: str,
+                                    doc: Document) -> Optional[List]:
         durations = get_durations(text)
         if not durations:
             return None
         return [duration[2] for duration in durations if duration[2] < self.MAX_DURATION]
 
     def example_python_value(self):
-        return random() * 365 * 5
+        return decimal.Decimal(random() * 365 * 5)
 
     def build_vectorization_pipeline(self) -> Tuple[List[Tuple[str, Any]], Callable[[], List[str]]]:
         vect = vectorizers.NumberVectorizer(to_float_converter=lambda d: d.total_seconds() if d else 0 if d else 0)
@@ -1007,18 +1084,19 @@ class PercentField(TypedField):
     MAX_PERCENT = 1
 
     def is_json_field_value_ok(self, val: Any):
-        return val is None or isinstance(val, float) or isinstance(val, int)
+        return val is None or isinstance(val, (float, int, Decimal, str))
 
     def field_value_python_to_json(self, python_value: Any) -> Any:
-        return to_float(python_value)
+        return to_decimal(python_value)
 
     def field_value_json_to_python(self, json_value: Any) -> Any:
-        return to_float(json_value)
+        return to_decimal(json_value)
 
     def extract_from_possible_value(self, possible_value):
-        return to_float(possible_value, decimal_places=6)
+        return to_decimal(possible_value, decimal_places=6)
 
-    def _extract_variants_from_text(self, text: str, **kwargs):
+    def _extract_variants_from_text(self, text: str,
+                                    doc: Document) -> Optional[List]:
         percents = list(get_percents(text, float_digits=8))
         if not percents:
             return None
@@ -1026,7 +1104,7 @@ class PercentField(TypedField):
         # return [percent[2] for percent in percents if percent[2] < self.MAX_PERCENT]
 
     def example_python_value(self):
-        return round(random(), 6)
+        return decimal.Decimal(round(random(), 6))
 
     def build_vectorization_pipeline(self) -> Tuple[List[Tuple[str, Any]], Callable[[], List[str]]]:
         vect = vectorizers.NumberVectorizer()
@@ -1047,14 +1125,31 @@ class RatioField(TypedField):
         if not isinstance(val, dict):
             return False
         n = val.get('numerator')
-        if n is not None and not isinstance(n, float) and not isinstance(n, int):
+        if n is not None and not isinstance(n, int):
             return False
         c = val.get('denominator')
-        if c is not None and not isinstance(c, float) and not isinstance(c, int):
+        if c is not None and not isinstance(c, int):
             return False
         return True
 
-    def _extract_variants_from_text(self, text: str, **kwargs):
+    def field_value_python_to_json(self, python_value: Any) -> Any:
+        if python_value is None:
+            return None
+        d = dict(python_value)
+        d['numerator'] = to_int(d.get('numerator'))
+        d['denominator'] = to_int(d.get('denominator'))
+        return d
+
+    def field_value_json_to_python(self, json_value: Any) -> Any:
+        if json_value is None:
+            return None
+        d = dict(json_value)
+        d['numerator'] = to_int(d.get('numerator'))
+        d['denominator'] = to_int(d.get('denominator'))
+        return d
+
+    def _extract_variants_from_text(self, text: str,
+                                    doc: Document) -> Optional[List]:
         ratios = list(get_ratios(text))
         if not ratios:
             return None
@@ -1127,8 +1222,9 @@ class RelatedInfoField(MultiValueField):
     def example_python_value(self):
         return 1
 
-    def _extract_variants_from_text(self, text: str, **kwargs):
-        return True
+    def _extract_variants_from_text(self, text: str,
+                                    doc: Document) -> Optional[List]:
+        return [True]
 
 
 class PersonField(TypedField):
@@ -1146,7 +1242,8 @@ class PersonField(TypedField):
             return str(possible_value)
         return None
 
-    def _extract_variants_from_text(self, text: str, **kwargs):
+    def _extract_variants_from_text(self, text: str,
+                                    doc: Document) -> Optional[List]:
         persons = get_persons(text, return_source=False)
         return list(persons) if persons else None
 
@@ -1170,20 +1267,21 @@ class AmountField(FloatField):
     ordinal = True
 
     def field_value_python_to_json(self, python_value: Any) -> Any:
-        return to_float(python_value)
+        return to_decimal(python_value)
 
     def field_value_json_to_python(self, json_value: Any) -> Any:
-        return to_float(json_value)
+        return to_decimal(json_value)
 
     def is_json_field_value_ok(self, val: Any):
-        return val is None or isinstance(val, float) or isinstance(val, int)
+        return val is None or isinstance(val, (float, int, Decimal, str))
 
-    def _extract_variants_from_text(self, text: str, **kwargs):
+    def _extract_variants_from_text(self, text: str,
+                                    doc: Document) -> Optional[List]:
         amounts = get_amounts(text, return_sources=False)
         return list(amounts) if amounts else None
 
     def example_python_value(self):
-        return 25000.50
+        return decimal.Decimal(25000.50)
 
     def build_vectorization_pipeline(self) -> Tuple[List[Tuple[str, Any]], Callable[[], List[str]]]:
         vect = vectorizers.NumberVectorizer()
@@ -1207,7 +1305,7 @@ class MoneyField(FloatField):
         if c is not None and not isinstance(c, str):
             return False
         a = val.get('amount')
-        if a is not None and not isinstance(a, float) and not isinstance(a, int):
+        if a is not None and not isinstance(a, (float, int, Decimal, str)):
             return False
         return True
 
@@ -1215,14 +1313,14 @@ class MoneyField(FloatField):
         if python_value is None:
             return None
         d = dict(python_value)
-        d['amount'] = to_float(d.get('amount'))
+        d['amount'] = to_decimal(d.get('amount'))
         return d
 
     def field_value_json_to_python(self, json_value: Any) -> Any:
         if json_value is None:
             return None
         d = dict(json_value)
-        d['amount'] = to_float(d.get('amount'))
+        d['amount'] = to_decimal(d.get('amount'))
         return d
 
     def extract_from_possible_value(self, possible_value):
@@ -1238,7 +1336,7 @@ class MoneyField(FloatField):
             }
 
         try:
-            amount = to_float(str(possible_value))
+            amount = to_decimal(str(possible_value))
             return {
                 'currency': 'USD',
                 'amount': amount
@@ -1248,7 +1346,8 @@ class MoneyField(FloatField):
         except InvalidOperation:
             return None
 
-    def _extract_variants_from_text(self, text: str, **kwargs):
+    def _extract_variants_from_text(self, text: str,
+                                    doc: Document) -> Optional[List]:
         money = get_money(text, return_sources=False, float_digits=6)
         if not money:
             return None
@@ -1258,7 +1357,7 @@ class MoneyField(FloatField):
     def example_python_value(self):
         return {
             'currency': 'USD',
-            'amount': random() * 10000000,
+            'amount': decimal.Decimal(round(random(), 9) * 10000000),
         }
 
     def build_vectorization_pipeline(self) -> Tuple[List[Tuple[str, Any]], Callable[[], List[str]]]:
@@ -1299,43 +1398,20 @@ class GeographyField(TypedField):
     def is_json_field_value_ok(self, val: Any):
         return val is None or isinstance(val, str)
 
-    def _extract_variants_from_text(self, text: str, **kwargs):
-        geo_entities = None
-        text_unit = kwargs.get('text_unit')
-        if isinstance(None, TextUnit):
-            from apps.extract.models import GeoEntityUsage
-            geo_entities = GeoEntityUsage.objects \
-                .filter(text_unit=text_unit) \
-                .values_list('entity__name', flat=True)
-
-        if not geo_entities:
-            from apps.extract import dict_data_cache
-            geo_config = dict_data_cache.get_geo_config()
-            text_languages = None
-            try:
-                if text_unit.document:
-                    document = text_unit.document
-                else:
-                    raise AttributeError(f'`text_unit.document` value {text_unit.document} is invalid')
-            except AttributeError as e:
-                document = kwargs.get('document')
-            if isinstance(document, Document):
-                text_languages = TextUnit.objects \
-                    .filter(document=document, textunittext__text__contains=text) \
-                    .values_list('language', flat=True)
-                if document.language and not text_languages:
-                    text_languages = [document.language]
-            else:
-                try:
-                    text_languages = [text_unit.language]
-                except AttributeError as e:
-                    pass
-            geos = get_geoentities(text=text,
-                                   geo_config_list=geo_config,
-                                   text_languages=text_languages,
-                                   priority=True)
-            geo_entities = [i[0].name for i in geos]
-        return list(geo_entities) or None
+    def _extract_variants_from_text(self, text: str,
+                                    doc: Document) -> Optional[List]:
+        # We don't use the pre-located geo usages here to avoid
+        # different behaviour in regexp field detecting strategy, value suggestion api and other
+        # places where this code may be used.
+        # Looks like the text unit (to find the geo usages) is available in the field detection only
+        # and there are multiple places where only the document and some text is available.
+        from apps.extract import dict_data_cache
+        geo_config = dict_data_cache.get_geo_config()
+        geos = get_geoentities(text=text,
+                               geo_config_list=geo_config,
+                               text_languages=[doc.language],
+                               priority=True)
+        return [g[0].name for g in geos] or None
 
     def example_python_value(self):
         return 'New York'

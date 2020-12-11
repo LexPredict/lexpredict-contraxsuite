@@ -27,8 +27,8 @@
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.7.0/LICENSE"
-__version__ = "1.7.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
+__version__ = "1.8.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -60,6 +60,8 @@ TASK_NAME_UPDATE_PARENT_TASK = 'advanced_celery.update_parent_task'
 TASK_NAME_CLEAN_TASKS_PERIODIC = 'advanced_celery.clean_tasks_periodic'
 
 TASK_NAME_CLEAN_EXPORT_FILES_PERIODIC = 'advanced_celery.clean_export_files_periodic'
+
+TASK_NAME_TASK_HEALTH_CHECK = 'advanced_celery.task_health_check'
 
 TASK_NAME_CLEAN_ALL_TASKS = 'apps.task.tasks.clean_tasks'
 
@@ -95,6 +97,22 @@ TASK_NAME_SET_ANNOTATIONS_STATUS = 'Set Annotations Status'
 
 TASK_NAME_CREATE_SEARCHABLE_PDF = 'Create Searchable PDF'
 
+TASK_NAME_HIGHQ_GET_DOCUMENT = 'HighQ: Get Document'
+
+TASK_NAME_HIGHQ_WRITE_TO_ISHEET = 'HighQ: Write to iSheet'
+
+TASK_NAME_HIGHQ_ISHEET_SYNC = 'HighQ: iSheet Synchronization'
+
+TASK_NAME_HIGHQ_TRIGGER_ISHEET_SYNC = 'HighQ: Trigger iSheet Synchronization'
+
+TASK_NAME_HIGHQ_REFRESH_ACCESS_TOKEN = 'HighQ: Refresh Access Token'
+
+TASK_NAME_IMPORT_DOC_TYPE = 'Import Document Type'
+
+TASK_NAME_IMPORT_DOCUMENTS = 'Import Documents'
+
+TASK_NAME_BUILD_OCR_RATING_MODEL = 'Build OCR Rating Language Model'
+
 TASK_FRIENDLY_NAME = {
     TASK_NAME_CLEAN_TASKS_PERIODIC: 'Clean Tasks Periodically',
     TASK_NAME_CLEAN_EXPORT_FILES_PERIODIC: 'Clean Export Files Periodically',
@@ -107,7 +125,7 @@ TASK_FRIENDLY_NAME = {
     TASK_NAME_INIT_METHOD_STATS_COLLECTORS: 'Init Method Stats Collectors',
     'apps.document.async_tasks.detect_field_values_task.detect_field_values_for_document': 'Detect Field Values On Document (async)',
     'apps.document.tasks.detect_field_values_for_document': 'Detect Field Values On Document',
-    TASK_NAME_IMANAGE_TRIGGER_SYNC: 'IManage: Trigger Sync',
+    TASK_NAME_IMANAGE_TRIGGER_SYNC: 'iManage: Trigger Sync',
     TASK_NAME_CHECK_EMAIL_POOL: 'Check Email Pool',
     'manual_reindex': 'Manual Reindex',
     'index_documents': 'Index Documents',
@@ -126,3 +144,5 @@ TASK_FRIENDLY_NAME = {
     TASK_NAME_CLEAN_ALL_TASKS: 'Clean All Tasks',
     TASK_NAME_REFRESH_MATERIALIZED_VIEW: 'Refresh Materialized View'
 }
+
+RECALL_DISABLED_TASKS = {}

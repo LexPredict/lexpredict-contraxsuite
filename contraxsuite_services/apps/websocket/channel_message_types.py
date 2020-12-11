@@ -27,8 +27,8 @@
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.7.0/LICENSE"
-__version__ = "1.7.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
+__version__ = "1.8.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -44,3 +44,4 @@ CHANNEL_MSG_TYPE_ACTIVE_UPLOAD_SESSIONS = 'active_upload_sessions'
 CHANNEL_MSG_TYPE_CANCELLED_UPLOAD_SESSION = 'cancelled_upload_session'
 CHANNEL_MSG_TYPE_FAILED_LOAD_DOCUMENT = 'failed_load_document'
 CHANNEL_MSG_TYPE_ACTIVE_PDF2PDFA_TASKS = 'active_pdf2pdfa_tasks'
+CHANNEL_MSG_TYPE_DETECTION_FAILED = 'failed_detect_value'

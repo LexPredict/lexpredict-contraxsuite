@@ -36,8 +36,8 @@ from apps.task.views import BaseAjaxTaskView
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.7.0/LICENSE"
-__version__ = "1.7.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
+__version__ = "1.8.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -49,18 +49,19 @@ class SimilarityView(BaseAjaxTaskView):
     def get_metadata(self):
         similarity_items = []
         result_links = []
-        if self.request.POST.get('search_similar_documents'):
+        request_data = self.request.POST or self.request.data
+        if request_data.get('search_similar_documents'):
             similarity_items.append('documents')
             result_links.append({'name': 'View Document Similarity List',
                                  'link': 'analyze:document-similarity-list'})
-        if self.request.POST.get('search_similar_text_units'):
+        if request_data.get('search_similar_text_units'):
             similarity_items.append('text units')
             result_links.append({'name': 'View Text Unit Similarity List',
                                  'link': 'analyze:text-unit-similarity-list'})
         return dict(
             description='similarity for:{}; threshold:{}'.format(
                 ', '.join(similarity_items),
-                self.request.POST.get('similarity_threshold')),
+                request_data.get('similarity_threshold')),
             result_links=result_links)
 
     def start_task_and_return(self, data):
@@ -88,8 +89,8 @@ class SimilarityView(BaseAjaxTaskView):
 
         if count < count_limit:
             self.start_task(data)
-            return self.json_response(self.task_started_message)
-        return self.json_response({'message': f'Processing {count} {unit_type} may take a long time.',
+            return self.json_response({'detail': self.task_started_message})
+        return self.json_response({'detail': f'Processing {count} {unit_type} may take a long time.',
                                    'confirm': True})
 
 
@@ -105,7 +106,8 @@ class ChunkSimilarityView(SimilarityView):
     def get_metadata(self):
         similarity_items = []
         result_links = []
-        tgt = self.request.POST.get('search_target') or 'document'
+        request_data = self.request.POST or self.request.data
+        tgt = request_data.get('search_target') or 'document'
         if tgt == 'document':
             similarity_items.append('documents')
             result_links.append({'name': 'View Document Similarity List',
@@ -117,7 +119,7 @@ class ChunkSimilarityView(SimilarityView):
         return dict(
             description='similarity for:{}; threshold:{}'.format(
                 ', '.join(similarity_items),
-                self.request.POST.get('similarity_threshold')),
+                request_data.get('similarity_threshold')),
             result_links=result_links)
 
     def start_task_and_return(self, data):
@@ -134,7 +136,7 @@ class ChunkSimilarityView(SimilarityView):
         _min, sec = divmod(estimation, 60)
         hour, _min = divmod(_min, 60)
         estim_str = "%d:%02d:%02d" % (hour, _min, sec)
-        return self.json_response({'message': f'Processing may take about {estim_str}.',
+        return self.json_response({'detail': f'Processing may take about {estim_str}.',
                                    'confirm': True})
 
 
@@ -143,10 +145,11 @@ class PartySimilarityView(BaseAjaxTaskView):
     form_class = PartySimilarityForm
 
     def get_metadata(self):
+        request_data = self.request.POST or self.request.data
         return dict(
             description='similarity type:{}, threshold:{}'.format(
-                self.request.POST.get('similarity_type'),
-                self.request.POST.get('similarity_threshold')),
+                request_data.get('similarity_type'),
+                request_data.get('similarity_threshold')),
             result_links=[{'name': 'View Party Usage List',
                            'link': 'extract:party-usage-list'}])
 
@@ -158,16 +161,17 @@ class PreconfiguredDocumentSimilaritySearchView(BaseAjaxTaskView):
     def get_metadata(self):
         similarity_items = []
         result_links = []
-        if self.request.POST.get('search_similar_documents'):
+        request_data = self.request.POST or self.request.data
+        if request_data.get('search_similar_documents'):
             similarity_items.append('documents')
             result_links.append({'name': 'View Document Similarity List',
                                  'link': 'analyze:document-similarity-list'})
-        if self.request.POST.get('search_similar_text_units'):
+        if request_data.get('search_similar_text_units'):
             similarity_items.append('text units')
             result_links.append({'name': 'View Text Unit Similarity List',
                                  'link': 'analyze:text-unit-similarity-list'})
         return dict(
             description='similarity for:{}; threshold:{}'.format(
                 ', '.join(similarity_items),
-                self.request.POST.get('similarity_threshold')),
+                request_data.get('similarity_threshold')),
             result_links=result_links)

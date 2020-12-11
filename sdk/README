@@ -1,0 +1,8 @@
+Generator command for python:
+openapi-generator generate -g python -o python/sdk -i openapi_schema.json --skip-validate-spec
+
+Generator command for csharp:
+openapi-generator generate -g csharp -o csharp/sdk -i openapi_schema.json --skip-validate-spec
+
+Generator command for java:
+openapi-generator generate -g java -o java/sdk -i openapi_schema.json --skip-validate-spec --artifact-id contraxsuite-openapi-client --group-id com.lexpredict --artifact-version 1.8.0 -c java/java.conf

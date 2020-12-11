@@ -135,6 +135,10 @@ rsync -av ${PRIVATE_REPO_PATH}/contraxsuite_services/apps/ \
 rsync -av ${PRIVATE_REPO_PATH}/contraxsuite_services/templates/ \
           ${PUBLIC_REPO_PATH}/contraxsuite_services/templates \
           --delete
+# copy all from /tests
+rsync -av ${PRIVATE_REPO_PATH}/contraxsuite_services/tests/ \
+          ${PUBLIC_REPO_PATH}/contraxsuite_services/tests \
+          --delete
 # copy /fixtures except /private
 rsync -av ${PRIVATE_REPO_PATH}/contraxsuite_services/fixtures/ \
           ${PUBLIC_REPO_PATH}/contraxsuite_services/fixtures \
@@ -151,6 +155,14 @@ rsync -av ${PRIVATE_REPO_PATH}/contraxsuite_services/util/ \
 # copy all from /documentation
 rsync -av ${PRIVATE_REPO_PATH}/documentation/ \
           ${PUBLIC_REPO_PATH}/documentation \
+          --delete
+# copy all from /sdk
+rsync -av ${PRIVATE_REPO_PATH}/sdk/ \
+          ${PUBLIC_REPO_PATH}/sdk \
+          --delete
+# copy all from /sdk
+rsync -av ${PRIVATE_REPO_PATH}/terraform/ \
+          ${PUBLIC_REPO_PATH}/terraform \
           --delete
 # copy /docker folder except local and private folders
 rsync -av ${PRIVATE_REPO_PATH}/docker/ \

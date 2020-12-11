@@ -24,17 +24,23 @@
 """
 # -*- coding: utf-8 -*-
 
+import logging
+
+from django.db.models import F, Value
+from django.db.models.functions import Concat
+
 from lexnlp.extract.en import dict_entities
 from lexnlp.nlp.en.tokens import get_stems
 
+from apps.common import redis
 from apps.common.db_cache.db_cache import DbCache
-from apps.extract.models import GeoEntity, GeoAlias, Court, Term
+from apps.extract.models import GeoEntity, GeoAlias, Court, Term, Party
 from apps.project.models import ProjectTermConfiguration
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.7.0/LICENSE"
-__version__ = "1.7.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
+__version__ = "1.8.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -43,6 +49,7 @@ CACHE_KEY_GEO_CONFIG = 'geo_config'
 CACHE_KEY_COURT_CONFIG = 'court_config'
 CACHE_KEY_TERM_STEMS = 'term_stems'
 CACHE_KEY_TERM_STEMS_PROJECT_PTN = '%s_project_{}' % CACHE_KEY_TERM_STEMS
+CACHE_KEY_PARTY_CONFIG = 'party_config'
 
 
 def cache_geo_config():
@@ -60,11 +67,20 @@ def cache_geo_config():
                     alias, language=alias_lang, is_abbreviation=is_abbrev, alias_id=alias_id
                 ))
     res = list(geo_config.values())
-    DbCache.put_to_db(CACHE_KEY_GEO_CONFIG, res)
+
+    # DbCache.put_to_db(CACHE_KEY_GEO_CONFIG, res)
+    redis.push(CACHE_KEY_GEO_CONFIG, res)
+    return res
 
 
 def get_geo_config():
-    return DbCache.get(CACHE_KEY_GEO_CONFIG)
+    # return DbCache.get(CACHE_KEY_GEO_CONFIG)
+
+    config = redis.pop(CACHE_KEY_GEO_CONFIG)
+    if config:
+        return config
+    # either it doesn't exist OR it's empty
+    return cache_geo_config()
 
 
 def cache_court_config():
@@ -74,11 +90,20 @@ def cache_court_config():
            priority=0,
            aliases=[dict_entities.DictionaryEntryAlias(a) for a in i.alias.split(';')] if i.alias else []
     ) for i in Court.objects.all()]
-    DbCache.put_to_db(CACHE_KEY_COURT_CONFIG, res)
+
+    # DbCache.put_to_db(CACHE_KEY_COURT_CONFIG, res)
+    redis.push(CACHE_KEY_COURT_CONFIG, res)
+    return res
 
 
 def get_court_config():
-    return DbCache.get(CACHE_KEY_COURT_CONFIG)
+    # return DbCache.get(CACHE_KEY_COURT_CONFIG)
+
+    config = redis.pop(CACHE_KEY_COURT_CONFIG)
+    if config:
+        return config
+    # either it doesn't exist OR it's empty
+    return cache_court_config()
 
 
 def cache_term_stems(project_id=None):
@@ -101,14 +126,71 @@ def cache_term_stems(project_id=None):
     for item in term_stems:
         term_stems[item] = dict(values=term_stems[item],
                                 length=len(term_stems[item]))
-    DbCache.put_to_db(key, term_stems)
+
+    # DbCache.put_to_db(key, term_stems)
+    redis.push(key, term_stems)
+    return term_stems
 
 
 def get_term_config(project_id=None):
-    res = None
+    # res = None
+    # if project_id is not None:
+    #     key = CACHE_KEY_TERM_STEMS_PROJECT_PTN.format(project_id)
+    #     res = DbCache.get(key)
+    # if res is None:
+    #     res = DbCache.get(CACHE_KEY_TERM_STEMS)
+    # return res
+
+    # 1. if project config needed
     if project_id is not None:
         key = CACHE_KEY_TERM_STEMS_PROJECT_PTN.format(project_id)
-        res = DbCache.get(key)
-    if res is None:
-        res = DbCache.get(CACHE_KEY_TERM_STEMS)
-    return res
+        config = redis.pop(key)
+        # 1.1. if project config exists
+        if config:
+            return config
+    # 2. either for global config or if project config requested, but it doesn't exist or empty
+    config = redis.pop(CACHE_KEY_TERM_STEMS)
+    if config:
+        return config
+    return cache_term_stems()
+
+
+# def cache_party_config():
+#     redis.r.delete(CACHE_KEY_PARTY_CONFIG)
+#     qs = Party.objects \
+#         .annotate(uniq=Concat(F('type_abbr'), Value(':'), F('name'))) \
+#         .values_list('uniq', 'id')
+#     cached_data = {k: v for k, v in qs}
+#     redis.r.hmset(CACHE_KEY_PARTY_CONFIG, cached_data)
+#     return cached_data
+#
+#
+# def get_party_config():
+#     config = redis.r.hgetall(CACHE_KEY_PARTY_CONFIG)
+#     if config:
+#         return {k.decode('utf-8'): v.decode('utf-8') for k, v in config.items()}
+#     return cache_party_config()
+
+
+def init_config_cache():
+    """
+    Cache configs on app start
+    """
+    logging.info('Initiate cache for configs')
+
+    cache_geo_config()
+    print('Cached Geo config')
+
+    cache_court_config()
+    print('Cached Courts config')
+
+    cache_term_stems()
+    print('Cached Terms config')
+
+    from apps.project.models import ProjectTermConfiguration
+    for project_id in ProjectTermConfiguration.objects.values_list('project_id', flat=True):
+        get_term_config(project_id)
+        print(f'Cached Terms config for project_id={project_id}')
+
+    # cache_party_config()
+    # print('Cached Parties config')

@@ -27,6 +27,7 @@ class Migration(migrations.Migration):
 
     dependencies = [
         ('document', '0191_auto_20200323_1551'),
+        ('common', '0007_reviewstatus_group')
     ]
 
     operations = [

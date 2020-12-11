@@ -27,10 +27,12 @@
 # Future imports
 from __future__ import absolute_import, unicode_literals
 
+import logging
 import traceback
 
 # Django imports
 from django.conf import settings
+from django.contrib.auth.mixins import PermissionRequiredMixin
 from django.db.models import F, Q
 from django.db.models.functions import Now, Coalesce
 from django.http import JsonResponse, HttpResponseForbidden
@@ -39,8 +41,8 @@ from django.urls import reverse
 from django.views.generic.edit import FormView
 
 # Project imports
-import apps.common.mixins
 from apps.analyze.models import TextUnitClassifier, DocumentClassifier
+from apps.common.mixins import JSONResponseView, JqPaginatedListView, CustomDetailView
 from apps.common.model_utils.improved_django_json_encoder import ImprovedDjangoJSONEncoder
 from apps.common.utils import get_api_module
 from apps.deployment.app_data import DICTIONARY_DATA_URL_MAP
@@ -48,26 +50,39 @@ from apps.document.models import DocumentProperty, TextUnitProperty, DocumentTyp
 from apps.dump.app_dump import get_model_fixture_dump, load_fixture_from_dump, download
 from apps.project.models import Project
 from apps.task.forms import LoadDocumentsForm, LoadFixtureForm, LocateForm, \
-    UpdateElasticSearchForm, DumpFixtureForm, TaskDetailForm
+    UpdateElasticSearchForm, DumpFixtureForm, TaskDetailForm, BuildOCRRatingLanguageModelForm
 from apps.task.models import Task
-from apps.task.tasks import call_task, clean_tasks, purge_task, _call_task_func, LoadDocuments
+from apps.task.tasks import call_task, clean_tasks, purge_task, _call_task_func, LoadDocuments, \
+    recall_task, find_tasks_by_session_ids, BuildOCRRatingLanguageModel
 from apps.task.utils.task_utils import check_blocks
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.7.0/LICENSE"
-__version__ = "1.7.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
+__version__ = "1.8.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
+from task_names import RECALL_DISABLED_TASKS
 
 project_api_module = get_api_module('project')
 
 TASK_STARTED_MESSAGE = 'The task has been started. Click OK to close this window. ' \
                        'Click the refresh icon ⟳ in the top right of the grid to view task progress.'
 
+logger = logging.getLogger('django')
 
-class BaseTaskView(apps.common.mixins.AdminRequiredMixin, FormView):
+
+class TaskAccessMixin(PermissionRequiredMixin):
+    raise_exception = True
+
+    def has_permission(self):
+        if self.request.method == 'POST':
+            return self.request.user.has_perm('task.add_task')
+        return self.request.user.has_perm('task.view_task')
+
+
+class BaseTaskView(TaskAccessMixin, FormView):
     template_name = 'task/task_form.html'
     task_name = 'Task'
 
@@ -86,7 +101,7 @@ class BaseTaskView(apps.common.mixins.AdminRequiredMixin, FormView):
         return ctx
 
 
-class BaseAjaxTaskView(apps.common.mixins.AdminRequiredMixin, apps.common.mixins.JSONResponseView):
+class BaseAjaxTaskView(TaskAccessMixin, JSONResponseView):
     task_class = None
     task_name = 'Task'
     form_class = None
@@ -130,17 +145,19 @@ class BaseAjaxTaskView(apps.common.mixins.AdminRequiredMixin, apps.common.mixins
             return HttpResponseForbidden(block_msg)
         if self.disallow_start():
             return HttpResponseForbidden('Forbidden. Such task is already started.')
+        request_data = request.POST or request.data
+
         if self.form_class is None:
-            data = request.POST.dict()
+            data = request.POST.dict() or request.data
         else:
-            form = self.form_class(data=request.POST, files=request.FILES)
+            form = self.form_class(data=request_data, files=request.FILES)
             if not form.is_valid():
                 return self.json_response(form.errors, status=400)
             data = form.cleaned_data
         data['user_id'] = request.user.pk
         data['metadata'] = self.get_metadata()
         data['module_name'] = getattr(self, 'module_name', None) or self.__module__.replace('views', 'tasks')
-        data['skip_confirmation'] = request.POST.get('skip_confirmation') or False
+        data['skip_confirmation'] = request_data.get('skip_confirmation') or False
         return self.start_task_and_return(data)
 
     def start_task_and_return(self, data):
@@ -148,10 +165,10 @@ class BaseAjaxTaskView(apps.common.mixins.AdminRequiredMixin, apps.common.mixins
             self.start_task(data)
         except Exception as e:
             return self.json_response(str(e), status=400)
-        return self.json_response(self.task_started_message)
+        return self.json_response({'detail': self.task_started_message})
 
 
-class LoadTaskView(apps.common.mixins.AdminRequiredMixin, apps.common.mixins.JSONResponseView):
+class LoadTaskView(TaskAccessMixin, JSONResponseView):
     tasks_map = dict(
         terms=dict(task_name='Load Terms'),
         courts=dict(task_name='Load Courts'),
@@ -166,7 +183,7 @@ class LoadTaskView(apps.common.mixins.AdminRequiredMixin, apps.common.mixins.JSO
         return JsonResponse(data, encoder=ImprovedDjangoJSONEncoder, safe=False, **kwargs)
 
     def post(self, request, *args, **kwargs):
-        data = request.POST.dict()
+        data = request.POST.dict() or request.data
         if not data:
             return self.json_response('error', status=404)
         data['user_id'] = request.user.pk
@@ -195,7 +212,7 @@ class LoadTaskView(apps.common.mixins.AdminRequiredMixin, apps.common.mixins.JSO
                 except Exception as e:
                     return self.json_response(str(e), status=400)
                 started_tasks.append(task_name)
-        return self.json_response(TASK_STARTED_MESSAGE)
+        return self.json_response({'detail': TASK_STARTED_MESSAGE})
 
 
 class LoadDocumentsView(BaseAjaxTaskView):
@@ -238,7 +255,7 @@ class LocateTaskView(BaseAjaxTaskView):
     )
 
     def post(self, request, *args, **kwargs):
-        form = self.form_class(request.POST)
+        form = self.form_class(request.POST or request.data)
         if not form.is_valid():
             return self.json_response(form.errors, status=400)
         data = form.cleaned_data
@@ -271,7 +288,7 @@ class LocateTaskView(BaseAjaxTaskView):
                     try:
                         call_task(task_name, **kwargs)
                     except Exception as e:
-                        return self.json_response(str(e), status=400)
+                        return self.json_response({'detail': str(e)}, status=400)
 
         # lexnlp tasks
         lexnlp_task_data = dict()
@@ -297,7 +314,7 @@ class LocateTaskView(BaseAjaxTaskView):
                                                for i, j in lexnlp_task_data.items()
                                                if j.get('locate')]})
             except Exception as e:
-                return self.json_response(str(e), status=400)
+                return self.json_response({'detail': str(e)}, status=400)
 
         response_text = ''
         if started_tasks:
@@ -306,7 +323,7 @@ class LocateTaskView(BaseAjaxTaskView):
         if rejected_tasks:
             response_text += 'Some tasks were rejected (already started).<br />'
             response_text += 'Rejected Tasks: [{}]'.format(', '.join(rejected_tasks))
-        return self.json_response(response_text)
+        return self.json_response({'detail': response_text})
 
 
 class UpdateElasticsearchIndexView(BaseAjaxTaskView):
@@ -314,7 +331,7 @@ class UpdateElasticsearchIndexView(BaseAjaxTaskView):
     form_class = UpdateElasticSearchForm
 
 
-class TaskDetailView(apps.common.mixins.CustomDetailView):
+class TaskDetailView(TaskAccessMixin, CustomDetailView):
     model = Task
 
     def get_form_class(self):
@@ -327,40 +344,68 @@ class TaskDetailView(apps.common.mixins.CustomDetailView):
 class CleanTasksView(BaseAjaxTaskView):
     def post(self, request, *args, **kwargs):
         _call_task_func(clean_tasks, (), request.user.pk, queue=settings.CELERY_QUEUE_SERIAL)
-        return self.json_response('Cleaning task started.')
+        return self.json_response({'detail': 'Cleaning task started.'})
 
 
 class PurgeTaskView(BaseAjaxTaskView):
     def post(self, request, *args, **kwargs):
-        res = purge_task(task_pk=request.POST.get('task_pk'))
+        request_data = request.POST or request.data
+        res = purge_task(task_pk=request_data.get('task_pk'))
         return JsonResponse(res)
 
 
-class TaskListView(apps.common.mixins.AdminRequiredMixin, apps.common.mixins.JqPaginatedListView):
+class RecallTaskView(BaseAjaxTaskView):
+    def post(self, request, *args, **kwargs):
+        request_data = request.POST or request.data
+        res = recall_task(task_pk=request_data.get('task_pk'),
+                          session_id=request_data.get('session_id'),
+                          user_id=request.user.pk,
+                          log_func=lambda m: logger.error(m))
+        return JsonResponse(res)
+
+    def get(self, request, *args, **kwargs):
+        task_pk = request.GET.get('task_pk')
+        task_ids = [task_pk]
+        session_id = request.GET.get('session_id')
+        task_status = Task.objects.get(pk=task_pk).status
+
+        if session_id:
+            task_ids = find_tasks_by_session_ids(session_id, task_status)
+
+        return JsonResponse({'tasks': len(task_ids), 'status': task_status})
+
+
+class TaskListView(TaskAccessMixin, JqPaginatedListView):
     model = Task
     ordering = '-date_start'
-    json_fields = ['name', 'display_name', 'date_start', 'username', 'metadata',
-                   'date_done', 'status', 'progress', 'time', 'date_work_start', 'work_time', 'worker', 'description']
+    json_fields = ['name', 'display_name', 'date_start', 'user_name', 'metadata',
+                   'date_done', 'status', 'progress', 'time', 'date_work_start',
+                   'work_time', 'worker', 'description', 'kwargs']
 
     db_time = Coalesce(F('date_done') - F('date_start'), Now() - F('date_start'))
     db_work_time = Coalesce(F('date_done') - F('date_work_start'), Now() - F('date_work_start'),
                             F('date_start') - F('date_start'))
-    db_user = Coalesce(F('user__username'), F('main_task__user__username'))
+    db_user = Coalesce(F('user__name'), F('main_task__user__name'))
     template_name = 'task/task_list.html'
 
     def get_queryset(self):
         qs = Task.objects.main_tasks(show_failed_excluded_from_tracking=True)\
             .exclude(Q(visible=False) & Q(status__in=Task.objects.NON_FAILED_STATES))\
             .order_by('-date_start')
-        qs = qs.annotate(time=self.db_time, work_time=self.db_work_time, username=self.db_user)
+        qs = qs.annotate(time=self.db_time, work_time=self.db_work_time, user_name=self.db_user)
         return qs
 
     def get_json_data(self, **kwargs):
         data = super().get_json_data()
         for item in data['data']:
+            item['recallable'] = item['name'] not in RECALL_DISABLED_TASKS
             item['display_name'] = item['display_name'] or item['name']
             item['url'] = self.full_reverse('task:task-detail', args=[item['pk']])
             item['purge_url'] = reverse('task:purge-task')
+            item['recall_url'] = reverse('task:recall-task')
+            item['upload_session_id'] = ''
+            if item['kwargs'] and 'session_id' in item['kwargs']:
+                item['upload_session_id'] = item['kwargs']['session_id']
             item['result_links'] = []
             if item['metadata']:
                 if isinstance(item['metadata'], dict):
@@ -407,7 +452,8 @@ class LoadFixturesView(BaseAjaxTaskView):
         if not file_:
             return JsonResponse({'fixture_file': ['This field is required']}, status=400)
         data = file_.read()
-        mode = request.POST.get('mode', 'default')
+        request_data = request.POST or request.data
+        mode = request_data.get('mode', 'default')
         res = load_fixture_from_dump(data, mode)
         status = 200 if res['status'] == 'success' else 400
         return JsonResponse(res, status=status)
@@ -417,7 +463,8 @@ class DumpFixturesView(LoadFixturesView):
     form_class = DumpFixtureForm
 
     def post(self, request, *args, **kwargs):
-        form = self.form_class(request.POST)
+        request_data = request.POST or request.data
+        form = self.form_class(request_data)
         if not form.is_valid():
             return self.json_response(form.errors, status=400)
         form_data = form.cleaned_data
@@ -430,3 +477,14 @@ class DumpFixturesView(LoadFixturesView):
                     '<br/>{}<br/>{}'.format(str(e), tb)
             return self.json_response({'app_name': [error]}, status=400)
         return download(json_data, file_name)
+
+
+class BuildOCRRatingLanguageModelView(BaseAjaxTaskView):
+    task_name = BuildOCRRatingLanguageModel.name
+    form_class = BuildOCRRatingLanguageModelForm
+
+    html_form_class = 'popup-form import-documents-form'
+
+    def provide_extra_task_data(self, request, data, *args, **kwargs):
+        if hasattr(request, 'user') and request.user:
+            data['user_id'] = request.user.pk

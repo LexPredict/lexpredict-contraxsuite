@@ -27,42 +27,42 @@
 # Standard imports
 import itertools
 import uuid
-from typing import Set
+from typing import Set, Dict
 
 from celery.states import UNREADY_STATES, PENDING, SUCCESS, FAILURE, REVOKED
 # Django imports
 from django.conf import settings
 from django.contrib.postgres.fields import JSONField
 from django.core.mail import send_mail
-from django.db import models
+from django.db import models, connection
 from django.db.models import Q
 from django.db import transaction
-from django.db.models import Count, Max, QuerySet, Sum
+from django.db.models import Count, Max, Sum
 from django.db.models.deletion import CASCADE, SET_NULL
 from django.db.models.signals import m2m_changed, post_save, post_delete
 from django.dispatch import receiver
 from django.template.loader import render_to_string
 from django.utils.timezone import now
+from guardian.shortcuts import assign_perm, get_content_type
 
 # Project imports
+from apps.common import redis
 from apps.common.fields import StringUUIDField
 from apps.common.models import get_default_status
 from apps.document.models import DocumentType
 from apps.extract.models import Term
 from apps.project import signals
+from apps.rawdb.repository.raw_db_repository import doc_fields_table_name
 from apps.task.models import Task
-from apps.users.models import User
+from apps.users.models import User, CustomUserObjectPermission
+from apps.users.permissions import *
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.7.0/LICENSE"
-__version__ = "1.7.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
+__version__ = "1.8.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
-
-
-def all_reviewers_and_managers():
-    return {'role__is_admin': False}
 
 
 class TaskQueue(models.Model):
@@ -82,8 +82,7 @@ class TaskQueue(models.Model):
         'document.Document', related_name='completed_documents_task_queue', blank=True)
 
     # Reviewer set
-    reviewers = models.ManyToManyField(
-        User, limit_choices_to=all_reviewers_and_managers, blank=True)
+    reviewers = models.ManyToManyField(User, blank=True)
 
     class Meta:
         ordering = ['description']
@@ -233,6 +232,7 @@ class ProjectManager(models.Manager):
                 f'qs_owners_reviewers_super_reviewers_by_doc_id: no documents found for doc_id="{doc_id}"') from e
 
         return User.objects.filter(Q(project_owners__pk=project_id) |
+                                   Q(project_junior_reviewers__pk=project_id) |
                                    Q(project_reviewers__pk=project_id) |
                                    Q(project_super_reviewers__pk=project_id))
 
@@ -261,6 +261,9 @@ class Project(models.Model):
     # Reviewers who can upload docs
     super_reviewers = models.ManyToManyField(User, related_name="project_super_reviewers", blank=True)
 
+    # Reviewers who can edit only assigned docs
+    junior_reviewers = models.ManyToManyField(User, related_name="project_junior_reviewers", blank=True)
+
     # Status
     status = models.ForeignKey('common.ReviewStatus', default=get_default_status,
                                blank=True, null=True, on_delete=CASCADE)
@@ -286,6 +289,20 @@ class Project(models.Model):
 
     class Meta:
         ordering = ['name']
+        permissions = (
+            ('view_documents', 'View project documents'),
+            ('recluster_project', 'Re-cluster project documents'),
+            ('add_project_user', 'Add project user'),
+            ('add_project_document', 'Add project document'),
+            ('detect_field_values', 'Detect field values in a project'),
+            ('individual_assign', 'Assign document'),
+            ('bulk_assign', 'Bulk assign documents'),
+            ('bulk_update_status', 'Bulk update document status'),
+            ('view_project_stats', 'View project stats'),
+            ('change_document_field_values', 'Change field values in project documents'),
+            ('change_document_status', 'Change status of individual document in a project'),
+            ('delete_documents', 'Delete project documents'),
+        )
 
     def __str__(self):
         """"
@@ -296,6 +313,15 @@ class Project(models.Model):
 
     def _fire_saved(self, old_instance=None):
         signals.project_saved.send(self.__class__, user=None, instance=self, old_instance=old_instance)
+
+    @property
+    def available_assignees(self):
+        # TODO: do not use union as it doesn't work with filters
+        return self.owners.all() \
+            .union(self.junior_reviewers.all()) \
+            .union(self.super_reviewers.all()) \
+            .union(self.reviewers.all()) \
+            .distinct()
 
     @property
     def all_document_set(self):
@@ -433,60 +459,119 @@ class Project(models.Model):
         if delete:
             project.delete()
 
+    def get_team(self):
+        return self.owners.all() \
+            .union(self.reviewers.all()) \
+            .union(self.super_reviewers.all()) \
+            .union(self.junior_reviewers.all())
+
+    def reset_project_team_perms(self):
+        """
+        Needed in case if a user team status is changed, in this case
+        a signal which creates new permission may precede a signal which deletes that permission
+        in this case we'll loose user permissions
+        """
+        if self.owners.exists():
+            for perm_name in owner_project_permissions:
+                assign_perm(perm_name, self.owners.all(), self)
+
+        if self.super_reviewers.exists():
+            for perm_name in super_reviewer_project_permissions:
+                assign_perm(perm_name, self.super_reviewers.all(), self)
+
+        reviewers = self.reviewers.difference(self.super_reviewers.all())
+        if reviewers.exists():
+            for perm_name in reviewer_project_permissions:
+                assign_perm(perm_name, reviewers, self)
+
+        if self.junior_reviewers.exists():
+            for perm_name in junior_reviewer_project_permissions:
+                assign_perm(perm_name, self.junior_reviewers.all(), self)
+
+    def clean_up_assignees(self, removed_user_ids):
+        if not removed_user_ids:
+            return
+
+        documents_qs = self.document_set.filter(assignee_id__in=removed_user_ids)
+        if documents_qs.exists():
+            document_ids = list(documents_qs.values_list('pk', flat=True))
+            documents_qs.update(assignee=None)
+            from apps.rawdb.tasks import plan_reindex_tasks_in_chunks
+            from apps.document.repository.document_field_repository import DocumentFieldRepository
+            from apps.document.constants import DocumentSystemField
+
+            field_repo = DocumentFieldRepository()
+            field_repo.update_docs_assignee(document_ids, None)
+            plan_reindex_tasks_in_chunks(document_ids, None,
+                                         cache_system_fields=[DocumentSystemField.assignee.value],
+                                         cache_generic_fields=False, cache_user_fields=False)
+
+        from apps.document.models import FieldAnnotation, FieldAnnotationFalseMatch
+        FieldAnnotation.objects.filter(
+            document__project=self, assignee_id__in=removed_user_ids).update(assignee=None)
+        FieldAnnotationFalseMatch.objects.filter(
+            document__project=self, assignee_id__in=removed_user_ids).update(assignee=None)
+
 
 @receiver(post_delete, sender=Project)
 def delete_cached_terms(sender, instance, **kwargs):
     from apps.extract.dict_data_cache import CACHE_KEY_TERM_STEMS_PROJECT_PTN, DbCache
     DbCache.clean_cache(CACHE_KEY_TERM_STEMS_PROJECT_PTN.format(instance.pk))
+    redis.r.delete(CACHE_KEY_TERM_STEMS_PROJECT_PTN.format(instance.pk))
 
 
 @receiver(post_save, sender=Project)
 def reviewers_total(sender, instance, **kwargs):
+
+    # TODO: add junior_reviewers into reviewers? it'd better keep all of them separate
+
     all_reviewers_pk = set(instance.reviewers.values_list('pk', flat=True))
     super_reviewers_pk = set(instance.super_reviewers.values_list('pk', flat=True))
     extra_pk = super_reviewers_pk - all_reviewers_pk
     if extra_pk:
         instance.reviewers.add(*extra_pk)
-    if not instance.owners.exists() and getattr(instance, 'latest_removed', []):
-        instance.owners.add(instance.latest_removed.pop())
 
 
-def clean_up_assignees(instance, removed_user_ids):
-    documents_qs = instance.document_set.filter(assignee_id__in=removed_user_ids)
-    if documents_qs.exists():
-        document_ids = list(documents_qs.values_list('pk', flat=True))
-        documents_qs.update(assignee=None)
-        from apps.rawdb.tasks import plan_reindex_tasks_in_chunks
-        from apps.document.repository.document_field_repository import DocumentFieldRepository
-        from apps.document.constants import DocumentSystemField
+@receiver(post_delete, sender=Project)
+def delete_perms_on_project_removed(sender, instance, **kwargs):
+    ctype = get_content_type(Project)
+    CustomUserObjectPermission.objects.filter(content_type=ctype, object_pk=instance.pk).delete()
 
-        field_repo = DocumentFieldRepository()
-        field_repo.update_docs_assignee(document_ids, None)
-        plan_reindex_tasks_in_chunks(document_ids, None,
-                                     cache_system_fields=[DocumentSystemField.assignee.value],
-                                     cache_generic_fields=False, cache_user_fields=False)
 
-    from apps.document.models import FieldAnnotation, FieldAnnotationFalseMatch
-    FieldAnnotation.objects.filter(
-        document__project=instance, assignee_id__in=removed_user_ids).update(assignee=None)
-    FieldAnnotationFalseMatch.objects.filter(
-        document__project=instance, assignee_id__in=removed_user_ids).update(assignee=None)
+@receiver(m2m_changed, sender=Project.junior_reviewers.through)
+def remove_junior_reviewers_perms(instance, action, pk_set, **kwargs):
+    if action == 'post_remove':
+        users = User.objects.filter(pk__in=pk_set)
+        if action == 'post_remove':
+            for perm_name in junior_reviewer_project_permissions:
+                remove_perm(perm_name, users, instance)
 
 
 @receiver(m2m_changed, sender=Project.reviewers.through)
-def reviewers_changed(instance, action, **kwargs):
+def remove_reviewers_perms(instance, action, pk_set, **kwargs):
     if action == 'post_remove':
-        removed_user_ids = kwargs.get('pk_set')
-        transaction.on_commit(lambda: clean_up_assignees(instance, removed_user_ids))
+        users = User.objects.filter(pk__in=pk_set)
+        if action == 'post_remove':
+            for perm_name in reviewer_project_permissions:
+                remove_perm(perm_name, users, instance)
+
+
+@receiver(m2m_changed, sender=Project.super_reviewers.through)
+def remove_super_reviewers_perms(instance, action, pk_set, **kwargs):
+    if action == 'post_remove':
+        users = User.objects.filter(pk__in=pk_set)
+        if action == 'post_remove':
+            for perm_name in super_reviewer_project_permissions:
+                remove_perm(perm_name, users, instance)
 
 
 @receiver(m2m_changed, sender=Project.owners.through)
-def owners_changed(instance, action, **kwargs):
+def remove_owners_perms(instance, action, pk_set, **kwargs):
     if action == 'post_remove':
-        if not instance.owners.exists():
-            instance.latest_removed = kwargs.get('pk_set', {})
-        removed_user_ids = kwargs.get('pk_set')
-        transaction.on_commit(lambda: clean_up_assignees(instance, removed_user_ids))
+        users = User.objects.filter(pk__in=pk_set)
+        if action == 'post_remove':
+            for perm_name in owner_project_permissions:
+                remove_perm(perm_name, users, instance)
 
 
 class UploadSession(models.Model):
@@ -579,6 +664,41 @@ class UploadSession(models.Model):
             result[file_name] = file_data
         # store result for further processing in status() and document_tasks_progress_total()
         self._document_tasks_progress = result
+        return result
+
+    def get_document_loading_progress(self) -> Dict[str, int]:
+        from apps.task.tasks import LoadDocuments
+        # from apps.project.tasks import LoadArchive
+        load_tasks_total = Task.objects.filter(
+            name__in=[LoadDocuments.name],
+            upload_session_id=self.pk).count()
+
+        docs = self.document_set.all()
+        doc_type = self.project.type
+
+        docs_count = docs.count()
+        docs_count = max(load_tasks_total, docs_count)
+        doc_ids = list(docs.values_list('pk', flat=True))
+
+        docs_cached = 0
+        if doc_ids:
+            doc_ids_str = ','.join([str(id) for id in doc_ids])
+            cache_table_name = doc_fields_table_name(doc_type.code)
+            with connection.cursor() as cursor:
+                cursor.execute(f'''SELECT COUNT(*) FROM "{cache_table_name}" WHERE document_id IN ({doc_ids_str});''')
+                row = cursor.fetchone()
+                docs_cached = row[0]
+
+        # total progress is a weighted sum
+        result = {'task_count': load_tasks_total,
+                  'docs_count': docs_count,
+                  'docs_cached': docs_cached}
+        progress = 0
+
+        if docs_count > 0:
+            numerator = result['docs_cached']
+            progress = round(100 * numerator / docs_count, 1)
+        result['progress'] = progress
         return result
 
     @property
@@ -758,6 +878,7 @@ def cache_terms(instance, action, pk_set, **kwargs):
 def delete_cached_terms_2(sender, instance, **kwargs):
     from apps.extract.dict_data_cache import CACHE_KEY_TERM_STEMS_PROJECT_PTN, DbCache
     DbCache.clean_cache(CACHE_KEY_TERM_STEMS_PROJECT_PTN.format(instance.project.pk))
+    redis.r.delete(CACHE_KEY_TERM_STEMS_PROJECT_PTN.format(instance.project.pk))
 
 
 class UserProjectsSavedFilter(models.Model):

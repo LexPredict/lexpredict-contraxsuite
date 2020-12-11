@@ -23,19 +23,17 @@
     or shipping ContraxSuite within a closed source product.
 """
 # -*- coding: utf-8 -*-
-from tests.django_test_case import *
+from unittest import TestCase
 import json
 from apps.document.scheme_migrations.scheme_migration import SchemeMigration
-from django.test import TestCase
+from tests.testutils import load_resource_document
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.7.0/LICENSE"
-__version__ = "1.7.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
+__version__ = "1.8.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
-
-from tests.testutils import load_resource_document
 
 
 class TestSchemeMigration(TestCase):

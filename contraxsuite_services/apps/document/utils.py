@@ -24,17 +24,21 @@
 """
 # -*- coding: utf-8 -*-
 
+from guardian.ctypes import get_content_type
+
 # Project imports
 from apps.common.file_storage import get_file_storage
+from apps.document.models import Document
 from apps.document.repository.document_field_repository import DocumentFieldRepository
 from apps.document.repository.document_repository import DocumentRepository
 from apps.task.models import Task
 from apps.task.tasks import purge_task
+from apps.users.models import CustomUserObjectPermission
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.7.0/LICENSE"
-__version__ = "1.7.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
+__version__ = "1.8.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -63,3 +67,7 @@ def cleanup_document_relations(document):
     # 3. Remove files
     if file_storage.document_exists(document.source_path):
         file_storage.delete_document(document.source_path)
+
+    # 4. Remove object permissions
+    ctype = get_content_type(Document)
+    CustomUserObjectPermission.objects.filter(content_type=ctype, object_pk=document.pk).delete()

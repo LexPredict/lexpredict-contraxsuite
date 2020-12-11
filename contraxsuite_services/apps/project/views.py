@@ -26,15 +26,17 @@
 
 # Django imports
 from django.contrib import messages
-from django.contrib.auth.mixins import LoginRequiredMixin
+from django.contrib.auth.mixins import LoginRequiredMixin, PermissionRequiredMixin
 from django.db.models import Count, Q
 from django.http import HttpResponseForbidden, JsonResponse
 from django.shortcuts import redirect
 from django.urls import reverse
+from guardian.shortcuts import get_objects_for_user
 
 # Project imports
-import apps.common.mixins
 from apps.analyze.models import DocumentCluster
+from apps.common.mixins import CustomCreateView, JqPaginatedListView, CustomUpdateView, \
+    JSONResponseView
 from apps.common.model_utils.improved_django_json_encoder import ImprovedDjangoJSONEncoder
 from apps.common.utils import cap_words
 from apps.project.models import Project, TaskQueue, UserProjectsSavedFilter
@@ -43,13 +45,13 @@ from apps.project.forms import (
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.7.0/LICENSE"
-__version__ = "1.7.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
+__version__ = "1.8.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
 
-class ProjectListView(apps.common.mixins.JqPaginatedListView):
+class ProjectListView(JqPaginatedListView):
     model = Project
     json_fields = ['name', 'description', 'type__title', 'status__name', 'total_documents_count', 'reviewed_documents_count']
 
@@ -63,36 +65,44 @@ class ProjectListView(apps.common.mixins.JqPaginatedListView):
         return data
 
     def get_queryset(self):
-        qs = super().get_queryset()
-        qs = SelectProjectsView.get_user_projects(self.request.user, qs=qs)
+        # permission check
+        qs = SelectProjectsView.get_user_projects(self.request.user)
         qs = qs.filter(delete_pending=False).annotate(
             total_documents_count=Count('document', filter=Q(document__delete_pending=False)),
             reviewed_documents_count=Count('document', filter=Q(document__delete_pending=False, status__group__is_active=False))
         )
         return qs
 
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        ctx['can_add_project'] = self.request.user.has_perm('project.add_project')
+        return ctx
 
-# class DashboardView(TemplateView):
-#     template_name = 'project/dashboard.html'
 
-
-class ProjectCreateView(apps.common.mixins.CustomCreateView):
+class ProjectCreateView(CustomCreateView):
     model = Project
     fields = ('name', 'description', 'task_queues')
+
+    def has_permission(self):
+        return self.request.user.has_perm('project.add_project')
 
     def get_success_url(self):
         return reverse('project:project-list')
 
 
-class ProjectUpdateView(ProjectCreateView, apps.common.mixins.CustomUpdateView):
-    pass
+class ProjectUpdateView(ProjectCreateView, CustomUpdateView):
+    def has_permission(self):
+        return self.request.user.has_perm('project.change_project', self.get_object())
 
 
-class TaskQueueListView(apps.common.mixins.JqPaginatedListView):
+class TaskQueueListView(PermissionRequiredMixin, JqPaginatedListView):
     model = TaskQueue
     json_fields = ['description', 'project__pk']
     annotate = {'reviewers_count': Count('reviewers', distinct=True)}
     template_name = 'project/task_queue_list.html'
+
+    def has_permission(self):
+        return self.request.user.has_perm('project.view_taskqueue')
 
     def get_json_data(self, **kwargs):
         only_completed = self.request.GET.get('only_completed')
@@ -155,14 +165,15 @@ class TaskQueueListView(apps.common.mixins.JqPaginatedListView):
         if "document_pk" in self.request.GET:
             qs = qs.filter(documents__pk=self.request.GET['document_pk'])
 
-        if self.request.user.is_reviewer:
-            qs = qs.filter(reviewers=self.request.user)
         return qs
 
 
-class TaskQueueCreateView(apps.common.mixins.CustomCreateView):
+class TaskQueueCreateView(CustomCreateView):
     model = TaskQueue
     fields = ('description', 'documents', 'reviewers')
+
+    def has_permission(self):
+        return self.request.user.has_perm('project.add_taskqueue')
 
     def get_success_url(self):
         if 'project_id' in self.request.GET:
@@ -172,8 +183,9 @@ class TaskQueueCreateView(apps.common.mixins.CustomCreateView):
         return reverse('project:task-queue-list')
 
 
-class TaskQueueUpdateView(TaskQueueCreateView, apps.common.mixins.CustomUpdateView):
-    pass
+class TaskQueueUpdateView(TaskQueueCreateView, CustomUpdateView):
+    def has_permission(self):
+        return self.request.user.has_perm('project.change_taskqueue', self.get_object())
 
 
 def add_to_task_queue(request, task_queue_pk, document_pk):
@@ -182,7 +194,7 @@ def add_to_task_queue(request, task_queue_pk, document_pk):
     """
     task_queue = TaskQueue.objects.get(pk=task_queue_pk)
     if task_queue.documents.filter(pk=document_pk).exists():
-        if not request.user.is_admin and not request.user.is_manager:
+        if not request.user.has_perm('project.change_taskqueue', task_queue):
             return HttpResponseForbidden()
         task_queue.documents.remove(document_pk)
         message = 'removed from'
@@ -219,7 +231,11 @@ def mark_document_completed(request, task_queue_pk, document_pk):
     return redirect(reverse('document:document-detail', args=[document_pk]))
 
 
-class TaskQueueAddClusterDocuments(apps.common.mixins.AdminRequiredMixin, apps.common.mixins.JSONResponseView):
+class TaskQueueAddClusterDocuments(PermissionRequiredMixin, JSONResponseView):
+
+    def has_permission(self):
+        return self.request.user.has_perm('project.change_taskqueue')
+
     def get(self, request, *args, **kwargs):
         return JsonResponse({'task_queue_choice_form': TaskQueueChoiceForm().as_p(),
                              'task_queue_create_form': TaskQueueForm().as_p(),
@@ -274,20 +290,13 @@ class TaskQueueAddClusterDocuments(apps.common.mixins.AdminRequiredMixin, apps.c
                             encoder=ImprovedDjangoJSONEncoder, safe=False)
 
 
-class SelectProjectsView(LoginRequiredMixin, apps.common.mixins.JSONResponseView):
+class SelectProjectsView(LoginRequiredMixin, JSONResponseView):
     """
     Select Project(s) to filter Document/TextUnit/ThingUsage views
     """
     @staticmethod
-    def get_user_projects(user, qs=None):
-        user_projects = qs or Project.objects
-        if user.is_admin:
-            user_projects = user_projects.all()
-        elif user.is_reviewer:
-            user_projects = user_projects.filter(reviewers=user)
-        elif user.is_manager:
-            user_projects = user_projects.filter(Q(reviewers=user) | Q(owners=user))
-        return user_projects.distinct()
+    def get_user_projects(user):
+        return get_objects_for_user(user, 'project.view_project', Project)
 
     def post(self, request, *args, **kwargs):
         project_ids = request.POST.getlist('project_ids[]')

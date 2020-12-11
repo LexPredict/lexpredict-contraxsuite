@@ -24,24 +24,50 @@
 """
 # -*- coding: utf-8 -*-
 
-import rest_framework.views
+from rest_framework import serializers
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.views import APIView
+
 # Django imports
 from django.conf.urls import url
 
 # Project imports
-from apps.similarity.views import SimilarityView, PartySimilarityView
-
-# Third-party imports
+from apps.similarity.views import SimilarityView, PartySimilarityView, SimilarityByFeaturesView
+from apps.common.schemas import ObjectResponseSchema, json_ct
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.7.0/LICENSE"
-__version__ = "1.7.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
+__version__ = "1.8.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
 
-class SimilarityAPIView(rest_framework.views.APIView, SimilarityView):
+class SimilaritySchema(ObjectResponseSchema):
+    object_response_for_methods = ['GET', 'POST']
+
+    class SimilarityPOSTObjectResponseSerializer(serializers.Serializer):
+        detail = serializers.CharField()
+        confirm = serializers.BooleanField(required=False)
+
+    def get_responses(self, path, method):
+        res = super().get_responses(path, method)
+        if method == 'GET':
+            return res
+        return {
+            '200': {
+                'content': {json_ct: {'schema': {'$ref': 'SimilarityPOSTObjectResponse'}}}}}
+
+    def get_components(self, path, method):
+        return {'SimilarityPOSTObjectResponse': self.map_serializer(self.SimilarityPOSTObjectResponseSerializer())}
+
+
+class RunTaskPermission(IsAuthenticated):
+    def has_permission(self, request, view):
+        return request.user.has_perm('task.add_task')
+
+
+class SimilarityAPIView(APIView, SimilarityView):
     """
     "Similarity" admin task\n
     POST params:
@@ -50,11 +76,34 @@ class SimilarityAPIView(rest_framework.views.APIView, SimilarityView):
         - similarity_threshold: int
         - use_idf: bool
         - delete: bool
+        - project: bool
     """
     http_method_names = ["get", "post"]
+    schema = SimilaritySchema()
+    permission_classes = [RunTaskPermission]
 
 
-class PartySimilarityAPIView(rest_framework.views.APIView, PartySimilarityView):
+class SimilarityByFeaturesAPIView(APIView, SimilarityByFeaturesView):
+    """
+    "Similarity" admin task\n
+    POST params:
+        - search_similar_documents: bool
+        - search_similar_text_units: bool
+        - similarity_threshold: int
+        - use_idf: bool
+        - delete: bool
+        - project: int
+        - feature_source: list - list[date, definition, duration, court,
+          currency_name, currency_value, term, party, geoentity]
+        - unit_type: str sentence|paragraph
+        - distance_type: str - see scipy.spatial.distance._METRICS
+    """
+    http_method_names = ["get", "post"]
+    schema = SimilaritySchema()
+    permission_classes = [RunTaskPermission]
+
+
+class PartySimilarityAPIView(APIView, PartySimilarityView):
     """
     "Party Similarity" admin task\n
     POST params:
@@ -64,11 +113,15 @@ class PartySimilarityAPIView(rest_framework.views.APIView, PartySimilarityView):
         - delete: bool
     """
     http_method_names = ["get", "post"]
+    schema = SimilaritySchema()
+    permission_classes = [RunTaskPermission]
 
 
 urlpatterns = [
     url(r'^similarity/$', SimilarityAPIView.as_view(),
         name='similarity'),
+    url(r'^similarity-by-features/$', SimilarityByFeaturesAPIView.as_view(),
+        name='similarity-by-features'),
     url(r'^party-similarity/$', PartySimilarityAPIView.as_view(),
         name='party-similarity'),
 ]

@@ -6,7 +6,10 @@ from django.test import TestCase
 
 def init_django():
     os.environ["DJANGO_SETTINGS_MODULE"] = "settings"
-    django.setup()
+    try:
+        django.setup()
+    except:
+        pass
 
 
 class DjangoTestCase(TestCase):

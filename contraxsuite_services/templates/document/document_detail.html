@@ -880,7 +880,7 @@
           datafields: [
             { name: 'document_id', type: 'int' },
             { name: 'history_date', type: 'date' },
-            { name: 'history_user__username', type: 'string' },
+            { name: 'history_user__name', type: 'string' },
             { name: 'note', type: 'string' }
           ],
           localdata: record.history
@@ -900,7 +900,7 @@
               { text: 'Created Date', datafield: 'history_date', width: 150,
                 filtertype: 'date', cellsformat: 'MM-dd-yyyy HH:mm',
                 align: 'center', cellsalign: 'center' },
-              { text: 'User', datafield: 'history_user__username', width: 150,
+              { text: 'User', datafield: 'history_user__name', width: 150,
                 align: 'center', cellsalign: 'center' },
               { text: 'Note', datafield: 'note', width: 'auto', minwidth: 300,
                 cellsrenderer: note_renderer,
@@ -925,7 +925,7 @@
         { name: 'pk', type: 'int' },
         { name: 'text_unit__pk', type: 'int' },
         { name: 'tag', type: 'string' },
-        { name: 'user__username', type: 'string' },
+        { name: 'user__name', type: 'string' },
         { name: 'timestamp', type: 'date' },
         { name: 'delete_url', type: 'string' }
       ];
@@ -944,7 +944,7 @@
         show_menu(menu_data, grid, row.pk);
       };
       var tags_columns = [
-        { text: 'User', datafield: 'user__username', width: 120,
+        { text: 'User', datafield: 'user__name', width: 120,
           align: 'center', cellsalign: 'center' },
         { text: 'Date', datafield: 'timestamp', width: 120,
           filtertype: 'date', cellsformat: 'MM-dd-yyyy HH:mm',
@@ -971,9 +971,9 @@
         { name: 'key', type: 'string' },
         { name: 'value', type: 'string' },
         { name: 'created_date', type: 'date' },
-        { name: 'created_by__username', type: 'string' },
+        { name: 'created_by__name', type: 'string' },
         { name: 'modified_date', type: 'date' },
-        { name: 'modified_by__username', type: 'string' },
+        { name: 'modified_by__name', type: 'string' },
         { name: 'edit_url', type: 'string' },
         { name: 'delete_url', type: 'string' }
       ];
@@ -996,12 +996,12 @@
           align: 'center', cellsalign: 'center' },
         { text: 'Property Value', datafield: 'value', width: 'auto',
           align: 'center', cellsalign: 'center' },
-        { text: 'Created By', datafield: 'created_by__username', width: 120,
+        { text: 'Created By', datafield: 'created_by__name', width: 120,
           align: 'center', cellsalign: 'center' },
         { text: 'Created Date', datafield: 'created_date', width: 120,
           filtertype: 'date', cellsformat: 'MM-dd-yyyy HH:mm',
           align: 'center', cellsalign: 'center' },
-        { text: 'Modified By', datafield: 'modified_by__username', width: 120,
+        { text: 'Modified By', datafield: 'modified_by__name', width: 120,
           align: 'center', cellsalign: 'center' },
         { text: 'Modified Date', datafield: 'modified_date', width: 120,
           filtertype: 'date', cellsformat: 'MM-dd-yyyy HH:mm',

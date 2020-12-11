@@ -38,8 +38,8 @@ from apps.extract.models import Party
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.7.0/LICENSE"
-__version__ = "1.7.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
+__version__ = "1.8.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -101,7 +101,7 @@ class DocumentRepository(BaseDocumentRepository):
                                project_id: int,
                                pack_size: int = 100) -> Generator[List[int], None, None]:
         with connection.cursor() as cursor:
-            cursor.execute('select id from document_document where project_id = %d', [project_id])
+            cursor.execute('select id from document_document where project_id = %s', [project_id])
 
             rows = cursor.fetchmany(pack_size)
             while rows:

@@ -137,7 +137,6 @@ location /flower {
     error_page 502 /404.html;
 
     proxy_pass ${DOLLAR}target;
-    rewrite ^/flower/(.*)${DOLLAR} /${DOLLAR}1 break;
     proxy_set_header X-Forwarded-For ${DOLLAR}proxy_add_x_forwarded_for;
     proxy_set_header X-Real-IP ${DOLLAR}remote_addr;
     proxy_set_header Host ${DOLLAR}http_host;

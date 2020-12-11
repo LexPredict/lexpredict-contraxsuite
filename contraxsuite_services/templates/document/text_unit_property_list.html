@@ -22,9 +22,9 @@
         { name: 'key', type: 'string' },
         { name: 'value', type: 'string' },
         {#{ name: 'created_date', type: 'date' },#}
-        {#{ name: 'created_by__username', type: 'string' },#}
+        {#{ name: 'created_by__name', type: 'string' },#}
         {#{ name: 'modified_date', type: 'date' },#}
-        {#{ name: 'modified_by__username', type: 'string' },#}
+        {#{ name: 'modified_by__name', type: 'string' },#}
         { name: 'url', type: 'string' },
         { name: 'text_unit_url', type: 'string' },
         { name: 'delete_url', type: 'string' }
@@ -62,12 +62,12 @@
           align: 'center', cellsalign: 'center' },
         { text: 'Property Value', datafield: 'value', width: 110,
           align: 'center', cellsalign: 'center' },
-        {#{ text: 'Created By', datafield: 'created_by__username', width: 100,#}
+        {#{ text: 'Created By', datafield: 'created_by__name', width: 100,#}
         {#  align: 'center', cellsalign: 'center' },#}
         {#{ text: 'Created Date', datafield: 'created_date', width: 120,#}
         {#  filtertype: 'date', cellsformat: 'MM-dd-yyyy HH:mm',#}
         {#  align: 'center', cellsalign: 'center' },#}
-        {#{ text: 'Modified By', datafield: 'modified_by__username', width: 100,#}
+        {#{ text: 'Modified By', datafield: 'modified_by__name', width: 100,#}
         {#  align: 'center', cellsalign: 'center' },#}
         {#{ text: 'Modified Date', datafield: 'modified_date', width: 120,#}
         {#  filtertype: 'date', cellsformat: 'MM-dd-yyyy HH:mm',#}

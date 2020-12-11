@@ -30,7 +30,7 @@ import html
 import inspect
 import json
 import re
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Optional, Union, Iterable
 
 # Django imports
 from django import forms
@@ -44,7 +44,7 @@ from django.contrib.postgres import fields
 from django.contrib.postgres.forms.jsonb import JSONField, JSONString
 from django.core.exceptions import FieldError, ValidationError
 from django.db import transaction
-from django.db.models import Q
+from django.db.models import Count, Q, QuerySet
 from django.http import JsonResponse, HttpResponseRedirect
 from django.shortcuts import render, redirect
 from django.template.response import TemplateResponse
@@ -77,7 +77,7 @@ from apps.document.constants import DOC_NUMBER_PER_MAIN_TASK
 from apps.document.field_detection.detector_field_matcher import DetectorFieldMatcher
 from apps.document.field_detection.field_based_ml_field_detection import init_classifier_impl
 from apps.document.field_detection.formula_based_field_detection import \
-    FormulaBasedFieldDetectionStrategy, DocumentFieldFormulaError
+    FormulaBasedFieldDetectionStrategy
 from apps.document.field_detection.stop_words import compile_stop_words, \
     detect_value_with_stop_words
 from apps.document.field_processing.field_processing_utils import order_field_detection
@@ -93,14 +93,16 @@ from apps.document.models import (Document, DocumentText, DocumentMetadata, Docu
 from apps.document.python_coded_fields_registry import PYTHON_CODED_FIELDS_REGISTRY
 from apps.document.repository.document_field_repository import DocumentFieldRepository
 from apps.extract.models import Term
+from apps.project.models import Project
 from apps.rawdb.constants import FIELD_CODE_ANNOTATION_SUFFIX, FIELD_CODE_HIDE_UNTIL_PYTHON, \
     FIELD_CODE_FORMULA
+from apps.rawdb.field_value_tables import validate_doctype_cache_columns_count
 from apps.task.models import Task
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.7.0/LICENSE"
-__version__ = "1.7.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
+__version__ = "1.8.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -608,6 +610,14 @@ class DocumentFieldFormulaCheck:
         self.document_field = document_field
         self.check_return_value = True
         self.return_json_response = return_json_response
+        self.choices = request_data.get('choices', '')
+        self.convert_decimals_to_floats_in_formula_args = bool(request_data
+                                                               .get('convert_decimals_to_floats_in_formula_args'))
+        allow_nonchoice = request_data.get('allow_values_not_specified_in_choices', 'false')
+        if isinstance(allow_nonchoice, str):
+            self.allow_values_not_specified_in_choices = allow_nonchoice.lower() == 'true'
+        else:
+            self.allow_values_not_specified_in_choices = allow_nonchoice
 
         self.field_type = request_data.get('field_type') or \
                           (self.document_field.type if self.document_field else None)
@@ -641,12 +651,15 @@ class DocumentFieldFormulaCheck:
 
         if FIELD_CODE_FORMULA in request_data:
             self.formula = request_data.get(FIELD_CODE_FORMULA)
+            self.base_eval_locals = settings.SCRIPTS_BASE_EVAL_LOCALS
         elif FIELD_CODE_HIDE_UNTIL_PYTHON in request_data:
             self.formula = request_data.get(FIELD_CODE_HIDE_UNTIL_PYTHON)
             self.check_return_value = False
+            self.base_eval_locals = settings.HIDE_UNTIL_EVAL_LOCALS
         else:
             self.argument_errors.append('either "formula" or "hide_until_python" '
                                         'should be provided in a request')
+            self.base_eval_locals = None
 
         if document_field:
             try:
@@ -660,15 +673,7 @@ class DocumentFieldFormulaCheck:
         if self.argument_errors:
             data = {'errors': self.argument_errors}
         else:
-            rst_default = self.get_formula_errors(check_on_empty_values=False)
-            if rst_default.calculated:
-                rst_empty = self.get_formula_errors(check_on_empty_values=True)
-                if rst_empty.errors:
-                    rst_empty.errors = [i for i in rst_empty.errors if i not in rst_default.errors]
-                    if rst_empty.errors:
-                        rst_default.warnings += ['There were errors with null-initialized fields:']
-                        rst_default.warnings += rst_empty.errors
-
+            rst_default = self.get_formula_errors()
             if rst_default.errors:
                 default_error_message = ['Error in calculating formula. Revise formula and try again.']
                 rst_default.errors = default_error_message + rst_default.errors
@@ -678,22 +683,50 @@ class DocumentFieldFormulaCheck:
             return Response(data, content_type='application/json')
         return data
 
-    def get_formula_errors(self, check_on_empty_values: bool):
-        dependent_fields = list(DocumentField.objects.filter(uid__in=self.dependent_field_ids))
-
-        if check_on_empty_values:
-            fields_to_values = {field.code: None for field in dependent_fields}
-        else:
-            fields_to_values = {field.code: TypedField.by(field).example_python_value()
-                                for field in dependent_fields}
-
+    def get_formula_errors(self):
         if not self.document_field:
             document_field = DocumentField()
             document_field.type = self.field_type
+            document_field.choices = self.choices
+            document_field.allow_values_not_specified_in_choices = self.allow_values_not_specified_in_choices
         else:
             document_field = self.document_field
-        result = self.calculate_formula_result_on_values(document_field, fields_to_values)
-        return result
+
+        dependent_fields = list(DocumentField.objects.filter(uid__in=self.dependent_field_ids))
+        fields_to_values = {field.code: TypedField.by(field).example_python_value()
+                            for field in dependent_fields}
+        fields_to_values_list = [(f, fields_to_values[f]) for f in fields_to_values]
+
+        # each variable should be tested for None
+        # there will be 2^N corteges
+        test_range = 1 << len(fields_to_values)
+        first_result = None
+        values_range = range(test_range)
+
+        if test_range > 100:
+            # too many values to check
+            values_range = [0, 1, 4, 8,
+                            int(test_range / 3),
+                            int(test_range / 2),
+                            test_range - 2, test_range - 1]
+        for i in values_range:
+            values_to_test = {}
+            for j in range(len(fields_to_values_list)):
+                is_shown = self.shown_by_mask(i, j)
+                key = fields_to_values_list[j][0]
+                value = fields_to_values_list[j][1] if is_shown else None
+                values_to_test[key] = value
+
+            result = self.calculate_formula_result_on_values(document_field, values_to_test)
+            first_result = first_result or result
+            if result.errors:
+                return result
+        return first_result
+
+    @staticmethod
+    def shown_by_mask(mask: int, bit_num: int):
+        bit_pos = 1 << bit_num
+        return (mask & bit_pos) != 0
 
     def calculate_formula_result_on_values(self,
                                            document_field: DocumentField,
@@ -709,11 +742,12 @@ class DocumentFieldFormulaCheck:
 
         try:
             result.value = FormulaBasedFieldDetectionStrategy.calc_formula(
-                document_field.code, self.formula, fields_to_values)
+                document_field.code, self.formula, fields_to_values,
+                convert_decimals_to_floats=self.convert_decimals_to_floats_in_formula_args)
             result.calculated = True
         except Exception as e:
             msg = str(e.base_error) if hasattr(e, 'base_error') and \
-                document_field.code == FIELD_CODE_HIDE_UNTIL_PYTHON else str(e)
+                                       document_field.code == FIELD_CODE_HIDE_UNTIL_PYTHON else str(e)
             result.errors.append(msg)
 
         if result.calculated:
@@ -721,7 +755,9 @@ class DocumentFieldFormulaCheck:
             checker.test_expression()
             if checker.warnings:
                 result.warnings += checker.warnings
-            name_error = self.check_formula_refs(self.formula, document_field, fields_to_values)
+            if checker.errors:
+                result.errors += checker.errors
+            name_error = self.check_formula_refs(self.formula, document_field, fields_to_values, self.base_eval_locals)
             if name_error:
                 result.errors += [name_error]
         if self.check_return_value:
@@ -732,13 +768,16 @@ class DocumentFieldFormulaCheck:
     @staticmethod
     def check_formula_refs(formula: str,
                            field: DocumentField,
-                           fields_to_values: Dict[str, Any]) -> Optional[str]:
+                           fields_to_values: Dict[str, Any],
+                           base_eval_locals: Dict[str, Any]) -> Optional[str]:
         try:
             st = ast.parse(formula)
         except Exception as e:
             return f'Error parsing formula: {e}'
         var_names = []
-        reserved_words = dir(builtins) + list(settings.SCRIPTS_BASE_EVAL_LOCALS.keys())
+        reserved_words = dir(builtins)
+        if base_eval_locals:
+            reserved_words += list(base_eval_locals.keys())
         for node in ast.walk(st):
             if isinstance(node, ast.Name) and node.id not in reserved_words:
                 var_names.append(node.id)
@@ -887,7 +926,10 @@ class DocumentFieldForm(ModelFormWithUnchangeableFields):
             data = dict(
                 field_type=self.cleaned_data['type'],
                 document_type=self.cleaned_data['document_type'].pk,
-                depends_on_fields=self.cleaned_data['depends_on_fields'].values_list('uid', flat=True)
+                depends_on_fields=self.cleaned_data['depends_on_fields'].values_list('uid', flat=True),
+                convert_decimals_to_floats_in_formula_args=self.cleaned_data
+                    .get('convert_decimals_to_floats_in_formula_args')
+
             )
             data[snake_case(formula_field_name)] = formula_value
             res = DocumentFieldFormulaCheck(data, document_field=self.instance, return_json_response=False).check()
@@ -1040,7 +1082,7 @@ class DocumentFieldForm(ModelFormWithUnchangeableFields):
         try:
             order_field_detection(fields_and_deps)
         except ValueError as ve:
-            self.add_error(None, str(ve))
+            self.add_error('depends_on_fields', str(ve))
 
         python_coded_field_code = self.cleaned_data.get('python_coded_field')
         if python_coded_field_code:
@@ -1106,7 +1148,7 @@ class DocumentFieldAdmin(FieldValuesValidationAdmin):
                        'training_finished', 'dirty', 'trained_after_documents_number', 'vectorizer_stop_words'),
         }),
         ('Field Detection: Calculated Fields', {
-            'fields': ('formula',),
+            'fields': ('formula', 'convert_decimals_to_floats_in_formula_args'),
         }),
         ('Field Detection: Python-coded Fields', {
             'fields': ('python_coded_field',),
@@ -1163,9 +1205,17 @@ class DocumentFieldAdmin(FieldValuesValidationAdmin):
                 msg += '\n\n'.join(warnings[field])
                 messages.add_message(
                     request, messages.WARNING, msg)
-
+        # check we not exceed max rawdb columns number
+        self.check_cache_column_limit(obj, request)
         super().save_model(request, obj, form, change)
         signals.document_field_changed.send(self.__class__, user=request.user, document_field=obj)
+
+    def check_cache_column_limit(self,
+                                 obj: DocumentField,
+                                 request):
+        errors = validate_doctype_cache_columns_count(obj.document_type, obj)
+        for err_msg in errors:
+            messages.add_message(request, messages.ERROR, err_msg)
 
     def response_change(self, request, obj: DocumentField):
         if self.is_clone_view:
@@ -1240,9 +1290,16 @@ class DocumentFieldAdmin(FieldValuesValidationAdmin):
     def user(obj):
         return obj.modified_by.username if obj.modified_by else None
 
+    def add_view(self, request, form_url='', extra_context=None):
+        extra_context = extra_context or dict()
+        extra_context['fields_by_doctype'] = self.get_fields_by_doctype()
+        return super().add_view(request, form_url, extra_context=extra_context)
+
     def change_view(self, request, object_id, form_url='', extra_context=None, **kwargs):
         extra_context = extra_context or dict()
         extra_context.update(kwargs)
+        extra_context['fields_by_doctype'] = self.get_fields_by_doctype()
+
         self.is_clone_view = 'clone' in kwargs
         return super().change_view(request, object_id, form_url, extra_context=extra_context)
 
@@ -1250,7 +1307,8 @@ class DocumentFieldAdmin(FieldValuesValidationAdmin):
         opts = self.model._meta
         msg_dict = {
             'name': opts.verbose_name,
-            'obj': format_html('<a href="{}">{}</a>', reverse('admin:document_documentfield_change', args=[obj.pk]), obj),
+            'obj': format_html('<a href="{}">{}</a>', reverse('admin:document_documentfield_change', args=[obj.pk]),
+                               obj),
         }
         msg = format_html(
             _('The {name} "{obj}" was cloned successfully.'),
@@ -1313,7 +1371,8 @@ class DocumentFieldAdmin(FieldValuesValidationAdmin):
             related_projects=Project.all_objects.filter(type__in=doc_types).count(),
             related_projects_delete_pending=Project.all_objects.filter(type__in=doc_types, delete_pending=True).count(),
             related_documents=Document.all_objects.filter(document_type__in=doc_types).count(),
-            related_documents_delete_pending=Document.all_objects.filter(document_type__in=doc_types, delete_pending=True).count(),
+            related_documents_delete_pending=Document.all_objects.filter(document_type__in=doc_types,
+                                                                         delete_pending=True).count(),
             document_field_detectors=DocumentFieldDetector.objects.filter(field__in=objects).count()
         )
         return [], model_count, [], []
@@ -1337,6 +1396,16 @@ class DocumentFieldAdmin(FieldValuesValidationAdmin):
             context['model_count'] = dict(context['model_count'])
         return response
 
+    @classmethod
+    def get_fields_by_doctype(cls) -> Dict[str, List[str]]:
+        fields_by_doctype: Dict[str, List[str]] = {}
+        for pk, tp_id in DocumentField.objects.all().values_list('pk', 'document_type_id'):
+            if tp_id in fields_by_doctype:
+                fields_by_doctype[tp_id].append(pk)
+            else:
+                fields_by_doctype[tp_id] = [pk]
+        return fields_by_doctype
+
 
 class DocumentTypeListFilter(admin.SimpleListFilter):
     # Human-readable title which will be displayed in the
@@ -1356,7 +1425,8 @@ class DocumentTypeListFilter(admin.SimpleListFilter):
         human-readable name for the option that will appear
         in the right sidebar.
         """
-        cats = set([v for v in DocumentFieldDetector.objects.all().values_list('field__document_type__code', flat=True)])
+        cats = set(
+            [v for v in DocumentFieldDetector.objects.all().values_list('field__document_type__code', flat=True)])
         return sorted([(c or '', c or '') for c in cats], key=lambda c: c[0])
         # return [('Common', 'Common'), ('Document', 'Document'), ('Extract', 'Extract')]
 
@@ -1413,19 +1483,19 @@ class DocumentFieldDetectorForm(forms.ModelForm):
     def clean(self):
         detector = DocumentFieldDetector()
         detector.exclude_regexps = self.cleaned_data.get('exclude_regexps') \
-            or self.data.get('exclude_regexps')
+                                   or self.data.get('exclude_regexps')
         detector.include_regexps = self.cleaned_data.get('include_regexps') \
-            or self.data.get('include_regexps')
+                                   or self.data.get('include_regexps')
         field = self.cleaned_data.get('field') \
-            or self.data.get('field')
+                or self.data.get('field')
 
         errors = []
         if field:
             detector.field = field
             detector.detected_value = self.cleaned_data.get('detected_value') \
-                or self.data.get('detected_value')
+                                      or self.data.get('detected_value')
             detector.regexps_pre_process_lower = self.cleaned_data.get('regexps_pre_process_lower') \
-                or self.data.get('regexps_pre_process_lower')
+                                                 or self.data.get('regexps_pre_process_lower')
             errors = detector.check_model()
         for error_msg, exc in errors:
             self.add_error(error_msg, exc)
@@ -1487,7 +1557,7 @@ class DocumentFieldMultilineRegexDetectorAdmin(admin.ModelAdmin):
     search_fields = ['document_field__long_code', 'document_field__title']
     max_rows = 40
 
-    #class Media:
+    # class Media:
     #    js = ('js/table_editor.js',)
 
     @staticmethod
@@ -1806,9 +1876,9 @@ class DocumentTypeForm(ModelFormWithUnchangeableFields):
 
 
 class DocumentTypeAdmin(ModelAdminWithPrettyJsonField, UsersTasksValidationAdmin):
-    list_display = ('code', 'title', 'fields_num', 'user', 'modified_date')
+    list_display = ('code', 'title', 'field_count', 'project_count', 'user', 'modified_date')
     search_fields = ['code', 'title', 'created_by__username']
-    filter_horizontal = ('search_fields',)
+    filter_horizontal = ('search_fields', 'managers')
     inlines = (DocumentFieldInlineAdmin,)
     form = DocumentTypeForm
     delete_confirmation_template = 'admin/document/documenttype/delete_confirmation.html'
@@ -1817,7 +1887,8 @@ class DocumentTypeAdmin(ModelAdminWithPrettyJsonField, UsersTasksValidationAdmin
     fieldsets = [
         ('General', {
             'fields': (
-                'created_by', 'modified_by', 'code', 'title', 'editor_type', 'search_fields',),
+                'created_by', 'modified_by', 'code', 'title', 'editor_type',
+                'search_fields', 'managers'),
         }),
 
         ('Document Import', {
@@ -1835,9 +1906,24 @@ class DocumentTypeAdmin(ModelAdminWithPrettyJsonField, UsersTasksValidationAdmin
         super().__init__(*args, **kwargs)
         self.is_clone_view = False
 
-    @staticmethod
-    def fields_num(obj):
-        return obj.fields.count()
+    def get_queryset(self, request) -> QuerySet:
+        qs: QuerySet = super().get_queryset(request)
+        return qs.annotate(
+            field_count=Count('fields', distinct=True),
+            project_count=Count('project', distinct=True),
+        )
+
+    def field_count(self, obj) -> int:
+        return obj.field_count
+
+    field_count.admin_order_field = 'field_count'
+    field_count.short_description = 'Fields'
+
+    def project_count(self, obj) -> int:
+        return obj.project_count
+
+    project_count.admin_order_field = 'project_count'
+    project_count.short_description = 'Projects'
 
     @staticmethod
     def user(obj):
@@ -1861,7 +1947,8 @@ class DocumentTypeAdmin(ModelAdminWithPrettyJsonField, UsersTasksValidationAdmin
             projects=Project.all_objects.filter(type__in=objects).count(),
             projects_delete_pending=Project.all_objects.filter(type__in=objects, delete_pending=True).count(),
             documents=Document.all_objects.filter(document_type__in=objects).count(),
-            documents_delete_pending=Document.all_objects.filter(document_type__in=objects, delete_pending=True).count(),
+            documents_delete_pending=Document.all_objects.filter(document_type__in=objects,
+                                                                 delete_pending=True).count(),
             document_fields=DocumentField.objects.filter(document_type__in=objects).count(),
             document_field_detectors=DocumentFieldDetector.objects.filter(field__document_type__in=objects).count()
         )
@@ -1870,10 +1957,30 @@ class DocumentTypeAdmin(ModelAdminWithPrettyJsonField, UsersTasksValidationAdmin
     def get_deleted_objects(self, objs, request):
         return self._get_deleted_objects(objs, request, self.admin_site)
 
-    def warn_related_projects_exist(self, request, related_projects_count):
-        msg = f'Selected Document Type(s) has {related_projects_count} related Project(s), ' \
-              'please delete related projects first.'
-        self.message_user(request, msg, messages.ERROR)
+    def warn_related_projects_exist(self,
+                                    request,
+                                    type_ids: List[str]):
+        projects_total = Project.all_objects.filter(
+            type_id__in=type_ids).count()
+        projects_del = Project.all_objects.filter(
+            type_id__in=type_ids).filter(delete_pending=True).count()
+        docs_total = Document.all_objects.filter(
+            document_type_id__in=type_ids).count()
+        docs_del = Document.all_objects.filter(
+            document_type_id__in=type_ids).filter(delete_pending=True).count()
+
+        msg = '''To delete this Document Type, you must first delete all projects associated with this Document Type. 
+                 The following Projects and Documents are associated with this Document Type:'''
+        msg += f'<br/>{projects_total} Project(s)'
+        if projects_del:
+            msg += f' ({projects_del} Project(s) are pending delete)'
+        if docs_total:
+            msg += f'<br/>{docs_total} Document(s)'
+            if docs_del:
+                msg += f'({docs_del} Document(s) are pending delete)'
+        msg += '''<br/>Once these projects have been fully deleted by an 
+                  Administrator, then you may delete the Document Type.'''
+        self.message_user(request, msg, messages.ERROR, extra_tags='<safe_html>error</safe_html>')
         return HttpResponseRedirect(reverse('admin:document_documenttype_changelist'))
 
     def _delete_view(self, request, object_id, extra_context):
@@ -1883,9 +1990,10 @@ class DocumentTypeAdmin(ModelAdminWithPrettyJsonField, UsersTasksValidationAdmin
         from apps.document.app_vars import ALLOW_REMOVE_DOC_TYPE_WITH_PROJECT
         if not ALLOW_REMOVE_DOC_TYPE_WITH_PROJECT.val:
             from apps.project.models import Project
-            related_projects_count = Project.all_objects.filter(type_id=object_id).count()
-            if related_projects_count:
-                return self.warn_related_projects_exist(request, related_projects_count)
+            filter_predicate = Q(type_id=object_id)
+            related_projects = Project.all_objects.filter(filter_predicate)
+            if related_projects.count():
+                return self.warn_related_projects_exist(request, [object_id])
         response = super()._delete_view(request, object_id, extra_context)
 
         # patch 'model_count' context to get dict in context instead of dict-items
@@ -1915,9 +2023,11 @@ class DocumentTypeAdmin(ModelAdminWithPrettyJsonField, UsersTasksValidationAdmin
         from apps.document.app_vars import ALLOW_REMOVE_DOC_TYPE_WITH_PROJECT
         if not ALLOW_REMOVE_DOC_TYPE_WITH_PROJECT.val:
             from apps.project.models import Project
-            related_projects_count = Project.all_objects.filter(type__in=qs).count()
-            if related_projects_count:
-                return self.warn_related_projects_exist(request, related_projects_count)
+            filter_predicate = Q(type__in=qs)
+            related_projects = Project.all_objects.filter(filter_predicate)
+            if related_projects.count():
+                type_ids = list(qs.values_list('pk', flat=True))
+                return self.warn_related_projects_exist(request, type_ids)
 
         # patch default method to hide default "Success" message and display custom one
         if ALLOW_REMOVE_DOC_TYPE_WITH_PROJECT.val:
@@ -2000,7 +2110,8 @@ class DocumentTypeAdmin(ModelAdminWithPrettyJsonField, UsersTasksValidationAdmin
             opts = self.model._meta
             msg_dict = {
                 'name': opts.verbose_name,
-                'obj': format_html('<a href="{}">{}</a>', reverse('admin:document_documenttype_change', args=[obj.pk]), obj),
+                'obj': format_html('<a href="{}">{}</a>', reverse('admin:document_documenttype_change', args=[obj.pk]),
+                                   obj),
             }
             msg = format_html(
                 _('The {name} "{obj}" was cloned successfully.'),
@@ -2016,7 +2127,8 @@ class DocumentTypeAdmin(ModelAdminWithPrettyJsonField, UsersTasksValidationAdmin
             new_type = DocumentTypeViewSet.clone_type(
                 source_document_type=form.instance,
                 code=form.cleaned_data['code'],
-                title=form.cleaned_data['title'])
+                title=form.cleaned_data['title'],
+                user=request.user)
             return new_type
         return super().save_form(request, form, change)
 

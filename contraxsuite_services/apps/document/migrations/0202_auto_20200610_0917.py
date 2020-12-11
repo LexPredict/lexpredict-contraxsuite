@@ -10,7 +10,6 @@ def update(apps, schema_editor):
     for category in DocumentFieldCategory.objects.all():
         doc_type_ids = set(category.documentfield_set.values_list('document_type', flat=True))
         for n, document_type_id in enumerate(doc_type_ids):
-            # import ipdb;ipdb.set_trace()
             if n == 0:
                 category.document_type_id = document_type_id
                 category.save()

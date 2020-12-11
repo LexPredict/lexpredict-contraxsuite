@@ -1,0 +1,165 @@
+#shared-configmaps
+
+apiVersion: v1
+data:
+  uwsgi.ini: {{ tpl (.Files.Get "files/uwsgi.ini") . | quote }}
+kind: ConfigMap
+metadata:
+  namespace: {{ .Values.namespace}}
+  creationTimestamp: null
+  name: uwsgi-ini-configmap
+
+---
+
+apiVersion: v1
+data:
+  local_settings.py: {{ tpl (.Files.Get "files/local_settings.py") . | quote }}
+kind: ConfigMap
+metadata:
+  namespace: {{ .Values.namespace}}
+  creationTimestamp: null
+  name: local-settings-py-configmap
+
+---
+
+#contrax-elasticsearch
+
+apiVersion: v1
+data:
+  elasticsearch.yml: {{ tpl (.Files.Get "files/elasticsearch.yml") . | quote }}
+kind: ConfigMap
+metadata:
+  namespace: {{ .Values.namespace}}
+  creationTimestamp: null
+  name: elasticsearch-yaml-config
+
+---
+
+#contrax-elastalert
+
+apiVersion: v1
+data:
+  config.yaml: {{ tpl (.Files.Get "files/config.yaml") . | quote }}
+kind: ConfigMap
+metadata:
+  namespace: {{ .Values.namespace}}
+  creationTimestamp: null
+  name: elastalert-config-yaml-configmap
+
+---
+
+apiVersion: v1
+data:
+  elastalert.yaml: {{ tpl (.Files.Get "files/elastalert.yaml") . | quote }}
+kind: ConfigMap
+metadata:
+  namespace: {{ .Values.namespace}}
+  creationTimestamp: null
+  name: elastalert-server-yaml-configmap
+
+---
+
+apiVersion: v1
+data:
+  config.json: {{ tpl (.Files.Get "files/config.json") . | quote }}
+kind: ConfigMap
+metadata:
+  namespace: {{ .Values.namespace}}
+  creationTimestamp: null
+  name: elastalert-server-config-json-configmap
+
+---
+
+apiVersion: v1
+data:
+  elastalert-smtp-auth.yaml: {{ tpl (.Files.Get "files/elastalert-smtp-auth.yaml") . | quote }}
+kind: ConfigMap
+metadata:
+  namespace: {{ .Values.namespace}}
+  creationTimestamp: null
+  name: elastalert-smtp-auth-yaml-configmap
+
+---
+
+#contrax-filebeat
+
+apiVersion: v1
+data:
+  filebeat.yml: {{ tpl (.Files.Get "files/filebeat.yml") . | quote }}
+kind: ConfigMap
+metadata:
+  namespace: {{ .Values.namespace}}
+  creationTimestamp: null
+  name: filebeat-1b84ea4a4555e9c33f0ea04461533050
+
+---
+
+#contrax-kibana
+
+apiVersion: v1
+data:
+  kibana.yml: {{ tpl (.Files.Get "files/kibana.yml") . | quote }}
+kind: ConfigMap
+metadata:
+  namespace: {{ .Values.namespace}}
+  creationTimestamp: null
+  name: contrax-kibana-conf-configmap
+
+---
+
+#contrax-metricbeat
+
+apiVersion: v1
+data:
+  metricbeat.yml: {{ tpl (.Files.Get "files/metricbeat.yml") . | quote }}
+kind: ConfigMap
+metadata:
+  namespace: {{ .Values.namespace}}
+  creationTimestamp: null
+  name: metricbeat-99b4e27a4f53a7c722f3e17e204d86c2
+
+---
+
+#contrax-nginx
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  namespace: {{ .Values.namespace}}
+  name: nginx-conf
+data:
+  nginx.conf: {{ tpl (.Files.Get "files/nginx.conf") . | quote }}
+  cors_enable: {{ tpl (.Files.Get "files/cors_enable") . | quote }}
+  default.conf: {{ tpl (.Files.Get "files/default.conf") . | quote }}
+  internal.conf: {{ tpl (.Files.Get "files/internal.conf") . | quote }}
+  kibana_htpasswd: {{ tpl (.Files.Get "files/kibana_htpasswd") . | quote }}
+  mime.types: {{ tpl (.Files.Get "files/mime.types") . | quote }}
+  nginx-customer.conf: {{ tpl (.Files.Get "files/nginx-customer.conf") . | quote }}
+  powa.conf: {{ tpl (.Files.Get "files/powa.conf") . | quote }}
+  uwsgi_params: {{ tpl (.Files.Get "files/uwsgi_params") . | quote }}
+
+---
+
+#contrax-jupyter
+
+apiVersion: v1
+data:
+  jupyter_notebook_config.py: {{ tpl (.Files.Get "files/jupyter_notebook_config.py") . | quote }}
+kind: ConfigMap
+metadata:
+  namespace: {{ .Values.namespace}}
+  creationTimestamp: null
+  name: jupyter-notebook-config-py-configmap
+
+---
+
+#contrax-powa-web
+
+apiVersion: v1
+data:
+  powa-web.conf: {{ tpl (.Files.Get "files/powa-web.conf") . | quote }}
+kind: ConfigMap
+metadata:
+  namespace: {{ .Values.namespace}}
+  creationTimestamp: null
+  name: powa-web-configmap

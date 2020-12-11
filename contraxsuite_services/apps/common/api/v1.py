@@ -32,7 +32,7 @@ import os
 from rest_framework import serializers, routers, viewsets, schemas
 from rest_framework.exceptions import APIException, ValidationError
 from rest_framework.response import Response
-from rest_framework.permissions import BasePermission, IsAuthenticated
+from rest_framework.permissions import IsAuthenticated, DjangoModelPermissions
 import rest_framework.views
 import magic
 
@@ -43,15 +43,16 @@ from django.http import HttpResponse, HttpResponseNotFound
 
 # Project imports
 import apps.common.mixins
-from apps.common.models import Action, AppVar, ReviewStatusGroup, ReviewStatus, MenuGroup, MenuItem
-from apps.common.api.permissions import ReviewerReadOnlyPermission
+from apps.common.permissions import SuperuserRequiredPermission
 from apps.common.file_storage import get_filebrowser_site
+from apps.common.models import Action, AppVar, ReviewStatusGroup, ReviewStatus, MenuGroup, MenuItem
+from apps.common.schemas import CustomAutoSchema, ObjectResponseSchema
 from apps.users.api.v1 import UserSerializer
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.7.0/LICENSE"
-__version__ = "1.7.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
+__version__ = "1.8.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -66,24 +67,75 @@ python_magic = magic.Magic(mime=True)
 # AppVar Views
 # --------------------------------------------------------
 
-class AppVarSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = AppVar
-        fields = ('name',)
 
-
-class AppVarPermission(ReviewerReadOnlyPermission):
+class ReadOnlyNonAdminPermission(IsAuthenticated, DjangoModelPermissions):
     def has_permission(self, request, view):
         if request.method == 'GET':
             return True
-        return super().has_permission(request, view)
+        return super().has_permission(request, view)    # should work for superusers only
+
+
+class AppVarAPIViewSchema(ObjectResponseSchema):
+    get_parameters = [
+        {'name': 'name',
+         'in': 'query',
+         'required': False,
+         'description': 'App var name',
+         'schema': {
+             'type': 'string'}
+         },
+    ]
+    delete_schema_name = 'AppVarDelete'
+
+    def get_operation(self, path, method):
+        op = super().get_operation(path, method)
+        if method == 'GET':
+            op['parameters'].extend(self.get_parameters)
+        elif method == 'DELETE':
+            op['requestBody'] = self.get_request_body(path, method)
+        return op
+
+    def get_delete_request_schema(self):
+        return {
+            'type': 'object',
+            'properties': {
+                'name': {'type': 'string'},
+                'category': {'type': 'string'}
+            },
+            'required': ['name', 'category']
+        }
+
+    def get_request_body(self, path, method):
+        if method == 'DELETE':
+            return {
+                'content': {
+                    'application/json': {
+                        'schema': {
+                            '$ref': f'#/components/schemas/{self.delete_schema_name}'}}}}
+        return super().get_request_body(path, method)
+
+    def get_components(self, path, method):
+        if method == 'DELETE':
+            return {self.delete_schema_name: self.get_delete_request_schema()}
+        return super().get_components(path, method)
+
+    def get_responses(self, path, method):
+        resp = super().get_responses(path, method)
+        if method in ['POST', 'DELETE']:
+            resp = {
+                '200': {
+                    'content': {
+                        'application/json': {
+                            'schema': {'type': 'string'}}}}}
+        return resp
 
 
 class AppVarAPIView(rest_framework.views.APIView):
     """
     Based on custom AppVar model storage
     """
-    permission_classes = (AppVarPermission,)
+    permission_classes = [ReadOnlyNonAdminPermission]
+    schema = AppVarAPIViewSchema()
 
     @property
     def coreapi_schema(self):
@@ -193,7 +245,7 @@ class ReviewStatusGroupViewSet(apps.common.mixins.JqListAPIMixin, viewsets.Model
     """
     queryset = ReviewStatusGroup.objects.all()
     serializer_class = ReviewStatusGroupSerializer
-    permission_classes = (ReviewerReadOnlyPermission,)
+    permission_classes = [ReadOnlyNonAdminPermission]
 
 
 # --------------------------------------------------------
@@ -201,6 +253,13 @@ class ReviewStatusGroupViewSet(apps.common.mixins.JqListAPIMixin, viewsets.Model
 # --------------------------------------------------------
 
 class ReviewStatusSerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = ReviewStatus
+        fields = '__all__'
+
+
+class ReviewStatusDetailSerializer(serializers.ModelSerializer):
     group_data = ReviewStatusGroupSerializer(source='group', many=False)
 
     class Meta:
@@ -219,7 +278,12 @@ class ReviewStatusViewSet(apps.common.mixins.JqListAPIMixin, viewsets.ModelViewS
     """
     queryset = ReviewStatus.objects.select_related('group')
     serializer_class = ReviewStatusSerializer
-    permission_classes = (ReviewerReadOnlyPermission,)
+    permission_classes = [ReadOnlyNonAdminPermission]
+
+    def get_serializer_class(self, *args, **kwargs):
+        if self.action in ['retrieve', 'list']:
+            return ReviewStatusDetailSerializer
+        return ReviewStatusSerializer
 
 
 # --------------------------------------------------------
@@ -243,14 +307,19 @@ class ActionViewSet(apps.common.mixins.JqListAPIMixin, viewsets.ModelViewSet):
     http_method_names = ['get']
     queryset = Action.objects.all().select_related('user', 'user__role', 'content_type')
     serializer_class = ActionSerializer
-    permission_classes = (ReviewerReadOnlyPermission,)
+    permission_classes = [IsAuthenticated, DjangoModelPermissions]    # should work for superusers only
 
 
 # --------------------------------------------------------
 # MenuGroup Views
 # --------------------------------------------------------
 
-class MenuItemPermissions(BasePermission):
+class MenuItemPermissions(IsAuthenticated, DjangoModelPermissions):
+
+    def has_permission(self, request, view):
+        if request.method == 'GET':
+            return True
+        return super().has_permission(request, view)
 
     def has_object_permission(self, request, view, obj):
         if not request.user.is_superuser:
@@ -280,7 +349,7 @@ class MenuGroupViewSet(apps.common.mixins.APIFormFieldsMixin, viewsets.ModelView
     partial_update: Partial Update MenuGroup
     delete: Delete MenuGroup
     """
-    permission_classes = (IsAuthenticated, MenuItemPermissions)
+    permission_classes = [MenuItemPermissions]
     serializer_class = MenuGroupSerializer
 
     def get_queryset(self):
@@ -324,9 +393,49 @@ class MenuItemViewSet(MenuGroupViewSet):
         return qs
 
 
+class MediaFilesAPIViewSchema(ObjectResponseSchema):
+    get_parameters = [
+        {'name': 'action',
+         'in': 'query',
+         'required': False,
+         'description': 'Action name',
+         'schema': {
+             'type': 'string',
+             "enum": [
+                "info",
+                "download"
+              ],
+             'default': 'download'},
+         }
+    ]
+
+    def get_operation(self, path, method):
+        op = super().get_operation(path, method)
+        if method == 'GET':
+            op['parameters'].extend(self.get_parameters)
+        return op
+
+    def get_responses(self, path, method):
+        res = super().get_responses(path, method)
+        # response = {
+        #     '200': {
+        #         'content': {
+        #             'application/json': {
+        #                 'schema': ObjectResponseSchema.object_schema
+        #             }
+        #         }
+        #     }
+        # }
+        res['200']['content']['*/*'] = {
+            'schema': {'type': 'string', 'format': 'binary'},
+        }
+        return res
+
+
 class MediaFilesAPIView(rest_framework.views.APIView):
-    permission_classes = (IsAuthenticated,)
+    permission_classes = [SuperuserRequiredPermission]
     http_method_names = ['get']
+    schema = MediaFilesAPIViewSchema()
 
     def get(self, request, path):
         """

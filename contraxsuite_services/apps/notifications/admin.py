@@ -25,6 +25,7 @@
 # -*- coding: utf-8 -*-
 
 from email.utils import parseaddr
+from typing import Optional, List
 
 from django import forms
 from django.contrib import admin
@@ -38,10 +39,13 @@ from apps.notifications.models import DocumentDigestConfig, DocumentDigestSendDa
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.7.0/LICENSE"
-__version__ = "1.7.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
+__version__ = "1.8.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
+
+
+from apps.rawdb.constants import FIELD_CODE_ALL_DOC_TYPES
 
 
 class DocumentDigestConfigForm(ModelForm):
@@ -82,6 +86,7 @@ class DocumentDigestConfigForm(ModelForm):
             self.add_error(field, errors)
 
     USER_FIELDS = 'user_fields'
+    GENERIC_FIELDS = 'generic_fields'
     FOR_USER = 'for_user'
     FOR_ROLE = 'for_role'
     DOCUMENT_TYPE = 'document_type'
@@ -111,9 +116,15 @@ class DocumentDigestConfigForm(ModelForm):
         self.validate_int_csv('run_at_day_of_week', 1, 7)
         self.validate_int_csv('run_at_hour', 0, 23)
         self.validate_int_csv('run_at_minute', 0, 59, 1)
+        error_generics = check_generic_fields(self.cleaned_data.get('generic_fields'))
+        if error_generics:
+            self.add_error(self.GENERIC_FIELDS,
+                           f'The following fields are not document generic fields:\n{error_generics}')
 
 
 class DocumentNotificationSubscriptionForm(ModelForm):
+    GENERIC_FIELDS = 'generic_fields'
+
     user_fields = forms.ModelMultipleChoiceField(
         queryset=DocumentField.objects.all(),
         required=False,
@@ -150,6 +161,10 @@ class DocumentNotificationSubscriptionForm(ModelForm):
                            'The following fields do not match:\n'
                            '{wrong_fields}'.format(wrong_fields=';\n'.join([f.long_code for f in wrong_fields])))
 
+        error_generics = check_generic_fields(self.cleaned_data.get('generic_fields'))
+        if error_generics:
+            self.add_error(self.GENERIC_FIELDS,
+                           f'The following fields are not document generic fields:\n{error_generics}')
         return super().clean()
 
 
@@ -188,6 +203,16 @@ class DocumentNotificationSubscriptionAdmin(admin.ModelAdmin):
     def __init__(self, model, admin_site):
         super().__init__(model, admin_site)
         self.change_form_template = 'notifications/notification_subscription_change.html'
+
+
+def check_generic_fields(gen_fields: Optional[List[str]]) -> str:
+    if not gen_fields:
+        return ''
+    er_fields = set()
+    for field in gen_fields:
+        if field not in FIELD_CODE_ALL_DOC_TYPES:
+            er_fields.add(field)
+    return ', '.join(er_fields)
 
 
 admin.site.register(DocumentDigestConfig, DocumentDigestConfigAdmin)

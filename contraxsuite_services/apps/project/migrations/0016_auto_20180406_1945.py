@@ -10,6 +10,7 @@ class Migration(migrations.Migration):
 
     dependencies = [
         ('project', '0015_auto_20180406_1103'),
+        ('common', '0007_reviewstatus_group')
     ]
 
     operations = [

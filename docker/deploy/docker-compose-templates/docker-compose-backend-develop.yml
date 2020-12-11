@@ -108,7 +108,26 @@ services:
     environment:
       - "PERIOD=15min"
       - "KEEP_DAYS=30"
-      - "INDEX_PREFIX=filebeat-"
+      - "INDEX_PREFIX=filebeat-logs-"
+    command: "--host ${DOCKER_HOST_NAME_ELASTICSEARCH} --port ${DOCKER_ELASTICSEARCH_PORT}"
+    logging:
+      driver: "json-file"
+      options:
+        max-file: 5
+        max-size: 10m
+    deploy:
+      replicas: 1
+      placement:
+        constraints: [node.role == manager]
+
+  contrax-curator_filebeat-cx:
+    image: ${DOCKER_CURATOR_IMAGE}
+    networks:
+      - contrax_net
+    environment:
+      - "PERIOD=15min"
+      - "KEEP_DAYS=60"
+      - "INDEX_PREFIX=filebeat-cx-"
     command: "--host ${DOCKER_HOST_NAME_ELASTICSEARCH} --port ${DOCKER_ELASTICSEARCH_PORT}"
     logging:
       driver: "json-file"
@@ -359,7 +378,7 @@ services:
       net.ipv4.tcp_keepalive_intvl: 60
       net.ipv4.tcp_keepalive_probes: 3
     healthcheck:
-      test: pg_isready -h ${DOCKER_HOST_NAME_PG} -U ${DOCKER_PG_USER} || exit 1
+      test: pg_isready -h ${DOCKER_HOST_NAME_PG} -U ${DOCKER_PG_USER} -d ${DOCKER_PG_DB_NAME} || exit 1
       interval: 30s
       timeout: 10s
       retries: 1
@@ -393,7 +412,7 @@ services:
       net.ipv4.tcp_keepalive_intvl: 60
       net.ipv4.tcp_keepalive_probes: 3
     healthcheck:
-      test: pg_isready -h ${DOCKER_HOST_NAME_PG} -U ${DOCKER_PG_USER} || exit 1
+      test: pg_isready -h ${DOCKER_HOST_NAME_PG} -U ${DOCKER_PG_USER} -d ${DOCKER_PG_DB_NAME} || exit 1
       interval: 30s
       timeout: 10s
       retries: 1

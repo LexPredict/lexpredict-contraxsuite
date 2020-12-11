@@ -36,8 +36,8 @@ from apps.task.tasks import ExtendedTask, call_task_func, CeleryTaskLogger
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.7.0/LICENSE"
-__version__ = "1.7.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
+__version__ = "1.8.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -145,13 +145,15 @@ class DetectFieldValues(ExtendedTask):
         # the detected values wont be stored even if do_not_write = False.
         # But caching should go as usual.
         dfvs = field_detection \
-            .detect_and_cache_field_values_for_document(log,
-                                                        doc,
-                                                        changed_by_user=task.task.user,
-                                                        save=not detect_ptrs.do_not_write,
-                                                        clear_old_values=detect_ptrs.clear_old_values,
-                                                        updated_field_codes=detect_ptrs.updated_field_codes,
-                                                        skip_modified_values=detect_ptrs.skip_modified_values)
+            .detect_and_cache_field_values_for_document(
+                log,
+                doc,
+                changed_by_user=task.task.user,
+                save=not detect_ptrs.do_not_write,
+                clear_old_values=detect_ptrs.clear_old_values,
+                updated_field_codes=detect_ptrs.updated_field_codes,
+                skip_modified_values=detect_ptrs.skip_modified_values,
+                task=field_detection.detect_and_cache_field_values_for_document)
 
         task.log_info(f'Detected {len(dfvs)} field values for document ' +
                       f'#{detect_ptrs.document_id} ({doc.name})',

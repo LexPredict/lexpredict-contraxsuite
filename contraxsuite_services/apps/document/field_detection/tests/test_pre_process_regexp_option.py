@@ -27,31 +27,33 @@
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.7.0/LICENSE"
-__version__ = "1.7.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
+__version__ = "1.8.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
 
 from tests.django_test_case import *
 import regex as re
-from unittest import TestCase
+from django.test import TestCase
 from apps.document.field_detection.regexps_field_detection import CsvDetectorImporter
 
 
 class TestRegexpsOnlyFieldDetectionStrategy(TestCase):
     def test_fred(self):
         importer = self.make_importer()
-        self.assertEqual(r'(^|\b)fred(\b|,).{1,7}(\b|$)', importer.pre_process_regexp_option(['Fred Inc.'])[0])
-        self.assertEqual(r'(^|\b)fred\b.{1,5}sons(\b|,).{1,7}(\b|$)', importer.pre_process_regexp_option(['Fred and Sons, Inc.'])[0])
+        self.assertEqual('(^|\\b|\\s)fred(\\b|,).{1,7}(\\b|\\s|$)',
+                         importer.pre_process_regexp_option(['Fred Inc.'])[0])
+        self.assertEqual(r'(^|\b|\s)fred\b.{1,5}sons(\b|,).{1,7}(\b|\s|$)',
+                         importer.pre_process_regexp_option(['Fred and Sons, Inc.'])[0])
 
     def test_replace_conjunction(self):
         importer = self.make_importer()
-        self.assertEqual(r'(^|\b)m\b.{1,3}m(\b|$)', importer.pre_process_regexp_option(['M&M'])[0])
-        self.assertEqual(r'(^|\b)m\b.{1,3}m(\b|$)', importer.pre_process_regexp_option(['M &M'])[0])
-        self.assertEqual(r'(^|\b)mandm(\b|$)', importer.pre_process_regexp_option(['MandM'])[0])
-        self.assertEqual(r'(^|\b)mand\s{1,5}m(\b|$)', importer.pre_process_regexp_option(['Mand M'])[0])
-        self.assertEqual(r'(^|\b)m\b.{1,5}m(\b|$)', importer.pre_process_regexp_option(['M  and M'])[0])
+        self.assertEqual(r'(^|\b|\s)m\b.{1,3}m(\b|\s|$)', importer.pre_process_regexp_option(['M&M'])[0])
+        self.assertEqual(r'(^|\b|\s)m\b.{1,3}m(\b|\s|$)', importer.pre_process_regexp_option(['M &M'])[0])
+        self.assertEqual(r'(^|\b|\s)mandm(\b|\s|$)', importer.pre_process_regexp_option(['MandM'])[0])
+        self.assertEqual(r'(^|\b|\s)mand\s{1,5}m(\b|\s|$)', importer.pre_process_regexp_option(['Mand M'])[0])
+        self.assertEqual(r'(^|\b|\s)m\b.{1,5}m(\b|\s|$)', importer.pre_process_regexp_option(['M  and M'])[0])
 
     def test_remove_comp_abbreviation(self):
         importer = self.make_importer()
@@ -79,13 +81,13 @@ class TestRegexpsOnlyFieldDetectionStrategy(TestCase):
         text = "Joe Smith Archives, LLC d/b/a Foxtrot Inc. (085292)"
         s_lines = importer.pre_process_regexp_option([text])
         self.assertEqual(2, len(s_lines))
-        self.assertEqual(r'(^|\b)joe\s{1,5}smith\s{1,5}archives(\b|,).{1,7}(\b|$)', s_lines[0])
-        self.assertEqual(r'(^|\b)foxtrot(\b|,).{1,7}\(085292\)(\b|$)', s_lines[1])
+        self.assertEqual(r'(^|\b|\s)joe\s{1,5}smith\s{1,5}archives(\b|,).{1,7}(\b|\s|$)', s_lines[0])
+        self.assertEqual(r'(^|\b|\s)foxtrot(\b|,).{1,7}\(085292\)(\b|\s|$)', s_lines[1])
 
         text = 'Doherty, Shannon (Chicago)'
         s_lines = importer.pre_process_regexp_option([text])
         self.assertEqual(1, len(s_lines))
-        self.assertEqual(r'(^|\b)doherty\s{1,5}shannon\s{1,5}\(\s{1,5}chicago\s{1,5}\)(\b|$)', s_lines[0])
+        self.assertEqual(r'(^|\b|\s)doherty\s{1,5}shannon\s{1,5}\(\s{1,5}chicago\s{1,5}\)(\b|\s|$)', s_lines[0])
 
     def test_regex_recognizes_source(self):
         src_list = [

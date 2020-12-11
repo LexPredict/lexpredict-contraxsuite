@@ -43,8 +43,8 @@ from apps.document.models import DocumentText, TextUnit
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.7.0/LICENSE"
-__version__ = "1.7.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
+__version__ = "1.8.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -70,7 +70,7 @@ class Doc2VecTransformer:
         self.min_count = min_count
         self.dm = dm
 
-    def train_doc2vec_model(self, data) -> gensim.models.doc2vec.Doc2Vec:
+    def train_doc2vec_model(self, data: Iterable[str]) -> gensim.models.doc2vec.Doc2Vec:
         """
         Train doc2vec model from queryset values
 
@@ -152,6 +152,10 @@ class Doc2VecTransformer:
 
         data = text_queryset.values_list('full_text', flat=True).iterator()
 
+        # Django uses DB cursors for iterating. This may be executed behind pgbouncer
+        # in transaction mode which can replace session for next iteration step
+        # with the one which does not have the original cursor.
+        # Covered with transaction to workaround this.
         with transaction.atomic():
             doc2vec_model = self.train_doc2vec_model(data)
 
@@ -188,7 +192,12 @@ class Doc2VecTransformer:
         queryset = queryset.annotate(text=F('textunittext__text'))
         data = queryset.values_list('text', flat=True).iterator()
 
-        doc2vec_model = self.train_doc2vec_model(data)
+        # Django uses DB cursors for iterating. This may be executed behind pgbouncer
+        # in transaction mode which can replace session for next iteration step
+        # with the one which does not have the original cursor.
+        # Covered with transaction to workaround this.
+        with transaction.atomic():
+            doc2vec_model = self.train_doc2vec_model(data)
 
         transformer = self.create_transformer_object(
             transformer_db_model=TextUnitTransformer,

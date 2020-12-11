@@ -32,8 +32,8 @@ from sklearn.feature_extraction.text import strip_accents_unicode
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.7.0/LICENSE"
-__version__ = "1.7.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
+__version__ = "1.8.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -108,9 +108,9 @@ class RecurringDateVectorizer(VectorizerStep):
     MAX_YEAR = 2050
     MIN_YEAR = 1970
     FEATURE_NAMES = ['year_' + str(year) for year in range(MAX_YEAR - MIN_YEAR)] \
-                    + ['month_' + str(month + 1) for month in range(11)] \
-                    + ['day_' + str(i + 1) for i in range(30)] \
-                    + ['dow_' + str(i) for i in range(6)]
+                    + ['month_' + str(month + 1) for month in range(12)] \
+                    + ['day_' + str(i + 1) for i in range(31)] \
+                    + ['dow_' + str(i) for i in range(7)]
 
     def transform(self, field_values: List[Union[datetime, date]], *args, **kwargs):
         # TODO Optimize list manipulations
@@ -122,20 +122,20 @@ class RecurringDateVectorizer(VectorizerStep):
             year = d.year if d else 1  # 1 - 9999
             year = 0 if year < self.MIN_YEAR else self.MAX_YEAR if year > self.MAX_YEAR else year
             year = year - self.MIN_YEAR
-            year_vect = [1 if i == year else 0 for i in range(self.MAX_YEAR - self.MIN_YEAR)]
-            vect.extend(year_vect)
+            year_vect = [int(i == year) for i in range(self.MAX_YEAR - self.MIN_YEAR)]
+            vect += year_vect
 
             month = d.month - 1 if d else 0  # 0 - 11
-            month_vect = [1 if month == i else 0 for i in range(11)]
-            vect.extend(month_vect)
+            month_vect = [int(month == i) for i in range(12)]
+            vect += month_vect
 
             day = d.day - 1 if d else 0  # 0 - 30
-            day_vect = [1 if day == i else 0 for i in range(30)]
-            vect.extend(day_vect)
+            day_vect = [int(day == i) for i in range(31)]
+            vect += day_vect
 
             day_of_week = d.weekday() if d else 0  # M0 - S6
-            dow_vect = [1 if day_of_week == i else 0 for i in range(6)]
-            vect.extend(dow_vect)
+            dow_vect = [int(day_of_week == i) for i in range(7)]
+            vect += dow_vect
 
             res.append(vect)
         return res
@@ -162,19 +162,19 @@ class SerialDateVectorizer(VectorizerStep):
         for d in field_values:
             vect = list()
 
-            year = d.year if d else 1  # 1 - 9999
+            year = d.year if d else 1  # 0 ... 1
             year = 0 if year < self.MIN_YEAR else self.MAX_YEAR if year > self.MAX_YEAR else year
             year = year - self.MIN_YEAR
             vect.append(year / (self.MAX_YEAR - self.MIN_YEAR))
 
-            month = d.month - 1 if d else 0  # 0 - 11
-            vect.append(month / 11)
+            month = d.month - 1 if d else 0  # 0 .. 1
+            vect.append(month / 12)
 
-            day = d.day - 1 if d else 0  # 0 - 30
-            vect.append(day / 30)
+            day = d.day - 1 if d else 0  # 0 .. 1
+            vect.append(day / 31)
 
             day_of_week = d.weekday() if d else 0  # M0 - S6
-            vect.append(day_of_week / 6)
+            vect.append(day_of_week / 7)
 
             res.append(vect)
         return res

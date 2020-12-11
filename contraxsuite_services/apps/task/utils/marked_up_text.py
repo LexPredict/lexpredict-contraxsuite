@@ -26,13 +26,15 @@
 
 import pandas as pd
 from typing import Optional, Dict, List, Tuple, Pattern
+
+from apps.common.collection_utils import leave_unique_values
 from apps.task.utils.text_segments import DocumentSection
 import regex as re
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.7.0/LICENSE"
-__version__ = "1.7.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
+__version__ = "1.8.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -116,8 +118,8 @@ class MarkedUpTable:
             for cell in row.cells:
                 cell_text = '' if not cell.content_coords \
                     else source_text[cell.content_coords[0]:cell.content_coords[1]]
-                rowdata.append(cell_text)
-            data.append(rowdata)
+                rowdata.append(cell_text or '')
+            data.append(rowdata or '')
         df = pd.DataFrame(data=data)
         return df
 
@@ -178,6 +180,9 @@ class MarkedUpText:
         'heading_7': ('{{##H7', 'H7##}}',),
         'heading_8': ('{{##H8', 'H8##}}',),
         'heading_9': ('{{##H9', 'H9##}}',),
+        'table': ('{{##TB', 'TB##}}',),
+        'tr': ('{{##TR', 'TR##}}',),
+        'td': ('{{##TD', 'TD##}}',),
     }
     MARKER_TEXT_LEN = len('<<##PF')
 
@@ -412,8 +417,13 @@ class MarkedUpText:
         return marker[0] if is_open else marker[1]
 
     def convert_markers_to_labels(self):
-        # label - is opening - position
-        marker_coords = []  # type: List[Tuple[str, bool, int]]
+        # label - is opening - position - original position
+        marker_coords = []  # type: List[Tuple[str, bool, int, int]]
+
+        # add ' ' to empty table cell so as the cells won't collapse
+        empty_cell_text = ''.join(self.BLOCK_MARKERS['td'])
+        empty_cell_text_replace = ' '.join(self.BLOCK_MARKERS['td'])
+        self.text = self.text.replace(empty_cell_text, empty_cell_text_replace)
 
         # find coords for all markers
         for label in self.BLOCK_MARKERS:
@@ -427,47 +437,47 @@ class MarkedUpText:
                     if marker_start < 0:
                         break
                     start = marker_start + len(marker)
-                    marker_coords.append((label, is_opening, marker_start,))
+                    marker_coords.append((label, is_opening, marker_start, marker_start,))
 
         # sort markers by position
         marker_coords.sort(key=lambda m: m[2])
 
         # cut markers from text, shifting the following markers left
         for i in range(len(marker_coords)):
-            _label, _is_op, pos = marker_coords[i]
+            _label, _is_op, pos, orig_pos = marker_coords[i]
             self.text = self.text[:pos] + self.text[pos + self.MARKER_TEXT_LEN:]
             # shift other markers
             for j in range(i + 1, len(marker_coords)):
                 marker_coords[j] = (marker_coords[j][0],
                                     marker_coords[j][1],
-                                    marker_coords[j][2] - self.MARKER_TEXT_LEN,)
+                                    marker_coords[j][2] - self.MARKER_TEXT_LEN,
+                                    marker_coords[j][3],)
 
         # make unpaired labels from marker_coords
-        for label, is_op, position in marker_coords:
+        for label, is_op, position, orig_pos in marker_coords:
             lst = self.labels.get(label)
             if not lst:
                 lst = []
                 self.labels[label] = lst
-            lst.append((position, is_op,))
+            lst.append((position, is_op, orig_pos, ))
 
         # make label pairs (opening / closing) from unpaired labels
         for label in self.labels:
             lst = self.labels[label]
-            lst.sort(key=lambda p: p[0] * 10 + (1 if p[1] else 0))
+            lst.sort(key=lambda p: p[0] * 100 + p[2] * 10 + (1 if p[1] else 0))
             paired_list = []
-
-            cur_item = None  # type: Optional[Tuple[int, int]]
-            for position, is_open in lst:
-                if cur_item is None:
-                    cur_item = (position if is_open else None, None if is_open else position,)
+            tag_stack = []  # type: List[int]
+            for position, is_open, _ in lst:
+                if is_open:
+                    tag_stack.append(position)
                     continue
-                cur_item = (position if is_open else cur_item[0], cur_item[1] if is_open else position,)
-                if cur_item[0] is not None and cur_item[1] is not None:
-                    paired_list.append(cur_item)
-                    cur_item = None
-
+                if not tag_stack:
+                    continue
+                paired_list.append((tag_stack[-1], position))
+                tag_stack = tag_stack[:-1]
             self.labels[label] = paired_list
         self.untangle_self_closing_tags()
+        self.detect_tables()
 
     def untangle_self_closing_tags(self):
         # self-closing tags looks like
@@ -486,3 +496,61 @@ class MarkedUpText:
                 next_pos = lst[i + 1][0] if i < last_index else len(self.text)
                 untangled.append((lst[i][0], next_pos,))
             self.labels[label] = untangled
+
+    def detect_tables(self) -> None:
+        """
+        a "private" method called while parsing the source markup to
+        detect tables and store them as MarkedUpTable records. Each MarkedUpTable
+        stores start /end positions (relative to resulting text) of each row, cell
+        and the table itself.
+        Should be called after postprocessing text and transforming marks into labels
+
+        :param text: MarkedUpText text to find tables in
+        """
+        if 'table' not in self.labels or 'tr' not in self.labels or 'td' not in self.labels:
+            return
+        table_labels, row_labels, cell_labels = \
+            self.labels['table'], self.labels['tr'], self.labels['td']
+
+        for t_start, t_end in table_labels:
+            table = MarkedUpTable(t_start, t_end)
+            self.tables.append(table)
+
+            table_row_labels = [l for l in row_labels if table.start <= l[0] <= table.end
+                                and table.start <= l[1] <= table.end]
+            # skip rows in embedded tables
+            em_tables = self.get_embedded_table_bounds(t_start, t_end, table_labels)
+            table_row_labels = leave_unique_values(
+                [l for l in table_row_labels
+                 if not self.is_cell_in_table(l[0], l[1], em_tables)])
+
+            for row_start, row_end in table_row_labels:
+                row = MarkedUpTableRow(row_start, row_end)
+                table.rows.append(row)
+                row_cell_labels = [l for l in cell_labels if row_start <= l[0] < row_end and
+                                   row_start <= l[1] <= row_end]
+                row_cell_labels = leave_unique_values(
+                    [l for l in row_cell_labels
+                     if not self.is_cell_in_table(l[0], l[1], em_tables)])
+
+                for cell_start, cell_end in row_cell_labels:
+                    cell = MarkedUpTableCell(cell_start, cell_end)
+                    cell.content_coords = (cell_start, cell_end,)
+                    row.cells.append(cell)
+
+    def get_embedded_table_bounds(self, start: int, end: int,
+                                  table_labels: List[Tuple[int, int]]) -> List[Tuple[int, int]]:
+        em_tabs = []  # type: List[Tuple[int, int]]
+        for t_start, t_end in table_labels:
+            if (t_start > start and t_end <= end) or \
+               (t_start >= start and t_end < end):
+                em_tabs.append((t_start, t_end,))
+        return em_tabs
+
+    @classmethod
+    def is_cell_in_table(cls, start: int, end: int, tables: List[Tuple[int, int]]):
+        for t_start, t_end in tables:
+            if t_start <= start <= t_end and t_start <= end <= t_end:
+                if t_start != start or t_end != end:
+                    return True
+        return False

@@ -8,6 +8,6 @@
   <p><b>Project ID: </b>{{ session.project.pk }}</p>
   <p><b>Project Name: </b>{{ session.project.name }}</p>
   <p><b>Session ID: </b>{{ session.uid }}</p>
-  <p><b>Session created by: </b>{{ session.created_by.get_full_name }}</p>
+  <p><b>Session created by: </b>{{ session.created_by.name }}</p>
   <p><b>Batch upload job started at: </b>{% now "F j, Y, h:i A" %}</p>
 {% endblock %}

@@ -25,9 +25,8 @@
 # -*- coding: utf-8 -*-
 
 import math
-import sys
 from collections import defaultdict
-from typing import Optional
+from typing import Optional, List
 
 import fuzzywuzzy.fuzz
 import nltk
@@ -37,6 +36,7 @@ from celery.exceptions import SoftTimeLimitExceeded
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 from psycopg2 import InterfaceError, OperationalError
+from django.db.models import Q
 
 from apps.analyze.ml.similarity import DocumentSimilarityEngine, TextUnitSimilarityEngine
 from apps.analyze.models import (
@@ -50,12 +50,13 @@ from apps.extract.models import Party
 from apps.rawdb.constants import FIELD_CODE_DOC_ID
 from apps.similarity.chunk_similarity_task import ChunkSimilarity
 from apps.similarity.models import DocumentSimilarityConfig, DST_FIELD_SIMILARITY_CONFIG_ATTR
+from apps.similarity.similarity_model_reference import SimilarityObjectReference
 from apps.task.tasks import ExtendedTask, remove_punctuation_map, CeleryTaskLogger
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.7.0/LICENSE"
-__version__ = "1.7.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
+__version__ = "1.8.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -179,11 +180,16 @@ class Similarity(ExtendedTask):
             else Document.objects.all()
 
         # similar Documents
+        total_stored = 0
         if search_similar_documents:
-
             # step #1 - delete
             if kwargs['delete']:
-                DocumentSimilarity.objects.all().delete()
+                if project_id:
+                    DocumentSimilarity.objects.filter(
+                        Q(document_a__project_id=project_id) |
+                        Q(document_b__project_id=project_id)).delete()
+                else:
+                    DocumentSimilarity.objects.all().delete()
             self.push()
 
             # step #2 - prepare data
@@ -214,6 +220,7 @@ class Similarity(ExtendedTask):
                         document_a_id=document_a,
                         document_b_id=document_b,
                         similarity=similarity)
+                    total_stored += 1
             self.push()
 
         # similar Text Units
@@ -221,7 +228,12 @@ class Similarity(ExtendedTask):
 
             # step #1 - delete
             if kwargs['delete']:
-                TextUnitSimilarity.objects.all().delete()
+                if project_id:
+                    TextUnitSimilarity.objects.filter(
+                        Q(project_a__id=project_id) |
+                        Q(project_b__id=project_id)).delete()
+                else:
+                    TextUnitSimilarity.objects.all().delete()
             self.push()
 
             # step #2 - prepare data
@@ -250,9 +262,17 @@ class Similarity(ExtendedTask):
                                 similarity=similarity_matrix[g, h])
                             for h in range(similarity_matrix.shape[1])
                             if i + g != j + h and similarity_matrix[g, h] >= similarity_threshold]
-                        TextUnitSimilarity.fill_joined_refs(tu_sim)
-                        TextUnitSimilarity.objects.bulk_create(tu_sim)
+                        total_stored += self.save_similarity_records(tu_sim, project_id)
                     self.push()
+
+        self.log_info(f'{total_stored} records stored')
+
+    def save_similarity_records(self,
+                                records: List[TextUnitSimilarity],
+                                project_id: Optional[int]) -> int:
+        SimilarityObjectReference.ensure_unit_similarity_model_refs(records, project_id)
+        TextUnitSimilarity.objects.bulk_create(records)
+        return len(records)
 
 
 class SimilarityByFeatures(ExtendedTask):
@@ -276,18 +296,29 @@ class SimilarityByFeatures(ExtendedTask):
         self.log_info('Min similarity: {}'.format(similarity_threshold))
 
         if search_similar_documents:
-            db_model = DocumentSimilarity
             engine_class = DocumentSimilarityEngine
         elif search_similar_text_units:
-            db_model = TextUnitSimilarity
             engine_class = TextUnitSimilarityEngine
         else:
             self.log_error("Classify task target (documents or text units) is not specified.")
             return
 
         if kwargs['delete']:
-            # TODO: delete all Similarity db objects OR filter by unit_type/project_id
-            deleted = db_model.objects.filter().delete()
+            if search_similar_text_units:
+                if project_id:
+                    deleted = TextUnitSimilarity.objects.filter(
+                        Q(project_a__id=project_id) |
+                        Q(project_b__id=project_id)).delete()
+                else:
+                    deleted = TextUnitSimilarity.objects.all().delete()
+            else:
+                if project_id:
+                    deleted = DocumentSimilarity.objects.filter(
+                        Q(document_a__project__id=project_id) |
+                        Q(document_b__project__id=project_id)).delete()
+                else:
+                    deleted = DocumentSimilarity.objects.all().delete()
+
             self.log_info('Deleted "{}"'.format(deleted[1]))
 
         similarity_engine_kwargs = dict(
@@ -296,8 +327,7 @@ class SimilarityByFeatures(ExtendedTask):
             feature_source=feature_source,
             use_tfidf=use_tfidf,
             distance_type=distance_type,
-            threshold=similarity_threshold,
-            log_routine=self.log_routine
+            threshold=similarity_threshold
         )
         similarity_engine = engine_class(**similarity_engine_kwargs)
         features = similarity_engine.get_features()
@@ -333,7 +363,8 @@ class SimilarityByFeatures(ExtendedTask):
                     df1_redis_key,
                     df2_redis_key,
                     search_similar_documents,
-                    similarity_engine_kwargs
+                    similarity_engine_kwargs,
+                    project_id
                 ))
 
         self.run_sub_tasks(
@@ -354,9 +385,12 @@ class SimilarityByFeatures(ExtendedTask):
                  retry_backoff=True,
                  autoretry_for=(SoftTimeLimitExceeded, InterfaceError, OperationalError),
                  max_retries=3)
-    def calc_block_similarity(task, df1_redis_key, df2_redis_key,
+    def calc_block_similarity(task,
+                              df1_redis_key,
+                              df2_redis_key,
                               search_similar_documents,
-                              engine_kwargs):
+                              engine_kwargs,
+                              project_id: Optional[int]):
         task.log_info(
             f'Calculate similarity for feature_df blocks with keys: '
             f'"{df1_redis_key}" and "{df2_redis_key}"')
@@ -368,7 +402,15 @@ class SimilarityByFeatures(ExtendedTask):
 
         df1 = pd.DataFrame(df1_data, index=df1_index, columns=df1_columns)
         df2 = pd.DataFrame(df2_data, index=df2_index, columns=df2_columns)
-        count = engine_class(**engine_kwargs).calc_block_similarity(df1, df2)
+
+        engine_kwargs['log_routine'] = lambda m: task.log_info(m)
+        sim_obj = engine_class(**engine_kwargs)
+
+        records = sim_obj.calc_block_similarity(df1, df2)
+        if not search_similar_documents:
+            SimilarityObjectReference.ensure_unit_similarity_model_refs(records, project_id)
+        sim_obj.similarity_model.objects.bulk_create(records)
+        count = len(records)
 
         task.log_info(f'Created {count} records')
 

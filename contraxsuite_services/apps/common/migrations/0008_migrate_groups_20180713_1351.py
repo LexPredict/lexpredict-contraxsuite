@@ -17,5 +17,5 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        migrations.RunPython(load_review_statuses),
+        migrations.RunPython(load_review_statuses, reverse_code=migrations.RunPython.noop),
     ]

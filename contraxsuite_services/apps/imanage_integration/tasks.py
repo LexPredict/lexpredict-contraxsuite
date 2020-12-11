@@ -48,11 +48,12 @@ from apps.task.models import Task
 from apps.task.tasks import ExtendedTask, LoadDocuments, call_task
 from apps.task.tasks import CeleryTaskLogger
 from apps.users.user_utils import get_main_admin_user
+from task_names import TASK_NAME_IMANAGE_TRIGGER_SYNC
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.7.0/LICENSE"
-__version__ = "1.7.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
+__version__ = "1.8.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -87,7 +88,7 @@ class IManageSynchronization(ExtendedTask):
 
             assignee = imanage_config.resolve_assignee(imanage_doc.imanage_doc_data, log)
             assignee_id = assignee.pk if assignee else None
-            task.log_info('Assignee resolved to: {0}'.format(assignee.get_full_name() if assignee else '<no assignee>'))
+            task.log_info('Assignee resolved to: {0}'.format(assignee.name if assignee else '<no assignee>'))
 
             task.log_info('Downloading iManage document contents into a temp file...')
             auth_token = imanage_config.login()
@@ -133,7 +134,10 @@ class IManageSynchronization(ExtendedTask):
                     task.log_info('No binding of iManage fields to Contraxsuite fields.')
 
                 document_id = LoadDocuments \
-                    .create_document_local(task, temp_fn, rel_filepath, kwargs,
+                    .create_document_local(task,
+                                           temp_fn,
+                                           rel_filepath,
+                                           kwargs,
                                            return_doc_id=True,
                                            pre_defined_doc_fields_code_to_val=pre_defined_fields)
 
@@ -207,7 +211,7 @@ class IManageSynchronization(ExtendedTask):
             if imanage_config_dict:
                 qr = IManageConfig.objects.filter(pk=imanage_config_dict['pk'])
             else:
-                qr = IManageConfig.objects.all()
+                qr = IManageConfig.objects.filter(enabled=True)
 
         found = False
         for imanage_config in list(qr):
@@ -225,6 +229,7 @@ UNREADY_STATE_TUPLE = tuple(UNREADY_STATES)
 
 
 @shared_task(base=ExtendedTask,
+             name=TASK_NAME_IMANAGE_TRIGGER_SYNC,
              bind=True,
              soft_time_limit=600,
              default_retry_delay=10,

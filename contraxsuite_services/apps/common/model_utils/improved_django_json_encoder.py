@@ -27,6 +27,8 @@
 import datetime
 import decimal
 import json
+from typing import Optional, Tuple, Callable, Any
+
 import pytz
 import uuid
 from collections import Collection, Mapping
@@ -36,13 +38,20 @@ from django.utils.functional import Promise
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.7.0/LICENSE"
-__version__ = "1.7.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
+__version__ = "1.8.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
 
 class ImprovedDjangoJSONEncoder(json.JSONEncoder):
+
+    def __init__(self, *, skipkeys=False, ensure_ascii=True,
+                 check_circular=True, allow_nan=True, sort_keys=False,
+                 indent=None, separators=None, default=None):
+        super().__init__(skipkeys=skipkeys, ensure_ascii=ensure_ascii, check_circular=check_circular,
+                         allow_nan=allow_nan, sort_keys=sort_keys, indent=indent, separators=separators,
+                         default=default)
 
     def default(self, o):
         if isinstance(o, datetime.datetime):
@@ -66,7 +75,7 @@ class ImprovedDjangoJSONEncoder(json.JSONEncoder):
         elif isinstance(o, (uuid.UUID, Promise)):
             return str(o)
         elif isinstance(o, decimal.Decimal):
-            return float(o)
+            return str(o)
         elif isinstance(o, dict):
             return o
         elif isinstance(o, Mapping):

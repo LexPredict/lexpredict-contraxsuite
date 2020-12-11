@@ -41,26 +41,54 @@ from django.core.management import call_command
 from django.http import HttpResponse
 
 # Third-party imports
-from rest_framework import serializers, generics, schemas
-import rest_framework.views
+from rest_framework import serializers, generics, schemas, views
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
-from rest_framework.parsers import FileUploadParser
 
 # Project imports
-from apps.common.api.permissions import SuperuserRequiredPermission
+from apps.common.schemas import CustomAutoSchema, ObjectResponseSchema
 from apps.dump.app_dump import get_full_dump, get_field_values_dump,\
     get_model_fixture_dump, load_fixture_from_dump, download, get_app_config_dump
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.7.0/LICENSE"
-__version__ = "1.7.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
+__version__ = "1.8.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
 
-class BaseDumpView(rest_framework.views.APIView):
-    permission_classes = (SuperuserRequiredPermission,)
+json_ct = 'application/json'
+
+
+class BaseDumpViewSchema(CustomAutoSchema):
+
+    def get_responses(self, path, method):
+        response = {'200': {'content': {json_ct: {'schema': ObjectResponseSchema.object_schema}}},
+                    '400': {'content': {json_ct: {'schema': ObjectResponseSchema.object_schema}}}}
+        if method == 'PUT':
+            response = {
+                '200': {
+                    'content': {
+                        json_ct: {
+                            'schema': {'type': 'string',
+                                       'format': 'binary',
+                                       'description': 'Json file with dumped data'}
+                        },
+                    }
+                }
+            }
+        return response
+
+
+class RunTaskPermission(IsAuthenticated):
+    def has_permission(self, request, view):
+        return request.user.has_perm('task.add_task')
+
+
+class BaseDumpView(views.APIView):
+    permission_classes = [RunTaskPermission]
+    schema = BaseDumpViewSchema()
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -74,7 +102,7 @@ class BaseDumpView(rest_framework.views.APIView):
         raise Exception('Not implemented')
 
     def get(self, request, *args, **kwargs):
-        return HttpResponse(self.get_json_dump(), content_type='Application/json')
+        return HttpResponse(self.get_json_dump(), content_type=json_ct)
 
     def put(self, request, *args, **kwargs):
         """
@@ -89,7 +117,7 @@ class BaseDumpView(rest_framework.views.APIView):
                 call_command(self._command, f.name, stdout=buf)
                 buf.seek(0)
             return HttpResponse(content=self.get_json_dump(),
-                                content_type='Application/json',
+                                content_type=json_ct,
                                 status=200)
         except:
             log = buf.read()
@@ -99,14 +127,14 @@ class BaseDumpView(rest_framework.views.APIView):
                 'exception': tb
             }
             return HttpResponse(content=json.dumps(data),
-                                content_type='Application/json',
+                                content_type=json_ct,
                                 status=400)
 
 
 class DumpConfigView(BaseDumpView):
     """
-        This class is made to dump all users, roles, email addresses, review statuses, review status groups,
-        app vars, document types, fields, field detectors and document filters to json.
+    Dump all users, roles, email addresses, review statuses, review status groups,
+    app vars, document types, fields, field detectors and document filters to json.
     """
 
     def __init__(self, *args, **kwargs):
@@ -119,9 +147,8 @@ class DumpConfigView(BaseDumpView):
 
 class DumpDocumentConfigView(BaseDumpView):
     """
-        This class is made to dump document types, fields, field detectors and  document filters to json.
+    Dump document types, fields, field detectors and  document filters to json.
     """
-
     def get_json_dump(self) -> str:
         document_type_codes = self.request.GET.get('document_type_codes') or None
         if document_type_codes:
@@ -129,14 +156,15 @@ class DumpDocumentConfigView(BaseDumpView):
         return get_app_config_dump(document_type_codes)
 
 
-class FieldValuesDumpAPIView(rest_framework.views.APIView):
-    permission_classes = (SuperuserRequiredPermission,)
-
+class FieldValuesDumpAPIView(BaseDumpView):
+    """
+    Dump field values to json.
+    """
     def get(self, request, *args, **kwargs):
         """
         Download field values
         """
-        response = HttpResponse(content_type='application/json')
+        response = HttpResponse(content_type=json_ct)
         response['Content-Disposition'] = 'attachment; filename="{}.{}.{}"'.format(
             Site.objects.get_current(), 'field-values', 'json')
         json_data = get_field_values_dump()
@@ -162,7 +190,7 @@ class FieldValuesDumpAPIView(rest_framework.views.APIView):
                 'exception': tb
             }
             return HttpResponse(content=json.dumps(data),
-                                content_type='Application/json',
+                                content_type=json_ct,
                                 status=400)
 
 
@@ -170,13 +198,35 @@ class DumpFixtureSerializer(serializers.Serializer):
     app_name = serializers.CharField(required=True)
     model_name = serializers.CharField(required=True)
     file_name = serializers.CharField(required=True)
-    filter_options = serializers.JSONField()
+    filter_options = serializers.JSONField(required=False)
     indent = serializers.IntegerField(required=False, default=4)
 
 
+class DumpFixtureAPIViewSchema(CustomAutoSchema):
+    request_serializer = DumpFixtureSerializer()
+
+    def get_responses(self, path, method):
+        response = {
+            '200': {
+                'content': {
+                    json_ct: {
+                        'schema': {'type': 'string',
+                                   'format': 'binary',
+                                   'description': 'Json file with dumped fixture'}
+                    },
+                }
+            }
+        }
+        return response
+
+
 class DumpFixtureAPIView(generics.CreateAPIView):
-    permission_classes = (SuperuserRequiredPermission,)
+    """
+    Dump model objects into fixture json file.
+    """
+    permission_classes = [RunTaskPermission]
     serializer_class = DumpFixtureSerializer
+    schema = DumpFixtureAPIViewSchema()
 
     coreapi_schema = schemas.ManualSchema(fields=[
         coreapi.Field(
@@ -225,22 +275,37 @@ class DumpFixtureAPIView(generics.CreateAPIView):
 
 
 class LoadFixtureSerializer(serializers.Serializer):
-    fixture_file = serializers.FileField(required=True)
+    fixture = serializers.CharField(required=True)
     mode = serializers.CharField(max_length=10, required=False)
+    encoding = serializers.CharField(max_length=10, required=False)
+
+
+class LoadFixtureAPIViewSchema(CustomAutoSchema):
+
+    def get_responses(self, path, method):
+        response = {'200': {'content': {json_ct: {'schema': ObjectResponseSchema.object_schema}}},
+                    '400': {'content': {json_ct: {'schema': ObjectResponseSchema.object_schema}}}}
+        return response
 
 
 class LoadFixtureAPIView(generics.CreateAPIView):
+    """
+    Load model objects from fixture json file.
+    """
     serializer_class = LoadFixtureSerializer
-    parser_classes = (FileUploadParser,)
-    permission_classes = (SuperuserRequiredPermission,)
+    permission_classes = [RunTaskPermission]
+    schema = LoadFixtureAPIViewSchema()
 
     def post(self, request, *args, **kwargs):
         """
         Install model fixtures
         """
-        file_ = request.FILES.dict().get('fixture_file')
-        data = file_.read()
-        mode = request.POST.get('mode', 'default')
+        request_data = request.data or request.POST
+        data = request_data['fixture']
+        if isinstance(data, str):
+            encoding = request_data.get('encoding', 'utf-8')
+            data = data.encode(encoding)
+        mode = request_data.get('mode', 'default')
         res = load_fixture_from_dump(data, mode)
         status = 200 if res['status'] == 'success' else 400
         return Response(res, status=status)

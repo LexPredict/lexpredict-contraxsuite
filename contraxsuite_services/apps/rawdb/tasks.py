@@ -24,7 +24,7 @@
 """
 # -*- coding: utf-8 -*-
 
-from typing import Generator, List, Any, Iterable, Optional
+from typing import Generator, List, Any, Iterable, Optional, Union
 
 from celery import shared_task
 from celery.exceptions import SoftTimeLimitExceeded
@@ -48,8 +48,8 @@ import task_names
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.7.0/LICENSE"
-__version__ = "1.7.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
+__version__ = "1.8.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -395,7 +395,7 @@ def cache_document_fields_for_doc_ids(task: ExtendedTask,
                                       cache_user_fields: bool = True):
     log = CeleryTaskLogger(task)
     changed_by_user = User.objects.get(pk=changed_by_user_id) if changed_by_user_id is not None else None
-    for doc in Document.all_objects.filter(pk__in=doc_ids) \
+    for doc in Document.all_objects.filter(pk__in=doc_ids, project_id__isnull=False) \
             .select_related('document_type', 'assignee', 'status'):  # type: Document
         try:
             cache_document_fields(log, doc, changed_by_user=changed_by_user,
@@ -473,14 +473,17 @@ def index_documents(task: ExtendedTask,
     """
     args = [(sub_list, changed_by_user_id, cache_system_fields, cache_generic_fields, cache_user_fields)
             for sub_list in chunks(doc_ids, DOC_NUM_PER_SUB_TASK)]
-    task.run_sub_tasks('Reindex documents', cache_document_fields_for_doc_ids_tracked, args)
+    sub_tasks_priority = task.task.priority
+    task.run_sub_tasks('Reindex documents', cache_document_fields_for_doc_ids_tracked, args,
+                       priority=sub_tasks_priority)
 
 
 def plan_reindex_tasks_in_chunks(all_doc_ids: Iterable,
                                  changed_by_user_id: int = None,
                                  cache_system_fields: FieldSpec = True,
                                  cache_generic_fields: FieldSpec = True,
-                                 cache_user_fields: bool = True):
+                                 cache_user_fields: bool = True,
+                                 priority: Union[int, None] = None):
     """
     Plans document reindexing. Splits the provided set of doc ids to chunks and runs N main tasks which will be
     displayed in the admin task list. Splitting is done to avoid overloading rabbitmq with possible too large
@@ -490,4 +493,5 @@ def plan_reindex_tasks_in_chunks(all_doc_ids: Iterable,
         call_task_func(index_documents,
                        (doc_ids_chunk, changed_by_user_id,
                         cache_system_fields, cache_generic_fields, cache_user_fields),
-                       changed_by_user_id)
+                       changed_by_user_id,
+                       priority=priority)

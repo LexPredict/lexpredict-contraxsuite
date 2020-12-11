@@ -48,8 +48,8 @@ from apps.notifications.models import DocumentDigestConfig, DocumentDigestSendDa
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.7.0/LICENSE"
-__version__ = "1.7.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
+__version__ = "1.8.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -90,7 +90,7 @@ def send_email(log: ProcessLogger, dst_user, subject: str, txt: str, html: str,
                image_dir: str = None, cc: Set[str] = None):
 
     if not dst_user.email:
-        log.error('Destination user {0} has no email assigned'.format(dst_user.get_full_name()))
+        log.error('Destination user {0} has no email assigned'.format(dst_user.name))
         return
 
     try:
@@ -101,7 +101,7 @@ def send_email(log: ProcessLogger, dst_user, subject: str, txt: str, html: str,
                                        body=txt,
                                        cc=list(cc) if cc else None,
                                        from_email=SUPPORT_EMAIL.val or settings.DEFAULT_FROM_EMAIL,
-                                       to=['"{0}" <{1}>'.format(dst_user.get_full_name(), dst_user.email)],
+                                       to=['"{0}" <{1}>'.format(dst_user.name, dst_user.email)],
                                        connection=backend)
         if html:
             images = [m.group(3) for m in RE_SRC_ATTACHMENT.finditer(html)]
@@ -122,7 +122,7 @@ def send_email(log: ProcessLogger, dst_user, subject: str, txt: str, html: str,
 
         email.send(fail_silently=False)
     except Exception as caused_by:
-        log.error(f'Unable to send email to user "{dst_user.get_full_name()}" (#{dst_user.pk})',
+        log.error(f'Unable to send email to user "{dst_user.name}" (#{dst_user.pk})',
                   exc_info=caused_by)
 
 

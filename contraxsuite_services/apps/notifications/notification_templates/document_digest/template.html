@@ -100,7 +100,7 @@
 </head>
 <body>
 <div class="logo">
-    <div><a href="{{ app_url }}"><img src="{% static "images/logo.png" %}" width="134" height="28" /></a></div>
+    <div><a href="{{ app_url }}"><img src="images/logo.png" width="134" height="28" /></a></div>
 </div>
 
 <div class="header">
@@ -110,7 +110,7 @@
             <col style="width: 100%;" />
 
         </colgroup>
-        <tr><td class="column-prop-name">User:</td><td class="column-prop-value">{{ to_user.get_full_name() }}</td></tr>
+        <tr><td class="column-prop-name">User:</td><td class="column-prop-value">{{ to_user.name }}</td></tr>
         <tr><td class="column-prop-name">Document type:</td><td class="column-prop-value">{{ document_type.title }}</td></tr>
     {%- if period_aware -%}
         <tr><td class="column-prop-name">Period:</td><td class="column-prop-value">{{ fmt_date(period_start) }}&nbsp;&nbsp;-&nbsp;&nbsp;{{ fmt_date(period_end) }}</td></tr>

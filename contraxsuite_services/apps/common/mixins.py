@@ -54,12 +54,14 @@ from django.core.paginator import Paginator, EmptyPage
 from django.db import connection
 from django.db.models import Q, fields as django_fields, NOT_PROVIDED, QuerySet
 from django.http import JsonResponse
-from django.http.response import StreamingHttpResponse
+from django.http.response import StreamingHttpResponse, HttpResponseForbidden
+from django.shortcuts import render
 from django.urls import reverse
 from django.views.generic import ListView
 from django.views.generic.base import View
 from django.views.generic.edit import CreateView, DeleteView, UpdateView
 from django.views.generic.list import MultipleObjectMixin
+from guardian.shortcuts import get_objects_for_user
 from rest_framework import status
 from rest_framework.decorators import action
 from rest_framework.fields import empty as EMPTY
@@ -70,41 +72,19 @@ from rest_framework_tracking.mixins import LoggingMixin
 from apps.common.model_utils.improved_django_json_encoder import ImprovedDjangoJSONEncoder
 from apps.common.models import Action, CustomAPIRequestLog
 from apps.common.querysets import QuerySetWoCache
+from apps.common.schemas import JqFiltersListViewSchema, CustomAutoSchema, ObjectResponseSchema
 from apps.common.streaming_utils import csv_gen_from_dicts
 from apps.common.utils import cap_words, export_qs_to_file, download, full_reverse
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.7.0/LICENSE"
-__version__ = "1.7.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
+__version__ = "1.8.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
 
 base_success_msg = '%s "%s" was successfully %s.'
-
-
-class AdminRequiredMixin(PermissionRequiredMixin):
-    raise_exception = True
-
-    def has_permission(self):
-        return not self.request.user.is_reviewer
-
-
-class TechAdminRequiredMixin(PermissionRequiredMixin):
-    raise_exception = True
-
-    def has_permission(self):
-        return self.request.user.is_admin
-
-
-class AppBlockMixin(PermissionRequiredMixin):
-    raise_exception = True
-
-    def has_permission(self):
-        from apps.task.utils.task_utils import check_blocks
-
-        return not check_blocks(raise_error=False)
 
 
 def get_model(self):
@@ -181,7 +161,7 @@ class SingleObjectMixin(MessageMixin, AddModelNameMixin, TemplateNamesMixin):
     pass
 
 
-class CustomCreateView(AdminRequiredMixin, SingleObjectMixin, CreateView):
+class CustomCreateView(PermissionRequiredMixin, SingleObjectMixin, CreateView):
     success_message = 'created'
 
     def get_form_class(self):
@@ -221,24 +201,40 @@ class CustomDetailView(CustomUpdateView):
             args=[self.kwargs.get(self.slug_field, self.kwargs[self.pk_url_kwarg])])
 
 
-class ReviewerQSMixin(MultipleObjectMixin):
-    limit_reviewers_qs_by_field = None
+class DocumentQsAccessMixin(MultipleObjectMixin):
+    document_lookup = None
 
     def get_queryset(self):
+        """
+        Assume that "document_lookup" is pattern to "document" field
+        Limit QS by document/project permissions
+        """
         qs = super().get_queryset()
-        if self.request.user.is_reviewer and self.limit_reviewers_qs_by_field is not None:
-            # limit qs for reviewers
-            if isinstance(self.limit_reviewers_qs_by_field, (list, tuple)):
-                lookup = {'%s__taskqueue__reviewers' % i: self.request.user for i in
-                          self.limit_reviewers_qs_by_field}
-            elif self.limit_reviewers_qs_by_field == "":
-                lookup = {'taskqueue__reviewers': self.request.user}
+        if self.request.user.has_perm('project.view_project'):
+            return qs
+
+        if self.document_lookup is not None:
+            # either a User is able to see all docs in a project
+            project_qs = get_objects_for_user(self.request.user, 'project.view_documents')
+            # or some Documents are assigned to a User
+            assigned_documents_qs = get_objects_for_user(self.request.user, 'document.view_document')
+
+            if self.document_lookup:
+                if isinstance(self.document_lookup, (tuple, list)):
+                    query = reduce(
+                        operator.or_,
+                        (Q(**{f'{i}__project__in': project_qs}) |
+                         Q(**{f'{i}__in': assigned_documents_qs}) for i in self.document_lookup))
+                    qs = qs.filter(query)
+                else:
+                    qs = qs.filter(
+                        Q(**{f'{self.document_lookup}__project__in': project_qs}) |
+                        Q(**{f'{self.document_lookup}__in': assigned_documents_qs}))
             else:
-                lookup = {
-                    '%s__taskqueue__reviewers'
-                    % self.limit_reviewers_qs_by_field: self.request.user}
-            qs = qs.filter(**lookup)
-        return qs
+                # document_lookup == ""
+                qs = qs.filter(Q(project__in=project_qs) |
+                               Q(id__in=assigned_documents_qs.values_list('id', flat=True)))
+        return qs.distinct()
 
 
 class BaseCustomListView(AddModelNameMixin, TemplateNamesMixin, ListView):
@@ -282,7 +278,7 @@ class BaseCustomListView(AddModelNameMixin, TemplateNamesMixin, ListView):
         return qs
 
 
-class CustomListView(ReviewerQSMixin, BaseCustomListView):
+class CustomListView(DocumentQsAccessMixin, BaseCustomListView):
     pass
 
 
@@ -348,7 +344,7 @@ class JSONResponseView(View):
         return []
 
 
-class TypeaheadView(ReviewerQSMixin, JSONResponseView):
+class TypeaheadView(DocumentQsAccessMixin, JSONResponseView):
 
     DEFAULT_LIMIT = 30
 
@@ -391,7 +387,7 @@ class SubmitView(JSONResponseView):
         return ret
 
 
-class AjaxListView(ReviewerQSMixin, AjaxResponseMixin, BaseCustomListView):
+class AjaxListView(DocumentQsAccessMixin, AjaxResponseMixin, BaseCustomListView):
     json_fields = []
     extra_json_fields = []
     annotate = {}
@@ -744,7 +740,12 @@ class APIResponseMixin:
                     instance = self.new_instance
                 else:
                     instance = self.get_object()
+                orig_data = response.data
                 response.data = self.response_unifier_serializer(instance, many=False).data
+                if orig_data and response.data:
+                    for key in orig_data:
+                        if key not in response.data:
+                            response.data[key] = orig_data[key]
             except:
                 pass
         return super().finalize_response(request, response, *args, **kwargs)
@@ -796,10 +797,11 @@ class APIFormFieldsMixin:
             instance = self.get_object()
         except:
             instance = None
-        serializer = serializer_class(instance)
+        serializer = serializer_class(instance, context={'view': self, 'request': self.request})
         model = serializer.Meta.model
 
-        for field_code, field_class in serializer.get_fields().items():
+        for field_code, _ in serializer.get_fields().items():
+            field_class = serializer.fields[field_code]
             field_type = field_class.__class__.__name__
             fields[field_code] = {'field_type': field_type,
                                   'ui_element': self.get_ui_element(field_code, field_class)}
@@ -832,13 +834,14 @@ class APIFormFieldsMixin:
                     pass
 
         if instance:
-            instance_data = serializer_class(instance, many=False).data
+            instance_data = serializer_class(instance, many=False,
+                                             context={'view': self, 'request': self.request}).data
             for field_name, field_data in fields.items():
                 field_data['value'] = instance_data.get(field_name)
 
         return fields
 
-    @action(detail=False, methods=['get'], url_path='form-fields')
+    @action(detail=False, methods=['get'], url_path='form-fields', schema=ObjectResponseSchema())
     def new_object_fields(self, request, *args, **kwargs):
         """
         GET model form fields description to build UI form for an object:\n
@@ -855,7 +858,7 @@ class APIFormFieldsMixin:
         """
         return Response(self.get_fields_data())
 
-    @action(detail=True, methods=['get'], url_path='form-fields')
+    @action(detail=True, methods=['get'], url_path='form-fields', schema=ObjectResponseSchema())
     def existing_object_fields(self, request, *args, **kwargs):
         """
         GET model form fields description to build UI form for EXISTING object:\n
@@ -880,6 +883,22 @@ class JqListAPIMixin(JqPaginatedListMixin):
     return {'data': [.....], 'total_records': N}
     """
     extra_data = None
+    schema = JqFiltersListViewSchema()
+
+    def initialize_request(self, request, *args, **kwargs):
+        request = super().initialize_request(request, *args, **kwargs)
+        param = JqFiltersListViewSchema.filters_param_name
+        if param in request.GET:
+            param_value = request.GET[param]
+            if isinstance(param_value, str):
+                try:
+                    param_value = json.loads(param_value.replace("\'", "\""))
+                except:
+                    return request
+                if isinstance(param_value, dict):
+                    request.GET = request.GET.copy()
+                    request.GET.update(param_value)
+        return request
 
     def filter_queryset(self, queryset):
         if 'sortdatafield' in self.request.GET or 'filterscount' in self.request.GET:
@@ -982,8 +1001,18 @@ class TypeaheadSerializer(rest_framework.serializers.Serializer):
     q = rest_framework.serializers.CharField()
 
 
-class TypeaheadAPIView(ReviewerQSMixin, rest_framework.generics.ListAPIView):
+class TypeaheadAPIViewSchema(CustomAutoSchema):
+    parameters = [
+        {'name': 'q',
+         'in': 'query',
+         'required': True,
+         'description': 'Typeahead string',
+         'schema': {'type': 'string'}}]
+
+
+class TypeaheadAPIView(DocumentQsAccessMixin, rest_framework.generics.ListAPIView):
     serializer_class = TypeaheadSerializer
+    schema = TypeaheadAPIViewSchema()
 
     def get(self, request, *args, **kwargs):
         field_name = self.kwargs.get('field_name')
@@ -1156,158 +1185,10 @@ class CustomCountQuerySet(QuerySet):
         return row[0]
 
 
-# TODO: commented out - check how views work without it (not sure why this code was added)
-# from django.db.models.expressions import OrderBy, Random, RawSQL, Ref
-# from django.db.models.sql.constants import ORDER_DIR
-# from django.db.models.sql.query import get_order_dir
-# from django.db.utils import DatabaseError
+class CustomForbiddenResponse(HttpResponseForbidden):
 
-
-# def get_group_by(self, select, order_by):
-#     """
-#     See original get_group_by at django.db.models.sql.compiler>SQLCompiler
-#     """
-#     if self.query.group_by is None:
-#         return []
-#     expressions = []
-#     if self.query.group_by is not True:
-#         for expr in self.query.group_by:
-#             if not hasattr(expr, 'as_sql'):
-#                 expressions.append(self.query.resolve_ref(expr))
-#             else:
-#                 expressions.append(expr)
-#     for expr, _, _ in select:
-#         cols = expr.get_group_by_cols()
-#         for col in cols:
-#             expressions.append(col)
-#     for expr, (sql, params, is_ref) in order_by:
-#         if expr.contains_aggregate:
-#             continue
-#         if is_ref:
-#             continue
-#         expressions.extend(expr.get_source_expressions())
-#     having_group_by = self.having.get_group_by_cols() if self.having else ()
-#     for expr in having_group_by:
-#         expressions.append(expr)
-#     result = []
-#     # changed from set() to []
-#     seen = []
-#     expressions = self.collapse_group_by(expressions, having_group_by)
-#
-#     for expr in expressions:
-#         sql, params = self.compile(expr)
-#         if (sql, tuple(params)) not in seen:
-#             result.append((sql, params))
-#             # changed from add to append
-#             seen.append((sql, tuple(params)))
-#     return result
-#
-#
-# def get_order_by(self):
-#     """
-#     See original get_group_by at django.db.models.sql.compiler>SQLCompiler
-#     """
-#     if self.query.extra_order_by:
-#         ordering = self.query.extra_order_by
-#     elif not self.query.default_ordering:
-#         ordering = self.query.order_by
-#     else:
-#         ordering = (self.query.order_by or self.query.get_meta().ordering or [])
-#     if self.query.standard_ordering:
-#         asc, desc = ORDER_DIR['ASC']
-#     else:
-#         asc, desc = ORDER_DIR['DESC']
-#
-#     order_by = []
-#     for field in ordering:
-#         if hasattr(field, 'resolve_expression'):
-#             if not isinstance(field, OrderBy):
-#                 field = field.asc()
-#             if not self.query.standard_ordering:
-#                 field.reverse_ordering()
-#             order_by.append((field, False))
-#             continue
-#         if field == '?':  # random
-#             order_by.append((OrderBy(Random()), False))
-#             continue
-#
-#         col, order = get_order_dir(field, asc)
-#         descending = True if order == 'DESC' else False
-#
-#         if col in self.query.annotation_select:
-#             # Reference to expression in SELECT clause
-#             order_by.append((
-#                 OrderBy(Ref(col, self.query.annotation_select[col]), descending=descending),
-#                 True))
-#             continue
-#         if col in self.query.annotations:
-#             # References to an expression which is masked out of the SELECT clause
-#             order_by.append((
-#                 OrderBy(self.query.annotations[col], descending=descending),
-#                 False))
-#             continue
-#
-#         if '.' in field:
-#             # This came in through an extra(order_by=...) addition. Pass it
-#             # on verbatim.
-#             table, col = col.split('.', 1)
-#             order_by.append((
-#                 OrderBy(
-#                     RawSQL('%s.%s' % (self.quote_name_unless_alias(table), col), []),
-#                     descending=descending
-#                 ), False))
-#             continue
-#
-#         if not self.query._extra or col not in self.query._extra:
-#             # 'col' is of the form 'field' or 'field1__field2' or
-#             # '-field1__field2__field', etc.
-#             order_by.extend(self.find_ordering_name(
-#                 field, self.query.get_meta(), default_order=asc))
-#         else:
-#             if col not in self.query.extra_select:
-#                 order_by.append((
-#                     OrderBy(RawSQL(*self.query.extra[col]), descending=descending),
-#                     False))
-#             else:
-#                 order_by.append((
-#                     OrderBy(Ref(col, RawSQL(*self.query.extra[col])), descending=descending),
-#                     True))
-#     result = []
-#     # changed from set() to []
-#     seen = []
-#
-#     for expr, is_ref in order_by:
-#         if self.query.combinator:
-#             src = expr.get_source_expressions()[0]
-#             # Relabel order by columns to raw numbers if this is a combined
-#             # query; necessary since the columns can't be referenced by the
-#             # fully qualified name and the simple column names may collide.
-#             for idx, (sel_expr, _, col_alias) in enumerate(self.select):
-#                 if is_ref and col_alias == src.refs:
-#                     src = src.source
-#                 elif col_alias:
-#                     continue
-#                 if src == sel_expr:
-#                     expr.set_source_expressions([RawSQL('%d' % (idx + 1), ())])
-#                     break
-#             else:
-#                 raise DatabaseError('ORDER BY term does not match any column in the result set.')
-#         resolved = expr.resolve_expression(
-#             self.query, allow_joins=True, reuse=None)
-#         sql, params = self.compile(resolved)
-#         # Don't add the same column twice, but the order direction is
-#         # not taken into account so we strip it. When this entire method
-#         # is refactored into expressions, then we can check each part as we
-#         # generate it.
-#         without_ordering = self.ordering_parts.search(sql).group(1)
-#         if (without_ordering, tuple(params)) in seen:
-#             continue
-#         # changed from add to append
-#         seen.append((without_ordering, tuple(params)))
-#         result.append((resolved, (sql, params, is_ref)))
-#     return result
-
-
-# from django.db.models.sql.compiler import SQLCompiler
-# SQLCompiler.get_group_by = get_group_by
-# SQLCompiler.get_order_by = get_order_by
+    def __init__(self, *args, **kwargs):
+        msg = kwargs.pop('message', '')
+        request = kwargs.pop('request')
+        super(). __init__(*args, **kwargs)
+        self.content = render(request, '403.html', context={'message': msg})

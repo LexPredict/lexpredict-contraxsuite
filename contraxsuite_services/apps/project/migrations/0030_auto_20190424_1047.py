@@ -21,6 +21,6 @@ class Migration(migrations.Migration):
         migrations.AlterField(
             model_name='taskqueue',
             name='reviewers',
-            field=models.ManyToManyField(blank=True, limit_choices_to=apps.project.models.all_reviewers_and_managers, to=settings.AUTH_USER_MODEL),
+            field=models.ManyToManyField(blank=True, to=settings.AUTH_USER_MODEL),
         ),
     ]

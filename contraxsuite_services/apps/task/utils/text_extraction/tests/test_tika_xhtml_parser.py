@@ -24,19 +24,17 @@
 """
 # -*- coding: utf-8 -*-
 
-from tests.django_test_case import *
-from apps.task.utils.text_extraction.tika.tika_xhtml_parser import TikaXhtmlParser
-from django.test import TestCase
+from unittest import TestCase
+from apps.task.utils.text_extraction.tika.tika_xhtml_parser import TikaXhtmlParser, XhtmlParsingSettings, \
+    OcrTextStoreSettings
+from tests.testutils import load_resource_document
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.7.0/LICENSE"
-__version__ = "1.7.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
+__version__ = "1.8.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
-
-
-from tests.testutils import load_resource_document
 
 
 class TestTikaXhtmlParser(TestCase):
@@ -76,8 +74,10 @@ the subject so much as in the gust and palate of the reader.</p>
         self.assertTrue(p_text.endswith('the same brightness and'))
 
     def test_complex_mixed_pdf(self):
+        sets = XhtmlParsingSettings()
+        sets.ocr_sets = OcrTextStoreSettings.STORE_ALWAYS
         full_text = load_resource_document('parsing/parsed_mixed_pdf.xhtml', encoding='utf-8')
-        parser = TikaXhtmlParser()
+        parser = TikaXhtmlParser(sets)
         markup = parser.parse_text(full_text)
         markup.convert_markers_to_labels()
 
@@ -93,7 +93,6 @@ the subject so much as in the gust and palate of the reader.</p>
             ending = markup.text[in_start:in_end]
             pages_texts.append(ending)
 
-        self.assertTrue(pages_texts[0].strip().find('See “RATINGS” herein.') > 0)
-        self.assertTrue(pages_texts[1].find(
-            'optional redemption date of November 15, 2027.') > 0)
-        self.assertTrue(pages_texts[54].strip().endswith('by the IRS.'))
+        self.assertTrue('See “RATINGS” herein.' in pages_texts[0])
+        self.assertTrue('optional redemption date of November 15, 2027.' in pages_texts[1])
+        self.assertTrue('by the IRS.' in pages_texts[54])

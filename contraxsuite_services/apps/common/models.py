@@ -57,8 +57,8 @@ from apps.users.models import User
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.7.0/LICENSE"
-__version__ = "1.7.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
+__version__ = "1.8.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -129,7 +129,7 @@ class AppVar(models.Model):
 
     @classmethod
     def set(cls, category: str, name: str, value, description='', overwrite=False) -> 'AppVar':
-        if is_migrating:
+        if is_migrating or settings.TEST_RUN_MODE:
             mock = AppVar()
             mock.category = category
             mock.name = name
@@ -151,6 +151,8 @@ class AppVar(models.Model):
 
     @classmethod
     def get(cls, category: str, name: str, default=None):
+        if is_migrating or settings.TEST_RUN_MODE:
+            return default
         qs = cls.objects.filter(name=name, category=category)
         for v in qs.values_list('value', flat=True):
             return v
@@ -158,10 +160,10 @@ class AppVar(models.Model):
 
     @property
     def val(self):
-        # if redis.exists(self.cache_key) is True:
-        value = redis.pop(self.cache_key)
-        if value is not None:
-            return value
+        if is_migrating or settings.TEST_RUN_MODE:
+            return self.value
+        if redis.exists(self.cache_key) is True:
+            return redis.pop(self.cache_key)
         try:
             self.refresh_from_db()
         except AppVar.DoesNotExist:
@@ -269,6 +271,8 @@ class ReviewStatus(models.Model):
 
     @classmethod
     def initial_status(cls):
+        if is_migrating or settings.TEST_RUN_MODE:
+            return None
         try:
             return cls.objects.first()
         except cls.DoesNotExist:

@@ -55,8 +55,8 @@ from apps.users.models import User
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.7.0/LICENSE"
-__version__ = "1.7.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
+__version__ = "1.8.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -437,10 +437,18 @@ class DocumentFieldRepository:
                 .exclude(hide_until_python='') \
                 .values_list('pk', 'code', 'hide_until_python'):
             eval_locals = dict()
-            eval_locals.update(settings.CALCULATED_FIELDS_EVAL_LOCALS)
+
+            if settings.DEBUG_SLOW_DOWN_HIDE_UNTIL_FORMULAS_SEC:
+                import time
+                time.sleep(settings.DEBUG_SLOW_DOWN_HIDE_UNTIL_FORMULAS_SEC)
+
+            # Hide-until formulas are translated from Python to JavaScript
+            # and should not contain anything Python-specific.
+            # Using special settings.HIDE_UNTIL_EVAL_LOCALS and disabling the base eval locals for eval_script().
+            eval_locals.update(settings.HIDE_UNTIL_EVAL_LOCALS)
             eval_locals.update(field_code_to_value)
             displayed = eval_script(
-                f'{field_code}.{FIELD_CODE_HIDE_UNTIL_PYTHON}', formula, eval_locals)
+                f'{field_code}.{FIELD_CODE_HIDE_UNTIL_PYTHON}', formula, eval_locals, add_base_eval_locals=False)
             if not displayed:
                 hidden_field_ids.add(field_pk)
                 hidden_field_codes.add(field_code)
@@ -836,7 +844,8 @@ class DocumentFieldRepository:
                 location_text=false_ant.location_text,
                 text_unit=false_ant.text_unit,
                 status_id=status_id,
-                assignee=false_ant.assignee
+                assignee=false_ant.assignee,
+                uid=false_ant.uid
             )
 
             typed_field = TypedField.by(field)
@@ -1000,13 +1009,20 @@ class DocumentFieldRepository:
                                       doc: Document,
                                       field: Optional[DocumentField],
                                       location_start: int, location_end: int) -> Optional[int]:
-        query = TextUnit.objects.filter(
-            document=doc,
-            location_start__lte=location_end,
-            location_end__gte=location_start)
         if field:
-            query = query.filter(unit_type=field.text_unit_type)
-        return query.values_list('pk', flat=True).first()
+            query = TextUnit.objects.filter(
+                unit_type=field.text_unit_type,
+                document=doc,
+                location_start__lte=location_end,
+                location_end__gte=location_start)
+        else:
+            query = TextUnit.objects.filter(
+                document=doc,
+                location_start__lte=location_end,
+                location_end__gte=location_start)
+
+        # note that there might be no row matching the query - that would lead to exception
+        return query.order_by().values_list('pk', flat=True)[:1].get()
 
     def get_annotation_stats_by_field_value(self, field_value: FieldValue) -> Dict[str, int]:
         return {str(val or ''): count
@@ -1266,13 +1282,30 @@ class DocumentFieldRepository:
                                      field_codes_to_skip: List[int] = None,
                                      field_codes_to_include: List[int] = None) -> None:
         ants = FieldAnnotation.objects.filter(document_id=document_id)
+        false_ants = FieldAnnotationFalseMatch.objects.filter(document_id=document_id)
         vals = FieldValue.objects.filter(document_id=document_id)
         if field_codes_to_include:
             ants = ants.filter(field__code__in=field_codes_to_skip)
+            false_ants = false_ants.filter(field__code__in=field_codes_to_skip)
             vals = vals.filter(field__code__in=field_codes_to_skip)
         if field_codes_to_skip:
             ants = ants.exclude(field__code__in=field_codes_to_skip)
+            false_ants = false_ants.exclude(field__code__in=field_codes_to_skip)
             vals = vals.exclude(field__code__in=field_codes_to_skip)
 
+        false_ants.delete()
         ants.delete()
         vals.delete()
+
+    def get_user_document_fields(self,
+                                 document_type: DocumentType,
+                                 include_user_fields: bool,
+                                 exclude_hidden_always_fields: bool) -> Iterable[DocumentField]:
+        doc_field_qr = DocumentField.objects.filter(document_type=document_type)
+        if isinstance(include_user_fields, set) or isinstance(include_user_fields, list):
+            doc_field_qr = doc_field_qr.filter(code__in=include_user_fields)
+
+        if exclude_hidden_always_fields:
+            doc_field_qr = doc_field_qr.filter(hidden_always=False)
+
+        return doc_field_qr.order_by('order', 'code')

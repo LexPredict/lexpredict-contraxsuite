@@ -27,7 +27,7 @@
 import os
 import settings
 from typing import List, Dict
-from apps.common.model_utils.model_bulk_delete import ModelBulkDelete
+from apps.common.model_utils.model_bulk_delete import ModelBulkDelete, WherePredicate
 from apps.document.models import Document, TextUnit
 from apps.document.repository.base_document_repository import BaseDocumentRepository
 from apps.document.repository.document_repository import DocumentRepository
@@ -38,13 +38,15 @@ from apps.common.model_utils.table_deps_builder import TableDepsBuilder
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.7.0/LICENSE"
-__version__ = "1.7.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
+__version__ = "1.8.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
 
 class DocumentBulkDelete:
+    TABLES_SKIP_CALCULATE = {'document_documenttext', 'document_textunittext'}
+
     def __init__(self,
                  document_repository: BaseDocumentRepository,
                  safe_mode: bool = True):
@@ -56,7 +58,8 @@ class DocumentBulkDelete:
         if len(ids) == 0:
             return {}
         where_clause = self.build_where_clause(ids)
-        counts = self.bulk_del.calculate_total_objects_to_delete(where_clause)
+        counts = self.bulk_del.calculate_total_objects_to_delete(
+            where_clause, self.TABLES_SKIP_CALCULATE)
         if remove_empty:
             counts = {c: counts[c] for c in counts if counts[c] > 0}
         return counts
@@ -75,12 +78,12 @@ class DocumentBulkDelete:
         except Exception as e:
             raise RuntimeError(f'error in delete_documents.delete_all_documents_by_ids({len(ids)})') from e
 
-    def build_where_clause(self, ids: List[int]) -> str:
+    def build_where_clause(self, ids: List[int]) -> WherePredicate:
         if len(ids) > 1:
             ids_str = ','.join([str(id) for id in ids])
-            where_clause = f'\n  WHERE "{self.model_class}"."id" IN ({ids_str})'
+            where_clause = WherePredicate(self.model_class, "id", f'IN ({ids_str})')
         else:
-            where_clause = f'\n  WHERE "{self.model_class}"."id" = {ids[0]}'
+            where_clause = WherePredicate(self.model_class, "id", f'= {ids[0]}')
         return where_clause
 
     def delete_files(self, ids: List[int]) -> None:

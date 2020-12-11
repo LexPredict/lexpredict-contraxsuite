@@ -47,8 +47,8 @@ from apps.document.repository.dto import FieldValueDTO
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.7.0/LICENSE"
-__version__ = "1.7.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
+__version__ = "1.8.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -291,6 +291,7 @@ class FieldBasedMLOnlyFieldDetectionStrategy(FieldDetectionStrategy):
     @classmethod
     def maybe_detect_with_stop_words(cls,
                                      field: DocumentField,
+                                     doc: Document,
                                      cached_fields: Dict[str, Any]) -> Optional[FieldValueDTO]:
         if field.stop_words:
             depends_on_field_codes = list(field.depends_on_fields
@@ -307,7 +308,9 @@ class FieldBasedMLOnlyFieldDetectionStrategy(FieldDetectionStrategy):
                     depends_on_full_text.append(str(v))
 
             detected_with_stop_words, detected_field_value = \
-                detect_with_stop_words_by_field_and_full_text(field, '\n'.join(depends_on_full_text))
+                detect_with_stop_words_by_field_and_full_text(field=field,
+                                                              doc=doc,
+                                                              full_text='\n'.join(depends_on_full_text))
             if detected_with_stop_words:
                 return FieldValueDTO(field_value=TypedField.by(field).field_value_python_to_json(detected_field_value))
         return None
@@ -320,7 +323,7 @@ class FieldBasedMLOnlyFieldDetectionStrategy(FieldDetectionStrategy):
                            field_code_to_value: Dict[str, Any]) -> Optional[FieldValueDTO]:
         log.debug('detect_field_value: field_based_ml_field_detection, ' +
                   f'field {field.code}({field.pk}), document #{doc.pk}')
-        dto = cls.maybe_detect_with_stop_words(field, field_code_to_value)
+        dto = cls.maybe_detect_with_stop_words(field, doc, field_code_to_value)
         if dto is not None:
             return dto
 
@@ -364,7 +367,7 @@ class FieldBasedMLWithUnsureCatFieldDetectionStrategy(FieldBasedMLOnlyFieldDetec
                            field_code_to_value: Dict[str, Any]) -> Optional[FieldValueDTO]:
 
         # If changing this code make sure you update similar code in notebooks/demo/Train and Debug Decision Tree...
-        detected_value = cls.maybe_detect_with_stop_words(field, field_code_to_value)
+        detected_value = cls.maybe_detect_with_stop_words(field, doc, field_code_to_value)
         if detected_value is not None:
             return detected_value
 

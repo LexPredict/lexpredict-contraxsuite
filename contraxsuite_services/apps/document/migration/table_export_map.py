@@ -27,8 +27,8 @@
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.7.0/LICENSE"
-__version__ = "1.7.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
+__version__ = "1.8.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -63,10 +63,14 @@ class TableExportMap:
     def df_row_to_dict(self, row) -> Dict[str, Any]:
         values = {}
         for cl in self.columns:
+            if cl not in row:
+                continue
             row_val = row[cl]
             if row_val == '\\N':
                 row_val = None
             if row_val == np.nan or row_val == math.nan:
+                row_val = None
+            if isinstance(row_val, float) and math.isnan(row_val):
                 row_val = None
             values[cl] = row_val
         return values

@@ -14,9 +14,16 @@ class Migration(migrations.Migration):
 
     dependencies = [
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
+        ('users', '0016_user_origin')
     ]
 
     operations = [
+        migrations.RunSQL(
+            """
+            CREATE EXTENSION IF NOT EXISTS pg_trgm;
+            CREATE EXTENSION IF NOT EXISTS pg_stat_statements;
+            CREATE EXTENSION IF NOT EXISTS hstore;"""
+        ),
         migrations.CreateModel(
             name='AppVar',
             fields=[

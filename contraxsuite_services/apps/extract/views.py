@@ -37,11 +37,13 @@ from urllib.parse import quote as url_quote
 
 # Third-party import
 import icalendar
+
+# Django imports
 from django.contrib.auth import authenticate
 from django.db.models import Count, F, Max, Min, Sum, Q, Value, Subquery, QuerySet
 from django.db.models.functions import TruncMonth, TruncYear, Left, Concat
 from django.http import Http404, HttpResponseForbidden, HttpResponse
-# Django imports
+from django.shortcuts import render
 from django.urls import reverse
 from django.views.generic import DetailView, TemplateView
 
@@ -59,8 +61,8 @@ from apps.extract.models import (
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.7.0/LICENSE"
-__version__ = "1.7.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
+__version__ = "1.8.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -72,7 +74,7 @@ class BaseUsageListView(apps.common.mixins.JqPaginatedListView):
                    'document__document_type__title',
                    'text_unit__textunittext__text',
                    'text_unit_id']
-    limit_reviewers_qs_by_field = 'document'
+    document_lookup = 'document'
     field_types = dict(count=int)
     highlight_field = ''
     extra_item_map = dict()
@@ -120,7 +122,7 @@ class BaseDocUsageListView(apps.common.mixins.JqPaginatedListView):
                    'document__project__name',
                    'document__name',
                    'document__description', 'document__document_type__title']
-    limit_reviewers_qs_by_field = 'document'
+    document_lookup = 'document'
     field_types = dict(count=int)
     highlight_field = ''
     extra_item_map = dict()
@@ -157,7 +159,7 @@ class BaseDocUsageListView(apps.common.mixins.JqPaginatedListView):
 
 class BaseTopUsageListView(apps.common.mixins.JqPaginatedListView):
     deep_processing = False
-    limit_reviewers_qs_by_field = 'document'
+    document_lookup = 'document'
     sort_by = None
     document_filter_key = 'document_id'
     project_filter_key = 'project_id__in'
@@ -364,10 +366,7 @@ class TextUnitTermUsageListView(BaseTextUnitUsageListView):
                                    'location_start', 'location_end').filter(
             pk__in=Subquery(term_usages.values('text_unit_id'))).order_by('document_id')
         filtered_projects = list(self.request.user.userprojectssavedfilter.projects.values_list('pk', flat=True))
-        if filtered_projects:
-            qs = qs.filter(document__project_id__in=filtered_projects)
-        else:
-            qs = self.filter_count_predicate(qs)
+        qs = qs.filter(document__project_id__in=filtered_projects or [])
         return qs
 
     def set_filter_value_by_ref_id(self, ctx: Dict[str, Any]):
@@ -753,7 +752,7 @@ class DateUsageTimelineView(apps.common.mixins.JqPaginatedListView):
     sub_app = 'date'
     model = DateUsage
     template_name = "extract/date_usage_timeline.html"
-    limit_reviewers_qs_by_field = 'document'
+    document_lookup = 'document'
 
     def get_json_data(self, **kwargs):
         per_month = json.loads(self.request.GET.get('per_month', 'false'))
@@ -826,15 +825,14 @@ class DateUsageCalendarView(apps.common.mixins.JqPaginatedListView):
     sub_app = 'date'
     model = DateUsage
     template_name = "extract/date_usage_calendar.html"
-    limit_reviewers_qs_by_field = 'document'
+    document_lookup = 'document'
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
-        documents = Document.objects
-        if self.request.user.is_reviewer:
-            documents = documents.filter(
-                taskqueue__user_id=self.request.user.pk,
-                textunit__dateusage__isnull=False).distinct()
+        documents = self.request.user.user_documents
+        documents = documents.filter(
+            taskqueue__user_id=self.request.user.pk,
+            textunit__dateusage__isnull=False).distinct()
         ctx['documents'] = documents.values('pk', 'name').iterator()
 
         periods_qs = DateUsage.objects
@@ -1411,6 +1409,11 @@ class DateUsageToICalView(DateUsageListView):
         document_pk = request.GET.get('document_pk')
         if not document_pk:
             return Http404("Document pk is not defined.")
+        if not request.user.can_view_document(Document.objects.get(pk=document_pk)):
+            response = HttpResponseForbidden()
+            msg = 'You do not have access to this document.'
+            response.content = render(request, '403.html', context={'message': msg})
+            return response
 
         sample_length = 100
         # Create calendar
@@ -1554,13 +1557,15 @@ class TermSearchView(apps.common.mixins.JSONResponseView):
         return ret
 
 
+# TODO: seems it doesn't work no more
 class GeoEntityUsageGoogleMapView(apps.common.mixins.AjaxResponseMixin, TemplateView):
     sub_app = 'geoentity'
     template_name = "extract/geo_entity_usage_map.html"
 
     def get_entities(self):
+        qs = GeoEntityUsageListView(request=self.request).get_queryset()
         if self.request.GET.get('usa_only') == 'true':
-            entities = list(GeoEntityUsage.objects.
+            entities = list(qs.
                             filter(Q(entity__category='Countries',
                                      entity__name='United States') |
                                    Q(entity__category='US States')).
@@ -1570,7 +1575,7 @@ class GeoEntityUsageGoogleMapView(apps.common.mixins.AjaxResponseMixin, Template
                             annotate(count=Sum('count')).
                             order_by())
         else:
-            country_entities = list(GeoEntityUsage.objects.
+            country_entities = list(qs.
                                     filter(entity__category='Countries').
                                     values('entity__name',
                                            latitude=F('entity__latitude'),
@@ -1578,7 +1583,7 @@ class GeoEntityUsageGoogleMapView(apps.common.mixins.AjaxResponseMixin, Template
                                     annotate(count=Sum('count')).
                                     order_by())
             country_entities = {i['entity__name']: i for i in country_entities}
-            other_entities = GeoEntityUsage.objects. \
+            other_entities = qs. \
                 filter(entity__entity_a_set__relation_type="subdivision",
                        entity__entity_a_set__entity_b__category="Countries"). \
                 values(entity__name=F('entity__entity_a_set__entity_b__name'),

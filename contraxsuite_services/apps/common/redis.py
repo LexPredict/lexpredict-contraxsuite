@@ -41,8 +41,8 @@ from apps.common.utils import fast_uuid
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.7.0/LICENSE"
-__version__ = "1.7.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
+__version__ = "1.8.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -108,18 +108,19 @@ def lpush_or_pop(key, value, limit):
     return res, resume
 
 
-def push(key, value, pickle_value=True):
+def push(key, value, pickle_value=True, ex=None, px=None, nx=False, xx=False):
     """
     Push pickled key value
+    the real signature in redis/client.py
     """
     if pickle_value:
         value = pickle.dumps(value)
-    return r.set(key, value)
+    return r.set(key, value, ex=ex, px=px, nx=nx, xx=xx)
 
 
 def pop(key, unpickle_value=True):
     """
-    Get unpickled value to redis store
+    Get unpickled value from redis store
     """
     value = r.get(key)
     if value is None:

@@ -1,7 +1,7 @@
-{{ if .Values.customcertificate }}
+
 #contrax-ingress
 
-apiVersion: certmanager.k8s.io/v1alpha1
+apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:
   name: {{ .Values.domain_name }}-crt
@@ -9,13 +9,12 @@ spec:
   secretName: {{ .Values.domain_name }}-crt
   dnsNames:
   - {{ .Values.domain_name }}
-  acme:
-    config:
-    - http01:
-        ingressClass: nginx
-      domains:
-      - {{ .Values.domain_name }}
+  # acme:
+  #   config:
+  #   - http01:
+  #       ingressClass: nginx
+  #     domains:
+  #     - {{ .Values.domain_name }}
   issuerRef:
     name: {{ .Values.domain_name }}-issuer
     kind: Issuer
-{{ end }}

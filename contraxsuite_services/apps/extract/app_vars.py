@@ -29,8 +29,8 @@ from apps.common.models import AppVar
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.7.0/LICENSE"
-__version__ = "1.7.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
+__version__ = "1.8.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -60,3 +60,8 @@ OPTIONAL_LOCATORS = AppVar.set(
      'url'],
     'List of optional locators for use additionally '
     'in "Locate" task if they have been chosen in "Locate" form.')
+
+SIMPLE_LOCATOR_TOKENIZATION = AppVar.set(
+    'Extract', 'simple_locator_tokenization', True,
+    """Don't use NLTK when checking dictionary entries while locating Courts and
+       GeoEntities in the document.""")

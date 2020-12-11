@@ -46,8 +46,8 @@ from apps.task.models import Task, TaskLogEntry
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.7.0/LICENSE"
-__version__ = "1.7.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
+__version__ = "1.8.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -290,7 +290,8 @@ class TaskDetailForm(forms.Form):
 
             if record.stack_trace:
                 # Adding JS to toggle stack trace showing/hiding
-                stack = record.stack_trace.replace('\n', '<br />')
+                stack = record.stack_trace.replace('<', '&lt;').replace(
+                    '>', '&gt;').replace('\n', '<br />')
                 self.render_collapsible_block(logs, stack, 'Stack trace')
 
         # show system-wide errors in collapsible block
@@ -383,3 +384,17 @@ class DumpFixtureForm(forms.Form):
             except:
                 raise forms.ValidationError("Invalid data in filter_options")
         return filter_options
+
+
+class BuildOCRRatingLanguageModelForm(forms.Form):
+    header = 'Build OCR Rating Language Model'
+
+    source_files_archive = forms.FileField(required=True, label='Packed text files (zip)')
+
+    lang = forms.ChoiceField(choices=(('en', 'English'),
+                                      ('de', 'German'),
+                                      ('es', 'Spanish')),
+                             required=True, label='Sample files language')
+    extension = forms.ChoiceField(choices=(('*', 'all files inside the archive (*.*)'),
+                                           ('txt', 'text files only (*.txt)')),
+                                  required=True, label='Extension')

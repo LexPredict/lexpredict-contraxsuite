@@ -24,10 +24,11 @@
 """
 # -*- coding: utf-8 -*-
 
-import random
-
-import time
+from tests.django_test_case import *
 from django.test import TestCase
+
+import random
+import time
 from collections import Iterable
 from typing import List, Iterator, Generator
 
@@ -37,8 +38,8 @@ from apps.common.models import MethodStats
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.7.0/LICENSE"
-__version__ = "1.7.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
+__version__ = "1.8.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -105,7 +106,8 @@ class CollectionUtilsTest(TestCase):
         self.assertTrue(col.slicing_used)
         self.assertFalse(col.iterator_used)
 
-    def test_collect_stat(self):
+    def non_test_collect_stat(self):
+        # this code can't be run as a unit test because it requires DB connection
         for i in range(1000):
             d = random.random()
             err = d < 0.1

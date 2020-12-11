@@ -88,7 +88,7 @@ services:
       - "no_proxy=${PROXY_NO_PROXY}"
       - "NO_PROXY=${PROXY_NO_PROXY}"
 
-  # There are two curator serivices deleting old log indexes here - one for filebeat and one for metricbeat.
+  # There are 3 curator serivices deleting old log indexes here - 2 for filebeat and one for metricbeat.
   # This is done because there was an existing simple cron+curator docker image which supports
   # only specifying a single index prefix. It doesn't use a lot of memory and debugging/maintaining
   # more complicated config is worse than having two services.
@@ -98,8 +98,27 @@ services:
       - contrax_net
     environment:
       - "PERIOD=15min"
-      - "KEEP_DAYS=30"
-      - "INDEX_PREFIX=filebeat-"
+      - "KEEP_DAYS=20"
+      - "INDEX_PREFIX=filebeat-logs-"
+    command: "--host ${DOCKER_HOST_NAME_ELASTICSEARCH} --port ${DOCKER_ELASTICSEARCH_PORT}"
+    logging:
+      driver: "json-file"
+      options:
+        max-file: 5
+        max-size: 10m
+    deploy:
+      replicas: 1
+      placement:
+        constraints: [node.role == manager]
+
+  contrax-curator_filebeat-cx:
+    image: ${DOCKER_CURATOR_IMAGE}
+    networks:
+      - contrax_net
+    environment:
+      - "PERIOD=15min"
+      - "KEEP_DAYS=60"
+      - "INDEX_PREFIX=filebeat-cx-"
     command: "--host ${DOCKER_HOST_NAME_ELASTICSEARCH} --port ${DOCKER_ELASTICSEARCH_PORT}"
     logging:
       driver: "json-file"
@@ -311,10 +330,10 @@ services:
       net.ipv4.tcp_keepalive_intvl: 60
       net.ipv4.tcp_keepalive_probes: 3
     healthcheck:
-      test: pg_isready -h ${DOCKER_HOST_NAME_PG} -U ${DOCKER_PG_USER} || exit 1
+      test: pg_isready -h ${DOCKER_HOST_NAME_PG} -U ${DOCKER_PG_USER} -d ${DOCKER_PG_DB_NAME} || exit 1
       interval: 30s
       timeout: 10s
-      retries: 1
+      retries: 3
       start_period: 5s
 
   contrax-pgbouncer-session:
@@ -343,10 +362,10 @@ services:
       net.ipv4.tcp_keepalive_intvl: 60
       net.ipv4.tcp_keepalive_probes: 3
     healthcheck:
-      test: pg_isready -h ${DOCKER_HOST_NAME_PG} -U ${DOCKER_PG_USER} || exit 1
+      test: pg_isready -h ${DOCKER_HOST_NAME_PG} -U ${DOCKER_PG_USER} -d ${DOCKER_PG_DB_NAME} || exit 1
       interval: 30s
       timeout: 10s
-      retries: 1
+      retries: 3
       start_period: 5s
 
   contrax-db:
@@ -399,7 +418,7 @@ services:
       - "DOCKER_CELERY_CONCURRENCY=${CPU_HALF_CORES}"
       - "SHARED_USER_NAME=${SHARED_USER_NAME}"
       - "SHARED_USER_ID=${SHARED_USER_ID}"
-      - "STARTUP_DEPS_READY_CMD=pg_isready -h ${DJANGO_CELERY_DB_HOST} -U ${DJANGO_CELERY_DB_USER}"
+      - "STARTUP_DEPS_READY_CMD=pg_isready -h ${DJANGO_CELERY_DB_HOST} -U ${DJANGO_CELERY_DB_USER} -d ${DOCKER_PG_DB_NAME}"
       - "http_proxy=${PROXY_SERVER_HTTP}"
       - "HTTP_PROXY=${PROXY_SERVER_HTTP}"
       - "https_proxy=${PROXY_SERVER_HTTPS}"
@@ -410,6 +429,8 @@ services:
     configs:
       - source: ls_celery_${LOCAL_SET_CELERY_CONFIG_VERSION}
         target: /contraxsuite_services/local_settings.py
+    volumes:
+      - celery_worker_state:/data/celery_worker_state
     logging:
       driver: "json-file"
       options:
@@ -421,6 +442,8 @@ services:
         limits:
           cpus: '${CPU_HALF_CORES}'
           memory: ${RAM_HALF_MB}M
+    stop_signal: SIGQUIT
+    stop_grace_period: 1m
     sysctls:
       # Possible solution for DB connections disappearing.
       # https://forums.docker.com/t/setting-tcp-keepalive-time-param-for-containers/41496/3
@@ -429,10 +452,10 @@ services:
       net.ipv4.tcp_keepalive_intvl: 60
       net.ipv4.tcp_keepalive_probes: 3
     healthcheck:
-      test: pg_isready -h ${DJANGO_CELERY_DB_HOST} -U ${DJANGO_CELERY_DB_USER} || exit 1
+      test: pg_isready -h ${DJANGO_CELERY_DB_HOST} -U ${DJANGO_CELERY_DB_USER} -d ${DOCKER_PG_DB_NAME} || exit 1
       interval: 30s
       timeout: 10s
-      retries: 1
+      retries: 3
       start_period: 5s
 
 
@@ -448,7 +471,7 @@ services:
       - "DOCKER_CELERY_CONCURRENCY=1"
       - "SHARED_USER_NAME=${SHARED_USER_NAME}"
       - "SHARED_USER_ID=${SHARED_USER_ID}"
-      - "STARTUP_DEPS_READY_CMD=pg_isready -h ${DJANGO_CELERY_DB_HOST} -U ${DJANGO_CELERY_DB_USER}"
+      - "STARTUP_DEPS_READY_CMD=pg_isready -h ${DJANGO_CELERY_DB_HOST} -U ${DJANGO_CELERY_DB_USER} -d ${DOCKER_PG_DB_NAME}"
       - "http_proxy=${PROXY_SERVER_HTTP}"
       - "HTTP_PROXY=${PROXY_SERVER_HTTP}"
       - "https_proxy=${PROXY_SERVER_HTTPS}"
@@ -459,6 +482,8 @@ services:
     configs:
       - source: ls_celery_${LOCAL_SET_CELERY_CONFIG_VERSION}
         target: /contraxsuite_services/local_settings.py
+    volumes:
+      - celery_worker_state:/data/celery_worker_state
     logging:
       driver: "json-file"
       options:
@@ -466,6 +491,8 @@ services:
         max-size: 10m
     deploy:
       mode: global # Exactly one instance per node. Primitive AWS autoscaling solution.
+    stop_signal: SIGQUIT
+    stop_grace_period: 1m
     sysctls:
       # Possible solution for DB connections disappearing.
       # https://forums.docker.com/t/setting-tcp-keepalive-time-param-for-containers/41496/3
@@ -474,10 +501,10 @@ services:
       net.ipv4.tcp_keepalive_intvl: 60
       net.ipv4.tcp_keepalive_probes: 3
     healthcheck:
-      test: pg_isready -h ${DJANGO_CELERY_DB_HOST} -U ${DJANGO_CELERY_DB_USER} || exit 1
+      test: pg_isready -h ${DJANGO_CELERY_DB_HOST} -U ${DJANGO_CELERY_DB_USER} -d ${DOCKER_PG_DB_NAME} || exit 1
       interval: 30s
       timeout: 10s
-      retries: 1
+      retries: 3
       start_period: 5s
 
   contrax-celery-beat:
@@ -491,7 +518,7 @@ services:
       - "MLFLOW_AWS_SECRET_KEY=${MLFLOW_AWS_SECRET_KEY}"
       - "SHARED_USER_NAME=${SHARED_USER_NAME}"
       - "SHARED_USER_ID=${SHARED_USER_ID}"
-      - "STARTUP_DEPS_READY_CMD=pg_isready -h ${DJANGO_WEBSRV_DB_HOST} -U ${DJANGO_WEBSRV_DB_USER}"
+      - "STARTUP_DEPS_READY_CMD=pg_isready -h ${DJANGO_WEBSRV_DB_HOST} -U ${DJANGO_WEBSRV_DB_USER} -d ${DOCKER_PG_DB_NAME}"
       - "http_proxy=${PROXY_SERVER_HTTP}"
       - "HTTP_PROXY=${PROXY_SERVER_HTTP}"
       - "https_proxy=${PROXY_SERVER_HTTPS}"
@@ -513,6 +540,8 @@ services:
       replicas: 1
       placement:
         constraints: [node.role == manager]
+    stop_signal: SIGQUIT
+    stop_grace_period: 1m
     sysctls:
       # Possible solution for DB connections disappearing.
       # https://forums.docker.com/t/setting-tcp-keepalive-time-param-for-containers/41496/3
@@ -521,10 +550,10 @@ services:
       net.ipv4.tcp_keepalive_intvl: 60
       net.ipv4.tcp_keepalive_probes: 3
     healthcheck:
-      test: pg_isready -h ${DJANGO_CELERY_DB_HOST} -U ${DJANGO_CELERY_DB_USER} || exit 1
+      test: pg_isready -h ${DJANGO_CELERY_DB_HOST} -U ${DJANGO_CELERY_DB_USER} -d ${DOCKER_PG_DB_NAME} || exit 1
       interval: 30s
       timeout: 10s
-      retries: 1
+      retries: 3
       start_period: 5s
 
   contrax-daphne:
@@ -544,7 +573,7 @@ services:
       - "DOCKER_WEBDAV_SERVER_NAME=${DOCKER_WEBDAV_SERVER_NAME}"
       - "DOCKER_WEBDAV_AUTH_USER=${DOCKER_WEBDAV_AUTH_USER}"
       - "DOCKER_WEBDAV_AUTH_PASSWORD=${DOCKER_WEBDAV_AUTH_PASSWORD}"
-      - "STARTUP_DEPS_READY_CMD=pg_isready -h ${DJANGO_WEBSRV_DB_HOST} -U ${DJANGO_WEBSRV_DB_USER}"
+      - "STARTUP_DEPS_READY_CMD=pg_isready -h ${DJANGO_WEBSRV_DB_HOST} -U ${DJANGO_WEBSRV_DB_USER} -d ${DOCKER_PG_DB_NAME}"
       - "http_proxy=${PROXY_SERVER_HTTP}"
       - "HTTP_PROXY=${PROXY_SERVER_HTTP}"
       - "https_proxy=${PROXY_SERVER_HTTPS}"
@@ -575,10 +604,10 @@ services:
       net.ipv4.tcp_keepalive_intvl: 60
       net.ipv4.tcp_keepalive_probes: 3
     healthcheck:
-      test: pg_isready -h ${DJANGO_WEBSRV_DB_HOST} -U ${DJANGO_WEBSRV_DB_USER} || exit 1
+      test: pg_isready -h ${DJANGO_WEBSRV_DB_HOST} -U ${DJANGO_WEBSRV_DB_USER} -d ${DOCKER_PG_DB_NAME} || exit 1
       interval: 30s
       timeout: 10s
-      retries: 1
+      retries: 3
       start_period: 5s
 
   contrax-nginx:
@@ -630,7 +659,7 @@ services:
       - "SHARED_USER_NAME=${SHARED_USER_NAME}"
       - "SHARED_USER_ID=${SHARED_USER_ID}"
       - "DOCKER_DJANGO_ADMIN_PASSWORD=${DOCKER_DJANGO_ADMIN_PASSWORD}"
-      - "STARTUP_DEPS_READY_CMD=pg_isready -h ${DJANGO_CELERY_DB_HOST} -U ${DJANGO_CELERY_DB_USER}"
+      - "STARTUP_DEPS_READY_CMD=pg_isready -h ${DJANGO_CELERY_DB_HOST} -U ${DJANGO_CELERY_DB_USER} -d ${DOCKER_PG_DB_NAME}"
       - "http_proxy=${PROXY_SERVER_HTTP}"
       - "HTTP_PROXY=${PROXY_SERVER_HTTP}"
       - "https_proxy=${PROXY_SERVER_HTTPS}"
@@ -679,7 +708,7 @@ services:
       - "SHARED_USER_NAME=${SHARED_USER_NAME}"
       - "SHARED_USER_ID=${SHARED_USER_ID}"
       - "DOCKER_FLOWER_BASE_PATH=${DOCKER_FLOWER_BASE_PATH}"
-      - "STARTUP_DEPS_READY_CMD=pg_isready -h ${DJANGO_CELERY_DB_HOST} -U ${DJANGO_CELERY_DB_USER}"
+      - "STARTUP_DEPS_READY_CMD=pg_isready -h ${DJANGO_CELERY_DB_HOST} -U ${DJANGO_CELERY_DB_USER} -d ${DOCKER_PG_DB_NAME}"
       - "http_proxy=${PROXY_SERVER_HTTP}"
       - "HTTP_PROXY=${PROXY_SERVER_HTTP}"
       - "https_proxy=${PROXY_SERVER_HTTPS}"

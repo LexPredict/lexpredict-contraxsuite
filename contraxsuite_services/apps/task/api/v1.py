@@ -24,20 +24,23 @@
 """
 # -*- coding: utf-8 -*-
 
-import rest_framework.views
 # Django imports
 from django.conf.urls import url
-# Third-party imports
-from rest_framework import routers, serializers, viewsets
 
-import apps.common.mixins
+# Third-party imports
+from rest_framework import routers, serializers, viewsets, views
+from rest_framework.permissions import IsAuthenticated, DjangoModelPermissions
+from rest_framework.response import Response
+
 # Project imports
+from apps.common.mixins import JqListAPIMixin
 from apps.task.views import *
+from apps.task.schemas import TaskLogSchema, TaskStatusSchema, RunTaskBaseSchema
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.7.0/LICENSE"
-__version__ = "1.7.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
+__version__ = "1.8.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -67,13 +70,14 @@ class TaskStatsSerializer(serializers.ModelSerializer):
         fields = ['status']
 
 
-class TaskViewSet(apps.common.mixins.JqListAPIMixin, viewsets.ReadOnlyModelViewSet):
+class TaskViewSet(JqListAPIMixin, viewsets.ReadOnlyModelViewSet):
     """
     list: Task List
     retrieve: Retrieve Task
     """
     queryset = Task.objects.main_tasks(show_failed_excluded_from_tracking=True).order_by('-date_start')
     serializer_class = TaskSerializer
+    permission_classes = [DjangoModelPermissions]
 
     def get_serializer_class(self):
         if self.action == 'stats':
@@ -81,7 +85,17 @@ class TaskViewSet(apps.common.mixins.JqListAPIMixin, viewsets.ReadOnlyModelViewS
         return TaskSerializer
 
 
-class LoadDictionariesAPIView(rest_framework.views.APIView, LoadTaskView):
+class RunTaskPermission(IsAuthenticated):
+    def has_permission(self, request, view):
+        return request.user.has_perm('task.add_task')
+
+
+class RunTaskBaseView(views.APIView):
+    schema = RunTaskBaseSchema()
+    permission_classes = [RunTaskPermission]
+
+
+class LoadDictionariesAPIView(RunTaskBaseView, LoadTaskView):
     """
     "Load Dictionaries" admin task\n
     POST params:
@@ -126,22 +140,24 @@ class LoadDictionariesAPIView(rest_framework.views.APIView, LoadTaskView):
         - geoentities_file_path: str:
         - geoentities_delete: bool:
     """
-    http_method_names = ["post"]
+    http_method_names = ['post']
 
 
-class LoadDocumentsAPIView(rest_framework.views.APIView, LoadDocumentsView):
+class LoadDocumentsAPIView(RunTaskBaseView, LoadDocumentsView):
     """
     "Load Documents" admin task\n
     POST params:
-        - source_path: str
+        - project: int
+        - source_data: str
         - source_type: str
         - document_type: str
         - delete: bool
+        - run_standard_locators: bool
     """
-    http_method_names = ["get", "post"]
+    http_method_names = ['get', 'post']
 
 
-class LocateTaskAPIVIew(rest_framework.views.APIView, LocateTaskView):
+class LocateTaskAPIVIew(RunTaskBaseView, LocateTaskView):
     """
     "Locate" admin task\n
     POST params:
@@ -182,40 +198,59 @@ class LocateTaskAPIVIew(rest_framework.views.APIView, LocateTaskView):
         - trademark_delete: bool
         - url_locate: bool
         - url_delete: bool
-        - parse: str[paragraph, sentence]
+        - parse_choice_sentence: bool
+        - parse_choice_paragraph: bool
+        - project: int
     """
-    http_method_names = ["get", "post"]
+    http_method_names = ['get', 'post']
 
 
-class UpdateElasticsearchIndexAPIView(rest_framework.views.APIView, UpdateElasticsearchIndexView):
+class UpdateElasticsearchIndexAPIView(RunTaskBaseView, UpdateElasticsearchIndexView):
     """
     "Update ElasticSearch Index" admin task\n
     """
-    http_method_names = ["get", "post"]
+    http_method_names = ['get', 'post']
 
 
-class CleanTasksAPIView(rest_framework.views.APIView, CleanTasksView):
+class CleanTasksAPIView(RunTaskBaseView, CleanTasksView):
     """
     "Clean Tasks" admin task\n
     """
-    http_method_names = ["post"]
+    http_method_names = ['post']
 
 
-class PurgeTaskAPIView(rest_framework.views.APIView, PurgeTaskView):
+class PurgeTaskAPIView(RunTaskBaseView, PurgeTaskView):
     """
     "Purge Task" admin task\n
     POST params:
         - task_pk: int
     """
-    http_method_names = ["post"]
+    http_method_names = ['post']
 
 
-class TaskStatusAPIView(rest_framework.views.APIView):
+class RecallTaskAPIView(RunTaskBaseView, RecallTaskView):
+    """
+    "Recall Task" admin task\n
+    POST params:
+        - task_pk: int
+    """
+    http_method_names = ['get', 'post']
+
+
+class TaskAccessPermission(IsAuthenticated):
+    def has_permission(self, request, view):
+        return request.user.has_perm('task.view_task')
+
+
+class TaskStatusAPIView(views.APIView):
     """
     Check admin task status\n
     GET params:
         - task_id: int
     """
+    http_method_names = ['get']
+    schema = TaskStatusSchema()
+    permission_classes = [TaskAccessPermission]
 
     def get(self, request, *args, **kwargs):
         task_id = request.GET.get('task_id')
@@ -224,25 +259,33 @@ class TaskStatusAPIView(rest_framework.views.APIView):
             message = {'progress': task.progress,
                        'status': task.status,
                        'date_done': task.date_done,
-                       'time': task.time,
+                       'time': task.duration,
                        'date_start': task.date_start,
-                       'user': task.user.username,
+                       'user': task.user.username if task.user else None,
                        'result': task.result}
         except Task.DoesNotExist:
-            message = "Task is not found"
-        return JsonResponse(message, safe=False)
+            return Response({'detail': 'Task is not found'}, status=404)
+        return Response(message)
 
 
-class TaskLogAPIView(rest_framework.views.APIView):
+class TaskLogAPIView(views.APIView):
     """
     Get task log records
     GET params:
         - task_id: int
         - records_limit: int
     """
+    http_method_names = ['get']
+    schema = TaskLogSchema()
+    permission_classes = [IsAuthenticated]
 
     def get(self, request, *args, **kwargs):
+
         task_id = request.GET.get('task_id')
+        # via SDK call
+        if task_id and isinstance(task_id, list):
+            task_id = task_id[0]
+
         records_limit = request.GET.get('records_limit') or 0
         try:
             task = Task.objects.get(pk=task_id)  # type: Task
@@ -255,8 +298,8 @@ class TaskLogAPIView(rest_framework.views.APIView):
                 'stack_trace': r.stack_trace
             } for r in log_records]}
         except Task.DoesNotExist:
-            message = "Task is not found"
-        return JsonResponse(message, safe=False)
+            return Response({'detail': 'Task is not found'}, status=404)
+        return Response(message)
 
 
 router = routers.DefaultRouter()
@@ -275,6 +318,8 @@ urlpatterns = [
         name='clean-tasks'),
     url(r'^purge-task/$', PurgeTaskAPIView.as_view(),
         name='purge-task'),
+    url(r'^recall-task/$', RecallTaskAPIView.as_view(),
+        name='recall-task'),
     url(r'^task-status/$', TaskStatusAPIView.as_view(),
         name='task-status'),
     url(r'^task-log/$', TaskLogAPIView.as_view(),

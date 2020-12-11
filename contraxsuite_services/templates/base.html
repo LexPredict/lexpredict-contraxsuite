@@ -150,7 +150,7 @@
             {% if request.user.is_authenticated %}
             <span class="user-info">
           {{ user.username }}/{{ user.role.abbr }}
-            {% if user.is_admin %}
+            {% if user.is_staff %}
               <a href="{% url "admin:index" %}"
                  class="fa fa-cog"
                  title="Admin site"></a>
@@ -205,6 +205,7 @@
 
 {#  {% javascript "custom_js" %}#}
 
+  {% if user.is_authenticated %}
   <script type="application/javascript">
     var $id_project_selection = $("#id_project_selection");
     if (typeof $id_project_selection !== 'undefined') {
@@ -232,6 +233,7 @@
       });
     }
   </script>
+  {% endif %}
 
   <script src="{% static 'vendor/tagsinput/bootstrap-tagsinput.js' %}" style="text/javascrypt"></script>
   <script src="{% static 'js/project.js' %}" style="text/javascrypt"></script>

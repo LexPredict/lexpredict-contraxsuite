@@ -142,7 +142,7 @@ export DOCKER_SLACK_WEBHOOK_URL=
 export DOCKER_SLACK_CHANNEL=
 
 export DOCKER_DJANGO_HOST_NAME=localhost
-export DOCKER_DJANGO_EMAIL_BACKEND=django.core.mail.backends.console.EmailBackend
+export DOCKER_DJANGO_EMAIL_BACKEND=smtp.CustomEmailBackend
 export DOCKER_DJANGO_EMAIL_HOST=localhost
 # Base path should start and end with slashes
 export DOCKER_DJANGO_BASE_PATH=/explorer/
@@ -251,6 +251,10 @@ export LEXNLP_TIKA_PARSER_MODE=pdf_ocr
 export UWSGI_PRIMARY_MIGRATIONS=
 
 export DEBUG_TRACE_UPDATE_PARENT_TASK=False
+export DEBUG_LOG_TASK_RUN_COUNT=False
+export DEBUG_TRACK_LOCATING_PERFORMANCE=False
+export DEBUG_SLOW_DOWN_FIELD_FORMULAS_SEC=0
+export DEBUG_SLOW_DOWN_HIDE_UNTIL_FORMULAS_SEC=0
 
 export PROXY_SERVER_HTTP=
 export PROXY_SERVER_HTTPS=

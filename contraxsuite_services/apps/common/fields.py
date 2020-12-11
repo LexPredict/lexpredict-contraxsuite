@@ -28,15 +28,21 @@
 import json
 
 # Django imports
+from collections import OrderedDict
+from typing import Any, Callable, Optional
+
 from django.db.models import UUIDField, DecimalField, CharField
 from django.contrib.postgres.fields import JSONField
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.7.0/LICENSE"
-__version__ = "1.7.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
+__version__ = "1.8.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
+
+
+from rest_framework.relations import ManyRelatedField
 
 
 class StringUUIDField(UUIDField):
@@ -67,3 +73,26 @@ class TruncatingCharField(CharField):
             if len(value) > self.max_length:
                 return value[:self.max_length - 2] + '..'
         return value
+
+
+class FilteredManyRelatedField(ManyRelatedField):
+    """
+    Is used in DocumentField.depends_on_fields to filter possible values
+    by document type id in Rest API request
+    """
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.custom_filter: Optional[Callable[[Any], bool]] = None
+
+    @classmethod
+    def wrap(cls, field: ManyRelatedField) -> 'FilteredManyRelatedField':
+        field.__class__ = FilteredManyRelatedField
+        return field
+
+    def get_choices(self, cutoff=None):
+        choices = super().get_choices(cutoff)
+        if self.custom_filter:
+            choices = OrderedDict([
+                (c, choices[c],) for c in choices if self.custom_filter(c)
+            ])
+        return choices

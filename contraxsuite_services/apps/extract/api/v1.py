@@ -38,6 +38,7 @@ from urllib.parse import quote as url_quote
 import icalendar
 from rest_framework import serializers, routers, viewsets
 from rest_framework.generics import ListAPIView
+from rest_framework.permissions import IsAuthenticated
 
 # Django imports
 from django.conf import settings
@@ -54,10 +55,17 @@ import apps.common.mixins
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.7.0/LICENSE"
-__version__ = "1.7.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
+__version__ = "1.8.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
+
+
+class ExtractedEntitiesPermission(IsAuthenticated):
+    # TODO: seems we don't use these APIs: review further
+    def has_permission(self, request, view):
+        return request.user.has_perm('users.view_explorer') and \
+               request.user.has_perm('project.view_project')
 
 
 class BaseUsageSerializer(apps.common.mixins.SimpleRelationSerializer):
@@ -83,7 +91,7 @@ class BaseUsageSerializer(apps.common.mixins.SimpleRelationSerializer):
         super().__init__(instance, **kwargs)
 
 
-class ViewSetDataMixin(object):
+class ViewSetDataMixin:
 
     @property
     def data(self):
@@ -93,6 +101,8 @@ class ViewSetDataMixin(object):
 
 
 class BaseUsageListAPIView(apps.common.mixins.JqListAPIView, ViewSetDataMixin):
+    http_method_names = ['get']
+    permission_classes = [ExtractedEntitiesPermission]
 
     filters = None
 
@@ -730,11 +740,10 @@ class DateUsageCalendarView(ListAPIView):
         return qs
 
     def get_context(self):
-        documents = Document.objects.all()
-        if self.request.user.is_reviewer:
-            documents = documents.filter(
-                taskqueue__user_id=self.request.user.pk,
-                textunit__dateusage__isnull=False).distinct()
+        documents = self.request.user.user_documents
+        documents = documents.filter(
+            taskqueue__user_id=self.request.user.pk,
+            textunit__dateusage__isnull=False).distinct()
         return {'documents': {i.pk: i.name for i in documents}}
 
     def get(self, request, *args, **kwargs):

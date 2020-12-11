@@ -28,7 +28,6 @@
 import re
 
 from django.utils.http import urlencode
-from rest_auth.models import TokenModel
 
 # Django imports
 from django.conf import settings
@@ -43,14 +42,14 @@ from django.utils.deprecation import MiddlewareMixin
 from django.utils.functional import curry
 
 # Project imports
-from apps.users.authentication import CookieAuthentication
+from apps.users.authentication import CookieAuthentication, token_cache
 from apps.task.utils.task_utils import check_blocks
 # from apps.common.utils import get_test_user
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.7.0/LICENSE"
-__version__ = "1.7.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
+__version__ = "1.8.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -71,10 +70,18 @@ class LoginRequiredMiddleware(MiddlewareMixin):
     """
     def process_view(self, request, view_func, args, kwargs):
         assert hasattr(request, 'user')
+        path = request.path_info.lstrip('/')
+        # auth check
         if not request.user.is_authenticated:
-            path = request.path_info.lstrip('/')
             if not any(m.match(path) for m in EXEMPT_URLS):
                 return custom_redirect(settings.LOGIN_URL, next=request.path_info)
+        # perm to explorer check
+        if not request.user.has_perm('users.view_explorer'):
+            if not any([m.match(path) for m in EXEMPT_URLS]):
+                response = HttpResponseForbidden()
+                msg = 'You do not have access to explorer.'
+                response.content = render(request, '403.html', context={'message': msg})
+                return response
 
 
 def custom_redirect(url, *_args, **kwargs):
@@ -267,7 +274,7 @@ class CookieMiddleware(MiddlewareMixin):
         # if django login - set token in cookies
         elif current_path == reverse('account_login') and request.method == 'POST'\
                 and request.user.is_authenticated:
-            token, _ = TokenModel.objects.get_or_create(user=request.user)
+            _, __, token = token_cache.get_token_keys(user=request.user)
             response.set_cookie('auth_token', 'Token %s' % token)
 
         # delete user-specific cookies after logout
@@ -286,8 +293,8 @@ class CookieMiddleware(MiddlewareMixin):
                 response.set_cookie('auth_token', auth_token)
 
         # set extra cookie variables if user exists
-        if request.user and hasattr(request.user, 'get_full_name'):
-            response.set_cookie('user_name', request.user.get_full_name())
+        if request.user and hasattr(request.user, 'name'):
+            response.set_cookie('user_name', request.user.name)
             response.set_cookie('user_id', request.user.pk)
         response.set_cookie('release_version', settings.VERSION_NUMBER)
 

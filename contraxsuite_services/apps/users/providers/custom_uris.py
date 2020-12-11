@@ -27,21 +27,23 @@
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.7.0/LICENSE"
-__version__ = "1.7.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
+__version__ = "1.8.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
 
-from allauth.socialaccount.providers.oauth2.client import OAuth2Client
-from allauth.socialaccount.providers.oauth2.views import OAuth2LoginView, \
-    OAuth2CallbackView, OAuth2Adapter
+import settings
 from django.urls import reverse
 from django.utils.http import urlencode
-
-import settings
-from allauth.utils import build_absolute_uri
 from apps.users.models import SocialAppUri
+from allauth.utils import build_absolute_uri
+from allauth.socialaccount.providers.oauth2.client import OAuth2Client
+from allauth.socialaccount.providers.oauth2.views import (
+    OAuth2Adapter,
+    OAuth2LoginView,
+    OAuth2CallbackView,
+)
 
 
 class AdvancedRedirectOAuth2Client(OAuth2Client):

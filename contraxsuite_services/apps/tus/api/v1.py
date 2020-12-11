@@ -32,28 +32,42 @@ from django.conf.urls import url, include
 from django.urls import path
 from django.utils.datastructures import MultiValueDict
 
+from rest_framework.permissions import IsAuthenticated
 from rest_framework_tus.views import *
 
 from apps.project.models import UploadSession
+from apps.tus.schemas import TusUploadViewSetSchema
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.7.0/LICENSE"
-__version__ = "1.7.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
+__version__ = "1.8.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
+
+
+class TusPermissions(IsAuthenticated):
+    def has_permission(self, request, view):
+        user = request.user
+        # otherwise schema generations fails
+        if 'upload_session_id' in view.kwargs:
+            session = UploadSession.objects.get(pk=view.kwargs['upload_session_id'])
+            return user.has_perm('project.add_project_document', session.project)
+        return user.has_perm('project.add_uploadsession')
 
 
 class TusUploadViewSet(UploadViewSet):
     """
     Patched UploadViewSet to handle custom storages and upload_session_id
     """
-
+    permission_classes = (TusPermissions,)
+    schema = TusUploadViewSetSchema()
     # PATCHED: otherwise url route fails
     versioning_class = None
 
     def create(self, request, *args, **kwargs):
         """
+        Create an Upload
         INFO: patched initial method to make a check
         """
         # Get file size from request
@@ -83,6 +97,9 @@ class TusUploadViewSet(UploadViewSet):
         return super().create(request, *args, **kwargs)
 
     def partial_update(self, request, *args, **kwargs):
+        """
+        Transfer file data
+        """
 
         # PATCHED: Validate upload session url kwarg
         upload_session_id = kwargs.get('upload_session_id')
@@ -218,5 +235,5 @@ tus_api_urlpatterns = [
 ]
 
 urlpatterns = [
-    url(r'', include((tus_api_urlpatterns, 'tus'), namespace='tus'))
+    url('', include((tus_api_urlpatterns, 'tus'), namespace='tus'))
 ]

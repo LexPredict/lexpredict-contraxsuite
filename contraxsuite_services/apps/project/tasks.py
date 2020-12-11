@@ -32,14 +32,14 @@ import tarfile
 import time
 import zipfile
 # Third-party imports
-from typing import Optional, Set, Callable, Dict, Any, List
+from typing import Optional, Dict, Any, List
 
 from celery import shared_task
 from celery.exceptions import SoftTimeLimitExceeded
 from celery.states import FAILURE, PENDING, SUCCESS
 # Django imports
 from django.core.files.uploadedfile import TemporaryUploadedFile
-from django.db.models import F, BooleanField, Case, When, Value
+from django.db.models import BooleanField, Case, When, Value
 from django.http import HttpRequest
 from django.utils.timezone import now
 from psycopg2 import InterfaceError, OperationalError
@@ -60,6 +60,7 @@ from apps.document.repository.document_repository import DocumentRepository
 from apps.project.models import Project, ProjectClustering, UploadSession
 from apps.project.notifications import notify_active_upload_sessions, \
     notify_cancelled_upload_session, notify_active_pdf2pdfa_tasks
+from apps.project.utils.unique_name import UniqueNameBuilder
 from apps.rawdb.constants import FIELD_CODE_STATUS_ID
 from apps.task.tasks import CeleryTaskLogger, Task, purge_task, _call_task_func, ExtendedTask
 from apps.task.utils.task_utils import TaskUtils
@@ -67,8 +68,8 @@ from apps.users.models import User
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.7.0/LICENSE"
-__version__ = "1.7.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
+__version__ = "1.8.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -202,7 +203,6 @@ class ReassignProjectClusterDocuments(ExtendedTask):
     Reassign Project Cluster Documents
     """
     name = 'Reassign Project Cluster Documents'
-    reg_name_copy_part = re.compile(r'\scopy\s\d{2,2}$')
 
     def process(self, **kwargs):
         project_id = kwargs.get('project_id')
@@ -245,7 +245,7 @@ class ReassignProjectClusterDocuments(ExtendedTask):
         project_doc_names = set(Document.all_objects.filter(
             project_id=new_project.pk).values_list('name', flat=True))
         for doc_id, doc_name in documents.values_list('pk', 'name'):
-            new_name = self.make_doc_unique_name(
+            new_name = UniqueNameBuilder.make_doc_unique_name(
                 doc_name, project_doc_names, strict_check_unique_name)
             if new_name != doc_name:
                 Document.all_objects.filter(pk=doc_id).update(name=new_name)
@@ -253,32 +253,6 @@ class ReassignProjectClusterDocuments(ExtendedTask):
         doc_ids = [d.pk for d in documents]
         text_units = TextUnit.objects.filter(document_id__in=doc_ids)
         text_units.update(project_id=new_project.pk)
-
-    @staticmethod
-    def make_doc_unique_name(doc_name: str,
-                             project_doc_names: Set[str],
-                             unique_strict_check: Optional[Callable[[str], bool]] = None):
-
-        def new_name_is_unique(new_name: str) -> bool:
-            if new_name in project_doc_names:
-                return False
-            if unique_strict_check and not unique_strict_check(new_name):
-                return False
-            return True
-
-        if new_name_is_unique(doc_name):
-            return doc_name
-
-        # make document a unique name
-        name, ext = os.path.splitext(doc_name)
-        # ... try filename w/o " copy 01"
-        name = ReassignProjectClusterDocuments.reg_name_copy_part.sub('', name)
-        new_name = name + ext
-        counter = 1
-        while not new_name_is_unique(new_name):
-            new_name = f'{name} copy {counter:02d}{ext}'
-            counter += 1
-        return new_name
 
     @staticmethod
     @shared_task(base=ExtendedTask,
@@ -296,7 +270,8 @@ class ReassignProjectClusterDocuments(ExtendedTask):
             log=log,
             document=document,
             system_fields_changed=True,
-            generic_fields_changed=True)
+            generic_fields_changed=True,
+            task=field_detection.detect_and_cache_field_values_for_document)
 
         task.log_info(
             f'Detected {len(dfvs)} field values for document ' + f'#{document.id} ({document.name})')
@@ -487,7 +462,9 @@ class CancelUpload(ExtendedTask):
 
         # 1. Purge Tasks
         self.track_timelog('')
-        session_tasks = Task.objects.main_tasks().filter(metadata__session_id=session_id)
+        session_tasks = Task.objects.main_tasks().filter(upload_session_id=session_id)
+        if self.task and self.task.upload_session_id:
+            session_tasks = session_tasks.exclude(pk=self.task.pk)
         self.log_info(f'Purge {session_tasks.count()} session tasks.')
         for a_task in session_tasks:
             try:
@@ -556,6 +533,7 @@ class CancelUpload(ExtendedTask):
 
         self.log_info(f'Remove session uid="{session_id}".')
         project = session.project
+        Task.objects.filter(upload_session_id=session_id).update(upload_session=None)
         session.delete()
         self.track_timelog('4 - delete session')
 
@@ -678,7 +656,7 @@ class LoadArchive(ExtendedTask):
             'progress': [],
             'progress_sent': False
         })
-        self.task.save()
+        self.task.save(update_fields={'metadata'})
 
         if archive_type == 'zip':
             return self.process_zip()
@@ -702,7 +680,8 @@ class LoadArchive(ExtendedTask):
         from apps.project.api.v1 import UploadSessionViewSet
         request = HttpRequest()
         request.user = User.objects.get(pk=self.user_id)
-        api_view = UploadSessionViewSet(request=request, kwargs={'pk': self.session_id})
+        api_view = UploadSessionViewSet(
+            request=request, action='upload', kwargs={'pk': self.session_id})
         kwargs.update({'user_id': self.user_id, 'force': self.force})
         resp = api_view.upload_file(**kwargs)
         self.task.metadata['progress'].append(
@@ -714,7 +693,7 @@ class LoadArchive(ExtendedTask):
                 else resp.data
             )
         )
-        self.task.save()
+        self.task.save(update_fields={'metadata'})
 
     def process_zip(self):
         with file_storage.get_document_as_local_fn(self.source_path) as (local_file_path, _):
@@ -864,7 +843,12 @@ class CreateSearchablePDF(ExtendedTask):
 
         # skip non-pdf
         from apps.task.tasks import LoadDocuments
-        args = [i for i in subtask_args if LoadDocuments.get_file_extension(i[1], i[2])[0] == '.pdf']
+        args = []
+        for item in subtask_args:
+            _, name, source_path = item
+            with file_storage.get_document_as_local_fn(source_path) as (local_path, __):
+                if LoadDocuments.get_file_extension(name, local_path)[0] == '.pdf':
+                    args.append(item)
         self.run_sub_tasks('Convert pdf to pdf-a', self.convert, args)
 
         # TODO: if needed - f.e. email a user

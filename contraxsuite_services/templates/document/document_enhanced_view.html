@@ -171,7 +171,7 @@
           datafields: [
             { name: 'document_id', type: 'int' },
             { name: 'history_date', type: 'date' },
-            { name: 'history_user__username', type: 'string' },
+            { name: 'history_user__name', type: 'string' },
             { name: 'note', type: 'string' }
           ],
           localdata: record.history
@@ -191,7 +191,7 @@
               { text: 'Created Date', datafield: 'history_date', width: 150,
                 filtertype: 'date', cellsformat: 'MM-dd-yyyy HH:mm',
                 align: 'center', cellsalign: 'center' },
-              { text: 'User', datafield: 'history_user__username', width: 150,
+              { text: 'User', datafield: 'history_user__name', width: 150,
                 align: 'center', cellsalign: 'center' },
               { text: 'Note', datafield: 'note', width: 'auto', minwidth: 300,
                 cellsrenderer: note_renderer,

@@ -1,0 +1,184 @@
+{% extends "base_list_ajax.html" %}
+{% load static %}
+
+{% block project_selection %}{% endblock %}
+
+{% block css_extra %}
+  {{ block.super }}
+  <link rel="stylesheet" type="text/css" href="https://cdnjs.cloudflare.com/ajax/libs/chosen/1.6.2/chosen.min.css">
+{% endblock %}
+
+{% block page_header %}
+  User Object Permissions
+{% endblock %}
+
+{% block add_button %}
+  <button id='save_changes' class="btn btn-primary btn-sm" type="button">Save Changes</button>
+{% endblock %}
+
+{% block content %}
+
+  <span>
+    <input id="mode-1" class="radio-style" name="mode" type="radio" value='choose_user' {% if chosen_user_id %}checked="checked"{% endif %}>
+    <label for="mode-1" class="radio-style-3-label">Objects for User</label>
+  </span>
+  <span>
+    <input id="mode-2" class="radio-style" name="mode" type="radio" value='choose_object' {% if chosen_object_pk %}checked="checked"{% endif %}>
+    <label for="mode-2" class="radio-style-3-label">Users for Object</label>
+  </span>
+  <br />
+
+  {% if chosen_user_id %}
+    <span>User:</span>
+    <select name="user_id" data-placeholder="Select User..." required="" id="user_id" class="chosen">
+      {% for user in users %}
+        <option value="{{ user.pk }}"{% if chosen_user_id == user.pk|stringformat:"s" %} selected="selected"{% endif %}>
+          {{ user.username }}
+        </option>
+      {% endfor %}
+    </select>
+  {% endif %}
+
+  <span>Model:</span>
+  <select name="source" data-placeholder="Select source..." required="" id="source" class="chosen">
+    {% for source, source_data in source_model_map.items %}
+      <option value="{{ source }}"{% if chosen_source_name == source %} selected="selected"{% endif %}>
+        {{ source_data.verbose_name }}
+      </option>
+    {% endfor %}
+  </select>
+
+  {% if chosen_object_pk %}
+    <span>Object:</span>
+    <select name="object_pk" data-placeholder="Select Object..." required="" id="object_pk" class="chosen">
+      {% for obj in objects %}
+        <option value="{{ obj.pk }}"{% if chosen_object_pk == obj.pk|stringformat:"s" %} selected="selected"{% endif %}>
+          {{ obj.title_field }}
+        </option>
+      {% endfor %}
+    </select>
+  {% endif %}
+
+  {{ block.super }}
+{% endblock %}
+
+{% block js_extra %}
+  {{ block.super }}
+  <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/chosen/1.6.2/chosen.jquery.min.js"></script>
+  <script type="text/javascript">
+    var perm_list = {{ perm_list|safe }};
+    $(document).ready(function () {
+      var datafields = [
+        { name: 'pk', type: 'string' },
+        { name: 'title_field', type: 'string' },
+        { name: 'content_type_id', type: 'int' },
+        { name: 'user_id', type: 'int' },
+        { name: 'object_pk', type: 'string' }
+      ];
+      $.each(perm_list, function(n, el){
+        datafields.push({ name: el.codename, type: 'string' })
+      });
+      var columns = [
+        { text: '{{ chosen_source_data.verbose_name|default_if_none:"User" }}', datafield: 'title_field', width: 150,
+          align: 'center', cellsalign: 'left' }
+      ];
+      $.each(perm_list, function(n, el){
+        columns.push(
+          { text: el.name, datafield: el.codename, width: 'auto', minwidth: 80, columngroup: 'Permission',
+            align: 'center', cellsalign: 'center', filtertype: 'bool', columntype: 'checkbox',
+            renderer: function () {
+              var text = el.name.replace(/ /g, '<br />');
+              return '<div style="margin-top: 5px; text-align: center">' + text + '</div>';
+            }
+          }
+        );
+      });
+      var custom_opts = {
+        editable: true,
+        columnsheight: 80
+      };
+      var editedRows = [];
+      var custom_source_data = {
+        columngroups: [
+          { text: 'Permissions', name: 'Permissions', align: 'center' }
+        ]
+
+      };
+      draw_grid(".jqxgrid", datafields, columns, false, custom_source_data, custom_opts);
+      var $grid = $('.jqxgrid');
+      $grid.on('cellvaluechanged', function (event) {
+        var perm_name = event.args.datafield;
+        var new_value = event.args.newvalue;
+        var object_pk = $grid.jqxGrid('getcellvalue', event.args.rowindex, 'object_pk');
+        var content_type_id = $grid.jqxGrid('getcellvalue', event.args.rowindex, 'content_type_id');
+        var user_id = $grid.jqxGrid('getcellvalue', event.args.rowindex, 'user_id');
+
+        var comp = function(n) {
+          return ( n.perm_name === perm_name &&
+            n.object_pk === object_pk &&
+            n.content_type_id === content_type_id &&
+            n.user_id === user_id );
+        };
+        var existing = $.grep(editedRows, comp);
+        if (existing.length) {
+          editedRows = $.grep(editedRows, comp, invert=true);
+          return
+        }
+        editedRows.push({
+          perm_name: perm_name,
+          content_type_id: content_type_id,
+          object_pk: object_pk,
+          user_id: user_id,
+          value: new_value
+        })
+      });
+
+      $('#save_changes').click(function(evt, params) {
+
+        {#console.log(editedRows);#}
+        $.ajax({
+          url: '{% url 'users:user-permissions' %}',
+          type: 'POST',
+          data: JSON.stringify(editedRows),
+          dataType: "json",
+          success: function(data, status, xhr){
+            editedRows = [];
+            $.alert({
+              icon: 'fa fa-check text-success',
+              title: 'Saved',
+              type: 'green',
+              content: '',
+              columnClass: 'col-md-2'
+            });
+            $('.jqxgrid').jqxGrid('updatebounddata');
+          },
+          error: function(data, status, xhr){
+            console.log(xhr);
+          }
+        })
+      });
+      $('[name=mode]').change(function(){
+        var mode = $(this).val();
+        var url = '{% url 'users:user-permissions' %}';
+        if (mode === 'choose_user') url += '?user_id=';
+        else if (mode === 'choose_object') url += '?object_pk=';
+        window.location.href = url;
+      });
+      $('select.chosen:enabled')
+        .chosen({width: "20%"})
+        .change(function(ev) {
+          var source = $('#source').val();
+          var user_id = $('#user_id').val();
+          var object_pk = $('#object_pk').val();
+          var param_name = typeof(user_id) === 'undefined' ? 'object_pk' : 'user_id';
+          if (ev.target.name === 'source') {
+            var param_value = '';
+          }
+          else {
+            param_value = typeof(user_id) === 'undefined' ? object_pk : user_id;
+          }
+          window.location.href = '{% url 'users:user-permissions' %}?source=' + source + '&' + param_name + '=' + param_value;;
+        });
+    });
+  </script>
+{% endblock %}

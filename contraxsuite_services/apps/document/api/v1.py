@@ -38,23 +38,26 @@ import numpy as np
 import rest_framework.views
 from celery.states import SUCCESS, FAILURE, PENDING, REVOKED
 from djangoql.parser import DjangoQLParser
+from guardian.shortcuts import get_objects_for_user
 
 # Django imports
 from django.conf.urls import url
-from django.db.models import Subquery, Prefetch, OuterRef, TextField, CharField, IntegerField, DateField, Case, When
+from django.contrib.postgres.aggregates import ArrayAgg
+from django.db.models import Subquery, Prefetch, OuterRef, TextField, CharField, IntegerField, \
+    DateField, Case, When, DecimalField
 from django.db.models.functions import Cast
 from django.db.utils import IntegrityError
-from django.http import JsonResponse, HttpRequest, Http404, HttpResponse, HttpResponseNotFound
-from rest_framework import routers, viewsets, serializers
+from django.http import JsonResponse, HttpRequest, Http404, HttpResponse
+from rest_framework import routers, viewsets
 from rest_framework.decorators import action
 from rest_framework.exceptions import APIException, ValidationError as DRFValidationError, ParseError
-from rest_framework.permissions import BasePermission, IsAuthenticated
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework_nested import routers as nested_routers
 
-from apps.analyze.models import *
-from apps.common.api.permissions import TopStaffPermission
 # Project imports
+from apps.analyze.models import *
+from apps.common.fields import FilteredManyRelatedField
 from apps.common.log_utils import ProcessLogger
 from apps.common.mixins import APIActionMixin, APIResponseMixin, SimpleRelationSerializer, \
     JqListAPIMixin, APIFormFieldsMixin, APILoggingMixin
@@ -80,19 +83,21 @@ from apps.document.models import *
 from apps.document.repository.document_field_repository import DocumentFieldRepository
 from apps.document.repository.document_repository import DocumentRepository
 from apps.document.repository.dto import FieldValueDTO, AnnotationDTO
+from apps.document.schemas import *
 from apps.document.scheme_migrations.scheme_migration import TAGGED_VERSION
 from apps.document.tasks import plan_process_document_changed, ImportDocumentType
 from apps.document.views import show_document
 from apps.dump.app_dump import download, get_app_config_versioned_dump
 from apps.extract.models import *
+from apps.rawdb.field_value_tables import validate_doctype_cache_columns_count
 from apps.rawdb.signals import reindex_on_doc_type_change
 from apps.task.tasks import call_task
 from apps.users.models import User
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.7.0/LICENSE"
-__version__ = "1.7.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
+__version__ = "1.8.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -155,19 +160,15 @@ class GeneratorListSerializer(serializers.ListSerializer):
 # --------------------------------------------------------
 
 class UserSerializer(serializers.ModelSerializer):
-    full_name = serializers.SerializerMethodField()
     photo = serializers.SerializerMethodField()
 
     class Meta:
         model = User
         fields = ['pk', 'first_name', 'last_name', 'username', 'role',
-                  'photo', 'full_name']
+                  'photo', 'name']
 
     def get_photo(self, obj):
         return obj.photo.url if obj.photo else None
-
-    def get_full_name(self, obj):
-        return obj.get_full_name()
 
 
 class DocumentNoteDetailSerializer(SimpleRelationSerializer):
@@ -232,33 +233,39 @@ class DocumentNoteUpdateSerializer(serializers.ModelSerializer):
         fields = ['note']
 
 
-class DocumentNotePermissions(BasePermission):
-    # def has_permission(self, request, view):
-    #     if request.user.is_reviewer and view.kwargs.get('project_pk'):
-    #         return project_api_module.Project.objects.filter(pk=view.kwargs.get('project_pk'),
-    #                                                          reviewers=request.user).exists()
-    #     return True
+class DocumentNotePermissions(IsAuthenticated):
+
+    def has_permission(self, request, view):
+        if view.action == 'create':
+            # otherwise schema generations fails
+            if 'document_id' in request.data:
+                document = Document.objects.get(pk=request.data['document_id'])
+                return request.user.has_perm('project.view_documents', document.project) or \
+                   request.user.has_perm('document.view_document', document)
+            return request.user.has_perm('document.add_documentnote')
+        return super().has_permission(request, view)
 
     def has_object_permission(self, request, view, obj):
-        if request.user.is_reviewer:
-            return obj.document.project.reviewers.filter(pk=request.user.pk).exists()
-        return True
+        return request.user.has_perm('project.view_documents', obj.document.project) or \
+               request.user.has_perm('document.view_document', obj.document)
 
 
-class DocumentNotePermissionViewMixin(object):
-    permission_classes = (IsAuthenticated, DocumentNotePermissions)
+class DocumentNotePermissionViewMixin:
+    permission_classes = (DocumentNotePermissions,)
 
     def get_queryset(self):
         qs = super().get_queryset()
-        if self.request.user.is_reviewer:
-            qs = qs.filter(document__project__reviewers=self.request.user)
-        elif self.request.user.is_manager:
-            qs = qs.filter(Q(document__project__reviewers=self.request.user) |
-                           Q(document__project__owners=self.request.user)).distinct()
+        # either a User is able to see all docs in a project
+        project_qs = get_objects_for_user(self.request.user, 'project.view_documents', Project)
+        # or some Documents are assigned to a User
+        assigned_documents_qs = get_objects_for_user(self.request.user, 'document.view_document', Document)
+
+        qs = qs.filter(Q(document__project_id__in=project_qs.values_list('pk', flat=True)) |
+                       Q(document_id__in=assigned_documents_qs.values_list('pk', flat=True)))
         return qs
 
 
-class DocumentNoteViewSet(JqListAPIMixin, viewsets.ModelViewSet):
+class DocumentNoteViewSet(DocumentNotePermissionViewMixin, JqListAPIMixin, viewsets.ModelViewSet):
     """
     list: Document Note List
     retrieve: Retrieve Document Note
@@ -268,6 +275,7 @@ class DocumentNoteViewSet(JqListAPIMixin, viewsets.ModelViewSet):
     delete: Delete Document Note
     """
     queryset = DocumentNote.objects.all()
+    schema = DocumentNoteViewSetSchema()
 
     def get_queryset(self):
 
@@ -327,18 +335,7 @@ class FieldAnnotationValueSerializer(serializers.ModelSerializer):
         return obj.value
 
 
-class DocumentsForUserSerializer(SimpleRelationSerializer):
-    """
-    Serializer for user documents
-    """
-    status_name = serializers.CharField()
-
-    class Meta:
-        model = Document
-        fields = ['pk', 'name', 'document_type', 'project', 'status_name']
-
-
-class DocumentDetailDjangoQLSerializer(SimpleRelationSerializer):
+class DocumentDetailDjangoQLSerializer(serializers.ModelSerializer):
     """
     Serializer for djangoql queries
     """
@@ -357,7 +354,7 @@ class DocumentDetailSerializer(DocumentsForUserSerializer):
 
     status_data = common_api_module.ReviewStatusSerializer(source='status', many=False)
     available_statuses_data = serializers.SerializerMethodField()
-    assignee_data = UserSerializer(source='assignee', many=False)
+    assignee_data = UserSerializer(source='assignee', many=False, allow_null=True)
     available_assignees_data = serializers.SerializerMethodField()
     field_value_objects = serializers.SerializerMethodField()
     field_values = serializers.SerializerMethodField()
@@ -367,6 +364,7 @@ class DocumentDetailSerializer(DocumentsForUserSerializer):
     sections = serializers.SerializerMethodField()
     initial_annotation_id = serializers.SerializerMethodField()
     page_locations = serializers.SerializerMethodField()
+    user_permissions = serializers.SerializerMethodField()
 
     class Meta:
         model = Document
@@ -377,7 +375,13 @@ class DocumentDetailSerializer(DocumentsForUserSerializer):
                   'initial_annotation_id',
                   'page_locations',
                   'notes', 'field_values', 'field_value_objects',
-                  'prev_id', 'next_id', 'sections', 'cluster_id']
+                  'prev_id', 'next_id', 'sections', 'cluster_id',
+                  'user_permissions']
+
+    def get_user_permissions(self, obj):
+        user = self.context['request'].user
+        return {'document': sorted(user.get_all_permissions(obj)),
+                'project': sorted(user.get_all_permissions(obj.project))}
 
     def get_available_assignees_data(self, obj):
         return UserSerializer(obj.available_assignees, many=True).data
@@ -469,74 +473,69 @@ class DocumentDetailSerializer(DocumentsForUserSerializer):
             'number').values_list('location_start', 'location_end'))
 
 
-class DocumentPermissions(BasePermission):
-
-    def has_permission(self, request, view):
-        reviewer_permission = self.has_reviewer_permisson(request, view)
-        if reviewer_permission is not None:
-            return reviewer_permission
-
-        # TODO: find better way to validate user permission for those endpoints,
-        # because we check multiple projects at once, but need only one containing its documents
-        is_reviewer_action = request.method == 'POST' and view.action in [
-            'mark_delete', 'unmark_delete']
-        if is_reviewer_action and request.user.is_reviewer:
-            document_ids = request.data.get('document_ids', [])
-            project_id = request.data.get('project_id')
-
-            if request.data.get('all') and project_id:
-                from apps.rawdb.api.v1 import DocumentsAPIView
-                document_ids = DocumentsAPIView.simulate_get(request.user, project_id)
-
-            projects = project_api_module.Project.objects.filter(
-                document__in=document_ids,
-                super_reviewers=request.user)
-            if not projects.exists():
-                return False
-        elif request.user.is_reviewer:
-            if request.method in ['POST', 'PUT', 'DELETE']:
-                return False
-            elif request.method == 'PATCH' and \
-                    list(request.data.keys()) not in (['status'], ['assignee']):
-                return False
-            if view.kwargs.get('project_pk'):
-                return project_api_module.Project.objects.filter(pk=view.kwargs.get('project_pk'),
-                                                                 reviewers=request.user).exists()
-        return True
+class DocumentPermissions(IsAuthenticated):
 
     def has_object_permission(self, request, view, obj):
-        if request.user.is_reviewer:
-            return obj.project.reviewers.filter(pk=request.user.pk).exists()
-        return True
+        action = view.action
+        user = request.user
+        if action in ['retrieve', 'show', 'full_text', 'data', 'extraction', 'definitions']:
+            return user.has_perm('project.view_documents', obj.project) or \
+                   user.has_perm('document.view_document', obj)
+        if action in ['fields']:
+            return user.has_perm('project.change_document_field_values', obj.project) or \
+                   user.has_perm('document.change_document_field_values', obj)
+        if action in ['update', 'partial_update']:
+            if 'status' in request.data:
+                return user.has_perm('project.change_document_status', obj.project) or \
+                       user.has_perm('document.change_status', obj)
+            if 'assignee' in request.data:
+                return user.has_perm('project.bulk_assign', obj.project)
 
-    @staticmethod
-    def has_reviewer_permisson(request, view) -> Optional[bool]:
-        if not request.user.is_reviewer:
-            return None
-        reviewer_actions = ['fields']
-        if view.action not in reviewer_actions:
-            return None
-        # check project requested
-        project_id = view.kwargs.get('project_pk')
-        if not project_id:
-            return None
+        return super().has_object_permission(request, view, obj)
 
-        projects = project_api_module.Project.objects.filter(
-            (Q(reviewers=request.user) | Q(super_reviewers=request.user)) &
-            Q(pk=int(project_id)))
-        return projects.exists()
+    def has_permission(self, request, view):
+        action = view.action
+        user = request.user
+
+        # "for_user" action - for all users, but filtered through get_queryset
+
+        # via Project router
+        project_pk = view.kwargs.get('project_pk')
+        if project_pk is not None:
+            project = Project.objects.get(pk=project_pk)
+            if action in ['mark_delete', 'unmark_delete', 'destroy']:
+                return user.has_perm('project.delete_documents', project)
+            return user.has_perm('project.view_project', project)
+
+        # project-wide API without specified project id
+        # TODO: it would be better to forbid project-wide actions
+        # because in this case we need to accumulate granular per-document permissions
+        # and we definitely don't have such cross-project cases
+        if action in ['mark_delete', 'unmark_delete', 'destroy']:
+            return user.has_perm('project.delete_documents')
+        if action in ['download_zip']:
+            return user.has_perm('project.view_project')
+
+        return super().has_permission(request, view)
 
 
-class DocumentPermissionViewMixin(object):
-    permission_classes = (IsAuthenticated, DocumentPermissions)
+class DocumentPermissionViewMixin:
+    permission_classes = [DocumentPermissions]
 
     def get_queryset(self):
         qs = super().get_queryset()
-        if self.request.user.is_reviewer:
-            qs = qs.filter(project__reviewers=self.request.user)
-        elif self.request.user.is_manager:
-            qs = qs.filter(Q(project__reviewers=self.request.user) |
-                           Q(project__owners=self.request.user)).distinct()
+        # either a User is able to see all docs in a project
+        project_qs = get_objects_for_user(
+            self.request.user, 'project.view_documents', Project)
+        # or some Documents are assigned to a User
+        assigned_documents_qs = get_objects_for_user(
+            self.request.user, 'document.view_document', Document)
+
+        qs = qs.filter(Q(project_id__in=project_qs.values_list('pk', flat=True)) |
+                       Q(id__in=assigned_documents_qs.values_list('pk', flat=True)))
+        project_pk = self.kwargs.get('project_pk')
+        if project_pk is not None:
+            qs = qs.filter(project_id=project_pk)
         return qs
 
 
@@ -548,6 +547,7 @@ class DocumentViewSet(APILoggingMixin,
     retrieve: Document Detail with Fields
     """
     queryset = Document.objects.filter(processed=True)
+    schema = DocumentViewSetSchema()
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -650,17 +650,21 @@ class DocumentViewSet(APILoggingMixin,
             data[field['title']] = data['field_values'].apply(lambda x: x.get(field['pk']) if x else '')
         return data
 
-    @action(detail=True, methods=['get'])
+    @action(detail=True, methods=['get'], schema=DocumentShowSchema())
     def show(self, request, **kwargs):
         document = self.get_object()
         return show_document(request, document.pk)
 
-    @action(detail=False, methods=['get'])
+    @action(detail=False, methods=['get'], schema=DocumentDownloadZipSchema())
     def download_zip(self, request, **kwargs):
+        try:
+            project_id = self.kwargs['project_pk']
+        except KeyError:
+            raise NotImplementedError('Use API with project id.')
+
         from apps.common.file_storage import get_file_storage
         file_storage = get_file_storage()
 
-        project_id = self.kwargs.get('project_pk')
         document_ids = as_int_list(request.GET, 'document_ids')
         except_document_ids = as_int_list(request.GET, 'exclude_document_ids')
         all_ids = as_bool(request.GET, 'all')
@@ -681,7 +685,7 @@ class DocumentViewSet(APILoggingMixin,
             documents = documents.exclude(id__in=except_document_ids)
 
         if not documents.exists():
-            return HttpResponseNotFound('Not Found')
+            return Response({'detail': 'Not Found'}, status=404)
 
         from apps.document.app_vars import MAX_DOCUMENTS_TO_EXPORT_SIZE_HTTP
         total_files_fize = sum(documents.values_list('file_size', flat=True))
@@ -692,7 +696,11 @@ class DocumentViewSet(APILoggingMixin,
 
             with ZipFile(resp, 'w', ZIP_DEFLATED) as zip_archive:
                 for doc in documents:
-                    with file_storage.get_document_as_local_fn(doc.source_path) as (fn, _):
+                    if doc.alt_source_path and file_storage.document_exists(doc.alt_source_path):
+                        doc_file_path = doc.alt_source_path
+                    else:
+                        doc_file_path = doc.source_path
+                    with file_storage.get_document_as_local_fn(doc_file_path) as (fn, _):
                         try:
                             dst = os.path.join(doc.documentcluster_set.last().name, doc.name)\
                                 if doc.document_type.is_generic() else doc.name
@@ -711,7 +719,7 @@ class DocumentViewSet(APILoggingMixin,
               'to download the documents when they are ready.'
         return Response(status=200, data={'task_id': task_id, 'detail': msg})
 
-    @action(detail=False, methods=['get'], url_path='for-user')
+    @action(detail=False, methods=['get'], url_path='for-user', schema=DocumentForUserSchema())
     def for_user(self, request, *args, **kwrags):
         response = super().list(request, *args, **kwrags)
         data = dict(
@@ -720,8 +728,8 @@ class DocumentViewSet(APILoggingMixin,
         )
         return Response(data)
 
-    @action(methods=['get'], detail=True)
-    def full_text(self, request, project_pk, pk):
+    @action(detail=True, methods=['get'], schema=DocumentFullTextSchema())
+    def full_text(self, request, *args, **kwargs):
         document = self.get_object()
         text = document.text
         return JsonResponse(data=text, safe=False)
@@ -733,9 +741,10 @@ class DocumentViewSet(APILoggingMixin,
         """
         return super().retrieve(request, *args, **kwrags)
 
-    @action(methods=['get', 'put', 'post', 'patch'], detail=True)
-    def fields(self, request: HttpRequest, project_pk: int, pk: int):
+    @action(detail=True, methods=['get', 'put', 'post', 'patch'], schema=ObjectResponseSchema())
+    def fields(self, request: HttpRequest, *args, **kwargs):
         field_repo = DocumentFieldRepository()
+        pk = kwargs['pk']
 
         if request.method == 'GET':
             field_code_to_value = field_repo.get_field_code_to_json_value(doc_id=pk)
@@ -744,14 +753,14 @@ class DocumentViewSet(APILoggingMixin,
                 field_code: {'value': value, 'annotation_stats': field_code_to_ant_stats.get(field_code)}
                 for field_code, value in field_code_to_value.items()
             }
-            return JsonResponse(res)
+            return Response(res)
         elif request.method in {'POST', 'PUT', 'PATCH'}:
             doc = self.get_object()
             updated_fields = {f for f, fv in field_repo.update_field_values(doc, request.user, request.data)}
             cache_and_detect_field_values(doc=doc, user=request.user, updated_fields=updated_fields)
-            return Response(status=200)
+            return Response({'detail': len(updated_fields)})
 
-    @action(detail=True, methods=['get'])
+    @action(detail=True, methods=['get'], schema=ObjectResponseSchema())
     def extraction(self, request, **kwargs):
         """
         Standard extracted info - Top level + details\n
@@ -802,7 +811,7 @@ class DocumentViewSet(APILoggingMixin,
             pass
         return Response(result)
 
-    @action(detail=True, methods=['get'])
+    @action(detail=True, methods=['get'], schema=DocumentDefinitionsSchema())
     def definitions(self, request, **kwargs):
         document = self.get_object()
         if document.metadata is None or 'definitions' not in document.metadata:
@@ -829,7 +838,7 @@ class DocumentViewSet(APILoggingMixin,
             document.documentmetadata.save()
         return Response(document.metadata['definitions'])
 
-    @action(detail=False, methods=['post'])
+    @action(detail=False, methods=['post'], schema=MarkUnmarkForDeleteDocumentsSchema())
     def mark_delete(self, request, **kwargs):
         """
         Method marks a number of documents for deleting. These marked documents will become hidden in API.
@@ -839,7 +848,7 @@ class DocumentViewSet(APILoggingMixin,
         """
         return self.mark_unmark_for_delete(True, request)
 
-    @action(detail=False, methods=['post'])
+    @action(detail=False, methods=['post'], schema=MarkUnmarkForDeleteDocumentsSchema())
     def unmark_delete(self, request, **kwargs):
         """
         Method recovers documents, marked for deleting. These documents will become visible in API.
@@ -894,16 +903,19 @@ class DocumentViewSet(APILoggingMixin,
                     request.data['assign_date'] = datetime.datetime.now(tz=request.user.get_time_zone())
                     system_fields_changed.append(DocumentSystemField.assignee.value)
 
-            # allow update ONLY for status and assignee fields via API
-            if system_fields_changed:
-                super().update(request, *args, **kwargs)
+                # FIXME: moved into model's pre_save
+                # change perms for a document
 
-                plan_process_document_changed(doc_id=document.pk,
-                                              system_fields_changed=system_fields_changed,
-                                              generic_fields_changed=False,
-                                              user_fields_changed=False,
-                                              changed_by_user_id=request.user.pk)
-            return Response('OK')
+            # allow update ONLY for status and assignee fields via API
+        if system_fields_changed:
+            super().update(request, *args, **kwargs)
+
+            plan_process_document_changed(doc_id=document.pk,
+                                          system_fields_changed=system_fields_changed,
+                                          generic_fields_changed=False,
+                                          user_fields_changed=False,
+                                          changed_by_user_id=request.user.pk)
+        return Response(self.get_serializer(instance=self.get_object()).data)
 
 
 # --------------------------------------------------------
@@ -932,6 +944,7 @@ class TextUnitViewSet(APILoggingMixin,
     queryset = TextUnit.objects
     http_method_names = ['get']
     serializer_class = TextUnitDjangoQLSerializer
+    schema = TextUnitViewSetSchema()
 
     def get_queryset(self):
 
@@ -1000,7 +1013,8 @@ class DocumentFieldDetailSerializer(SimpleRelationSerializer):
         model = DocumentField
         fields = ['uid', 'document_type', 'code', 'long_code', 'title', 'description', 'type',
                   'text_unit_type', 'value_detection_strategy', 'python_coded_field',
-                  'classifier_init_script', 'formula', 'value_regexp', 'depends_on_fields',
+                  'classifier_init_script', 'formula', 'convert_decimals_to_floats_in_formula_args',
+                  'value_regexp', 'depends_on_fields',
                   'confidence', 'requires_text_annotations', 'read_only', 'category', 'family',
                   'default_value', 'choices', 'allow_values_not_specified_in_choices',
                   'stop_words', 'metadata', 'training_finished', 'dirty', 'order',
@@ -1094,19 +1108,74 @@ class DocumentFieldCreateSerializer(ModelFormBasedSerializer):
         model = DocumentField
         fields = ['document_type', 'code', 'long_code', 'title', 'description', 'type',
                   'text_unit_type', 'value_detection_strategy', 'python_coded_field',
-                  'classifier_init_script', 'formula', 'value_regexp', 'depends_on_fields',
+                  'classifier_init_script', 'formula', 'convert_decimals_to_floats_in_formula_args',
+                  'value_regexp', 'depends_on_fields',
                   'confidence', 'requires_text_annotations', 'read_only', 'category', 'family',
                   'default_value', 'choices', 'allow_values_not_specified_in_choices',
                   'stop_words', 'metadata', 'training_finished', 'dirty', 'order',
                   'trained_after_documents_number', 'hidden_always', 'hide_until_python',
                   'hide_until_js', 'display_yes_no', 'detect_limit_unit', 'detect_limit_count',
                   'vectorizer_stop_words', 'unsure_choice_value', 'unsure_thresholds_by_value',
-                  'mlflow_model_uri', 'mlflow_detect_on_document_level']
+                  'mlflow_model_uri', 'mlflow_detect_on_document_level', 'warning_message']
+
+    warning_message = serializers.SerializerMethodField(read_only=True)
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._warnings = {}
+        doc_types_for_user = get_objects_for_user(
+            self.context['request'].user, 'document.view_documenttype', DocumentType)
+        self.fields['document_type'].queryset = doc_types_for_user
+
+    def get_fields(self):
+        fields = super().get_fields()
+        # filter by permissions
+        user = self.context['request'].user
+        doc_types = get_objects_for_user(user, 'document.view_documenttype', DocumentType)
+        qs = DocumentFieldCategory.objects.filter(document_type__in=doc_types)
+        fields['category'].queryset = qs
+
+        if 'request' in self.context and self.context['request']:
+            query_params = self.context['request'].query_params
+            if query_params and 'document_type_id' in query_params \
+                    and query_params['document_type_id'] and 'depends_on_fields' in fields:
+                doc_type_id = query_params['document_type_id']
+                fields['depends_on_fields'] = FilteredManyRelatedField.wrap(fields['depends_on_fields'])
+                filtered_fields = set(DocumentField.objects.filter(
+                        document_type_id=doc_type_id).values_list('pk', flat=True))
+                fields['depends_on_fields'].custom_filter = lambda c: c in filtered_fields
+
+        return fields
+
+    def get_warning_message(self, obj):
+        return '\n'.join(self._warnings.values()) if self._warnings else None
 
     def is_valid(self, raise_exception=False):
         super().is_valid()
-        UsersTasksValidationAdmin.validate_running_tasks(self.context['request'], self.errors)
+        UsersTasksValidationAdmin.validate_running_tasks(
+            self.context['request'], self._warnings)
+        raise_exception = self.context['request'].data.get('raise_exception')
+        if self._warnings and raise_exception:
+            raise Exception('\n'.join(self._warnings.values()))
         return True
+
+    def validate(self, attrs):
+        # this dependency is already checked while calculating formula
+        field_deps = None
+        if attrs and 'depends_on_fields' in attrs:
+            field_deps = attrs['depends_on_fields']
+            del attrs['depends_on_fields']
+        instance = DocumentField(**attrs)
+        instance.clean()
+
+        if instance.document_type_id:
+            errors = validate_doctype_cache_columns_count(instance.document_type, instance)
+            if errors:
+                raise DRFValidationError(errors[0])
+
+        if field_deps:
+            attrs['depends_on_fields'] = field_deps
+        return attrs
 
     def save(self, **kwargs):
         instance = super().save(**kwargs)
@@ -1114,7 +1183,47 @@ class DocumentFieldCreateSerializer(ModelFormBasedSerializer):
         return instance
 
 
-class DocumentFieldViewSet(JqListAPIMixin,
+class DocumentFieldPermissions(IsAuthenticated):
+
+    def has_permission(self, request, view):
+        if view.action in ['create', 'check_field_formula']:
+            doc_type_uid = request.data.get('document_type')
+            if not doc_type_uid:
+                return False
+            doc_type = DocumentType.objects.get(pk=doc_type_uid)
+            return request.user.has_perm('document.view_documenttype', doc_type)
+        if view.action in ['stats']:
+            return request.user.has_perm('document.view_documentfield_stats')
+        return super().has_permission(request, view)
+
+    def has_object_permission(self, request, view, obj):
+        user = request.user
+        action = view.action
+        if not user.has_perm('document.view_documenttype', obj.document_type):
+            return False
+        if action in ['update', 'partial_update', 'check_formula']:
+            return user.has_perm('document.change_documentfield', obj)
+        if action in ['retrieve']:
+            return user.has_perm('document.view_documentfield', obj)
+        if action in ['delete', 'pre_delete']:
+            return user.has_perm('document.delete_documentfield', obj)
+        if action in ['clone']:
+            return user.has_perm('document.clone_documentfield', obj)
+        return super().has_object_permission(request, view, obj)
+
+
+class DocumentFieldViewMixin:
+    permission_classes = [DocumentFieldPermissions]
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        doc_types_for_user = get_objects_for_user(
+            self.request.user, 'document.view_documenttype', DocumentType)
+        return qs.filter(document_type__in=doc_types_for_user)
+
+
+class DocumentFieldViewSet(DocumentFieldViewMixin,
+                           JqListAPIMixin,
                            APIResponseMixin,
                            APIFormFieldsMixin,
                            viewsets.ModelViewSet):
@@ -1136,6 +1245,7 @@ class DocumentFieldViewSet(JqListAPIMixin,
             - python_coded_field: str - max 100 chars
             - classifier_init_script: str
             - formula: str
+            - convert_decimals_to_floats_in_formula_args: bool
             - depends_on_fields: array of uids, optional
             - confidence: str - max 100 chars (from pre-defined choices)
             - requires_text_annotations: bool, default=True
@@ -1161,9 +1271,89 @@ class DocumentFieldViewSet(JqListAPIMixin,
     queryset = DocumentField.objects \
         .select_related('document_type', 'modified_by') \
         .prefetch_related(Prefetch('depends_on_fields', queryset=DocumentField.objects.all().only('pk')))
-    permission_classes = (TopStaffPermission,)
     options_serializer = DocumentFieldCreateSerializer
     response_unifier_serializer = DocumentFieldDetailSerializer
+
+    def get_stats_qs(self, qs):
+        doc_type_uid = self.request.GET['document_type_uid']
+        qs = qs.filter(document_type=doc_type_uid)
+
+        project_id = self.request.GET.get('project_id')
+        q = Q(document__project_id=project_id) if project_id else Q()
+
+        accepted_ann_status_id = FieldAnnotationStatus.objects.get(code='accepted').id
+        unreviewed_ann_status_id = FieldAnnotationStatus.objects.get(code='unreviewed').id
+        completed_doc_status_id = ReviewStatus.objects.get(code='completed').id
+
+        # set annotations
+        annotations = dict()
+
+        # WARN: direct annotation using just Count(...) on 3 tables produces VERY SLOW query,
+        # subqueries works much faster
+        def get_subq(model, filters=Q()):
+            return Subquery(model.objects
+                            .filter(Q(field_id=OuterRef('pk')) & q & filters)
+                            .values('field_id')
+                            .annotate(c=Count('pk'))
+                            .values('c'),
+                            output_field=IntegerField())
+
+        def get_0_case(name):
+            return Case(
+                When(**{f'{name}__isnull': True}, then=0),
+                default=F(name),
+                output_field=IntegerField()
+            )
+
+        # (A) Total Annotations = Total Number of FieldAnnotations + FieldAnnotationFalseMatch
+        annotations['true_ann'] = get_subq(FieldAnnotation)
+
+        # (B) Annotations To Do =
+        # Total Num of Unreviewed Annotations
+        annotations['todo'] = get_subq(
+            FieldAnnotation, filters=Q(status=unreviewed_ann_status_id) &
+                                     ~Q(document__status=completed_doc_status_id))
+
+        # (C) Annotations Sys Generated Confirmed Correct =
+        # Annotations on complete documents or with status Accepted
+        # that were system generated (no created by user)
+        # TODO: NOTE: annotation should always has "Accepted" status if a doc is "Completed"
+        annotations['sys_generated_confirm_correct'] = get_subq(
+            FieldAnnotation, filters=Q(modified_by__isnull=True) &
+                                     Q(status=accepted_ann_status_id))
+
+        # (D) Annotation Sys Generated Confirmed False =
+        # Annotations in False Annotations table
+        annotations['rejected'] = get_subq(FieldAnnotationFalseMatch)
+
+        # (E) Annotation User Generated =
+        # Annotations in Document Annotations with Created By
+        annotations['user_generated'] = get_subq(
+            FieldAnnotation, filters=Q(modified_by__isnull=False))
+
+        # TODO: keep it for potential use later
+        # # (E1) Annotation User Generated Confirmed Correct =
+        # # Annotations in Document Annotations with Created By and Status Confirmed
+        # annotations['user_generated_confirm_correct'] = get_subq(
+        #     FieldAnnotation, filters=Q(modified_by__isnull=False) &
+        #                              Q(status=accepted_ann_status_id))
+
+        # reset nulls to 0
+        qs = qs.annotate(**annotations)
+        for ann_name in annotations:
+            qs = qs.annotate(**{ann_name: get_0_case(ann_name)})
+
+        qs = qs.annotate(total=F('true_ann') + F('rejected'),
+                         deps_on_fields=Case(
+                             When(depends_on_fields__isnull=True, then=None),
+                             default=ArrayAgg('depends_on_fields__title')))
+        return qs
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        if self.action == 'stats':
+            return self.get_stats_qs(qs)
+        return qs
 
     def get_extra_data(self, qs):
         data = super().get_extra_data(qs)
@@ -1184,19 +1374,28 @@ class DocumentFieldViewSet(JqListAPIMixin,
         signals.document_field_deleted.send(self.__class__, user=None, document_field=instance)
 
     def get_serializer_class(self):
-        if self.action in ('create', 'update', 'partial_update'):
+        if self.action == 'stats':
+            return DocumentFieldStatsResponseSerializer
+        elif self.action in ('create', 'update', 'partial_update'):
             return DocumentFieldCreateSerializer
         elif self.action == 'list':
             return DocumentFieldListSerializer
         return DocumentFieldDetailSerializer
 
-    @action(detail=False, methods=['post'])
+    @action(detail=False, methods=['get'], schema=DocumentFieldStatsSchema())
+    def stats(self, request, *args, **kwargs):
+        if 'document_type_uid' not in request.GET:
+            raise APIException('"document_type_uid" query string parameter is required.')
+        return super().list(request, *args, **kwargs)
+
+    @action(detail=False, methods=['post'], schema=CheckNewDocumentFieldFormulaSchema())
     def check_field_formula(self, request, **kwargs):
         """
         Check formula for new NOT SAVED Document Field
         Either "request.data.formula" or "request.data.hide_until_python" should be filled.
         Expects request data arguments:
         - formula: str OR
+        - convert_decimals_to_floats_in_formula_args: bool
         - hide_until_python: str
         - field_type: str
         - document_type: str - document type uid
@@ -1205,12 +1404,13 @@ class DocumentFieldViewSet(JqListAPIMixin,
         from apps.document.admin import DocumentFieldFormulaCheck
         return DocumentFieldFormulaCheck(request.data).check()
 
-    @action(detail=True, methods=['post'])
+    @action(detail=True, methods=['post'], schema=CheckDocumentFieldFormulaSchema())
     def check_formula(self, request, **kwargs):
         """
         Check formula for EXISTING Document Field
         Expects request data arguments:
         - formula: str OR
+        - convert_decimals_to_floats_in_formula_args: bool
         - hide_until_python: str
         - field_type: str
         - document_type: str - document type uid
@@ -1224,7 +1424,7 @@ class DocumentFieldViewSet(JqListAPIMixin,
     @classmethod
     def clone_field(cls, source_field, target_document_type,
                     new_field_code=None, new_field_category=None,
-                    clone_depends_on_fields=True, reindex=True):
+                    clone_depends_on_fields=True, reindex=True, user=None):
         """
         Clone given Document Field
         :param source_field: source DocumentField object
@@ -1232,11 +1432,13 @@ class DocumentFieldViewSet(JqListAPIMixin,
         :param new_field_code: str - code for new-created DocumentField
         :param new_field_category: DocumentFieldCategory object
         :param clone_depends_on_fields: bool - whether clone or not depends_on_fields as well
+        :param reindex - bool
+        :param user - User
         :return: new DocumentField
         """
         source_document_type = source_field.document_type
 
-        def _clone_field(source_field_pk, new_field_code=None, new_field_category=None):
+        def _clone_field(source_field_pk, new_field_code=None, new_field_category=None, user=None):
 
             source_field = DocumentField.objects.get(pk=source_field_pk)
             field_detectors = source_field.field_detectors.all()
@@ -1245,6 +1447,8 @@ class DocumentFieldViewSet(JqListAPIMixin,
             new_field = source_field
             new_field.pk = None
             new_field.document_type = target_document_type
+            new_field.created_by = user
+            new_field.modified_by = user
 
             if not new_field_code:
                 new_field_code = new_field.make_unique_code()
@@ -1274,14 +1478,15 @@ class DocumentFieldViewSet(JqListAPIMixin,
                     new_field.depends_on_fields.set(depends_on_fields)
                 else:
                     for dep_field in depends_on_fields:
-                        new_dep_field = _clone_field(dep_field.pk)
+                        new_dep_field = _clone_field(dep_field.pk, user=user)
                         new_field.depends_on_fields.add(new_dep_field)
 
             return new_field
 
         new_field = _clone_field(source_field.pk,
                                  new_field_code=new_field_code,
-                                 new_field_category=new_field_category)
+                                 new_field_category=new_field_category,
+                                 user=user)
 
         if source_field.family is None:
             new_family = DocumentFieldFamily.objects.create(
@@ -1296,7 +1501,7 @@ class DocumentFieldViewSet(JqListAPIMixin,
 
         return new_field
 
-    @action(detail=True, methods=['post'])
+    @action(detail=True, methods=['post'], schema=CloneDocumentFieldSchema())
     def clone(self, request, **kwargs):
         """
         Clone existing DocumentField and its depends_on_fields and detectors
@@ -1315,12 +1520,13 @@ class DocumentFieldViewSet(JqListAPIMixin,
 
         new_field = self.clone_field(source_field,
                                      target_document_type,
-                                     new_field_code=form.cleaned_data['code'])
+                                     new_field_code=form.cleaned_data['code'],
+                                     user=request.user)
 
         data = DocumentFieldDetailSerializer(new_field).data
         return Response(data)
 
-    @action(detail=True, methods=['post'])
+    @action(detail=True, methods=['post'], schema=ObjectResponseSchema(object_response_for_methods=['POST']))
     def pre_delete(self, request, **kwargs):
         """
         Get info about related objects for ready-to-delete document type.
@@ -1409,7 +1615,40 @@ class DocumentFieldCategoryOptionsSerializer(DocumentFieldCategoryCreateSerializ
         fields = ['id', 'document_type', 'name', 'order', 'fields']
 
 
-class DocumentFieldCategoryViewSet(JqListAPIMixin,
+class DocumentFieldCategoryPermissions(IsAuthenticated):
+
+    def has_permission(self, request, view):
+        if view.action in ['create']:
+            return request.user.has_perm('document.add_documentfieldcategory')
+        return super().has_permission(request, view)
+
+    def has_object_permission(self, request, view, obj):
+        action = view.action
+        user = request.user
+        if action in ['update', 'partial_update']:
+            return user.has_perm('document.change_documentfieldcategory', obj)
+        if action in ['retrieve']:
+            return user.has_perm('document.view_documentfieldcategory', obj)
+        if action in ['delete']:
+            return user.has_perm('document.delete_documentfieldcategory', obj)
+        return super().has_object_permission(request, view, obj)
+
+
+class DocumentFieldCategoryViewPermissionsMixin:
+    permission_classes = [DocumentFieldCategoryPermissions]
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        user = self.request.user
+        if user.has_perm('document.view_documentfieldcategory'):
+            return qs
+        # deliver categories for allowed doc types only
+        doc_types = get_objects_for_user(user, 'document.view_documenttype', DocumentType)
+        return qs.filter(document_type__in=doc_types)
+
+
+class DocumentFieldCategoryViewSet(DocumentFieldCategoryViewPermissionsMixin,
+                                   JqListAPIMixin,
                                    APIResponseMixin,
                                    APIFormFieldsMixin,
                                    viewsets.ModelViewSet):
@@ -1432,8 +1671,6 @@ class DocumentFieldCategoryViewSet(JqListAPIMixin,
     delete: Delete DocumentFieldCategory
     """
     queryset = DocumentFieldCategory.objects.all()
-
-    permission_classes = (TopStaffPermission,)
     options_serializer = DocumentFieldCategoryOptionsSerializer
 
     def get_queryset(self):
@@ -1516,6 +1753,28 @@ class DocumentFieldDetectorCreateSerializer(serializers.ModelSerializer):
     class Meta:
         model = DocumentFieldDetector
         fields = '__all__'
+        extra_fields = ['warning_message']
+
+    warning_message = serializers.SerializerMethodField(read_only=True)
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._warnings = {}
+        doc_types_for_user = get_objects_for_user(
+            self.context['request'].user, 'document.view_documenttype', DocumentType)
+        self.fields['field'].queryset = DocumentField.objects.filter(
+            document_type__in=doc_types_for_user)
+
+    def get_warning_message(self, obj):
+        return '\n'.join(self._warnings.values()) if self._warnings else None
+
+    def get_field_names(self, declared_fields, info):
+        expanded_fields = super().get_field_names(declared_fields, info)
+
+        if getattr(self.Meta, 'extra_fields', None):
+            return expanded_fields + self.Meta.extra_fields
+        else:
+            return expanded_fields
 
     @check
     def validate(self, data):
@@ -1524,8 +1783,51 @@ class DocumentFieldDetectorCreateSerializer(serializers.ModelSerializer):
         DetectorFieldMatcher.validate_detected_value(data['field'].type,
                                                      data.get('detected_value'))
 
+    def is_valid(self, raise_exception=False):
+        super().is_valid()
+        UsersTasksValidationAdmin.validate_running_tasks(
+            self.context['request'], self._warnings)
+        raise_exception = self.context['request'].data.get('raise_exception')
+        if self._warnings and raise_exception:
+            raise Exception('\n'.join(self._warnings.values()))
+        return True
 
-class DocumentFieldDetectorViewSet(JqListAPIMixin,
+
+class DocumentFieldDetectorPermissions(IsAuthenticated):
+
+    def has_permission(self, request, view):
+        if view.action in ['create']:
+            field_uid = request.data.get('field')
+            if field_uid is None:
+                return super().has_permission(request, view)
+            field = DocumentField.objects.get(pk=field_uid)
+            return request.user.has_perm('document.change_documentfield', field)
+        return super().has_permission(request, view)
+
+    def has_object_permission(self, request, view, obj):
+        user = request.user
+        action = view.action
+        if action in ['update', 'partial_update']:
+            return user.has_perm('document.change_documentfield', obj.field)
+        if action in ['retrieve']:
+            return user.has_perm('document.view_documentfield', obj.field)
+        if action in ['delete']:
+            return user.has_perm('document.delete_documentfield', obj.field)
+        return super().has_object_permission(request, view, obj)
+
+
+class DocumentFieldDetectorViewMixin:
+    permission_classes = [DocumentFieldDetectorPermissions]
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        doc_types_for_user = get_objects_for_user(
+            self.request.user, 'document.view_documenttype', DocumentType)
+        return qs.filter(field__document_type__in=doc_types_for_user)
+
+
+class DocumentFieldDetectorViewSet(DocumentFieldDetectorViewMixin,
+                                   JqListAPIMixin,
                                    APIFormFieldsMixin,
                                    APIResponseMixin,
                                    viewsets.ModelViewSet):
@@ -1558,7 +1860,6 @@ class DocumentFieldDetectorViewSet(JqListAPIMixin,
     delete: Delete Document Field
     """
     queryset = DocumentFieldDetector.objects.select_related('field')
-    permission_classes = (TopStaffPermission,)
     options_serializer = DocumentFieldDetectorCreateSerializer
     response_unifier_serializer = DocumentFieldDetectorDetailSerializer
 
@@ -1572,6 +1873,14 @@ class DocumentFieldDetectorViewSet(JqListAPIMixin,
         data['count_of_filtered_items'] = qs.count()
         data['count_of_items'] = DocumentFieldDetector.objects.count()
         return data
+
+    def destroy(self, request, *args, **kwargs):
+        errors = dict()
+        UsersTasksValidationAdmin.validate_running_tasks(request, errors)
+        if errors:
+            raise DRFValidationError(errors)
+
+        return super().destroy(request, *args, **kwargs)
 
 
 # --------------------------------------------------------
@@ -1589,15 +1898,15 @@ class FieldDataSerializer(DocumentFieldDetailSerializer):
 class DocumentTypeDetailSerializer(SimpleRelationSerializer):
     fields_data = FieldDataSerializer(source='fields', many=True, read_only=True)
     fields_number = serializers.IntegerField()
-    created_by = UserSerializer(many=False)
-    modified_by = UserSerializer(many=False)
+    created_by = UserSerializer(many=False, allow_null=True)
+    modified_by = UserSerializer(many=False, allow_null=True)
     categories = DocumentFieldCategorySimpleSerializer(many=True, read_only=True)
 
     class Meta:
         model = DocumentType
         fields = ['uid', 'title', 'code', 'fields_data', 'search_fields', 'modified_by__username',
                   'editor_type', 'created_by', 'created_date', 'modified_by', 'modified_date',
-                  'metadata', 'fields_number', 'categories']
+                  'metadata', 'fields_number', 'categories', 'managers']
 
     def to_representation(self, instance):
         ret = dict(super().to_representation(instance))
@@ -1612,13 +1921,21 @@ class DocumentTypeCreateSerializer(ModelFormBasedSerializer):
     model_form_class = DocumentTypeForm
     fields = FieldSimpleSerializer(many=True, read_only=True)
     categories = DocumentFieldCategorySimpleSerializer(many=True, read_only=True)
+    warning_message = serializers.SerializerMethodField(read_only=True)
 
     class Meta:
         model = DocumentType
         fields = ['uid', 'title', 'code',
-                  'categories',
+                  'categories', 'managers',
                   'fields', 'search_fields', 'editor_type',
-                  'field_code_aliases', 'metadata']
+                  'field_code_aliases', 'metadata', 'warning_message']
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._warnings = {}
+
+    def get_warning_message(self, obj):
+        return '\n'.join(self._warnings.values()) if self._warnings else None
 
     def set_fields(self, instance: DocumentType):
         fields_data = self.context['request'].data.get('fields')
@@ -1698,8 +2015,12 @@ class DocumentTypeCreateSerializer(ModelFormBasedSerializer):
 
     def is_valid(self, raise_exception=False):
         super().is_valid()
-        UsersTasksValidationAdmin.validate_running_tasks(self.context['request'], self.errors)
+        UsersTasksValidationAdmin.validate_running_tasks(
+            self.context['request'], self._warnings)
         self.validate_may_delete_data(self.errors)
+        raise_exception = self.context['request'].data.get('raise_exception')
+        if self._warnings and raise_exception:
+            raise Exception('\n'.join(self._warnings.values()))
         return True
 
     def save(self, **kwargs):
@@ -1717,11 +2038,88 @@ class DocumentTypeOptionsSerializer(DocumentTypeCreateSerializer):
     class Meta:
         model = DocumentType
         fields = ['uid', 'title', 'code', 'fields', 'search_fields', 'editor_type',
-                  'field_categories',
+                  'field_categories', 'managers',
                   'created_by', 'created_date', 'modified_by', 'modified_date']
 
 
-class DocumentTypeViewSet(JqListAPIMixin,
+class DocumentTypeStatsSerializer(serializers.Serializer):
+    uid = serializers.UUIDField()
+    code = serializers.CharField()
+    title = serializers.CharField()
+    fields_count = serializers.IntegerField()
+    detectors_count = serializers.IntegerField()
+    hide_until_python_count = serializers.IntegerField()
+    hidden_always_count = serializers.IntegerField()
+    hide_until_python_pcnt = serializers.FloatField()
+    hidden_always_pcnt = serializers.FloatField()
+    fields_data = serializers.SerializerMethodField()
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        for detector_strategy, _ in DocumentField.VALUE_DETECTION_STRATEGY_CHOICES:
+            count_annotation_name = f'detector_{detector_strategy}_count'
+            pcnt_annotation_name = f'detector_{detector_strategy}_pcnt'
+            self.fields[count_annotation_name] = serializers.FloatField()
+            self.fields[pcnt_annotation_name] = serializers.FloatField()
+
+    def get_fields_data(self, obj):
+        fields_data = []
+        for field_type, _ in DocumentField._meta.get_field('type').choices:
+            count_annotation_name = f'field_type_{field_type}_count'
+            pcnt_annotation_name = f'field_type_{field_type}_pcnt'
+            fields_data.append({
+                'field_type': field_type,
+                'count': getattr(obj, count_annotation_name, None),
+                'pcnt': getattr(obj, pcnt_annotation_name, None),
+
+            })
+        return fields_data
+
+
+class DocumentTypeStatsViewSchema(ObjectToItemResponseMixin, CustomAutoSchema):
+    response_serializer = DocumentTypeStatsSerializer()
+
+
+class DocumentTypePermissions(IsAuthenticated):
+
+    def has_permission(self, request, view):
+        if view.action in ['create']:
+            return request.user.has_perm('document.add_documenttype')
+        if view.action in ['import_doc_type']:
+            return request.user.has_perm('document.import_documenttype')
+        if view.action in ['stats']:
+            return request.user.has_perm('document.view_documenttype_stats')
+        return super().has_permission(request, view)
+
+    def has_object_permission(self, request, view, obj):
+        action = view.action
+        user = request.user
+        if action in ['update', 'partial_update']:
+            return user.has_perm('document.change_documenttype', obj)
+        if action in ['retrieve']:
+            return user.has_perm('document.view_documenttype', obj)
+        if action in ['delete', 'pre_delete']:
+            return user.has_perm('document.delete_documenttype', obj)
+        if action in ['clone']:
+            return user.has_perm('document.clone_documenttype', obj)
+        if action in ['export_doc_type']:
+            return user.has_perm('document.export_documenttype', obj)
+        return super().has_object_permission(request, view, obj)
+
+
+class DocumentTypeViewMixin:
+    permission_classes = [DocumentTypePermissions]
+
+    def get_queryset(self):
+        # initial call to get all doc types info for react
+        if self.action == 'user_project_types':
+            return super().get_queryset()
+        # call for doc type management
+        return get_objects_for_user(self.request.user, 'document.view_documenttype', DocumentType)
+
+
+class DocumentTypeViewSet(DocumentTypeViewMixin,
+                          JqListAPIMixin,
                           APIResponseMixin,
                           APIFormFieldsMixin,
                           viewsets.ModelViewSet):
@@ -1749,21 +2147,74 @@ class DocumentTypeViewSet(JqListAPIMixin,
     partial_update: Partial Update Document Type
     delete: Delete Document Type
     """
-    queryset = DocumentType.objects.select_related('modified_by') \
-        .prefetch_related('search_fields', 'fields', 'fields__category',
-                          Prefetch('fields__depends_on_fields',
-                                   queryset=DocumentField.objects.all().only('pk')))
-
-    permission_classes = (TopStaffPermission,)
+    queryset = DocumentType.objects.all()
     options_serializer = DocumentTypeOptionsSerializer
     response_unifier_serializer = DocumentTypeDetailSerializer
 
+    def get_stats_qs(self, qs):
+        """
+        Get total per-field stats
+        :param qs:
+        :return: qs
+        """
+        qs = qs.annotate(
+            fields_count=Count('fields', distinct=True),
+            detectors_count=Count('fields__field_detectors', distinct=True),
+            hide_until_python_count=Count('fields', filter=~Q(fields__hide_until_python='') & ~Q(
+                fields__hide_until_python__isnull=True), distinct=True),
+            hidden_always_count=Count('fields', filter=Q(fields__hidden_always=True),
+                                      distinct=True))
+
+        qs = qs.annotate(
+            hide_until_python_pcnt=Case(
+                When(fields_count=0, then=0),
+                default=100.0 * F('hide_until_python_count') / F('fields_count'),
+                output_field=DecimalField(max_digits=5, decimal_places=2)),
+            hidden_always_pcnt=Case(
+                When(fields_count=0, then=0),
+                default=100.0 * F('hidden_always_count') / F('fields_count'),
+                output_field=DecimalField(max_digits=5, decimal_places=2)))
+
+        for detector_strategy, _ in DocumentField.VALUE_DETECTION_STRATEGY_CHOICES:
+            count_annotation_name = f'detector_{detector_strategy}_count'
+            qs = qs.annotate(**{count_annotation_name: Count(
+                'fields',
+                filter=Q(fields__value_detection_strategy=detector_strategy),
+                distinct=True)})
+            pcnt_annotation_name = f'detector_{detector_strategy}_pcnt'
+            qs = qs.annotate(**{pcnt_annotation_name: Case(
+                When(fields_count=0, then=0),
+                default=100.0 * F(count_annotation_name) / F('fields_count'),
+                output_field=DecimalField(max_digits=5, decimal_places=2))})
+
+        for field_type, _ in DocumentField._meta.get_field('type').choices:
+            count_annotation_name = f'field_type_{field_type}_count'
+            qs = qs.annotate(**{count_annotation_name: Count(
+                'fields',
+                filter=Q(fields__type=field_type),
+                distinct=True)})
+            pcnt_annotation_name = f'field_type_{field_type}_pcnt'
+            qs = qs.annotate(**{pcnt_annotation_name: Case(
+                When(fields_count=0, then=0),
+                default=100.0 * F(count_annotation_name) / F('fields_count'),
+                output_field=DecimalField(max_digits=5, decimal_places=2))})
+
+        return qs
+
     def get_queryset(self):
-        qs = super().get_queryset()
+        qs = super().get_queryset() \
+            .select_related('modified_by') \
+            .prefetch_related('search_fields', 'fields', 'fields__category',
+                              Prefetch('fields__depends_on_fields',
+                                       queryset=DocumentField.objects.all().only('pk')))
+        if self.action == 'stats':
+            return self.get_stats_qs(qs)
         return qs.annotate(fields_number=Count('fields'))
 
     def get_serializer_class(self):
-        if self.action in ('create', 'update', 'partial_update'):
+        if self.action == 'stats':
+            return DocumentTypeStatsSerializer
+        elif self.action in ('create', 'update', 'partial_update'):
             return DocumentTypeCreateSerializer
         return DocumentTypeDetailSerializer
 
@@ -1820,7 +2271,15 @@ class DocumentTypeViewSet(JqListAPIMixin,
         fields['modified_by']['required'] = False
         return fields
 
-    @action(detail=False, methods=['put'])
+    @action(detail=False, methods=['get'], schema=DocumentTypeStatsViewSchema())
+    def stats(self, request, *args, **kwargs):
+        return super().list(request, *args, **kwargs)
+
+    @action(detail=False, methods=['get'])
+    def user_project_types(self, request, *args, **kwargs):
+        return super().list(request, *args, **kwargs)
+
+    @action(detail=False, methods=['put'], schema=DocumentTypeImportSchema())
     def import_doc_type(self, request, *_args, **_kwargs):
         if 'file' not in request.data:
             raise ParseError("Empty content")
@@ -1831,12 +2290,13 @@ class DocumentTypeViewSet(JqListAPIMixin,
 
         task_id = call_task(ImportDocumentType,
                             **{'document_type_config_json_file': f,
+                               'user_id': request.user.id,
                                'update_cache': update_cache,
                                'action': action,
                                'source_version': source_version})
         return Response(status=200, data={'task_id': task_id})
 
-    @action(detail=True, methods=['get'])
+    @action(detail=True, methods=['get'], schema=DocumentTypeExportSchema())
     def export_doc_type(self, request, *_args, **_kwargs):
         document_type = self.get_object()
         version = request.data.get('target_version', None)
@@ -1846,7 +2306,7 @@ class DocumentTypeViewSet(JqListAPIMixin,
         return download(json_data, f'{document_type.code}_{datetime.date.today()}')
 
     @classmethod
-    def clone_type(cls, source_document_type: DocumentType, code: str, title: str):
+    def clone_type(cls, source_document_type: DocumentType, code: str, title: str, user: User):
         """
         Clone given Document Type
         :param source_document_type: source DocumentType object
@@ -1858,6 +2318,8 @@ class DocumentTypeViewSet(JqListAPIMixin,
         new_document_type.pk = None
         new_document_type.code = code
         new_document_type.title = title
+        new_document_type.created_by = user
+        new_document_type.modified_by = user
         new_document_type.save()
 
         # clone fields
@@ -1873,7 +2335,8 @@ class DocumentTypeViewSet(JqListAPIMixin,
             new_field = DocumentFieldViewSet.clone_field(
                 source_field, new_document_type, source_field.code,
                 clone_depends_on_fields=False,
-                reindex=False
+                reindex=False,
+                user=user
             )
             depends_on_fields_codes = source_field.depends_on_fields.values_list('code', flat=True)
             depends_on_fields = new_document_type.fields.filter(code__in=depends_on_fields_codes)
@@ -1888,7 +2351,7 @@ class DocumentTypeViewSet(JqListAPIMixin,
 
         return new_document_type
 
-    @action(detail=True, methods=['post'])
+    @action(detail=True, methods=['post'], schema=CloneDocumentTypeSchema())
     def clone(self, request, **kwargs):
         """
         Clone existing Document Type and its fields
@@ -1907,12 +2370,14 @@ class DocumentTypeViewSet(JqListAPIMixin,
         # create new DT object
         new_document_type = self.clone_type(source_document_type,
                                             code=form.cleaned_data['code'],
-                                            title=form.cleaned_data['title'])
+                                            title=form.cleaned_data['title'],
+                                            user=request.user)
 
+        new_document_type.fields_number = new_document_type.fields.count()
         data = DocumentTypeDetailSerializer(new_document_type).data
         return Response(data)
 
-    @action(detail=True, methods=['post'])
+    @action(detail=True, methods=['post'], schema=ObjectResponseSchema(object_response_for_methods=['POST']))
     def pre_delete(self, request, **kwargs):
         """
         Get info about related objects for ready-to-delete document type.
@@ -1960,6 +2425,30 @@ class AnnotationSerializer(serializers.ModelSerializer):
         fields = ['pk', 'document', 'field', 'value',
                   'location_start', 'location_end', 'location_text',
                   'modified_by', 'modified_date']
+
+
+class AnnotationUpdateResponseSerializer(serializers.ModelSerializer):
+    document_name = serializers.CharField(source='document.name')
+    field_name = serializers.CharField(source='field.code')
+    project = serializers.CharField(source='document.project.name')
+
+    class Meta:
+        model = FieldAnnotation
+        fields = ['pk', 'document', 'document_name', 'field', 'field_name', 'value', 'project',
+                  'location_start', 'location_end', 'location_text',
+                  'modified_by', 'modified_date']
+
+
+class AnnotationUpdateSchema(CustomAutoSchema):
+    request_serializer = AnnotationSerializer()
+    response_serializer = AnnotationUpdateResponseSerializer()
+
+
+class AnnotationDestroySchema(CustomAutoSchema):
+    def get_responses(self, path, method):
+        serializer = AnnotationSerializer()
+        response_schema = self._get_reference(serializer)
+        return {'200': {'content': {'application/json': {'schema': response_schema}}}}
 
 
 def do_save_document_field_value(request_data: Dict, user) -> \
@@ -2015,6 +2504,7 @@ def do_save_document_field_value(request_data: Dict, user) -> \
     current_field_values.update(actual_field_values)
 
     # try to detect field value
+    # TODO: unused?
     field_detection_strategy = FIELD_DETECTION_STRATEGY_REGISTRY[
         field.value_detection_strategy]  # type: FieldDetectionStrategy
 
@@ -2128,6 +2618,14 @@ class AnnotationViewSet(viewsets.ModelViewSet):
             qs = qs.filter(document_id=document_id)
         return qs
 
+    def initialize_request(self, request, *args, **kwargs):
+        request = super().initialize_request(request, *args, **kwargs)
+        if self.action in ['create', 'update', 'annotate']:
+            self.schema = AnnotationUpdateSchema()
+        elif self.action == 'destroy':
+            self.schema = AnnotationDestroySchema()
+        return request
+
     def update(self, request, *args, **kwargs):
         try:
             doc, field, res = do_save_document_field_value(request.data, request.user)
@@ -2142,7 +2640,7 @@ class AnnotationViewSet(viewsets.ModelViewSet):
     def create(self, request, *args, **kwargs):
         return self.update(request, *args, **kwargs)
 
-    @action(detail=False, methods=['put'])
+    @action(detail=False, methods=['put'], schema=AnnotationUpdateSchema())
     def annotate(self, request, *args, **kwargs):
         return self.update(request, *args, **kwargs)
 
@@ -2154,7 +2652,7 @@ class AnnotationViewSet(viewsets.ModelViewSet):
             res = render_error_json(None, e)
         return Response(res)
 
-    @action(detail=False, methods=['post'])
+    @action(detail=False, methods=['post'], schema=AnnotationSuggestSchema())
     def suggest(self, request, *args, **kwargs):
         """
         Suggest field value before creating an annotation.
@@ -2173,7 +2671,7 @@ class AnnotationViewSet(viewsets.ModelViewSet):
 
         return Response({'suggested_value': field_value})
 
-    @action(detail=False, methods=['put'])
+    @action(detail=False, methods=['put'], schema=AnnotationBatchSchema())
     def batch(self, request, *args, **kwargs):
         """
         Create batch of annotations\n
@@ -2215,8 +2713,17 @@ class AnnotationViewSet(viewsets.ModelViewSet):
 # --------------------------------------------------------
 # Stats View
 # --------------------------------------------------------
+# TODO: outdated View?
+
+class StatsPermissions(IsAuthenticated):
+
+    def has_permission(self, request, view):
+        return request.user.is_superuser
+
 
 class StatsAPIView(rest_framework.views.APIView):
+    schema = ObjectResponseSchema()
+    permission_classes = [StatsPermissions]
 
     def get(self, request, *args, **kwargs):
 
@@ -2296,63 +2803,64 @@ class StatsAPIView(rest_framework.views.APIView):
         trademark_usages = TrademarkUsage.objects
         url_usages = UrlUsage.objects
 
-        if request.user.is_reviewer:
-            document_filter_opts = dict(document__taskqueue__reviewers=request.user)
-            tu_filter_opts = dict(text_unit__document__taskqueue__reviewers=request.user)
-
-            documents = documents.filter(taskqueue__reviewers=request.user).distinct()
-            document_properties = document_properties.filter(**document_filter_opts).distinct()
-            document_tags = document_tags.filter(**document_filter_opts).distinct()
-            document_notes = document_notes.filter(**document_filter_opts).distinct()
-            document_relations = document_relations.filter(
-                document_a__taskqueue__reviewers=request.user,
-                document_b__taskqueue__reviewers=request.user).distinct()
-            document_clusters = document_clusters.filter(
-                documents__taskqueue__reviewers=request.user).distinct()
-            text_units = text_units.filter(**document_filter_opts).distinct()
-            tu_tags = tu_tags.filter(**tu_filter_opts).distinct()
-            tu_properties = tu_properties.filter(**tu_filter_opts).distinct()
-            tu_classifications = tu_classifications.filter(**tu_filter_opts).distinct()
-            tu_classification_suggestions = tu_classification_suggestions.filter(
-                **tu_filter_opts).distinct()
-            tuc_suggestion_types = tuc_suggestion_types.filter(**tu_filter_opts).distinct(
-                'class_name')
-            tu_notes = tu_notes.filter(**tu_filter_opts).distinct()
-            tu_clusters = tu_clusters.filter(
-                text_units__document__taskqueue__reviewers=request.user).distinct()
-            terms = terms.filter(
-                termusage__text_unit__document__taskqueue__reviewers=request.user).distinct()
-            term_usages = term_usages.filter(**tu_filter_opts).distinct()
-
-            amount_usages = amount_usages.filter(**tu_filter_opts).distinct()
-            citation_usages = citation_usages.filter(**tu_filter_opts).distinct()
-            copyright_usages = copyright_usages.filter(**tu_filter_opts).distinct()
-            court_usages = court_usages.filter(**tu_filter_opts).distinct()
-            currency_usages = currency_usages.filter(**tu_filter_opts).distinct()
-            date_duration_usages = date_duration_usages.filter(**tu_filter_opts).distinct()
-            date_usages = date_usages.filter(**tu_filter_opts).distinct()
-            definition_usages = definition_usages.filter(**tu_filter_opts).distinct()
-            distance_usages = distance_usages.filter(**tu_filter_opts).distinct()
-
-            geo_aliases = geo_aliases.filter(
-                geoaliasusage__text_unit__document__taskqueue__reviewers=request.user).distinct()
-            geo_alias_usages = geo_alias_usages.filter(**tu_filter_opts).distinct()
-            geo_entities = geo_entities.filter(
-                geoentityusage__text_unit__document__taskqueue__reviewers=request.user).distinct()
-            geo_entity_usages = geo_entity_usages.filter(**tu_filter_opts).distinct()
-            geo_relations = geo_relations.filter(
-                entity_a__geoentityusage__text_unit__document__taskqueue__reviewers=request.user,
-                entity_b__geoentityusage__text_unit__document__taskqueue__reviewers=request.user) \
-                .distinct()
-
-            parties = parties.filter(
-                partyusage__text_unit__document__taskqueue__reviewers=request.user).distinct()
-            party_usages = party_usages.filter(**tu_filter_opts).distinct()
-            percent_usages = percent_usages.filter(**tu_filter_opts).distinct()
-            ratio_usages = ratio_usages.filter(**tu_filter_opts).distinct()
-            regulation_usages = regulation_usages.filter(**tu_filter_opts).distinct()
-            trademark_usages = trademark_usages.filter(**tu_filter_opts).distinct()
-            url_usages = url_usages.filter(**tu_filter_opts).distinct()
+        # TODO: outdated API? else rewrite permission check
+        # if request.user.is_reviewer:
+        #     document_filter_opts = dict(document__taskqueue__reviewers=request.user)
+        #     tu_filter_opts = dict(text_unit__document__taskqueue__reviewers=request.user)
+        #
+        #     documents = documents.filter(taskqueue__reviewers=request.user).distinct()
+        #     document_properties = document_properties.filter(**document_filter_opts).distinct()
+        #     document_tags = document_tags.filter(**document_filter_opts).distinct()
+        #     document_notes = document_notes.filter(**document_filter_opts).distinct()
+        #     document_relations = document_relations.filter(
+        #         document_a__taskqueue__reviewers=request.user,
+        #         document_b__taskqueue__reviewers=request.user).distinct()
+        #     document_clusters = document_clusters.filter(
+        #         documents__taskqueue__reviewers=request.user).distinct()
+        #     text_units = text_units.filter(**document_filter_opts).distinct()
+        #     tu_tags = tu_tags.filter(**tu_filter_opts).distinct()
+        #     tu_properties = tu_properties.filter(**tu_filter_opts).distinct()
+        #     tu_classifications = tu_classifications.filter(**tu_filter_opts).distinct()
+        #     tu_classification_suggestions = tu_classification_suggestions.filter(
+        #         **tu_filter_opts).distinct()
+        #     tuc_suggestion_types = tuc_suggestion_types.filter(**tu_filter_opts).distinct(
+        #         'class_name')
+        #     tu_notes = tu_notes.filter(**tu_filter_opts).distinct()
+        #     tu_clusters = tu_clusters.filter(
+        #         text_units__document__taskqueue__reviewers=request.user).distinct()
+        #     terms = terms.filter(
+        #         termusage__text_unit__document__taskqueue__reviewers=request.user).distinct()
+        #     term_usages = term_usages.filter(**tu_filter_opts).distinct()
+        #
+        #     amount_usages = amount_usages.filter(**tu_filter_opts).distinct()
+        #     citation_usages = citation_usages.filter(**tu_filter_opts).distinct()
+        #     copyright_usages = copyright_usages.filter(**tu_filter_opts).distinct()
+        #     court_usages = court_usages.filter(**tu_filter_opts).distinct()
+        #     currency_usages = currency_usages.filter(**tu_filter_opts).distinct()
+        #     date_duration_usages = date_duration_usages.filter(**tu_filter_opts).distinct()
+        #     date_usages = date_usages.filter(**tu_filter_opts).distinct()
+        #     definition_usages = definition_usages.filter(**tu_filter_opts).distinct()
+        #     distance_usages = distance_usages.filter(**tu_filter_opts).distinct()
+        #
+        #     geo_aliases = geo_aliases.filter(
+        #         geoaliasusage__text_unit__document__taskqueue__reviewers=request.user).distinct()
+        #     geo_alias_usages = geo_alias_usages.filter(**tu_filter_opts).distinct()
+        #     geo_entities = geo_entities.filter(
+        #         geoentityusage__text_unit__document__taskqueue__reviewers=request.user).distinct()
+        #     geo_entity_usages = geo_entity_usages.filter(**tu_filter_opts).distinct()
+        #     geo_relations = geo_relations.filter(
+        #         entity_a__geoentityusage__text_unit__document__taskqueue__reviewers=request.user,
+        #         entity_b__geoentityusage__text_unit__document__taskqueue__reviewers=request.user) \
+        #         .distinct()
+        #
+        #     parties = parties.filter(
+        #         partyusage__text_unit__document__taskqueue__reviewers=request.user).distinct()
+        #     party_usages = party_usages.filter(**tu_filter_opts).distinct()
+        #     percent_usages = percent_usages.filter(**tu_filter_opts).distinct()
+        #     ratio_usages = ratio_usages.filter(**tu_filter_opts).distinct()
+        #     regulation_usages = regulation_usages.filter(**tu_filter_opts).distinct()
+        #     trademark_usages = trademark_usages.filter(**tu_filter_opts).distinct()
+        #     url_usages = url_usages.filter(**tu_filter_opts).distinct()
 
         data = {
             "document_count": documents.count(),
@@ -2476,18 +2984,28 @@ class DocumentFieldValueViewSet(JqListAPIMixin, viewsets.ModelViewSet):
         qs = super().get_queryset()
         qs = qs.filter(value__isnull=False, document__delete_pending=False)
 
-        if self.request.user.is_reviewer:
-            qs = qs.filter(document__project__reviewers=self.request.user)
-        elif self.request.user.is_manager:
-            qs = qs.filter(Q(document__project__reviewers=self.request.user) |
-                           Q(document__project__owners=self.request.user)).distinct()
-
-        self.unfiltered_queryset = qs
-
-        # via project router
         project_id = self.kwargs.get('project_pk')
         if project_id:
             qs = qs.filter(document__project_id=project_id)
+
+            project = Project.objects.get(pk=project_id)
+            if not self.request.user.has_perm('project.view_documents', project):
+                docs_for_user = get_objects_for_user(self.request.user,
+                                                     'document.view_document', Document)
+                docs_for_user = docs_for_user.filter(project_id=project_id)
+                qs = qs.filter(document__in=docs_for_user)
+        else:
+            projects_for_user = get_objects_for_user(
+                self.request.user, 'project.view_documents', Project)
+            docs_for_user = get_objects_for_user(
+                self.request.user, 'document.view_document', Document)
+            docs_for_user = docs_for_user \
+                .union(Document.objects.filter(project__in=projects_for_user)) \
+                .distinct() \
+                .values_list('pk', flat=True)
+            qs = qs.filter(document_id__in=docs_for_user)
+
+        self.unfiltered_queryset = qs
 
         field_annotation_subquery = FieldAnnotation.objects \
             .filter(field=OuterRef("field"), document=OuterRef("document")) \
@@ -2539,6 +3057,25 @@ class FieldAnnotationStatusSerializer(serializers.ModelSerializer):
         fields = '__all__'
 
 
+class FieldAnnotationStatusPermissions(IsAuthenticated):
+
+    def has_permission(self, request, view):
+        if view.action in ['create']:
+            return request.user.has_perm('document.add_fieldannotationstatus')
+        return super().has_permission(request, view)
+
+    def has_object_permission(self, request, view, obj):
+        action = view.action
+        user = request.user
+        if action in ['update', 'partial_update']:
+            return user.has_perm('document.change_fieldannotationstatus', obj)
+        if action in ['retrieve']:
+            return user.has_perm('document.view_fieldannotationstatus', obj)
+        if action in ['delete', 'pre_delete']:
+            return user.has_perm('document.delete_fieldannotationstatus', obj)
+        return super().has_object_permission(request, view, obj)
+
+
 class FieldAnnotationStatusViewSet(JqListAPIMixin, viewsets.ModelViewSet):
     """
     list: FieldAnnotationStatus List
@@ -2549,6 +3086,7 @@ class FieldAnnotationStatusViewSet(JqListAPIMixin, viewsets.ModelViewSet):
     """
     queryset = FieldAnnotationStatus.objects.all()
     serializer_class = FieldAnnotationStatusSerializer
+    permission_classes = (FieldAnnotationStatusPermissions,)
 
 
 # --------------------------------------------------------
@@ -2572,7 +3110,7 @@ class AnnotationInDocumentSerializer(serializers.ModelSerializer):
         model = FieldAnnotation
         fields = ['pk', 'document', 'value', 'field',
                   'location_start', 'location_end', 'location_text',  # TODO: Remove location_text when frontend ready
-                  'modified_by', 'modified_date']
+                  'modified_by', 'modified_date', 'uid']
 
     def create(self, validated_data):
         instance = FieldAnnotation()
@@ -2592,7 +3130,8 @@ class AnnotationInDocumentSerializer(serializers.ModelSerializer):
         old_ant_value = instance.value
         instance.value = validated_data['value']
         instance.extraction_hint = typed_field.pick_hint_by_searching_for_value_among_extracted(instance.location_text,
-                                                                                                instance.value)
+                                                                                                instance.value,
+                                                                                                doc=instance.document)
         user = self.context['request'].user
         instance.modified_by = user
 
@@ -2642,6 +3181,7 @@ class DocumentFieldAnnotationSerializer(serializers.ModelSerializer):
     project_id = serializers.IntegerField(read_only=True)
     project_name = serializers.CharField(read_only=True)
     document_name = serializers.CharField(read_only=True)
+    document_type = serializers.CharField(read_only=True)
     document_status = serializers.CharField(read_only=True)
     field_name = serializers.CharField(read_only=True)
     status_id = serializers.IntegerField(read_only=False)
@@ -2659,6 +3199,7 @@ class DocumentFieldAnnotationSerializer(serializers.ModelSerializer):
                   'project_name',
                   'document_id',
                   'document_name',
+                  'document_type',
                   'document_status',
                   'field_id',
                   'field_name',
@@ -2726,12 +3267,33 @@ class DocumentFieldAnnotationSerializer(serializers.ModelSerializer):
         return instance
 
 
-class DocumentFieldAnnotationViewSet(JqListAPIMixin, viewsets.ModelViewSet):
+class DocumentFieldAnnotationPermissions(IsAuthenticated):
+
+    def has_permission(self, request, view):
+        # "for-user" action has filter by assigned annotations - so no check for perms
+        project_id = view.kwargs.get('project_pk')
+        if project_id:
+            project = Project.objects.get(pk=project_id)
+            return request.user.has_perm('project.view_project', project)
+        return super().has_permission(request, view)
+
+    def has_object_permission(self, request, view, obj):
+        if view.action in ['retrieve']:
+            # obj.document doesn't work as we have ValuesQueryset here which behaves like dict
+            document = Document.objects.get(pk=obj['document_id'])
+            return request.user.has_perm('project.view_documents', document.project) or \
+                   request.user.has_perm('document.view_document', document)
+        return super().has_object_permission(request, view, obj)
+
+    # objects filter is in DocumentFieldAnnotationViewSet.get_initial_queryset method
+
+
+class DocumentFieldAnnotationViewSet(JqListAPIMixin, viewsets.ReadOnlyModelViewSet):
     """
     list: Field Annotation List + Field Annotation False Match List
     retrieve: Field Annotation Details (not Field Annotation False Match)
-    partial_update: Update Annotation (not Field Annotation False Match)
     """
+    permission_classes = (DocumentFieldAnnotationPermissions,)
     serializer_class = DocumentFieldAnnotationSerializer
     http_method_names = ['get', 'patch']
 
@@ -2814,13 +3376,8 @@ class DocumentFieldAnnotationViewSet(JqListAPIMixin, viewsets.ModelViewSet):
         # filter out deleted documents
         qs = model.objects.filter(document__delete_pending=False)
 
-        if self.request.user.is_reviewer:
-            qs = qs.filter(document__project__reviewers=self.request.user)
-        elif self.request.user.is_manager:
-            qs = qs.filter(Q(document__project__reviewers=self.request.user) |
-                           Q(document__project__owners=self.request.user)).distinct()
-
         # stats page for a user
+        # do not apply perms check as annotations were checked during assigning
         if self.action == 'for_user':
             qs = qs.filter(assignee=self.request.user)
 
@@ -2828,6 +3385,23 @@ class DocumentFieldAnnotationViewSet(JqListAPIMixin, viewsets.ModelViewSet):
         project_id = self.kwargs.get('project_pk')
         if project_id:
             qs = qs.filter(document__project_id=project_id)
+
+            project = Project.objects.get(pk=project_id)
+            if not self.request.user.has_perm('project.view_documents', project):
+                docs_for_user = get_objects_for_user(self.request.user,
+                                                     'document.view_document', Document)
+                docs_for_user = docs_for_user.filter(project_id=project_id)
+                qs = qs.filter(document__in=docs_for_user)
+        else:
+            projects_for_user = get_objects_for_user(
+                self.request.user, 'project.view_documents', Project)
+            docs_for_user = get_objects_for_user(
+                self.request.user, 'document.view_document', Document)
+            docs_for_user = docs_for_user \
+                .union(Document.objects.filter(project__in=projects_for_user)) \
+                .distinct() \
+                .values_list('pk', flat=True)
+            qs = qs.filter(document_id__in=docs_for_user)
 
         # filter by field
         field_id = self.kwargs.get('field_id')
@@ -2864,14 +3438,11 @@ class DocumentFieldAnnotationViewSet(JqListAPIMixin, viewsets.ModelViewSet):
             project_id=F('document__project_id'),
             project_name=F('document__project__name'),
             document_name=F('document__name'),
+            document_type=F('document__document_type__title'),
             document_status=F('document__status__name'),
             field_name=F('field__title'),
             status_name=F('status__name'),
-            assignee_name=Case(When(Q(assignee__name__isnull=False) & ~Q(assignee__name=''), then=F('assignee__name')),
-                               When(Q(assignee__first_name__in=['', None]) |
-                                    Q(assignee__last_name__in=['', None]), then=F('assignee__username')),
-                               default=Concat(F('assignee__first_name'), Value(' '), F('assignee__last_name')),
-                               output_field=CharField())
+            assignee_name=F('assignee__name')
         )
         # WARN: MUST HAVE the same
         # 1. fields number
@@ -2900,6 +3471,7 @@ class DocumentFieldAnnotationViewSet(JqListAPIMixin, viewsets.ModelViewSet):
             project_id=F('document__project_id'),
             project_name=F('document__project__name'),
             document_name=F('document__name'),
+            document_type=F('document__document_type__title'),
             document_status=F('document__status__name'),
             field_name=F('field__title'),
             status_name=Value('Rejected', output_field=CharField()),
@@ -2929,7 +3501,7 @@ class DocumentFieldAnnotationViewSet(JqListAPIMixin, viewsets.ModelViewSet):
         filter and sort it
         return: ValuesQuerySet
         """
-        if self.action == 'list':
+        if self.action == 'list' and 'project_pk' in self.kwargs:
             # save or inject saved filter
             self.apply_saved_filters()
 
@@ -3033,6 +3605,11 @@ class DocumentFieldAnnotationViewSet(JqListAPIMixin, viewsets.ModelViewSet):
         into request for further processing
         """
         project_id = self.kwargs.get('project_pk')
+
+        # do not story if API called without project_id router
+        if not project_id:
+            return
+
         request_data = self.request.GET
         columns = request_data.get('columns')
         save_filter = request_data.get('save_filter') == 'true'

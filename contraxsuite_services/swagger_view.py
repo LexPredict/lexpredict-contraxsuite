@@ -36,14 +36,15 @@ from rest_framework.permissions import AllowAny
 from rest_framework.renderers import CoreJSONRenderer, JSONOpenAPIRenderer, OpenAPIRenderer
 from rest_framework.response import Response
 from rest_framework.schemas import coreapi, get_schema_view
-from rest_framework.schemas.openapi import AutoSchema, SchemaGenerator as OpenAPISchemaGenerator
+from rest_framework.schemas.openapi import SchemaGenerator as OpenAPISchemaGenerator
 
 from apps.common.model_utils.improved_django_json_encoder import ImprovedDjangoJSONEncoder
+from apps.users.authentication import CookieAuthentication
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.7.0/LICENSE"
-__version__ = "1.7.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
+__version__ = "1.8.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -159,25 +160,6 @@ def get_path_tags(path):
     return path_tags
 
 
-class CustomAutoSchema(AutoSchema):
-
-    def _get_operation_id(self, path, method):
-        """
-        Compute an operation ID from the model, serializer or view name.
-        """
-        method_name = getattr(self.view, 'action', method.lower())
-        if method_name not in self.method_mapping:
-            action = method_name
-        else:
-            action = self.method_mapping[method.lower()]
-
-        name = re.sub(r'(?:ViewSet|APIView|ApiView|View)$', '', self.view.__class__.__name__)
-
-        path_tag = ''.join(get_path_tags(path))
-
-        return f'{path_tag}:{name}:{action}:{method}'
-
-
 class CustomJSONOpenAPIRenderer(JSONOpenAPIRenderer):
     format = 'openapi-json'
 
@@ -207,6 +189,18 @@ class CustomOpenAPISchemaGenerator(OpenAPISchemaGenerator):
                 path_schema['tags'] = path_tags
             schema['paths'] = OrderedDict(sorted(schema['paths'].items()))
 
+        components = schema.get('components', {})
+        security_schemes = components.get('securitySchemes', {})
+        security_schemes['AuthToken'] = {
+            'type': 'apiKey',
+            'in': 'header',
+            'name': 'Authorization'
+        }
+        components['securitySchemes'] = security_schemes
+        schema['components'] = components
+        security = schema.get('security', [])
+        security.append({'AuthToken': []})
+        schema['security'] = security
         return schema
 
 
@@ -215,9 +209,10 @@ def get_openapi_view():
     return get_schema_view(
         title="Contraxsuite API",
         description="Contraxsuite API",
+        version=settings.VERSION_NUMBER,
         generator_class=CustomOpenAPISchemaGenerator,
         permission_classes=[AllowAny],
-        authentication_classes=[SessionAuthentication],
+        authentication_classes=[CookieAuthentication],
         renderer_classes=[
             OpenAPIRenderer,
             CustomJSONOpenAPIRenderer

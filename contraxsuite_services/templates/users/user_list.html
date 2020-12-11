@@ -1,7 +1,12 @@
 {% extends "base_list_ajax.html" %}
 {% load static %}
 
+{% block project_selection %}{% endblock %}
+
 {% block js_extra %}
+  <script type="text/javascript">
+    var skip_project_selection = true;   // hide "empty project selection"- see jqwidgets.js
+  </script>
   {{ block.super }}
   <script type="text/javascript">
     $(document).ready(function () {

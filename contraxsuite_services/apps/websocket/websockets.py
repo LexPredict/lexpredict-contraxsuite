@@ -35,19 +35,20 @@ from channels_redis.core import RedisChannelLayer
 from django.conf import settings
 from django.db.models import QuerySet
 from django.db import connection
-from rest_framework.authtoken.models import Token
 
 from apps.common.singleton import Singleton
 from apps.task.utils.logger import get_django_logger
 from apps.users.models import User
+from apps.users.authentication import token_cache
 from apps.websocket.channel_message import ChannelMessage
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.7.0/LICENSE"
-__version__ = "1.7.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
+__version__ = "1.8.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
+
 
 USER = 'user'
 ALL = 'all'
@@ -124,6 +125,23 @@ class Websockets:
         layer = get_channel_layer()  # type: RedisChannelLayer
         async_to_sync(layer.group_send)(ALL, {'type': 'send_to_client',
                                               'user_ids': list(user_ids),
+                                              'message': message_obj.to_dict()})
+
+    def send_to_users_by_ids(self, user_ids: List[int], message_obj: ChannelMessage):
+        """
+        Send the message to the users returned by the specified Django query set.
+
+        :param user_ids: user ids to send messages to
+        :param message_obj: Message to send.
+        :return:
+        """
+
+        connected_user_ids = self.get_connected_users()
+        if not connected_user_ids:
+            return
+        layer = get_channel_layer()  # type: RedisChannelLayer
+        async_to_sync(layer.group_send)(ALL, {'type': 'send_to_client',
+                                              'user_ids': user_ids,
                                               'message': message_obj.to_dict()})
 
     def send_to_user(self, user_id, message_obj: ChannelMessage):
@@ -216,8 +234,7 @@ class ContraxsuiteWSConsumer(AsyncJsonWebsocketConsumer):
             return None
         token_key = token_key.replace('Token ', '').strip()
         try:
-            token = Token.objects.get(key=token_key)
-            user = token.user
+            user = token_cache.get_user(token=token_key)
             if not user or user.is_anonymous:
                 self.logger.error(
                     f'{self.scope.get("client")} | User of token {token_key} is not specified or anonymous')

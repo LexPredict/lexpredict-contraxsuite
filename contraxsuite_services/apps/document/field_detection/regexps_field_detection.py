@@ -45,8 +45,8 @@ from apps.document.value_extraction_hints import ValueExtractionHint
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.7.0/LICENSE"
-__version__ = "1.7.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
+__version__ = "1.8.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -112,7 +112,7 @@ class RegexpsOnlyFieldDetectionStrategy(FieldDetectionStrategy):
         field_detector_repo: FieldDetectorRepository = cls.field_detector_repo
 
         detected_with_stop_words, detected_value = \
-            detect_with_stop_words_by_field_and_full_text(field, depends_on_full_text)
+            detect_with_stop_words_by_field_and_full_text(field, doc, depends_on_full_text)
         if detected_with_stop_words:
             return FieldValueDTO(field_value=detected_value)
 
@@ -175,8 +175,7 @@ class RegexpsOnlyFieldDetectionStrategy(FieldDetectionStrategy):
                             value, hint_name = typed_field.get_or_extract_value(document=text_unit.document,
                                                                                 possible_value=value,
                                                                                 possible_hint=hint_name,
-                                                                                text=matching_string,
-                                                                                text_unit=text_unit)
+                                                                                text=matching_string)
                         except Exception as e:
                             raise ValueExtractionFunctionThrownException(
                                 f'Document: {text_unit.document.name} (#{text_unit.document.pk})\n'
@@ -242,7 +241,7 @@ class FieldBasedRegexpsDetectionStrategy(FieldDetectionStrategy):
         if field.stop_words:
             depends_on_full_text = '\n'.join([str(v) for v in field_code_to_value.values()])
             detected_with_stop_words, detected_value \
-                = detect_with_stop_words_by_field_and_full_text(field, depends_on_full_text)
+                = detect_with_stop_words_by_field_and_full_text(field, doc, depends_on_full_text)
             if detected_with_stop_words:
                 return FieldValueDTO(field_value=detected_value)
 
@@ -256,13 +255,13 @@ class FieldBasedRegexpsDetectionStrategy(FieldDetectionStrategy):
             if not depends_on_value:
                 continue
             depends_on_value = str(depends_on_value)
-            for field_detector in detectors:  # type: DetectorFieldMatcher
-                matching_piece = field_detector.matching_string(depends_on_value, text_is_sentence=False)
+            for detector_field_matcher in detectors:  # type: DetectorFieldMatcher
+                matching_piece = detector_field_matcher.matching_string(depends_on_value, text_is_sentence=False)
                 if matching_piece is not None:
                     matching_string = matching_piece[0]
-                    value = field_detector.get_validated_detected_value(field)
+                    value = detector_field_matcher.get_validated_detected_value(field)
                     if typed_field.requires_value:
-                        hint_name = field_detector.extraction_hint or ValueExtractionHint.TAKE_FIRST.name
+                        hint_name = detector_field_matcher.extraction_hint or ValueExtractionHint.TAKE_FIRST.name
                         value, hint_name = typed_field \
                             .get_or_extract_value(doc,
                                                   value,

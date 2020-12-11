@@ -33,12 +33,12 @@ import warnings
 from functools import wraps
 from itertools import count, groupby
 from traceback import format_exception
-from typing import Tuple
+from typing import Tuple, Dict
 
 from celery.beat import SchedulingError
 from celery.states import READY_STATES, SUCCESS, UNREADY_STATES, FAILURE, ALL_STATES, PENDING
 from django.conf import settings
-from django.db import connections, router, transaction, models
+from django.db import connections, router, transaction, models, connection
 from django.db.models import F, Q, Value
 from django.db.utils import IntegrityError, InterfaceError, OperationalError
 
@@ -49,8 +49,8 @@ from task_names import TASK_FRIENDLY_NAME
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.7.0/LICENSE"
-__version__ = "1.7.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
+__version__ = "1.8.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -226,6 +226,9 @@ class TaskManager(models.Manager):
                   parent_task_id: str,
                   description: str = None,
                   args: Tuple = None,
+                  kwargs: Dict = None,
+                  queue: str = None,
+                  priority: int = None,
                   source_data=None,
                   run_after_sub_tasks_finished=False,
                   run_if_parent_task_failed=False):
@@ -243,6 +246,11 @@ class TaskManager(models.Manager):
             'parent_task_id': parent_task_id,
             'date_start': now(),
             'args': args,
+            'kwargs': kwargs,
+            'queue': queue,
+            'priority': priority,
+            'restart_count': 0,
+            'bad_health_check_num': 0,
             'source_data': source_data,
             'status': PENDING,
             'own_status': PENDING,
@@ -254,14 +262,40 @@ class TaskManager(models.Manager):
         if not created:
             # If the task model is already created then this is a retry of a failed task
             # We need to clear its status and progress
+            obj.description = description
             obj.date_done = None
             obj.own_date_done = None
-            obj.description = description
             obj.status = PENDING
             obj.own_status = PENDING
             obj.progress = 0
             obj.own_progress = 0
-            obj.save()
+            # obj.save()
+            # Instead of unconditional .save() we update only the specified fields
+            # and only if they are different in the database.
+            self.filter(id=task_id) \
+                .exclude(date_done__isnull=True,
+                         own_date_done__isnull=True,
+                         status=PENDING,
+                         own_status=PENDING,
+                         progress=0,
+                         own_progress=0,
+                         description=description) \
+                .update(date_done=None,
+                        own_date_done=None,
+                        status=PENDING,
+                        own_status=PENDING,
+                        progress=0,
+                        own_progress=0,
+                        description=description)
+
+        else:
+            if settings.DEBUG_LOG_TASK_RUN_COUNT:
+                with connection.cursor() as cursor:
+                    cursor.execute(f'''
+    insert into task_taskstatentry (task_name, run_counter) 
+    values ('{task_name}', 1) 
+    on conflict (task_name) do update set run_counter = task_taskstatentry.run_counter + 1;
+                    ''')
 
         return obj
 
@@ -368,6 +402,8 @@ class TaskManager(models.Manager):
             'date_start': date_now,
             'own_date_done': date_now if status in READY_STATES else None,
             'result': result,
+            'restart_count': 0,
+            'bad_health_check_num': 0,
             'traceback': traceback,
             'celery_metadata': metadata,
         }
@@ -384,29 +420,43 @@ class TaskManager(models.Manager):
             obj, created = self.get_or_create(id=task_id, defaults=initial_values)
 
             if not created:
+                update_fields = set()
                 if task_name and not obj.name:
                     obj.name = task_name
+                    update_fields.add('name')
 
                 # Main task id should be assigned in init_task or on initial store result.
                 # If the task is already initialized with main_task_id = None - here it can be rewritten
                 # with some value by Celery itself.
                 obj.own_status = status
+                update_fields.add('own_status')
                 if status in READY_STATES:
                     obj.own_progress = 100
+                    update_fields.add('own_progress')
 
                 if obj.own_date_done is None:
                     obj.own_date_done = now() if status in READY_STATES else None
+                    update_fields.add('own_date_done')
 
                 obj.result = result
-                obj.traceback = traceback
-                obj.celery_metadata = metadata
+                update_fields.add('result')
+
+                if obj.traceback != traceback:
+                    obj.traceback = traceback
+                    update_fields.add('traceback')
+
+                if obj.celery_metadata != metadata:
+                    obj.celery_metadata = metadata
+                    update_fields.add('celery_metadata')
 
                 if not obj.has_sub_tasks:
                     obj.status = obj.own_status
                     obj.date_done = obj.own_date_done
                     obj.progress = obj.own_progress
+                    update_fields.update({'status', 'date_done', 'progress'})
 
-                obj.save()
+                obj.save(update_fields=update_fields)
+
         except IntegrityError:
             print('Orphan sub-task detected: {0}'.format(initial_values))
             obj = self.model(**initial_values)

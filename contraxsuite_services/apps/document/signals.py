@@ -26,45 +26,48 @@
 
 from typing import Set, List
 
-import django.dispatch
 from django.db.models import QuerySet
 from django.db.models.signals import post_save, post_delete
-from django.dispatch import receiver
+from django.dispatch import receiver, Signal
+from guardian.shortcuts import assign_perm, get_content_type
 
 from apps.common.log_utils import ProcessLogger
 from apps.document.constants import FieldSpec
-from apps.document.models import Document
+from apps.document.models import Document, DocumentField
 from apps.document.models import FieldValue, FieldAnnotation
-from apps.users.models import User
+from apps.users.models import User, CustomUserObjectPermission
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.7.0/LICENSE"
-__version__ = "1.7.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
+__version__ = "1.8.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
 
-document_changed = django.dispatch.Signal(providing_args=['changed_by_user', 'log', 'document', 'system_fields_changed',
+document_changed = Signal(providing_args=['changed_by_user', 'log', 'document', 'system_fields_changed',
                                                           'generic_fields_changed', 'user_fields_changed',
                                                           'document_initial_load'])
-document_deleted = django.dispatch.Signal(providing_args=['user', 'document'])
+document_deleted = Signal(providing_args=['user', 'document'])
 
-doc_full_delete = django.dispatch.Signal(providing_args=['document_ids'])
+doc_full_delete = Signal(providing_args=['document_ids'])
 
-document_field_changed = django.dispatch.Signal(providing_args=['user', 'document_field'])
-document_field_deleted = django.dispatch.Signal(providing_args=['user', 'document_field'])
+document_field_changed = Signal(providing_args=['user', 'document_field'])
+document_field_deleted = Signal(providing_args=['user', 'document_field'])
+document_field_detection_failed = Signal(providing_args=['document', 'document_field', 'message'])
 
-document_type_changed = django.dispatch.Signal(providing_args=['user', 'document_type'])
-document_type_deleted = django.dispatch.Signal(providing_args=['user', 'document_type'])
+document_type_changed = Signal(providing_args=['user', 'document_type'])
+document_type_deleted = Signal(providing_args=['user', 'document_type'])
 
-doc_soft_delete = django.dispatch.Signal(providing_args=['document_ids', 'delete_pending'])
+doc_soft_delete = Signal(providing_args=['document_ids', 'delete_pending'])
 
-documents_assignee_changed = django.dispatch.Signal(providing_args=['documents', 'new_assignee_id', 'changed_by_user'])
+documents_assignee_changed = Signal(providing_args=['documents', 'new_assignee_id', 'changed_by_user'])
 
-documents_status_changed = django.dispatch.Signal(providing_args=['documents', 'new_status_id', 'changed_by_user'])
+documents_status_changed = Signal(providing_args=['documents', 'new_status_id', 'changed_by_user'])
 
-hidden_fields_cleared = django.dispatch.Signal(providing_args=['document', 'field_codes'])
+hidden_fields_cleared = Signal(providing_args=['document', 'field_codes'])
+
+documents_pre_update = Signal(providing_args=['queryset'])
 
 
 def fire_document_changed(sender,
@@ -131,6 +134,18 @@ def fire_hidden_fields_cleared(sender, document: Document, field_codes: Set[str]
     hidden_fields_cleared.send(sender, document=document, field_codes=field_codes)
 
 
+def fire_document_field_detection_failed(sender,
+                                         document: Document,
+                                         document_field: DocumentField,
+                                         message: str,
+                                         document_initial_load: bool):
+    document_field_detection_failed.send(sender,
+                                         document=document,
+                                         document_field=document_field,
+                                         message=message,
+                                         document_initial_load=document_initial_load)
+
+
 @receiver(post_save, sender=FieldValue)
 def field_value_saved(sender, instance: FieldValue, created: bool = True, **kwargs):
     from apps.document.async_notifications import notify_field_value_saved
@@ -157,3 +172,30 @@ def field_annotation_deleted(sender, instance: FieldAnnotation, **kwargs):
     from apps.document.async_notifications import notify_field_annotation_deleted
     from django.db import transaction
     transaction.on_commit(lambda: notify_field_annotation_deleted(instance))
+
+
+@receiver(documents_pre_update, sender=Document)
+def reassign_permissions(sender, queryset, **kwargs):
+    from apps.users.permissions import document_permissions, remove_perm
+
+    if 'assignee' in kwargs or 'assignee_id' in kwargs:
+        assignee = kwargs.get('assignee') or kwargs.get('assignee_id')
+        new_assignee = User.objects.get(pk=assignee) if isinstance(assignee, int) else assignee
+        # change perms
+        for document in queryset:
+            if document.assignee is not None:
+                for perm_name in document_permissions:
+                    remove_perm(perm_name, document.assignee, document)
+        if new_assignee is not None:
+            for perm_name in document_permissions:
+                assign_perm(perm_name, new_assignee, queryset)
+
+    # reassign document cluster
+    if 'project' in kwargs or 'project_id' in kwargs:
+        project = kwargs.get('project') or kwargs.get('project_id')
+        new_project_id = project if isinstance(project, int) else project.pk
+        # delete perms
+        for document in queryset:
+            if document.project_id != new_project_id:
+                CustomUserObjectPermission.objects.filter(content_type=get_content_type(Document),
+                                                          object_pk=document.pk).delete()

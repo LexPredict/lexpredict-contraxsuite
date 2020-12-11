@@ -37,8 +37,8 @@ from apps.project.models import Project
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.7.0/LICENSE"
-__version__ = "1.7.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
+__version__ = "1.8.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -123,14 +123,24 @@ class BuildFeatureVectorsTaskForm(forms.Form):
         doc_transformers = DocumentTransformer.objects.order_by('-pk').values_list('pk', 'name')
         self.fields['doc_transformer'] = forms.ChoiceField(
             choices=[(pk, f'#{pk} {name}') for pk, name in list(doc_transformers)],
-            required=True,
+            required=False,
             help_text='Document Transformer trained model')
 
         txt_transformers = TextUnitTransformer.objects.order_by('-pk').values_list('pk', 'name')
         self.fields['txt_transformer'] = forms.ChoiceField(
             choices=[(pk, f'#{pk} {name}') for pk, name in list(txt_transformers)],
-            required=True,
+            required=False,
             help_text='Text Unit Transformer trained model')
+
+    def clean(self):
+        cleaned_data = super().clean()
+        source_select = cleaned_data.get('source_select')
+        doc_transformer = cleaned_data.get('doc_transformer')
+        txt_transformer = cleaned_data.get('txt_transformer')
+        if source_select and not doc_transformer:
+            self.add_error('doc_transformer', 'A transformer is required to run this task.')
+        if not source_select and not txt_transformer:
+            self.add_error('txt_transformer', 'A transformer is required to run this task.')
 
 
 class BaseRunClassifierForm(forms.Form):
@@ -192,7 +202,6 @@ options_field_kwargs = dict(
     initial=True,
     required=False,
     help_text='Show advanced options.')
-
 
 CLASSIFIER_NAME_CHOICES = (
     ('ExtraTreesClassifier', 'ExtraTreesClassifier'),
@@ -476,6 +485,7 @@ class ClusterForm(forms.Form):
                   'This can affect the speed of the construction and query, '
                   'as well as the memory required to store the tree.',
         min_value=0)
+
     # ls_documents_property = forms.Field()
     # ls_text_units_property = forms.Field()
     # ls_max_iter = forms.IntegerField(

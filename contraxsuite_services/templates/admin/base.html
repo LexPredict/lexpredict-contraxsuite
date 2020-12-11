@@ -139,10 +139,12 @@
               {% if messages %}
 
                 {% for message in messages %}
-                  <div class="alert alert-{% firstof message.tags 'info' %}">
+                  {% with msg_class=message.tags|striptags %}
+                  <div class="alert alert-{% firstof msg_class 'info' %}">
                     <button class="close" data-dismiss="alert">×</button>
-                    {{ message }}
+                    {% if 'safe_html' in message.tags %}{{ message|safe }}{% else %}{{ message }}{% endif %}
                   </div>
+                  {% endwith %}
                 {% endfor %}
               {% endif %}
             {% endblock messages %}

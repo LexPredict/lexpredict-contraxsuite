@@ -34,22 +34,21 @@ import os
 import urllib
 
 # Third-party imports
-from typing import Optional, List, Tuple, Dict, Any
-
 import magic
 import pandas as pd
+from typing import Optional, List, Tuple, Dict, Any
+from djangoql.schema import DjangoQLSchema
+from elasticsearch import Elasticsearch
+
 # Django imports
 from django.conf import settings
+from django.contrib.auth.mixins import PermissionRequiredMixin
 from django.contrib.sites.models import Site
 from django.urls import reverse
 from django.db.models import Count, F, Prefetch, Q
-from django.http import FileResponse
-from django.shortcuts import get_object_or_404, redirect
-from django.shortcuts import render
+from django.http import FileResponse, HttpResponseForbidden
+from django.shortcuts import render, get_object_or_404, redirect
 from django.views.generic import DetailView
-# Other lib imports
-from djangoql.schema import DjangoQLSchema
-from elasticsearch import Elasticsearch
 
 # Project imports
 from apps.analyze.models import (
@@ -63,7 +62,6 @@ from apps.document.forms import DetectFieldValuesForm, TrainDocumentFieldDetecto
     LoadDocumentWithFieldsForm, FindBrokenDocumentFieldValuesForm, ImportCSVFieldDetectionConfigForm, \
     FixDocumentFieldCodesForm, ExportDocumentTypeForm, ImportDocumentTypeForm, IdentifyContractsForm, \
     ExportDocumentsForm, ImportDocumentsForm
-from apps.document.migration.document_export import DocumentExporter
 from apps.document.models import (
     Document, DocumentProperty, DocumentRelation, DocumentNote, DocumentTag,
     TextUnit, TextUnitProperty, TextUnitNote, TextUnitTag)
@@ -86,8 +84,8 @@ from apps.users.models import User
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.7.0/LICENSE"
-__version__ = "1.7.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
+__version__ = "1.8.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -158,20 +156,20 @@ class TextUnitQueryView(DocumentQueryView):
 
 
 class DocumentListView(apps.common.mixins.JqPaginatedListView):
-    template_name = 'document/document_list.html'
     """DocumentListView
 
     CBV for list of Document records.
     """
     model = Document
+    document_lookup = ''
+    template_name = 'document/document_list.html'
     json_fields = ['project__name',
                    'name', 'document_type__title',
                    'title', 'language',
                    # this field makes DB query significantly longer
                    # 'is_contract',
                    # 'properties', 'relations',
-                   'paragraphs', 'sentences', 'document_class']
-    limit_reviewers_qs_by_field = ""
+                   'paragraphs', 'sentences', 'document_class', 'ocr_rating']
     field_types = dict(
         properties=int,
         relations=int,
@@ -294,10 +292,10 @@ class DocumentPropertyUpdateView(DocumentPropertyCreateView, apps.common.mixins.
 
 class DocumentPropertyListView(apps.common.mixins.JqPaginatedListView):
     model = DocumentProperty
-    limit_reviewers_qs_by_field = 'document'
+    document_lookup = 'document'
     json_fields = ['key', 'value',
-                   'created_date', 'created_by__username',
-                   'modified_date', 'modified_by__username',
+                   'created_date', 'created_by__name',
+                   'modified_date', 'modified_by__name',
                    'document__pk',
                    'document__project__name',
                    'document__name',
@@ -356,7 +354,7 @@ class DocumentRelationListView(apps.common.mixins.JqPaginatedListView):
                    'document_b__project__name',
                    'document_b__name',
                    'document_b__document_type__title', 'document_b__description']
-    limit_reviewers_qs_by_field = ['document_a', 'document_b']
+    document_lookup = ['document_a', 'document_b']
     template_name = 'document/document_relation_list.html'
 
     def get_json_data(self, **kwargs):
@@ -376,7 +374,7 @@ class DocumentRelationListView(apps.common.mixins.JqPaginatedListView):
         return qs
 
 
-class DocumentDetailView(apps.common.mixins.PermissionRequiredMixin, DetailView):
+class DocumentDetailView(PermissionRequiredMixin, DetailView):
     model = Document
     raise_exception = True
 
@@ -466,6 +464,14 @@ def show_document(request, pk):
     file_path = document.source_path
     alt_file_path = document.alt_source_path
 
+    # perm check
+    if not (request.user.has_perm('project.view_documents', document.project) or
+            request.user.has_perm('document.view_document', document)):
+        response = HttpResponseForbidden()
+        msg = 'You do not have access to this document.'
+        response.content = render(request, '403.html', context={'message': msg})
+        return response
+
     # get alternative file if it exists
     alt = request.GET.get('alt', 'true')
     if alt == 'true' and alt_file_path and file_storage.document_exists(alt_file_path):
@@ -484,7 +490,7 @@ class DocumentNoteListView(apps.common.mixins.JqPaginatedListView):
                    'document__project__name',
                    'document__name', 'document__document_type__title',
                    'document__description']
-    limit_reviewers_qs_by_field = 'document'
+    document_lookup = 'document'
     ordering = ['-timestamp']
     template_name = 'document/document_note_list.html'
 
@@ -494,7 +500,7 @@ class DocumentNoteListView(apps.common.mixins.JqPaginatedListView):
             DocumentNote.history
                 .filter(document_id__in=list(self.get_queryset()
                                              .values_list('document__pk', flat=True)))
-                .values('id', 'document_id', 'history_date', 'history_user__username', 'note'))
+                .values('id', 'document_id', 'history_date', 'history_user__name', 'note'))
 
         for item in data['data']:
             item['url'] = self.full_reverse('document:document-detail', args=[item['document__pk']])
@@ -503,7 +509,7 @@ class DocumentNoteListView(apps.common.mixins.JqPaginatedListView):
             if item_history:
                 item['history'] = item_history
                 item['user'] = sorted(item_history,
-                                      key=lambda i: i['history_date'])[-1]['history_user__username']
+                                      key=lambda i: i['history_date'])[-1]['history_user__name']
         return data
 
     def get_queryset(self):
@@ -539,7 +545,7 @@ class DocumentEnhancedView(DocumentDetailView):
         return ctx
 
 
-class TextUnitDetailView(apps.common.mixins.PermissionRequiredMixin, DetailView):
+class TextUnitDetailView(PermissionRequiredMixin, DetailView):
     """
     Used DetailView instead of CustomDetailView to overwrite
     admin permissions
@@ -571,7 +577,7 @@ class TextUnitListView(apps.common.mixins.JqPaginatedListView):
                    'document__project__name',
                    'document__name',
                    'document__document_type__title', 'document__description']
-    limit_reviewers_qs_by_field = 'document'
+    document_lookup = 'document'
     es = Elasticsearch(hosts=settings.ELASTICSEARCH_CONFIG['hosts'])
     template_name = 'document/text_unit_list.html'
     query_errors = []
@@ -655,7 +661,7 @@ class DjangoQLTextUnitIntrospectView(DjangoQLIntrospectView):
 class TextUnitByLangListView(apps.common.mixins.JqPaginatedListView):
     model = TextUnit
     template_name = 'document/text_unit_lang_list.html'
-    limit_reviewers_qs_by_field = None
+    document_lookup = None
 
     def get_queryset(self):
         qs = super().get_queryset().order_by('document_id', 'unit_type')
@@ -675,7 +681,7 @@ class TextUnitByLangListView(apps.common.mixins.JqPaginatedListView):
 
 class TextUnitPropertyListView(apps.common.mixins.JqPaginatedListView):
     model = TextUnitProperty
-    limit_reviewers_qs_by_field = 'text_unit__document'
+    document_lookup = 'text_unit__document'
     json_fields = ['key', 'value',
                    'text_unit__document__pk',
                    'text_unit__document__project__name',
@@ -737,7 +743,7 @@ class TextUnitNoteListView(apps.common.mixins.JqPaginatedListView):
                    'text_unit__document__name', 'text_unit__document__document_type__title',
                    'text_unit__document__description', 'text_unit__pk',
                    'text_unit__unit_type', 'text_unit__language']
-    limit_reviewers_qs_by_field = 'text_unit__document'
+    document_lookup = 'text_unit__document'
     template_name = 'document/text_unit_note_list.html'
 
     def get_json_data(self, **kwargs):
@@ -785,11 +791,11 @@ class DocumentNoteDeleteView(apps.common.mixins.CustomDeleteView):
 
 class DocumentTagListView(apps.common.mixins.JqPaginatedListView):
     model = DocumentTag
-    json_fields = ['tag', 'timestamp', 'user__username', 'document__pk',
+    json_fields = ['tag', 'timestamp', 'user__name', 'document__pk',
                    'document__project__name',
                    'document__name', 'document__document_type__title',
                    'document__description']
-    limit_reviewers_qs_by_field = 'document'
+    document_lookup = 'document'
     template_name = 'document/document_tag_list.html'
 
     def get_json_data(self, **kwargs):
@@ -834,12 +840,12 @@ class DocumentTagDeleteView(apps.common.mixins.CustomDeleteView):
 
 class TextUnitTagListView(apps.common.mixins.JqPaginatedListView):
     model = TextUnitTag
-    json_fields = ['tag', 'timestamp', 'user__username', 'text_unit__document__pk',
+    json_fields = ['tag', 'timestamp', 'user__name', 'text_unit__document__pk',
                    'text_unit__document__project__name',
                    'text_unit__document__name', 'text_unit__document__document_type__title',
                    'text_unit__document__description', 'text_unit__pk',
                    'text_unit__unit_type', 'text_unit__language']
-    limit_reviewers_qs_by_field = 'text_unit__document'
+    document_lookup = 'text_unit__document'
     template_name = 'document/text_unit_tag_list.html'
 
     def get_json_data(self, **kwargs):
@@ -887,7 +893,7 @@ class TextUnitTagDeleteView(apps.common.mixins.CustomDeleteView):
 class TypeaheadDocumentDescription(apps.common.mixins.TypeaheadView):
     model = Document
     search_field = 'description'
-    limit_reviewers_qs_by_field = ''
+    document_lookup = ''
 
 
 class TypeaheadDocumentName(TypeaheadDocumentDescription):
@@ -897,13 +903,13 @@ class TypeaheadDocumentName(TypeaheadDocumentDescription):
 class TypeaheadTextUnitTag(apps.common.mixins.TypeaheadView):
     model = TextUnitTag
     search_field = 'tag'
-    limit_reviewers_qs_by_field = 'text_unit__document'
+    document_lookup = 'text_unit__document'
 
 
 class TypeaheadDocumentPropertyKey(apps.common.mixins.TypeaheadView):
     model = DocumentProperty
     search_field = 'key'
-    limit_reviewers_qs_by_field = 'document'
+    document_lookup = 'document'
 
 
 class SubmitNoteView(apps.common.mixins.SubmitView):
@@ -922,7 +928,7 @@ class SubmitNoteView(apps.common.mixins.SubmitView):
     success_message = 'Note was successfully saved'
 
     @staticmethod
-    def get_owner(request, owner_model=TextUnit):
+    def get_tag_owner(request, owner_model=TextUnit):
         try:
             owner = owner_model.objects.get(id=request.POST["owner_id"])
             document = owner if owner_model == Document else owner.document
@@ -935,7 +941,7 @@ class SubmitNoteView(apps.common.mixins.SubmitView):
 
     def process(self, request):
         note_prop = self.notes_map[request.POST.get("owner_name", "text_unit")]
-        owner = self.get_owner(request, note_prop['owner_model'])
+        owner = self.get_tag_owner(request, note_prop['owner_model'])
         note_model = note_prop['note_model']
         if owner is None:
             return self.failure()
@@ -953,40 +959,40 @@ class SubmitNoteView(apps.common.mixins.SubmitView):
 
 
 class SubmitDocumentTagView(apps.common.mixins.SubmitView):
-    owner = None
-    owner_class = Document
+    tag_owner = None
+    tag_owner_class = Document
     tag_class = DocumentTag
-    owner_field = 'document'
+    tag_owner_field = 'document'
 
     def dispatch(self, request, *args, **kwargs):
-        self.owner = self.get_owner(request)
+        self.tag_owner = self.get_tag_owner(request)
         return super().dispatch(request, *args, **kwargs)
 
     def get_success_message(self):
         return "Successfully added tag /%s/ for %s" % (
             self.request.POST["tag"],
-            str(self.owner))
+            str(self.tag_owner))
 
     @staticmethod
-    def allowed(user, owner):
-        return user.can_view_document(owner)
+    def allowed(user, tag_owner):
+        return user.can_view_document(tag_owner)
 
-    def get_owner(self, request):
+    def get_tag_owner(self, request):
         try:
-            owner = self.owner_class.objects.get(id=request.POST["owner_id"])
-            if not self.allowed(request.user, owner):
+            tag_owner = self.tag_owner_class.objects.get(id=request.POST["owner_id"])
+            if not self.allowed(request.user, tag_owner):
                 self.error_message = 'Not Allowed'
                 return None
-        except self.owner_class.DoesNotExist:
+        except self.tag_owner_class.DoesNotExist:
             self.error_message = 'Not Found'
             return None
-        return owner
+        return tag_owner
 
     def process(self, request):
-        if not self.owner:
+        if not self.tag_owner:
             return self.failure()
         defaults = {
-            self.owner_field: self.owner,
+            self.tag_owner_field: self.tag_owner,
             'tag': request.POST['tag'],
             'user': request.user,
             'timestamp': datetime.datetime.now()
@@ -1000,71 +1006,70 @@ class SubmitDocumentTagView(apps.common.mixins.SubmitView):
             created = True
         action = 'created' if created else 'updated'
         self.success_message = '%s Tag %s was successfully %s' \
-                               % (cap_words(self.owner_class._meta.verbose_name), str(obj), action)
+                               % (cap_words(self.tag_owner_class._meta.verbose_name), str(obj), action)
         return self.success()
 
 
 class SubmitClusterDocumentsTagView(apps.common.mixins.SubmitView):
-    owner = None
-    owner_class = DocumentCluster
+    tag_owner = None
+    tag_owner_class = DocumentCluster
     tag_class = DocumentTag
     owner_field = 'document'
 
     def dispatch(self, request, *args, **kwargs):
-        self.owner = self.get_owner(request)
+        self.tag_owner = self.get_tag_owner(request)
         return super().dispatch(request, *args, **kwargs)
 
     def get_success_message(self):
         return "Successfully added tag /%s/ for cluster /%s/ documents" % (
             self.request.POST["tag"],
-            str(self.owner))
+            str(self.tag_owner))
 
     @staticmethod
-    def allowed(user, owner):
-        # return user.can_view_document(owner)
-        return True
+    def allowed(user, tag_owner):
+        return user.can_view_document(tag_owner)
 
-    def get_owner(self, request):
+    def get_tag_owner(self, request):
         try:
-            owner = self.owner_class.objects.get(id=request.POST["owner_id"])
-            if not self.allowed(request.user, owner):
+            tag_owner = self.tag_owner_class.objects.get(id=request.POST["owner_id"])
+            if not self.allowed(request.user, tag_owner):
                 self.error_message = 'Not Allowed'
                 return None
-        except self.owner_class.DoesNotExist:
+        except self.tag_owner_class.DoesNotExist:
             self.error_message = 'Not Found'
             return None
-        return owner
+        return tag_owner
 
     def process(self, request):
-        if not self.owner:
+        if not self.tag_owner:
             return self.failure()
         timestamp = datetime.datetime.now()
         tags = [self.tag_class(**{
-            self.owner_field: owner,
+            self.owner_field: tag_owner,
             'tag': request.POST['tag'],
             'user': request.user,
-            'timestamp': timestamp}) for owner in self.owner.documents.all()]
+            'timestamp': timestamp}) for tag_owner in self.tag_owner.documents.all()]
         self.tag_class.objects.bulk_create(tags)
         return self.success()
 
 
 class SubmitClusterDocumentsPropertyView(SubmitClusterDocumentsTagView):
-    owner_class = DocumentCluster
+    tag_owner_class = DocumentCluster
     property_class = DocumentProperty
 
     def get_success_message(self):
         return "Successfully added property %s:%s for cluster %s documents" % (
             self.request.POST["key"],
             self.request.POST["value"],
-            str(self.owner))
+            str(self.tag_owner))
 
     def process(self, request):
-        if not self.owner:
+        if not self.tag_owner:
             return self.failure()
         properties = [self.property_class(**{
-            self.owner_field: owner,
+            self.owner_field: tag_owner,
             'key': request.POST['key'],
-            'value': request.POST['value']}) for owner in self.owner.documents.all()]
+            'value': request.POST['value']}) for tag_owner in self.tag_owner.documents.all()]
         # use save instead of bulk_create to call save method on model
         for prop in properties:
             prop.save()
@@ -1072,42 +1077,42 @@ class SubmitClusterDocumentsPropertyView(SubmitClusterDocumentsTagView):
 
 
 class SubmitClusterDocumentsLanguageView(SubmitClusterDocumentsTagView):
-    owner_class = DocumentCluster
+    tag_owner_class = DocumentCluster
 
     def get_success_message(self):
         return "Successfully changed language to %s for cluster %s documents" % (
             self.request.POST["language"],
-            str(self.owner))
+            str(self.tag_owner))
 
     def process(self, request):
-        if not self.owner:
+        if not self.tag_owner:
             return self.failure()
-        text_units = TextUnit.objects.filter(document__documentcluster=self.owner)
+        text_units = TextUnit.objects.filter(document__documentcluster=self.tag_owner)
         text_units.update(language=self.request.POST["language"])
         return self.success()
 
 
 class SubmitTextUnitTagView(SubmitDocumentTagView):
-    owner_class = TextUnit
+    tag_owner_class = TextUnit
     tag_class = TextUnitTag
-    owner_field = 'text_unit'
+    tag_owner_field = 'text_unit'
 
     @staticmethod
-    def allowed(user, owner):
-        return user.can_view_document(owner.document)
+    def allowed(user, tag_owner):
+        return user.can_view_document(tag_owner.document)
 
 
 class SubmitDocumentPropertyView(SubmitDocumentTagView):
     property_class = DocumentProperty
 
     def get_success_message(self):
-        return "Successfully added property for %s" % str(self.owner)
+        return "Successfully added property for %s" % str(self.tag_owner)
 
     def process(self, request):
-        if not self.owner:
+        if not self.tag_owner:
             return self.failure()
         defaults = {
-            self.owner_field: self.owner,
+            self.tag_owner_field: self.tag_owner,
             'key': request.POST['key'],
             'value': request.POST['value']
         }
@@ -1120,26 +1125,30 @@ class SubmitDocumentPropertyView(SubmitDocumentTagView):
             created = True
         action = 'created' if created else 'updated'
         self.success_message = '%s Property was successfully %s' \
-                               % (cap_words(self.owner_class._meta.verbose_name), action)
+                               % (cap_words(self.tag_owner_class._meta.verbose_name), action)
         return self.success()
 
 
 class SubmitTextUnitPropertyView(SubmitDocumentPropertyView):
-    owner_class = TextUnit
+    tag_owner_class = TextUnit
     property_class = TextUnitProperty
-    owner_field = 'text_unit'
+    tag_owner_field = 'text_unit'
 
     @staticmethod
-    def allowed(user, owner):
-        return user.can_view_document(owner.document)
+    def allowed(user, tag_owner):
+        return user.can_view_document(tag_owner.document)
 
 
+# TODO: outdated View?
 def view_stats(request):
     """
     Display overall statistics.
     :param request:
     :return:
     """
+    if not request.user.is_superuser:
+        return apps.common.mixins.CustomForbiddenResponse(request=request)
+
     admin_task_df = pd.DataFrame(TaskListView(request=request).get_json_data()['data'])
     admin_task_total_count = admin_task_df.shape[0]
     admin_task_by_status_count = dict(admin_task_df.groupby(['status']).size()) \
@@ -1220,62 +1229,63 @@ def view_stats(request):
     trademark_usages = TrademarkUsage.objects
     url_usages = UrlUsage.objects
 
-    if request.user.is_reviewer:
-        document_filter_opts = dict(document__taskqueue__reviewers=request.user)
-        tu_filter_opts = dict(text_unit__document__taskqueue__reviewers=request.user)
-
-        documents = documents.filter(taskqueue__reviewers=request.user).distinct()
-        document_properties = document_properties.filter(**document_filter_opts).distinct()
-        document_tags = document_tags.filter(**document_filter_opts).distinct()
-        document_notes = document_notes.filter(**document_filter_opts).distinct()
-        document_relations = document_relations.filter(
-            document_a__taskqueue__reviewers=request.user,
-            document_b__taskqueue__reviewers=request.user).distinct()
-        document_clusters = document_clusters.filter(
-            documents__taskqueue__reviewers=request.user).distinct()
-        text_units = text_units.filter(**document_filter_opts).distinct()
-        tu_tags = tu_tags.filter(**tu_filter_opts).distinct()
-        tu_properties = tu_properties.filter(**tu_filter_opts).distinct()
-        tu_classifications = tu_classifications.filter(**tu_filter_opts).distinct()
-        tu_classification_suggestions = tu_classification_suggestions.filter(
-            **tu_filter_opts).distinct()
-        tuc_suggestion_types = tuc_suggestion_types.filter(**tu_filter_opts).distinct('class_name')
-        tu_notes = tu_notes.filter(**tu_filter_opts).distinct()
-        tu_clusters = tu_clusters.filter(
-            text_units__document__taskqueue__reviewers=request.user).distinct()
-        terms = terms.filter(
-            termusage__text_unit__document__taskqueue__reviewers=request.user).distinct()
-        term_usages = term_usages.filter(**tu_filter_opts).distinct()
-
-        amount_usages = amount_usages.filter(**tu_filter_opts).distinct()
-        citation_usages = citation_usages.filter(**tu_filter_opts).distinct()
-        copyright_usages = copyright_usages.filter(**tu_filter_opts).distinct()
-        court_usages = court_usages.filter(**tu_filter_opts).distinct()
-        currency_usages = currency_usages.filter(**tu_filter_opts).distinct()
-        date_duration_usages = date_duration_usages.filter(**tu_filter_opts).distinct()
-        date_usages = date_usages.filter(**tu_filter_opts).distinct()
-        definition_usages = definition_usages.filter(**tu_filter_opts).distinct()
-        distance_usages = distance_usages.filter(**tu_filter_opts).distinct()
-
-        geo_aliases = geo_aliases.filter(
-            geoaliasusage__text_unit__document__taskqueue__reviewers=request.user).distinct()
-        geo_alias_usages = geo_alias_usages.filter(**tu_filter_opts).distinct()
-        geo_entities = geo_entities.filter(
-            geoentityusage__text_unit__document__taskqueue__reviewers=request.user).distinct()
-        geo_entity_usages = geo_entity_usages.filter(**tu_filter_opts).distinct()
-        geo_relations = geo_relations.filter(
-            entity_a__geoentityusage__text_unit__document__taskqueue__reviewers=request.user,
-            entity_b__geoentityusage__text_unit__document__taskqueue__reviewers=request.user) \
-            .distinct()
-
-        parties = parties.filter(
-            partyusage__text_unit__document__taskqueue__reviewers=request.user).distinct()
-        party_usages = party_usages.filter(**tu_filter_opts).distinct()
-        percent_usages = percent_usages.filter(**tu_filter_opts).distinct()
-        ratio_usages = ratio_usages.filter(**tu_filter_opts).distinct()
-        regulation_usages = regulation_usages.filter(**tu_filter_opts).distinct()
-        trademark_usages = trademark_usages.filter(**tu_filter_opts).distinct()
-        url_usages = url_usages.filter(**tu_filter_opts).distinct()
+    # TODO: outdated API? else rewrite permission check
+    # if request.user.is_reviewer:
+    #     document_filter_opts = dict(document__taskqueue__reviewers=request.user)
+    #     tu_filter_opts = dict(text_unit__document__taskqueue__reviewers=request.user)
+    #
+    #     documents = documents.filter(taskqueue__reviewers=request.user).distinct()
+    #     document_properties = document_properties.filter(**document_filter_opts).distinct()
+    #     document_tags = document_tags.filter(**document_filter_opts).distinct()
+    #     document_notes = document_notes.filter(**document_filter_opts).distinct()
+    #     document_relations = document_relations.filter(
+    #         document_a__taskqueue__reviewers=request.user,
+    #         document_b__taskqueue__reviewers=request.user).distinct()
+    #     document_clusters = document_clusters.filter(
+    #         documents__taskqueue__reviewers=request.user).distinct()
+    #     text_units = text_units.filter(**document_filter_opts).distinct()
+    #     tu_tags = tu_tags.filter(**tu_filter_opts).distinct()
+    #     tu_properties = tu_properties.filter(**tu_filter_opts).distinct()
+    #     tu_classifications = tu_classifications.filter(**tu_filter_opts).distinct()
+    #     tu_classification_suggestions = tu_classification_suggestions.filter(
+    #         **tu_filter_opts).distinct()
+    #     tuc_suggestion_types = tuc_suggestion_types.filter(**tu_filter_opts).distinct('class_name')
+    #     tu_notes = tu_notes.filter(**tu_filter_opts).distinct()
+    #     tu_clusters = tu_clusters.filter(
+    #         text_units__document__taskqueue__reviewers=request.user).distinct()
+    #     terms = terms.filter(
+    #         termusage__text_unit__document__taskqueue__reviewers=request.user).distinct()
+    #     term_usages = term_usages.filter(**tu_filter_opts).distinct()
+    #
+    #     amount_usages = amount_usages.filter(**tu_filter_opts).distinct()
+    #     citation_usages = citation_usages.filter(**tu_filter_opts).distinct()
+    #     copyright_usages = copyright_usages.filter(**tu_filter_opts).distinct()
+    #     court_usages = court_usages.filter(**tu_filter_opts).distinct()
+    #     currency_usages = currency_usages.filter(**tu_filter_opts).distinct()
+    #     date_duration_usages = date_duration_usages.filter(**tu_filter_opts).distinct()
+    #     date_usages = date_usages.filter(**tu_filter_opts).distinct()
+    #     definition_usages = definition_usages.filter(**tu_filter_opts).distinct()
+    #     distance_usages = distance_usages.filter(**tu_filter_opts).distinct()
+    #
+    #     geo_aliases = geo_aliases.filter(
+    #         geoaliasusage__text_unit__document__taskqueue__reviewers=request.user).distinct()
+    #     geo_alias_usages = geo_alias_usages.filter(**tu_filter_opts).distinct()
+    #     geo_entities = geo_entities.filter(
+    #         geoentityusage__text_unit__document__taskqueue__reviewers=request.user).distinct()
+    #     geo_entity_usages = geo_entity_usages.filter(**tu_filter_opts).distinct()
+    #     geo_relations = geo_relations.filter(
+    #         entity_a__geoentityusage__text_unit__document__taskqueue__reviewers=request.user,
+    #         entity_b__geoentityusage__text_unit__document__taskqueue__reviewers=request.user) \
+    #         .distinct()
+    #
+    #     parties = parties.filter(
+    #         partyusage__text_unit__document__taskqueue__reviewers=request.user).distinct()
+    #     party_usages = party_usages.filter(**tu_filter_opts).distinct()
+    #     percent_usages = percent_usages.filter(**tu_filter_opts).distinct()
+    #     ratio_usages = ratio_usages.filter(**tu_filter_opts).distinct()
+    #     regulation_usages = regulation_usages.filter(**tu_filter_opts).distinct()
+    #     trademark_usages = trademark_usages.filter(**tu_filter_opts).distinct()
+    #     url_usages = url_usages.filter(**tu_filter_opts).distinct()
 
     context = {
         "document_count": documents.count(),

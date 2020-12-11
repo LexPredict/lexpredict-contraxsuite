@@ -43,8 +43,8 @@ from apps.users.models import User, Role
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.7.0/LICENSE"
-__version__ = "1.7.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
+__version__ = "1.8.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -74,8 +74,8 @@ class DocFilterUncompletedDocuments(DocFilter):
     title = 'Uncompleted documents of the destination user'
     period_aware = False
     subject = 'Contraxsuite: digest of uncompleted documents'
-    header = 'The following uncompleted documents are assigned to you ({{ to_user.get_full_name() }}):'
-    message_if_no_docs = '''There are no uncompleted documents assigned to you ({{ to_user.get_full_name() }}).'''
+    header = 'The following uncompleted documents are assigned to you ({{ to_user.name }}):'
+    message_if_no_docs = '''There are no uncompleted documents assigned to you ({{ to_user.name }}).'''
 
     def prepare_documents(self,
                           document_type: DocumentType,
@@ -100,8 +100,8 @@ class DocFilterNonReviewedDocuments(DocFilter):
     title = 'Non-reviewed documents of the destination user'
     period_aware = False
     subject = 'Contraxsuite: digest of non-reviewed documents'
-    header = 'The following non-reviewed documents are assigned to you ({{ to_user.get_full_name() }}):'
-    message_if_no_docs = '''There are no non-reviewed documents assigned to you ({{ to_user.get_full_name() }}).'''
+    header = 'The following non-reviewed documents are assigned to you ({{ to_user.name }}):'
+    message_if_no_docs = '''There are no non-reviewed documents assigned to you ({{ to_user.name }}).'''
 
     def prepare_documents(self,
                           document_type: DocumentType,
@@ -126,8 +126,8 @@ class DocFilterAssignedDocuments(DocFilter):
     title = 'Documents assigned to the destination user during the period'
     period_aware = True
     subject = '''{% if documents.documents|length == 1 %}Contraxsuite: document assigned to you: {{ documents.documents[0].document_name }}{% else %}Contraxsuite: {{documents.documents|length}} documents assigned to you{% endif %}'''
-    header = 'The following documents have been assigned to you ({{ to_user.get_full_name() }}):'
-    message_if_no_docs = '''There are no new documents assigned to you ({{ to_user.get_full_name() }}) during the digest period.'''
+    header = 'The following documents have been assigned to you ({{ to_user.name }}):'
+    message_if_no_docs = '''There are no new documents assigned to you ({{ to_user.name }}) during the digest period.'''
 
     def prepare_documents(self,
                           document_type: DocumentType,
@@ -153,8 +153,8 @@ class DocFilterLoadedDocuments(DocFilter):
     title = 'Documents loaded into the projects the user has access to'
     period_aware = True
     subject = '''{% if documents.documents|length == 1 %}Contraxsuite: document loaded: {{documents.documents[0].document_name}}{% else %}Contraxsuite: {{documents.documents|length}} documents loaded{% endif %}'''
-    header = 'The following documents have been loaded into the projects to which you ({{ to_user.get_full_name() }}) have access:'
-    message_if_no_docs = '''There are no new documents loaded during the digest period into the projects to which you ({{ to_user.get_full_name() }}) have access.'''
+    header = 'The following documents have been loaded into the projects to which you ({{ to_user.name }}) have access:'
+    message_if_no_docs = '''There are no new documents loaded during the digest period into the projects to which you ({{ to_user.name }}) have access.'''
 
     def prepare_documents(self,
                           document_type: DocumentType,
@@ -488,7 +488,8 @@ class DocumentNotificationSubscription(models.Model):
                               Example: {0}'''.format(DocumentLoadedEvent.default_header))
 
     generic_fields = JSONField(encoder=ImprovedDjangoJSONEncoder,
-                               default=document_notification_subscription_generic_fields_default)
+                               default=document_notification_subscription_generic_fields_default,
+                               blank=True, null=True)
 
     user_fields = models.ManyToManyField(DocumentField, blank=True, help_text='''Fields of the documents to 
         render in the email. Should match the specified document type. Leave empty for rendering all fields.

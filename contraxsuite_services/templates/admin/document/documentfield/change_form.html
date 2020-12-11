@@ -1,4 +1,5 @@
 {% extends "admin/change_form.html" %}
+{% load static project_tags %}
 
 {% block extrastyle %}
   {{ block.super }}
@@ -41,10 +42,84 @@
       fieldCodeHidePython: 'hide_until_python',
       fieldCodeType: 'type',
       fieldCodeDocumentType: 'document_type',
-      fieldCodeDepOnFields: 'depends_on_fields'
+      fieldCodeDepOnFields: 'depends_on_fields',
+      fieldCodeChoices: 'choices',
+      fieldCodeAllowNonChoices: 'allow_values_not_specified_in_choices'
     };
 
+    function FieldFilter() {
+      this.listItemsCount = 0;
+      this.fieldsByDoctype = {{ fields_by_doctype | js }};
+      this.itemsUpdated = false;
+      $('select#id_document_type').on('change', function () {
+        window.classFilter.onDocTypeChange();
+      });
+      this.filterOnLoad();
+    }
+
+    FieldFilter.prototype.filterOnLoad = function () {
+      var that = this;
+      if (that.itemsUpdated) return;
+      that.onDocTypeChange();
+      if (that.itemsUpdated) {
+        that.monitorItemsChanges();
+        return;
+      }
+      window.setTimeout(function() {
+        that.filterOnLoad();
+      }, 500);
+    }
+
+    FieldFilter.prototype.monitorItemsChanges = function () {
+      this.listItemsCount = $("select#id_depends_on_fields_from > option").length;
+      jQuery('#id_depends_on_fields_from').on("DOMSubtreeModified", function(e) {
+            var eventAttr = (e.originalEvent.attribute || "");
+            if (eventAttr.indexOf(";on updated();"))
+              return;  // already processed
+            e.originalEvent.attribute = eventAttr + ";on updated();";
+            var newItemsCount = $("select#id_depends_on_fields_from > option").length;
+            if (listItemsCount == newItemsCount) return;
+            that.onDocTypeChange();
+          });
+    }
+
+    FieldFilter.prototype.onDocTypeChange = function() {
+      var selectedDocType = $('select#id_document_type').val();
+      var enabledOptions = selectedDocType ? this.fieldsByDoctype[selectedDocType] : null;
+      enabledOptions = typeof(enabledOptions) === 'undefined' ? [] : enabledOptions;
+      var enabledFields = null;
+      if (enabledOptions) {
+        enabledFields = {};
+        for (var i = 0; i < enabledOptions.length; i++)
+          enabledFields[enabledOptions[i]] = 1;
+      }
+
+      // filter dep field selectors
+      this.adjustListItems('id_depends_on_fields_from', enabledFields,
+        function (itm) { itm.show(); },
+        function (itm) { itm.hide(); });
+      this.adjustListItems('id_depends_on_fields_to', enabledFields,
+        function (itm) { itm.css('color', 'black'); },
+        function (itm) { itm.css('color', 'red'); });
+    }
+
+    FieldFilter.prototype.adjustListItems = function (
+      listId, enabledFields, actionOk, actionProhibited) {
+      var that = this;
+      $("select#" + listId + " > option").each(function() {
+          var isEnabled = 1;
+          if (enabledFields) isEnabled = enabledFields[this.value];
+          if (isEnabled)
+
+            actionOk($(this));
+          else
+            actionProhibited($(this));
+      });
+    }
+
     $(document).ready(function () {
+      window.classFilter = new FieldFilter();
+
       var formula_input = $('[name="' + docFieldSets.fieldCodeFormula + '"]');
       var hide_until_python_input = $('[name="' + docFieldSets.fieldCodeHidePython + '"]');
       var markup = '<a class="check-formula" href="#">Check formula</a>';
@@ -81,7 +156,10 @@
         var data = {
           document_type: document_type_id,
           field_type: $('[name="' + docFieldSets.fieldCodeType + '"]').val(),
-          depends_on_fields: depends
+          depends_on_fields: depends,
+          choices: $('[name="' + docFieldSets.fieldCodeChoices + '"]').val(),
+          allow_values_not_specified_in_choices:
+            $('[name="' + docFieldSets.fieldCodeAllowNonChoices + '"]').is(':checked')
         };
         data[formula_field_name] = formula;
 
@@ -137,4 +215,3 @@
 
   </script>
 {% endblock %}
-

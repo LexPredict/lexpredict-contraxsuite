@@ -1,0 +1,6 @@
+appId    = "20s9"
+password = "SgTBy7busZ1K3Bg"
+
+environment = "dev"
+resource_group_name = "dev66.contraxuite.com"
+aks_dns_prefix = "dev66-contraxuite-com-k8s" 

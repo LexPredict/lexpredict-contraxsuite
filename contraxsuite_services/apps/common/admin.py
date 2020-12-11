@@ -31,7 +31,6 @@ from django import forms
 from django.contrib import admin
 from django.http import HttpResponse, JsonResponse
 from django.urls import path, reverse
-from django.utils.safestring import mark_safe
 from rest_framework_tracking.admin import APIRequestLogAdmin
 
 # Project imports
@@ -43,8 +42,8 @@ from apps.common.models import AppVar, ReviewStatusGroup, ReviewStatus, Action, 
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.7.0/LICENSE"
-__version__ = "1.7.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
+__version__ = "1.8.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 

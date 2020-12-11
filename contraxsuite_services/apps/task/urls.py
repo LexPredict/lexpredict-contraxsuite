@@ -34,8 +34,8 @@ from apps.task import views
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.7.0/LICENSE"
-__version__ = "1.7.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
+__version__ = "1.8.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -85,7 +85,11 @@ urlpatterns = [
         views.PurgeTaskView.as_view(),
         name='purge-task',
     ),
-
+    url(
+        r'^recall-task/$',
+        views.RecallTaskView.as_view(),
+        name='recall-task',
+    ),
     url(
         r'^load-fixtures/$',
         views.LoadFixturesView.as_view(),
@@ -95,5 +99,10 @@ urlpatterns = [
         r'^dump-fixtures/$',
         views.DumpFixturesView.as_view(),
         name='dump-fixtures',
+    ),
+    url(
+        r'^build-ocr-model/$',
+        views.BuildOCRRatingLanguageModelView.as_view(),
+        name='build-ocr-model',
     ),
 ]

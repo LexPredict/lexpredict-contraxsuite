@@ -26,6 +26,8 @@
 
 import io
 import hashlib
+import os
+import re
 import time
 import traceback
 from typing import List, Dict, Optional, Tuple, Any, Generator, Set, Callable
@@ -39,6 +41,8 @@ from django.conf import settings
 from django.db import connection, transaction, IntegrityError
 from django.db.models import Q
 from django.http import HttpResponse, StreamingHttpResponse
+from django.urls import reverse
+from guardian.shortcuts import get_objects_for_user
 
 from apps.common.error_explorer import retry_for_operational_error
 from apps.common.log_utils import ProcessLogger
@@ -50,9 +54,11 @@ from apps.document.constants import DOCUMENT_FIELD_CODE_MAX_LEN, DocumentGeneric
     DOC_METADATA_DOCUMENT_CLASS_PROB
 from apps.document.document_class import DocumentClass
 from apps.document.models import DocumentType, Document, DocumentField, FieldAnnotation
+from apps.document.repository.document_field_repository import DocumentFieldRepository
 from apps.extract.models import DefinitionUsage, GeoEntityUsage, CurrencyUsage
+from apps.project.models import Project
 from apps.rawdb.constants import TABLE_NAME_PREFIX, FIELD_CODE_DOC_NAME, FIELD_CODE_DOC_TITLE, \
-    FIELD_CODE_DOC_LANGUAGE, FIELD_CODE_DOC_PROCESSED, \
+    FIELD_CODE_DOC_LANGUAGE, FIELD_CODE_DOC_LINK, FIELD_CODE_DOC_PROCESSED, \
     FIELD_CODE_DOC_FULL_TEXT_LENGTH, FIELD_CODE_DOC_ID, FIELD_CODE_CREATE_DATE, FIELD_CODE_IS_REVIEWED, \
     FIELD_CODE_IS_COMPLETED, FIELD_CODE_PROJECT_ID, FIELD_CODE_PROJECT_NAME, FIELD_CODE_ASSIGNEE_ID, \
     FIELD_CODE_ASSIGNEE_NAME, FIELD_CODE_ASSIGN_DATE, FIELD_CODE_STATUS_NAME, FIELD_CODE_DELETE_PENDING, \
@@ -60,12 +66,12 @@ from apps.rawdb.constants import TABLE_NAME_PREFIX, FIELD_CODE_DOC_NAME, FIELD_C
     FIELD_CODE_EARLIEST_DATE, FIELD_CODE_LATEST_DATE, FIELD_CODE_LARGEST_CURRENCY, FIELD_CODES_SYSTEM, \
     FIELD_CODES_GENERIC, FIELD_CODE_ANNOTATION_SUFFIX, INDEX_NAME_PREFIX, DEFAULT_ORDER_BY, FIELD_CODE_FOLDER, \
     CACHE_FIELD_TO_DOC_FIELD, FIELD_CODE_DOCUMENT_CLASS, FIELD_CODE_DOCUMENT_CLASS_PROB, FIELD_CODE_IS_CONTRACT, \
-    FIELD_CODE_GEOGRAPHIES, FIELD_CODE_CURRENCY_TYPES
+    FIELD_CODE_DOCUMENT_OCR_RATING, FIELD_CODE_GEOGRAPHIES, FIELD_CODE_CURRENCY_TYPES, MAX_RAWDB_COLUMNS
 from apps.rawdb.models import SavedFilter
 from apps.rawdb.notifications import UserNotifications
 from apps.rawdb.rawdb.rawdb_field_handlers import PgTypes, RawdbFieldHandler, ColumnDesc, StringRawdbFieldHandler, \
     AnnotationTextFieldHandler, MoneyRawdbFieldHandler, DateFieldHandler, IntFieldHandler, BooleanRawdbFieldHandler, \
-    DateTimeFieldHandler, LinkedDocumentsRawdbFieldHandler, RatioRawdbFieldHandler, \
+    DateTimeFieldHandler, LinkedDocumentsRawdbFieldHandler, RatioRawdbFieldHandler, ProxyFieldHandler, \
     FloatFieldHandler, MultichoiceFieldHandler, RelatedInfoRawdbFieldHandler, AddressFieldHandler, PercentFieldHandler
 from apps.rawdb.rawdb.errors import Forbidden, UnknownColumnError
 from apps.rawdb.rawdb.query_parsing import SortDirection, parse_column_filters, parse_order_by
@@ -76,10 +82,13 @@ from apps.users.models import User
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.7.0/LICENSE"
-__version__ = "1.7.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
+__version__ = "1.8.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
+
+
+url_re = re.compile(r'(?P<url>https?://[^\s]+)')
 
 
 # method return types
@@ -129,6 +138,8 @@ class DocumentQueryResults(list):
                     for row in rows:
                         yield self.row_processor(row) if self.row_processor else row
                     rows = cursor.fetchmany(100)
+        else:
+            yield []
 
     def fetch_dicts(self) -> Generator[Dict, None, None]:
         for row in self.fetch():
@@ -178,7 +189,17 @@ class DocumentQueryResults(list):
             break
 
         for row in self.fetch():
-            ws.append(row)
+            # to escape illegal chars
+            # openpyxl.cell.cell > ILLEGAL_CHARACTERS_RE produces IllegalCharacterError
+            patched_row = []
+            for cell_value in row:
+                if isinstance(cell_value, str):
+                    # TODO: this produces an error in MS excel, so skip for now
+                    # if url_re.match(cell_value):
+                    #     cell_value = f'=HYPERLINK("{cell_value}", "{cell_value}")'
+                    cell_value = cell_value.encode('unicode_escape').decode('utf-8')
+                patched_row.append(cell_value)
+            ws.append(patched_row)
 
         def str_len(value):
             return len(str(value)) if value is not None else 0
@@ -286,6 +307,15 @@ def _build_system_field_handlers(table_name: str,
         return res
 
     if include_system_fields is True:
+        if is_select:
+            rel_url_prefix, rel_url_suffix = reverse('v1:document-show', args=['ID']).split('ID')
+            doc_link_base = os.path.join(settings.HOST_NAME.rstrip('/'), rel_url_prefix.lstrip('/'))
+            spec = f"'{settings.API_URL_PROTOCOL}://{doc_link_base}' || document_id || '{rel_url_suffix}'"
+
+            res.append(
+                ProxyFieldHandler(FIELD_CODE_DOC_LINK, field_types.StringField.type_code,
+                                  'Original Doc Link', table_name, proxy_sql_spec=spec))
+
         res.append(
             StringRawdbFieldHandler(FIELD_CODE_DOC_NAME, field_types.StringFieldWholeValueAsAToken.type_code,
                                     'Name', table_name))
@@ -317,6 +347,8 @@ def _build_system_field_handlers(table_name: str,
                                            'Currency Types', table_name))
         res.append(StringRawdbFieldHandler(FIELD_CODE_DOCUMENT_CLASS, field_types.StringField.type_code,
                                            'Document Class', table_name))
+        res.append(FloatFieldHandler(FIELD_CODE_DOCUMENT_OCR_RATING, field_types.FloatField.type_code,
+                                           'OCR Rating', table_name))
         res.append(StringRawdbFieldHandler(FIELD_CODE_DOCUMENT_CLASS_PROB, field_types.StringField.type_code,
                                            'Document Class Vector', table_name))
         res.append(BooleanRawdbFieldHandler(FIELD_CODE_IS_CONTRACT, field_types.BooleanField.type_code,
@@ -377,13 +409,15 @@ def _build_generic_field_handlers(table_name: str,
     return res
 
 
-def build_field_handlers(document_type: DocumentType, table_name: str = None,
+def build_field_handlers(document_type: DocumentType,
+                         table_name: str = None,
                          include_system_fields: FieldSpec = True,
                          include_generic_fields: FieldSpec = True,
                          include_user_fields: FieldSpec = True,
                          include_annotation_fields: bool = True,
                          exclude_hidden_always_fields: bool = False,
-                         is_select: bool = False) \
+                         is_select: bool = False,
+                         field_repo: Optional[DocumentFieldRepository] = None) \
         -> List[RawdbFieldHandler]:
     res = list()  # type: List[RawdbFieldHandler]
 
@@ -404,56 +438,62 @@ def build_field_handlers(document_type: DocumentType, table_name: str = None,
     field_code_use_counts = {field_handler.field_column_name_base: 1 for field_handler in res}
 
     if include_user_fields:
-        doc_field_qr = DocumentField.objects.filter(document_type=document_type)
-        if isinstance(include_user_fields, set) or isinstance(include_user_fields, list):
-            doc_field_qr = doc_field_qr.filter(code__in=include_user_fields)
-
-        if exclude_hidden_always_fields:
-            doc_field_qr = doc_field_qr.filter(hidden_always=False)
-
-        for field in doc_field_qr.order_by('order', 'code'):  # type: DocumentField
-            typed_field = field_types.TypedField.by(field)  # type: field_types.TypedField
-
-            # Escape field code and take max N chars for using as the column name base
-            field_code_escaped = escape_column_name(field.code)[:DOCUMENT_FIELD_CODE_MAX_LEN]
-
-            # If we already have this escaped field code in the dict then
-            # attach an index to it to avoid repeating of the column names.
-            field_code_use_count = field_code_use_counts.get(field_code_escaped)
-            if field_code_use_count is not None:
-                field_code_use_counts[field_code_escaped] = field_code_use_count + 1
-                counter_str = str(field_code_use_count)
-
-                # make next repeated column name to be column1, column2, ...
-                # make it fitting into N chars by cutting the field code
-                # on the required number of chars to fit the num
-                field_code_escaped = '{}_{}'.format(
-                    field_code_escaped[:DOCUMENT_FIELD_CODE_MAX_LEN - len(counter_str) - 1],
-                    counter_str)
-            else:
-                field_code_use_counts[field_code_escaped] = 1
-
-            rawdb_field_handler_class = RAWDB_FIELD_HANDLER_REGISTRY[typed_field.type_code]
-            rawdb_field_handler = rawdb_field_handler_class(
-                field.code,
-                typed_field.type_code,
-                field.title,
-                table_name,
-                field.default_value,
-                field_column_name_base=field_code_escaped)
-            res.append(rawdb_field_handler)
-            if include_annotation_fields:
-                field_code_ann = field.code + FIELD_CODE_ANNOTATION_SUFFIX
-                field_handler_ann = AnnotationTextFieldHandler(
-                    field_code_ann,
-                    typed_field.type_code,
-                    field.title + ': Annotations',
-                    table_name,
-                    None,
-                    field_column_name_base=field_code_escaped + FIELD_CODE_ANNOTATION_SUFFIX)
-                res.append(field_handler_ann)
+        repo = field_repo or DocumentFieldRepository()
+        usr_fields = repo.get_user_document_fields(
+            document_type, include_user_fields, exclude_hidden_always_fields)
+        for field in usr_fields:
+            build_handlers_for_field(field, field_code_use_counts,
+                                     include_annotation_fields, res, table_name)
 
     return res
+
+
+def build_handlers_for_field(field: DocumentField,
+                             field_code_use_counts: Dict[str, int],
+                             include_annotation_fields: bool,
+                             res: List[RawdbFieldHandler],
+                             table_name: str) -> None:
+    typed_field = field_types.TypedField.by(field)  # type: field_types.TypedField
+    # Escape field code and take max N chars for using as the column name base
+    field_code_escaped = escape_column_name(field.code)[:DOCUMENT_FIELD_CODE_MAX_LEN]
+    # If we already have this escaped field code in the dict then
+    # attach an index to it to avoid repeating of the column names.
+    field_code_use_count = field_code_use_counts.get(field_code_escaped)
+    if field_code_use_count is not None:
+        field_code_use_counts[field_code_escaped] = field_code_use_count + 1
+        counter_str = str(field_code_use_count)
+
+        # make next repeated column name to be column1, column2, ...
+        # make it fitting into N chars by cutting the field code
+        # on the required number of chars to fit the num
+        field_code_escaped = '{}_{}'.format(
+            field_code_escaped[:DOCUMENT_FIELD_CODE_MAX_LEN - len(counter_str) - 1],
+            counter_str)
+    else:
+        field_code_use_counts[field_code_escaped] = 1
+    rawdb_field_handler_class = RAWDB_FIELD_HANDLER_REGISTRY[typed_field.type_code]
+    rawdb_field_handler = rawdb_field_handler_class(
+        field.code,
+        typed_field.type_code,
+        field.title,
+        table_name,
+        field.default_value,
+        field_column_name_base=field_code_escaped)
+    res.append(rawdb_field_handler)
+    if include_annotation_fields:
+        field_code_ann = make_annotation_field_code(field.code)
+        field_handler_ann = AnnotationTextFieldHandler(
+            field_code_ann,
+            typed_field.type_code,
+            field.title + ': Annotations',
+            table_name,
+            None,
+            field_column_name_base=field_code_escaped + FIELD_CODE_ANNOTATION_SUFFIX)
+        res.append(field_handler_ann)
+
+
+def make_annotation_field_code(field_code: str) -> str:
+    return field_code + FIELD_CODE_ANNOTATION_SUFFIX
 
 
 def table_exists(table_name: str) -> bool:
@@ -542,12 +582,49 @@ def cleanup_saved_filters(document_type: DocumentType, should_be_column_names: S
                                 new_order_by.append((column, sort_direction))
                 except:
                     pass
-            new_order_by = ['{c}:{sd}'.format(c=c, sd=sd) for c, sd in new_order_by] if new_order_by else None
+            new_order_by = [f'{c}:{sd}' for c, sd in new_order_by] if new_order_by else None
             if new_order_by != f.order_by:
                 f.order_by = new_order_by
                 save = True
         if save:
             f.save()
+
+
+def validate_doctype_cache_columns_count(doc_type: DocumentType,
+                                         doc_field: DocumentField) -> List[str]:
+    columns_before = calculate_doctype_cache_columns(doc_type, [])
+    columns_after = calculate_doctype_cache_columns(doc_type, [doc_field])
+    if columns_after > MAX_RAWDB_COLUMNS and columns_after > columns_before:
+        return [f'''There will be {columns_after} fields cached 
+                while the limit is {MAX_RAWDB_COLUMNS} fields''']
+    return []
+
+
+def calculate_doctype_cache_columns(document_type: DocumentType,
+                                    extra_fields: List[DocumentField],
+                                    field_repo: Optional[DocumentFieldRepository] = None) -> int:
+    table_name = doc_fields_table_name(document_type.code)
+    fields = build_field_handlers(document_type, table_name, field_repo=field_repo)
+    field_code_use_counts = {}
+
+    for field in extra_fields:
+        # ignore the same field handlers
+        fields = [f for f in fields if f.field_code != field.code and
+                  f.field_code != make_annotation_field_code(field.code)]
+        build_handlers_for_field(field,
+                                 field_code_use_counts,
+                                 include_annotation_fields=True,
+                                 res=fields,
+                                 table_name=table_name)
+
+    column_count = 0
+    col_names = []
+    for field_handler in fields:
+        field_columns = field_handler.get_pg_column_definitions()  # type: Dict[str, PgTypes]
+        column_count += len(field_columns)
+        col_names += [c for c in field_columns]
+    # FIELD_CODE_HIDDEN_COLUMNS column is also added
+    return column_count + 1
 
 
 @retry_for_operational_error(retries_count=2, cooldown_interval=2.0)
@@ -705,6 +782,8 @@ def _fill_system_fields_to_python_values(document: Document,
             if document.history.exists() else document.upload_session.created_date \
             if document.upload_session else None
 
+        field_to_python_values[FIELD_CODE_DOCUMENT_OCR_RATING] = document.ocr_rating
+
         if document.metadata:
             field_to_python_values[FIELD_CODE_IS_CONTRACT] = \
                 document.document_class == DocumentClass.CONTRACT
@@ -733,7 +812,7 @@ def _fill_system_fields_to_python_values(document: Document,
 
     if DocumentSystemField.assignee.specified_in(include_system_fields):
         field_to_python_values[FIELD_CODE_ASSIGNEE_ID] = document.assignee_id
-        field_to_python_values[FIELD_CODE_ASSIGNEE_NAME] = document.assignee.get_full_name() \
+        field_to_python_values[FIELD_CODE_ASSIGNEE_NAME] = document.assignee.name \
             if document.assignee else None
         field_to_python_values[FIELD_CODE_ASSIGN_DATE] = document.assign_date
 
@@ -748,7 +827,7 @@ def _fill_system_fields_to_python_values(document: Document,
     if DocumentSystemField.notes.specified_in(include_system_fields):
         field_to_python_values[FIELD_CODE_NOTES] = '\n{}\n'.format('_' * 20).join(
             ['{user} {date} - {target} Level Note\n{note}'.format(
-                user=n.history.last().history_user.get_full_name()
+                user=n.history.last().history_user.name
                 if n.history.exists() and n.history.last().history_user else None,
                 date=n.timestamp.strftime('%m-%d-%Y %I:%M %p %Z'),
                 target='Text' if n.location_start is not None and n.location_end is not None else 'Document',
@@ -1139,14 +1218,16 @@ def _get_columns(handlers: List[RawdbFieldHandler]) -> List[ColumnDesc]:
 
 def get_columns(document_type: DocumentType,
                 include_annotations: bool = True,
-                include_generic: FieldSpec = False) \
+                include_generic: FieldSpec = False,
+                is_select: bool = False) \
         -> List[ColumnDesc]:
     table_name = doc_fields_table_name(document_type.code)
     handlers = build_field_handlers(document_type,
                                     table_name,
                                     include_generic_fields=include_generic,
                                     include_annotation_fields=include_annotations,
-                                    exclude_hidden_always_fields=True)
+                                    exclude_hidden_always_fields=True,
+                                    is_select=is_select)
     return _get_columns(handlers)
 
 
@@ -1155,31 +1236,10 @@ def get_annotation_columns(document_type: DocumentType):
             if i.field_code.endswith(FIELD_CODE_ANNOTATION_SUFFIX)]
 
 
-def _prepare_project_ids_filter(requester: User, project_ids: List[int]) -> Optional[SQLClause]:
-    if project_ids:
-        project_ids = {int(project_id) for project_id in project_ids}
-
-    # check for "project reviewers" logic
-    if requester and requester.is_reviewer:
-        allowed_project_ids = set(requester
-                                  .project_reviewers.all()
-                                  .union(requester.project_super_reviewers.all())
-                                  .union(requester.project_owners.all())
-                                  .values_list('pk', flat=True))
-        project_ids = project_ids.intersection(allowed_project_ids) if project_ids else allowed_project_ids
-        if not project_ids:
-            # there are no allowed project ids or the requested project ids are not in the list of allowed
-            raise Forbidden()
-
-    if project_ids:
-        # django uses "project_id in ARRAY(1, 2, ....)" instead of simply "project_id in (1, 2, ...)"
-        # Postgresql throws an error on this.
-        # Replacing with string manipulations.
-        return SQLClause('"{project_id_column}" in ({values})'
-                         .format(project_id_column=FIELD_CODE_PROJECT_ID,
-                                 values=', '.join({str(project_id) for project_id in project_ids})))
-    else:
-        return None
+def _prepare_IN_filter(column_name: str, values: List[int]) -> Optional[SQLClause]:
+    if values:
+        values = ', '.join({str(i) for i in values})
+        return SQLClause(f'"{column_name}" in ({values})')
 
 
 def _extract_column_filters_and_order_by_from_saved_filters(document_type: DocumentType,
@@ -1231,7 +1291,35 @@ def query_documents(document_type: DocumentType,
                     include_annotation_fields: bool = False
                     ) -> Optional[DocumentQueryResults]:
     if not return_documents and not return_reviewed_count and not return_total_count:
-        return None
+        return
+
+    # permission check - restrict to allowed projects and documents
+    allowed_document_ids = []
+    if requester:
+        projects = get_objects_for_user(requester, 'project.view_project', Project)
+        if project_ids:
+            projects = projects.filter(pk__in=project_ids).only('pk')
+        if document_type:
+            projects = projects.filter(type=document_type).only('pk')
+        # restrict to allowed projects only
+        project_ids = list(projects.values_list('pk', flat=True))
+        # if no projects of given project_ids or document_type found
+        if not project_ids:
+            return
+        has_per_document_perm = not all([requester.has_perm('project.view_documents', p) for p in projects])
+        # restrict to allowed documents only
+        if has_per_document_perm:
+            for project in projects:
+                # doc ids for projects with access to all documents
+                if requester.has_perm('project.view_documents', project):
+                    allowed_document_ids += list(project.document_set.values_list('pk', flat=True))
+                # doc ids for projects with granular access to documents
+                else:
+                    documents = get_objects_for_user(requester, 'document.view_document', Document)
+                    documents = documents.filter(project_id=project.pk)
+                    allowed_document_ids += list(documents.values_list('pk', flat=True))
+                if not allowed_document_ids:
+                    return
 
     table_name = doc_fields_table_name(document_type.code)
     handlers = build_field_handlers(document_type=document_type,
@@ -1284,9 +1372,13 @@ def query_documents(document_type: DocumentType,
     column_sql_specs = [existing_column_name_to_desc[column_name].get_output_column_sql_spec()
                         for column_name in column_names]
 
-    project_ids_clause = _prepare_project_ids_filter(requester, project_ids)  # type: Optional[SQLClause]
-    if project_ids_clause:
-        column_filters_clauses += [project_ids_clause]
+    if project_ids:
+        clause = _prepare_IN_filter(FIELD_CODE_PROJECT_ID, project_ids)  # type: Optional[SQLClause]
+        column_filters_clauses += [clause]
+
+    if allowed_document_ids:
+        clause = _prepare_IN_filter(FIELD_CODE_DOC_ID, allowed_document_ids)  # type: Optional[SQLClause]
+        column_filters_clauses += [clause]
 
     soft_delete_clause = SQLClause('"{col_name}" = false'.format(col_name=FIELD_CODE_DELETE_PENDING))
     column_filters_clauses.append(soft_delete_clause)

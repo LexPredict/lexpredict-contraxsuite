@@ -33,14 +33,14 @@ from tests.testutils import TEST_RESOURCE_DIRECTORY
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.7.0/LICENSE"
-__version__ = "1.7.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
+__version__ = "1.8.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
 
 class TestDocxParse(TestCase):
-    def test_parse_table_tex_tika(self):
+    def manual_test_parse_table_tex_tika(self):
         file_path = os.path.join(TEST_RESOURCE_DIRECTORY,
                                  'documents/parsing/word_table.docx')
         parser = TikaParsingWrapper()

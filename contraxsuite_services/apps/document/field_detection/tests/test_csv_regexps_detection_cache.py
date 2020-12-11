@@ -27,14 +27,15 @@
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.7.0/LICENSE"
-__version__ = "1.7.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
+__version__ = "1.8.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
 
 from tests.django_test_case import *
-from apps.common.log_utils import ProcessLogger
+from django.test import TestCase
+from apps.common.log_utils import ProcessLogger, ConsoleLogger
 from typing import List, Dict
 from apps.document.field_detection.csv_regexps_field_detection_strategy import CsvRegexpsDetectionCache, \
     CsvRegexpsFieldDetectionStrategy
@@ -72,20 +73,8 @@ class CsvRegexpsFieldDetectionStrategyMock(CsvRegexpsFieldDetectionStrategy):
         return cls.text_by_doc_id[doc.pk]
 
 
-class LoggerMock(ProcessLogger):
-    def info(self, message: str):
-        print(message)
-
-    def error(self, message: str, field_code: str = None, exc_info: Exception = None):
-        if field_code:
-            message = f'{field_code}: {message or "error"}'
-        if exc_info:
-            message += f'\nException: {exc_info}'
-        print(message)
-
-
 doc_field = DocumentField()
-logger = LoggerMock()
+logger = ConsoleLogger()
 
 
 def setup_mock():

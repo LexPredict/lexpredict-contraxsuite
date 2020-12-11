@@ -74,9 +74,11 @@
                 </button>
 
                 {% for provider in providers %}
-                <div>
-                    <a href="{% provider_login_url provider.provider %}">Login with {{provider.name}}</a>
-                </div>
+                    {% if provider.sites.all %}
+                    <div>
+                        <a href="{% provider_login_url provider.provider %}">Login with {{provider.name}}</a>
+                    </div>
+                    {% endif %}
                 {% endfor %}
             </div>
 

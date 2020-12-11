@@ -30,27 +30,31 @@ import mimetypes
 import os
 import tarfile
 import zipfile
-from typing import BinaryIO, Union, Optional
+from collections import OrderedDict
+from io import BytesIO
+from typing import BinaryIO, Union, Optional, List
 
+# Django imports
 from django.conf import settings
 from django.contrib.contenttypes.models import ContentType
 from django.core.files import File
 from django.core.files.storage import FileSystemStorage
 from django.db import connection, transaction
-from django.db.models import Count, Subquery, Q
+from django.db.models import Count, Subquery, Q, F, Avg, Case, When, DecimalField, Value, \
+    CharField, OuterRef
 from django.http import JsonResponse, HttpRequest
 from django.http.request import QueryDict
 from django.urls import path, include
 from django.utils.timezone import now
 
 # Third-party imports
-import rest_framework.views
 from celery.states import PENDING, SUCCESS
-from rest_framework import serializers, routers, viewsets
+from guardian.shortcuts import get_objects_for_user
+from rest_framework import serializers, routers, viewsets, views
 from rest_framework import status
 from rest_framework.decorators import action
 from rest_framework.exceptions import ValidationError, APIException
-from rest_framework.permissions import BasePermission, IsAuthenticated
+from rest_framework.permissions import IsAuthenticated, DjangoModelPermissions
 from rest_framework.response import Response
 
 # Project imports
@@ -71,6 +75,15 @@ from apps.document.tasks import plan_process_documents_status_changed, \
     plan_process_documents_assignee_changed
 from apps.project.models import Project, TaskQueue, UploadSession, ProjectClustering, \
     UserProjectsSavedFilter
+from apps.project.schemas import ProjectStatsSchema, SendClusterToProjectSchema, \
+    CleanupProjectSchema, SelectProjectsSchema, MarkUnmarkForDeleteProjectsSchema, \
+    AssignProjectDocumentsSchema, SetProjectDocumentsStatusSchema, ClusterProjectSchema, \
+    ProjectClusteringStatusSchema, AssignProjectAnnotationsSchema, \
+    SetProjectAnnotationsStatusSchema, DetectProjectFieldValuesSchema, MakeSearchablePDFSchema, \
+    UploadSessionStatusSchema, UploadSessionFilesSchema, UploadSessionUploadSchema, \
+    UploadSessionBatchUploadSchema, UploadSessionDeleteFileSchema, ProjectProgressSchema, \
+    ProjectDocumentsAssigneesSchema, RecentProjectsSchema, ProjectAnnotationsAssigneesSchema, \
+    ProjectUploadSessionProgressSchema, AssignProjectDocumentSchema
 from apps.project.tasks import ReassignProjectClusterDocuments, ClusterProjectDocuments, \
     CleanProject, CancelUpload, LoadArchive, track_session_completed, SetAnnotationsStatus, \
     CreateSearchablePDF
@@ -79,13 +92,12 @@ from apps.task.models import Task
 from apps.task.tasks import call_task, purge_task, LoadDocuments, call_task_func
 from apps.task.utils.logger import get_django_logger
 from apps.users.models import User
-
-# Django imports
+from apps.users.permissions import remove_perm, document_permissions
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.7.0/LICENSE"
-__version__ = "1.7.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
+__version__ = "1.8.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -95,7 +107,7 @@ users_api_module = get_api_module('users')
 ALREADY_EXISTS = 'Already exists'
 
 
-class PatchedListView(rest_framework.views.APIView):
+class PatchedListView(views.APIView):
     def get(self, request, *args, **kwargs):
         data = self.get_json_data(**kwargs)
         return JsonResponse(data, safe=False)
@@ -213,7 +225,7 @@ class TaskQueueSerializer(serializers.ModelSerializer):
         return instance
 
 
-class TaskQueueViewSet(apps.common.mixins.JqListAPIMixin, viewsets.ModelViewSet):
+class TaskQueueViewSet(DjangoModelPermissions, apps.common.mixins.JqListAPIMixin, viewsets.ModelViewSet):
     """
     list: Task Queue List
     retrieve: Retrieve Task Queue
@@ -238,12 +250,6 @@ class TaskQueueViewSet(apps.common.mixins.JqListAPIMixin, viewsets.ModelViewSet)
     """
     queryset = TaskQueue.objects.all()
     serializer_class = TaskQueueSerializer
-
-    def get_queryset(self):
-        qs = super().get_queryset()
-        if self.request.user.is_reviewer:
-            qs = qs.filter(reviewers=self.request.user)
-        return qs
 
 
 # --------------------------------------------------------
@@ -307,10 +313,15 @@ class ProjectDetailSerializer(serializers.ModelSerializer):
         queryset=User.objects.all(), many=True, required=False)
     super_reviewers_data = users_api_module.UserSerializer(
         source='super_reviewers', many=True, read_only=True)
+    junior_reviewers = serializers.PrimaryKeyRelatedField(
+        queryset=User.objects.all(), many=True, required=False)
+    junior_reviewers_data = users_api_module.UserSerializer(
+        source='junior_reviewers', many=True, read_only=True)
     type = serializers.PrimaryKeyRelatedField(
         queryset=DocumentType.objects.all(), many=False, required=False)
     type_data = DocumentTypeSerializer(source='type', many=False)
     progress = serializers.SerializerMethodField()
+    user_permissions = serializers.SerializerMethodField()
 
     class Meta:
         model = Project
@@ -320,10 +331,15 @@ class ProjectDetailSerializer(serializers.ModelSerializer):
                   'owners', 'owners_data',
                   'reviewers', 'reviewers_data',
                   'super_reviewers', 'super_reviewers_data',
-                  'type', 'type_data', 'progress']
+                  'junior_reviewers', 'junior_reviewers_data',
+                  'type', 'type_data', 'progress', 'user_permissions']
 
     def get_progress(self, obj):
         return project_progress(obj)
+
+    def get_user_permissions(self, obj):
+        user = self.context['request'].user
+        return sorted(user.get_all_permissions(obj))
 
 
 class CustomErrorMessageSerializer:
@@ -346,19 +362,65 @@ class ProjectUpdateSerializer(CustomErrorMessageSerializer, ProjectDetailSeriali
     class Meta(ProjectDetailSerializer.Meta):
         model = Project
         fields = ['pk', 'name', 'description', 'status', 'send_email_notification',
-                  'owners', 'reviewers', 'super_reviewers', 'type', 'hide_clause_review']
+                  'owners', 'reviewers', 'super_reviewers', 'junior_reviewers',
+                  'type', 'hide_clause_review']
+
+    def update(self, instance, validated_data):
+        prev_team_ids = set(instance.get_team().values_list('id', flat=True))
+
+        res = super().update(instance, validated_data)
+
+        curr_team_qs = instance.get_team()
+        curr_team_ids = set(curr_team_qs.values_list('id', flat=True))
+
+        removed_user_ids = prev_team_ids - curr_team_ids
+
+        with transaction.atomic():
+            transaction.on_commit(lambda: instance.clean_up_assignees(removed_user_ids))
+
+        instance.reset_project_team_perms()
+
+        return res
 
 
 class ProjectListSerializer(ProjectDetailSerializer):
-    count_of_documents = serializers.IntegerField(
-        source='document_set.count',
-        read_only=True
-    )
+    count_of_documents = serializers.SerializerMethodField()
+    count_of_documents.output_field = serializers.IntegerField()
 
     class Meta(ProjectDetailSerializer.Meta):
         model = Project
         fields = ['pk', 'name', 'status', 'status_data',
                   'type', 'type_data', 'count_of_documents']
+
+    def get_count_of_documents(self, obj):
+        user = self.context['request'].user
+        if user.has_perm('project.view_documents', obj):
+            return obj.document_set.count()
+        return obj.document_set.filter(assignee=user).count()
+    get_count_of_documents.output_field = serializers.IntegerField()
+
+
+class ProjectStatsSerializer(serializers.Serializer):
+    # serializer for openapi schema, see apps.project.schemas.ProjectStatsSchema - it uses this
+    project_id = serializers.IntegerField()
+    name = serializers.CharField()
+    type_title = serializers.CharField()
+    documents_total = serializers.IntegerField()
+    clauses_total = serializers.IntegerField()
+    avg_ocr_grade = serializers.IntegerField(allow_null=True)
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        for document_status_name in ReviewStatus.objects.values_list('name', flat=True):
+            status_count_col_name = 'document_status_' + document_status_name.lower().replace(' ', '_')
+            status_pcnt_col_name = f"document_status_{document_status_name.lower().replace(' ', '_')}_pcnt"
+            self.fields[status_count_col_name] = serializers.IntegerField()
+            self.fields[status_pcnt_col_name] = serializers.FloatField()
+        for clause_status_name in FieldAnnotationStatus.objects.values_list('name', flat=True):
+            status_count_col_name = 'clause_status_' + clause_status_name.lower().replace(' ', '_')
+            status_pcnt_col_name = f"clause_status_{clause_status_name.lower().replace(' ', '_')}_pcnt"
+            self.fields[status_count_col_name] = serializers.IntegerField()
+            self.fields[status_pcnt_col_name] = serializers.FloatField()
 
 
 class ProjectStatserializer(ProjectDetailSerializer):
@@ -371,9 +433,11 @@ class ProjectStatserializer(ProjectDetailSerializer):
 
     def get_total_documents_count(self, obj):
         return obj.document_set.filter(delete_pending=False, processed=True).count()
+    get_total_documents_count.output_field = serializers.IntegerField()
 
     def get_reviewed_documents_count(self, obj):
         return obj.document_set.filter(delete_pending=False, processed=True, status__group__is_active=False).count()
+    get_reviewed_documents_count.output_field = serializers.IntegerField()
 
 
 def require_generic_contract_type(func):
@@ -388,43 +452,56 @@ def require_generic_contract_type(func):
     return decorator
 
 
-class ProjectPermissions(BasePermission):
+class ProjectPermissions(IsAuthenticated):
     def has_permission(self, request, view):
-        if request.user.is_reviewer:
-            if request.method == 'GET' or view.action in [
-                    'cluster', 'set_status', 'assign_documents',
-                    'assign_annotations', 'set_annotation_status']:
-                return True
-            return False
-        return True
+        if view.action == 'create':
+            return request.user.has_perm('project.add_project')
+        if view.action == 'project_stats':
+            return request.user.has_perm('project.view_project_stats')
+
+        # select_projects - via get_queryset
+
+        return super().has_permission(request, view)
 
     def has_object_permission(self, request, view, obj):
         # Warn! self.get_object() initializes this check! so include it in custom view func!
-        if request.user.is_reviewer:
-            return obj.reviewers.filter(pk=request.user.pk).exists()
-        elif request.user.is_manager:
-            is_in_reviewers = obj.reviewers.filter(pk=request.user.pk).exists()
-            is_in_owners = obj.owners.filter(pk=request.user.pk).exists()
-            if request.method == 'GET' or view.action in [
-                    'cluster', 'set_status', 'assign_documents',
-                    'assign_annotations', 'set_annotation_status']:
-                return is_in_reviewers or is_in_owners
-            return is_in_owners
-        return True
+        user = request.user
+        if view.action in ['detect_field_values']:
+            return user.has_perm('project.detect_field_values', obj)
+        # annotations itself should be filtered by permissions, so noneed for additional check
+        if view.action in ['retrieve', 'progress', 'make_searchable_pdf']:
+            return user.has_perm('project.view_project', obj)
+        if view.action in ['update', 'partial_update']:
+            return user.has_perm('project.change_project', obj)
+        if view.action in ['delete', 'mark_delete', 'unmark_delete', 'cleanup']:
+            return user.has_perm('project.delete_project', obj)
+        if view.action in ['cluster', 'clustering-status', 'send_clusters_to_project']:
+            return user.has_perm('project.recluster_project', obj)
+        if view.action in ['set_status']:
+            return user.has_perm('project.bulk_update_status', obj)
+        if view.action in ['assign_documents', 'assign_annotations',
+                           'assignees', 'annotations_assignees']:
+            return user.has_perm('project.bulk_assign', obj)
+        if view.action in ['assign_document']:
+            return user.has_perm('project.individual_assign', obj) or \
+                   user.has_perm('project.bulk_assign', obj)
+        if view.action == 'set_annotation_status':
+            if 'individual' in request.data:
+                return user.has_perm('project.view_project', obj)
+            return user.has_perm('project.bulk_update_status', obj)
+
+        # TODO: check these:
+        # recent - rework SQL - use guardian.shortcuts.get_objects_foe_user
+
+        return super().has_object_permission(request, view, obj)
 
 
 class ProjectPermissionViewMixin:
-    permission_classes = (IsAuthenticated, ProjectPermissions)
+    permission_classes = (ProjectPermissions,)
 
     def get_queryset(self):
-        qs = super().get_queryset()
-        if self.request.user.is_reviewer:
-            qs = qs.filter(reviewers=self.request.user)
-        elif self.request.user.is_manager:
-            qs = qs.filter(Q(reviewers=self.request.user)|
-                           Q(super_reviewers=self.request.user) |
-                           Q(owners=self.request.user)).distinct()
-        return qs
+        return get_objects_for_user(self.request.user, 'project.view_project', Project) \
+            .filter(delete_pending=False)
 
 
 class ProjectViewSet(apps.common.mixins.APILoggingMixin,
@@ -440,7 +517,6 @@ class ProjectViewSet(apps.common.mixins.APILoggingMixin,
     partial_update: Partial Update Project
     delete: Delete Project
     """
-
     queryset = Project.objects.all()
 
     def dispatch(self, request, *args, **kwargs):
@@ -452,6 +528,7 @@ class ProjectViewSet(apps.common.mixins.APILoggingMixin,
     def perform_create(self, serializer):
         project = super().perform_create(serializer)
         project.owners.add(self.request.user)
+        project.reset_project_team_perms()
 
     def get_serializer_class(self):
         if self.action == 'create':
@@ -462,14 +539,79 @@ class ProjectViewSet(apps.common.mixins.APILoggingMixin,
             return ProjectListSerializer
         elif self.action == 'stats':
             return ProjectStatserializer
+        elif self.action == 'project_stats':
+            return ProjectStatsSerializer
         return ProjectDetailSerializer
+
+    def get_project_stats_qs(self, qs):
+        annotations = OrderedDict(
+            project_id=F('id'),
+            type_title=Case(When(type_id=DocumentType.generic_pk(), then=Value('Batch Analysis')),
+                            default=F('type__title'), output_field=CharField()),
+            documents_total=Count('document', distinct=True),
+            avg_ocr_grade=Avg('document__ocr_rating'),
+            clauses_total=Count('document__annotations_matches', distinct=True) +
+                          Count('document__annotation_false_matches',
+                                distinct=True),
+            clause_status_rejected=Count('document__annotation_false_matches',
+                                         distinct=True))
+
+        def get_ann_name(title, prefix=None, suffix=None):
+            res = title.lower().replace(' ', '_')
+            if prefix:
+                res = f'{prefix}_{res}'
+            if suffix:
+                res = f'{res}_{suffix}'
+            return res
+
+        document_statuses = ReviewStatus.objects.values_list('name', flat=True)
+        clause_statuses = FieldAnnotationStatus.objects.values_list('name', 'is_rejected')
+        decimal_field = DecimalField(max_digits=5, decimal_places=2)
+
+        for document_status_name in document_statuses:
+            # add {status_name_pcnt: decimal} column
+            status_col_name = get_ann_name(document_status_name, prefix='document_status')
+            annotations[status_col_name] = Count(
+                'document',
+                filter=Q(document__status__name=document_status_name),
+                distinct=True)
+            # add {status_name_pcnt: decimal} column
+            status_pcnt_col_name = get_ann_name(status_col_name, suffix='pcnt')
+            annotations[status_pcnt_col_name] = Case(
+                    When(Q(documents_total=0), then=0),
+                    default=100.0 * F(status_col_name) / F('documents_total'),
+                    output_field=decimal_field)
+
+        for clause_status_name, is_rejected in clause_statuses:
+            # add {status_name: int} column
+            status_col_name = get_ann_name(clause_status_name, prefix='clause_status')
+            relation_name = 'annotation_false_matches' if is_rejected else 'annotations_matches'
+            _filter = None if is_rejected else Q(document__annotations_matches__status__name=clause_status_name)
+            annotations[status_col_name] = Count(
+                f'document__{relation_name}', filter=_filter, distinct=True)
+            # add {status_name_pcnt: decimal} column
+            status_pcnt_col_name = get_ann_name(status_col_name, suffix='pcnt')
+            annotations[status_pcnt_col_name] = Case(
+                    When(Q(clauses_total=0), then=0),
+                    default=100.0 * F(status_col_name) / F('clauses_total'),
+                    output_field=decimal_field)
+
+        qs = qs.annotate(**annotations)
+        columns = ['name', 'type'] + list(annotations.keys())
+
+        return qs.values(*columns)
 
     def get_queryset(self):
         qs = super().get_queryset()
         qs = qs.select_related('type').prefetch_related('status')
-        if self.action != 'list':
+
+        if self.action == 'project_stats':
+            qs = self.get_project_stats_qs(qs.order_by('name'))
+
+        elif self.action not in ['list', 'project_stats']:
             qs = qs.prefetch_related('owners', 'owners__role',
                                      'super_reviewers', 'super_reviewers__role',
+                                     'junior_reviewers', 'junior_reviewers__role',
                                      'reviewers', 'reviewers__role')
         else:
             pass
@@ -480,7 +622,7 @@ class ProjectViewSet(apps.common.mixins.APILoggingMixin,
         return {'available_statuses': common_api_module.ReviewStatusSerializer(
             ReviewStatus.objects.select_related('group'), many=True).data}
 
-    @action(detail=True, methods=['get'])
+    @action(detail=True, methods=['get'], schema=ProjectProgressSchema())
     def progress(self, request, **kwargs):
         """
         Get current progress of all project sessions / clusterings
@@ -572,6 +714,8 @@ class ProjectViewSet(apps.common.mixins.APILoggingMixin,
         Cluster Project Documents\n
             Params:
                 - method: str[KMeans, MiniBatchKMeans, Birch, DBSCAN]
+                - cluster_by: str[term, date, text, definition, duration, party,
+                                  geoentity, currency_name, currency_value]
                 - n_clusters: int
                 - force: bool (optional) - force clustering if uncompleted tasks exist
         """
@@ -678,7 +822,7 @@ class ProjectViewSet(apps.common.mixins.APILoggingMixin,
 
         return Response(data)
 
-    @action(detail=True, methods=['post'], url_path='send-clusters-to-project')
+    @action(detail=True, methods=['post'], url_path='send-clusters-to-project', schema=SendClusterToProjectSchema())
     # @require_generic_contract_type
     def send_clusters_to_project(self, request, **kwargs):
         """
@@ -692,7 +836,7 @@ class ProjectViewSet(apps.common.mixins.APILoggingMixin,
         # via API
         if isinstance(request.data, QueryDict):
             cluster_ids = [int(i) for i in request.data.getlist('cluster_ids')]
-        # via swagger
+        # via swagger or SDK
         else:
             cluster_ids = request.data['cluster_ids']
 
@@ -716,13 +860,18 @@ class ProjectViewSet(apps.common.mixins.APILoggingMixin,
 
         return Response('OK')
 
-    @action(detail=True, methods=['post'])
+    @action(detail=True, methods=['post'], schema=CleanupProjectSchema())
     # @require_generic_contract_type
     def cleanup(self, request, **kwargs):
         """
         Clean project (Generic Contract Type project)
         """
-        delete = json.loads(request.data.get('delete', 'true'))
+        _ = self.get_object()    # init obj perms
+
+        delete = request.data.get('delete', True)
+        # for swagger or SDK
+        if isinstance(delete, str):
+            delete = json.loads(delete)
 
         call_task(
             CleanProject,
@@ -732,14 +881,24 @@ class ProjectViewSet(apps.common.mixins.APILoggingMixin,
 
         return Response('OK')
 
-    @action(detail=False, methods=['post'])
+    @action(detail=False, methods=['get'], schema=ProjectStatsSchema())
+    def project_stats(self, request, **kwargs):
+        """
+        Get project stats across all projects
+        see related code in get_queryset() and serializer
+        """
+        return super().list(request, **kwargs)
+
+    @action(detail=False, methods=['post'], schema=SelectProjectsSchema())
     def select_projects(self, request, **kwargs):
         """
         Select projects for review in Explorer UI
         """
-        project_ids = request.data.get('project_ids')
+        qs = self.get_queryset()
+        received_project_ids = request.data.get('project_ids')
+        allowed_project_ids = qs.filter(pk__in=received_project_ids).values_list('pk', flat=True)
         obj, _ = UserProjectsSavedFilter.objects.get_or_create(user=request.user)
-        obj.projects.set(project_ids)
+        obj.projects.set(allowed_project_ids)
 
         ret = dict(
             saved_filter_id=obj.id,
@@ -749,7 +908,7 @@ class ProjectViewSet(apps.common.mixins.APILoggingMixin,
         )
         return Response(ret)
 
-    @action(detail=True, methods=['post'])
+    @action(detail=True, methods=['post'], schema=MarkUnmarkForDeleteProjectsSchema())
     def mark_delete(self, request, **kwargs):
         """
         Method marks the whole project (remove_all=True) / the project's documents (remove_all=False)
@@ -758,11 +917,11 @@ class ProjectViewSet(apps.common.mixins.APILoggingMixin,
             Params:
                 - all: bool - mark all filtered by a user documents
                 - remove_all: bool - mark project+documents
-                - excluded_ids: list[int]
+                - exclude_document_ids: list[int]
         """
         return self.mark_unmark_for_delete(True, request, **kwargs)
 
-    @action(detail=True, methods=['post'])
+    @action(detail=True, methods=['post'], schema=MarkUnmarkForDeleteProjectsSchema())
     def unmark_delete(self, request, **kwargs):
         """
         Method removes soft delete sign from project only (remove_all=False) or
@@ -800,7 +959,7 @@ class ProjectViewSet(apps.common.mixins.APILoggingMixin,
             proj.save()
         return Response({"count_deleted": count_deleted}, status=200)
 
-    @action(detail=True, methods=['get'])
+    @action(detail=True, methods=['get'], schema=ProjectDocumentsAssigneesSchema())
     def assignees(self, request, **kwargs):
         """
         Get assignees data
@@ -809,11 +968,12 @@ class ProjectViewSet(apps.common.mixins.APILoggingMixin,
         project = self.get_object()
 
         result = []
-        for user in project.reviewers.all().union(project.owners.all()).distinct():
+        # TODO: optimize
+        for user in project.available_assignees:
             docs = project.document_set.filter(assignee=user)
             result.append({
                 'assignee_id': user.id,
-                'assignee_name': user.get_full_name(),
+                'assignee_name': user.name,
                 'documents_count': docs.count(),
                 'document_ids': docs.values_list('pk', flat=True)})
         return Response(result)
@@ -827,7 +987,7 @@ class ProjectViewSet(apps.common.mixins.APILoggingMixin,
         from apps.rawdb.api.v1 import DocumentsAPIView
         return DocumentsAPIView.simulate_get(user, project, return_ids=False)
 
-    @action(detail=True, methods=['post'])
+    @action(detail=True, methods=['post'], schema=AssignProjectDocumentsSchema())
     def assign_documents(self, request, **kwargs):
         """
         Bulk assign batch of documents to a review team member\n
@@ -842,12 +1002,6 @@ class ProjectViewSet(apps.common.mixins.APILoggingMixin,
         project = self.get_object()    # noqa: permissions check
         assignee_id = request.data.get('assignee_id')
 
-        if assignee_id is not None and \
-                assignee_id not in project.owners.values_list('id', flat=True) and \
-                assignee_id not in project.reviewers.values_list('id', flat=True):
-            return Response({'detail': f'This assignee (id={assignee_id}) is not in project owners or reviewers'},
-                            status=404)
-
         if request.data.get('all'):
             documents = self.get_document_queryset()
             if request.data.get('no_document_ids'):
@@ -855,13 +1009,43 @@ class ProjectViewSet(apps.common.mixins.APILoggingMixin,
             document_ids = documents.values_list('pk', flat=True)
         else:
             document_ids = request.data.get('document_ids')
+        return self.assign_multiple_documents(assignee_id, project, request.user.pk, document_ids)
 
+    @action(detail=True, methods=['post'], schema=AssignProjectDocumentSchema())
+    def assign_document(self, request, **kwargs):
+        """
+        Bulk assign batch of documents to a review team member\n
+            Params:
+                document_id: int
+                assignee_id: int
+            Returns:
+                bool (number of reassigned documents)
+        """
+        project = self.get_object()  # noqa: permissions check
+        assignee_id = request.data.get('assignee_id')
+        document_ids = [request.data.get('document_id')]
+        return self.assign_multiple_documents(assignee_id, project, request.user.pk, document_ids)
+
+    def assign_multiple_documents(self,
+                                  assignee_id: int,
+                                  project: Project,
+                                  changed_by_id: int,
+                                  document_ids: List[int]):
+        assignee = User.objects.get(pk=assignee_id) if assignee_id is not None else None
+        if assignee is not None:
+            if not assignee.has_perm('view_project', project):
+                return Response(
+                    {'detail': f'This assignee #{assignee.pk} has no permission to view this project'},
+                    status=404)
+        # FIXME: moved into Document model's pre_update
+        # change perms for documents
         plan_process_documents_assignee_changed(doc_ids=document_ids,
                                                 new_assignee_id=assignee_id,
-                                                changed_by_user_id=request.user.pk)
+                                                changed_by_user_id=changed_by_id)
+
         return Response({'success': len(document_ids)})
 
-    @action(detail=True, methods=['post'])
+    @action(detail=True, methods=['post'], schema=SetProjectDocumentsStatusSchema())
     def set_status(self, request, **kwargs):
         """
         Bulk set status for batch of documents\n
@@ -924,7 +1108,7 @@ class ProjectViewSet(apps.common.mixins.APILoggingMixin,
 
         return qs
 
-    @action(detail=True, methods=['get'])
+    @action(detail=True, methods=['get'], schema=ProjectAnnotationsAssigneesSchema())
     def annotations_assignees(self, request, **kwargs):
         """
         Get assignees data for FieldAnnotations
@@ -942,12 +1126,12 @@ class ProjectViewSet(apps.common.mixins.APILoggingMixin,
             user_annotation_uids = [i['uid'] for i in annotation_qs if i['assignee_id'] == user.id]
             result.append({
                 'assignee_id': user.id,
-                'assignee_name': user.get_full_name(),
+                'assignee_name': user.name,
                 'annotations_count': len(user_annotation_uids),
                 'annotation_uids': sorted(user_annotation_uids)})
         return Response(result)
 
-    @action(detail=True, methods=['post'])
+    @action(detail=True, methods=['post'], schema=AssignProjectAnnotationsSchema())
     def assign_annotations(self, request, **kwargs):
         """
         Bulk assign batch of annotations to a review team member\n
@@ -963,8 +1147,7 @@ class ProjectViewSet(apps.common.mixins.APILoggingMixin,
         assignee_id = request.data.get('assignee_id')
 
         if assignee_id is not None and \
-                assignee_id not in project.owners.values_list('id', flat=True) and \
-                assignee_id not in project.reviewers.values_list('id', flat=True):
+                assignee_id not in project.get_team().values_list('id', flat=True):
             return Response({'detail': f'This assignee (id={assignee_id}) is not in project owners or reviewers'},
                             status=404)
 
@@ -979,7 +1162,7 @@ class ProjectViewSet(apps.common.mixins.APILoggingMixin,
 
         return Response({'success': annotations.count()})
 
-    @action(detail=True, methods=['post'])
+    @action(detail=True, methods=['post'], schema=SetProjectAnnotationsStatusSchema())
     def set_annotation_status(self, request, **kwargs):
         """
         Bulk set status for batch of annotations\n
@@ -1003,6 +1186,14 @@ class ProjectViewSet(apps.common.mixins.APILoggingMixin,
         # re-fetch annotations as initial values-qs doesn't allow update
         ant_uids = [i['uid'] for i in annotations]
 
+        except_true_ann = FieldAnnotation.objects \
+            .filter(uid__in=ant_uids, document__status__code='completed') \
+            .values_list('uid', flat=True)
+        except_false_ann = FieldAnnotationFalseMatch.objects \
+            .filter(uid__in=ant_uids, document__status__code='completed') \
+            .values_list('uid', flat=True)
+        ant_uids = [i for i in ant_uids if i not in except_true_ann and i not in except_false_ann]
+
         run_sync = run_mode == 'sync'
         if not run_sync:
             run_sync = run_mode == 'smart' and len(ant_uids) < MAX_ANTS_TO_RUN_SYNC
@@ -1022,7 +1213,7 @@ class ProjectViewSet(apps.common.mixins.APILoggingMixin,
 
         return Response({'task_id': task_id, 'annotations': len(ant_uids)})
 
-    @action(detail=False, methods=['get'])
+    @action(detail=False, methods=['get'], schema=RecentProjectsSchema())
     def recent(self, request, **kwargs):
         """
         Get recent N projects\n
@@ -1031,7 +1222,11 @@ class ProjectViewSet(apps.common.mixins.APILoggingMixin,
         """
         last_n = int(request.GET.get('n', 5))
         content_type_id = ContentType.objects.get_for_model(Project).id
-        user_id = request.user.pk
+        user = request.user
+
+        user_projects = user.user_projects
+        if not user_projects.exists():
+            return Response([])
 
         sql = '''
             SELECT
@@ -1040,13 +1235,15 @@ class ProjectViewSet(apps.common.mixins.APILoggingMixin,
               CASE WHEN p1.type_id = %s THEN TRUE ELSE FALSE END AS is_generic,
               (SELECT count(d1.id)
                FROM document_document d1
-               WHERE d1.delete_pending = false
-                   AND d1.processed = true 
+               WHERE d1.id in ({document_ids}) 
+                   AND d1.delete_pending = FALSE
+                   AND d1.processed = TRUE 
                    AND d1.project_id = p1.id) extracted_doc_count,
               (SELECT count(d2.id)
                FROM document_document d2
-               WHERE d2.delete_pending = false
-                   AND d2.processed = true 
+               WHERE d2.id in ({document_ids}) 
+                   AND d2.delete_pending = FALSE
+                   AND d2.processed = TRUE 
                    AND d2.project_id = p1.id 
                    AND d2.status_id IN (SELECT rs.id
                                         FROM common_reviewstatus rs INNER JOIN common_reviewstatusgroup rsg
@@ -1055,41 +1252,16 @@ class ProjectViewSet(apps.common.mixins.APILoggingMixin,
             FROM project_project p1
             INNER JOIN common_action ca
                 ON NOT p1.delete_pending AND ca.content_type_id = %s AND ca.user_id = %s AND ca.object_pk = p1.id :: VARCHAR
-            {}
+            WHERE p1.delete_pending = FALSE AND p1.id in ({project_ids})
             GROUP BY p1.id
             ORDER BY max(ca.date) DESC
             LIMIT %s
-        '''
-
-        # limit query for reviewers - only if a reviewer is in project user groups
-        # (owners, super_reviewers or reviewers)
-        man_subquery = f'''
-            LEFT JOIN project_project_reviewers ppr
-                ON p1.id = ppr.project_id
-            LEFT JOIN project_project_super_reviewers ppsr
-                ON p1.id = ppsr.project_id
-            LEFT JOIN project_project_owners ppo
-                ON p1.id = ppo.project_id
-            WHERE p1."delete_pending" = False AND (ppr.user_id = {user_id} OR 
-                  ppsr.user_id = {user_id} OR ppo.user_id = {user_id})
-        '''
-
-        reviewer_subquery = f'''
-        LEFT JOIN project_project_reviewers ppr
-                ON p1.id = ppr.project_id
-            WHERE p1."delete_pending" = False AND ppr.user_id = {user_id}
-        '''
-
-        if request.user.is_reviewer:
-            sql = sql.format(reviewer_subquery)
-        elif request.user.is_manager:
-            sql = sql.format(man_subquery)
-        else:
-            sql = sql.format('')
+        '''.format(document_ids=','.join([str(i) for i in user.user_document_ids]) or 0,
+                   project_ids=','.join([str(i) for i in user_projects.values_list('pk', flat=True)]))
 
         result = list()
         with connection.cursor() as cursor:
-            cursor.execute(sql, [DOCUMENT_TYPE_PK_GENERIC_DOCUMENT, content_type_id, user_id, last_n])
+            cursor.execute(sql, [DOCUMENT_TYPE_PK_GENERIC_DOCUMENT, content_type_id, user.id, last_n])
             for project_id, project_name, is_generic, extracted_doc_count, reviewed_doc_count in cursor.fetchall():
                 result.append({
                     'name': project_name,
@@ -1103,7 +1275,7 @@ class ProjectViewSet(apps.common.mixins.APILoggingMixin,
 
         return Response(result)
 
-    @action(detail=True, methods=['post'])
+    @action(detail=True, methods=['post'], schema=DetectProjectFieldValuesSchema())
     def detect_field_values(self, request, **kwargs):
         project = getattr(self, 'object', None) or self.get_object()  # type: Project
         do_not_update_modified = request.data.get('do_not_update_modified')
@@ -1123,7 +1295,8 @@ class ProjectViewSet(apps.common.mixins.APILoggingMixin,
 
         return Response({'task_id': task_id})
 
-    @action(detail=True, methods=['post'], url_path='make-searchable-pdf')
+    @action(detail=True, methods=['post'], url_path='make-searchable-pdf',
+            schema=MakeSearchablePDFSchema())
     def make_searchable_pdf(self, request, **kwargs):
         if not kwargs.get('pk') and not request.data.get('document_ids'):
             raise APIException('Either provide project id or document_ids')
@@ -1135,9 +1308,11 @@ class ProjectViewSet(apps.common.mixins.APILoggingMixin,
         )
         return Response({'task_id': task_id})
 
-    @action(detail=False, methods=['post'], url_path='make-searchable-pdf')
-    def _make_searchable_pdf(self, request, **kwargs):
-        return self.make_searchable_pdf(request, **kwargs)
+    # TODO: if cross-project - need to check all doc perms
+    # @action(detail=False, methods=['post'], url_path='make-searchable-pdf',
+    #         schema=MakeSearchablePDFSchema())
+    # def _make_searchable_pdf(self, request, **kwargs):
+    #     return self.make_searchable_pdf(request, **kwargs)
 
 
 # --------------------------------------------------------
@@ -1150,10 +1325,12 @@ class UploadSessionSerializer(serializers.ModelSerializer):
     created_by = serializers.PrimaryKeyRelatedField(
         queryset=User.objects.all(), many=False, required=False)
     upload_files = serializers.DictField(required=False, read_only=True)
+    review_files = serializers.BooleanField(required=False, read_only=True)
+    force = serializers.BooleanField(required=False, read_only=True)
 
     class Meta:
         model = UploadSession
-        fields = ['uid', 'project', 'created_by', 'upload_files']
+        fields = ['uid', 'project', 'created_by', 'upload_files', 'review_files', 'force']
 
 
 class UploadSessionDetailSerializer(serializers.ModelSerializer):
@@ -1173,23 +1350,41 @@ class UploadSessionDetailSerializer(serializers.ModelSerializer):
         return DocumentTypeSerializer(obj.project.type, many=False).data if obj.project else None
 
 
-class UploadSessionPermissions(BasePermission):
+class UploadSessionPermissions(IsAuthenticated):
+
+    def has_permission(self, request, view):
+        if view.action in ['create']:
+
+            # otherwise schema generations fails
+            if 'project' in request.data:
+                project = Project.objects.get(pk=request.data['project'])
+                return request.user.has_perm('project.add_project_document', project)
+            return request.user.has_perm('project.add_uploadsession')
+
+        # status - filter via get_queryset
+
+        return super().has_permission(request, view)
+
     def has_object_permission(self, request, view, obj):
-        if request.user.is_reviewer:
-            if view.action in ['upload', 'batch_upload'] and \
-                    not obj.project.super_reviewers.filter(pk=request.user.pk).exists():
-                return False
-            return obj.project.reviewers.filter(pk=request.user.pk).exists()
-        return True
+        action = view.action
+        user = request.user
+        if action in ['update', 'partial_update']:
+            return user.has_perm('project.change_project', obj.project)
+        if action in ['destroy']:
+            return user.has_perm('project.delete_project', obj.project)
+        if action in ['upload', 'batch_upload', '_batch_upload', 'files', 'progress',
+                      'cancel_upload', 'delete_file']:
+            return user.has_perm('project.add_project_document', obj.project)
+        return super().has_object_permission(request, view, obj)
 
 
 class UploadSessionPermissionViewMixin:
-    permission_classes = (IsAuthenticated, UploadSessionPermissions)
+    permission_classes = (UploadSessionPermissions,)
 
     def get_queryset(self):
         qs = super().get_queryset()
-        if self.request.user.is_reviewer:
-            qs = qs.filter(project__reviewers=self.request.user)
+        projects = get_objects_for_user(self.request.user, 'project.add_project_document', Project)
+        qs = qs.filter(project_id__in=projects.values_list('pk', flat=True))
         return qs
 
 
@@ -1351,7 +1546,7 @@ class UploadSessionViewSet(UploadSessionPermissionViewMixin,
         call_task_func(track_session_completed, (), request.user.pk)
         return response
 
-    @action(detail=True, methods=['get'])
+    @action(detail=True, methods=['get'], schema=ProjectUploadSessionProgressSchema())
     def progress(self, request, pk):
         """
         Get Progress for a session per files (short form)
@@ -1367,7 +1562,7 @@ class UploadSessionViewSet(UploadSessionPermissionViewMixin,
                   'session_status': session.status}
         return Response(result)
 
-    @action(detail=False, methods=['get'])
+    @action(detail=False, methods=['get'], schema=UploadSessionStatusSchema())
     def status(self, request, **kwargs):
         """
         Get status of Upload Sessions
@@ -1466,7 +1661,8 @@ class UploadSessionViewSet(UploadSessionPermissionViewMixin,
 
             # TODO: move this check into "stor" itself | we do that check in can_upoad_file() ?
             if not file_size:
-                return Response(data='Empty file', status=status.HTTP_204_NO_CONTENT)
+                return Response(status=status.HTTP_204_NO_CONTENT,
+                                data={'status': 'Empty file'})
             try:
                 stor.mk_doc_dir(session.pk)
             except:
@@ -1484,7 +1680,7 @@ class UploadSessionViewSet(UploadSessionPermissionViewMixin,
                 user_id=user_id,
                 session_id=session.pk,
                 run_standard_locators=True,
-                metadata={'session_id': session.pk, 'file_name': file_name, 'file_size': file_size},
+                metadata={'file_name': file_name, 'file_size': file_size},
                 linked_tasks=None,
                 directory_path=directory_path)
 
@@ -1499,7 +1695,7 @@ class UploadSessionViewSet(UploadSessionPermissionViewMixin,
 
         return Response(status=status.HTTP_201_CREATED, data={'status': 'OK'})
 
-    @action(detail=True, methods=['post'])
+    @action(detail=True, methods=['post'], schema=UploadSessionFilesSchema())
     def files(self, request: HttpRequest, pk: str):
         file_size = request.headers.get('Content-Length')
         if not file_size:
@@ -1514,7 +1710,8 @@ class UploadSessionViewSet(UploadSessionPermissionViewMixin,
                                 contents=request,
                                 user_id=request.user.id,
                                 force=as_bool(request.GET, 'force', False) or
-                                      request.META.get('HTTP_FORCE', False) == 'true')
+                                      request.META.get('HTTP_FORCE', False) == 'true',
+                                directory_path=request.headers.get('Directory-Path'))
 
     def upload_archive(self, request, file_, archive_type, directory_path=None):
         from apps.document.app_vars import MAX_ARCHIVE_SIZE
@@ -1583,7 +1780,7 @@ class UploadSessionViewSet(UploadSessionPermissionViewMixin,
             return True
         return False
 
-    @action(detail=True, methods=['post'])
+    @action(detail=True, methods=['post'], schema=UploadSessionUploadSchema())
     def upload(self, request, pk: str, review_file=True, directory_path=None):
         """
         Upload a File\n
@@ -1594,6 +1791,13 @@ class UploadSessionViewSet(UploadSessionPermissionViewMixin,
                 - directory_path: str - may be passed from TUS plugin
         """
         file_ = request.FILES.dict().get('file')
+
+        if not file_ and isinstance(request.data, (str, bytes)):
+            file_encoding = request.META.get('HTTP_FILE_ENCODING', 'utf-8')
+            file_ = BytesIO(request.data.encode(file_encoding)
+                            if isinstance(request.data, str) else request.data)
+            file_name = request.META.get('HTTP_FILE_NAME')
+            file_ = File(file_, name=file_name)
 
         if not file_:
             raise APIException('File not found.')
@@ -1619,7 +1823,7 @@ class UploadSessionViewSet(UploadSessionPermissionViewMixin,
             resp.status_code = status.HTTP_200_OK
         return resp
 
-    @action(detail=True, methods=['post'])
+    @action(detail=True, methods=['post'], schema=UploadSessionBatchUploadSchema())
     def batch_upload(self, request, **kwargs):
         """
         Upload files from given sub-folder in media/data/documents folder\n
@@ -1647,7 +1851,7 @@ class UploadSessionViewSet(UploadSessionPermissionViewMixin,
                 source_data=file_path,
                 user_id=request.user.id,
                 session_id=session_id,
-                metadata={'session_id': session_id, 'file_name': file_name},
+                metadata={'file_name': file_name},
                 run_standard_locators=True,
                 linked_tasks=None)
 
@@ -1688,7 +1892,7 @@ class UploadSessionViewSet(UploadSessionPermissionViewMixin,
 
         return Response('No folder specified', status=400)
 
-    @action(methods=['delete'], url_path='cancel', detail=True)
+    @action(detail=True, methods=['delete'], url_path='cancel')
     def cancel_upload(self, request, **kwargs):
         """
         Delete a file from session\n
@@ -1704,7 +1908,7 @@ class UploadSessionViewSet(UploadSessionPermissionViewMixin,
 
         return Response('Canceled')
 
-    @action(methods=['delete'], url_path='delete-file', detail=True)
+    @action(detail=True, methods=['delete'], url_path='delete-file', schema=UploadSessionDeleteFileSchema())
     def delete_file(self, request, **kwargs):
         """
         Delete a file from session\n
@@ -1712,7 +1916,7 @@ class UploadSessionViewSet(UploadSessionPermissionViewMixin,
                 - filename: str
         """
         session_id = self.get_object().pk
-        file_name = request.POST.get('filename')
+        file_name = request.POST.get('filename') or request.data.get('filename')
 
         if not file_name:
             raise APIException('Provide a file name.')
@@ -1761,6 +1965,7 @@ class DocumentClusterSerializer(serializers.ModelSerializer):
 
     def get_documents_count(self, obj):
         return obj.documents.count()
+    get_documents_count.output_field = serializers.IntegerField()
 
 
 class ProjectClusteringSerializer(serializers.ModelSerializer):
@@ -1782,6 +1987,7 @@ class ProjectClusteringSerializer(serializers.ModelSerializer):
         if obj.status is None and obj.task:
             return obj.task.status
         return obj.status
+    get_status.output_field = serializers.CharField()
 
 
 class ProjectClusteringViewSet(apps.common.mixins.JqListAPIMixin, viewsets.ReadOnlyModelViewSet):
@@ -1793,7 +1999,9 @@ class ProjectClusteringViewSet(apps.common.mixins.JqListAPIMixin, viewsets.ReadO
     serializer_class = ProjectClusteringSerializer
 
     def get_queryset(self):
+        projects = get_objects_for_user(self.request.user, 'project.recluster_project', Project)
         qs = super().get_queryset() \
+            .filter(project_id__in=projects.values_list('pk', flat=True)) \
             .prefetch_related('document_clusters') \
             .select_related('project', 'task') \
             .annotate(project_clusters_documents_count=Count('document_clusters__documents', distinct=True))
@@ -1809,7 +2017,8 @@ router.register(r'upload-session', UploadSessionViewSet, 'upload-session')
 urlpatterns = [
     path('', include(router.urls)),
     path('projects/<int:pk>/clustering-status/',
-         ProjectViewSet.as_view({'get': 'clustering_status'}), name='clustering_status'),
+         ProjectViewSet.as_view({'get': 'clustering_status'}, schema=ProjectClusteringStatusSchema()),
+         name='clustering_status'),
     path('projects/<int:pk>/cluster/',
-         ProjectViewSet.as_view({'post': 'cluster'}), name='cluster')
+         ProjectViewSet.as_view({'post': 'cluster'}, schema=ClusterProjectSchema()), name='cluster')
 ]

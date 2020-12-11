@@ -24,13 +24,14 @@
 """
 # -*- coding: utf-8 -*-
 
+from unittest import TestCase
+
 from apps.common.expressions import PythonExpressionChecker
-from tests.django_test_case import *
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.7.0/LICENSE"
-__version__ = "1.7.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
+__version__ = "1.8.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -41,7 +42,7 @@ class TestExpressions(TestCase):
         code = "temperature is '10'"
         checker = PythonExpressionChecker(code)
         checker.test_expression()
-        self.assertEqual(1, len(checker.warnings))
+        self.assertEqual(1, len(checker.errors))
 
         code = "temperature == '10'"
         checker = PythonExpressionChecker(code)
@@ -52,33 +53,33 @@ class TestExpressions(TestCase):
         code = "temperature is True"
         checker = PythonExpressionChecker(code)
         checker.test_expression()
-        self.assertEqual(1, len(checker.warnings))
-        self.assertTrue("temperature is True" in checker.warnings[0])
+        self.assertEqual(1, len(checker.errors))
+        self.assertTrue("temperature is True" in checker.errors[0])
 
         code = "temperature is 10.2"
         checker = PythonExpressionChecker(code)
         checker.test_expression()
-        self.assertEqual(1, len(checker.warnings))
-        self.assertTrue("temperature is 10.2" in checker.warnings[0])
+        self.assertEqual(1, len(checker.errors))
+        self.assertTrue("temperature is 10.2" in checker.errors[0])
 
     def test_warn_is_binop(self):
         code = "temperature is 5 - 2"
         checker = PythonExpressionChecker(code)
         checker.test_expression()
-        self.assertEqual(1, len(checker.warnings))
-        self.assertTrue("temperature is 5 - 2" in checker.warnings[0])
+        self.assertEqual(1, len(checker.errors))
+        self.assertTrue("temperature is 5 - 2" in checker.errors[0])
 
         code = "temperature is 5 / 2"
         checker = PythonExpressionChecker(code)
         checker.test_expression()
-        self.assertTrue("temperature is 5 / 2" in checker.warnings[0])
+        self.assertTrue("temperature is 5 / 2" in checker.errors[0])
 
     def test_warn_is_expr(self):
         code = "temperature is (5 - 2) * 2"
         checker = PythonExpressionChecker(code)
         checker.test_expression()
-        self.assertEqual(1, len(checker.warnings))
-        self.assertTrue("temperature is (5 - 2) * 2" in checker.warnings[0])
+        self.assertEqual(1, len(checker.errors))
+        self.assertTrue("temperature is (5 - 2) * 2" in checker.errors[0])
 
     def test_big_safe_expr(self):
         code = "(['26 One'] if k_eight is not None and 'Blah' in k_eight else []) " +\
@@ -94,19 +95,19 @@ class TestExpressions(TestCase):
         code = "1 if k_nine is '' else 0"
         checker = PythonExpressionChecker(code)
         checker.test_expression()
-        self.assertEqual(0, len(checker.errors))
-        self.assertEqual(1, len(checker.warnings))
+        self.assertEqual(0, len(checker.warnings))
+        self.assertEqual(1, len(checker.errors))
 
     def test_avg_len_with_warns(self):
         code = "k_nine if k_nine is '' else float(k_19) / 234.6 if k_19 else None"
         checker = PythonExpressionChecker(code)
         checker.test_expression()
-        self.assertEqual(0, len(checker.errors))
-        self.assertEqual(1, len(checker.warnings))
+        self.assertEqual(0, len(checker.warnings))
+        self.assertEqual(1, len(checker.errors))
 
     def test_complex(self):
         code = 'k_one - k_14 if k_one is \'1\' and k_14 else None'
         checker = PythonExpressionChecker(code)
         checker.test_expression()
-        self.assertEqual(0, len(checker.errors))
-        self.assertEqual(1, len(checker.warnings))
+        self.assertEqual(0, len(checker.warnings))
+        self.assertEqual(1, len(checker.errors))

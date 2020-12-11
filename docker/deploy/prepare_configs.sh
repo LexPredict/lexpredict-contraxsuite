@@ -79,3 +79,7 @@ envsubst < ./config-templates/nginx-customer.conf.template > ./temp/nginx-custom
 
 cp ./config-templates/*.conf ./temp/
 
+echo "Copy config to helm chart"
+mkdir -p ./k8s/contraxsuite/files/
+cp -r ./config-templates/* ./k8s/contraxsuite/files/
+

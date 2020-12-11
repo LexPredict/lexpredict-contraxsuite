@@ -37,9 +37,16 @@ fi
 if [ "$1" == "save-dump" ]; then
 
 su ${SHARED_USER_NAME} -c "${ACTIVATE_VENV} && \
-    python manage.py force_migrate common && \
-    python manage.py force_migrate && \
+    python manage.py migrate && \
     python manage.py dump_data --dst-file=fixtures/additional/app-dump.json \
+    python manage.py init_cache \
+"
+
+elif [ "$1" == "unit_tests" ]; then
+su ${SHARED_USER_NAME} -c "echo \"SECRET_KEY = str(1)\" >> local_settings.py && \
+    cp -rn /home/contraxsuite_docker_user/nltk_data /root && \
+    ${ACTIVATE_VENV} && \
+    python manage.py test --settings=nodb_settings
 "
 
 elif [ "$1" == "daphne" ]; then
@@ -63,10 +70,13 @@ elif [ "$1" == "daphne" ]; then
         fi
     fi
 
-
+    mkdir -p /contraxsuite_services/staticfiles
     cat /build.info > /contraxsuite_services/staticfiles/version.txt
     echo "" >> /contraxsuite_services/staticfiles/version.txt
     cat /build.uuid >> /contraxsuite_services/staticfiles/version.txt
+    echo "" >> /contraxsuite_services/staticfiles/version.txt
+    cat /build_info.txt >> /contraxsuite_services/staticfiles/version.txt
+
 
     if [[ -d "/contraxsuite_frontend" && -d "/contraxsuite_frontend_nginx_volume" ]]; then
         echo "Copying embedded frontend files into the shared Nginx volume..."
@@ -90,9 +100,7 @@ elif [ "$1" == "daphne" ]; then
 
 # Indentation makes sense here
 su ${SHARED_USER_NAME} -c "${ACTIVATE_VENV} && \
-    python manage.py force_migrate common && \
-    python manage.py force_migrate users && \
-    python manage.py force_migrate && \
+    python manage.py migrate && \
     python manage.py shell -c \"
 from apps.deployment.models import Deployment
 from apps.deployment.tasks import usage_stats
@@ -173,39 +181,39 @@ elif [ $1 == "celery-beat" ]; then
 
     su ${SHARED_USER_NAME} -c "${ACTIVATE_VENV} && \
         ulimit -n 65535 && \
-        celery -A apps worker -B -Q serial --without-gossip --without-heartbeat --concurrency=1 -Ofair -n beat@%h --statedb=/data/celery_worker_state/worker.state --role=beat"
+        celery -A apps worker -B -Q serial --concurrency=1 -Ofair -n beat@%h --statedb=/data/celery_worker_state/celery-beat.state --role=beat"
 elif [ $1 == "celery-high-prio" ]; then
     echo "Starting Celery High Priority Tasks Worker..."
 
     su ${SHARED_USER_NAME} -c "${ACTIVATE_VENV} && \
         ulimit -n 65535 && \
-        celery -A apps worker -Q high_priority --without-gossip --without-heartbeat --concurrency=4 -Ofair -n high_priority@%h --statedb=/data/celery_worker_state/worker.state --role=high_prio"
+        celery -A apps worker -Q high_priority --concurrency=4 -Ofair -n high_priority@%h --statedb=/data/celery_worker_state/celery-high-prio.state --role=high_prio"
 
 elif [ $1 == "celery-load" ]; then
     echo "Starting Celery Load Documents Tasks Worker..."
 
     su ${SHARED_USER_NAME} -c "${ACTIVATE_VENV} && \
         ulimit -n 65535 && \
-        celery -A apps worker -Q doc_load --without-gossip --without-heartbeat --concurrency=1 -Ofair -n default_priority@%h --statedb=/data/celery_worker_state/worker.state --role=doc_load"
+        celery -A apps worker -Q doc_load,worker_bcast --concurrency=1 -Ofair -n doc_load@%h --statedb=/data/celery_worker_state/celery-load.state --role=doc_load"
 
 elif [ $1 == "celery-master" ]; then
     echo "Starting Celery Master Low Resources Worker..."
 
     su ${SHARED_USER_NAME} -c "${ACTIVATE_VENV} && \
         ulimit -n 65535 && \
-        celery -A apps worker -Q default,high_priority --without-gossip --without-heartbeat --concurrency=2 -Ofair -n master@%h --statedb=/data/celery_worker_state/worker.state --role=default_worker"
+        celery -A apps worker -Q default,high_priority --concurrency=2 -Ofair -n master@%h --statedb=/data/celery_worker_state/celery-master.state --role=default_worker"
 elif [ $1 == "celery-single" ]; then
     echo "Starting Celery Default Priority Tasks Worker..."
 
     su ${SHARED_USER_NAME} -c "${ACTIVATE_VENV} && \
         ulimit -n 65535 && \
         python manage.py check && \
-        celery -A apps worker -Q default,high_priority,worker_bcast --without-gossip --without-heartbeat --concurrency=${DOCKER_CELERY_CONCURRENCY} -Ofair -n default_priority@%h --statedb=/data/celery_worker_state/worker.state --role=default_worker"
+        celery -A apps worker -Q default,high_priority,worker_bcast --concurrency=${DOCKER_CELERY_CONCURRENCY} -Ofair -n default_priority@%h --statedb=/data/celery_worker_state/celery-single.state --role=default_worker"
 else
     echo "Starting Celery Default Priority Tasks Worker..."
 
     su ${SHARED_USER_NAME} -c "${ACTIVATE_VENV} && \
         ulimit -n 65535 && \
         python manage.py check && \
-        celery -A apps worker -Q default,worker_bcast --without-gossip --without-heartbeat --concurrency=${DOCKER_CELERY_CONCURRENCY} -Ofair -n default_priority@%h --statedb=/data/celery_worker_state/worker.state --role=default_worker"
+        celery -A apps worker -Q default,worker_bcast --concurrency=${DOCKER_CELERY_CONCURRENCY} -Ofair -n default_priority@%h --statedb=/data/celery_worker_state/celery-default.state --role=default_worker"
 fi

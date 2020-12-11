@@ -8,6 +8,8 @@ TIKA_VERSION=1.24.1
 TIKA_SERVER_URL=https://www.apache.org/dist/tika/tika-app-$TIKA_VERSION.jar
 IMAGIO_SERVER_URL=https://repo1.maven.org/maven2/com/github/jai-imageio
 
+TIKA_JAR_URL=https://archive.apache.org/dist/tika/tika-app-1.24.1.jar
+
 cd $TARGET_FOLDER
 
 pwd
@@ -28,6 +30,7 @@ echo "Downloading jai libs..."
 
 curl -sSL --fail "$IMAGIO_SERVER_URL/jai-imageio-core/1.4.0/jai-imageio-core-1.4.0.jar" > ./jai-imageio-core.jar || exit 1
 curl -sSL --fail "$IMAGIO_SERVER_URL/jai-imageio-jpeg2000/1.3.0/jai-imageio-jpeg2000-1.3.0.jar" > ./jai-imageio-jpeg2000.jar || exit 1
+curl -sSl --fail "https://github.com/levigo/jbig2-imageio/releases/download/levigo-jbig2-imageio-2.0/levigo-jbig2-imageio-2.0.jar" > ./levigo-jbig2-imageio-2.0.jar || exit 1
 
 sudo apt install -y maven
 if [ -d ./tika-src/ ]; then
@@ -38,7 +41,7 @@ cd ./tika-src/
 cp -fu ../../../docker/build/contraxsuite-app/tika/tika.config ../tika.config
 cp -fu ../../../docker/build/contraxsuite-app/tika/tika.noocr.config ../tika.noocr.config
 cp -fu ../../../docker/build/contraxsuite-app/tika/tika.lexp.config ../tika.lexp.config
-git clone https://github.com/LexPredict/tika-server.git;
+git clone --single-branch --branch master https://github.com/LexPredict/tika-server.git;
 cd ./tika-server/lexpredict-tika/
 mvn install -e -DskipTests;
 cp -fu ./target/lexpredict-tika-1.0.jar ../../../lexpredict-tika.jar

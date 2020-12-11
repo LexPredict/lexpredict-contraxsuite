@@ -39,6 +39,7 @@ import os
 import platform
 import re
 import sys
+import time
 import warnings
 
 import environ
@@ -52,7 +53,6 @@ from kombu.common import Broadcast
 # App imports
 import task_names
 from contraxsuite_logging import prepare_log_dirs  # ContraxsuiteJSONFormatter
-
 
 warnings.filterwarnings('ignore',
                         message='''Trying to unpickle estimator|The psycopg2 wheel package will be renamed|numpy.core.umath_tests''')
@@ -101,6 +101,7 @@ INSTALLED_APPS = (
     'django_celery_results',  # for celery tasks
     'filebrowser',  # browse/upload documents
     'django_extensions',
+    'django_admin_hstore_widget',  # HStore admin widget
     'pipeline',  # compressing js, css
     'ckeditor',  # editor
     # Useful template tags:
@@ -127,6 +128,7 @@ INSTALLED_APPS = (
 
     'channels',
     'rest_framework_tus',
+    'guardian',
 
     # LOCAL_APPS
     # 'apps.common',
@@ -295,7 +297,7 @@ MEDIA_ROOT = PROJECT_DIR('media')
 ROOT_URLCONF = 'urls'
 
 # See: https://docs.djangoproject.com/en/dev/ref/settings/#wsgi-application
-#WSGI_APPLICATION = 'wsgi.application'
+# WSGI_APPLICATION = 'wsgi.application'
 ASGI_APPLICATION = 'apps.websocket.routing.application'
 
 # django-pipeline settings
@@ -359,6 +361,7 @@ AUTH_PASSWORD_VALIDATORS = [
 AUTHENTICATION_BACKENDS = (
     'django.contrib.auth.backends.ModelBackend',
     'allauth.account.auth_backends.AuthenticationBackend',
+    'guardian.backends.ObjectPermissionBackend',
 )
 
 SOCIALACCOUNT_PROVIDERS = {
@@ -467,6 +470,11 @@ CELERY_BEAT_SCHEDULE = {
         'schedule': 60,
         'options': {'queue': CELERY_QUEUE_SERIAL, 'expires': 60},
     },
+    'apps.highq_integration.tasks.trigger_highq_isheet_synchronization': {
+        'task': task_names.TASK_NAME_HIGHQ_TRIGGER_ISHEET_SYNC,
+        'schedule': 60 * 3,
+        'options': {'queue': CELERY_QUEUE_SERIAL, 'expires': 60 * 3},
+    },
     'apps.notifications.trigger_digests': {
         'task': task_names.TASK_NAME_TRIGGER_DIGESTS,
         'schedule': 5,
@@ -496,6 +504,11 @@ CELERY_BEAT_SCHEDULE = {
         'task': task_names.TASK_NAME_PLAN_REFRESHING_MATERIALIZED_VIEWS,
         'schedule': 30,
         'options': {'queue': CELERY_QUEUE_SERIAL, 'expires': 30},
+    },
+    'task_health_check': {
+        'task': task_names.TASK_NAME_TASK_HEALTH_CHECK,
+        'schedule': 30,
+        'options': {'queue': CELERY_QUEUE_SERIAL, 'expires': 30},
     }
 }
 
@@ -520,7 +533,12 @@ EXCLUDE_FROM_TRACKING = {
     task_names.TASK_NAME_MONITOR_DISK_USAGE,
     task_names.TASK_NAME_PLAN_REFRESHING_MATERIALIZED_VIEWS,
     task_names.TASK_NAME_TERMINATE_PROCESSES,
-    task_names.TASK_NAME_DOCUMENT_CHANGED
+    task_names.TASK_NAME_DOCUMENT_CHANGED,
+    task_names.TASK_NAME_HIGHQ_GET_DOCUMENT,
+    task_names.TASK_NAME_HIGHQ_WRITE_TO_ISHEET,
+    task_names.TASK_NAME_HIGHQ_TRIGGER_ISHEET_SYNC,
+    task_names.TASK_NAME_HIGHQ_REFRESH_ACCESS_TOKEN,
+    task_names.TASK_NAME_TASK_HEALTH_CHECK
 }
 
 TASKS_DO_NOT_REMOVE_WHEN_READY = set()
@@ -672,7 +690,7 @@ REST_FRAMEWORK = {
     'DEFAULT_PERMISSION_CLASSES': (
         'rest_framework.permissions.IsAuthenticated',
     ),
-    'DEFAULT_SCHEMA_CLASS': 'swagger_view.CustomAutoSchema'
+    'DEFAULT_SCHEMA_CLASS': 'apps.common.schemas.CustomAutoSchema'
 }
 REST_FRAMEWORK_TUS = {
     'SAVE_HANDLER_CLASS': 'apps.tus.storage.TusSaveHandler'
@@ -692,13 +710,19 @@ REST_AUTH_TOKEN_UPDATE_EXPIRATION_DATE = True
 
 # swagger settings
 SWAGGER_SETTINGS = {
-    'USE_SESSION_AUTH': True,
+    'USE_SESSION_AUTH': False,
     'JSON_EDITOR': True,
     'SHOW_REQUEST_HEADERS': True,
     'CUSTOM_HEADERS': {
         'Accept': 'application/json',
         'Content-Type': 'application/json'
-    }
+    },
+    'SECURITY_DEFINITIONS': {
+        'api_key': {
+            'type': 'apiKey',
+            'in': 'header',
+            'name': 'Authorization'}
+    },
 }
 # tika settings (is not used for now)
 # TIKA_VERSION = '1.14'
@@ -707,11 +731,11 @@ TIKA_DISABLE = False
 TIKA_SERVER_ENDPOINT = None
 JAR_BASE_PATH = PROJECT_DIR('jars')
 
-JAI_JARS = ['jai-imageio-core.jar', 'jai-imageio-jpeg2000.jar']
+JAI_JARS = ['jai-imageio-core.jar', 'jai-imageio-jpeg2000.jar', 'levigo-jbig2-imageio-2.0.jar']
 TIKA_JARS = ['tika-app.jar', 'lexpredict-tika.jar'] + JAI_JARS
 
 TEXTRACT_FIRST_FOR_EXTENSIONS = []
-TIKA_TIMEOUT = 5.5*3600
+TIKA_TIMEOUT = 5.5 * 3600
 
 TEXTRACT_NON_OCR_EXTENSIONS = ['txt', 'doc', 'docx', 'rtf',
                                'md', 'odt', 'ott', 'odf']
@@ -874,7 +898,7 @@ NOTEBOOK_ARGUMENTS = [
 # CORS_ALLOW_CREDENTIALS = False
 # CORS_URLS_REGEX = r'^.*$'
 
-VERSION_NUMBER = '1.7.0'
+VERSION_NUMBER = '1.8.0'
 VERSION_COMMIT = '670689597ae28403dd848f924d222a33c4254f46'
 
 NOTIFICATION_EMBEDDED_TEMPLATES_PATH = 'apps/notifications/notification_templates'
@@ -884,9 +908,9 @@ DATA_UPLOAD_MAX_NUMBER_FIELDS = None
 
 # SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTOCOL', 'https')
 
-CALCULATED_FIELDS_EVAL_LOCALS = {'datetime': datetime, 'len': len}
+HIDE_UNTIL_EVAL_LOCALS = {'datetime': datetime, 'len': len}
 
-SCRIPTS_BASE_EVAL_LOCALS = {'datetime': datetime, 'len': len}
+SCRIPTS_BASE_EVAL_LOCALS = {'datetime': datetime, 'len': len, 'time': time}
 
 RETRAINING_DELAY_IN_SEC = 1 * 60 * 60
 
@@ -894,7 +918,7 @@ RETRAINING_TASK_EXECUTION_DELAY_IN_SEC = 1 * 60 * 60
 
 TRAINED_AFTER_DOCUMENTS_NUMBER = 100
 
-TEXT_UNITS_TO_PARSE_PACKAGE_SIZE = 50
+TEXT_UNITS_TO_PARSE_PACKAGE_SIZE = 200
 
 ML_TRAIN_DATA_SET_GROUP_LEN = 10000
 
@@ -915,6 +939,10 @@ DEBUG_STACK_DUMP_ENABLED = True
 DEBUG_STACK_DUMP_SIGNAL = 39
 DEBUG_STACK_DUMP_DIR = PROJECT_DIR('logs')
 DEBUG_TRACE_UPDATE_PARENT_TASK = False
+DEBUG_LOG_TASK_RUN_COUNT = False
+DEBUG_TRACK_LOCATING_PERFORMANCE = False
+DEBUG_SLOW_DOWN_FIELD_FORMULAS_SEC = 0
+DEBUG_SLOW_DOWN_HIDE_UNTIL_FORMULAS_SEC = 0
 
 # what exact action should we take for particular migration
 TEXTUNIT_SIMILARITY_MIGRATION_ACTION = 'update'
@@ -923,11 +951,19 @@ SOCIALACCOUNT_EMAIL_REQUIRED = True
 LOGIN_REDIRECT_URL = 'home'
 OAUTH_CALLBACK_PROTOCOL = 'https'
 
+TEST_RUN_MODE = False
+ENABLE_LOCAL_TESTS = False
+
+HOST_NAME = 'localhost'
+
 try:
     from local_settings import *
 
     INSTALLED_APPS += LOCAL_INSTALLED_APPS
     MIDDLEWARE += LOCAL_MIDDLEWARE
+    if LOCAL_CELERY_BEAT_SCHEDULE:
+        for task_name, schedule in LOCAL_CELERY_BEAT_SCHEDULE.items():
+            CELERY_BEAT_SCHEDULE[task_name] = schedule
 except (ImportError, NameError):
     pass
 
@@ -964,8 +1000,8 @@ LOGIN_EXEMPT_URLS = (
     r'^rest-auth/',  # allow any URL under /rest-auth/*
     r'^api/v',  # allow any URL under /api/v*
     r'^' + BASE_URL + '__debug__/',  # allow debug toolbar
-    r'^' + BASE_URL + 'extract/search/',
-    r'^api/v\d+/logging/log_message/',
+    r'^' + BASE_URL + 'extract/search/',  # TODO: forbid?
+    r'^api/v\d+/logging/log_message/',  # TODO: intersects with r'^api/v'
     r'^' + BASE_URL + 'static/',
 )
 
@@ -984,6 +1020,11 @@ CHANNEL_LAYERS = {
         "BACKEND": "channels_redis.core.RedisChannelLayer",
         "CONFIG": {
             "hosts": [CELERY_CACHE_REDIS_URL],
+            "capacity": 1500,
+            "expiry": 20,
         },
     },
 }
+
+# django-guardian settings, see https://django-guardian.readthedocs.io/en/stable/configuration.html
+GUARDIAN_USER_OBJ_PERMS_MODEL = 'users.CustomUserObjectPermission'

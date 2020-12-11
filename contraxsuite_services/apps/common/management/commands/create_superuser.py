@@ -24,15 +24,16 @@
 """
 # -*- coding: utf-8 -*-
 
+from django.contrib.auth.models import Group
 from django.core.management import BaseCommand
 
 from allauth.account.models import EmailAddress
-from apps.users.models import User
+from apps.users.models import User, Role
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.7.0/LICENSE"
-__version__ = "1.7.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
+__version__ = "1.8.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -68,6 +69,10 @@ class Command(BaseCommand):
                 email=user.email,
                 verified=True,
                 primary=True)
+            # attach to groups: users_user_groups -> auth_group
+            groups = list(Group.objects.filter(name='Technical Admin'))
+            if groups:
+                user.groups.add(groups[0])
 
         print('Superuser "{}" is {}'.format(
             options['username'], 'created' if created else 'updated')

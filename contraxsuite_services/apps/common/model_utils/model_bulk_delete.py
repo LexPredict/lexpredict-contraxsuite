@@ -25,7 +25,7 @@
 # -*- coding: utf-8 -*-
 
 import time
-from typing import List, Dict, Set
+from typing import List, Dict, Set, Optional
 from django.db import connection, OperationalError
 
 from apps.common.error_explorer import retry_for_operational_error
@@ -33,10 +33,20 @@ from apps.common.model_utils.table_deps import TableDeps
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.7.0/LICENSE"
-__version__ = "1.7.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
+__version__ = "1.8.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
+
+
+class WherePredicate:
+    def __init__(self, table: str, column: str, predicate: str):
+        self.table = table
+        self.column = column
+        self.predicate = predicate
+
+    def __str__(self):
+        return f'"{self.table}"."{self.column}" {self.predicate}'
 
 
 class ModelBulkDelete:
@@ -56,7 +66,9 @@ class ModelBulkDelete:
         self.safe_mode = safe_mode
         self.unsafe_tables = unsafe_tables
 
-    def build_get_deleted_count_queries(self) -> List[str]:
+    def build_get_deleted_count_queries(self,
+                                        tables_to_skip: Optional[Set[str]],
+                                        where_suffix: WherePredicate) -> List[str]:
         # dep like
         # "pk:[id], document_documentfieldvalue.text_unit_id -> document_textunit.id, document_textunit.document_id -> document_document.id"
         # will produce
@@ -68,16 +80,31 @@ class ModelBulkDelete:
         queries = []  # type: List[str]
 
         for dep in self.deps:
+            if tables_to_skip and dep.deps[0].own_table in tables_to_skip:
+                queries.append(None)
+                continue
+            # try removing unnecessary join like:
+            # SELECT COUNT(*) FROM "document_textunit"
+            #   INNER JOIN "document_document" ON "document_document"."id" = "document_textunit"."document_id"
+            #   WHERE "document_document"."id" IN (23335,24551
+            # =============================>
+            # SELECT COUNT(*) FROM "document_textunit"
+            # WHERE "document_textunit"."document_id" IN (23335,24551
             query = f'SELECT COUNT(*) FROM "{dep.deps[0].own_table}"'
+            query_sfx = where_suffix
             for d in dep.deps:
+                if d.ref_table == where_suffix.table and d.ref_table_pk == where_suffix.column:
+                    query_sfx = WherePredicate(d.own_table, d.ref_key, where_suffix.predicate)
+                    continue
                 query += f'\n  INNER JOIN "{d.ref_table}" ON "{d.ref_table}"."{d.ref_table_pk}"' +\
                          f' = "{d.own_table}"."{d.ref_key}"'
 
+            query = f'{query}\nWHERE {query_sfx}'
             queries.append(query)
 
         return queries
 
-    def build_delete_all_queries(self) -> List[str]:
+    def build_delete_all_queries(self, where_suffix: WherePredicate) -> List[str]:
         queries = []  # type: List[str]
         '''
         DELETE FROM "document_textunit" t
@@ -90,15 +117,19 @@ class ModelBulkDelete:
         WHERE t.id = del.id;
         '''
         # TODO: wont work for composite primary keys
+        query_sfx = where_suffix
         for dep in self.deps:
             query = f'DELETE FROM "{dep.deps[0].own_table}" target_table\n'
             query += 'USING (\n'
             query += f'  SELECT "{dep.deps[0].own_table}"."{dep.own_table_pk[0]}" FROM\n'
             query += f'  "{dep.deps[0].own_table}"'
             for d in dep.deps:
+                if d.ref_table == where_suffix.table and d.ref_table_pk == where_suffix.column:
+                    query_sfx = WherePredicate(d.own_table, d.ref_key, where_suffix.predicate)
+                    continue
                 query += f'\n    JOIN "{d.ref_table}" ON "{d.ref_table}"."{d.ref_table_pk}"' + \
                          f' = "{d.own_table}"."{d.ref_key}"'
-            query += '\n  {where_suffix}'
+            query += f'\n  WHERE {query_sfx}'
             query += f'\n  ORDER BY "{dep.deps[0].own_table}"."{dep.own_table_pk[0]}"'
             query += '\n  FOR UPDATE\n) table_del\n'
             query += f'WHERE target_table."{dep.own_table_pk[0]}" = table_del."{dep.own_table_pk[0]}";'
@@ -106,12 +137,16 @@ class ModelBulkDelete:
             queries.append(query)
         return queries
 
-    def calculate_total_objects_to_delete(self, where_suffix: str) -> Dict[str, int]:
+    def calculate_total_objects_to_delete(self,
+                                          where_suffix: WherePredicate,
+                                          tables_to_skip: Optional[Set[str]] = None) -> Dict[str, int]:
         count_to_del = {}  # type: Dict[str, int]
-        queries = self.build_get_deleted_count_queries()
+        queries = self.build_get_deleted_count_queries(tables_to_skip, where_suffix)
         with connection.cursor() as cursor:
             for i in range(len(self.deps)):
-                cursor.execute(queries[i] + ' ' + where_suffix)
+                if not queries[i]:
+                    continue
+                cursor.execute(queries[i])
                 row = cursor.fetchone()
                 count = row[0]
                 table_name = self.deps[i].deps[0].own_table
@@ -119,15 +154,15 @@ class ModelBulkDelete:
         return count_to_del
 
     @retry_for_operational_error(retries_count=2, cooldown_interval=2.0)
-    def delete_objects(self, where_suffix: str) -> Dict[str, int]:
+    def delete_objects(self, where_suffix: WherePredicate) -> Dict[str, int]:
         count_deleted = {}  # type: Dict[str, int]
-        queries = self.build_delete_all_queries()
+        queries = self.build_delete_all_queries(where_suffix)
         with connection.cursor() as cursor:
             cursor.db.autocommit = True
             for i in range(len(queries)):
                 for iteration in range(self.tries_per_query + 1):
                     try:
-                        query = queries[i].format(where_suffix=where_suffix)
+                        query = queries[i]
                         table = self.deps[i].deps[0].own_table
                         if not self.safe_mode and table in self.unsafe_tables:
                             query = f'ALTER TABLE "{table}" DISABLE TRIGGER ALL;\n' + query

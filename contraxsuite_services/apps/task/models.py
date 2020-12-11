@@ -24,29 +24,29 @@
 """
 # -*- coding: utf-8 -*-
 
+import datetime
 # Standard imports
 import logging
-import datetime
+from dataclasses import dataclass
 from traceback import format_exc
 from typing import Generator, Dict, Any, List, Set
+from uuid import getnode as get_mac
 
 # Third-party imports
 from celery import states
 from celery.states import PENDING, FAILURE, REVOKED, IGNORED, SUCCESS
-from dataclasses import dataclass
 from dateutil import parser as date_parser
 # Django imports
 from django.conf import settings
 from django.contrib.postgres.fields import JSONField
-from apps.common.model_utils.improved_django_json_encoder import ImprovedDjangoJSONEncoder
 from django.db import models, DatabaseError
 from django.db.models.deletion import CASCADE
 from django.utils.translation import ugettext_lazy as _
 from elasticsearch import Elasticsearch
-from uuid import getnode as get_mac
 
 # Project imports
 from apps.common.fields import StringUUIDField, TruncatingCharField
+from apps.common.model_utils.improved_django_json_encoder import ImprovedDjangoJSONEncoder
 from apps.common.processes import terminate_processes_by_ids
 from apps.common.utils import fast_uuid
 from apps.task.celery_backend.managers import TaskManager
@@ -56,8 +56,8 @@ from contraxsuite_logging import write_task_log
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.7.0/LICENSE"
-__version__ = "1.7.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
+__version__ = "1.8.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -97,6 +97,12 @@ class TaskLogEntry:
     com_docker_swarm_task_id: str = None
 
 
+class TaskStatEntry(models.Model):
+    task_name = models.CharField(max_length=256, primary_key=True, unique=True, null=False, blank=False)
+
+    run_counter = models.IntegerField(default=0, null=False, blank=False)
+
+
 class Task(models.Model):
     """Task object
 
@@ -119,6 +125,11 @@ class Task(models.Model):
     celery_metadata = JSONField(blank=True, null=True)
     metadata = JSONField(blank=True, null=True)
 
+    queue = models.CharField(max_length=256, db_index=True, blank=True, null=True)
+    priority = models.IntegerField(null=True, blank=True)
+
+    restart_count = models.IntegerField(null=False, blank=False, default=0)
+
     # no DB indexes here because task args/kwargs can be quite large and do not fit into Postgres max index size
     args = JSONField(blank=True, null=True, db_index=False, encoder=ImprovedDjangoJSONEncoder)
     kwargs = JSONField(blank=True, null=True, db_index=False, encoder=ImprovedDjangoJSONEncoder)
@@ -128,7 +139,6 @@ class Task(models.Model):
     visible = models.BooleanField(default=True)
     run_count = models.IntegerField(blank=False, null=False, default=0)
     worker = models.CharField(max_length=1024, db_index=True, null=True, blank=True)
-    priority = models.IntegerField(blank=False, null=False, default=0)
 
     own_date_done = models.DateTimeField(blank=True, null=True)
     own_status = models.CharField(
@@ -174,6 +184,8 @@ class Task(models.Model):
     failure_reported = models.BooleanField(null=False, default=False, db_index=True)
 
     spawned_processes = JSONField(blank=True, null=True, encoder=ImprovedDjangoJSONEncoder)
+
+    bad_health_check_num = models.IntegerField(null=False, blank=False, default=0)
 
     objects = TaskManager()
 
@@ -240,12 +252,12 @@ class Task(models.Model):
                                         sw_ers_minute_interval: int = 5,
                                         records_limit: int = 0) -> List[TaskLogEntry]:
         query = {
-                    'bool': {
-                        'must': [
-                            {'term': {'log_main_task_id': {'value': f'{self.pk}'}}},
-                        ]
-                    }
-                }
+            'bool': {
+                'must': [
+                    {'term': {'log_main_task_id': {'value': f'{self.pk}'}}},
+                ]
+            }
+        }
         # docker.container.labels.com_docker_swarm_task_id:"y2pjcbg0pztbmo75z4udjgsuv" AND ERROR
         records = list(self.get_task_log_from_elasticsearch_by_query(query, records_limit))
         # search for extra errors not bound for this very task
@@ -295,7 +307,7 @@ class Task(models.Model):
                                 "lte": last_time + datetime.timedelta(0, error_extra_seconds)
                             }
                         }
-                }]
+                    }]
             }
         }
         error_records = []

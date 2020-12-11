@@ -57,14 +57,13 @@ from apps.rawdb.rawdb.rawdb_field_handlers import RawdbFieldHandler
 from apps.rawdb.signals import DocumentEvent
 from apps.task.tasks import ExtendedTask, call_task
 from apps.task.tasks import CeleryTaskLogger
-from apps.task.utils.task_utils import TaskUtils
 from apps.users.models import User
 import task_names
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.7.0/LICENSE"
-__version__ = "1.7.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
+__version__ = "1.8.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -86,18 +85,23 @@ class SendDigest(ExtendedTask):
     PARAM_CONFIG = 'config'
     PARAM_CONFIG_ID = 'config_id'
     PARAM_USER = 'user'
+    PARAM_USER_ID = 'user_id'
     PARAM_USER_IDS = 'user_ids'
     PARAM_RUN_DATE = 'run_date'
     PARAM_RUN_EVEN_IF_NOT_ENABLED = 'run_even_if_not_enabled'
 
     def process(self, **kwargs):
+        self.log_info(f'SendDigest kwargs are: {kwargs}')
         if self.PARAM_CONFIG in kwargs:
             config_id = kwargs[self.PARAM_CONFIG]['pk']
         else:
             config_id = kwargs[self.PARAM_CONFIG_ID]
 
-        if self.PARAM_USER in kwargs:
-            user_ids = {kwargs[self.PARAM_USER]['pk']}
+        ptr_user = kwargs.get(self.PARAM_USER, None)
+        if ptr_user:
+            user_ids = {ptr_user['pk']}
+        elif kwargs.get(self.PARAM_USER_ID, None):
+            user_ids = {kwargs.get(self.PARAM_USER_ID)}
         else:
             user_ids = kwargs.get(self.PARAM_USER_IDS)
 
@@ -144,7 +148,7 @@ class SendDigest(ExtendedTask):
                 self.log_error('{what} #{what_id} is not applicable for user {user_name} (#{user_id})'
                                .format(what=DocumentDigestConfig.__name__,
                                        what_id=config.pk,
-                                       user_name=user.get_full_name(),
+                                       user_name=user.name,
                                        user_id=user.pk))
                 continue
 
@@ -155,8 +159,9 @@ class SendDigest(ExtendedTask):
             except Exception as e:
                 self.log_error(f'Unable to send {RenderedDigest}.\n'
                                f'Config: #{config.pk}\n'
-                               f'Dst user: {user.get_full_name()} #{user.pk}\n'
+                               f'Dst user: {user.name} #{user.pk}\n'
                                f'Run date: {run_date}', exc_info=e)
+                raise Exception(f'Error while rendering digest') from e
 
 
 def _as_ints(csv: str):
@@ -357,6 +362,7 @@ class EmailNotificationPool:
                  default_retry_delay=10)
     def check_email_pool(_task) -> None:
         log = CeleryTaskLogger(_task)
+        errors = []  # type: List[Tuple[str, Any]]
         for event in EmailNotificationPool.DOC_NOTIFICATION_EVENTS:
             cache_key = f'{CACHE_DOC_NOTIFICATION_PREFIX}{event}'
             try:
@@ -376,8 +382,10 @@ class EmailNotificationPool:
                     try:
                         msg = pickle.loads(raw_msg.data)  # type: DocumentNotification
                         ntfs.append(msg)
-                    except:
-                        log.error('send_notifications_packet() - error unpickling raw_msg.data')
+                    except Exception as e:
+                        er_msg = 'send_notifications_packet() - error unpickling raw_msg.data'
+                        log.error(er_msg)
+                        errors.append((er_msg, e,))
                         pass
 
                 if not ntfs:
@@ -390,13 +398,17 @@ class EmailNotificationPool:
                 EmailNotificationPool.send_notifications_packet(ntfs, event, _task)
             except Exception as e:
                 log.error(f'Error in check_email_pool(), sending package: {e}')
-                continue
+                errors.append(('Error in check_email_pool(), sending package', e,))
 
             try:
                 ObjectStorage.objects.filter(pk__startswith=cache_key).delete()
             except Exception as e:
                 log.error(f'Error in check_email_pool(), deleting pool objects: {e}')
+                errors.append(('Error in check_email_pool(), deleting pool objects', e,))
                 continue
+        if errors:
+            er_msg = '\n'.join([m for m, _ in errors])
+            raise RuntimeError(er_msg) from errors[0][1]
 
     @staticmethod
     def push_notification(msg: DocumentNotification,
@@ -423,7 +435,7 @@ class EmailNotificationPool:
         user_by_id = {u.pk: u for u in users}
 
         handlers_by_doctype = {d: build_field_handlers(d, include_annotation_fields=False)
-                               for d in doc_types}  # type:Dict[str, RawdbFieldHandler]
+                               for d in doc_types}  # type:Dict[str, List[RawdbFieldHandler]]
 
         log = CeleryTaskLogger(task)
 
@@ -452,6 +464,7 @@ class EmailNotificationPool:
                 messages_by_subscr_key[key] = [ntf]
 
         notifications_to_send = []  # type: List[RenderedNotification]
+        errors = []  # type: List[Tuple[str, Any]]
 
         for key in messages_by_subscr_key:
             messages = messages_by_subscr_key[key]
@@ -478,12 +491,15 @@ class EmailNotificationPool:
                                     field_handlers=handlers,
                                     field_values=msg_pack[0].field_values,
                                     changes=msg_pack[0].changes,
-                                    changed_by_user=user))
+                                    changed_by_user=user),
+                                    log_routine=lambda m: log.error(m))
                             if notification:
                                 notifications_to_send.append(notification)
                         except Exception as e:
-                            log.error('Error in send_notifications_packet(1), '
-                                      'sending render_notification()', exc_info=e)
+                            msg = '''Error in send_notifications_packet(1),
+                                     sending render_notification()'''
+                            errors.append((msg, e,))
+                            log.error(msg, exc_info=e)
                     else:
                         not_sources = []  # List[DocumentNotificationSource
                         # render pack of notifications in a single message
@@ -509,12 +525,20 @@ class EmailNotificationPool:
                                 sub, not_sources)
                             notifications_to_send += notifications
                         except Exception as e:
-                            log.error('Error in send_notifications_packet(), '
-                                      'sending render_notification_pack()', exc_info=e)
+                            msg = '''Error in send_notifications_packet(),
+                                     sending render_notification()'''
+                            errors.append((msg, e,))
+                            log.error(msg, exc_info=e)
 
-        log.info(f'notification.send({len(notifications_to_send)})')
+        errors_note = '' if not errors else f', {len(errors)} errors'
+        log.info(f'notification.send({len(notifications_to_send)}){errors_note}')
         for notification in notifications_to_send:
             notification.send(log=log)
+        if errors:
+            msg = '\n'.join([m for m, _ in errors])
+            if len(errors) > 1:
+                msg += f'\n{len(errors)} errors totally.'
+            raise RuntimeError(msg) from errors[0][1]
 
 
 app.register_task(SendDigest())

@@ -24,7 +24,10 @@
 """
 # -*- coding: utf-8 -*-
 
+from typing import Union, Any, List
+
 import numpy
+import pandas as pd
 import scipy.spatial.distance
 import sklearn
 
@@ -34,10 +37,13 @@ from apps.analyze.ml.features import DocumentFeatures, TextUnitFeatures
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.7.0/LICENSE"
-__version__ = "1.7.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
+__version__ = "1.8.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
+
+
+from apps.similarity.similarity_model_reference import SimilarityObjectReference
 
 
 class DocumentSimilarityEngine:
@@ -165,11 +171,20 @@ class DocumentSimilarityEngine:
             for block_j_start in range(0, feature_df.shape[0], self.block_step):
                 df1 = feature_df.iloc[block_i_start:block_i_start + self.block_step, :]
                 df2 = feature_df.iloc[block_j_start:block_j_start + self.block_step, :]
-                counter += self.calc_block_similarity(df1, df2)
+                counter += self.make_and_store_sim_records(df1, df2)
 
         return counter
 
-    def calc_block_similarity(self, df1, df2):
+    def make_and_store_sim_records(self,
+                                   df1: Union[pd.DataFrame, pd.Series],
+                                   df2: Union[pd.DataFrame, pd.Series]) -> int:
+        records = self.calc_block_similarity(df1, df2)
+        self.similarity_model.objects.bulk_create(records)
+        return len(records)
+
+    def calc_block_similarity(self,
+                              df1: Union[pd.DataFrame, pd.Series],
+                              df2: Union[pd.DataFrame, pd.Series]) -> List[Any]:
         df1_index = df1.index.tolist()
         df2_index = df2.index.tolist()
 
@@ -193,9 +208,7 @@ class DocumentSimilarityEngine:
                     sim_obj.similarity_type = self.distance_type
                     sim_obj_list.append(sim_obj)
 
-        # Bulk create
-        self.similarity_model.objects.bulk_create(sim_obj_list)
-        return len(sim_obj_list)
+        return sim_obj_list
 
 
 class TextUnitSimilarityEngine(DocumentSimilarityEngine):
@@ -214,6 +227,13 @@ class TextUnitSimilarityEngine(DocumentSimilarityEngine):
     similarity_model_field_a = 'text_unit_a_id'
     similarity_model_field_b = 'text_unit_b_id'
 
+    def make_and_store_sim_records(self,
+                                   df1: Union[pd.DataFrame, pd.Series],
+                                   df2: Union[pd.DataFrame, pd.Series]) -> int:
+        records = self.calc_block_similarity(df1, df2)
+        SimilarityObjectReference.ensure_unit_similarity_model_refs(records)
+        self.similarity_model.objects.bulk_create(records, self.project_id)
+        return len(records)
 
 # TODO: this is uncompleted feature in 1.3.0-lexnlp-review branch, keep it as is for now
 # def find_similar_doc_text(document_query_set=None, threshold: float = 0.5, distance_type: str = "cosine",

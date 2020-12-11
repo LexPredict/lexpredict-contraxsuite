@@ -46,8 +46,8 @@ from apps.users.models import User
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.7.0/LICENSE"
-__version__ = "1.7.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
+__version__ = "1.8.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -129,7 +129,7 @@ def project_name_change_listener(sender, **kwargs):
 def user_full_name_change_listener(sender, **kwargs):
     user = kwargs.get('instance')
     old_user = kwargs.get('old_instance')
-    if old_user is not None and old_user.get_full_name() != user.get_full_name():
+    if old_user is not None and old_user.name != user.name:
         from apps.task.tasks import call_task_func
         from apps.rawdb.tasks import reindex_assignee_for_all_documents_in_system
         call_task_func(reindex_assignee_for_all_documents_in_system, (user.pk,), None)
@@ -227,7 +227,8 @@ def update_documents_assignee_impl(sender,
     plan_reindex_tasks_in_chunks(doc_ids, changed_by_user.pk if changed_by_user else None,
                                  cache_system_fields=[DocumentSystemField.assignee.value],
                                  cache_generic_fields=False,
-                                 cache_user_fields=False)
+                                 cache_user_fields=False,
+                                 priority=9)
 
 
 @receiver(signals.documents_assignee_changed)

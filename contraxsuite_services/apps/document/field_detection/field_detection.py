@@ -51,14 +51,14 @@ from apps.document.models import Document, DocumentType, DocumentField, Classifi
     FieldAnnotationStatus
 from apps.document.repository.document_field_repository import DocumentFieldRepository
 from apps.document.repository.dto import FieldValueDTO
-from apps.document.signals import fire_document_changed
+from apps.document.signals import fire_document_changed, fire_document_field_detection_failed
 from apps.users.models import User
 from apps.document.field_detection.mlflow_field_detection import MLFlowModelBasedFieldDetectionStrategy
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.7.0/LICENSE"
-__version__ = "1.7.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
+__version__ = "1.8.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -147,7 +147,8 @@ def detect_and_cache_field_values_for_document(log: ProcessLogger,
                                                ignore_field_codes: Set[str] = None,
                                                updated_field_codes: List[str] = None,
                                                skip_modified_values: bool = True,
-                                               field_codes_to_detect: Optional[List[str]] = None):
+                                               field_codes_to_detect: Optional[List[str]] = None,
+                                               task: Any = None):
     """
     Detects field values for a document and stores their DocumentFieldValue objects as well as Document.field_value.
     These two should always be consistent.
@@ -163,6 +164,7 @@ def detect_and_cache_field_values_for_document(log: ProcessLogger,
     :param updated_field_codes - if set, we search for changed and dependent fields only
     :param skip_modified_values - don't overwrite field values overwritten by user
     :param field_codes_to_detect - optional list of fields codes - only these fields are to be detected
+    :param task - optional task argument to fire signals
     :return:
     """
     import apps.document.repository.document_field_repository as dfr
@@ -229,9 +231,8 @@ def detect_and_cache_field_values_for_document(log: ProcessLogger,
         skip_codes = skip_codes.union(all_codes - set(field_codes_to_detect))
 
     if clear_old_values:
-        field_repo.delete_document_field_values(document.pk,
-                                                list(skip_codes),
-                                                updated_field_codes)
+        field_repo.delete_document_field_values(
+            document.pk, list(skip_codes), updated_field_codes)
 
     for field_code in sorted_codes:
         if field_code in skip_codes:
@@ -271,10 +272,13 @@ def detect_and_cache_field_values_for_document(log: ProcessLogger,
             # tree makes no big sense.
         except Exception as e:
             # Additionally logging here because the further compound exception will not contain the full stack trace.
-            log.error(f'Exception caught while detecting value of field {field.code} ({typed_field.type_code})',
+            er_msg = f'Exception caught while detecting value of field {field.code} ({typed_field.type_code})'
+            log.error(er_msg,
                       exc_info=e,
                       extra={Document.LOG_FIELD_DOC_ID, str(document.pk)})
             detection_errors.append((field.code, typed_field.type_code, e, sys.exc_info()))
+            fire_document_field_detection_failed(task, document, field,
+                                                 er_msg + f'\n{e}', document_initial_load)
 
     if save:
         if updated_field_codes:

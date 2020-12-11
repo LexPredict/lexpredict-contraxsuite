@@ -31,15 +31,15 @@ from django.utils.translation import ugettext_lazy as _
 
 from apps.analyze.ml.features import DocumentFeatures
 from apps.common.forms import checkbox_field
-from apps.common.widgets import LTRRadioField
+from apps.common.widgets import LTRRadioField, CustomLabelModelChoiceField
 from apps.document.field_types import LinkedDocumentsField
 from apps.document.models import DocumentField
 from apps.project.models import Project
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.7.0/LICENSE"
-__version__ = "1.7.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
+__version__ = "1.8.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -60,13 +60,14 @@ class SimilarityForm(forms.Form):
         required=True,
         help_text=_("Min. Similarity Value 50-100%")
     )
-    use_idf = checkbox_field("Use TF-IDF to normalize data")
-    delete = checkbox_field("Delete existing Similarity objects.", initial=True)
-    project = forms.ModelChoiceField(
+    project = CustomLabelModelChoiceField(
         queryset=Project.objects.order_by('-pk'),
         widget=forms.widgets.Select(attrs={'class': 'chosen'}),
         required=False,
-        label='Restrict to project')
+        label='Restrict to project',
+        custom_formatter=lambda p: f'#{p.pk} {p.name}, {p.document_set.count()} documents')
+    use_idf = checkbox_field("Use TF-IDF to normalize data")
+    delete = checkbox_field("Delete existing Similarity objects.", initial=True)
 
 
 class SimilarityByFeaturesForm(forms.Form):
@@ -87,11 +88,13 @@ class SimilarityByFeaturesForm(forms.Form):
     )
     use_tfidf = checkbox_field("Use TF-IDF to normalize data")
     delete = checkbox_field("Delete existing Similarity objects.", initial=True)
-    project = forms.ModelChoiceField(
+    project = CustomLabelModelChoiceField(
         queryset=Project.objects.order_by('-pk'),
         widget=forms.widgets.Select(attrs={'class': 'chosen'}),
         required=False,
-        label='Restrict to project')
+        label='Restrict to project',
+        custom_formatter=lambda p: f'#{p.pk} {p.name}, {p.document_set.count()} documents')
+
     feature_source = forms.MultipleChoiceField(
         widget=forms.SelectMultiple(attrs={'class': 'chosen'}),
         choices=[(i, i) for i in DocumentFeatures.source_fields],
@@ -126,11 +129,12 @@ class ChunkSimilarityForm(forms.Form):
     use_idf = checkbox_field("Use TF-IDF to normalize data", initial=True)
     ignore_case = checkbox_field("Ignore case", initial=True)
     delete = checkbox_field("Delete existing Similarity objects.", initial=True)
-    project = forms.ModelChoiceField(
+    project = CustomLabelModelChoiceField(
         queryset=Project.objects.order_by('-pk'),
         widget=forms.widgets.Select(attrs={'class': 'chosen'}),
         required=False,
-        label='Restrict to project')
+        label='Restrict to project',
+        custom_formatter=lambda p: f'#{p.pk} {p.name}, {p.document_set.count()} documents')
     term_type = LTRRadioField(
         choices=(('CHAR_NGRAMS', 'Compare text by char ngrams'),
                  ('WORDS', 'Compare text by words'),

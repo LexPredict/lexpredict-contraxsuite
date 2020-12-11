@@ -26,8 +26,9 @@
 
 # Standard imports
 import json
+import time
 from uuid import UUID
-from typing import Any, Callable, Iterable
+from typing import Any, Callable, Iterable, List
 from time import sleep
 
 # Django imports
@@ -37,6 +38,7 @@ from django.core import serializers
 
 # Project imports
 import task_names
+from apps.common.collection_utils import group_by
 from apps.common.log_utils import ProcessLogger
 from apps.document.field_types import TypedField
 from apps.document.field_type_registry import FIELD_TYPE_REGISTRY
@@ -46,11 +48,12 @@ from apps.document.repository.document_field_repository import DocumentFieldRepo
 from apps.document.scheme_migrations.scheme_migration import CURRENT_VERSION, SchemeMigration
 from apps.task.models import Task
 from apps.task.tasks import ExtendedTask, CeleryTaskLogger
+from apps.users.models import User
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.7.0/LICENSE"
-__version__ = "1.7.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
+__version__ = "1.8.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -78,6 +81,8 @@ class ObjectHeap:
 
 
 class DeserializedObjectController:
+    exept_m2m = None
+
     @classmethod
     def init_static(cls):
         pass
@@ -195,6 +200,8 @@ class DeserializedObjectController:
     def _save_m2m(self, _context: dict) -> None:
         if self._deserialized_object.m2m_data:
             for accessor_name, object_list in self._deserialized_object.m2m_data.items():
+                if self.exept_m2m is not None and accessor_name in self.exept_m2m:
+                    continue
                 getattr(self.object, accessor_name).set(object_list)
         self._deserialized_object.m2m_data = None
 
@@ -494,6 +501,7 @@ class DeserializedDocumentField(DeserializedObjectController):
 
 
 class DeserializedDocumentType(DeserializedObjectController):
+    exept_m2m = ['managers']
 
     def __init__(self,
                  deserialized_object: DeserializedObject,
@@ -607,15 +615,10 @@ class DeserializedDocumentFieldFamily(DeserializedObjectController):
         super()._save_deserialized_object(context)
 
 
-def import_document_type(json_bytes: bytes,
-                         save: bool,
-                         auto_fix_validation_errors: bool,
-                         remove_missed_in_dump_objects: bool,
-                         source_version: int,
-                         task: ExtendedTask) -> DocumentType:
+def get_import_conflicting_tasks_running(own_task_id: str) -> List[str]:
     tasks = Task.objects \
         .get_active_user_tasks() \
-        .exclude(pk=task.task.pk) \
+        .exclude(pk=own_task_id) \
         .exclude(name__in=[task_names.TASK_NAME_REFRESH_MATERIALIZED_VIEW,
                            task_names.TASK_NAME_CLEAN_ALL_TASKS,
                            task_names.TASK_NAME_CHECK_EMAIL_POOL]) \
@@ -623,12 +626,25 @@ def import_document_type(json_bytes: bytes,
         .order_by('name') \
         .values_list('name', flat=True)
 
-    tasks = list(tasks)
-    if tasks:
-        msg = f'The following user tasks are running: {", ".join(tasks)}. ' + \
+    return list(tasks)
+
+
+def import_document_type(json_bytes: bytes,
+                         save: bool,
+                         auto_fix_validation_errors: bool,
+                         remove_missed_in_dump_objects: bool,
+                         source_version: int,
+                         task: ExtendedTask) -> DocumentType:
+    conflicts = []
+    for _ in range(2):
+        conflicts = get_import_conflicting_tasks_running(task.task.pk)
+        if not conflicts:
+            break
+        time.sleep(2)
+    if conflicts:
+        msg = f'The following user tasks are running: {", ".join(conflicts)}. ' + \
               'This import can cause their crashing because of document ' + \
               'type / field structure changes.'
-
         raise RuntimeError(msg)
 
     # check data contains version
@@ -652,6 +668,7 @@ def import_document_type(json_bytes: bytes,
     pk_to_field = {}
     field_detectors = []
     other_objects = []
+    user = User.objects.get(id=task.task.user_id)
     logger = CeleryTaskLogger(task)
     for deserialized_object in objects:
         obj = deserialized_object.object
@@ -662,11 +679,17 @@ def import_document_type(json_bytes: bytes,
                                                      auto_fix_validation_errors=auto_fix_validation_errors,
                                                      remove_missed_in_dump_objects=remove_missed_in_dump_objects,
                                                      logger=logger)
+            document_type.object.created_by = user
+            document_type.object.modified_by = user
+
         elif isinstance(obj, DocumentField):
             field = DeserializedDocumentField(deserialized_object,
                                               auto_fix_validation_errors=auto_fix_validation_errors,
                                               remove_missed_in_dump_objects=remove_missed_in_dump_objects,
                                               logger=logger)
+            field.object.created_by = user
+            field.object.modified_by = user
+
             pk_to_field[field.pk] = field
         elif isinstance(obj, DocumentFieldDetector):
             field_detector = DeserializedDocumentFieldDetector(deserialized_object,
@@ -688,6 +711,8 @@ def import_document_type(json_bytes: bytes,
 
     if document_type is None:
         raise RuntimeError('Unable to find document type')
+
+    reconcile_doc_type(other_objects, document_type)
 
     conflicting_document_type = DocumentType.objects \
         .filter(code=document_type.object.code) \
@@ -733,6 +758,13 @@ def import_document_type(json_bytes: bytes,
         logger.info(f'Import of {document_type.object.code} is finished')
 
     return document_type.object
+
+
+def reconcile_doc_type(other_objects: List[Any], document_type: DocumentType):
+    obj_by_class = group_by(other_objects, lambda o: type(o))
+    categories = obj_by_class.get(DeserializedDocumentFieldCategory, [])
+    for cat in categories:  # type: DeserializedDocumentFieldCategory
+        cat.document_type_id = document_type.pk
 
 
 DESERIALIZED_OBJECT_CLASSES = [

@@ -13,7 +13,7 @@ spec:
     kind: Deployment
     name: contrax-celery
   targetCPUUtilizationPercentage: {{ .Values.celery_target_cpu_usage }}
-status: {}
+# status: {}
 
 ---
 
@@ -30,4 +30,4 @@ spec:
     kind: Deployment
     name: contrax-celery-doc-load
   targetCPUUtilizationPercentage: {{ .Values.celery_doc_load_target_cpu_usage }}
-status: {}
+# status: {}

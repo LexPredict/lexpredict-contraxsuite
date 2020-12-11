@@ -30,8 +30,8 @@ from django.conf import settings
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.7.0/LICENSE"
-__version__ = "1.7.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
+__version__ = "1.8.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -41,7 +41,7 @@ ADMIN_RUNNING_TASKS_VALIDATION_ENABLED = AppVar.set(
     'Prevents critical changes if user tasks running')
 
 TIKA_SERVER_ENDPOINT = AppVar.set(
-    'Document', 'tika_remote_server_endpoint', None,
+    'Document', 'tika_remote_server_endpoint', '',
     'TIKA server endpoint. Example: http://contrax-tika:9998')
 
 TIKA_TIMEOUT = AppVar.set(
@@ -133,4 +133,3 @@ MAX_DOCUMENTS_TO_EXPORT_SIZE_HTTP = AppVar.set(
 TIKA_PROCESS_RAM_MB_LIMIT = AppVar.set(
     'Document', 'tika_process_ram_mb_limit', 0,
     'Max RAM for Tika Java subprocess, MB. 0 means "not set" (default limit).')
-

@@ -12,47 +12,49 @@ CACHE_KEYS = [CACHE_KEY_GEO_CONFIG, CACHE_KEY_COURT_CONFIG]
 
 
 def make_records_typed(_apps, _schema_editor):
-    for cache_key in CACHE_KEYS:
-        typed = []  # type: List[DictionaryEntry]
-        records = DbCache.get(cache_key)
-        for record in records:
-            if record.__class__.__name__ == 'DictionaryEntry':
-                typed.append(record)
-                continue
-            try:
-                aliases = [DictionaryEntryAlias(alias, lang, is_abbr, alias_id, norm_als)
-                           for alias, lang, is_abbr, alias_id, norm_als in record[3]]
-                rec = DictionaryEntry(record[0], record[1], priority=record[2],
-                                      aliases=aliases)
-                typed.append(rec)
-            except Exception as e:
-                print(f'Unable to cast a record in "{cache_key}" to DictionaryEntry: {e}')
-
-        DbCache.put_to_db(cache_key, typed)
-    if DbCache.INSTANCE:
-        DbCache.INSTANCE.stop_watching()
+    pass
+    # for cache_key in CACHE_KEYS:
+    #     typed = []  # type: List[DictionaryEntry]
+    #     records = DbCache.get(cache_key)
+    #     for record in records:
+    #         if record.__class__.__name__ == 'DictionaryEntry':
+    #             typed.append(record)
+    #             continue
+    #         try:
+    #             aliases = [DictionaryEntryAlias(alias, lang, is_abbr, alias_id, norm_als)
+    #                        for alias, lang, is_abbr, alias_id, norm_als in record[3]]
+    #             rec = DictionaryEntry(record[0], record[1], priority=record[2],
+    #                                   aliases=aliases)
+    #             typed.append(rec)
+    #         except Exception as e:
+    #             print(f'Unable to cast a record in "{cache_key}" to DictionaryEntry: {e}')
+    #
+    #     DbCache.put_to_db(cache_key, typed)
+    # if DbCache.INSTANCE:
+    #     DbCache.INSTANCE.stop_watching()
 
 
 def make_records_untyped(_apps, _schema_editor):
-    for cache_key in CACHE_KEYS:
-        untyped = []
-        records = DbCache.get(cache_key)
-        for record in records:
-            if record.__class__.__name__ != 'DictionaryEntry':
-                untyped.append(record)
-                continue
-            try:
-                aliases = [(a.alias, a.language, a.is_abbreviation,
-                            a.alias_id, a.normalized_alias)
-                           for a in record.aliases]
-                rec = (record.id, record.name, record.priority, aliases,)
-                untyped.append(rec)
-            except Exception as e:
-                print(f'Unable to cast a DictionaryEntry in "{cache_key}" to a tuple: {e}')
-
-        DbCache.put_to_db(cache_key, untyped)
-    if DbCache.INSTANCE:
-        DbCache.INSTANCE.stop_watching()
+    pass
+    # for cache_key in CACHE_KEYS:
+    #     untyped = []
+    #     records = DbCache.get(cache_key)
+    #     for record in records:
+    #         if record.__class__.__name__ != 'DictionaryEntry':
+    #             untyped.append(record)
+    #             continue
+    #         try:
+    #             aliases = [(a.alias, a.language, a.is_abbreviation,
+    #                         a.alias_id, a.normalized_alias)
+    #                        for a in record.aliases]
+    #             rec = (record.id, record.name, record.priority, aliases,)
+    #             untyped.append(rec)
+    #         except Exception as e:
+    #             print(f'Unable to cast a DictionaryEntry in "{cache_key}" to a tuple: {e}')
+    #
+    #     DbCache.put_to_db(cache_key, untyped)
+    # if DbCache.INSTANCE:
+    #     DbCache.INSTANCE.stop_watching()
 
 
 class Migration(migrations.Migration):

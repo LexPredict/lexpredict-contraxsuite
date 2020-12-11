@@ -32,8 +32,8 @@ import asttokens
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.7.0/LICENSE"
-__version__ = "1.7.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
+__version__ = "1.8.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -93,8 +93,8 @@ class PythonExpressionChecker:
                     if isinstance(comparator, ast.NameConstant) and comparator.value is None:
                         return
                     node_text = self.stringify_node(node)
-                    self.warnings.append(f'Checking "{node_text}" '
-                                         'is unsafe, use "==" operator instead')
+                    self.errors.append(f'Checking "{node_text}" '
+                                       'is unsafe, use "==" operator instead')
                     self.test_correct_comparing(comparator)
 
     def stringify_node(self, node: Any) -> str:

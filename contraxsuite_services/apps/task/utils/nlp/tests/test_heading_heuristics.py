@@ -24,8 +24,6 @@
 """
 # -*- coding: utf-8 -*-
 
-from tests.django_test_case import *
-
 import json
 from unittest import TestCase
 from apps.task.utils.nlp.heading_heuristics import HeadingHeuristics
@@ -35,8 +33,8 @@ from apps.document.models import TextUnit
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.7.0/LICENSE"
-__version__ = "1.7.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
+__version__ = "1.8.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -77,6 +75,6 @@ class TestHeadingHeuristics(TestCase):
             sentence.location_end = int(row[1])
             sentences.append(sentence)
 
-        LoadDocuments.find_section_titles(sections, [], sentences, full_text)
+        LoadDocuments.find_section_titles(sections, sentences, full_text)
         new_section_titles = [s['title'] for s in sections]
-        self.assertNotEqual(section_titles[1], new_section_titles[1])
+        self.assertNotEqual(section_titles[16], new_section_titles[16])

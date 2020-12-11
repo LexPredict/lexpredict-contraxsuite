@@ -26,7 +26,9 @@
 
 import sys
 import traceback
-from typing import Optional, List, Dict, Any, Iterable
+from typing import Optional, List, Dict, Any
+
+from django.conf import settings
 
 from apps.common.log_utils import ProcessLogger
 from apps.common.script_utils import eval_script, ScriptError
@@ -39,8 +41,8 @@ from apps.document.repository.dto import FieldValueDTO
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.7.0/LICENSE"
-__version__ = "1.7.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
+__version__ = "1.8.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -73,18 +75,27 @@ class FormulaBasedFieldDetectionStrategy(FieldDetectionStrategy):
                                             field: DocumentField,
                                             train_data_project_ids: Optional[List],
                                             use_only_confirmed_field_values: bool = False,
-                                            split_and_log_out_of_sample_test_report: bool = False) -> Optional[ClassifierModel]:
+                                            split_and_log_out_of_sample_test_report: bool = False) \
+            -> Optional[ClassifierModel]:
         return None
 
     @classmethod
     def calc_formula(cls,
                      field_code: str,
                      formula: str,
-                     depends_on_field_to_value: Dict[str, Any]) -> Any:
+                     depends_on_field_to_value: Dict[str, Any],
+                     convert_decimals_to_floats: bool = False) -> Any:
         if not formula or not formula.strip():
             return None
-
+        if convert_decimals_to_floats:
+            depends_on_field_to_value = {c: TypedField.replace_decimals_with_floats_in_python_value_of_any_type(v)
+                                         for c, v in depends_on_field_to_value.items()} \
+                if depends_on_field_to_value else {}
         try:
+            if settings.DEBUG_SLOW_DOWN_FIELD_FORMULAS_SEC:
+                import time
+                time.sleep(settings.DEBUG_SLOW_DOWN_FIELD_FORMULAS_SEC)
+
             return eval_script(script_title=f'{field_code} formula',
                                script_code=formula,
                                eval_locals=depends_on_field_to_value)
@@ -112,6 +123,7 @@ class FormulaBasedFieldDetectionStrategy(FieldDetectionStrategy):
                       f'field {field.code}({field.pk}), document #{doc.pk}')
             detected_with_stop_words, detected_values \
                 = detect_with_stop_words_by_field_and_full_text(field,
+                                                                doc,
                                                                 depends_on_full_text)
             if detected_with_stop_words:
                 return detected_values or list()
@@ -119,7 +131,11 @@ class FormulaBasedFieldDetectionStrategy(FieldDetectionStrategy):
             log.debug('detect_field_value: formula_based_field_detection, ' +
                       f'field {field.code}({field.pk}), document #{doc.pk}')
 
-        v = cls.calc_formula(field_code=field.code, formula=formula, depends_on_field_to_value=field_code_to_value)
+        v = cls.calc_formula(field_code=field.code,
+                             formula=formula,
+                             depends_on_field_to_value=field_code_to_value,
+                             convert_decimals_to_floats=field.convert_decimals_to_floats_in_formula_args
+                             )
         typed_field = TypedField.by(field)
 
         # We don't accept formulas returning values of wrong type to avoid further confusion and

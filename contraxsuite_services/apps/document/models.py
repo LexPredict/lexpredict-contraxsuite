@@ -32,10 +32,11 @@ import re
 import uuid
 from enum import Enum
 from io import StringIO
-from typing import List, Union, Any, Tuple, Optional
+from typing import List, Union, Any, Tuple
 
 import jiphy
 import pandas as pd
+
 # Django imports
 from ckeditor.fields import RichTextField
 from django.conf import settings
@@ -52,6 +53,7 @@ from django.dispatch import receiver
 from django.utils.html import format_html
 from django.utils.timezone import now
 from djangoql.queryset import DjangoQLQuerySet
+from guardian.shortcuts import assign_perm, get_content_type
 from picklefield import PickledObjectField
 from simple_history.models import HistoricalRecords
 
@@ -61,15 +63,16 @@ from apps.common.model_utils.improved_django_json_encoder import ImprovedDjangoJ
 from apps.common.models import get_default_status
 from apps.document import constants
 from apps.document.value_extraction_hints import ValueExtractionHint, ORDINAL_EXTRACTION_HINTS
-from apps.users.models import User
+from apps.users.models import User, CustomUserObjectPermission
+from apps.users.permissions import remove_perm, document_type_manager_permissions
 
 # WARNING: Do not import from field_types.py here to avoid cyclic dependencies and unpredictable behavior.
 # When RawdbFieldHandler of a field is required - use RawdbFieldHandler.of() in the client code.
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.7.0/LICENSE"
-__version__ = "1.7.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
+__version__ = "1.8.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -94,7 +97,7 @@ class TimeStampedModel(models.Model):
 
     @staticmethod
     def save_timestamp(sender, instance, created, func):
-        if hasattr(instance, 'request_user'):
+        if getattr(instance, 'request_user', None):
             models.signals.post_save.disconnect(func, sender=sender)
             if created:
                 instance.created_by = instance.request_user
@@ -345,6 +348,12 @@ range for a bounded search. Field detection begins at the top of the document an
 
     formula = models.TextField(null=True, blank=True)
 
+    convert_decimals_to_floats_in_formula_args = models.BooleanField(null=False, blank=False, default=False,
+                                                                     help_text='''Floating point field values 
+    are represented in Python Decimal type to avoid rounding problems in machine numbers representations. 
+    Use this checkbox for converting them to Python float type before calculating the formula. 
+    Float: 0.1 + 0.2 = 0.30000000000000004. Decimal: 0.1 + 0.2 = 0.3.''')
+
     value_regexp = models.TextField(null=True, blank=True, help_text='''This regular expression is run on the sentence 
     found by a Field Detector and extracts a specific string value from a Text Unit. The first matching group is used if
      the regular expression returns multiple matching groups. This is only applicable to string fields.''')
@@ -365,7 +374,8 @@ range for a bounded search. Field detection begins at the top of the document an
 
     # In case the type of the field requires selecting one of pre-defined values -
     # they should be stored \n-separated in the "choices" property
-    choices = models.TextField(blank=True, null=True)
+    choices = models.TextField(blank=True, null=True,
+                               help_text='''Newline-separated choices. A choice cannot contain a comma.''')
 
     def admin_unit_details(self):  # Button for admin to get to API
         return format_html(u'<a href="#" onclick="return false;" class="button" '
@@ -439,6 +449,10 @@ range for a bounded search. Field detection begins at the top of the document an
             Index(fields=['text_unit_type']),
             Index(fields=['confidence']),
             Index(fields=['python_coded_field'])]
+        permissions = (
+            ('view_documentfield_stats', 'View document field stats'),
+            ('clone_documentfield', 'Clone document field'),
+        )
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -524,6 +538,21 @@ range for a bounded search. Field detection begins at the top of the document an
         return self._compiled_value_regexp
 
 
+@receiver(models.signals.pre_delete, sender=DocumentField)
+def remove_document_field_perms(sender, instance, **kwargs):
+    ctype = get_content_type(DocumentField)
+    CustomUserObjectPermission.objects.filter(content_type=ctype, object_pk=instance.pk).delete()
+
+
+@receiver(models.signals.post_save, sender=DocumentField)
+def save_document_field(sender, instance, created, **kwargs):
+    sender.save_timestamp(sender, instance, created, save_document_field)
+    if created and instance.created_by is not None:
+        # grant_document_field_perms
+        for perm_name in document_type_manager_permissions['document_field']:
+            assign_perm(perm_name, instance.created_by, instance)
+
+
 class DocumentType(TimeStampedModel):
     """
     DocumentType describes custom document type.
@@ -556,9 +585,17 @@ only Latin letters, digits, and underscores.''')
 
     metadata = CustomJSONField(blank=True, null=True, encoder=ImprovedDjangoJSONEncoder)
 
+    managers = models.ManyToManyField(User, related_name='document_type_managers', blank=True)
+
     class Meta:
         unique_together = (('code', 'modified_by', 'modified_date'),)
         ordering = ('code', 'modified_by', 'modified_date')
+        permissions = (
+            ('view_documenttype_stats', 'View document type stats'),
+            ('clone_documenttype', 'Clone document type'),
+            ('import_documenttype', 'Import document type'),
+            ('export_documenttype', 'Export document type'),
+        )
 
     def __str__(self):
         return self.code
@@ -594,6 +631,41 @@ only Latin letters, digits, and underscores.''')
                 .update(long_code=Concat(Value(self.code + ': '), F('code')))
 
 
+@receiver(models.signals.post_save, sender=DocumentType)
+def save_document_type(sender, instance, created, **kwargs):
+    sender.save_timestamp(sender, instance, created, save_document_type)
+
+
+@receiver(models.signals.m2m_changed, sender=DocumentType.managers.through)
+def grant_manager_perms(instance, action, pk_set, **kwargs):
+    if action in ['post_add', 'post_remove']:
+        users = User.objects.filter(pk__in=pk_set)
+        method = assign_perm if action == 'post_add' else remove_perm
+        with transaction.atomic():
+            for perm_name in document_type_manager_permissions['document_type']:
+                method(perm_name, users, instance)
+            for field in instance.fields.only('pk'):
+                for perm_name in document_type_manager_permissions['document_field']:
+                    method(perm_name, users, field)
+
+
+@receiver(models.signals.pre_delete, sender=DocumentType)
+def remove_document_type_perms(sender, instance, **kwargs):
+    ctype = get_content_type(DocumentField)
+    field_ids = list(instance.fields.values_list('pk', flat=True))
+    CustomUserObjectPermission.objects.filter(content_type=ctype, object_pk__in=field_ids).delete()
+    ctype = get_content_type(DocumentType)
+    CustomUserObjectPermission.objects.filter(content_type=ctype, object_pk=instance.pk).delete()
+
+
+class DocumentQuerySet(models.QuerySet):
+
+    def update(self, **kwargs):
+        from apps.document.signals import documents_pre_update
+        documents_pre_update.send(sender=self.model, queryset=self, **kwargs)
+        return super().update(**kwargs)
+
+
 class DocumentManager(models.Manager):
     use_in_migrations = True
 
@@ -604,6 +676,14 @@ class DocumentManager(models.Manager):
 
     def active(self):
         return self.filter(status__is_active=True, delete_pending=False)
+
+
+class DocumentObjectsManager(DocumentManager.from_queryset(DocumentQuerySet)):
+    pass
+
+
+class DocumentAllObjectsManager(models.Manager.from_queryset(DocumentQuerySet)):
+    pass
 
 
 class Document(models.Model):
@@ -664,11 +744,11 @@ class Document(models.Model):
     folder = models.CharField(max_length=1024, db_index=True, blank=True, null=True)
 
     # apply custom objects manager
-    objects = DocumentManager()
+    objects = DocumentObjectsManager()
 
-    ql_objects = DjangoQLQuerySet.as_manager()
+    ql_objects = DocumentAllObjectsManager()
 
-    all_objects = models.Manager()
+    all_objects = models.Manager.from_queryset(DocumentQuerySet)()
 
     document_type = models.ForeignKey(DocumentType, blank=True, null=True, db_index=True, on_delete=CASCADE)
 
@@ -690,11 +770,17 @@ class Document(models.Model):
 
     fields_dirty = models.DateTimeField(db_index=True, null=True)
 
+    ocr_rating = models.FloatField(blank=True, db_index=True, null=True)
+
     class Meta:
         ordering = ('name',)
         # commented out it as it doesn't allow to upload
         # the same documents (having the same source) into two different projects
         # unique_together = ('name', 'source',)
+        permissions = (
+            ('change_document_field_values', 'Change document field values'),
+            ('change_status', 'Change document status'),
+        )
 
     def __str__(self):
         return self.name
@@ -732,7 +818,7 @@ class Document(models.Model):
 
     @property
     def available_assignees(self):
-        return self.project.owners.all().union(self.project.reviewers.all()).distinct()
+        return self.project.available_assignees
 
     def set_language_from_text_units(self):
         langs = self.textunit_set \
@@ -848,7 +934,23 @@ class Document(models.Model):
 def full_delete(sender, instance, **kwargs):
     # automatically removes Document, TextUnits, ThingUsages
     from apps.document.utils import cleanup_document_relations
+    # remove Document perms in cleanup_document_relations as well
     cleanup_document_relations(instance)
+
+
+@receiver(models.signals.pre_save, sender=Document)
+def update_pernissions(sender, instance, **kwargs):
+    # change perms for assignees
+    if instance.pk:
+        db_instance = Document.objects.get(pk=instance.pk)
+        if instance.assignee_id != db_instance.assignee_id:
+            from apps.users.permissions import document_permissions, remove_perm
+            if db_instance.assignee is not None:
+                for perm_name in document_permissions:
+                    remove_perm(perm_name, db_instance.assignee, instance)
+            if instance.assignee is not None:
+                for perm_name in document_permissions:
+                    assign_perm(perm_name, instance.assignee, instance)
 
 
 class DocumentText(models.Model):
@@ -1108,7 +1210,6 @@ class TextUnit(models.Model):
     ql_objects = DjangoQLQuerySet.as_manager()
 
     class Meta:
-        ordering = ('document', 'unit_type')
         indexes = [Index(fields=['text_hash']),
                    Index(fields=['unit_type']),
                    Index(fields=['document', 'unit_type']),
@@ -1441,9 +1542,9 @@ parsed correctly as the start date.''')
         if not typed_field.ordinal \
                 and self.extraction_hint in ORDINAL_EXTRACTION_HINTS:
             raise ValidationError({'field': ['Cannot take min or max of <Field> because its type is not '
-                                   'amount, money, int, float, date, or duration. Please select '
-                                   'TAKE_FIRST, TAKE_SECOND, or TAKE_THIRD, or change the field '
-                                   'type.']})
+                                             'amount, money, int, float, date, or duration. Please select '
+                                             'TAKE_FIRST, TAKE_SECOND, or TAKE_THIRD, or change the field '
+                                             'type.']})
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -1795,7 +1896,7 @@ class FieldAnnotation(models.Model):
 
     @property
     def available_assignees(self):
-        return self.document.project.owners.all().union(self.document.project.reviewers.all()).distinct()
+        return self.document.project.available_assignees
 
     @property
     def is_user_value(self):
@@ -1865,6 +1966,7 @@ class FieldAnnotationFalseMatch(models.Model):
         fa.location_text = ant.location_text
         fa.text_unit = ant.text_unit
         fa.assignee = ant.assignee
+        fa.uid = ant.uid
         return fa
 
 

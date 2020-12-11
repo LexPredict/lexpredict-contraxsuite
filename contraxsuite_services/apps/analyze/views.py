@@ -32,22 +32,22 @@ import datetime
 
 # Django imports
 from django.urls import reverse
-from django.db.models import Count, Q, QuerySet
+from django.db.models import Count, Q
+from django.contrib.auth.mixins import PermissionRequiredMixin
 
 # Project imports
 from apps.analyze.models import *
 from apps.analyze.forms import *
 from apps.analyze.tasks import TrainDoc2VecModel, TrainClassifier, RunClassifier, Cluster, BuildFeatureVectorsTask
 from apps.common.contraxsuite_urls import doc_editor_url, project_documents_url
-from apps.common.querysets import CustomCountQuerySet, stringify_queryset
 from apps.document.views import SubmitTextUnitTagView
 from apps.task.views import BaseAjaxTaskView
 import apps.common.mixins
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.7.0/LICENSE"
-__version__ = "1.7.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
+__version__ = "1.8.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -63,8 +63,8 @@ class TextUnitClassificationListView(apps.common.mixins.JqPaginatedListView):
                    'text_unit__document__name',
                    'text_unit__document__document_type__title', 'text_unit__document__description',
                    'text_unit__pk', 'text_unit__unit_type', 'text_unit__language',
-                   'class_name', 'class_value', 'user__username', 'timestamp']
-    limit_reviewers_qs_by_field = 'text_unit__document'
+                   'class_name', 'class_value', 'user__name', 'timestamp']
+    document_lookup = 'text_unit__document'
     template_name = 'analyze/text_unit_classification_list.html'
 
     def get_json_data(self, **kwargs):
@@ -122,20 +122,20 @@ class DocumentClassificationListView(apps.common.mixins.JqPaginatedListView):
     CBV for list of DocumentClassification records
     """
     model = DocumentClassification
-    json_fields = ['document__pk',
+    json_fields = ['document_id',
                    'document__project__name',
                    'document__name',
                    'document__document_type__title',
-                   'class_name', 'class_value', 'user__username', 'timestamp']
-    # limit_reviewers_qs_by_field = 'document'
+                   'class_name', 'class_value', 'user__name', 'timestamp']
+    document_lookup = 'document'
     template_name = 'analyze/document_classification_list.html'
 
     def get_json_data(self, **kwargs):
         data = super().get_json_data()
         for item in data['data']:
             item['url'] = self.full_reverse('document:document-detail',
-                                            args=[item['document__pk']])
-            item['detail_url'] = self.full_reverse('document:document-detail', args=[item['pk']])
+                                            args=[item['document_id']])
+            item['detail_url'] = item['url']
             item['delete_url'] = self.full_reverse('analyze:document-classification-delete',
                                                    args=[item['pk']])
         return data
@@ -199,16 +199,18 @@ class TextUnitClassifierListView(apps.common.mixins.JqPaginatedListView):
         return data
 
 
-class TextUnitClassifierDeleteView(apps.common.mixins.AdminRequiredMixin, apps.common.mixins.CustomDeleteView):
-    """TextUnitClassifierListView
-
+class TextUnitClassifierDeleteView(apps.common.mixins.CustomDeleteView):
+    """
+    TextUnitClassifierListView
     CBV for deletion of TextUnitClassifier records
     """
-
     model = TextUnitClassifier
 
     # TODO: Mainline granular deletion permissions.
     # TODO: Mainline delete or de-activate for audit trail
+    def has_permission(self):
+        return self.request.user.has_perm('analyze.delete_textunitclassifier')
+
     def get_success_url(self):
         return reverse('analyze:text-unit-classifier-list')
 
@@ -232,13 +234,15 @@ class DocumentClassifierListView(apps.common.mixins.JqPaginatedListView):
         return data
 
 
-class DocumentClassifierDeleteView(apps.common.mixins.AdminRequiredMixin, apps.common.mixins.CustomDeleteView):
-    """DocumentClassifierListView
-
+class DocumentClassifierDeleteView(apps.common.mixins.CustomDeleteView):
+    """
+    DocumentClassifierListView
     CBV for deletion of DocumentClassifier records
     """
-
     model = DocumentClassifier
+
+    def has_permission(self):
+        return self.request.user.has_perm('analyze.delete_documentclassifier')
 
     # TODO: Mainline granular deletion permissions.
     # TODO: Mainline delete or de-activate for audit trail
@@ -259,7 +263,7 @@ class TextUnitClassifierSuggestionListView(apps.common.mixins.JqPaginatedListVie
                    'text_unit__document__document_type', 'text_unit__document__description',
                    'text_unit__pk',
                    'class_name', 'class_value', 'classifier_run', 'classifier_confidence']
-    limit_reviewers_qs_by_field = 'text_unit__document'
+    document_lookup = 'text_unit__document'
     template_name = 'analyze/text_unit_classifier_suggestion_list.html'
 
     def get_json_data(self, **kwargs):
@@ -312,18 +316,19 @@ class DocumentClassifierSuggestionListView(apps.common.mixins.JqPaginatedListVie
     """
     model = DocumentClassifierSuggestion
     ordering = "-classifier_confidence"
-    json_fields = ['document__pk',
+    json_fields = ['document_id',
                    'document__project__name',
                    'document__name',
                    'document__document_type__title',
                    'class_name', 'class_value', 'classifier_run', 'classifier_confidence']
-    limit_reviewers_qs_by_field = 'document'
+    document_lookup = 'document'
     template_name = 'analyze/document_classifier_suggestion_list.html'
 
     def get_json_data(self, **kwargs):
         data = super().get_json_data()
         for item in data['data']:
-            item['detail_url'] = self.full_reverse('document:document-detail', args=[item['document__pk']])
+            item['url'] = self.full_reverse('document:document-detail', args=[item['document_id']])
+            item['detail_url'] = item['url']
             item['delete_url'] = self.full_reverse('analyze:document-classifier-suggestion-delete',
                                                    args=[item['pk']])
         return data
@@ -361,23 +366,33 @@ class DocumentClassifierSuggestionDeleteView(apps.common.mixins.CustomDeleteView
         return self.request.user.can_view_document(document)
 
 
-class DocumentClusterListView(apps.common.mixins.JqPaginatedListView):
+class DocumentClusterListView(PermissionRequiredMixin, apps.common.mixins.JqPaginatedListView):
     """DocumentClusterListView
 
     CBV for list of DocumentCluster records
     """
     model = DocumentCluster
     template_name = "analyze/document_cluster_list.html"
-    limit_reviewers_qs_by_field = 'documents'
+    document_lookup = 'documents'
     extra_json_fields = ['count']
+    permission_required = None
+
+    def has_permission(self):
+        if 'document_pk' in self.request.GET:
+            document = Document.objects.get(pk=self.request.GET['document_pk'])
+            return self.request.user.can_view_document(document)
+        return True
 
     def get_json_data(self, **kwargs):
         data = super().get_json_data(**kwargs)
         for item in data['data']:
             cluster = DocumentCluster.objects.get(pk=item['pk'])
             documents = cluster.documents
-            if self.request.user.is_reviewer:
-                documents = documents.filter(taskqueue__reviewers=self.request.user)
+
+            # permission filter
+            user_document_ids = self.request.user.user_document_ids
+            documents = documents.filter(id__in=user_document_ids)
+
             documents = documents.values('pk', 'name', 'description', 'project__name', 'document_type__title')
             for document in documents:
                 document['url'] = self.full_reverse('document:document-detail', args=[document['pk']]),
@@ -387,9 +402,13 @@ class DocumentClusterListView(apps.common.mixins.JqPaginatedListView):
     def get_queryset(self):
         qs = super().get_queryset()
 
+        # permission filter
+        user_document_ids = self.request.user.user_document_ids
+        qs = qs.filter(documents__pk__in=user_document_ids)
+
         # qs = qs.filter(documents__project_id__in=self.request.user.userprojectssavedfilter.projects.all())
 
-        if "document_pk" in self.request.GET:
+        if 'document_pk' in self.request.GET:
             qs = qs.filter(documents__pk=self.request.GET['document_pk'])
 
         qs = qs.values("pk", "cluster_id", "name", "self_name",
@@ -406,7 +425,7 @@ class DocumentSimilarityListView(apps.common.mixins.JqPaginatedListView):
     """
     model = DocumentSimilarity
     template_name = "analyze/document_similarity_list.html"
-    limit_reviewers_qs_by_field = ['document_a', 'document_b']
+    document_lookup = ['document_a', 'document_b']
     json_fields = ['document_a__name', 'document_a__project__name',
                    'document_a__pk', 'document_a__document_type__title',
                    'document_b__name', 'document_b__project__name',
@@ -454,7 +473,7 @@ class TextUnitSimilarityListView(apps.common.mixins.JqPaginatedListView):
     """
     model = TextUnitSimilarity
     template_name = "analyze/text_unit_similarity_list.html"
-    limit_reviewers_qs_by_field = ['text_unit_a__document', 'text_unit_b__document']
+    document_lookup = ['text_unit_a__document', 'text_unit_b__document']
     json_fields = ['similarity', 'text_unit_a_id', 'text_unit_b_id']
     LIMIT_QUERY = 100000
 
@@ -508,7 +527,7 @@ class PartySimilarityListView(apps.common.mixins.JqPaginatedListView):
     CBV for list of PartySimilarity records
     """
     model = PartySimilarity
-    # limit_reviewers_qs_by_field = ['document_a', 'document_b']
+    # document_lookup = ['document_a', 'document_b']
     json_fields = ['party_a__name', 'party_a__description',
                    'party_a__pk', 'party_a__type_abbr',
                    'party_b__name', 'party_a__description',
@@ -538,7 +557,7 @@ class TextUnitClusterListView(apps.common.mixins.JqPaginatedListView):
     """
     model = TextUnitCluster
     template_name = "analyze/text_unit_cluster_list.html"
-    limit_reviewers_qs_by_field = 'text_units__document'
+    document_lookup = 'text_units__document'
     extra_json_fields = ['count']
 
     def get_queryset(self):
@@ -559,7 +578,7 @@ class TextUnitClusterListView(apps.common.mixins.JqPaginatedListView):
 class TypeaheadTextUnitClassName(apps.common.mixins.TypeaheadView):
     model = TextUnitClassification
     search_field = 'class_name'
-    limit_reviewers_qs_by_field = 'text_unit__document'
+    document_lookup = 'text_unit__document'
 
 
 class TypeaheadTextUnitClassValue(TypeaheadTextUnitClassName):
@@ -572,14 +591,14 @@ class SubmitTextUnitClassificationView(SubmitTextUnitTagView):
         return "Successfully added class name /%s/ with class value /%s/ for %s" % (
             self.request.POST['class_name'],
             self.request.POST['class_value'],
-            str(self.owner))
+            str(self.tag_owner))
 
     # TODO: Allow granular update permissions.
     def process(self, request):
-        if self.owner is None:
+        if self.tag_owner is None:
             return self.failure()
         TextUnitClassification.objects.create(
-            text_unit=self.owner,
+            text_unit=self.tag_owner,
             class_name=request.POST["class_name"],
             class_value=request.POST["class_value"],
             user=request.user,

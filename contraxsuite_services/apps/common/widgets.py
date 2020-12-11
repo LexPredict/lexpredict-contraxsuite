@@ -39,8 +39,8 @@ from django.utils.safestring import SafeText
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.7.0/LICENSE"
-__version__ = "1.7.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
+__version__ = "1.8.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -228,3 +228,15 @@ class EditableTableWidget(Textarea):
 
     def value_from_datadict(self, data, files, name):
         return super().value_from_datadict(data, files, name)
+
+
+class CustomLabelModelChoiceField(forms.ModelChoiceField):
+    def __init__(self, *args, **kwargs):
+        self.custom_formatter = kwargs.get('custom_formatter')
+        if self.custom_formatter:
+            del kwargs['custom_formatter']
+        super().__init__(*args, **kwargs)
+
+    def label_from_instance(self, obj):
+        return self.custom_formatter(obj) if self.custom_formatter \
+            else super().label_from_instance(obj)

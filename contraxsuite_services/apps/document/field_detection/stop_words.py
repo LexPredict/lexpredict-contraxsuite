@@ -28,12 +28,12 @@ import re
 from typing import Dict, Any, Tuple, Optional
 
 from apps.document.field_types import TypedField
-from apps.document.models import DocumentField
+from apps.document.models import DocumentField, Document
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.7.0/LICENSE"
-__version__ = "1.7.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
+__version__ = "1.8.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -96,7 +96,9 @@ def detect_value_with_stop_words(stop_words_compiled: Dict, text: str) -> Tuple[
     return False, None
 
 
-def detect_with_stop_words_by_field_and_full_text(field: DocumentField, full_text: str) -> Tuple[bool, Any]:
+def detect_with_stop_words_by_field_and_full_text(field: DocumentField,
+                                                  doc: Document,
+                                                  full_text: str) -> Tuple[bool, Any]:
     if field.requires_text_annotations:
         return False, None
     stop_words = compile_stop_words(field.stop_words)
@@ -109,5 +111,5 @@ def detect_with_stop_words_by_field_and_full_text(field: DocumentField, full_tex
     if possible_value is None:
         return True, None
     else:
-        possible_value = typed_field.extract_from_possible_value_text(possible_value)
+        possible_value = typed_field.extract_from_possible_value_text(possible_value, doc=doc)
         return True, possible_value

@@ -26,6 +26,7 @@
 
 import re
 from datetime import datetime, date
+from decimal import Decimal
 from enum import Enum
 from typing import List, Optional, Any, Tuple, Dict, Set
 
@@ -39,8 +40,8 @@ from apps.rawdb.rawdb.errors import FilterSyntaxError, FilterValueParsingError
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.7.0/LICENSE"
-__version__ = "1.7.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
+__version__ = "1.8.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -557,7 +558,7 @@ class IntFieldHandler(ComparableRawdbFieldHandler):
     pg_type = PgTypes.INTEGER
 
     def python_value_to_indexed_field_value(self, python_value) -> Any:
-        if isinstance(python_value, (str, int, float)):
+        if isinstance(python_value, (str, int, float, Decimal)):
             try:
                 return int(python_value)
             except (ValueError, TypeError):
@@ -569,12 +570,14 @@ class IntFieldHandler(ComparableRawdbFieldHandler):
 
 
 class FloatFieldHandler(ComparableRawdbFieldHandler):
-    pg_type = PgTypes.DOUBLE
+    pg_type = PgTypes.NUMERIC_50_8
 
     def python_value_to_indexed_field_value(self, python_value) -> Any:
-        if isinstance(python_value, (str, int, float)):
+        if isinstance(python_value, Decimal):
+            return python_value
+        elif isinstance(python_value, (str, int, float)):
             try:
-                return float(python_value)
+                return Decimal(str(python_value))
             except (ValueError, TypeError):
                 pass
         return self.default_value
@@ -962,3 +965,42 @@ class LinkedDocumentsRawdbFieldHandler(RawdbFieldHandler):
 
     def column_names_for_field_values(self) -> Set[str]:
         return {self.document_ids_column}
+
+
+class ProxyColumnDesc(StringColumnDesc):
+
+    def __init__(self, *args, **kwargs) -> None:
+        self.proxy_sql_spec = kwargs.pop('proxy_sql_spec')
+        super().__init__(*args, **kwargs)
+
+    def get_output_column_sql_spec(self) -> str:
+        return f'{self.proxy_sql_spec} as "{self.name}"'
+
+    def get_where_sql_clause(self, field_filter: str) -> Optional[SQLClause]:
+        column = f'({self.proxy_sql_spec})::text' if self.explicit_text_conversion is True \
+            else f'{self.proxy_sql_spec}'
+        if not field_filter:
+            return SQLClause('{column} is Null'.format(column=column), [])
+        elif field_filter == '*':
+            return SQLClause('{column} is not Null'.format(column=column), [])
+        elif field_filter.startswith('!'):
+            return SQLClause('{column} not ilike %s'.format(column=column), ['%' + field_filter[1:] + '%'])
+        else:
+            return SQLClause('{column} ilike %s'.format(column=column), ['%' + field_filter + '%'])
+
+
+class ProxyFieldHandler(StringRawdbFieldHandler):
+    def __init__(self, *args, **kwargs):
+        self.proxy_sql_spec = kwargs.pop('proxy_sql_spec')
+        super().__init__(*args, **kwargs)
+
+    def get_pg_sql_insert_clause(self, *args, **kwargs):
+        pass
+
+    def get_client_column_descriptions(self) -> List[ColumnDesc]:
+        return [ProxyColumnDesc(self.field_code,
+                                self.column,
+                                self.field_title, ValueType.STRING,
+                                limit_output_char_num=self.column_output_char_limit,
+                                explicit_text_conversion=self.explicit_text_conversion,
+                                proxy_sql_spec=self.proxy_sql_spec)]

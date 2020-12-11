@@ -3,7 +3,7 @@
 {%- endmacro -%}
 Contraxsuite by LexPredict
 
-User: {{ to_user.get_full_name() }}
+User: {{ to_user.name }}
 Document type: {{ document_type.title }}
 {% if period_aware -%}
 Period: {{ fmt_date(period_start) }} - {{ fmt_date(period_end) }}

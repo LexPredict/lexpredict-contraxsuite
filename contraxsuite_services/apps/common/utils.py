@@ -31,31 +31,36 @@ import io
 import re
 import sys
 import uuid
+from typing import Union
 
 # Third-party imports
+from typing import Any, Tuple, Iterator
+
 import django_excel as excel
 import pandas as pd
 import pdfkit as pdf
+from jinja2 import Environment, FileSystemLoader
+from weasyprint import HTML
+
 # Django imports
 from django.conf import settings
 from django.conf.urls import url
 from django.contrib.sites.models import Site
 from django.core.handlers.wsgi import WSGIRequest
 from django.db.models import Aggregate, CharField, Value
+from django.db.models.functions import Cast
 from django.http import HttpResponse
 from django.urls import reverse
 from django.utils import numberformat
 from django.utils.text import slugify
-from jinja2 import Environment, FileSystemLoader
-from weasyprint import HTML
 
 # App imports
 from apps.users.models import User, Role
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.7.0/LICENSE"
-__version__ = "1.7.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
+__version__ = "1.8.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -144,7 +149,8 @@ def full_reverse(*args, **kwargs):
     :param request: Request object
     :return:
     """
-    request = kwargs.pop('request', None)
+    # keep for further using, delete "request" kwarg from from callers if needed
+    _ = kwargs.pop('request', None)
     if 'protocol' in kwargs:
         protocol = kwargs.pop('protocol')
     else:
@@ -312,11 +318,18 @@ def fast_uuid():
 
 
 def get_api_module(app_name):
-    module_path_str = 'apps.{app_name}.api.{api_version}'.format(
+    module_path_str = 'apps.{app_name}.api.{api_version}.api'.format(
         app_name=app_name,
         api_version=settings.REST_FRAMEWORK['DEFAULT_VERSION']
     )
-    return importlib.import_module(module_path_str)
+    try:
+        return importlib.import_module(module_path_str)
+    except ImportError:
+        module_path_str = 'apps.{app_name}.api.{api_version}'.format(
+            app_name=app_name,
+            api_version=settings.REST_FRAMEWORK['DEFAULT_VERSION']
+        )
+        return importlib.import_module(module_path_str)
 
 
 def download_xls(data: pd.DataFrame, file_name='output', sheet_name='doc'):
@@ -381,7 +394,6 @@ def get_test_user():
             last_name='User',
             name='Test User',
             email='test@user.com',
-            role=Role.objects.filter(is_manager=True).first(),
             is_active=True))
     if created:
         test_user.set_password('test_user')
@@ -475,7 +487,7 @@ def dictfetchone(cursor):
         return dict(zip(columns, value))
 
 
-def safe_to_int(s: str) -> int:
+def safe_to_int(s: str) -> Union[int, None]:
     if not s:
         return
     try:
@@ -485,21 +497,31 @@ def safe_to_int(s: str) -> int:
 
 
 class GroupConcat(Aggregate):
+    """
+    Concatenate kind of m2m fields for an instance into one string with a separator like:
+    User.objects.annotate(group_names=GroupConcat('groups__name', separator='; '))
+    <QuerySet [{'username': 'test', 'group_names': 'Technical Admin; Super Admin', ...}, ...]>
+    User.objects.annotate(group_ids=GroupConcat('groups__pk'))
+    <QuerySet [{'username': 'test', 'group_ids': '1, 2', ...}, ...]>
+    """
     function = 'GROUP_CONCAT'
     template = '%(function)s(%(expressions)s)'
+    separator = ', '
+    output_field = CharField()
+    allow_distinct = True
 
-    def __init__(self, expression, delimiter, **extra):
-        output_field = extra.pop('output_field', CharField())
-        delimiter = Value(delimiter)
-        super(GroupConcat, self).__init__(
-            expression, delimiter, output_field=output_field, **extra)
+    def __init__(self, expression, **extra):
+        output_field = extra.pop('output_field', self.output_field)
+        separator = Value(extra.pop('separator', self.separator))
+        expression = Cast(expression, output_field=output_field)
+        super().__init__(expression, separator, output_field=output_field, **extra)
 
     def as_postgresql(self, compiler, connection):
         self.function = 'STRING_AGG'
-        return super(GroupConcat, self).as_sql(compiler, connection)
+        return super().as_sql(compiler, connection)
 
 
-def topological_sort(items):
+def topological_sort(items: Iterator[Tuple[Any, Any]]) -> None:
     provided = set()
     while items:
         remaining_items = []

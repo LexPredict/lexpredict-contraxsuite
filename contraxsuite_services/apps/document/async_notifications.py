@@ -27,9 +27,12 @@
 from typing import Dict, Optional
 
 from django.core.exceptions import ObjectDoesNotExist
+from django.db.models import Q
+from django.dispatch import receiver
 
-from apps.document.models import FieldValue, FieldAnnotation
+from apps.document.models import FieldValue, FieldAnnotation, Document, DocumentField
 from apps.document.repository.document_field_repository import DocumentFieldRepository
+from apps.document.signals import document_field_detection_failed
 from apps.project.models import Project
 from apps.task.utils.logger import get_django_logger
 from apps.users.models import User
@@ -39,8 +42,8 @@ from apps.websocket.websockets import Websockets
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.7.0/LICENSE"
-__version__ = "1.7.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
+__version__ = "1.8.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -51,7 +54,7 @@ def _user_to_dto(user: User) -> Optional[Dict]:
     return {
         'id': user.pk,
         'login': user.name,
-        'full_name': user.get_full_name()
+        'full_name': user.name
     }
 
 
@@ -126,6 +129,46 @@ def notify_field_annotation_deleted(instance: FieldAnnotation):
     notify_on_document_changes(instance.document.pk, message)
 
 
+def document_field_detection_failed_impl(sender,
+                                         signal,
+                                         document: Document,
+                                         document_field: DocumentField,
+                                         message: str,
+                                         document_initial_load: bool):
+    if document_initial_load:
+        # WS notifications for failed detection are disabled when
+        # document is being processed for the first time
+        return
+    project_id = document.project_id
+    data = {
+        'document': {
+            'id': document.pk,
+            'name': document.name,
+            'project_id': project_id,
+            'project_name': document.project.name,
+        },
+        'field': {
+            'id': document_field.uid,
+            'code': document_field.code,
+            'title': document_field.title
+        },
+        'message': message
+    }
+    chan_msg = ChannelMessage(message_types.CHANNEL_MSG_TYPE_DETECTION_FAILED, data)
+
+    users = User.get_users_for_object(
+        object_pk=project_id,
+        object_model=Project,
+        perm_name='add_project_document')
+
+    Websockets().send_to_users(qs_users=users, message_obj=chan_msg)
+
+
+@receiver(document_field_detection_failed)
+def document_field_detection_failed_listener(sender, **kwargs):
+    document_field_detection_failed_impl(sender, **kwargs)
+
+
 def notify_on_document_changes(doc_id: int, message: ChannelMessage):
     """
     Send the websocket message to the users allowed to read the specified document.
@@ -133,8 +176,16 @@ def notify_on_document_changes(doc_id: int, message: ChannelMessage):
     :param message: Message to send.
     :return:
     """
-    admins_and_managers = User.objects \
-        .qs_admins_and_managers().order_by().values_list('pk')
-    reviewers_owners = Project.objects \
-        .qs_owners_reviewers_super_reviewers_by_doc_id(doc_id)
-    Websockets().send_to_users(qs_users=admins_and_managers.union(reviewers_owners), message_obj=message)
+    project_id = Document.objects.get(pk=doc_id).project_id
+    users_with_project_perm = User.get_users_for_object(
+        object_pk=project_id,
+        object_model=Project,
+        perm_name='change_document_field_values')
+    users_with_document_perm = User.get_users_for_object(
+        object_pk=doc_id,
+        object_model=Document,
+        perm_name='change_document_field_values')
+
+    Websockets().send_to_users(
+        qs_users=users_with_project_perm.union(users_with_document_perm).distinct(),
+        message_obj=message)

@@ -31,8 +31,8 @@ from django.template.exceptions import TemplateDoesNotExist
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.7.0/LICENSE"
-__version__ = "1.7.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
+__version__ = "1.8.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -59,7 +59,11 @@ def common(request):
         except TemplateDoesNotExist:
             pass
 
+    # TODO: define separate permission for this purpose?
+    has_admin_permissions = request.user.has_perm('task.add_task')
+
     return {'settings': settings,
             'custom_main_menu_item_templates': custom_main_menu_item_templates,
             'custom_task_menu_item_templates': custom_task_menu_item_templates,
-            'available_locators': available_locators}
+            'available_locators': available_locators,
+            'has_admin_permissions': has_admin_permissions}

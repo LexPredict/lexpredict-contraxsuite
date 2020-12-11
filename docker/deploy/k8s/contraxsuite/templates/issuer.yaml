@@ -1,7 +1,6 @@
-{{ if .Values.customcertificate }}
 #contrax-ingress
 
-apiVersion: certmanager.k8s.io/v1alpha1
+apiVersion: cert-manager.io/v1
 kind: Issuer
 metadata:
   name: {{ .Values.domain_name }}-issuer
@@ -19,5 +18,4 @@ spec:
       {{ else }}
       name: letsencrypt-staging
       {{ end }}
-    http01: {}
-{{ end }}
+    # http01: {}

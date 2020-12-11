@@ -29,15 +29,17 @@ import logging
 from typing import List, Dict
 
 from celery.states import FAILURE, PENDING
+from django.db import transaction
 
 from apps.common.contraxsuite_urls import kibana_root_url
+from apps.common.sql_commons import ModelLock
 from apps.task.celery_backend.utils import now
 from apps.task.models import TaskConfig, Task
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.7.0/LICENSE"
-__version__ = "1.7.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
+__version__ = "1.8.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -98,21 +100,32 @@ class TaskMonitor:
         from apps.project.notifications import notify_failed_load_document
         from apps.task.tasks import LoadDocuments
         from apps.project.tasks import LoadArchive
+        # args for notify_failed_load_document() call
+        notification_messages = []
+
+        # we can also lock the table like
+        # with ModelLock(None, Task, ModelLock.LOCK_MODE_ACCESS_EXCLUSIVE):
+        # but this would be an overkill
         recent_failed_load_document_tasks = Task.objects \
             .filter(name__in=[LoadDocuments.name, LoadArchive.name], status=FAILURE) \
             .exclude(metadata__failed_load_document_sent__isnull=False)
         for task in recent_failed_load_document_tasks:
             if not task.metadata:
                 continue
-            # send ws notification (include task data for debugging)
+            # compose ws notification messages (include task data for debugging)
             file_name = task.metadata.get('file_name')
-            session_id = task.metadata.get('session_id')
+            session_id = task.upload_session.pk if task.upload_session else task.metadata.get('session_id')
             if file_name and session_id:
-                notify_failed_load_document(file_name=file_name,
-                                            session_id=session_id,
-                                            directory_path=task.kwargs.get('directory_path') if task.kwargs else None)
+                notification_messages.append({
+                    'file_name': file_name,
+                    'session_id': session_id,
+                    'directory_path': task.kwargs.get('directory_path') if task.kwargs else None
+                })
                 task.metadata['failed_load_document_sent'] = True
-                task.save()
+                task.save(update_fields={'metadata'})
+        # send ws notification
+        for msg in notification_messages:
+            notify_failed_load_document(**msg)
 
         from apps.task.app_vars import ENABLE_ALERTS
         if not ENABLE_ALERTS.val:

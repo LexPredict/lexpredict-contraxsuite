@@ -37,15 +37,21 @@
       <input type="hidden" name="post" value="yes"/>
 
       <div class="alert alert-block alert-error">
-        <h4 class="alert-heading">{% trans 'Confirm deletion' %}</h4>
+        <h4 class="alert-heading">{% trans 'Delete' %} {% trans opts.verbose_name %}?</h4>
 
         <p>
-          {% blocktrans %}Are you sure you want to delete the selected {{ objects_name }}? All of the following objects and their related items will be deleted:{% endblocktrans %}</p>
-          <p>Project(s): {{ model_count.projects }} {% if model_count.projects_delete_pending %}({{ model_count.projects_delete_pending }} project(s) are pending delete){% endif %}</p>
-          <p>Document(s): {{ model_count.documents }} {% if model_count.documents_delete_pending %}({{ model_count.documents_delete_pending }} document(s) are pending delete){% endif %}</p>
-          <p>Field(s): {{ model_count.document_fields }}</p>
-          <p>Field Detectors(s): {{ model_count.document_field_detectors }}</p>
+          <p><b>{% blocktrans with escaped_object=object %}To delete this Document Type, you must first delete all projects associated with this Document Type.
+          The following Projects and Documents are associated with this Document Type:{% endblocktrans %}</b></p>
+          {% if model_count.projects_delete_pending or model_count.projects %}
+              <p>Project(s): {{ model_count.projects }} {% if model_count.projects_delete_pending %}({{ model_count.projects_delete_pending }} project(s) are pending delete){% endif %}</p>
+          {% endif %}
+          {% if model_count.documents or model_count.documents_delete_pending %}
+            <p>Document(s): {{ model_count.documents }} {% if model_count.documents_delete_pending %}({{ model_count.documents_delete_pending }} document(s) are pending delete){% endif %}</p>
+          {% endif %}
         <br>
+        <p>
+          Once these projects have been fully deleted by an Administrator, then you may delete the Document Type.
+        </p>
 
         <div>
           <input type="submit" value="{% trans "Yes, I'm sure" %}" class="btn btn-danger"/>

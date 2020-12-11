@@ -46,7 +46,6 @@ from django.views.static import serve
 from django.urls import re_path
 
 # Project imports
-from apps.common.app_vars import init_app_vars
 from apps.common.debug_utils import listen
 from apps.common.decorators import init_decorators
 from apps.common.file_storage import get_filebrowser_site
@@ -58,8 +57,8 @@ from swagger_view import get_swagger_view, get_openapi_view
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.7.0/LICENSE"
-__version__ = "1.7.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
+__version__ = "1.8.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -104,7 +103,11 @@ urlpatterns = [
     # Custom
     url(r'^{0}admin/filebrowser/'.format(settings.BASE_URL), get_filebrowser_site().urls),
     url(r'^{0}api-auth/'.format(settings.BASE_URL), include('rest_framework.urls')),
-    url(r'^rest-auth/', include('rest_auth.urls')),
+
+    # url(r'^rest-auth/', include('rest_auth.urls')),
+    # use patched urls definitions including view schemas
+    url(r'^rest-auth/', include('apps.users.rest_auth_urls')),
+
     url(r'^rest-auth/registration/', include('rest_auth.registration.urls')),
     url(r"^accounts/confirm-email/(?P<key>[-:\w]+)/$", allauth_confirm_email_view, name="allauth_account_confirm_email")
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT) + \
@@ -128,11 +131,16 @@ for app_name in custom_apps:
 
     # add api urlpatterns
     for api_version in settings.REST_FRAMEWORK['ALLOWED_VERSIONS']:
-        api_module_str = 'apps.{}.api.{}'.format(app_name, api_version)
         try:
+            api_module_str = 'apps.{}.api.{}.api'.format(app_name, api_version)
             api_module = importlib.import_module(api_module_str)
         except ImportError:
-            continue
+            try:
+                api_module_str = 'apps.{}.api.{}'.format(app_name, api_version)
+                api_module = importlib.import_module(api_module_str)
+            except ImportError:
+                continue
+
         if hasattr(api_module, 'router'):
             api_urlpatterns[api_version] += [
                 url(r'{version}/{app_name}/'.format(
@@ -207,8 +215,7 @@ if settings.DEBUG:
         ]
 
 
-if not migrating():
+if not migrating() and not settings.TEST_RUN_MODE:
     init_decorators()
-    init_app_vars()
     init_field_type_registry()
     init_field_registry()

@@ -32,14 +32,15 @@ from django import forms
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as AuthUserAdmin
 from django.contrib.auth.forms import UserChangeForm, UserCreationForm
+from django.contrib.auth.models import Permission
 
 # Project imports
-from apps.users.models import User, Role, SocialAppUri
+from apps.users.models import User, Role, SocialAppUri, CustomUserObjectPermission
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.7.0/LICENSE"
-__version__ = "1.7.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
+__version__ = "1.8.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -47,6 +48,10 @@ __email__ = "support@contraxsuite.com"
 class MyUserChangeForm(UserChangeForm):
     class Meta(UserChangeForm.Meta):
         model = User
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['password'].widget = forms.HiddenInput()
 
 
 class MyUserCreationForm(UserCreationForm):
@@ -66,14 +71,18 @@ class MyUserCreationForm(UserCreationForm):
         raise forms.ValidationError(self.error_messages['duplicate_username'])
 
 
-# @admin.register(User)
 class MyUserAdmin(AuthUserAdmin):
     form = MyUserChangeForm
     add_form = MyUserCreationForm
     fieldsets = (('User Profile',
                   {'fields': ('name', 'role', 'organization', 'timezone', 'photo')}),) + AuthUserAdmin.fieldsets
-    list_display = ('username', 'name', 'role', 'is_superuser', 'organization', 'timezone')
+    list_display = ('username', 'name', 'role', 'group_names', 'is_superuser', 'organization', 'timezone')
+    sensitive_fields = ('password',)
     search_fields = ['username', 'name', 'role__name', 'role__code', 'organization']
+
+    @staticmethod
+    def group_names(obj):
+        return ', '.join(obj.groups.values_list('name', flat=True))
 
 
 class RoleAdmin(admin.ModelAdmin):
@@ -105,6 +114,21 @@ class SocialAppUriAdmin(admin.ModelAdmin):
         return SocialAppUriAdminForm
 
 
+class PermissionAdmin(admin.ModelAdmin):
+    list_display = ['codename', 'name', 'content_type']
+    search_fields = ['codename', 'name', 'content_type__model']
+
+
+class UserObjectPermissionAdmin(admin.ModelAdmin):
+    list_display = ['user', 'permission', 'content_object', 'content_type', 'object_pk']
+    list_filter = ['user', 'permission', 'content_type']
+    search_fields = ['user__username', 'permission__name', 'permission__codename',
+                     'content_type__model', 'object_pk']
+
+
 admin.site.register(User, MyUserAdmin)
 admin.site.register(Role, RoleAdmin)
 admin.site.register(SocialAppUri, SocialAppUriAdmin)
+
+admin.site.register(Permission, PermissionAdmin)
+admin.site.register(CustomUserObjectPermission, UserObjectPermissionAdmin)

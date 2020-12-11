@@ -41,8 +41,8 @@ from apps.task.utils.text_extraction.tika.tika_xhtml_parser import TikaXhtmlPars
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.7.0/LICENSE"
-__version__ = "1.7.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
+__version__ = "1.8.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -61,11 +61,16 @@ class TikaParsingWrapper:
     # the same flag as environment variable
     TIKA_ENV_VAR_FLAG_MODE = 'LEXNLP_TIKA_PARSER_MODE'
 
+    TIKA_PARSER_DETAIL = 'LEXNLP_TIKA_XML_DETAIL'
+
     # flag's value - parse only PDF
     TIKA_MODE_OCR = 'pdf_ocr'
 
     # flag's value - parse both PDF and scanned images
     TIKA_MODE_PDF_ONLY = 'pdf_only'
+
+    # prefer text extracting if document's content is mixed
+    TIKA_MODE_PREFER_TEXT = 'pdf_prefer_text'
 
     def __init__(self):
         self.xhtml_parser = TikaXhtmlParser(pars_settings=XhtmlParsingSettings(
@@ -126,8 +131,10 @@ class TikaParsingWrapper:
         :param enable_ocr: allow (True) converting images to text
         :return: MarkedUpText: text + metadata
         """
-        mode_flag = self.TIKA_MODE_OCR if enable_ocr else self.TIKA_MODE_PDF_ONLY
+        mode_flag = self.TIKA_MODE_OCR if enable_ocr else self.TIKA_MODE_PREFER_TEXT
+        # don't use at all TIKA_MODE_PDF_ONLY
         os.environ[self.TIKA_ENV_VAR_FLAG_MODE] = mode_flag
+        os.environ[self.TIKA_PARSER_DETAIL] = ''
 
         tika_default_command_list = self.tika_lexnlp_default_command_list
         if enable_ocr is False and self.tika_noocr_default_command_list is not None:
@@ -171,8 +178,9 @@ class TikaParsingWrapper:
         :param enable_ocr: allow (True) converting images to text
         :return: MarkedUpText: text + metadata
         """
-        mode_flag = self.TIKA_MODE_OCR if enable_ocr else self.TIKA_MODE_PDF_ONLY
+        mode_flag = self.TIKA_MODE_OCR if enable_ocr else self.TIKA_MODE_PREFER_TEXT
         os.environ[self.TIKA_ENV_VAR_FLAG_MODE] = mode_flag
+        os.environ[self.TIKA_PARSER_DETAIL] = ''
 
         def err(line):
             logger.info(f'TIKA parsing {original_file_name}:\n{line}')

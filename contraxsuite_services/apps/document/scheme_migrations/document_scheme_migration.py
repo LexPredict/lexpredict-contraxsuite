@@ -37,6 +37,22 @@ from typing import Dict, List, Any
 from apps.document.scheme_migrations.base_scheme_migration import BaseSchemeMigration
 
 
+class FieldUnitCountMigration(BaseSchemeMigration):
+    def __init__(self):
+        super().__init__(65, migration_project='document', migration_number=196)
+
+        def add_field(row: Dict[str, Any]) -> Dict[str, Any]:
+            row['fields']['detect_limit_unit'] = 'NONE'
+            return row
+
+        def remove_field(row: Dict[str, Any]) -> Dict[str, Any]:
+            del row['fields']['detect_limit_unit']
+            return row
+
+        self.forward_conversions['document.documentfield'] = add_field
+        self.backward_conversions['document.documentfield'] = remove_field
+
+
 class FieldCategoryDocTypeMigration(BaseSchemeMigration):
     def __init__(self):
         super().__init__(75, migration_project='document', migration_number=202)
@@ -63,27 +79,12 @@ class FieldCategoryDocTypeMigration(BaseSchemeMigration):
         return rows_by_model
 
 
-class FieldUnitCountMigration(BaseSchemeMigration):
-    def __init__(self):
-        super().__init__(65, migration_project='document', migration_number=196)
-
-        def add_field(row: Dict[str, Any]) -> Dict[str, Any]:
-            row['fields']['detect_limit_unit'] = 'NONE'
-            return row
-
-        def remove_field(row: Dict[str, Any]) -> Dict[str, Any]:
-            del row['fields']['detect_limit_unit']
-            return row
-
-        self.forward_conversions['document.documentfield'] = add_field
-        self.backward_conversions['document.documentfield'] = remove_field
-
-
 class EmptyTaggedMigration(BaseSchemeMigration):
     """
     This migration just indicates the fact the resulting JSON
     file now (since #76) contains migration number in itself
     """
+
     def __init__(self):
         super().__init__(76, migration_project='', migration_number=0)
 
@@ -92,3 +93,29 @@ class EmptyTaggedMigration(BaseSchemeMigration):
 
     def downgrade_doctype_json(self, rows_by_model: Dict[str, List[Dict[str, Any]]]):
         return rows_by_model
+
+
+class AddConvertDecimalsToFloatsToDocumentField(BaseSchemeMigration):
+    """
+    Adds convert_decimals_to_floats_in_formula_args to DocumentField model.
+    Input: doc type json of version 76 (1.7.0 with versioning support).
+    Output: doc type json of version 77 (1.8.0) - with convert_decimals_to_floats_in_formula_args column.
+    """
+
+    def __init__(self):
+        super().__init__(77, migration_project='document', migration_number=0)
+
+        def add_field(row: Dict[str, Any]) -> Dict[str, Any]:
+            # We set the fields to use floats in the existing formulas coming from old deployments.
+            # The same - there is a model migration which sets this to True for the existing formulas
+            # when this property first appears.
+            # This is to keep the old formulas working. They expect floats and we now use Decimals.
+            row['fields']['convert_decimals_to_floats_in_formula_args'] = True
+            return row
+
+        def remove_field(row: Dict[str, Any]) -> Dict[str, Any]:
+            del row['fields']['convert_decimals_to_floats_in_formula_args']
+            return row
+
+        self.forward_conversions['document.documentfield'] = add_field
+        self.backward_conversions['document.documentfield'] = remove_field

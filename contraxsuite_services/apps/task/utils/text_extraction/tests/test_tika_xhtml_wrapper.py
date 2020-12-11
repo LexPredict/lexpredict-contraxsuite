@@ -24,7 +24,6 @@
 """
 # -*- coding: utf-8 -*-
 
-from tests.django_test_case import *
 from unittest import TestCase
 
 from tests.testutils import load_resource_document
@@ -32,8 +31,8 @@ from apps.task.utils.text_extraction.tika.tika_xhtml_parser import TikaXhtmlPars
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.7.0/LICENSE"
-__version__ = "1.7.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
+__version__ = "1.8.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -43,6 +42,7 @@ class TestTikaXhtmlWrapper(TestCase):
         text = load_resource_document('parsing/xhtml_pdf.xhtml', encoding='utf-8')
         parser = TikaXhtmlParser()
         rst = parser.parse_text(text)
+        rst.convert_markers_to_labels()
         self.assertGreater(len(rst.text), 100)
         self.assertGreater(len(rst.labels['pages']), 1)
         self.assertGreater(len(rst.labels['paragraphs']), 5)
@@ -72,14 +72,15 @@ class TestTikaXhtmlWrapper(TestCase):
         """
         parser = TikaXhtmlParser()
         rst = parser.parse_text(raw)
+        rst.convert_markers_to_labels()
         self.assertGreater(len(rst.text), 100)
         self.assertGreater(len(rst.labels['paragraphs']), 1)
 
         self.assertGreater(len(rst.labels['heading_1']), 1)
         self.assertGreater(len(rst.labels['heading_2']), 1)
         headings = [rst.text[h_s: h_e] for h_s, h_e in rst.labels['heading_1']]
-        self.assertEqual('1. Heading One', headings[0])
-        self.assertEqual('2. {_GoBack} Heading 2', headings[1])
+        self.assertEqual('1. Heading One', headings[0].strip(' \n'))
+        self.assertEqual('2. {_GoBack} Heading 2', headings[1].strip(' \n'))
 
         self.assertGreater(len(rst.labels['a']), 0)
 
@@ -131,8 +132,11 @@ class TestTikaXhtmlWrapper(TestCase):
         <p/>
         </body></html>
         """
+
         parser = TikaXhtmlParser()
-        rst = parser.parse_text(raw, detect_tables=True)
+        rst = parser.parse_text(raw)
+        rst.convert_markers_to_labels()
+
         self.assertGreater(len(rst.text), 100)
         self.assertGreater(len(rst.labels['paragraphs']), 1)
 
@@ -142,12 +146,46 @@ class TestTikaXhtmlWrapper(TestCase):
         for i_row, row in table_df.iterrows():
             for i_cell in range(len(row)):
                 target_str = f'Row {i_row + 1}, column {i_cell + 1}'
-                self.assertEqual(target_str, row[i_cell])
+                self.assertEqual(target_str, row[i_cell].strip())
 
         table_df = rst.tables[1].serialize_in_dataframe(rst.text)
         cell_text = table_df.loc[1, 2]
         self.assertEqual('{_GoBack} r2c3: The first line of Lorem Ipsum, "Lorem ' +
-                         'ipsum dolor sit amet..", comes from a line in section 1.10.32.\n\n', cell_text)
+                         'ipsum dolor sit amet..", comes from a line in section 1.10.32.',
+                         cell_text.strip())
+
+    def test_parse_recursive_tables(self):
+        raw = """
+        <table>
+           <tr><td><p>Cell 1.1</p></td><td><p>Cell 1.2</p></td></tr>
+           <tr>
+              <td><p>Cell 2.1</p></td>
+              <td>
+               <p>
+                  <table>
+                     <tr><th><p>InCell 1.1</p></th><th><p>InCell 1.2</p></th></tr>
+                     <tr><td><p>InCell 2.1</p></td><td><p></p></td></tr>
+                  </table>
+                </p>     
+              </td>
+           </tr>
+           <tr><td><p>Cell 3.1</p></td><td><p>Cell 3.2</p></td></tr>
+        </table>
+        """
+        parser = TikaXhtmlParser()
+        rst = parser.parse_text(raw)
+        rst.convert_markers_to_labels()
+        self.assertEqual(2, len(rst.tables))
+
+        rst.tables.sort(key=lambda t: t.start)
+        table_df = rst.tables[1].serialize_in_dataframe(rst.text)
+        self.assertEqual('InCell 1.1', table_df.loc[0, 0].strip())
+        self.assertEqual('InCell 2.1', table_df.loc[1, 0].strip())
+        self.assertTrue(not table_df.loc[1, 1].strip())
+
+        table_df = rst.tables[0].serialize_in_dataframe(rst.text)
+        self.assertEqual('Cell 1.1', table_df.loc[0, 0].strip())
+        self.assertEqual('Cell 3.2', table_df.loc[2, 1].strip())
 
     def test_list_parsing(self):
         raw = """
@@ -193,6 +231,7 @@ class TestTikaXhtmlWrapper(TestCase):
         </body></html>
         """
         parser = TikaXhtmlParser()
-        rst = parser.parse_text(raw, detect_tables=True)
+        rst = parser.parse_text(raw)
+        rst.convert_markers_to_labels()
         self.assertGreater(len(rst.text), 100)
         self.assertGreater(len(rst.labels['paragraphs']), 1)

@@ -35,12 +35,21 @@
         <div class="alert alert-block alert-error">
           <h4 class="alert-heading">{% trans 'Delete' %} {% trans opts.verbose_name %}?</h4>
           <p>
-            {% blocktrans with escaped_object=object %}Are you sure you want to delete the {{ object_name }} "{{ escaped_object }}"? All of the following related items will be deleted:{% endblocktrans %}</p>
-          <p>Project(s): {{ model_count.projects }} {% if model_count.projects_delete_pending %}({{ model_count.projects_delete_pending }} project(s) are pending delete){% endif %}</p>
-          <p>Document(s): {{ model_count.documents }} {% if model_count.documents_delete_pending %}({{ model_count.documents_delete_pending }} document(s) are pending delete){% endif %}</p>
+             <b>{% blocktrans with escaped_object=object %}Deleting this Document Type will delete all objects related
+               to this Document Type. You will be deleting:{% endblocktrans %}</b></p>
+          {% if model_count.projects_delete_pending or model_count.projects %}
+              <p>Project(s): {{ model_count.projects }} {% if model_count.projects_delete_pending %}({{ model_count.projects_delete_pending }} project(s) are pending delete){% endif %}</p>
+          {% endif %}
+          {% if model_count.documents or model_count.documents_delete_pending %}
+            <p>Document(s): {{ model_count.documents }} {% if model_count.documents_delete_pending %}({{ model_count.documents_delete_pending }} document(s) are pending delete){% endif %}</p>
+          {% endif %}
           <p>Field(s): {{ model_count.document_fields }}</p>
           <p>Field Detectors(s): {{ model_count.document_field_detectors }}</p>
           <br>
+          <p>
+            Note that deleting a Document Type may take a lot of time, depending on how many Fields
+            and Field Detectors are associated with it.
+          </p>
 
           <div>
             {% if is_popup %}<input type="hidden" name="{{ is_popup_var }}" value="1" />{% endif %}

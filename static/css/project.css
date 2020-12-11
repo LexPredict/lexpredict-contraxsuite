@@ -1139,40 +1139,24 @@ label {
 /*---------------*/
 /*  Error pages  */
 /*---------------*/
-.error-page .content-wrap {
+.error-page .error-container {
   text-align: center;
+  display: block;
+  max-width: 100%;
+  max-height: 100%;
+  height: 100vh;
+  padding-top: 48px;
+  overflow: hidden;
 }
 
-.error-page .content-wrap h1 {
+.error-page .header-container {
+  border-bottom: 1px solid grey
+}
+
+.error-page .error-container h1 {
   margin: 15px 0 7px 0;
 }
 
-/*body.error-page {*/
-/*  background: url(../images/background.jpg) no-repeat center center fixed;*/
-/*}*/
-/*body.error-page #wrapper {*/
-/*  background-color: transparent;*/
-/*}*/
-/*body.error-page #content {*/
-/*  color: #eee;*/
-/*  height: 400px;*/
-/*  background-color: transparent;*/
-/*}*/
-/*body.error-page #content .content-wrap {*/
-/*  position: fixed;*/
-/*  top: 150px;*/
-/*  left: 150px;*/
-/*}*/
-/*body.error-page #content h1 {*/
-/*  color: #eee;*/
-/*}*/
-/*body.error-page #page-title {*/
-/*  display: none;*/
-/*}*/
-/*body.error-page .global-search,*/
-/*body.error-page .global-search-bar {*/
-/*  display: none;*/
-/*}*/
 /*---------------*/
 /* Account pages */
 /*---------------*/

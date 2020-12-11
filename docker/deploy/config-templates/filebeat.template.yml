@@ -149,7 +149,7 @@ filebeat:
 
 output.elasticsearch:
   hosts: ["http://${DOCKER_HOST_NAME_ELASTICSEARCH}:${DOCKER_ELASTICSEARCH_PORT}"]
-  index: "filebeat-%{[agent.version]}-%{+yyyy.MM.dd}"
+  index: "filebeat-%{[special_log_type]:logs}-%{[agent.version]}-%{+yyyy.MM.dd}"
 
 setup.template.name: "filebeat"
 setup.template.pattern: "filebeat-*"

@@ -42,8 +42,8 @@ from apps.rawdb.repository.base_raw_db_repository import BaseRawDbRepository
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.7.0/LICENSE"
-__version__ = "1.7.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
+__version__ = "1.8.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -59,7 +59,7 @@ class RawDbRepository(BaseRawDbRepository):
         from apps.users.models import User
         if not doc_ids:
             return 0
-        assignee_name = User.objects.get(pk=assignee_id).get_full_name() \
+        assignee_name = User.objects.get(pk=assignee_id).name \
             if assignee_id else None
         col_values = {FIELD_CODE_ASSIGNEE_ID: assignee_id,
                       FIELD_CODE_ASSIGN_DATE: now(),

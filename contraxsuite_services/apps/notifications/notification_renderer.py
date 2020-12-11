@@ -25,15 +25,18 @@
 # -*- coding: utf-8 -*-
 
 import os
-from typing import Dict, Set, Optional, List, Any
+from typing import Dict, Set, Optional, List, Any, Callable
 
 from jinja2 import Template
 
 from apps.common.contraxsuite_urls import root_url, doc_editor_url
-from apps.document.constants import ALL_DOCUMENT_FIELD_CODES
+from apps.document.constants import DOCUMENT_FIELD_CODE_NAME, DOCUMENT_FIELD_CODE_PROJECT, \
+    DOCUMENT_FIELD_CODE_PROJECT_ID, DOCUMENT_FIELD_CODE_PROJECT_NAME, DOCUMENT_FIELD_CODE_STATUS, \
+    DOCUMENT_FIELD_CODE_STATUS_NAME, DOCUMENT_FIELD_CODE_ASSIGNEE, DOCUMENT_FIELD_CODE_ASSIGNEE_ID, \
+    DOCUMENT_FIELD_CODE_ID, DOCUMENT_FIELD_CODE_ASSIGNEE_NAME
 from apps.document.models import DocumentType
 from apps.document.repository.document_field_repository import DocumentFieldRepository
-from apps.notifications.models import DocumentNotificationSubscription
+from apps.notifications.models import DocumentNotificationSubscription, DocumentAssignedEvent, DocumentLoadedEvent
 from apps.notifications.notifications import RenderedNotification, DocumentNotificationSource, \
     get_notification_template_resource
 from apps.rawdb.constants import FIELD_CODES_HIDE_BY_DEFAULT, \
@@ -42,19 +45,30 @@ from apps.users.models import User
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.7.0/LICENSE"
-__version__ = "1.7.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
+__version__ = "1.8.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
 
 class NotificationRenderer:
     package_already_sent_user_ids = {}  # type:Dict[str, Set[str]]
+    default_generic_fields = {DOCUMENT_FIELD_CODE_ID,
+                              DOCUMENT_FIELD_CODE_NAME,
+                              DOCUMENT_FIELD_CODE_PROJECT,
+                              DOCUMENT_FIELD_CODE_PROJECT_ID,
+                              DOCUMENT_FIELD_CODE_PROJECT_NAME,
+                              DOCUMENT_FIELD_CODE_STATUS,
+                              DOCUMENT_FIELD_CODE_STATUS_NAME,
+                              DOCUMENT_FIELD_CODE_ASSIGNEE,
+                              DOCUMENT_FIELD_CODE_ASSIGNEE_ID,
+                              DOCUMENT_FIELD_CODE_ASSIGNEE_NAME}
 
     @staticmethod
     def render_notification(package_id: str,
                             subscription: DocumentNotificationSubscription,
-                            data: DocumentNotificationSource) -> Optional[RenderedNotification]:
+                            data: DocumentNotificationSource,
+                            log_routine: Optional[Callable[[str], None]]=None) -> Optional[RenderedNotification]:
         if package_id in NotificationRenderer.package_already_sent_user_ids:
             already_sent_user_ids = NotificationRenderer.package_already_sent_user_ids[package_id]
         else:
@@ -66,8 +80,11 @@ class NotificationRenderer:
         if not event_info:
             return None
 
-        NotificationRenderer.get_document_fields(data, document_type, subscription)
+        NotificationRenderer.get_document_fields(data, document_type,
+                                                 subscription, data.changes)
         doc_field_values = data.field_values
+        if not doc_field_values:
+            return None
         display_fields = set(doc_field_values.keys())
 
         recipients = subscription.resolve_recipients(data.field_values)
@@ -76,7 +93,6 @@ class NotificationRenderer:
             return None
 
         changes_filtered = dict()
-
         if data.changes:
             for code, old_new in data.changes.items():
                 if code in FIELD_CODES_HIDE_BY_DEFAULT:
@@ -123,14 +139,17 @@ class NotificationRenderer:
 
         html = None
 
-        html_template = get_notification_template_resource(os.path.join(subscription.template_name, 'template.html'))
+        html_template = get_notification_template_resource(os.path.join(
+            subscription.template_name, 'template.html'))
         if html_template:
-            html = Template(html_template.decode('utf-8')).render(template_context)
+            template_src = html_template.decode('utf-8')
+            template_obj = Template(template_src)
+            html = template_obj.render(template_context)
 
         txt_template_name = os.path.join(subscription.template_name, 'template.txt')
         txt_template = get_notification_template_resource(txt_template_name)
         if not txt_template:
-            raise RuntimeError('Txt template not found: {0}'.format(txt_template_name))
+            raise RuntimeError(f'Txt template not found: {txt_template_name}')
         txt = Template(txt_template.decode('utf-8')).render(template_context)
 
         image_dir = os.path.join(subscription.template_name, 'images')
@@ -179,7 +198,10 @@ class NotificationRenderer:
         msgs_by_recipients = {}  # type:[str, List[DocumentNotificationSource]]
         recipients_by_key = {}  # type:[str, List[User]]
         for msg_data in data:
-            NotificationRenderer.get_document_fields(msg_data, document_type, subscription)
+            NotificationRenderer.get_document_fields(msg_data, document_type,
+                                                     subscription, msg_data.changes)
+            if not msg_data.field_values:
+                continue
 
             recipients = subscription.resolve_recipients(msg_data.field_values)  # type:Set[User]
             recipients = {r for r in recipients if r.id not in already_sent_user_ids} if recipients else None
@@ -269,7 +291,8 @@ class NotificationRenderer:
     @staticmethod
     def get_document_fields(data: DocumentNotificationSource,
                             document_type: DocumentType,
-                            subscription: DocumentNotificationSubscription) -> None:
+                            subscription: DocumentNotificationSubscription,
+                            updated_values: Optional[Dict[str, Any]]) -> None:
         """
         Get document field values - those stored in Document object itself
         and those listed in subscription. Fills data.field_values dictionary.
@@ -280,14 +303,44 @@ class NotificationRenderer:
         :param data: notification's data
         :param document_type: DocumentType for associated document
         :param subscription: DocumentNotificationSubscription (refers to extra fields to obtain)
+        :param updated_values: values that actually changed
         """
+        updated_values = updated_values or {}
         repo = DocumentFieldRepository()
-        fields_to_get = \
-            {f.code for f in subscription.user_fields.all() if f.document_type == document_type} if subscription \
-            else set()
-        fields_to_get.update(ALL_DOCUMENT_FIELD_CODES)
+        fields_to_get = set()
+        if subscription.user_fields:
+            fields_to_get = {f.code for f in subscription.user_fields.all() if f.document_type == document_type}
+        if not fields_to_get:
+            doc_user_field_dict = repo.get_document_field_code_by_id(document_type.pk)
+            if updated_values:
+                fields_to_get = {doc_user_field_dict[f] for f in doc_user_field_dict
+                                 if doc_user_field_dict[f] in updated_values}
+        if subscription.event == DocumentAssignedEvent.code:
+            fields_to_get.update({DOCUMENT_FIELD_CODE_ASSIGNEE,
+                                  DOCUMENT_FIELD_CODE_ASSIGNEE_ID,
+                                  DOCUMENT_FIELD_CODE_ASSIGNEE_NAME})
+        if subscription.event == DocumentLoadedEvent.code:
+            obligatory_fields = {DOCUMENT_FIELD_CODE_NAME,
+                                 DOCUMENT_FIELD_CODE_PROJECT,
+                                 DOCUMENT_FIELD_CODE_PROJECT_NAME}
+            updated_values.update({v: None for v in obligatory_fields})
+            fields_to_get.update(obligatory_fields)
+
+        # updated field is not chosen among fields to show
+        if not any(code in fields_to_get for code in updated_values):
+            data.field_values = {}
+            return
+
+        if subscription.generic_fields:
+            fields_to_get.update(set(subscription.generic_fields))
+            fields_to_get.update(NotificationRenderer.default_generic_fields)
+        else:
+            fields_to_get.update(NotificationRenderer.default_generic_fields)
         doc_field_values = repo.get_document_own_and_field_values(data.document, fields_to_get)
         doc_field_values.update(data.field_values)
+        doc_field_values = {f: doc_field_values[f] for f in doc_field_values if f in fields_to_get}
+        data.field_values = {f: data.field_values[f] for f in data.field_values if f in fields_to_get}
+
         # make field codes "RawDB style"
         for key in doc_field_values:
             new_key = DOC_FIELD_TO_CACHE_FIELD.get(key) or key

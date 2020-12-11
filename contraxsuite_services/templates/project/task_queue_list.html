@@ -2,9 +2,7 @@
 {% load static %}
 
 {% block add_button %}
-  {% if not user.is_reviewer %}
     <a class="btn-u btn-sm btn-s" href="{% url "project:task-queue-add" %}">Create</a>
-  {% endif %}
 {% endblock %}
 
 {% block js_extra %}

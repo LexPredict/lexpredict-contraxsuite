@@ -1,0 +1,173 @@
+<?xml version="1.0" encoding="utf-8"?><html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<meta name="X-Parsed-By" content="org.apache.tika.parser.CompositeParser"/>
+<meta name="X-Parsed-By" content="org.apache.tika.parser.DefaultParser"/>
+<meta name="X-Parsed-By" content="org.apache.tika.parser.microsoft.ooxml.OOXMLParser"/>
+<meta name="resourceName" content="Sample Docx with Image copy 01.docx"/>
+<meta name="Content-Length" content="257058"/>
+<meta name="Content-Type" content="application/vnd.openxmlformats-officedocument.wordprocessingml.document"/>
+<title/>
+</head>
+<body><h1><a name="_7h7s3t1ykhr8"/>Explore XHTML Tika’s output</h1>
+<p/>
+<p>JIRA ticket: <a href="https://lexpredict.atlassian.net/browse/CS-3966"><u>https://lexpredict.atlassian.net/browse/CS-3966</u></a></p>
+<p/>
+<p>Here (<a href="https://docs.google.com/document/d/1PsqtEAirUejuaJfsm5a5CFSFp7jHoR60j2QGYP8eTOo/edit#heading=h.klz277294k93"><u>Improve text segmentation (section / page / paragraph / sentence)</u></a>, section 1.1 Use markup from document parser) I described Tika’s output in XHTML. In short:</p>
+<p>· Tika uses PdfBox for “vector” files, MS Word and OpenOffice files </p>
+<p>· and Tesseract for scanned files</p>
+<p>· in both cases Tika returns valid XHTML</p>
+<p>· XHTML contains almost all information on document’s structure that Tika can get</p>
+<p/>
+<p>see the aforementioned document, section 1.2 Verdict on using Tika markup for segmenting text.</p>
+<p/>
+<p>I’ve implemented a parser that reads Tika’s output in XHTML and extracts:</p>
+<p>1. plain text with or without extra line breaks inside paragraphs, with hyperlinks formatted</p>
+<p>2. paragraphs’ coordinates</p>
+<p>3. pages’ coordinates</p>
+<p>4. headings</p>
+<p>5. tables as Pandas dataframes + anchors to the source text</p>
+<p/>
+<p>Here’s a picture:</p>
+<p><img src="embedded:image2.png" alt=""/></p>
+<p/>
+<p>And here’s another one:</p>
+<p><img src="embedded:image1.png" alt=""/></p>
+<p>That’s all.</p>
+<div class="ocr">
+
+i
+=
+
+
+
+
+
+jocument ) ft parsers
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Steps to reproduse:
+- debug
+- navigate a variable by mouse pointer
+Ling - click inside the popup window, e.g., to traverse
+
+
+
+
+
+
+
+
+
+
+
+de ) i line_processor.py ‘Apytestintests~| &gt; Am Gt ~ YOoQ
+a |
+135 ( otfject at Ox7f8d8b9b135é&gt; text: ' While I pounded, weak and weary. Ove
+be le sometimes only rebooting|.| helps :
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+TODO I3:VersionControl___ A Terminal __@ Python Console
+
+2) Debug: pytestin tests . a -
+| ct | Debvaer [Bhconole |= 8 St aL through variables J
+
+# Q Event Log
+
+
+</div>
+<div class="ocr">Formula is calculate
+
+Result is: SOME COMPANY LLCtest
+
+Slop wero wr voutmeer&gt; user nt Heneeasee
+
+‘each word on new line
+
+lated Fields
+two + test if k_two\
+
+else com(k_five) + TEST if k five \
+else None
+
+Check formula
+
+</div>
+<p>
+    Nietzsche hatte die Absicht, in einem zusammenhängenden Werke den
+Gesamtertrag seiner Lehre darzustellen. Die Titel des beabsichtigten
+Werkes und die Gesichtspunkte seiner Ordnung wechselten, aber die
+einheitliche Idee, seine Philosophie übersichtlich darzustellen, blieb
+bestehen. Es sollten keine neuen Grundideen in dem Werke stehen,
+keine wichtige Grundlehre verändert werden; das Werk hätte vielmehr
+beweisen sollen, daß sein Gedankenkreis vom ersten bis zum letzten Werk
+der gleiche geblieben ist. Alle so verschieden erscheinenden Lehren
+der einzelnen Entwicklungsperioden sind nur Variationen des gleichen
+Themas; eine Grundmelodie tönt dem aufmerksam Hinhörenden stets durch.
+Sie herauszuhören, ist nicht leicht. Denn seine Neigung, die gerade im
+Vordergrunde stehenden Gedanken, den augenblicklich herrschenden Affekt
+fast gewaltsam zu betonen, ihm die ganze Kraft seiner eindrucksvollen,
+überwältigenden Sprache zu leihen, läßt oft die Nebentöne deutlicher
+vernehmen als den Grundton. Daher wenige Denker so bedächtig gelesen
+werden müssen, wie der anscheinend so leicht eingehende Nietzsche.
+
+Volle, leichte Klarheit hätte daher nur ein solches, die Hauptgedanken
+allein hervorhebendes Werk bringen können. Darum ist es ein so
+trauriger Gedanke, daß seine Erkrankung die Vollendung gerade dieses
+Werkes verhinderte, an dem er vom Jahre 1882 an stets gearbeitet,
+zu dem er sich ununterbrochen Einzelaufzeichnungen gemacht und
+Dispositionen entworfen hat. Aus diesem Gedankenkreise entnahm er
+wesentliche Teile und vereinigte sie zu seinen letzten Werken,
+besonders zum Antichrist, der in den letzten Monaten vor seiner
+Erkrankung entstanden ist und in einem erregten Ton geschrieben ist,
+der sich von der Stilart der Niederschriften völlig unterscheidet.
+
+</p>
+</body></html>

@@ -11,10 +11,10 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        migrations.AlterModelManagers(
-            name='user',
-            managers=[
-                ('objects', apps.users.models.UserManager()),
-            ],
-        ),
+        # migrations.AlterModelManagers(
+        #     name='user',
+        #     managers=[
+        #         ('objects', apps.users.models.UserManager()),
+        #     ],
+        # ),
     ]

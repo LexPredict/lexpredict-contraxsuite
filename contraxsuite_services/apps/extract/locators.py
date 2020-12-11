@@ -29,6 +29,7 @@ from collections import defaultdict
 from typing import List, Set, Dict, Type, Optional
 
 from django.db import transaction
+from django.conf import settings
 from django.db.models import Sum
 from lexnlp.extract.en import (
     amounts, citations, copyright, courts, dates, distances, definitions,
@@ -36,6 +37,7 @@ from lexnlp.extract.en import (
 from lexnlp.nlp.en.tokens import get_stems, get_token_list
 
 from apps.common.log_utils import ProcessLogger
+from apps.common.model_utils.safe_bulk_create import SafeBulkCreate
 from apps.companies_extractor import CompaniesExtractor
 from apps.document.models import TextUnitTag
 from apps.extract import dict_data_cache
@@ -52,8 +54,8 @@ from settings import DEFAULT_FLOAT_PRECISION
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.7.0/LICENSE"
-__version__ = "1.7.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
+__version__ = "1.8.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -115,24 +117,27 @@ class LocationResults:
                         for entity_class in self.processed_usage_entity_classes:
                             entity_class.objects.filter(text_unit_id__in=self.processed_text_unit_ids).delete()
 
-                count = 0
-                for entity_class, entities in self.located_usage_entities.items():  # type: Type[Usage], List[Usage]
-                    if entities:
-                        entity_class.objects.bulk_create(entities, ignore_conflicts=True)
-                        count += len(entities)
-
                 tag_models = list()
                 from apps.document.app_vars import LOCATE_TEXTUNITTAGS
+                tags_saved = 0
                 if LOCATE_TEXTUNITTAGS.val:
                     for text_unit_id, tags in self.tags.items():
                         for tag in tags:
                             tag_models.append(TextUnitTag(user_id=user_id,
                                                           text_unit_id=text_unit_id,
                                                           tag=tag))
-                    TextUnitTag.objects.bulk_create(tag_models, ignore_conflicts=True)
-                log.info(
-                    'Stored {0} usage entities and {1} tags for {2} text units'.format(
-                        count, len(tag_models), len(self.processed_text_unit_ids)))
+                    tags_saved = SafeBulkCreate.bulk_create(TextUnitTag.objects.bulk_create, tag_models)
+
+            # save "_usage" objects
+            count = 0
+            for entity_class, entities in self.located_usage_entities.items():  # type: Type[Usage], List[Usage]
+                if not entities:
+                    continue
+                count += SafeBulkCreate.bulk_create(entity_class.objects, entities)
+
+            log.info(
+                'Stored {0} usage entities and {1} tags for {2} text units'.format(
+                    count, tags_saved, len(self.processed_text_unit_ids)))
         except Exception as e:
             entities_str = '\n'.join([str(e) for e in self.processed_usage_entity_classes])
             log.error(f'Unable to store location results.\n'
@@ -163,8 +168,10 @@ class Locator:
                 parse_results.update_doc_project_ids(document_id, document_project_id)
                 locate_results.collect(self, text_unit_id, parse_results)
             elapsed = (datetime.datetime.now() - start).total_seconds()
-            LocatingPerformanceMeter().add_record(str(type(self).__name__),
-                                                  elapsed, text_unit_id, text)
+
+            if settings.DEBUG_TRACK_LOCATING_PERFORMANCE:
+                LocatingPerformanceMeter().add_record(str(type(self).__name__),
+                                                      elapsed, text_unit_id, text)
         except Exception as e:
             log.error(f'Exception caught while trying to run locator on a text unit.\n'
                       f'Locator: {self.__class__.__name__}\n'
@@ -225,11 +232,14 @@ class CourtLocator(Locator):
 
     def parse(self, log: ProcessLogger, text, text_unit_id, text_unit_lang,
               document_initial_load: bool = False, **kwargs) -> ParseResults:
+        from apps.extract.app_vars import SIMPLE_LOCATOR_TOKENIZATION
+        simple_norm = SIMPLE_LOCATOR_TOKENIZATION.val
         court_config = dict_data_cache.get_court_config()
         found = [i[0].id
                  for i in courts.get_courts(text,
                                             court_config_list=court_config,
-                                            text_languages=[text_unit_lang])]
+                                            text_languages=[text_unit_lang],
+                                            simplified_normalization=simple_norm)]
         if found:
             unique = set(found)
             return ParseResults({CourtUsage: [CourtUsage(text_unit_id=text_unit_id,
@@ -369,6 +379,7 @@ class PartyLocator(Locator):
         found = list(CompaniesExtractor.get_companies(
             text, count_unique=True, detail_type=True, name_upper=True))
         if found:
+            results = []
             for _party in found:
                 name, _type, type_abbr, type_label, type_desc, count = _party
                 defaults = dict(
@@ -376,15 +387,15 @@ class PartyLocator(Locator):
                     type_label=type_label,
                     type_description=type_desc
                 )
-                party, created = Party.objects.get_or_create(
+                party, _ = Party.objects.get_or_create(
                     name=name,
                     type_abbr=type_abbr or '',
-                    defaults=defaults
-                )
+                    defaults=defaults)
+                results.append(PartyUsage(text_unit_id=text_unit_id,
+                                          party=party,
+                                          count=count))
 
-                return ParseResults({PartyUsage: [PartyUsage(text_unit_id=text_unit_id,
-                                                             party=party,
-                                                             count=count)]})
+            return ParseResults({PartyUsage: results})
 
 
 class PercentLocator(Locator):
@@ -498,10 +509,13 @@ class GeoEntityLocator(Locator):
               document_initial_load: bool = False, **kwargs) -> ParseResults:
         priority = kwargs.get('priority', True)
         geo_config = dict_data_cache.get_geo_config()
+        from apps.extract.app_vars import SIMPLE_LOCATOR_TOKENIZATION
+        simple_norm = SIMPLE_LOCATOR_TOKENIZATION.val
         entity_alias_pairs = list(geoentities.get_geoentities(text,
                                                               geo_config,
                                                               text_languages=[text_unit_lang],
-                                                              priority=priority))
+                                                              priority=priority,
+                                                              simplified_normalization=simple_norm))
 
         entity_ids = [entity.id for entity, _alias in entity_alias_pairs]
         if entity_ids:

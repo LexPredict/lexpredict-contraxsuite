@@ -22,7 +22,7 @@
   <p><b>Project ID: </b>{{ session.project.pk }}</p>
   <p><b>Project Name: </b>{{ session.project.name }}</p>
   <p><b>Session ID: </b>{{ session.uid }}</p>
-  <p><b>Session created by: </b>{{ session.created_by.get_full_name }}</p>
+  <p><b>Session created by: </b>{{ session.created_by.name }}</p>
   <p><b>Session created at: </b>{{ session.created_date|date:"F j, Y, h:i A" }}</p>
   <p><b>Batch upload job is completed at: </b>{{ completed_at|date:"F j, Y, h:i A" }}</p>
   <table>

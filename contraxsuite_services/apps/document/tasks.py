@@ -89,10 +89,11 @@ from apps.users.models import User
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.7.0/LICENSE"
-__version__ = "1.7.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
+__version__ = "1.8.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
+
 
 MODULE_NAME = __name__
 logger = get_task_logger(__name__)
@@ -209,7 +210,8 @@ def cache_updated_documents(_celery_task):
     TaskUtils.prepare_task_execution()
 
     time_threshold = datetime.datetime.now() - datetime.timedelta(minutes=task_query_minutes)
-    dirty_documents = Document.objects.filter(fields_dirty__lt=time_threshold).order_by('-fields_dirty')
+    dirty_documents = Document.objects.filter(
+        fields_dirty__lt=time_threshold, project_id__isnull=False).order_by('-fields_dirty')
     dirty_count = dirty_documents.count()
     if not dirty_count:
         return
@@ -506,13 +508,13 @@ class LoadDocumentWithFields(ExtendedTask):
             try:
                 if type(field_value_text) is list:
                     for possible_value_text in list(field_value_text):
-                        maybe_value = typed_field.extract_from_possible_value_text(possible_value_text)
+                        maybe_value = typed_field.extract_from_possible_value_text(possible_value_text, doc=document)
                         if maybe_value:
                             maybe_value = typed_field.field_value_python_to_json(maybe_value)
                             fields_to_values[field] = FieldValueDTO(field_value=maybe_value)
                             break
                 else:
-                    maybe_value = typed_field.extract_from_possible_value_text(field_value_text)
+                    maybe_value = typed_field.extract_from_possible_value_text(field_value_text, doc=document)
                     if maybe_value:
                         maybe_value = typed_field.field_value_python_to_json(maybe_value)
                         fields_to_values[field] = FieldValueDTO(field_value=maybe_value)
@@ -627,7 +629,8 @@ class LoadDocumentWithFields(ExtendedTask):
                     save=True,
                     clear_old_values=clear_old_values,
                     skip_modified_values=skip_modified_values,
-                    field_codes_to_detect=field_codes_to_detect)
+                    field_codes_to_detect=field_codes_to_detect,
+                    task=task)
             else:
                 signals.fire_document_changed(sender=task,
                                               log=log,
@@ -666,22 +669,21 @@ class ImportCSVFieldDetectionConfig(ExtendedTask):
                 wrap_in_wordbreaks: bool = True,
                 save_in_csv_format: bool = True,
                 **kwargs):
-        try:
-            self.log_info('Going to configure simple field detection config...')
-            document_field = DocumentField.objects.get(pk=document_field['pk'])
-            csv_bytes = DbCache.get(config_csv_file['cache_key'])
-            importer = CsvDetectorImporter(
-                CeleryTaskLogger(self),
-                document_field,
-                drop_previous_field_detectors,
-                update_field_choice_values,
-                csv_contains_regexps=csv_contains_regexps,
-                selected_columns=selected_columns,
-                wrap_in_wordbreaks=wrap_in_wordbreaks,
-                save_in_csv_format=save_in_csv_format)
-            importer.process_csv(csv_bytes)
-        finally:
-            DbCache.clean_cache(config_csv_file['cache_key'])
+        self.log_info('Going to configure simple field detection config...')
+        document_field = DocumentField.objects.get(pk=document_field['pk'])
+        with download_task_attached_file(config_csv_file) as fn:
+            with open(fn, 'rb') as fr:
+                csv_bytes = fr.read()
+        importer = CsvDetectorImporter(
+            CeleryTaskLogger(self),
+            document_field,
+            drop_previous_field_detectors,
+            update_field_choice_values,
+            csv_contains_regexps=csv_contains_regexps,
+            selected_columns=selected_columns,
+            wrap_in_wordbreaks=wrap_in_wordbreaks,
+            save_in_csv_format=save_in_csv_format)
+        importer.process_csv(csv_bytes)
 
 
 class FindBrokenDocumentFieldValues(ExtendedTask):
@@ -773,7 +775,7 @@ class FindBrokenDocumentFieldValues(ExtendedTask):
 
 
 class ImportDocumentType(ExtendedTask):
-    name = 'Import Document Type'
+    name = task_names.TASK_NAME_IMPORT_DOC_TYPE
     soft_time_limit = 3600
     default_retry_delay = 10
     retry_backoff = True
@@ -808,17 +810,16 @@ class ImportDocumentType(ExtendedTask):
 
         source_version = int(source_version) if source_version else CURRENT_VERSION
 
-        try:
-            json_bytes = DbCache.get(document_type_config_json_file['cache_key'])
-            document_type = import_document_type(json_bytes=json_bytes,
-                                                 save=save,
-                                                 auto_fix_validation_errors=auto_fix_validation_errors,
-                                                 remove_missed_in_dump_objects=remove_missed_objects,
-                                                 source_version=source_version,
-                                                 task=self)
-        finally:
-            DbCache.clean_cache(document_type_config_json_file['cache_key'])
-
+        with download_task_attached_file(document_type_config_json_file) as fn:
+            with open(fn, 'rb') as fr:
+                json_bytes = fr.read()
+                document_type = import_document_type(
+                    json_bytes=json_bytes,
+                    save=save,
+                    auto_fix_validation_errors=auto_fix_validation_errors,
+                    remove_missed_in_dump_objects=remove_missed_objects,
+                    source_version=source_version,
+                    task=self)
         if not (save and update_cache):
             return
 
@@ -847,7 +848,7 @@ class ImportDocumentType(ExtendedTask):
         for doc in Document.all_objects.filter(pk__in=doc_ids):
             log = CeleryTaskLogger(_task)
             detect_and_cache_field_values_for_document(
-                log, doc, False, clear_old_values=False)
+                log, doc, False, clear_old_values=False, task=_task)
 
 
 class ExportDocuments(ExtendedTask):
@@ -922,14 +923,14 @@ class ExportDocuments(ExtendedTask):
                 sub_msg = '{} document(s)'.format(len(document_ids))
             file_ref.send_email(log=CeleryTaskLogger(self),
                                 subject=f'Document Files from {sub_msg} Ready to Download')
-            self.log_info(f'Email sent to user {file_ref.user.get_full_name()}')
+            self.log_info(f'Email sent to user {file_ref.user.name}')
         except Exception as e:
             self.log_error(f'Error updating "ExportFile" reference: {e}, path: "{file_path}"')
             raise
 
 
 class ImportDocuments(ExtendedTask):
-    name = 'Import Documents'
+    name = task_names.TASK_NAME_IMPORT_DOCUMENTS
     soft_time_limit = 12 * 3600
     default_retry_delay = 10
     retry_backoff = True
@@ -1126,9 +1127,11 @@ class DeleteDocuments(ExtendedTask):
         doc_ids = kwargs.get('_document_ids')
         safe_mode = kwargs.get('_safe_mode')
         safe_mode = safe_mode if safe_mode is not None else True
+        delete_files = kwargs.get('_delete_files', True)
         file_paths = self.document_repository.get_all_document_source_paths(doc_ids)
         get_document_bulk_delete(safe_mode).delete_documents(doc_ids)
-        DocumentFilesCleaner.delete_document_files(file_paths, self.log_error)
+        if delete_files:
+            DocumentFilesCleaner.delete_document_files(file_paths, self.log_error)
 
 
 @shared_task(base=ExtendedTask,
@@ -1176,7 +1179,8 @@ def process_documents_status_changed(task: ExtendedTask, doc_ids: List, new_stat
              default_retry_delay=10,
              retry_backoff=True,
              autoretry_for=(SoftTimeLimitExceeded, InterfaceError, OperationalError,),
-             max_retries=3)
+             max_retries=3,
+             priority=9)
 def _process_documents_assignee_changed(task: ExtendedTask,
                                         doc_ids: List[int],
                                         new_assignee_id: int,
@@ -1193,7 +1197,8 @@ def _process_documents_assignee_changed(task: ExtendedTask,
              default_retry_delay=10,
              retry_backoff=True,
              autoretry_for=(SoftTimeLimitExceeded, InterfaceError, OperationalError,),
-             max_retries=3)
+             max_retries=3,
+             priority=9)
 def process_documents_assignee_changed(task: ExtendedTask, doc_ids: List, new_assignee_id: int,
                                        changed_by_user_id: int):
     task.run_sub_tasks('Process doc assignee change',
@@ -1214,7 +1219,8 @@ def process_document_changed(task: ExtendedTask,
                              system_fields_changed: FieldSpec = True,
                              generic_fields_changed: FieldSpec = True,
                              user_fields_changed: bool = True,
-                             changed_by_user_id: int = None):
+                             changed_by_user_id: int = None,
+                             cache_values: bool = True):
     from apps.document.repository.document_field_repository import DocumentFieldRepository
 
     dfr = DocumentFieldRepository()
@@ -1223,8 +1229,16 @@ def process_document_changed(task: ExtendedTask,
     changed_by_user = User.objects.get(pk=changed_by_user_id) if changed_by_user_id is not None else None
     if DocumentSystemField.status.specified_in(system_fields_changed):
         dfr.delete_hidden_field_values_if_needed(doc, event_sender=task)
+
+    log = CeleryTaskLogger(task)
+    if cache_values:
+        cache_document_fields(log, doc,
+                              cache_generic_fields=False if not generic_fields_changed else True,
+                              cache_user_fields=False if not user_fields_changed else True,
+                              cache_system_fields=False if not system_fields_changed else True,
+                              disable_notifications=True)
     fire_document_changed(sender=task,
-                          log=CeleryTaskLogger(task),
+                          log=log,
                           document=doc,
                           changed_by_user=changed_by_user,
                           document_initial_load=False,
@@ -1237,9 +1251,11 @@ def plan_process_document_changed(doc_id: int,
                                   system_fields_changed: FieldSpec = True,
                                   generic_fields_changed: FieldSpec = True,
                                   user_fields_changed: bool = True,
-                                  changed_by_user_id: int = None):
+                                  changed_by_user_id: int = None,
+                                  cache_values: bool = True):
     call_task_func(process_document_changed,
-                   (doc_id, system_fields_changed, generic_fields_changed, user_fields_changed, changed_by_user_id),
+                   (doc_id, system_fields_changed, generic_fields_changed,
+                    user_fields_changed, changed_by_user_id, cache_values),
                    changed_by_user_id)
 
 
@@ -1327,8 +1343,7 @@ def identify_document_classes(task: ExtendedTask,
         # doc_pk, doc_text in docs.values_list('pk', 'documenttext__full_text'):
         new_task_progress = round(counter * 100 / total)
         if new_task_progress != task.task.progress:
-            task.task.progress = new_task_progress
-            task.task.save()
+            task.task.update_progress(new_task_progress)
         counter += 1
 
         doc_text = doc.full_text or ''
@@ -1428,8 +1443,14 @@ class ExportDocumentFiles(ExtendedTask):
             for doc in documents:
                 with file_storage.get_document_as_local_fn(doc.source_path) as (full_name, _):
                     try:
-                        dst = os.path.join(doc.documentcluster_set.last().name, doc.name) \
-                            if doc.document_type.is_generic() else doc.name
+                        if doc.document_type.is_generic():
+                            if doc.documentcluster_set.exists():
+                                cluster_folder = doc.documentcluster_set.last().name
+                            else:
+                                cluster_folder = 'unclustered'
+                            dst = os.path.join(cluster_folder, doc.name)
+                        else:
+                            dst = doc.name
                         zip_archive.writestr(dst, open(full_name, 'rb').read())
                     except FileNotFoundError:
                         pass
@@ -1447,7 +1468,7 @@ class ExportDocumentFiles(ExtendedTask):
         file_ref.send_email(
             log=CeleryTaskLogger(self),
             subject=f'Document Files from project "{project.name}" Ready to Download')
-        self.log_info(f'Email sent to user {user.get_full_name()}')
+        self.log_info(f'Email sent to user {user.name}')
 
 
 app.register_task(DetectFieldValues())

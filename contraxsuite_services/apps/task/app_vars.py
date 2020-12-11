@@ -29,11 +29,10 @@ from apps.common.models import AppVar
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.7.0/LICENSE"
-__version__ = "1.7.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
+__version__ = "1.8.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
-
 
 REMOVE_READY_TASKS_DELAY_IN_HOURS = AppVar.set(
     'Task', 'remove_ready_tasks_delay_in_hours', 48,
@@ -94,9 +93,13 @@ PDF2PDFA_CONVERTER_TIMEOUT = AppVar.set(
     'Time limit to Convert pdf to pdf-A, sec.')
 
 EXTRA_EXCLUDED_FROM_TRACKING = AppVar.set(
-    'Task', 'extra_excluded_from_tracking', 'IManage Synchronization',
+    'Task', 'extra_excluded_from_tracking', '',
     'Task names to exclude from tracking, comma separated')
 
 EXTRA_ALLOWED_FOR_TRACKING = AppVar.set(
     'Task', 'extra_allowed_for_tracking', '',
     'Task names to allow for tracking, comma separated')
+
+ENABLE_TASK_HEALTH_CHECK = AppVar.set(
+    'Task', 'enable_task_health_check', True,
+    'Experimental. Enable special health check process which detect hanged tasks and restarts them')

@@ -1,3 +1,12 @@
 {% extends "base.html" %}
 
 {% block bodyclass %}error-page{% endblock %}
+
+{% block content_wrapper %}
+  {% include "layout/header.html" %}
+  <div class="error-container">
+    {% block content %}{% endblock %}
+  </div>
+{% endblock %}
+
+

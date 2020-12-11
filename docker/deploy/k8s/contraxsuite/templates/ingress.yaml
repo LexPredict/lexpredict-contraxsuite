@@ -4,18 +4,17 @@ apiVersion: networking.k8s.io/v1beta1
 kind: Ingress
 metadata:
   name: contrax-ingress
+  namespace: {{ .Values.namespace}}
   annotations:
     kubernetes.io/ingress.class: nginx
-    {{ if .Values.customcertificate }}
-    certmanager.k8s.io/issuer: {{ .Values.domain_name }}-issuer
-    {{ end }}
-    nginx.ingress.kubernetes.io/backend-protocol: "HTTPS"
-    nginx.ingress.kubernetes.io/proxy-body-size: 5120M
+    # certmanager.k8s.io/issuer: {{ .Values.domain_name }}-issuer
+    # nginx.ingress.kubernetes.io/backend-protocol: "HTTPS"
+    # nginx.ingress.kubernetes.io/proxy-body-size: 5120M
 spec:
   tls:
   - hosts:
-    - {{ .Values.domain_name }}
-    secretName: {{ .Values.domain_name }}-crt
+    # - {{ .Values.domain_name }}
+    # secretName: {{ .Values.domain_name }}-crt
   rules:
   - host: {{ .Values.domain_name }}
     http:
@@ -23,4 +22,4 @@ spec:
       - path: /
         backend:
           serviceName: contrax-nginx
-          servicePort: 443
+          servicePort: 4443

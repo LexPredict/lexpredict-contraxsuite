@@ -27,8 +27,8 @@
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.7.0/LICENSE"
-__version__ = "1.7.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
+__version__ = "1.8.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -208,6 +208,10 @@ class DocumentImporter:
             if proj_type in self.missing_doc_types:
                 raise Exception(f'Doc. type {self.missing_doc_types[proj_type]} ' +
                                 f'was not found, project "{proj_name}"')
+            if self.project:
+                self.project_ids[proj_id] = self.project.pk
+                continue
+
             proj_type = self.document_types[proj_type]
             # TRANSACTION starts here
             with transaction.atomic():
@@ -237,6 +241,13 @@ class DocumentImporter:
             self.project_ids[proj_id] = matching_projects[0][0]
 
         if self.project:
+            if project_types:
+                if len(project_types) > 1:
+                    raise Exception(f'Trying to import documents of {len(project_types)} types into one project')
+                src_doc_type = list(project_types)[0]
+                if self.project.type_id != src_doc_type:
+                    raise Exception(f'''Importing document type "{src_doc_type}" 
+                        differs from the document type of the selected project ("{self.project.type_id}")''')
             project_types = {self.project.type_id}
         self.check_project_doc_field_types(project_types)
 
@@ -721,6 +732,7 @@ class DocumentImporter:
         if not pd.isnull(values['assignee_id']):
             doc.assignee = self.target_user
         doc.source_path = values['source_path']
+        doc.ocr_rating = values.get('ocr_rating') or values.get('ocr_grade') or 0
         doc.save()
         self.document_ids[values['id']] = doc.pk
         self.document_src_paths[doc.pk] = doc.source_path
