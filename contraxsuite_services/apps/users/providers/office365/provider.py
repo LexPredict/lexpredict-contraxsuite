@@ -47,7 +47,7 @@ class Office365Account(ProviderAccount):
                                 self.account.extra_data.get('last_name', ''))
         if name.strip() != '':
             return name
-        return super(Office365Account, self).to_str()
+        return super().to_str()
 
 
 class Office365Provider(OAuth2Provider):
@@ -56,7 +56,7 @@ class Office365Provider(OAuth2Provider):
     account_class = Office365Account
 
     def get_scope(self, request):
-        scope = set(super(Office365Provider, self).get_scope(request))
+        scope = set(super().get_scope(request))
         scope.add('openid')
         return list(scope)
 
@@ -76,7 +76,8 @@ class Office365Provider(OAuth2Provider):
                     user_email = ''
 
         if not user_email:
-            log_error(format_data_message("Office365 user data doesn't contain email claim", data))
+            msg = format_data_message("Office365 user data doesn't contain email claim", data)
+            log_error(msg)
 
         user_data = {'email': user_email,
                      'username': user_email,

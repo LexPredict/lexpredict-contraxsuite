@@ -25,6 +25,9 @@
 # -*- coding: utf-8 -*-
 
 from __future__ import unicode_literals
+
+import logging
+
 import requests
 from allauth.socialaccount.providers.oauth2.client import OAuth2Error
 
@@ -44,6 +47,9 @@ __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
 
+logger = logging.getLogger('django')
+
+
 class Office365OAuth2Adapter(OAuth2Adapter):
     provider_id = Office365Provider.id
     _authorize_url_template = 'https://login.microsoftonline.com/{TENANT}/oauth2/v2.0/authorize'
@@ -51,21 +57,27 @@ class Office365OAuth2Adapter(OAuth2Adapter):
     profile_url = 'https://graph.microsoft.com/v1.0/me'
 
     def complete_login(self, request, app, token, **kwargs):
-        headers = {'Authorization': 'Bearer {0}'.format(token.token)}
+        headers = {'Authorization': f'Bearer {token.token}'}
         resp = requests.get(self.profile_url, headers=headers)
         extra_data = resp.json()
-        login = self.get_provider().sociallogin_from_response(request,
-                                                              extra_data)
+        try:
+            login = self.get_provider().sociallogin_from_response(
+                request, extra_data)
+        except Exception as e:
+            logger.error(f'Error in Office365OAuth2Adapter.sociallogin_from_response(): {e}')
+            raise
         login.user.origin = User.USER_ORIGIN_SOCIAL
         if 'name' in extra_data:
             login.user.name = extra_data['name'] or login.user.name
         user_email = login.user.email or extra_data.get('email') or extra_data.get('mail', '')
         if not email_follows_pattern(user_email):
-            log_error(format_data_message('Email domain is not allowed',
-                                          {
-                                              'user': login.user,
-                                              'extra': extra_data
-                                          }))
+            msg = format_data_message('Email domain is not allowed',
+                                      {
+                                          'user': login.user,
+                                          'extra': extra_data
+                                      })
+            logger.error(msg)
+            log_error(msg)
             raise OAuth2Error(f'Email domain is not allowed for "{user_email}"')
         return login
 

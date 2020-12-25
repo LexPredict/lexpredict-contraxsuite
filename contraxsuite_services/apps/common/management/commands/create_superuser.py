@@ -52,13 +52,15 @@ class Command(BaseCommand):
                             help='Email')
 
     def handle(self, *args, **options):
+        tech_admin_role_id = Role.objects.filter(code='technical_admin').values_list('pk', flat=True)[0]
+
         user, created = User.objects.update_or_create(
             username=options['username'],
             is_superuser=True,
             is_staff=True,
             defaults=dict(
                 email=options['email'],
-                role_id=1,
+                role_id=tech_admin_role_id,
                 is_active=True))
 
         if created:

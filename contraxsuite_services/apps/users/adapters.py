@@ -25,9 +25,11 @@
 # -*- coding: utf-8 -*-
 
 # Django imports
+import logging
 from typing import Optional
 
 import regex as re
+from django.contrib.auth.models import Group
 from allauth.account.adapter import DefaultAccountAdapter
 from allauth.account.utils import perform_login
 from allauth.socialaccount.adapter import DefaultSocialAccountAdapter
@@ -37,13 +39,14 @@ from django.conf import settings
 from django.contrib.auth.forms import password_validation, PasswordResetForm, loader
 from django.core.exceptions import PermissionDenied
 from django.core.mail.message import EmailMultiAlternatives
-from django.db.models.signals import pre_save
+from django.db.models.signals import pre_save, post_save
 from django.dispatch import receiver
 from django.urls import reverse
 from rest_auth.serializers import PasswordResetConfirmSerializer, PasswordResetSerializer, \
     UserModel, force_text, uid_decoder, default_token_generator, ValidationError
 from rest_framework import serializers
 
+from apps.users.app_vars import DEFAULT_USER_GROUP
 from apps.users.models import User
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
@@ -52,6 +55,9 @@ __license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/
 __version__ = "1.8.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
+
+
+logger = logging.getLogger('django')
 
 
 class AccountAdapter(DefaultAccountAdapter):
@@ -92,8 +98,23 @@ class AccountAdapter(DefaultAccountAdapter):
         return ret
 
 
+@receiver(post_save, sender=User)
+def set_new_social_user_default_group(sender, instance: User, **kwargs):
+    if not kwargs.get('created', False):
+        return
+    if instance.origin != User.USER_ORIGIN_SOCIAL:
+        return
+
+    group_name = DEFAULT_USER_GROUP.val
+    if not group_name:
+        return
+    group = Group.objects.get(name=group_name)
+    instance.groups.add(group)
+    instance.save()
+
+
 @receiver(pre_save, sender=User)
-def set_new_user_inactive(sender, instance, **_kwargs):
+def set_new_social_user_inactive(sender, instance: User, **_kwargs):
     if instance._state.adding is not True:
         return
     if instance.id:
@@ -114,7 +135,7 @@ def set_new_user_inactive(sender, instance, **_kwargs):
         # until the administrator confirms the user account
         instance.is_active = False
         return
-
+    logger.error(f'email "{email}" is not allowed')
     raise PermissionDenied()
 
 
@@ -164,23 +185,31 @@ class SocialAccountAdapter(DefaultSocialAccountAdapter):
         email_adr, email_verified = emails[0].email, emails[0].verified
         from apps.users.app_vars import SOCIALACCOUNT_EMAIL_VERIFIED_ONLY
         if SOCIALACCOUNT_EMAIL_VERIFIED_ONLY.val and not email_verified:
-            raise PermissionDenied(f'Email "{email_adr}" is not verified')
+            msg = f'Email "{email_adr}" is not verified'
+            logger.error(msg)
+            raise PermissionDenied(msg)
 
         try:
-            user = User.objects.get(email=email_adr)
+            user = User.objects.get(email__iexact=email_adr)
         except User.DoesNotExist:
             return
 
         # we're here: 1 - the user email is found in our DB among registered users' emails
         if SOCIALACCOUNT_EMAIL_VERIFIED_ONLY.val and not email_verified:
             # 1.2 - deny the request
-            raise PermissionDenied(f'Email "{email_adr}" is not verified')
+            msg = f'Existing email "{email_adr}" is not verified'
+            logger.error(msg)
+            raise PermissionDenied(msg)
 
-        if not sociallogin.is_existing:
-            sociallogin.connect(request, user)
-        else:
-            sociallogin.state['process'] = 'login'
-            perform_login(request, user, 'none')
+        try:
+            if not sociallogin.is_existing:
+                sociallogin.connect(request, user)
+            else:
+                sociallogin.state['process'] = 'login'
+                perform_login(request, user, 'none')
+        except Exception as e:
+            logger.error(f'Error entering social account ({email_adr}): {e}')
+            raise
 
     def is_open_for_signup(self, request, sociallogin):
         from apps.users.app_vars import SOCIAL_ACCOUNT_ALLOW_REGISTRATION

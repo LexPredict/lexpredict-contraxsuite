@@ -28,7 +28,6 @@ import binascii
 import logging
 import os
 import re
-from functools import lru_cache
 from typing import Tuple
 
 from django.conf import settings
@@ -38,6 +37,7 @@ from django.dispatch import receiver
 from django.urls import reverse
 from django.utils import timezone
 from django.utils.translation import ugettext_lazy as ug
+from redis import DataError
 
 from rest_auth.models import TokenModel
 from rest_framework import serializers
@@ -75,7 +75,12 @@ class TokenCache:
         return f'{self.token_prefix}{token}'
 
     def get_token_from_key(self, token_key):
-        return self.token_re.findall(token_key)[0]
+        try:
+            return self.token_re.findall(token_key)[0]
+        except IndexError:
+            msg = f'TokenCache.get_token_from_key("{token_key}"): key not found'
+            logger.error(msg)
+            raise RuntimeError(msg)
 
     def get_token_user_key(self, user_id):
         return f'{self.token_prefix}{user_id}'
@@ -111,7 +116,19 @@ class TokenCache:
     def delete(self, user):
         token_user_key = self.get_token_user_key(user.id)
         token_key = redis.pop(token_user_key)
+        if not token_key:
+            msg = f'TokenCache.delete("{token_user_key}"): token_user_key was not found'
+            logger.error(msg)
+            raise RuntimeError(msg)
         redis.r.delete(token_user_key, token_key)
+
+    def try_delete(self, user):
+        token_user_key = self.get_token_user_key(user.id)
+        try:
+            token_key = redis.pop(token_user_key)
+            redis.r.delete(token_user_key, token_key)
+        except DataError:
+            pass
 
     def cache_users(self, users):
         # cache user qs for 5 min
@@ -147,6 +164,10 @@ class TokenCache:
     def get_token_keys(self, user):
         token_user_key = self.get_token_user_key(user.id)
         token_key = redis.pop(token_user_key)
+        if not token_key:
+            msg = f'TokenCache.get_token_keys("{token_user_key}"): token_user_key is not stored'
+            logger.error(msg)
+            raise RuntimeError(msg)
         token = self.get_token_from_key(token_key)
         return token_user_key, token_key, token
 
@@ -156,7 +177,12 @@ class TokenCache:
         - see rest_auth.views.LoginView.get_response and .TokenSerializer
         """
         if token.startswith(self.token_prefix):
-            token = self.token_re.findall(token)[0]
+            try:
+                token = self.token_re.findall(token)[0]
+            except IndexError:
+                msg = f'TokenCache.get_token_object("{token}"): key not found'
+                logger.error(msg)
+                raise RuntimeError(msg)
         return TokenModel(user=user, key=token)
 
 
@@ -175,17 +201,17 @@ def token_creator(token_model, user, serializer):
 @receiver(signal=post_save, sender=User)
 def delete_token_on_inactivate_user(instance, **kwargs):
     if not instance.is_active:
-        token_cache.delete(instance)
+        token_cache.try_delete(instance)
 
 
 @receiver(signal=post_delete, sender=User)
 def delete_token_on_delete_user(instance, **kwargs):
-    token_cache.delete(instance)
+    token_cache.try_delete(instance)
 
 
 @receiver(user_logged_out)
 def delete_token_on_logout(sender, request, user, **kwargs):
-    token_cache.delete(user)
+    token_cache.try_delete(user)
 
 
 @receiver(user_logged_in)
@@ -247,8 +273,9 @@ class CookieAuthentication(TokenAuthentication):
     def authenticate_credentials(self, key) -> Tuple[User, str]:
         user = token_cache.get_user(token=key)
         if user is None:
-            raise exceptions.AuthenticationFailed(
-                ug('Wrong authentication token or your session has expired. Please login.'))
+            msg = 'Wrong authentication token or your session has expired. Please login.'
+            logger.error(msg)
+            raise exceptions.AuthenticationFailed(ug(msg))
         _, token = token_cache.update(user)
         return user, token
 
@@ -367,7 +394,7 @@ class TokenSerializer(serializers.ModelSerializer):
         """
         data = super().to_representation(obj)
         data['release_version'] = settings.VERSION_NUMBER
-        frontend_vars = {i: j for i, j in AppVar.objects.filter(name__startswith='frontend_')
-            .values_list('name', 'value')}
+        frontend_vars = {i: j for i, j in AppVar.objects.filter(
+            name__startswith='frontend_').values_list('name', 'value')}
         data.update(frontend_vars)
         return data

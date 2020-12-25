@@ -821,6 +821,8 @@ class DateField(TypedField):
             return None
         if isinstance(json_value, date):
             return json_value
+        if isinstance(json_value, str) and not json_value:
+            return None
         return dateparser.parse(json_value).date()
 
     def extract_from_possible_value(self, possible_value):

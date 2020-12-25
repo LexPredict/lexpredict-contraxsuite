@@ -36,6 +36,10 @@ __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
 
+DEFAULT_USER_GROUP = AppVar.set(
+    'User', 'default_user_group', 'Reviewer',
+    '''The group name the new user is added to by default''')
+
 ALLOWED_EMAIL_DOMAINS = AppVar.set(
     'User', 'allowed_email_domains', '*',
     '''Allowed for social registration email domains, comma separated, 

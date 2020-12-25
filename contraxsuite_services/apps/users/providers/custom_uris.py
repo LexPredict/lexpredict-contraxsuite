@@ -32,6 +32,7 @@ __version__ = "1.8.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
+import logging
 
 import settings
 from django.urls import reverse
@@ -44,6 +45,9 @@ from allauth.socialaccount.providers.oauth2.views import (
     OAuth2LoginView,
     OAuth2CallbackView,
 )
+
+
+logger = logging.getLogger('django')
 
 
 class AdvancedRedirectOAuth2Client(OAuth2Client):
@@ -87,11 +91,17 @@ def get_uri_by_app(app_id: int, uri_type: str) -> str:
     uris = list(SocialAppUri.objects.filter(social_app_id=app_id,
                                             uri_type=uri_type))
     if not uris:
-        raise Exception(f'URI: {uri_type} was not found for app #{app_id}')
+        msg = f'URI: {uri_type} was not found for app #{app_id}'
+        logger.error(msg)
+        raise Exception(msg)
     return uris[0].uri
 
 
 def get_callback_url(provider: OAuth2Adapter, request, app):
     callback_url = reverse(provider.provider_id + "_callback")
     protocol = getattr(settings, 'OAUTH_CALLBACK_PROTOCOL') or provider.redirect_uri_protocol
-    return build_absolute_uri(request, callback_url, protocol)
+    try:
+        return build_absolute_uri(request, callback_url, protocol)
+    except Exception as e:
+        logger.error(f'Error in get_callback_url("{callback_url}"): {e}')
+        raise

@@ -28,14 +28,13 @@ import io
 import hashlib
 import os
 import re
+import tempfile
 import time
 import traceback
 from typing import List, Dict, Optional, Tuple, Any, Generator, Set, Callable
 from zipfile import ZipFile, ZIP_DEFLATED
 
-from openpyxl import Workbook
-from openpyxl.writer.excel import save_virtual_workbook
-from openpyxl.styles import Font, Alignment
+import pandas
 
 from django.conf import settings
 from django.db import connection, transaction, IntegrityError
@@ -46,6 +45,7 @@ from guardian.shortcuts import get_objects_for_user
 
 from apps.common.error_explorer import retry_for_operational_error
 from apps.common.log_utils import ProcessLogger
+from apps.common.pandas_excel_formatter import PandasExcelFormatter
 from apps.common.sql_commons import fetch_int, escape_column_name, sum_list, SQLClause, \
     SQLInsertClause, join_clauses, format_clause, fetch_dicts
 from apps.common.streaming_utils import csv_gen, GeneratorList
@@ -179,37 +179,16 @@ class DocumentQueryResults(list):
         return resp
 
     def to_xlsx(self, as_zip=False) -> HttpResponse:
-        wb = Workbook()
-        ws = wb.active
-        ws.append(self.column_titles)
-        for cells in ws.rows:
-            for cell in cells:
-                cell.font = Font(name=cell.font.name, bold=True)
-                cell.alignment = Alignment(horizontal='center')
-            break
-
+        df = pandas.DataFrame(columns=self.column_titles)
         for row in self.fetch():
-            # to escape illegal chars
-            # openpyxl.cell.cell > ILLEGAL_CHARACTERS_RE produces IllegalCharacterError
-            patched_row = []
-            for cell_value in row:
-                if isinstance(cell_value, str):
-                    # TODO: this produces an error in MS excel, so skip for now
-                    # if url_re.match(cell_value):
-                    #     cell_value = f'=HYPERLINK("{cell_value}", "{cell_value}")'
-                    cell_value = cell_value.encode('unicode_escape').decode('utf-8')
-                patched_row.append(cell_value)
-            ws.append(patched_row)
+            row_data = {self.column_titles[i]: row[i] for i in range(len(row))}
+            df = df.append(row_data, ignore_index=True)
 
-        def str_len(value):
-            return len(str(value)) if value is not None else 0
-
-        for column_cells in ws.columns:
-            length = min(max(str_len(cell.value) for cell in column_cells), 100) + 1
-            ws.column_dimensions[column_cells[0].column_letter].width = length
-
-        xlsx_content = save_virtual_workbook(wb)
         file_name = f'{self.export_file_name}.xlsx'
+        with tempfile.NamedTemporaryFile() as fw:
+            PandasExcelFormatter.export_to_xlsx(df, 'Documents', fw.name)
+            with open(fw.name, 'rb') as fr:
+                xlsx_content = fr.read()
 
         if as_zip:
             return self.to_zip(xlsx_content, file_name=file_name)

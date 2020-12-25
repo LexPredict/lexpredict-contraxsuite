@@ -371,7 +371,16 @@ SOCIALACCOUNT_PROVIDERS = {
             'email',
         ],
         'AUTH_PARAMS': {
-            'access_type': 'online',
+            'access_type': 'offline',
+        }
+    },
+    'office365': {
+        'SCOPE': [
+            'profile',
+            'email',
+        ],
+        'AUTH_PARAMS': {
+            'access_type': 'offline',
         }
     }
 }
@@ -950,6 +959,7 @@ TEXTUNIT_SIMILARITY_MIGRATION_ACTION = 'update'
 SOCIALACCOUNT_EMAIL_REQUIRED = True
 LOGIN_REDIRECT_URL = 'home'
 OAUTH_CALLBACK_PROTOCOL = 'https'
+SOCIALACCOUNT_AUTO_SIGNUP = True
 
 TEST_RUN_MODE = False
 ENABLE_LOCAL_TESTS = False

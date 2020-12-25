@@ -23,6 +23,7 @@
     or shipping ContraxSuite within a closed source product.
 """
 # -*- coding: utf-8 -*-
+import logging
 
 import requests
 from allauth.socialaccount.providers.oauth2.client import OAuth2Error
@@ -42,6 +43,9 @@ __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
 
+logger = logging.getLogger('django')
+
+
 class GoogleOAuth2Adapter(OAuth2Adapter):
     provider_id = GoogleProvider.id
     access_token_url = 'https://accounts.google.com/o/oauth2/token'
@@ -54,14 +58,20 @@ class GoogleOAuth2Adapter(OAuth2Adapter):
                                     'alt': 'json'})
         resp.raise_for_status()
         extra_data = resp.json()
-        login = self.get_provider() \
-            .sociallogin_from_response(request,
-                                       extra_data)
+        try:
+            login = self.get_provider() \
+                .sociallogin_from_response(request,
+                                           extra_data)
+        except Exception as e:
+            logger.error(f'GoogleOAuth2Adapter.complete_login: error in provider.sociallogin_from_response(): {e}')
+            raise
         login.user.origin = User.USER_ORIGIN_SOCIAL
         if 'name' in extra_data:
             login.user.name = extra_data['name'] or login.user.name
         if not email_follows_pattern(login.user.email):
-            raise OAuth2Error(f'Email domain is not allowed')
+            msg = 'Email domain is not allowed'
+            logger.error(f'GoogleOAuth2Adapter.complete_login: {msg}')
+            raise OAuth2Error(msg)
         return login
 
     def get_callback_url(self, request, app):

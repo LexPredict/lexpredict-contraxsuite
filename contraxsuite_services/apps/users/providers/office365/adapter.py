@@ -23,6 +23,7 @@
     or shipping ContraxSuite within a closed source product.
 """
 # -*- coding: utf-8 -*-
+import logging
 
 from django.http import HttpResponseForbidden
 
@@ -40,6 +41,9 @@ __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
 
+logger = logging.getLogger('django')
+
+
 class SocialAccountAdapter(DefaultSocialAccountAdapter):
     # based on: https://github.com/thenewguy/django-allauth-adfs/blob/master/allauth_adfs/socialaccount/adapter.py
 
@@ -51,7 +55,11 @@ class SocialAccountAdapter(DefaultSocialAccountAdapter):
                 user.save()
 
     def populate_user(self, request, sociallogin, data):
-        user = super(SocialAccountAdapter, self).populate_user(request, sociallogin, data)
+        try:
+            user = super().populate_user(request, sociallogin, data)
+        except Exception as e:
+            logger.error(f'SocialAccountAdapter.populate_user() error: {e}')
+            raise
         self.update_user_fields(request, sociallogin, user)
         return user
 
@@ -80,6 +88,7 @@ class SocialAccountAdapter(DefaultSocialAccountAdapter):
             for key in false_keys:
                 if getattr(user, key):
                     msg = "Staff users must authenticate via the %s provider!" % office365_provider.name
+                    logger.error(f'SocialAccountAdapter: {msg}')
                     response = HttpResponseForbidden(msg)
                     raise ImmediateHttpResponse(response)
         return changed, user

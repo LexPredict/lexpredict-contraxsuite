@@ -60,7 +60,11 @@ def process_logged_in(sender, **kwargs):
 
 def route_next_param_to_query():
     # Connect django-allauth Signals
-    user_logged_in.connect(process_logged_in)
+    try:
+        user_logged_in.connect(process_logged_in)
+    except Exception as e:
+        logger.error(f'Error in route_next_param_to_query(): {e}')
+        raise
 
 
 def derive_user_name(user_data: Dict[str, Any]):

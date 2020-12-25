@@ -71,7 +71,7 @@ class Role(models.Model):
     Role model for user roles
     """
     name = models.CharField(_('Name of Role'), max_length=50)
-    code = models.CharField(_('Role Code'), max_length=50)
+    code = models.CharField(_('Role Code'), max_length=50, unique=True)
     order = models.PositiveSmallIntegerField()
     is_admin = models.BooleanField(default=False, db_index=True)
     is_manager = models.BooleanField(default=False, db_index=True)

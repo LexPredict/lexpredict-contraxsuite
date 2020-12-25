@@ -23,6 +23,7 @@
     or shipping ContraxSuite within a closed source product.
 """
 # -*- coding: utf-8 -*-
+import logging
 
 from allauth.account.models import EmailAddress
 from allauth.socialaccount.app_settings import QUERY_EMAIL
@@ -40,6 +41,9 @@ __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
 
+logger = logging.getLogger('django')
+
+
 class Scope(object):
     EMAIL = 'email'
     PROFILE = 'profile'
@@ -53,7 +57,7 @@ class GoogleAccount(ProviderAccount):
         return self.account.extra_data.get('picture')
 
     def to_str(self):
-        dflt = super(GoogleAccount, self).to_str()
+        dflt = super().to_str()
         return self.account.extra_data.get('name', dflt)
 
 
@@ -76,6 +80,8 @@ class GoogleProvider(OAuth2Provider):
         return ret
 
     def extract_uid(self, data):
+        if not data or 'id' not in data:
+            raise RuntimeError(f'Google provider: there is no "id" field in extract_uid() arg or arg is empty')
         return str(data['id'])
 
     def extract_common_fields(self, data):
